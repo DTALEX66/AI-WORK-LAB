@@ -161,3 +161,19 @@ gh repo view DTALEX66/AI-WORK-LAB --json description,defaultBranchRef,visibility
 ```
 
 若上述回读与本文陈述不一致，以回读为准，并把差异登记到 `.project-local\push-20261031\` 后再继续。
+
+三条实测事实（推送当轮现读，数字只写在证据 JSON 里）：
+
+- 上传面与候选面一致：远程树实测为 1,226 个 blob，数据库、日志、`__pycache__`、`.venv`、
+  `workspace`、`.project-local` 成员数为 0——被 `.gitignore` 排除的运行库与审计证据没有因为
+  这次上传离开本机；远程 ref 与本地 HEAD 同一个提交。
+- 新克隆可复现逐字节断言：根 `.gitattributes` 关闭 Git 文本转换。本机 `core.autocrlf=true`
+  原本会在 add/checkout 时改写换行，而 `migration/copies.json` 与覆盖登记按 SHA-256 断言
+  目标文件与来源一致，归一化后的克隆会让这些断言凭空失败。 staged blob 与工作文件被逐个
+  比对过，差异为 0。
+- 重跑不再移动候选摘要：`scripts/build_migration_map.py` 只在实质内容变化时才刷新
+  `generated_at` / `reviewed_at`（此前每次重跑都会重写这两份产物的时间戳，使提交后的树
+  看起来发生漂移）；`tests/unified/test_v07_migration.py` 现在逐文件断言两次重跑后
+  `migration/` 全部产物**字节**不变，而不只是去掉时间戳后相等。提交之后又跑了一遍全量套件，
+  `git status` 与 `git diff HEAD` 均为空。
+
