@@ -27,7 +27,11 @@ REGISTERS = ("migration/task-acceptance.csv", "migration/route-surface.csv",
              "migration/ui-entry-disposition.csv",
              "migration/capability-family-register.csv",
              "migration/requirement-traceability.csv", "migration/deferral-register.json",
-             "config/blocker-register.json")
+             "config/blocker-register.json",
+             # 2026-10-31: the closure table the handoff §七 asked for, and the two
+             # source-coverage registers whose row/path difference is now an invariant
+             "migration/audit-item-closure.csv",
+             "migration/source-coverage-work.csv", "migration/source-coverage-design.csv")
 SOURCES = {"work": pathlib.Path(r"D:\All projects\WORK-LAB"),
            "design": pathlib.Path(r"D:\All projects\DESIGN-LAB")}
 sys.path.insert(0, str(ROOT / "scripts"))
