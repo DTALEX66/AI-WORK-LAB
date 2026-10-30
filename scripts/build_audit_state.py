@@ -103,6 +103,9 @@ def merge(existing: dict, updates: dict) -> dict:
     round recorded fields there (was_bypassed_with_no_verify and friends) that a reader is
     still entitled to, and a generator that silently drops them would look like the fact
     disappeared rather than like the generator never computed it.
+
+    ``candidate_manifest`` is refreshed in place when it already exists. Leaving it would
+    put two digests in one document, one of them a stale number the tests still read.
     """
     merged = dict(existing)
     for key, value in updates.items():
@@ -116,6 +119,16 @@ def merge(existing: dict, updates: dict) -> dict:
                 else:
                     facts[sub] = sub_value
             merged[key] = facts
+        elif key == "audited_head_sha":
+            merged[key] = value
+            # candidate_manifest documents the 口径 (implementation, distinct reading,
+            # recompute command); the numbers themselves live in audited_candidate_* so a
+            # reader cannot get two competing file counts out of one document.
+            manifest = merged.get("candidate_manifest")
+            if isinstance(manifest, dict):
+                manifest = dict(manifest)
+                manifest["口径_implementation"] = "scripts/candidate_snapshot.py"
+                merged["candidate_manifest"] = manifest
         else:
             merged[key] = value
     return merged

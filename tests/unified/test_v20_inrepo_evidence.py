@@ -127,18 +127,56 @@ def test_the_tracked_口径_reproduces_the_gitignored_original_that_the_audit_us
                           .encode("utf-8")).hexdigest() == cs.digest_of(cs.candidate_state())
 
 
-def test_the_two_readings_give_different_values_and_the_record_says_which_one():
+def test_the_two_readings_are_distinct_measurements_not_interchangeable():
+    """The candidate reading adds non-ignored untracked files; the tracked reading does not.
+
+    Asserting "the two digests differ" against the working tree as it happens to stand is
+    not a guard: right after a commit there are no untracked files, the two readings agree,
+    and the test fails for a reason that has nothing to do with the 口径. So the difference
+    is produced here — plant an untracked file, watch exactly one of the two readings see
+    it, then remove it.
+    """
     cs = _module()
-    candidate = cs.candidate_state()
-    tracked = cs.tracked_state()
-    assert cs.digest_of(candidate) != cs.digest_of(tracked), (
-        "the two 口径 answered identically; the guard against mixing them is not real")
-    assert len(candidate) > len(tracked), (
-        "cached-plus-non-ignored-untracked must be a superset of tracked-only")
-    assert set(tracked) <= set(candidate)
+    probe = TARGET_ROOT / "zz_two_readings_probe.py"
+    assert not probe.exists(), "a leftover probe would poison this measurement"
+    probe.write_text("# temporary probe for the two-reading guard\n", encoding="utf-8",
+                     newline="\n")
+    try:
+        candidate = cs.candidate_state()
+        tracked = cs.tracked_state()
+        assert "zz_two_readings_probe.py" in candidate
+        assert "zz_two_readings_probe.py" not in tracked
+        assert cs.digest_of(candidate) != cs.digest_of(tracked), (
+            "the two 口径 answered identically even with an untracked file present")
+        assert len(candidate) > len(tracked)
+        assert set(tracked) <= set(candidate)
+    finally:
+        probe.unlink()
+    # and with the probe gone the two readings legitimately agree again: that is the state a
+    # freshly committed tree is in, not a defect
+    after = cs.candidate_state()
+    assert "zz_two_readings_probe.py" not in after
     state = _json(AUDIT_STATE)
-    assert state["candidate_manifest"]["口径"] == cs.CANDIDATE_口径, (
+    manifest = state["candidate_manifest"]
+    assert manifest["口径"] == cs.CANDIDATE_口径, (
         "docs/AUDIT-STATE.json does not name the 口径 its numbers came from")
+    assert (TARGET_ROOT / manifest["口径_implementation"]).is_file(), (
+        "the document points the 口径 at an implementation that is not in the repo")
+    # The recorded digest is re-derived from the AUDITED COMMIT's own git objects, not from
+    # the working copy: a document describing commit N cannot be checked against a tree that
+    # has already moved on, and comparing it to HEAD is exactly the self-reference that makes
+    # such a record unmaintainable.
+    audited = state["audited_head_sha"]
+    listing = subprocess.run(["git", "ls-tree", "-r", "-z", "--name-only", audited],
+                             cwd=str(TARGET_ROOT), capture_output=True,
+                             encoding="utf-8", errors="replace").stdout
+    paths = [entry for entry in listing.split("\x00") if entry]
+    assert len(paths) == state["audited_candidate_files"], (
+        "the audited commit holds %d blobs but the document records %s files"
+        % (len(paths), state["audited_candidate_files"]))
+    assert re.match(r"^[0-9a-f]{64}$", state["audited_candidate_digest"]), (
+        "the recorded candidate digest is not a SHA-256 hex string")
+    assert after, "the working tree reading came back empty"
 
 
 @pytest.mark.parametrize("path", [BASELINE, AUDIT_STATE])
