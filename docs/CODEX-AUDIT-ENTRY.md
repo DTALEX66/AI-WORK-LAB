@@ -390,3 +390,21 @@ owner）；系统级出站隔离未被证明。结论口径仍是**「QODER 全�
 证据目标与「PASS 必须写明仍未验证的子项」；`test_v26_local_run_receipts.py` 查登记数字是否等于
 本机运行收据与安装报告的现读值，并由 `test_v23_clone_repro.py` 点名归为 machine-bound，
 而不是被静默跳过。
+
+### 本轮最终实测（提交态，非计划）
+
+- 全量回归：`360 passed, 3 subtests passed, 0 failed`（exit 0，8m20s，
+  `--basetemp .project-local/runs/final-32c3d22`，解释器 `.venv/Scripts/python.exe` = CPython 3.13）。
+  这一条包含 `test_v23_clone_repro` 的克隆复跑与 `test_v26` 的收据绑定守卫，
+  所以「克隆里能跑」与「登记数字对得上存档收据」是在同一棵树上同时成立的。
+- 验收门（消费必做阻塞登记）：`REFUSED / exit 1`，阻断项 1（`L10#0`），披露项 7
+  （含按 owner 移出义务的 `L00#2`、真实宿主的 `L20#0`）。
+- 任务包 48 条子句：CONFIRMED 40 / PARTIAL 3 / BLOCKED_BY_BOUNDARY 2 / DEFERRED_P3 3；
+  必做阶段（P0+P1）37 条，其中 35 条 CONFIRMED。
+- F/A 闭环表：20 行全 PASS 自测结论，`独立复审` 列 20 行全部 `NOT_RUN`；
+  每行「未验证子项」写明该行边界内还没测的部分。绑定的测量收据：
+  `receipt-archive/CLOSURE-STATE-c2d9dd68fa0f34e8.json`（358 passed / 0 failed / 2 deselected，
+  节点 id 记录在收据内）。
+- 来源两仓只读性：WORK 2,638 / DESIGN 4,049 个 git 口径文件的摘要在两次读数之间不变。
+- 结论口径：**QODER 全量闭环自测完成，仍有 1 条必做条款阻断（L10#0 的 32 行待 owner 判定），
+  待 Codex 独立复审**。不自称「Codex 已通过」，也不把本批说成产品就绪。
