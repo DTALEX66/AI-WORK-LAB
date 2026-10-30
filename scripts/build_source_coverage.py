@@ -100,6 +100,31 @@ def list_source_files(root: Path) -> list[str]:
     return rows
 
 
+def declared_file_copies() -> list[dict]:
+    """The single-file copies migrate_sources.py declares, re-verified from disk right now.
+
+    ``migration/copies.json`` is a snapshot of one applied run, so a copy the tool now
+    declares (FILE_COPIES / PACKAGED_STATE_COPIES / AUTOMATION_PACKED_FILES) but that run
+    predates is invisible here -- and the source stays classified as "registered, not
+    copied" even though its bytes are in the tree. The declared table is the contract;
+    this reads both files and hashes them, so a declared copy only counts when the
+    destination really holds the source's bytes. A destination that differs from the
+    source still lands in the register, as COPIED_TARGET_DIFFERS, exactly as a manifest
+    record would.
+    """
+    module = migrate_module()
+    records = []
+    for repo_root, src_rel, dst_rel in (list(module.FILE_COPIES)
+                                         + list(module.AUTOMATION_PACKED_FILES)):
+        source, destination = Path(repo_root) / src_rel, REPO_ROOT / dst_rel
+        if not source.is_file() or not destination.is_file():
+            continue
+        records.append(dict(source=str(source), target=str(destination),
+                            sha256_source=sha(source), sha256_target=sha(destination),
+                            declared_by="scripts/migrate_sources.py"))
+    return records
+
+
 def copied_index() -> dict[str, list[dict]]:
     """Absolute source path -> EVERY copy record that reads from it."""
     manifest = json.loads(COPIES.read_text(encoding="utf-8"))
@@ -107,12 +132,23 @@ def copied_index() -> dict[str, list[dict]]:
     for group in manifest["copies"]:
         for record in group.get("records", []):
             index.setdefault(str(Path(record["source"]).resolve()), []).append(record)
+    for record in declared_file_copies():
+        key = str(Path(record["source"]).resolve())
+        if not any(Path(existing["target"]).resolve() == Path(record["target"]).resolve()
+                   for existing in index.get(key, [])):
+            index.setdefault(key, []).append(record)
     return index
 
 
 def _mapping_rows() -> list[dict]:
     with MAPPING.open(encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
+
+
+def _f01_register_rows() -> int:
+    """Row count of the F01 disposition register as it stands on disk right now."""
+    with f01.OUT_CSV.open(encoding="utf-8-sig", newline="") as handle:
+        return len(list(csv.DictReader(handle)))
 
 
 def registered_keys() -> dict[str, dict]:
@@ -455,7 +491,13 @@ def main(argv=None) -> int:
                 for label, doc in documents.items()},
             "registered_gap_non_python_paths": sorted(
                 row["path"] for _l, row in gap_rows if not row["path"].endswith(".py")),
-            "f01_register_reports_work_python_gaps": 198,
+            # Derived from the other register, not from a remembered number: the two builders
+            # read different inputs (mapping.csv + copies.json vs. the declared copy table),
+            # so agreement between them is a check and a literal "198" would only ever be a
+            # number to bump. The audited baseline stays here as history, with its delta.
+            "f01_register_reports_work_python_gaps": _f01_register_rows(),
+            "audited_baseline_2026_10_30_work_python_gaps": 198,
+            "gap_delta_since_audit": 198 - _f01_register_rows(),
             "mapping_rows": len(_mapping_rows()),
             "mapping_unique_paths": len(registered),
             "copy_manifest_records": sum(len(records) for records in copied.values()),

@@ -213,11 +213,23 @@ def test_f01_register_separates_wired_from_merely_present():
 
 
 def test_coverage_gap_rows_match_the_f01_register(coverage):
-    """The two registers must not disagree about the same file."""
-    assert coverage["cross_check"]["registered_gap_python_paths_by_repo"]["work"] == 198
-    assert coverage["cross_check"]["f01_register_reports_work_python_gaps"] == 198
+    """The two registers must not disagree about the same file.
+
+    The counts used to be pinned to the literal the audit recorded (198). That made a real
+    closure look like a breakage: when ``adapter_conformance.py`` was actually migrated, the
+    gap set legitimately became 197 and four remembered numbers went red at once. The check
+    is now the one that matters -- the two builders, which read different inputs, must agree
+    with each other and with the register file -- with a floor so an emptied population can
+    never pass, and with the distance from the audited baseline stated rather than assumed.
+    """
     disposition = _read(TARGET_ROOT / "migration/work-gap-disposition.csv")
-    assert len(disposition) == 198
+    check = coverage["cross_check"]
+    assert check["f01_register_reports_work_python_gaps"] == len(disposition), check
+    assert check["registered_gap_python_paths_by_repo"]["work"] == len(disposition), check
+    assert check["gap_delta_since_audit"] == 198 - len(disposition), check
+    assert 190 <= len(disposition) <= 198, (
+        "去向登记只剩 %d 行：population 缩水到这个程度只会是计算口径坏了，不是缺口被关掉"
+        % len(disposition))
     coverage_gaps = {row["path"] for row in
                      _read(TARGET_ROOT / "migration/source-coverage-work.csv")
                      if row["class"] == "REGISTERED_GAP" and row["path"].endswith(".py")}
@@ -542,6 +554,16 @@ def test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out():
                         for group in json.loads((TARGET_ROOT / "migration" / "copies.json")
                                                 .read_text(encoding="utf-8-sig"))["copies"]
                         for record in group["records"]}
+    # A destination may also be justified by the migrator's declared single-file copy table --
+    # but only when the bytes are re-hashed here and agree. Recomputed independently of
+    # build_source_coverage so the register cannot define "copied" for itself.
+    for repo_root, src_rel, dst_rel in (list(migrator.FILE_COPIES)
+                                         + list(migrator.AUTOMATION_PACKED_FILES)):
+        source, destination = Path(repo_root) / src_rel, TARGET_ROOT / dst_rel
+        if source.is_file() and destination.is_file() and \
+           hashlib.sha256(source.read_bytes()).hexdigest() == \
+           hashlib.sha256(destination.read_bytes()).hexdigest():
+            manifest_targets.add(dst_rel.replace("\\", "/"))
     for label in ("work", "design"):
         path = TARGET_ROOT / "migration" / ("source-coverage-%s.csv" % label)
         rows = list(csv.DictReader(io.StringIO(path.read_bytes().decode("utf-8-sig"),

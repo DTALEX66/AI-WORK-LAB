@@ -1,25 +1,91 @@
 {
   "$schema": "work-lab/capability-conformance/v1",
   "schemaVersion": "work-lab/capability-conformance/v1",
-  "scope": ["workflow-assistance", "work-lab-observer"],
+  "scope": [
+    "workflow-assistance",
+    "work-lab-observer"
+  ],
   "acp": {
-    "status": "STATIC_PASS",
+    "status": "STATIC_UNVERIFIED",
     "entries": [
-      {"id": "adapter-interface", "capabilities": ["detect", "capabilities", "plan", "apply", "invoke", "observe", "rollback"], "transport": "manifest-only", "permissions": ["read-only"], "source": "config/adapter-registry.json"},
-      {"id": "acp-compat-layer", "capabilities": ["detect", "capabilities", "observe", "negotiate", "init"], "transport": "external", "permissions": ["read-only"], "source": "integrations/executors/codex/acp_adapter.py"}
+      {
+        "id": "adapter-interface",
+        "capabilities": [
+          "detect",
+          "capabilities",
+          "plan",
+          "apply",
+          "invoke",
+          "observe",
+          "rollback"
+        ],
+        "transport": "manifest-only",
+        "permissions": [
+          "read-only"
+        ],
+        "source": "config/adapter-registry.json"
+      },
+      {
+        "id": "acp-compat-layer",
+        "capabilities": [
+          "detect",
+          "capabilities",
+          "observe",
+          "negotiate",
+          "init"
+        ],
+        "transport": "external",
+        "permissions": [
+          "read-only"
+        ],
+        "source": "integrations/executors/codex/acp_adapter.py"
+      }
     ]
   },
   "skills": {
-    "status": "STATIC_PASS",
+    "status": "STATIC_UNVERIFIED",
     "entries": [
-      {"id": "repo-managed-skills", "capabilities": ["progressive-disclosure", "provenance", "quarantine"], "transport": "manifest-only", "permissions": ["read-only"], "source": "config/skill-provenance.yaml"}
+      {
+        "id": "repo-managed-skills",
+        "capabilities": [
+          "progressive-disclosure",
+          "provenance",
+          "quarantine"
+        ],
+        "transport": "manifest-only",
+        "permissions": [
+          "read-only"
+        ],
+        "source": "config/skill-provenance.yaml"
+      }
     ]
   },
   "mcp": {
     "status": "STATIC_UNVERIFIED",
     "entries": [
-      {"id": "context7", "capabilities": ["documentation-read"], "transport": "sse", "permissions": ["read-only"], "source": "runtime-user-selection-not-vendored"},
-      {"id": "project-local", "capabilities": ["project-read"], "transport": "stdio", "permissions": ["read-only"], "source": "project-boundary-contract"}
+      {
+        "id": "context7",
+        "capabilities": [
+          "documentation-read"
+        ],
+        "transport": "sse",
+        "permissions": [
+          "read-only"
+        ],
+        "source": "runtime-user-selection-not-vendored"
+      },
+      {
+        "id": "project-local",
+        "capabilities": [
+          "project-read"
+        ],
+        "transport": "stdio",
+        "permissions": [
+          "read-only"
+        ],
+        "source": "project-boundary-contract"
+      }
     ]
-  }
+  },
+  "status_rule": "A protocol may carry STATIC_PASS only when every one of its entries names a source file that exists in this candidate. acp and skills were STATIC_PASS while their only cited sources (integrations/executors/codex/acp_adapter.py, config/skill-provenance.yaml) are WORK-LAB paths that were adjudicated not-vendored, so the claim had no readable evidence here; both are downgraded to STATIC_UNVERIFIED and scripts/check_adapter_conformance.py refuses the PASS shape from now on. The adapter-interface verb contract itself is now executable in-tree (domains/work/workflow_core/adapter_conformance.py) and its synthetic run is recorded as CONTRACT_ONLY, which grants qualification to nothing."
 }

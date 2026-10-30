@@ -205,10 +205,16 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
     ("L20", 1): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v11_audit_rework.py::test_f09_observer_reads_answer_and_control_gate_is_enforced",
                      note="未授权必抛 NOT_AUTHORIZED，不许半跑；读路径不触发采集器有 monkeypatch 陷阱断言"),
-    ("L21", 0): dict(status="PARTIAL", kind="pytest",
-                     target="tests/unified/test_v11_audit_rework.py::test_f09_composition_root_resolves_the_repository_root",
-                     note="适配器能力卡片非空且 NOT_PROBED 已断；缺口：adapter-registry ↔ 枚举 ↔ 投影三者"
-                          "一致性无对账，来源仓的 adapter_conformance.py 未迁入（映射里仍标 RETAIN）"),
+    ("L21", 0): dict(status="CONFIRMED", kind="pytest",
+                     target="tests/unified/test_v27_adapter_conformance.py::test_the_verb_vocabulary_has_exactly_one_owner",
+                     note="原缺口本轮关闭：adapter_conformance.py 从 WORK 逐字节迁入 "
+                          "domains/work/workflow_core/，动词表由契约夹具持有；"
+                          "scripts/check_adapter_conformance.py 对账 adapter-registry ↔ 枚举 ↔ 投影三方，"
+                          "判定写入 config/adapter-conformance-verdict.json 并由 test_v27 现读复算。"
+                          "同轮发现并纠正一条假声明：capability-conformance.json 原先对 acp/skills 写 "
+                          "STATIC_PASS，而它们唯一依据的两个文件不在本候选，已降为 STATIC_UNVERIFIED "
+                          "并把来源缺失作为披露留在判定里。仍成立：真实执行器调用 NOT_PROBED，"
+                          "合成契约通过只记为 CONTRACT_ONLY，不授予任何资格"),
     ("L21", 1): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v09_honesty.py::test_connections_never_claim_connected_without_a_probe",
                      note="需网络的真实调用本批不执行；无路由可把连接翻成 CONNECTED"),

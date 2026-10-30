@@ -106,6 +106,14 @@ FILE_COPIES = [
      "domains/design/design_lab/resources/adobe/reconstruction-assemble.jsx"),
     (WORK_SOURCE_ROOT, "packages/client-neutral-core/scripts/canonical_store.py",
      "domains/work/workflow_core/canonical_store.py"),
+    # The adapter protocol harness. The mapping recorded this module as RETAIN, so
+    # `config/capability-conformance.json` was asserting a protocol conformance with no
+    # executable producer anywhere in this candidate: the projection's `protocolConformance`
+    # values had nothing that could disagree with them. Migrating it byte-for-byte gives the
+    # verb vocabulary (detect/capabilities/plan/apply/invoke/observe/rollback) one owner and
+    # lets scripts/check_adapter_conformance.py actually run the contract.
+    (WORK_SOURCE_ROOT, "packages/client-neutral-core/scripts/adapter_conformance.py",
+     "domains/work/workflow_core/adapter_conformance.py"),
     (WORK_SOURCE_ROOT, "packages/client-neutral-core/scripts/repair_pack_projection.py",
      "domains/work/workflow_core/repair_pack_projection.py"),
     (WORK_SOURCE_ROOT, "packages/client-neutral-core/scripts/repair_state.py",

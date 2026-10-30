@@ -408,3 +408,46 @@ owner）；系统级出站隔离未被证明。结论口径仍是**「QODER 全�
 - 来源两仓只读性：WORK 2,638 / DESIGN 4,049 个 git 口径文件的摘要在两次读数之间不变。
 - 结论口径：**QODER 全量闭环自测完成，仍有 1 条必做条款阻断（L10#0 的 32 行待 owner 判定），
   待 Codex 独立复审**。不自称「Codex 已通过」，也不把本批说成产品就绪。
+
+### 13. 2026-10-31 续：L21 的三方对账闭不上，是因为一条 PASS 没有可读依据
+
+`L21#0「本地契约可先验证」` 上一轮写 PARTIAL，理由当时只有一句「三者一致性无对账」。
+把这句话当真去查，查出的不是一个缺失的检查，而是**一条站不住的 PASS**：
+
+- `config/capability-conformance.json` 对 `acp` 与 `skills` 两个协议写 `STATIC_PASS`，
+  而它们**唯一**的条目分别声称依据 `integrations/executors/codex/acp_adapter.py` 与
+  `config/skill-provenance.yaml`——两个文件都不在本候选里（来源仓 `.gitignore` 之外、
+  按 F01 判定为未随迁）。投影把这两个状态逐字抄进每一张适配器卡片，
+  于是「静态契约通过」这句话在这个仓库里没有任何可再读的依据。
+- 协议契约本身在这个仓里也没有执行者：`adapter_conformance.py` 在映射里是 `RETAIN`。
+  它现在按字节迁入 `domains/work/workflow_core/adapter_conformance.py`
+  （摘要 `b4fb018e…`，逐字节等于来源），动词表
+  `detect/capabilities/plan/apply/invoke/observe/rollback` 第一次有一个可执行的主人。
+
+两条处理，方向都是将低而非拔高：
+
+1. `acp`、`skills` 从 `STATIC_PASS` 改为 `STATIC_UNVERIFIED`，并把规则写进数据的
+   `status_rule`（协议只有在其全部条目的来源都能在本候选读到时才可声明 PASS）。
+   未随迁的来源不作为遗忘：判定文件把它们列进 `disclosed`，**降级不等于抹掉**。
+2. `scripts/check_adapter_conformance.py` 做三方对账（登记 ↔ 枚举 ↔ 投影），
+   判定写入跟踪文件 `config/adapter-conformance-verdict.json`；
+   `tests/unified/test_v27_adapter_conformance.py` 现读复算，并带两条反例：
+   把 `STATIC_PASS` 加回去必须变红（`UNSUPPORTED_PASS` + `SOURCE_ABSENT` 同时命中）、
+   登记里凭空多一个动词必须变红。合成夹具跑通用的是 `ISOLATED_PASS`，
+   判定里记为 `CONTRACT_ONLY`——它不授予任何真实资格（这条与 F10 同界）。
+
+`L21#0` 因此改为 CONFIRMED（必做阶段不变，仍是 P2/条件项），全量 CONFIRMED 从 40 到 41；
+阻塞项仍然只有 `L10#0`。这轮还被自己的钉子拦住两次，都是有效信号：
+
+- `migrate_work_modules.py` 按哈希钉住它迁移的配置文件，我改完 `capability-conformance.json`
+  就报 `CONFLICT`。正确做法不是改钉值，而是把这条改为**按必需内容钉**
+  （`pinMode: content` + `requiredContent`），于是它校验的是「诚实降级还在」而不是
+  「没人碰过这个文件」；把状态改回去会立刻 `REVERTED`。
+- `test_v14` 的行键守卫拦住「覆盖登记出现了一个复制清单里没有的去向」——因为我刚给覆盖
+  构造加了「按声明的复制表 + 现场重算字节」这一路。守卫改成同样独立地重算摘要，
+  只对**字节确实相同**的声明复制放行；注册表不能自己定义什么叫「已复制」。
+
+顺带把去向数从字面钉子改成推导关系：`198` 是审计时读数，本轮真的关掉一条
+（`adapter_conformance.py`）后是 `197`；`test_v11`/`test_v14` 现在断言的是
+「报告、登记文件、类别之和三者是同一个 population」加一个下限（190≤N≤198），
+而不是要求关掉缺口的人先改四个数字。文档散文里留下的 `198` 也一并改为不带行数的表述。

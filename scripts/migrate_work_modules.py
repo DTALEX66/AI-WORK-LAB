@@ -233,9 +233,20 @@ MIGRATED_RESOURCES = [
                    "snapshot_validator._verb_vocabulary"]},
     {"module": None, "name": "capability-conformance.json",
      "source": WORK_SOURCE_ROOT / "config/capability-conformance.json",
-     "target": REPO_ROOT / "config/capability-conformance.json", "changeClasses": ["c"],
-     "changeSites": ["relocated to this repository's config/"],
-     "consumers": ["adapter_capability_projection.load_inputs"]},
+     "target": REPO_ROOT / "config/capability-conformance.json", "changeClasses": ["c", "d"],
+     "changeSites": ["relocated to this repository's config/",
+                     "2026-10-31: acp and skills downgraded from STATIC_PASS to "
+                     "STATIC_UNVERIFIED because their only cited sources are WORK-LAB paths "
+                     "that were adjudicated not-vendored, so no readable evidence for a PASS "
+                     "exists in this candidate; the rule is recorded in status_rule and "
+                     "enforced by scripts/check_adapter_conformance.py"],
+     # Pinned by required content, not by hash: this file was migrated and then deliberately
+     # corrected in-place. A hash pin would either go stale or flag the correction as someone
+     # else's edit; these needles fail if the honesty downgrade is ever reverted.
+     "pinMode": "content",
+     "requiredContent": ['"status_rule"', '"STATIC_UNVERIFIED"', '"adapter-interface"'],
+     "consumers": ["adapter_capability_projection.load_inputs",
+                   "scripts/check_adapter_conformance.reconcile"]},
 ]
 
 AUTHORED = [

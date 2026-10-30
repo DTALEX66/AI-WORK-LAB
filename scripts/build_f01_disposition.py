@@ -63,6 +63,7 @@ from __future__ import annotations
 import ast
 import csv
 import hashlib
+import importlib.util
 import json
 import re
 import subprocess
@@ -355,6 +356,20 @@ def copied_source_paths() -> set:
                 copied.add(source.relative_to(WORK_ROOT).as_posix())
             except ValueError:
                 continue
+    # A copy the migration tool declares and the tree really holds is a copy, even if the
+    # one applied run captured in copies.json predates the declaration. Verified from the
+    # bytes, so a declared-but-absent destination is not counted.
+    spec = importlib.util.spec_from_file_location(
+        "ms_disposition",
+        Path(__file__).resolve().parents[1] / "scripts" / "migrate_sources.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for repo_root, src_rel, dst_rel in (list(module.FILE_COPIES)
+                                         + list(module.AUTOMATION_PACKED_FILES)):
+        if Path(repo_root) != WORK_ROOT:
+            continue
+        if (Path(repo_root) / src_rel).is_file() and (REPO_ROOT / dst_rel).is_file():
+            copied.add(PurePosixPath(str(src_rel).replace("\\", "/")).as_posix())
     return copied
 
 

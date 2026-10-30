@@ -92,7 +92,7 @@ ROWS: dict[str, dict] = {
     # ---------------------------------------------------------------- F01–F10 (返工项)
     "F01": dict(
         result="PASS", kinds="测试(合成夹具) + 逐文件真实来源摘要对账",
-        root="198 个登记为 WORK 来源的 .py 路径不在复制清单里；composition_root 把仓库根算成 "
+        root="审计时 198 个登记为 WORK 来源的 .py 路径不在复制清单里（本轮迁入 adapter_conformance.py 后为 197，去向登记、报告与文件三方现在按同一 population 对账，不再钉字面数）；composition_root 把仓库根算成 "
              "parents[2] 落到 domains/，两个发现模块 try-import 后为 None，软件投影恒空；"
              "migrate_sources 默认 rmtree 目标树，一次重跑能抹掉任何已存在的返工。",
         entry="scripts/migrate_sources.py（plan/apply 引擎）、scripts/migrate_work_modules.py、"
@@ -101,9 +101,9 @@ ROWS: dict[str, dict] = {
               "调用入口 GET /api/work/observer/snapshot|projection|solutions、"
               "POST /api/work/control/operations、GET /api/v1/knowledge/search",
         unverified="32 行来源去向待 owner 判定（WORK 18 / DESIGN 14）；真实用户数据迁移不在本项范围",
-        cmd=SUITE_CMD, log="migration/work-gap-disposition.csv（198 行，逐行带去向）",
+        cmd=SUITE_CMD, log="migration/work-gap-disposition.csv（197 行，逐行带去向）",
         claim=_pytest("tests/unified/test_v11_audit_rework.py::test_f01_registered_gap_paths_all_have_a_real_disposition"),
-        limit="本项只宣称「198 条差额逐条有去向且去向可回读」，不宣称「无未解释缺口」——"
+        limit="本项只宣称「197 条差额逐条有去向且去向可回读」，不宣称「无未解释缺口」——"
               "后者要等 owner 对 OWNER_DECISION_PENDING 逐行判定（任务条款 L10#0 仍 PARTIAL）。"
               "只读观察不启动采集器/不探测模型由 test_f01_read_path_starts_no_collector_and_opens_no_socket 钉住"),
     "F02": dict(
@@ -315,10 +315,10 @@ ROWS: dict[str, dict] = {
         entry="backend/core/capabilities.py 与资格台账：无宿主/无连接/无授权/延期/测试数据保持诚实资格，"
               "未知默认拒绝",
         unverified="宿主与模型的真实连接=NOT_PROBED（本批不拉起宿主、不探测模型）",
-        cmd="%PY% -B -m pytest tests/unified/test_v18_tools_connections.py tests/unified/test_v09_honesty.py -q",
-        log="随全量回归一起产生",
+        cmd="%PY% -B -m pytest tests/unified/test_v18_tools_connections.py tests/unified/test_v09_honesty.py tests/unified/test_v27_adapter_conformance.py -q",
+        log="config/adapter-conformance-verdict.json（三方对账判定，跟踪） + 随全量回归一起产生",
         claim=_pytest("tests/unified/test_v18_tools_connections.py::test_host_and_model_tools_never_inherit_a_local_probe"),
-        limit="测试替身不赋予真实工具 VERIFIED；live/demo 数据不升级为真实证据；"
+        limit="测试替身不赋予真实工具 VERIFIED；live/demo 数据不升级为真实证据；本轮另把 adapter-registry ↔ 枚举 ↔ 投影三方对账落成 config/adapter-conformance-verdict.json，并把两处无来源的 STATIC_PASS 降为 STATIC_UNVERIFIED；"
               "投影与台账逐工具一致（test_tool_states_match_the_ledger_on_disk_and_no_literal）"),
     "A10": dict(
         result="PASS", kinds="门禁实测 + 正/负例测试",

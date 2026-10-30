@@ -675,7 +675,7 @@ def requirement_claims() -> dict[str, dict]:
         "U02": {"location": "migration/source-coverage-work.csv:2",
                 "evidence": "tests/unified/test_v14_registers.py::test_coverage_register_accounts_for_every_source_file;" + "tests/unified/test_v12_data_migration.py::test_migration_preserves_revisions_digests_and_references",
                 "status": "IMPLEMENTED_VERIFIED",
-                "basis": "四个维度各自有面：源文件=逐文件覆盖登记（类别之和=行数由测试现算），语义=mapping.csv 与 198 条去向，"
+                "basis": "四个维度各自有面：源文件=逐文件覆盖登记（类别之和=行数由测试现算），语义=mapping.csv 与逐条去向登记，"
                         "行为=tests/unified 回归，数据=test_v12 受控迁移（含幂等/回滚/命名空间）。去重按 EQUIVALENT_MERGED/PRESENT_IN_TARGET 逐条判定。"},
         "U03": {"location": "POST /api/v1/attempts/([0-9a-f]{32})/pack", "evidence": manual,
                 "status": "PARTIAL",
@@ -714,7 +714,7 @@ def requirement_claims() -> dict[str, dict]:
         "U12": {"location": "backend/core/capabilities.py:97", "evidence": caps + ";" + "tests/unified/test_v11_audit_rework.py::test_f01_registered_gap_paths_all_have_a_real_disposition",
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "两条都可测：延期面在能力目录里保持 DECLARED/DEFERRED 并带 phase、can_invoke=false（不降级冒充）；"
-                        "来源与接缝的保留由 198 条去向登记 + 逐文件覆盖登记断言，延期不等于删除。"},
+                        "来源与接缝的保留由逐条去向登记（migration/work-gap-disposition.csv，行数与报告现算对账）+ 逐文件覆盖登记断言，延期不等于删除。"},
         "U13": {"location": "backend/v1.py:527",
                 "evidence": "tests/unified/test_v05_rejections.py::test_adapter_dispatch_is_not_allowed_this_batch;" + "tests/unified/test_v09_honesty.py::test_connections_never_claim_connected_without_a_probe",
                 "status": "IMPLEMENTED_VERIFIED",
@@ -771,7 +771,7 @@ def requirement_claims() -> dict[str, dict]:
                 "evidence": "evidence:a01-a10-results.json#results.F01",
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "本机增量已按 INTEGRATION_POLICY §4 重新核实（来源多于云端锚点 → 以本地现状为迁移来源，锚点仅作研究参照，不回退），"
-                        "并落成逐文件覆盖登记 + 198 条去向 + F01 迁移注册表三条实测记录；来源基线是研究锚点而不是完成清单这一口径由该断言守住。"},
+                        "并落成逐文件覆盖登记 + 逐条去向登记 + F01 迁移注册表三条实测记录；来源基线是研究锚点而不是完成清单这一口径由该断言守住。"},
         "E02": {"location": "docs/CODEX-AUDIT-ENTRY.md:1", "evidence": "evidence:delivery-summary.json#conclusion",
                 "status": "IMPLEMENTED_UNVERIFIED",
                 "basis": "原型/实现/构建/运行/部署五态在本登记与 delivery-summary 中被分开记录（例如 U11 明写 HEAD unborn、"

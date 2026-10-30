@@ -15,6 +15,7 @@ where the audit left them.
 """
 from __future__ import annotations
 
+import csv
 import json
 import subprocess
 import sys
@@ -769,11 +770,13 @@ def _f01_module():
 
 
 def test_f01_registered_gap_paths_all_have_a_real_disposition():
-    """Every one of the 198 registered-but-never-copied WORK paths is adjudicated.
+    """Every registered-but-never-copied WORK path is adjudicated, one row each.
 
     The audit's point was that a mapping row reading ``MAPPED_P0`` with a planning
-    directory is not a destination. The register is regenerated from mapping.csv and
-    copies.json here, so the count cannot quietly drift from the audited 198.
+    directory is not a destination. The register is regenerated from mapping.csv and the
+    copy set here, and the assertion is that the register, its report and the file on disk
+    are the same population -- the audited count (198) is a bound, not the expected value,
+    because closing a real gap is supposed to move it.
 
     The 2026-10-31 rework closed the second half of the same hole: ``MIGRATED_WIRED``
     used to be checked as ``目标文件 exists``, which a file can satisfy while nothing
@@ -789,9 +792,14 @@ def test_f01_registered_gap_paths_all_have_a_real_disposition():
                                encoding="utf-8", errors="replace")
     assert completed.returncode == 0, completed.stderr[-1500:]
     report = json.loads(completed.stdout.strip().splitlines()[-1])
-    assert report["gap_paths"] == 198, report
+    with open(TARGET_ROOT / "migration" / "work-gap-disposition.csv", encoding="utf-8-sig",
+              newline="") as handle:
+        register_rows = list(csv.DictReader(handle))
+    # the register file, the report and the category sum must be one population, not three
+    # numbers that a migration is expected to keep frozen
+    assert report["gap_paths"] == len(register_rows) == sum(report["categories"].values()), report
+    assert 190 <= report["gap_paths"] <= 198, report
     assert report["registered_work_python_paths"] == 225, report
-    assert sum(report["categories"].values()) == 198, report
     # nothing may land in an unexplained bucket
     assert set(report["categories"]) <= {"MIGRATED_WIRED", "MIGRATED_AVAILABLE",
                                          "MIGRATED_PRESENT_UNWIRED", "EQUIVALENT_MERGED",
