@@ -42,21 +42,36 @@ def _rows() -> list[dict]:
     return list(csv.DictReader(io.StringIO(raw, newline="")))
 
 
-def test_the_measured_figures_are_the_ones_the_run_receipt_carries():
+def test_the_measured_figures_are_the_ones_the_named_receipt_carries():
+    """The register names the receipt it was measured from, and that file is what is checked.
+
+    ``CLOSURE-STATE.json`` is re-written in place by every measurement run, so comparing the
+    published register against "whichever receipt happens to be newest" would make the two
+    artifacts chase each other: refreshing the receipt invalidates a tracked file, which moves
+    the candidate the next receipt describes. The register therefore cites an archived receipt
+    by name (under its own candidate digest) and this test reads *that* file.
+    """
     rows = _rows()
-    if not RECEIPT.is_file():
+    named = {row["运行收据"] for row in rows}
+    if all(value.startswith(UNMEASURED_PREFIX) for value in named):
         stale = [row["ID"] for row in rows
                  if not row["真实exit_code"].startswith(UNMEASURED_PREFIX)]
         assert stale == [], (
-            "本机没有 " + str(RECEIPT.relative_to(TARGET_ROOT)).replace("\\", "/") +
-            "，但这些行仍带着具体数字：" + str(stale))
+            "本机没有命名收据，但这些行仍带着具体数字：" + str(stale))
         return
-    receipt = json.loads(RECEIPT.read_text(encoding="utf-8-sig"))
+    assert len(named) == 1, "一轮登记只能绑一份测量收据：" + str(sorted(named))
+    archive = (TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure"
+               / named.pop())
+    assert archive.is_file(), "登记命名的收据不在本机：" + str(archive)
+    receipt = json.loads(archive.read_text(encoding="utf-8-sig"))
+    stem = archive.name[len("CLOSURE-STATE-"):-len(".json")]
+    assert receipt["candidate_digest"].startswith(stem), (
+        "收据文件名与它自己的候选摘要不一致：" + stem)
     stamped = "\n".join(row["受测候选摘要"] for row in rows)
     assert receipt["candidate_digest"][:16] in stamped, (
-        "登记的候选摘要与本轮收据不一致：收据 %s…" % receipt["candidate_digest"][:16])
+        "登记的候选摘要与命名收据不一致：收据 %s…" % receipt["candidate_digest"][:16])
     assert receipt["head_commit"][:12] in stamped, (
-        "登记的提交与收据不一致：收据 %s" % receipt["head_commit"][:12])
+        "登记的提交与命名收据不一致：收据 %s" % receipt["head_commit"][:12])
     proven = subprocess.run(["git", "merge-base", receipt["head_commit"], "HEAD"],
                             cwd=str(TARGET_ROOT), capture_output=True, text=True,
                             encoding="utf-8", errors="replace").stdout.strip()
@@ -71,7 +86,9 @@ def test_the_measured_figures_are_the_ones_the_run_receipt_carries():
             assert figure.split("（")[0] == str(receipt["suite"]["exit_code"]), row["ID"]
         elif figure.isdigit():
             assert figure in measured, (
-                row["ID"], figure, "登记了一个本轮收据里没有的 exit code")
+                row["ID"], figure, "登记了一个命名收据里没有的 exit code")
+    # the substantive claim a reviewer will re-run: this receipt must record a green suite
+    assert receipt["suite"]["failed"] == 0 and receipt["suite"]["errors"] == 0, receipt["suite"]
 
 
 def test_the_isolated_install_record_matches_the_report_it_was_generated_from():

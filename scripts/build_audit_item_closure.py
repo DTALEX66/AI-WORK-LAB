@@ -55,6 +55,13 @@ PACK_JSON = PACK_DIR / "09_任务分期与验收.json"
 OUT_CSV = TARGET_ROOT / "migration" / "audit-item-closure.csv"
 RECEIPT = (TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure"
            / "CLOSURE-STATE.json")
+#: The receipt is re-written in place by each measurement run, so "compare the register with
+#: the newest receipt" is a loop: refreshing the receipt invalidates the register, which is a
+#: tracked file, which moves the candidate the next receipt measures. The register therefore
+#: names one archived receipt -- copied here under its own candidate digest -- and the guard
+#: reads *that* file. A refresh no longer contradicts what is already published.
+ARCHIVE_DIR = (TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure"
+               / "receipt-archive")
 
 RESULTS = ("PASS", "FAIL", "BLOCKED", "NOT_RUN", "DEFERRED")
 INDEPENDENT_REVIEW = "NOT_RUN"
@@ -64,8 +71,8 @@ UNMEASURED = "未在本机测量（收据 .project-local/audit/20261031-fullclos
 
 _COLUMNS = ("ID", "系列", "适用要求", "定义出处", "定义文件摘要", "根因与待核假设",
             "实际修改文件与调用入口", "当前结果", "证据种类", "未验证子项", "独立复审",
-            "独立命令", "cwd", "解释器", "真实exit_code", "测量时刻UTC", "日志/产物路径",
-            "受测候选摘要", "机验证据目标", "机验结果", "限制与下一步")
+            "独立命令", "cwd", "解释器", "真实exit_code", "测量时刻UTC", "受测候选摘要",
+            "运行收据", "日志/产物路径", "机验证据目标", "机验结果", "限制与下一步")
 
 SUITE_CMD = ("%PY% -B -m pytest tests\\unified tests\\legacy -q -p no:cacheprovider "
              "--basetemp .project-local\\runs\\codex-regression")
@@ -394,7 +401,7 @@ def _resolve_target(target: str) -> tuple[bool, str]:
 
 
 def _row(identifier: str, claim: dict, definition: tuple[str, str, str],
-         receipt: dict) -> dict:
+         receipt: dict, archive: str) -> dict:
     authored = ROWS[identifier]
     resolved, detail = _resolve_target(claim["target"])
     step = authored.get("receipt_key")
@@ -412,7 +419,7 @@ def _row(identifier: str, claim: dict, definition: tuple[str, str, str],
         definition[0], definition[1], definition[2],
         authored["root"], authored["entry"], authored["result"], authored["kinds"],
         authored["unverified"], INDEPENDENT_REVIEW, authored["cmd"], CWD, INTERPRETER,
-        exit_code, measured_at, authored["log"], candidate, claim["target"],
+        exit_code, measured_at, candidate, archive, authored["log"], claim["target"],
         ("已解析：" if resolved else "未解析：") + detail,
         authored["limit"]]))
 
@@ -425,6 +432,23 @@ def _csv_text(rows: list[dict]) -> str:
     for row in rows:
         writer.writerow(row)
     return buffer.getvalue()
+
+
+#: Columns whose value is read out of the run receipt. A clone has no receipt, so `--check`
+#: there compares every other column in full and says which four it exempted -- the numbers
+#: stay the audit machine's, the claims stay everybody's, and nobody gets to pretend a clone
+#: verified a figure it cannot see.
+RECEIPT_COLUMNS = ("真实exit_code", "测量时刻UTC", "受测候选摘要", "运行收据")
+
+
+def _without_receipt_columns(text: str):
+    if text is None:
+        return None
+    parsed = list(csv.DictReader(io.StringIO(text, newline="")))
+    for row in parsed:
+        for column in RECEIPT_COLUMNS:
+            row[column] = ""
+    return _csv_text(parsed)
 
 
 def main(argv: list[str]) -> int:
@@ -449,16 +473,35 @@ def main(argv: list[str]) -> int:
         return 2
 
     receipt = _receipt()
-    rows = [_row(identifier, ROWS[identifier]["claim"], definitions[identifier], receipt)
+    archive = UNMEASURED
+    if receipt:
+        archive = "receipt-archive/CLOSURE-STATE-%s.json" % receipt["candidate_digest"][:16]
+        if not args.check:
+            # --check is a reader; archiving is a write, and it belongs to the run that
+            # publishes the register, not to every verification of it
+            ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+            destination = ARCHIVE_DIR / Path(archive).name
+            destination.write_bytes(RECEIPT.read_bytes())
+    rows = [_row(identifier, ROWS[identifier]["claim"], definitions[identifier], receipt,
+                 archive)
             for identifier in sorted(ROWS)]
     downgraded = [row["ID"] for row in rows
                   if row["当前结果"] == "PASS" and row["机验结果"].startswith("未解析")]
     rendered = _csv_text(rows)
     drift = None
+    exempted: list[str] = []
     if args.check:
         on_disk = (OUT_CSV.read_text(encoding="utf-8-sig").replace("\r\n", "\n")
                    if OUT_CSV.is_file() else None)
-        drift = on_disk != rendered.replace("\r\n", "\n")
+        if receipt:
+            drift = on_disk != rendered.replace("\r\n", "\n")
+        else:
+            # no receipt here, so the three receipt-derived columns cannot be reproduced by
+            # definition. Everything else must match byte for byte.
+            exempted = list(RECEIPT_COLUMNS)
+            drift = (_without_receipt_columns(on_disk.replace("\r\n", "\n")
+                                             if on_disk else None)
+                     != _without_receipt_columns(rendered.replace("\r\n", "\n")))
     else:
         OUT_CSV.write_text(rendered, encoding="utf-8-sig", newline="")
 
@@ -472,6 +515,7 @@ def main(argv: list[str]) -> int:
         independent_review=INDEPENDENT_REVIEW,
         pass_with_unresolved=downgraded,
         receipt_present=bool(receipt),
+        receipt_columns_exempted=sorted(exempted),
         register_drift=drift)
     if args.json_out:
         Path(args.json_out).write_text(json.dumps(dict(summary=summary, rows=rows),
