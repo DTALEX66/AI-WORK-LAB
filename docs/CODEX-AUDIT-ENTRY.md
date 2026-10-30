@@ -265,7 +265,9 @@ Python 会把每个 `\n` 翻成 `\r\n`，而 csv.writer 的行尾本来就是 `\
 按原始字节扫全部登记（读文本的检查看不到这个问题）。同一条纪律也用于本轮新出的登记表：
 校验一律 `--check`，不写跟踪文件。
 
-仍开放的必做条款只剩一条，且它确实需要 owner 决定：**L10#0** 的 32 行
+仍开放的必做条款有两条，其中**阻断本批的只剩一条**（口径要分清，两个数字都来自同一次实测）：
+**L00#2**（可证明的隔离范围）按 owner 明确移出义务登记为 `disclosed`，仍写 BLOCKED 不写通过；
+**L10#0** 的 32 行
 `OWNER_DECISION_PENDING`（WORK 18 / DESIGN 14，逐行理由唯一、名单在覆盖登记里冻结）。
 这些是"要不要作为能力迁入"的判断，不是可以由代理解释的技术问题——任务包的延期规则写着
 「不可借延期删除行为」，所以既不能默默丢弃，也不能由代理擅自接线。
@@ -305,3 +307,67 @@ owner）；系统级出站隔离未被证明。结论口径仍是**「QODER 全�
 开放，待 Codex 独立复审」**。
 
 
+
+## 12. 2026-10-31 收尾：交接文档要求的追踪表进仓，外加三处我自己写的假绿
+
+交接 §七 要求「一份新的 F01–F10 与 A01–A10/V01–V10 追踪表」，§八.2 要求「F01–F10 逐项闭环表
+和 A01–A10/V01–V10 机器可读结果」。这张表此前只存在于 `.project-local/`——也就是克隆看不到，
+连「F04 是什么」都无法在仓内回答。本轮把它搬进来，并按同一纪律处理它的两个配套：
+
+- `migration/audit-item-closure.csv`：20 行（F01…F10 + A01…A10），列即 §七 点名的字段——
+  适用要求、定义出处与**定义文件摘要**、根因/待核假设、实际修改文件与调用入口、当前结果
+  （只允许 PASS/FAIL/BLOCKED/NOT_RUN/DEFERRED）、**证据种类单列**（禁止把测试/合成/真实来源
+  混成一个完成率）、未验证子项、独立复审（20 行全部 `NOT_RUN`：本候选没有被独立复审过）、
+  独立命令与 cwd/解释器、真实 exit code、测量时刻、日志/产物路径、受测候选摘要、机验结果、
+  限制与下一步。由 `scripts/build_audit_item_closure.py` 生成，要求原文从定义文件**解析**而来
+  不是转写；本机没有运行收据时相关列写「未在本机测量」，不留一个无法溯源的数字。
+- `docs/CODEX_REWORK_ITEMS_F01-F10.md`：F 项定义的逐字摘录（文件头登记来源文件 SHA-256、
+  字节数与行区间 112–182）。交接原件按边界继续留在 `.project-local/`，不改原件、不把它的
+  提示词语句升格为根指令。
+- `config/isolated-install-verdict.json`：`scripts/build_isolated_install_verdict.py` 从
+  `.project-local/build/offline-20261031T044636Z/verify-report.json` 现读生成，绑定该报告的
+  SHA-256；`overall PASS`、`blocked = []`、16 项检查逐条带 verdict，路径前缀折叠成
+  `<REPO>`/`<HOME>`，用户主目录不进 Git。没有报告时脚本**拒绝生成**并给出重建命令，而不是
+  输出一份空记录。
+- V01–V10 **不进这张表**：它的归属是 `tests/unified/test_v01_v10_register.py`（用 importlib
+  解析到真实可调用的测试函数）。同一件事不留两个门管同一批字节；新表只引用它，不重述它。
+
+三处**我自己写的假绿**，是被上述纪律当场抓出来的：
+
+1. 共享解析器 `_resolve` 有一条 `symbol in text` 兜底，于是 L11#0 引用的
+   `tests/conftest.py::build_server` 只命中了一个**调用点**（`build_server` 的定义其实在
+   `backend/app.py:69`）。现在 `.py` 目标必须落在定义点（`def`/`class`/赋值），非 `.py` 仍允许
+   字面标记。改正后总数仍是 40 CONFIRMED，但 L11#0 的证据换成
+   `test_v17_process_restart.py::test_backend_boots_twice_and_recovers_the_orphan`——它真的用子
+   进程起 `python -m backend` 并断言 `host == 127.0.0.1`，条款「真实 loopback HTTP」由执行它的
+   测试证明，而不是由一个 helper 的名字证明。
+2. 复制引擎按目录走，逐文件登记按 `git ls-files` 口径走，两个读数相差 254 个**来源仓自己
+   `.gitignore` 的文件**：253 个 `apps/workbench/node_modules/**` 与 1 个
+   `design-lab/config/.verify-chain-ok`。后者的全部内容是一行 `ok <DESIGN-LAB 的提交号>`，
+   它被复制进了跟踪树——放在本项目里会被读成「某条验证链通过了」，而那条链不是这里跑的。
+   已加入 `SOURCE_IGNORED_NAMES` 排除（`--plan` 不再意图它），删除该文件并同步去掉复制清单里
+   的记录：现读 `identical 1115 + EOL_ONLY 2 + MODIFIED 10`、`unmanaged 0`。node_modules 的
+   253 条记录按历史事实保留（它们的去向在本机存在、且被本仓 `.gitignore` 排除，克隆里没有）。
+
+覆盖登记的**行键**第一次被钉住（`test_v14_registers.py::test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out`）：`(来源, 去向)` 必须唯一；DESIGN 的 4,469 行 = 4,049 个来源路径 + 420 行一对多扇出，多出来的行数
+必须等于「每个来源的去向数 − 1」之和；不得出现复制清单里没有的去向。登记注记原先写
+「DESIGN 4,049 每行有类别与依据」，把路径数当成了行数，已改成两个数都写清。
+
+第三处假绿在我自己新写的守卫里：它用 `str(Path.home())`（反斜杠形式）检查安装判定记录有没有泄漏用户主目录，而报告里的 argv 是**正斜杠**形式的整条命令行，于是 6 处临时目录路径全部漏检、守卫仍然绿。折叠改成对两种写法做子串替换，守卫同时断言两种写法与用户名本身都不在跟踪文件里（`test_v25_...::test_the_isolated_install_record_is_tracked_and_self_describing`）。顺带清理：本机发现两个 20:53 起就没退的 `-m backend` 测试子进程（`--port 0`，指向临时 workspace），已终止并删除其临时根——这是上一轮安装验收留下的孤儿，不是产品进程。
+
+复现路径也归位了：V07 的进程级崩溃复演把复演根放在系统临时目录（按 pid 命名、结束即清理），
+因为它测的是「进程被杀之后字节收敛」，不该被 pytest `--basetemp` 的长度左右。我一度把同一文件里
+4 个 `tmp_path` 用例报的 `ERROR` 当成同类缺陷——实际是我那条复现命令的 `--basetemp` 父目录根本
+不存在（WinError 3），探针自己坏了；把父目录建出来之后 11 项全过，那 4 个用例并没有缺陷。
+
+§4 的复跑命令再增补两条：
+
+```bat
+%PY% -B -X utf8 scripts\build_audit_item_closure.py
+%PY% -B -X utf8 scripts\build_isolated_install_verdict.py --check
+```
+
+守卫分两半，按能否在克隆里跑分开：`test_v25_audit_item_closure.py` 查人口、词表、定义出处、
+证据目标与「PASS 必须写明仍未验证的子项」；`test_v26_local_run_receipts.py` 查登记数字是否等于
+本机运行收据与安装报告的现读值，并由 `test_v23_clone_repro.py` 点名归为 machine-bound，
+而不是被静默跳过。

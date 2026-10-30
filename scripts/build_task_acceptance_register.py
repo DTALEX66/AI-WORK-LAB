@@ -79,7 +79,9 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
                           "「保留接入位置」从一句承诺变成可检查的指针"),
     ("L10", 0): dict(status="PARTIAL", kind="pytest",
                      target="tests/unified/test_v14_registers.py::test_coverage_register_leaves_no_row_undecided",
-                     note="逐文件去向：WORK 2,638 / DESIGN 4,049 每行有类别与依据；原 226 行同文模板已拆为"
+                     note="逐文件去向：WORK 2,638 行 / DESIGN 4,469 行（对应 4,049 个来源路径，"
+                          "200 个文件被复制到多个去向，行键是「来源×去向」，由 test_v14 钉住）；"
+                          "原 226 行同文模板已拆为"
                           "「已判定（带 file:line 权威）」与「待 owner 判定」两类，后者逐条不同理由并被测试"
                           "冻结为已点名集合。仍为 PARTIAL：待判定那部分本身就是要交给 owner 的遗漏清单"),
     ("L10", 1): dict(status="CONFIRMED", kind="pytest",
@@ -90,9 +92,11 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
                      target="tests/unified/test_v07_migration.py::test_sources_are_byte_identical_before_and_after_a_rerun",
                      note="两来源仓逐文件摘要前后相等且防空读；另有 test_v12 的行级+文件级双不变断言"),
     ("L11", 0): dict(status="CONFIRMED", kind="pytest",
-                     target="tests/conftest.py::build_server",
-                     note="真实 python -m backend 服务 + 真 HTTP 客户端打 127.0.0.1:随机端口，令牌走 stdin；"
-                          "统一面与兼容面测试都经这条链"),
+                     target="tests/unified/test_v17_process_restart.py::test_backend_boots_twice_and_recovers_the_orphan",
+                     note="真实 python -m backend 子进程 + 真 HTTP 客户端打 127.0.0.1:随机端口并断言 "
+                          "host==127.0.0.1，令牌走 stdin；统一面/兼容面测试共用 backend/app.py::build_server "
+                          "这条链。原证据目标写成 tests/conftest.py::build_server 是对一个*调用点*的引用"
+                          "（定义在 backend/app.py:69），收紧解析器只认定义点后这条被改正——结论不变，出处变严"),
     ("L11", 1): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v15_route_surface.py::test_kernel_guard_holds_on_every_compat_route",
                      note="兼容面 49 条 GET 逐条实测无令牌 401、错 Host 403（147 次真实请求），"
@@ -306,6 +310,16 @@ def _resolve(kind: str, target: str) -> tuple[bool, str]:
     pattern = r"^(?:async\s+)?def\s+" + re.escape(symbol) + r"\s*\("
     if re.search(pattern, text, re.MULTILINE):
         return True, "定义存在 " + symbol
+    if path.suffix == ".py":
+        # a Python symbol must be a definition site, not a mention. The bare
+        # ``symbol in text`` fallback used to accept a name that merely appeared -- in a
+        # docstring, in another test's selector string, in the prose of the file that
+        # planted it -- so a citation could resolve against text that does not execute.
+        site = (r"^(?:class\s+" + re.escape(symbol) + r"\b"
+                + r"|" + re.escape(symbol) + r"\s*=(?!=))")
+        if re.search(site, text, re.MULTILINE):
+            return True, "定义存在（非函数）" + symbol
+        return False, symbol + " 在 " + path.name + " 中没有 def/class/赋值定义点"
     if re.search(r"(?:\)|:\s|\s)\"\"\"" + re.escape(symbol), text) or symbol in text:
         return True, "字面标记存在 " + symbol
     return False, symbol + " 在 " + path.name + " 中找不到定义或字面标记"

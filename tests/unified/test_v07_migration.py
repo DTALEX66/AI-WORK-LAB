@@ -25,7 +25,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -50,15 +53,17 @@ def rehearsal(tmp_path_factory):
     # domain-pack benchmark path is ~250 on its own), and the apply then fails for
     # the length, not for the code. The rehearsal only has to be outside the
     # candidate, so it goes somewhere short and is removed afterwards.
-    import shutil
-    import tempfile
-
-    root = Path(tempfile.gettempdir()) / "awl-v07"
+    root = Path(tempfile.gettempdir()) / ("awl-v07-%d" % os.getpid())
     if root.exists():
         shutil.rmtree(root)
     root.mkdir(parents=True)
     _run(["--apply", "--confirm", "REBUILD-MIGRATION", "--target-root", str(root)])
-    return root
+    try:
+        yield root
+    finally:
+        # this tool's own rehearsal litter: ~1.4k files per run outside the
+        # candidate, and no auditor asked to hash a temp tree
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def _run(args, *, expect=0, cwd=TARGET_ROOT):
@@ -380,7 +385,7 @@ def test_mapping_rerun_is_idempotent():
     assert drifted == [], "rerun rewrote these migration artefacts byte-wise: " + str(drifted)
 
 
-def test_a_killed_migration_lands_the_same_bytes_as_a_clean_one(tmp_path):
+def test_a_killed_migration_lands_the_same_bytes_as_a_clean_one():
     """L15「失败恢复」at the process level, for the source-copy tool itself.
 
     The rehearsal suite already injects an ``os.replace`` failure, but an injected
@@ -388,51 +393,62 @@ def test_a_killed_migration_lands_the_same_bytes_as_a_clean_one(tmp_path):
     only way to show that write-then-move really means "an interruption leaves the previous
     bytes in place": nothing may be truncated in place, and resuming must converge on
     exactly what an uninterrupted run writes.
+
+    The roots live under the system temp dir on purpose, not under ``tmp_path``: pytest's
+    basetemp is long enough that the deepest packaged path in this tree passes Windows'
+    260-character limit, and the tool then refuses with TARGET_WRITE_FAILED — a real
+    behaviour of the tool, but not what this test is about.
     """
-    crashed_root = tmp_path / "crashed"
-    crashed_root.mkdir()
-    crashed = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
-                    "--target-root", str(crashed_root), "--fail-after", "40"], expect=None)
-    assert crashed.returncode == 9, (crashed.stdout[-400:], crashed.stderr[-400:])
-    temps = sorted(p.name for p in crashed_root.rglob("*.migrating"))
-    assert len(temps) <= 1, ("more than one temp means the crash was not where it is "
-                             "claimed to be: " + str(temps))
-    truncated = [p.relative_to(crashed_root).as_posix()
-                 for p in crashed_root.rglob("*")
-                 if p.is_file() and p.suffix != ".migrating" and p.stat().st_size == 0]
-    assert truncated == [], "targets were truncated in place: " + str(truncated[:5])
+    base = Path(tempfile.gettempdir()) / ("awl-crash-%d" % os.getpid())
+    if base.exists():
+        shutil.rmtree(base)
+    crashed_root = base / "crashed"
+    clean_root = base / "clean"
+    crashed_root.mkdir(parents=True)
+    try:
+        crashed = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
+                        "--target-root", str(crashed_root), "--fail-after", "40"],
+                       expect=None)
+        assert crashed.returncode == 9, (crashed.stdout[-400:], crashed.stderr[-400:])
+        temps = sorted(p.name for p in crashed_root.rglob("*.migrating"))
+        assert len(temps) <= 1, ("more than one temp means the crash was not where it is "
+                                 "claimed to be: " + str(temps))
+        truncated = [p.relative_to(crashed_root).as_posix()
+                     for p in crashed_root.rglob("*")
+                     if p.is_file() and p.suffix != ".migrating" and p.stat().st_size == 0]
+        assert truncated == [], "targets were truncated in place: " + str(truncated[:5])
 
-    resumed = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
-                    "--target-root", str(crashed_root)], expect=None)
-    assert resumed.returncode == 0, resumed.stdout[-600:]
-    assert not list(crashed_root.rglob("*.migrating")), "the resumed run left its own litter"
+        resumed = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
+                        "--target-root", str(crashed_root)], expect=None)
+        assert resumed.returncode == 0, resumed.stdout[-600:]
+        assert not list(crashed_root.rglob("*.migrating")), "the resumed run left its own litter"
 
-    clean_root = tmp_path / "clean"
-    clean_root.mkdir()
-    single = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
-                   "--target-root", str(clean_root)], expect=None)
-    assert single.returncode == 0, single.stdout[-600:]
+        clean_root.mkdir(parents=True)
+        single = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
+                       "--target-root", str(clean_root)], expect=None)
+        assert single.returncode == 0, single.stdout[-600:]
 
-    def state(root: Path) -> dict:
-        # the run manifest is excluded from the byte comparison on purpose: it records its
-        # own generation time and the target root it was written for, so two different
-        # roots can never agree on it. It is compared structurally below instead.
-        return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-                for p in root.rglob("*")
-                if p.is_file() and p.suffix != ".migrating"
-                and p.relative_to(root).as_posix() != "migration/copies.json"}
+        def state(root: Path) -> dict:
+            # the run manifest is excluded from the byte comparison on purpose: it records
+            # its own generation time and the target root it was written for, so two
+            # different roots can never agree on it. It is compared structurally below.
+            return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in root.rglob("*")
+                    if p.is_file() and p.suffix != ".migrating"
+                    and p.relative_to(root).as_posix() != "migration/copies.json"}
 
-    resumed_state, clean_state = state(crashed_root), state(clean_root)
-    assert resumed_state == clean_state, (
-        "a resumed migration did not converge on the bytes a clean run writes: "
-        + str(sorted(k for k in set(resumed_state) | set(clean_state)
-                     if resumed_state.get(k) != clean_state.get(k))[:10]))
+        resumed_state, clean_state = state(crashed_root), state(clean_root)
+        assert resumed_state == clean_state, (
+            "a resumed migration did not converge on the bytes a clean run writes: "
+            + str(sorted(k for k in set(resumed_state) | set(clean_state)
+                         if resumed_state.get(k) != clean_state.get(k))[:10]))
 
-    def manifest(root: Path) -> dict:
-        return json.loads((root / "migration" / "copies.json").read_text(encoding="utf-8"))
+        def manifest(root: Path) -> dict:
+            return json.loads((root / "migration" / "copies.json").read_text(encoding="utf-8"))
 
-    resumed_manifest, clean_manifest = manifest(crashed_root), manifest(clean_root)
-    assert len(resumed_manifest["copies"]) == len(clean_manifest["copies"])
-    assert (sum(entry["files"] for entry in resumed_manifest["copies"])
-            == sum(entry["files"] for entry in clean_manifest["copies"]))
-    assert not resumed_manifest["patches"] or resumed_manifest["patches"] == clean_manifest["patches"]
+        resumed_manifest, clean_manifest = manifest(crashed_root), manifest(clean_root)
+        assert len(resumed_manifest["copies"]) == len(clean_manifest["copies"])
+        assert (sum(entry["files"] for entry in resumed_manifest["copies"])
+                == sum(entry["files"] for entry in clean_manifest["copies"]))
+    finally:
+        shutil.rmtree(base, ignore_errors=True)

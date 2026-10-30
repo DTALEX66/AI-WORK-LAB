@@ -16,7 +16,9 @@ each is turned into a recomputation here:
 from __future__ import annotations
 
 import csv
+import collections
 import hashlib
+import io
 import json
 import re
 import subprocess
@@ -503,4 +505,71 @@ def test_no_register_carries_a_doubled_line_ending():
             offenders[path.name] = doubled
     assert offenders == {}, ("registers with doubled line endings (phantom empty rows): "
                              + str(offenders))
+
+
+def test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out():
+    """Row count > path count is a property of the register, not a miscount.
+
+    DESIGN emits 4,469 rows for 4,049 source files because 200 files were copied to more
+    than one destination and each destination is judged on its own. Nothing checked that:
+    a reader comparing the register against the source inventory saw two different numbers
+    and no reason, and a genuine accidental duplicate would have hidden inside the same
+    difference. So the pair is pinned as the row key, the surplus is recomputed from the
+    register's own per-path destination sets, no register row may invent a destination the
+    copy manifest does not record, and every named destination must be a file in this tree.
+
+    The last half of this test is the two-reading gap the 2026-10-31 sweep found: the copy
+    engine walks directories while the registers use ``git ls-files``. The files that exist
+    only in the walk are ones the *source repository itself* ignores -- 253 node_modules
+    entries and DESIGN-LAB's ``.verify-chain-ok`` pass marker, whose content is ``ok <sha>``
+    for a commit of that other repository. That marker had been copied into the tracked
+    tree, where it reads as evidence for a verification chain this project never ran; it is
+    now excluded by ``SOURCE_IGNORED_NAMES`` and removed, and this test holds both halves
+    shut: the walk cannot re-copy it, and the manifest cannot still claim it.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "migrate_sources_under_coverage_test", TARGET_ROOT / "scripts" / "migrate_sources.py")
+    migrator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migrator)
+    assert migrator._skipped(("design-lab", "config", ".verify-chain-ok"))
+    assert migrator._skipped(("apps", "workbench", "node_modules", ".bin", "playwright"))
+    assert not migrator._skipped(("design-lab", "config", "task-ledger-r3.json"))
+
+    root_text = str(TARGET_ROOT).replace("\\", "/") + "/"
+    manifest_targets = {record["target"].replace("\\", "/").removeprefix(root_text)
+                        for group in json.loads((TARGET_ROOT / "migration" / "copies.json")
+                                                .read_text(encoding="utf-8-sig"))["copies"]
+                        for record in group["records"]}
+    for label in ("work", "design"):
+        path = TARGET_ROOT / "migration" / ("source-coverage-%s.csv" % label)
+        rows = list(csv.DictReader(io.StringIO(path.read_bytes().decode("utf-8-sig"),
+                                               newline="")))
+        pairs = [(row["path"], row["target"]) for row in rows]
+        assert len(pairs) == len(set(pairs)), (
+            label + "：同一个 (来源, 去向) 出现多次 —— 那才是真正的重复行")
+        per_path = collections.Counter(row["path"] for row in rows)
+        surplus = sum(count - 1 for count in per_path.values())
+        destinations = collections.defaultdict(set)
+        for row in rows:
+            if row["target"]:
+                destinations[row["path"]].add(row["target"])
+        assert surplus == sum(len(set(targets)) - 1 for targets in destinations.values()), (
+            label + "：多出来的行数不等于「一来源多去向」的扇出，说明有行不是去向而是重复")
+        invented = sorted(row["target"] for row in rows
+                          if row["target"] and row["target"].replace("\\", "/")
+                          not in manifest_targets)
+        assert invented == [], (label + "：登记了复制清单里没有的去向：" + str(invented[:5]))
+        absent = sorted({row["target"] for row in rows if row["target"]
+                         and not (TARGET_ROOT / row["target"]).is_file()})
+        assert absent == [], ("登记说已经落地的去向在树上不存在：" + str(absent[:5]))
+
+    marker = (TARGET_ROOT / "domains" / "design" / "design_lab" / "resources" / "repo"
+              / "design-lab" / "config" / ".verify-chain-ok")
+    assert not marker.exists(), "来源仓自己忽略的通过标记不应留在候选里"
+    assert not any(".verify-chain-ok" in target for target in manifest_targets), \
+        "复制清单不应再记录一个已被排除的去向"
+
+
 

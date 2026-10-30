@@ -33,7 +33,8 @@ TARGET_ROOT = Path(__file__).resolve().parents[2]
 #: meaning "whichever subset happens not to need anything".
 PREREQ = re.compile(r"\.venv|All projects[\\/](WORK-LAB|DESIGN-LAB)|"
                     r"WORK_SOURCE_ROOT|DESIGN_SOURCE_ROOT|LIVE_STORES|"
-                    r"[.]project-local[\\/]+build")
+                    r"[.]git[\"'\s\\/]+hooks|"
+                    r"[.]project-local[\"'\s\\/]+build")
 
 
 def _test_files(root: Path) -> list[Path]:

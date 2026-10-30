@@ -663,8 +663,25 @@ class MigrationRefused(RuntimeError):
     """A preflight condition that makes writing the target unsafe."""
 
 
+#: Byte-exact names the walk must not carry, even though the source repository holds them
+#: on disk. They are ignored **in the source**, so copying them would ship a file that the
+#: source itself declares not to be content:
+#:  * ``node_modules`` -- upstream dependency trees (253 of the 1,379 copy records, and
+#:    none of them can be tracked here: this repository's own ``.gitignore`` excludes
+#:    ``node_modules``);
+#:  * ``.verify-chain-ok`` -- DESIGN-LAB's own run marker, whose whole content is ``ok <sha>``
+#:    for a commit of *that* repository. Inside this candidate it reads as an evidence file
+#:    belonging to a verification chain this project never ran.
+#: Both are in the source's ``.gitignore`` (DESIGN-LAB line 68 for the marker), which the
+#: walk-based copy did not consult -- that divergence between the copy engine's reading and
+#: the registers' ``git ls-files`` reading is recorded in docs/CODEX-AUDIT-ENTRY.md §11
+#: rather than being smoothed over.
+SOURCE_IGNORED_NAMES = frozenset({"node_modules", ".verify-chain-ok"})
+
+
 def _skipped(rel_parts) -> bool:
-    return any(part == "__pycache__" or part.endswith((".pyc", ".pyo")) for part in rel_parts)
+    return any(part == "__pycache__" or part.endswith((".pyc", ".pyo"))
+               or part in SOURCE_IGNORED_NAMES for part in rel_parts)
 
 
 def expected_bytes(source: Path, target_rel: str) -> bytes:
