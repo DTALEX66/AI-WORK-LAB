@@ -378,3 +378,61 @@ def test_mapping_rerun_is_idempotent():
     # manifest moves for a clock reading and an audit rerun looks like drift
     drifted = [name for name, value in raw().items() if before_raw.get(name) != value]
     assert drifted == [], "rerun rewrote these migration artefacts byte-wise: " + str(drifted)
+
+
+def test_a_killed_migration_lands_the_same_bytes_as_a_clean_one(tmp_path):
+    """L15「失败恢复」at the process level, for the source-copy tool itself.
+
+    The rehearsal suite already injects an ``os.replace`` failure, but an injected
+    exception still runs the tool's own cleanup. A killed process does not, which is the
+    only way to show that write-then-move really means "an interruption leaves the previous
+    bytes in place": nothing may be truncated in place, and resuming must converge on
+    exactly what an uninterrupted run writes.
+    """
+    crashed_root = tmp_path / "crashed"
+    crashed_root.mkdir()
+    crashed = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
+                    "--target-root", str(crashed_root), "--fail-after", "40"], expect=None)
+    assert crashed.returncode == 9, (crashed.stdout[-400:], crashed.stderr[-400:])
+    temps = sorted(p.name for p in crashed_root.rglob("*.migrating"))
+    assert len(temps) <= 1, ("more than one temp means the crash was not where it is "
+                             "claimed to be: " + str(temps))
+    truncated = [p.relative_to(crashed_root).as_posix()
+                 for p in crashed_root.rglob("*")
+                 if p.is_file() and p.suffix != ".migrating" and p.stat().st_size == 0]
+    assert truncated == [], "targets were truncated in place: " + str(truncated[:5])
+
+    resumed = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
+                    "--target-root", str(crashed_root)], expect=None)
+    assert resumed.returncode == 0, resumed.stdout[-600:]
+    assert not list(crashed_root.rglob("*.migrating")), "the resumed run left its own litter"
+
+    clean_root = tmp_path / "clean"
+    clean_root.mkdir()
+    single = _run(["--apply", "--confirm", "REBUILD-MIGRATION",
+                   "--target-root", str(clean_root)], expect=None)
+    assert single.returncode == 0, single.stdout[-600:]
+
+    def state(root: Path) -> dict:
+        # the run manifest is excluded from the byte comparison on purpose: it records its
+        # own generation time and the target root it was written for, so two different
+        # roots can never agree on it. It is compared structurally below instead.
+        return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in root.rglob("*")
+                if p.is_file() and p.suffix != ".migrating"
+                and p.relative_to(root).as_posix() != "migration/copies.json"}
+
+    resumed_state, clean_state = state(crashed_root), state(clean_root)
+    assert resumed_state == clean_state, (
+        "a resumed migration did not converge on the bytes a clean run writes: "
+        + str(sorted(k for k in set(resumed_state) | set(clean_state)
+                     if resumed_state.get(k) != clean_state.get(k))[:10]))
+
+    def manifest(root: Path) -> dict:
+        return json.loads((root / "migration" / "copies.json").read_text(encoding="utf-8"))
+
+    resumed_manifest, clean_manifest = manifest(crashed_root), manifest(clean_root)
+    assert len(resumed_manifest["copies"]) == len(clean_manifest["copies"])
+    assert (sum(entry["files"] for entry in resumed_manifest["copies"])
+            == sum(entry["files"] for entry in clean_manifest["copies"]))
+    assert not resumed_manifest["patches"] or resumed_manifest["patches"] == clean_manifest["patches"]

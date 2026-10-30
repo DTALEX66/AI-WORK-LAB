@@ -265,6 +265,35 @@ Python 会把每个 `\n` 翻成 `\r\n`，而 csv.writer 的行尾本来就是 `\
 按原始字节扫全部登记（读文本的检查看不到这个问题）。同一条纪律也用于本轮新出的登记表：
 校验一律 `--check`，不写跟踪文件。
 
+仍开放的必做条款只剩一条，且它确实需要 owner 决定：**L10#0** 的 32 行
+`OWNER_DECISION_PENDING`（WORK 18 / DESIGN 14，逐行理由唯一、名单在覆盖登记里冻结）。
+这些是"要不要作为能力迁入"的判断，不是可以由代理解释的技术问题——任务包的延期规则写着
+「不可借延期删除行为」，所以既不能默默丢弃，也不能由代理擅自接线。
+
+### 从克隆复跑时被实测出来的三处新问题（本轮内已修）
+
+「Codex 克隆后按 §4 复跑」这句话本身此前从未被执行验证过。真的克隆一次之后：
+
+- `tests/legacy/design/{test_assistance_plan,test_knowledge_library,test_target_profile}.py`
+  把 `REPO/.project-local/task-runtime` 作为 `mkdtemp` 的**父目录**使用，而 `.project-local/`
+  被 `.gitignore` 排除——克隆里没有这个父目录，`mkdtemp` 直接 `FileNotFoundError`，81 项在
+  克隆里根本跑不起来。现在由 `tests/conftest.py` 的会话级 autouse 夹具创建
+  `.project-local/{task-runtime,runs,build}`（只建目录，不建文件）。
+- `GET /api/health`（兼容面）读取**已构建**的 workbench bundle；没构建过的检出里读操作抛
+  `FileNotFoundError`，被分发层折叠成 `503 PROJECT_STORE_UNAVAILABLE`——把运维指向数据库，
+  而真实事实只是"这里没构建 UI"。现在该路由恒答 200，`bundleSha256: null` +
+  `bundleOrigin: "not-built"` 把缺失写在字段里，由 `tests/unified/test_v24_health_bundle.py`
+  三个用例双向钉住（未构建时不得报 store 故障；真构建时不得谎报 not-built）。该修复同时写进
+  迁移 `PATCHES`，否则下一次 `--apply` 会把它抹掉（计划现读：10/10 已声明且摘要相符，0 未声明）。
+- L15#1「失败恢复」补上进程级复演：`migrate_sources.py --fail-after N` 在写完临时件、
+  `os.replace` 之前 `os._exit(9)`（注入异常会跑完清理，杀进程不会）。实测断言：崩溃点最多留下
+  一个 `.migrating`、没有任何目标被截断为零字节，续跑后与一次干净运行逐文件摘要相同。
+
+`tests/unified/test_v23_clone_repro.py` 把这件事变成常驻守卫：它在临时短路径里 `git clone`
+本仓，在克隆内跑完"不依赖 .venv、不依赖两个只读来源仓、不依赖 .project-local/build 收据"的
+那一半套件（分类由扫描每个测试文件的源码得到，不写死名单），并要求 machine-bound 那一半被
+点名而不是被忽略。
+
 门的新语义（复审时请按这个读）：`--blockers` 缺席时 `batch_readiness.scope` 标为
 `IN_STORE_CLAIMS_ONLY` 并给 warning，不再沉默；必做阶段的非通过条款一律阻断；P2/P3 与 owner
 明确移出义务的条款进 `disclosed` 列表并带出处，不阻断也不消失。**因此本轮的门输出是

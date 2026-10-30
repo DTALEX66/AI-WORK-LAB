@@ -234,6 +234,28 @@ PATCHES = [
      "    ledger_path = root / reporting.LEDGER",
      "an installed wheel has no checkout root: the named refusal must be raised, not a "
      "TypeError on None"),
+    ("domains/design/design_lab/http_service.py",
+     "            return self.send_json(200, {'status': 'OK', 'version': __version__,\n"
+     "                                        'scope': 'project-metadata',\n"
+     "                                        'bundleSha256': workbench.served_bundle_sha256(),\n"
+     "                                        'bundleOrigin': workbench.bundle_origin()})",
+     "            #\n"
+     "            # The bundle is a build product, and health must not be gated on it: on a\n"
+     "            # checkout that never built the workbench the read raised FileNotFoundError,\n"
+     "            # the dispatch folded that into 503 PROJECT_STORE_UNAVAILABLE, and an operator\n"
+     "            # was sent to look at the database when the real fact was \"no bundle here\".\n"
+     "            # The route now answers, and the fields carry the absence.\n"
+     "            try:\n"
+     "                bundle_sha = workbench.served_bundle_sha256()\n"
+     "                bundle_origin = workbench.bundle_origin()\n"
+     "            except OSError:\n"
+     "                bundle_sha, bundle_origin = None, 'not-built'\n"
+     "            return self.send_json(200, {'status': 'OK', 'version': __version__,\n"
+     "                                        'scope': 'project-metadata',\n"
+     "                                        'bundleSha256': bundle_sha,\n"
+     "                                        'bundleOrigin': bundle_origin})",
+     "GET /api/health answered 503 PROJECT_STORE_UNAVAILABLE on any checkout that had not "
+     "built the workbench bundle; health now states the absence in its own fields"),
     ("domains/design/design_lab/adapters/illustrator_com.py",
      "    root=Path(__file__).resolve().parents[3]\n"
      "    source=root/'integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx'",
@@ -818,8 +840,16 @@ def build_plan(target_root: Path = TARGET_ROOT) -> dict:
             "unmanaged": sorted(set(unmanaged))}
 
 
-def apply_plan(plan: dict, *, allow_modified: bool = False) -> dict:
-    """Write the planned bytes. Deletes nothing. Refuses a repaired candidate."""
+def apply_plan(plan: dict, *, allow_modified: bool = False,
+               fail_after: int | None = None) -> dict:
+    """Write the planned bytes. Deletes nothing. Refuses a repaired candidate.
+
+    ``fail_after=N`` is a crash injector for the L15 failure-recovery clause: the process
+    hard-exits between writing the N-th file's temporary and moving it into place, which is
+    the only moment that can show an interrupted migration leaves the previous bytes intact
+    instead of half-copied. It exits through ``os._exit`` on purpose — no rollback, no
+    report, no atexit handler, the way a killed process behaves.
+    """
     refused = [row for row in plan["entries"] if row["state"] == "PATCH_ANCHOR_ABSENT"]
     if refused:
         raise MigrationRefused(refused[0]["reason"])
@@ -851,6 +881,11 @@ def apply_plan(plan: dict, *, allow_modified: bool = False) -> dict:
         try:
             # write-then-move: an interruption leaves the previous bytes in place
             # rather than deleting the tree first and half-refilling it
+            if fail_after is not None and len(written) == fail_after - 1:
+                sys.stderr.write("FAIL_AFTER reached before os.replace: "
+                                 + str(target) + "\n")
+                sys.stderr.flush()
+                os._exit(9)
             os.replace(temporary, target)
         except OSError:
             # the failed attempt's temp file is this tool's own litter; leaving it
@@ -896,6 +931,9 @@ def main(argv=None) -> int:
     parser.add_argument("--prune", action="store_true",
                         help="report paths a previous manifest recorded and this plan no longer wants")
     parser.add_argument("--json-out", type=Path, help="where to write the plan report")
+    parser.add_argument("--fail-after", type=int, default=None,
+                        help="crash injector for the failure-recovery test: hard-exit before "
+                             "the N-th file is moved into place (requires --apply)")
     parser.add_argument("--target-root", type=Path,
                         help="destination root (isolated rehearsal; the default is this repository)")
     args = parser.parse_args(argv)
@@ -932,9 +970,9 @@ def main(argv=None) -> int:
             print("APPLY_CONFIRMATION_REQUIRED pass --confirm REBUILD-MIGRATION", file=sys.stderr)
             return 2
         if args.target_root is None and args.confirm == "REBUILD-MIGRATION":
-            report["apply"] = apply_plan(plan, allow_modified=args.allow_modified)
+            report["apply"] = apply_plan(plan, allow_modified=args.allow_modified, fail_after=args.fail_after)
         else:
-            report["apply"] = apply_plan(plan, allow_modified=args.allow_modified)
+            report["apply"] = apply_plan(plan, allow_modified=args.allow_modified, fail_after=args.fail_after)
         manifest = {"generated_at": report["generated_at"], "work_head": WORK_SOURCE_ROOT.name,
                     "target_root": str(TARGET_ROOT),
                     "copies": [{"kind": "plan", "files": len(plan["entries"]),

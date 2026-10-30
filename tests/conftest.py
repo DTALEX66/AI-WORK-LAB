@@ -69,6 +69,21 @@ class Client:
         return self.request("POST", path, body, **kwargs)
 
 
+#: Project-owned scratch roots. They are gitignored, so a fresh clone has none of them, and
+#: several legacy tests pass ``.project-local/task-runtime`` to ``mkdtemp`` as its *parent*
+#: — mkdtemp refuses a missing parent, which made the suite uncreatable on a machine that
+#: had never worked in this checkout, exactly the machine the audit entry invites to clone
+#: and rerun §4. Creating only directories, never files.
+SCRATCH_ROOTS = (".project-local/task-runtime", ".project-local/runs", ".project-local/build")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_scratch_roots():
+    for relative in SCRATCH_ROOTS:
+        (TARGET_ROOT / relative).mkdir(parents=True, exist_ok=True)
+    yield
+
+
 @pytest.fixture()
 def server(tmp_path: Path):
     workspace = tmp_path / "workspace"

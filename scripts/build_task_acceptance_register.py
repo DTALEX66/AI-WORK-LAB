@@ -142,10 +142,12 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
     ("L15", 0): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v12_data_migration.py::test_rerun_is_idempotent_and_adds_no_records",
                      note="逐行主键+逐行摘要 witness 比对，不是计数"),
-    ("L15", 1): dict(status="PARTIAL", kind="pytest",
-                     target="tests/unified/test_v17_process_restart.py::test_backend_boots_twice_and_recovers_the_orphan",
-                     note="运行面崩溃恢复已由真实两次进程启动覆盖，业务数据迁移有真 os._exit 杀进程复演；"
-                          "缺口：scripts/migrate_sources.py 只有 os.replace 注入失败，没有进程级 kill 复演"),
+    ("L15", 1): dict(status="CONFIRMED", kind="pytest",
+                     target="tests/unified/test_v07_migration.py::test_a_killed_migration_lands_the_same_bytes_as_a_clean_one",
+                     note="运行面崩溃恢复由真实两次 python -m backend 子进程覆盖，业务数据迁移有真 "
+                          "os._exit 杀进程复演；本轮再给源码复制工具加 --fail-after 注入点，实测：崩溃点"
+                          "之前只有一个 .migrating 临时件、没有任何目标被就地截断，续跑后与一次干净运行"
+                          "逐文件摘要完全相同（清单本身按结构比较，因为它记录自己的时间与目标根）"),
     ("L15", 2): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v12_data_migration.py::test_sources_are_never_written_by_a_migration",
                      note="源三库逐行 witness + 文件摘要双不变"),

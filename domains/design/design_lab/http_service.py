@@ -800,10 +800,21 @@ def make_server(service, token, port=0, *, local_session=False, extra_routes=(),
             # wheel copy of the UI wins over the checkout, so this is how
             # an operator (and the wheel-install gate) sees WHICH bytes
             # are actually being served.
+            #
+            # The bundle is a build product, and health must not be gated on it: on a
+            # checkout that never built the workbench the read raised FileNotFoundError,
+            # the dispatch folded that into 503 PROJECT_STORE_UNAVAILABLE, and an operator
+            # was sent to look at the database when the real fact was "no bundle here".
+            # The route now answers, and the fields carry the absence.
+            try:
+                bundle_sha = workbench.served_bundle_sha256()
+                bundle_origin = workbench.bundle_origin()
+            except OSError:
+                bundle_sha, bundle_origin = None, 'not-built'
             return self.send_json(200, {'status': 'OK', 'version': __version__,
                                         'scope': 'project-metadata',
-                                        'bundleSha256': workbench.served_bundle_sha256(),
-                                        'bundleOrigin': workbench.bundle_origin()})
+                                        'bundleSha256': bundle_sha,
+                                        'bundleOrigin': bundle_origin})
 
         def _environment(self, match):
             return self.send_json(200, service.paths.describe())
