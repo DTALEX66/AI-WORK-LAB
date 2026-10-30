@@ -30,7 +30,22 @@ from design_lab.runtime.state_resources import repo_resource
 EVIDENCE_PROJECTION_SCHEMA_VERSION = 'design-lab/evidence-projection/v1'
 # REPO_ROOT stays: this projection describes the checkout the service runs from, and in a wheel
 # there is no such checkout -- that is a fact about the install, not a path to paper over.
-REPO_ROOT = Path(__file__).resolve().parents[3]
+# The root is found by a marker walk, not a fixed parents[N]: this module sits one level
+# deeper in the fused checkout (domains/design/design_lab/governance) than in the source
+# repository (src/design_lab/governance), and a hard-coded depth silently resolves onto an
+# intermediate directory, so the route refuses a ledger that is simply looked for in the
+# wrong place.
+_CHECKOUT_MARKERS = ('pyproject.toml', 'design-lab')
+
+
+def _find_checkout_root(module: Path):
+    for candidate in module.parents:
+        if all((candidate / marker).exists() for marker in _CHECKOUT_MARKERS):
+            return candidate
+    return None
+
+
+REPO_ROOT = _find_checkout_root(Path(__file__).resolve())
 SCHEMA_REPOSITORY_PATH = 'design-lab/schemas/evidence-projection.schema.json'
 SCHEMA_PATH = repo_resource('schemas/evidence-projection.schema.json')
 
@@ -106,6 +121,10 @@ def _receipt(entry: dict) -> dict:
 def projection(root=None, subject_sha=None) -> dict:
     """Recompute the ledger's evidence state for `subject_sha` and return the contract payload."""
     root = Path(root) if root is not None else REPO_ROOT
+    if root is None:
+        raise EvidenceReadbackError(
+            'EVIDENCE_LEDGER_ABSENT', ['no checkout root for this install; '
+                                       f'{reporting.LEDGER} cannot be read'])
     ledger_path = root / reporting.LEDGER
     if not ledger_path.is_file():
         raise EvidenceReadbackError(

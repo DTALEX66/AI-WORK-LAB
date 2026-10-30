@@ -1,0 +1,171 @@
+{
+  "generated_at": "2026-10-30T19:59:46.287255+00:00",
+  "rule": "延期项必须点名接缝（真实存在的文件或包）、依赖与验收条款；接缝缺失时本生成器直接失败，不输出「已保留接缝」的空话",
+  "pack": "D:\\All projects\\AI-WORK-LAB\\AI-WORK-LAB_HANDOFF_20261029\\09_任务分期与验收.json",
+  "entries": [
+    {
+      "kind": "capability",
+      "id": "design.native_hosts",
+      "seams": [
+        "domains/design/design_lab/adapters/photoshop_com.py",
+        "domains/design/design_lab/adapters/illustrator_com.py"
+      ],
+      "lift_condition": "owner 逐次授权真实宿主启动与原生文档写入；桥接资产已在包内并逐字节相同"
+    },
+    {
+      "kind": "capability",
+      "id": "design.reconstruction",
+      "seams": [
+        "packages/capabilities/reconstruction"
+      ],
+      "lift_condition": "P3：重建管线深度扩展不在本批，保留既有实现"
+    },
+    {
+      "kind": "capability",
+      "id": "design.generative",
+      "seams": [
+        "domains/design/design_lab/creative/session_link.py"
+      ],
+      "lift_condition": "P3：生成管线与外部模型真实调用不在本批"
+    },
+    {
+      "kind": "capability",
+      "id": "work.executors",
+      "seams": [
+        "domains/work/orchestration",
+        "config/adapter-registry.json"
+      ],
+      "lift_condition": "本地契约可先验证；需网络的真实调用本轮不执行，替身不算真实资格"
+    },
+    {
+      "kind": "capability",
+      "id": "work.execution_federation",
+      "seams": [
+        "domains/work/orchestration",
+        "backend/core/capabilities.py"
+      ],
+      "lift_condition": "P3：多 Agent/跨机协作，接入点是能力目录行 + 编排包"
+    },
+    {
+      "kind": "capability",
+      "id": "work.collectors",
+      "seams": [
+        "domains/work/orchestration"
+      ],
+      "lift_condition": "P2：采集器实现保留，其中 git_collector 现记 MIGRATED_PRESENT_UNWIRED（导入图零消费者），接线需新的 owner 决定"
+    },
+    {
+      "kind": "capability",
+      "id": "core.evolution",
+      "seams": [
+        "backend/core/capabilities.py"
+      ],
+      "lift_condition": "P3：完整自改写与升级恢复，含候选隔离/独立验收/版本与数据回退"
+    },
+    {
+      "kind": "capability",
+      "id": "integrations.knowledge_candidate",
+      "seams": [
+        "domains/design/design_lab/knowledge_review.py",
+        "packages/contracts/schemas-design"
+      ],
+      "lift_condition": "P1 合同面已实现；P3 深度 AAOS 联调不是本项目的门"
+    },
+    {
+      "kind": "capability",
+      "id": "work.session_continuity",
+      "seams": [
+        "backend/core/capabilities.py",
+        "domains/design/design_lab/creative/session_link.py"
+      ],
+      "lift_condition": "P2：跨会话续接无接缝路由，接入点先记在能力目录，落地需新增 /api/v1/sessions 与验收用例"
+    },
+    {
+      "kind": "task",
+      "id": "L20",
+      "phase": "P2",
+      "title": "一个已可用且不联网的宿主闭环",
+      "depends_on": [
+        "L18"
+      ],
+      "acceptance": [
+        "真实调用/保存/重开/读回",
+        "明确操作授权；否则BLOCKED"
+      ],
+      "seams": [
+        "domains/design/design_lab/adapters/photoshop_com.py",
+        "domains/design/design_lab/adapters/illustrator_com.py"
+      ]
+    },
+    {
+      "kind": "task",
+      "id": "L21",
+      "phase": "P2",
+      "title": "单个执行器适配与资格",
+      "depends_on": [
+        "L18"
+      ],
+      "acceptance": [
+        "本地契约可先验证",
+        "需网络的真实调用本轮不执行",
+        "替身不算真实资格"
+      ],
+      "seams": [
+        "domains/work/orchestration",
+        "config/adapter-registry.json"
+      ]
+    },
+    {
+      "kind": "task",
+      "id": "L30",
+      "phase": "P3",
+      "title": "复杂多Agent/BOT/跨机协作",
+      "depends_on": [
+        "L18"
+      ],
+      "acceptance": [
+        "保留接入位置、依赖和验收"
+      ],
+      "seams": [
+        "domains/work/orchestration",
+        "backend/core/capabilities.py"
+      ]
+    },
+    {
+      "kind": "task",
+      "id": "L31",
+      "phase": "P3",
+      "title": "复杂多宿主/重建/生成管线",
+      "depends_on": [
+        "L18"
+      ],
+      "acceptance": [
+        "已有实现保留；仅复杂新增延期"
+      ],
+      "seams": [
+        "packages/capabilities/reconstruction",
+        "domains/design/design_lab/resources/repo/design-lab/domain-packs"
+      ]
+    },
+    {
+      "kind": "task",
+      "id": "L32",
+      "phase": "P3",
+      "title": "完整自身开发执行与升级恢复",
+      "depends_on": [
+        "L18"
+      ],
+      "acceptance": [
+        "候选隔离/独立验收/版本与数据回退"
+      ],
+      "seams": [
+        "backend/core/capabilities.py",
+        "backend/v1.py"
+      ]
+    }
+  ],
+  "counts": {
+    "capabilities": 9,
+    "tasks": 5
+  }
+}

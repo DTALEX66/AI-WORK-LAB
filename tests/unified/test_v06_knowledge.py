@@ -1,7 +1,16 @@
 # SPDX-License-Identifier: MIT
 """V06: unified knowledge/solution retrieval — 1-char and 2-char Chinese short
-queries, no-result queries, revision & concurrency conflicts, index rebuild
-without data loss, restart readback."""
+queries, no-result queries, the STALE-revision refusal (one writer reads the number
+another writer already committed), index rebuild without data loss, restart readback.
+
+Not covered here, whatever this docstring used to say: real simultaneous writers.
+The revision conflict below is serial, not raced. The race lives in
+`tests/legacy/design/test_knowledge_library.py::KnowledgeLibraryTests::test_two_simultaneous_revisers_cannot_both_land`
+(two `revise(expected_revision=N)` calls released by one Barrier) and, on the unified
+envelope, in `tests/unified/test_v03_work_loop.py::test_concurrent_attempt_update_refuses_the_loser`.
+"Restart readback" here also only reopens stores over the same files inside this
+process; the real second process is `tests/unified/test_v17_process_restart.py`.
+"""
 from __future__ import annotations
 
 from design_lab.knowledge_library import KnowledgeLibrary

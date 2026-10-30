@@ -617,12 +617,16 @@ def sweep(port: int, token: str, workspace: Path) -> dict:
 
 
 def run_regression(python: Path, staging: Path, env: dict, cmd_tail: list[str],
-                   ignore: list[str]) -> dict:
+                   targets: list[str]) -> dict:
     """Copy the committed tests into a scratch root and run pytest there.
 
     backend/ and domains/ are deliberately NOT copied: tests/conftest.py puts its
     own parent directory on sys.path[0], so a source copy at that root would shadow
     whatever PYTHONPATH provides and the run would prove nothing about the install.
+
+    `targets` is what pytest is pointed at (the whole `tests` tree, or just
+    `tests/legacy`): the legacy-regression row judges `tests/legacy/**` with an
+    absolute criterion, so it needs a scoped run rather than a slice of a bigger one.
     """
     if staging.exists():
         shutil.rmtree(staging)
@@ -631,13 +635,25 @@ def run_regression(python: Path, staging: Path, env: dict, cmd_tail: list[str],
         shutil.copytree(SOURCE_ROOT / name, staging / name,
                         ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache",
                                                       "node_modules"))
+    # tests/legacy/design/test_assistance_plan.py guards that the workbench reference
+    # picker names exactly the kinds the store accepts, and the picker is written in
+    # apps/workbench/shell.ts -- a build input the wheel does NOT ship
+    # (design_lab.resources.workbench carries index.html, style.css and build/main.js
+    # only). It is staged here, by name, so that guard runs in install mode too; the
+    # module under test still comes from the install, and the staged byte is declared in
+    # the record. node_modules and the rest of apps/ stay out of the copy.
+    shell_source = SOURCE_ROOT / "apps" / "workbench" / "shell.ts"
+    if shell_source.is_file():
+        staged_apps = staging / "apps" / "workbench"
+        staged_apps.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(shell_source, staged_apps / "shell.ts")
     # tests/legacy/design/*.py create their temp cases under
     # <root>/.project-local/task-runtime; without the directory they error out in
     # both modes and the comparison would be meaningless.
     (staging / ".project-local" / "task-runtime").mkdir(parents=True)
     (staging / ".project-local" / "task-artifacts").mkdir(parents=True)
     cmd = [str(python), "-B", "-m", "pytest", *cmd_tail, "--rootdir", str(staging),
-           "tests", *ignore]
+           *targets]
     finished = subprocess.run(cmd, cwd=str(staging), env=env, text=True,
                               encoding="utf-8", errors="replace", timeout=2400,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -1088,76 +1104,107 @@ def main(argv: list[str] | None = None) -> int:
                                     "photoshop-native-assemble.jsx (a write under domains/**, "
                                     "outside this task's authorisation)"})
 
-    # 10. old regression, executed against the install and against the source tree
-    # The committed suite is NOT green in this checkout today, so "0 failures" is
-    # not the acceptance condition -- the condition is that the installed tree
-    # fails exactly the tests the source tree fails, and no more. Two runs, one
-    # comparison, both listed in the record so a new failure is attributable.
+    # 10. the old regression, judged on an absolute criterion for tests/legacy/**
+    # This row used to pass on a DIFFERENTIAL: "the install shows no failure the staged
+    # source run did not already show", while that baseline itself carried 40 failures and
+    # 7 errors. A differential against a red baseline cannot tell an honest green from a
+    # reproduceably broken one, so the committed legacy suite is now measured absolutely:
+    # every tests/legacy/** test must pass against the installed tree (and, as a control,
+    # against the staged source tree). The full-suite comparison is still recorded, because
+    # tests/unified/** does fail in a staged root for reasons this row is not judging, but
+    # it no longer sets the verdict.
     if args.skip_regression:
         record("legacy-regression", "BLOCKED",
                summary="skipped by --skip-regression; not evidence of anything",
                evidence={"command": "not run"}, required=False)
     else:
         cmd_tail = ["-q", "-p", "no:cacheprovider", "--tb=no", "-rf"]
-        ignore = ["--ignore=tests/legacy/work/test_repair_pack_projection.py"]
+        legacy_installed = run_regression(python, workdir / "legacy-installed", iso_env,
+                                          cmd_tail, ["tests/legacy"])
+        legacy_baseline = run_regression(python, workdir / "legacy-baseline-source",
+                                         base_env, cmd_tail, ["tests/legacy"])
         installed = run_regression(python, workdir / "regression-installed", iso_env,
-                                   cmd_tail, ignore)
+                                   cmd_tail, ["tests"])
         baseline = run_regression(python, workdir / "regression-baseline", base_env,
-                                  cmd_tail, ignore)
+                                  cmd_tail, ["tests"])
+        absolute_clean = (legacy_installed["failed_count"] == 0
+                          and legacy_installed["exit_code"] == 0
+                          and legacy_baseline["failed_count"] == 0
+                          and legacy_baseline["exit_code"] == 0)
         new_failures = sorted(set(installed["failed"]) - set(baseline["failed"]))
-        gone_failures = sorted(set(baseline["failed"]) - set(installed["failed"]))
-        parity = (not new_failures and not gone_failures
-                  and installed["exit_code"] == baseline["exit_code"])
-        record("legacy-regression", "PASS" if parity else "FAIL",
-               summary="installed run: %s | source run: %s | %d failure(s) appear only "
-                       "in the installed tree | scope: test code copied to a scratch root, "
-                       "modules under test imported from the install (not a fully isolated "
-                       "run)"
-                       % (installed["summary_line"], baseline["summary_line"],
-                          len(new_failures)) if parity else
-               "the install changed the outcome: %d new failure(s) %s"
-               % (len(new_failures), new_failures[:5]),
-               evidence={"installed": installed, "baseline_source_tree": baseline,
+        record("legacy-regression", "PASS" if absolute_clean else "FAIL",
+               summary=("%d legacy failure(s)/error(s) against the install and %d against the "
+                        "staged source tree, judged against an absolute zero; the verdict does "
+                        "not depend on the full-suite baseline (%s / %s), which still carries "
+                        "the tests/unified packaging failures | scope: test code copied to a "
+                        "scratch root, modules under test imported from the install (not a "
+                        "fully isolated run)"
+                        % (legacy_installed["failed_count"], legacy_baseline["failed_count"],
+                           installed["summary_line"], baseline["summary_line"]))
+               if absolute_clean else
+               ("tests/legacy/** is not clean in install mode: %d failure(s)/error(s) in the "
+                "installed run %s | staged-source control run %d | %d failure(s) appear only "
+                "in the installed tree across the whole suite %s"
+                % (legacy_installed["failed_count"], legacy_installed["failed"][:8],
+                   legacy_baseline["failed_count"], len(new_failures), new_failures[:5])),
+               evidence={"criterion": "ABSOLUTE: zero failures and zero errors in "
+                                      "tests/legacy/** against the isolated install, with the "
+                                      "same absolute bar against the staged source tree as a "
+                                      "control. The pre-2026-10-31 wording (parity with a "
+                                      "40-failed baseline) is not evidence of anything.",
+                         "legacy_installed": legacy_installed,
+                         "legacy_baseline_source": legacy_baseline,
+                         "full_suite_installed": installed,
+                         "full_suite_baseline_source": baseline,
                          "new_failures_in_installed": new_failures,
-                         "failures_only_in_source": gone_failures,
                          "pythonpath_installed": iso_env["PYTHONPATH"],
                          "pythonpath_baseline": base_env["PYTHONPATH"],
-                         "staged_copy": "tests/, migration/, packages/ and scripts/ are "
-                                        "copied into a scratch root, and "
-                                        "<scratch>/.project-local/task-runtime is created, "
-                                        "because the committed tests open "
+                         "staged_copy": "tests/, migration/, packages/, scripts/ and the single "
+                                        "file apps/workbench/shell.ts are copied into a scratch "
+                                        "root, and <scratch>/.project-local/task-runtime is "
+                                        "created, because the committed tests open "
                                         "repository-root-relative paths (mapping.csv, "
-                                        "packages/contracts, scripts/acceptance_gate.py) "
-                                        "and write their temp dirs under "
-                                        ".project-local/task-runtime. backend/ and domains/ "
-                                        "are deliberately NOT copied: tests/conftest.py "
-                                        "puts its own root on sys.path[0], so a source copy "
-                                        "there would shadow the install and void the proof."
-                         ,
-                         "excluded_by_design": "tests/legacy/work/"
-                                               "test_repair_pack_projection.py loads "
-                                               "domains/work/workflow_core/"
-                                               "repair_pack_projection.py by repository "
-                                               "path, which only a source checkout has at "
-                                               "that spelling; see the "
-                                               "regression-path-loading-test row"},
+                                        "packages/contracts, scripts/acceptance_gate.py, "
+                                        "apps/workbench/shell.ts) and write their temp dirs "
+                                        "under .project-local/task-runtime. backend/ and domains/ "
+                                        "are deliberately NOT copied: tests/conftest.py puts its "
+                                        "own root on sys.path[0], so a source copy there would "
+                                        "shadow the install and void the proof. shell.ts is "
+                                        "staged by name (no node_modules, no other apps/ bytes) "
+                                        "because the wheel does not package it; the module under "
+                                        "test still comes from the install.",
+                         "packaged_workbench_files": "design_lab/resources/workbench ships "
+                                                     "index.html, style.css and build/main.js "
+                                                     "only (pyproject package-data), so the "
+                                                     "TypeScript picker source an installed user "
+                                                     "cannot get is staged instead and said so"},
                required=True)
 
-        # the excluded file, judged on what an install can actually show
-        installed_copy = isolated / "domains" / "work" / "workflow_core" / \
+        # the projection test that used to be excluded by construction: it now imports its
+        # subject as a package module, so an install can actually be judged on it
+        projection = run_regression(python, workdir / "projection-installed", iso_env,
+                                    cmd_tail,
+                                    ["tests/legacy/work/test_repair_pack_projection.py"])
+        installed_module = isolated / "domains" / "work" / "workflow_core" / \
             "repair_pack_projection.py"
-        record("regression-path-loading-test", "BLOCKED",
-               summary="one legacy test execs a source file by repository path and cannot "
-                       "run against an install; the module itself is installed at "
-                       "<install>/domains/work/workflow_core/repair_pack_projection.py and "
-                       "imports cleanly (see imports-origin)",
+        record("regression-path-loading-test",
+               "PASS" if (projection["failed_count"] == 0
+                          and projection["exit_code"] == 0) else "BLOCKED",
+               summary=("the former BLOCKED row is closed: the legacy projection guard runs "
+                        "against the install (%s). It imports "
+                        "domains.work.workflow_core.repair_pack_projection by package name, so "
+                        "the module it execs is the installed one at %s"
+                        % (projection["summary_line"], installed_module))
+               if projection["exit_code"] == 0 else
+               ("STILL BLOCKED, and said so rather than skipped: %s. The loader was changed from "
+                "spec_from_file_location(<repository path>) to importlib.import_module, so the "
+                "module resolves against the install; whatever still fails is a real install-mode "
+                "failure, not a path artefact. Failures: %s"
+                % (projection["summary_line"], projection["failed"][:8])),
                evidence={"test": "tests/legacy/work/test_repair_pack_projection.py",
-                         "installed_module_path": str(installed_copy),
-                         "installed_module_is_file": installed_copy.is_file(),
-                         "reason": "the test calls importlib on ROOT/domains/work/"
-                                   "workflow_core/repair_pack_projection.py with ROOT = the "
-                                   "test tree's parent; placing a source copy there would "
-                                   "shadow the isolated install on sys.path"})
+                         "run": projection,
+                         "installed_module_path": str(installed_module),
+                         "installed_module_is_file": installed_module.is_file()})
 
     # 11. the checkout was not written to
     record("source-tree-read-only", "PASS",

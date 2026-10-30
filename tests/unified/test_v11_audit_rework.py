@@ -757,12 +757,29 @@ def test_v06_upgrade_unified_search_asserts_real_hits_not_field_presence(server)
 
 
 # ----------------------------------------------------------------------------- F01
+def _f01_module():
+    """The disposition builder, loaded by path, so the graph is recomputed here."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "f01_disposition_under_test", TARGET_ROOT / "scripts" / "build_f01_disposition.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_f01_registered_gap_paths_all_have_a_real_disposition():
     """Every one of the 198 registered-but-never-copied WORK paths is adjudicated.
 
     The audit's point was that a mapping row reading ``MAPPED_P0`` with a planning
     directory is not a destination. The register is regenerated from mapping.csv and
     copies.json here, so the count cannot quietly drift from the audited 198.
+
+    The 2026-10-31 rework closed the second half of the same hole: ``MIGRATED_WIRED``
+    used to be checked as ``目标文件 exists``, which a file can satisfy while nothing
+    imports it. The assertion is now the AST import graph of the running service,
+    rebuilt in this process, and it fails when the register claims a consumer the
+    graph does not have.
     """
     completed = subprocess.run([VENV_PYTHON, "-B", "-X", "utf8",
                                 str(TARGET_ROOT / "scripts" / "build_f01_disposition.py"),
@@ -777,8 +794,9 @@ def test_f01_registered_gap_paths_all_have_a_real_disposition():
     assert sum(report["categories"].values()) == 198, report
     # nothing may land in an unexplained bucket
     assert set(report["categories"]) <= {"MIGRATED_WIRED", "MIGRATED_AVAILABLE",
-                                         "EQUIVALENT_MERGED", "OUT_OF_SCOPE_BATCH",
-                                         "TOOL_NOT_RUNTIME", "HISTORICAL_ONLY",
+                                         "MIGRATED_PRESENT_UNWIRED", "EQUIVALENT_MERGED",
+                                         "OUT_OF_SCOPE_BATCH", "TOOL_NOT_RUNTIME",
+                                         "HISTORICAL_ONLY",
                                          "RUNTIME_DEPENDENCY_ADJUDICATED"}, report
     # the capability classes the audit named as determined gaps are each accounted for
     rows = {row["原路径"].rsplit("/", 1)[-1]: row
@@ -791,10 +809,37 @@ def test_f01_registered_gap_paths_all_have_a_real_disposition():
         assert rows[name]["去向类别"] not in ("", None), rows[name]
         assert rows[name]["判定依据"], rows[name]
         assert len(rows[name]["来源sha256"]) == 64, rows[name]
-    migrated = [row for row in rows.values()
-                if row["去向类别"] in ("MIGRATED_WIRED", "MIGRATED_AVAILABLE")]
-    for row in migrated:
-        assert (TARGET_ROOT / row["目标文件"]).is_file(), row
+
+    graph = _f01_module().build_runtime_import_graph()
+    reachable = set(graph["reachable"])
+    consumers = {key: set(value) for key, value in graph["consumers"].items()}
+    wired = [row for row in rows.values() if row["去向类别"] == "MIGRATED_WIRED"]
+    unwired = [row for row in rows.values()
+               if row["去向类别"] in ("MIGRATED_PRESENT_UNWIRED", "MIGRATED_AVAILABLE")]
+    assert wired, "the graph found no wired closure at all; that is not a pass"
+    for row in wired:
+        target = row["目标文件"]
+        assert target, row
+        assert (TARGET_ROOT / target).is_file(), row
+        listed = set(x for x in row["运行面消费者"].split(";") if x)
+        proven = consumers.get(target, set())
+        # the register may not name a consumer the graph does not have...
+        assert listed == proven, (target, sorted(listed - proven), sorted(proven - listed))
+        # ...and a wired label with no consumer is the exact defect being closed
+        assert proven, row
+        for consumer in proven:
+            assert consumer in reachable, (target, consumer)
+    for row in unwired:
+        target = row["目标文件"]
+        assert (TARGET_ROOT / target).is_file(), row
+        assert not consumers.get(target), (row["去向类别"], target,
+                                           "claims no consumer but the graph has one")
+    # git_collector is the audited false claim: the module file exists, the only
+    # "git_collector" in running code is an inline def in collectors.py.
+    assert rows["git_collector.py"]["去向类别"] == "MIGRATED_PRESENT_UNWIRED", rows["git_collector.py"]
+    assert rows["git_collector.py"]["消费者数"] == "0", rows["git_collector.py"]
+    assert "collectors.py" not in consumers.get(
+        "domains/work/orchestration/git_collector.py", set()), "inline def is not an import"
 
 
 def test_f01_migration_register_is_clean_and_side_effect_free():

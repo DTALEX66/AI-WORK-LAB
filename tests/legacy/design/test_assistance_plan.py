@@ -66,6 +66,44 @@ DETECTIONS = [
 ]
 
 
+def _reference_picker_bytes() -> tuple[Path, str]:
+    """Locate the workbench source the reference picker is written in, by search not by depth.
+
+    `REPO / 'apps' / 'workbench' / 'shell.ts'` assumed exactly one layout: a source checkout
+    three directories under the project root. The isolated-install verifier deliberately
+    stages the committed tests in a scratch tree whose depth is not the checkout's, so that
+    read failed for a reason that has nothing to do with what the guard checks. The two
+    places the bytes can legitimately come from are tried in order:
+
+    1. the packaged workbench resource directory, i.e. what an installed wheel ships
+       (``design_lab/resources/workbench``) -- checked first, because if the picker source
+       ever ships, the installed bytes are the ones a user actually gets;
+    2. ``apps/workbench/shell.ts`` under any ancestor of this file -- a source checkout, a
+       staged verification tree, or any future layout, without hard-coding the depth.
+
+    Returns the path and its text; raises with the candidate list when neither answers, so
+    a packaging gap is reported as such instead of as a wrong label.
+    """
+    candidates: list[Path] = []
+    try:
+        from importlib.resources import files as _resource_files
+        candidates.append(Path(str(_resource_files('design_lab')
+                                    / 'resources' / 'workbench' / 'shell.ts')))
+    except (ImportError, ModuleNotFoundError, OSError, TypeError):
+        pass
+    candidates.extend(parent / 'apps' / 'workbench' / 'shell.ts'
+                      for parent in Path(__file__).resolve().parents)
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate, candidate.read_text(encoding='utf-8')
+    raise AssertionError(
+        'the reference picker source was not found in any place it can live; candidates '
+        'tried: ' + ', '.join(str(c) for c in candidates)
+        + ' -- apps/workbench/shell.ts is a build input that pyproject does NOT package '
+        '(design_lab.resources.workbench ships index.html, style.css and build/main.js '
+        'only), so an installed tree without a staged copy of apps/ cannot show this guard')
+
+
 def _png_bytes() -> bytes:
     from PIL import Image
 
@@ -809,7 +847,7 @@ class AssistancePlanTests(unittest.TestCase):
         # four schemas and the resolver, and the picker kept offering two of the five kinds --
         # so a brief, a direction or a prompt result was citable by API and not from the screen.
         # No per-file test could see that, because each side was internally consistent.
-        shell = (REPO / 'apps' / 'workbench' / 'shell.ts').read_text(encoding='utf-8')
+        shell_path, shell = _reference_picker_bytes()
         start = shell.index('const REFERENCE_KIND_LABELS')
         body = shell[start:shell.index('};', start)]
         labelled = sorted(token.rstrip(':')
@@ -817,7 +855,8 @@ class AssistancePlanTests(unittest.TestCase):
                           for token in line.split()
                           if token.endswith(':') and token[:-1].isupper())
         self.assertEqual(sorted(assistance_plan.REFERENCE_KINDS), labelled,
-                         'the kinds the workbench can name are not the kinds the store accepts')
+                         'the kinds the workbench can name are not the kinds the store accepts '
+                         '(picker bytes read from %s)' % shell_path)
         for kind in assistance_plan.REFERENCE_KINDS:
             self.assertIn(f"referenceGroup('{kind}'", shell,
                           f'{kind} has a label but no group in the reference picker')

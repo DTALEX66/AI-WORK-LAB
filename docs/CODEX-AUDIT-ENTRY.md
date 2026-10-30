@@ -177,3 +177,93 @@ gh repo view DTALEX66/AI-WORK-LAB --json description,defaultBranchRef,visibility
   `migration/` 全部产物**字节**不变，而不只是去掉时间戳后相等。提交之后又跑了一遍全量套件，
   `git status` 与 `git diff HEAD` 均为空。
 
+## 11. 2026-10-31 全量闭环轮（按 acceptance 条款逐条实测）
+
+本轮的口径换了：不再按「任务」报完成，而是把 `09_任务分期与验收.json` 的 **19 项任务、48 条
+acceptance 子句**逐条判定（子句原文从任务包转录，不由本文改写），每条必须指向一个**现在就会
+执行的断言**——测试函数、实时路由、可复跑脚本或跟踪登记；`CONFIRMED` 的行在测试里被重新解析一次，
+解析不到就自动降级。登记：`migration/task-acceptance.csv`（48 行）+
+`config/blocker-register.json`（由条款登记派生，不手抄）。
+
+| 实测项 | 现读结果 |
+|---|---|
+| 全量回归 | `340 passed, 3 subtests passed`，0 failed / 0 errors，exit 0 |
+| acceptance 条款 | 48 条：39 CONFIRMED / 4 PARTIAL / 2 BLOCKED_BY_BOUNDARY / 3 DEFERRED_P3；必做阶段（P0/P1）无 GAP |
+| 必做阶段开放项 | 2 条：`L10#0`（32 行来源待 owner 判定）、`L15#1`（migrate_sources 无进程级 kill 复演） |
+| 验收门 | `--blockers config/blocker-register.json` → **REFUSED / exit 1 / batch_ready=false**，点名 L10#0、L15#1 |
+| 端点面 | 164 条逐路由实测：97 成功 / 66 具名领域拒绝 / 1 缺陷；兼容面 49 条 GET 全表 × 无令牌/错 Host = 401×49、403×49 |
+| 启动探针 | `scripts/boot_probe.py` exit 0、verdict OK、8 项全 as_declared（新增的两项就是兼容面 401/403，此前 docstring 声称而代码未做） |
+| 迁移计划 | identical 1369 / EOL_ONLY 2 / MODIFIED 10，其中**已声明且摘要相符 10、未声明 0**；unmanaged 0 |
+| 来源仓 | WORK 2,638 文件 `f1032967…`、DESIGN 4,049 文件 `c3c1bfe3…`，与本轮开始时逐字节一致 |
+
+本轮新立的登记（全部由脚本生成，行数由测试现算校验）：
+`migration/task-acceptance.csv`（48）、`migration/route-surface.csv`（164）、
+`migration/ui-entry-disposition.csv`（56 个原界面入口）、
+`migration/capability-family-register.csv`（30 个能力族）、
+`migration/requirement-traceability.csv`（25 条需求）、
+`migration/api-contract-check.json`（15 条前后端 API 提案）、
+`migration/deferral-register.json`（9 个延期能力 + 5 个 P2/P3 任务的接缝/依赖/验收）、
+`config/blocker-register.json`、`config/environment-baseline.json`、`docs/AUDIT-STATE.json`。
+
+**本轮找到的四个后端真缺陷（不是测试缺口）**，都已修且有能红的断言：
+
+1. `backend/core/unified_store.py` 的 `update_attempt` 只在 Python 里比 revision，然后发
+   **无条件 UPDATE**——两个写者同一 revision 有 30/30 都落地（丢更新），共享连接时还会抛
+   未typed 的 `sqlite3.InterfaceError` 而两支都没写进去。现改为 `WHERE revision=?` 条件更新
+   + `rowcount` 复核 + `busy_timeout` + 进程内写锁；模块 docstring 早就写着「每个写都是
+   compare-and-swap」，那句在本轮之前是不成立的。
+2. `GET /api/v1/tools` 与 `GET /api/v1/connections` 的状态是**写死常量**，`CONNECTED_LOCAL`
+   没有任何探测产生它——正是 F10 关掉的形状在工具面复发。现由探测账本派生（同一本账，不起
+   第二账本），加一条记录会改变状态、撤掉或过期就回到 `NOT_PROBED` 并带具名原因。
+3. `domains/design/design_lab/governance/evidence_readback.py` 的仓库根用 `parents[3]`，在融合
+   后的目录深度上落到 `<root>/domains`，于是投影永远在错误位置找 `design-lab/config/task-ledger-r3.json`。
+   这是 F01 点名的同一类锚点缺陷（`composition_root` 的 `parents[2]`）在另两个模块上的复发；
+   `illustrator_com.py` 同样中招。现按标记上溯求根，并在迁移的 `PATCHES` 里声明——否则下一次
+   `--apply` 会把修复抹掉。修复后 `GET /api/evidence-projection` 仍是**具名 503
+   `EVIDENCE_LEDGER_ABSENT`**：融合仓自己没有那份 ledger，按合同拒绝而不是回空清单。
+4. Illustrator 宿主桥接脚本**从未被迁入**（包内路径只有 Photoshop 那一份，迁移规则里也没有它），
+   所以 `ILLUSTRATOR_BRIDGE_MISSING` 是「资产缺失」而不是「未授权」。现按适配层实际探测的包内
+   路径补入并登记为逐字节相同的复制（24,587 字节）。
+
+两处**我自己说错并被本轮纠正**的话，留在这里而不是悄悄改掉：
+
+- 我先前断言「Illustrator 桥接资产在来源仓也不存在」——错。那是一条 `ls … | head -4` 被截断的
+  目录列表，来源仓其实跟踪着该文件；缺失只发生在目标仓。
+- §5 的「BLOCKED（仅剩一项）`regression-path-loading-test`」是当时的读数，已被本轮实测取代：
+  `tests/legacy/work/test_repair_pack_projection.py` 的按路径 exec 改为包内导入，
+  `verify_isolated_install.py` 的 `legacy-regression` 从差分判据改为**对 `tests/legacy` 要求
+  绝对 0 失败**，另配暂存源码对照；实测安装树 `170 passed`、exit 0，报告
+  `overall PASS`、`blocked = []`（`.project-local/build/offline-20261031T000643Z/verify-report.json`）。
+  撤掉这条 BLOCKED 没有删除或放宽任何断言。
+
+另外两处「登记面」的收紧：源码覆盖里 226 行共用一句模板的 `SOURCE_UNREGISTERED` 被拆成
+**已判定（逐行带 file:line 权威）**与 `OWNER_DECISION_PENDING`（32 行，逐行理由唯一，测试冻结
+了这份名单）；F01 的「已接线」标签不再由文件存在证明，而由从 `backend/v1.py`、
+`backend/core/work_surfaces.py`、`backend/app.py` 可达模块的 **AST 导入图**证明——
+`git_collector.py` 因此被降级为 `MIGRATED_PRESENT_UNWIRED`（零消费者）。迁移侧 10 个
+「按返工而非按复制」的文件此前在计划里是无差别的 MODIFIED；现在逐个声明并附摘要/字节数/差异行数，
+`tests/unified/test_v07_migration.py` 摘要校验也从 25 文件抽样改为**全量扫描**（正是这次改全量
+才发现其中 3 个是未声明的）。
+
+Codex 复审的复跑命令在本轮有增补：
+
+```bat
+%PY% -B -m pytest tests\unified tests\legacy -q -p no:cacheprovider --basetemp .project-local\runs\codex-regression
+%PY% -B -X utf8 scripts\build_task_acceptance_register.py
+%PY% -B -X utf8 scripts\build_blocker_register.py
+%PY% -B scripts\acceptance_gate.py <unified.sqlite3> --blockers config\blocker-register.json
+%PY% -B -X utf8 scripts\boot_probe.py
+%PY% -B -X utf8 scripts\candidate_snapshot.py
+```
+
+门的新语义（复审时请按这个读）：`--blockers` 缺席时 `batch_readiness.scope` 标为
+`IN_STORE_CLAIMS_ONLY` 并给 warning，不再沉默；必做阶段的非通过条款一律阻断；P2/P3 与 owner
+明确移出义务的条款进 `disclosed` 列表并带出处，不阻断也不消失。**因此本轮的门输出是
+REFUSED/exit 1——这就是「本批不能宣称 P0/P1 全部通过」的机器表达**，不是脚本坏了。
+
+仍未关闭（不得当作通过）：真实宿主保存-重开-读回与外部执行器真实资格（授权边界，BLOCKED）、
+模型推理、真实私有用户数据迁移（NOT_RUN）、STITCH 前端（NOT_RUN）、真人专业验收签字（留给
+owner）；系统级出站隔离未被证明。结论口径仍是**「QODER 全量闭环自测完成，仍有 2 条必做条款
+开放，待 Codex 独立复审」**。
+
+

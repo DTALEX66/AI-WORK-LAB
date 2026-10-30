@@ -111,8 +111,56 @@ def _evidence_state(store: UnifiedStore, verification: dict, *,
     return readable, refused, identifiers
 
 
+_BLOCKING_STATUSES = ("BLOCKED", "FAIL", "NOT_RUN", "NOT_PROBED", "NOT_STARTED", "UNVERIFIABLE",
+                      # the pack's rule is 「P0/P1全部通过」: a clause that only partially
+                      # passes, or has no assertion at all, is not a pass
+                      "PARTIAL", "GAP")
+_MANDATORY_PHASES = ("P0", "P1")
+
+
+def blocker_register(path: Path | None) -> dict:
+    """Split the mandatory-blocker register into blocking items and disclosed items.
+
+    The gate used to decide 本批就绪 from in-store completion claims only, so one round
+    printed ``batch_readiness.ready = true`` while its own evidence named a BLOCKED item.
+    This is where those two halves meet: a status that is not a passing one, in a mandatory
+    phase, and not explicitly excluded by an owner decision, refuses batch readiness.
+    """
+    if path is None:
+        return dict(supplied=False, entry_count=0, blocking=[], disclosed=[], skipped=[])
+    document = json.loads(path.read_text(encoding="utf-8-sig"))
+    entries: list[dict] = []
+    if isinstance(document, dict) and isinstance(document.get("items"), list):
+        for row in document["items"]:
+            entries.append(dict(id=str(row.get("id")), status=str(row.get("status")),
+                                phase=str(row.get("phase", "")),
+                                excluded=bool(row.get("scope_excluded_by_owner")),
+                                authority=str(row.get("authority", ""))))
+    else:
+        source = document.get("results") if isinstance(document, dict) else document
+        for key, value in (source or {}).items():
+            if not isinstance(value, str):
+                continue
+            phase = "P2" if str(key).startswith("P2") else (
+                "P3" if str(key).startswith("P3") else "P1")
+            entries.append(dict(id=str(key), status=value, phase=phase,
+                                excluded=False, authority=""))
+    blocking, disclosed = [], []
+    for row in entries:
+        if row["status"].upper() not in _BLOCKING_STATUSES:
+            continue
+        if row["phase"].upper() in _MANDATORY_PHASES and not row["excluded"]:
+            blocking.append(row)
+        else:
+            disclosed.append(row)
+    return dict(supplied=True, entry_count=len(entries), blocking=blocking,
+                disclosed=disclosed, skipped=[row for row in entries
+                                              if row["status"].upper() not in _BLOCKING_STATUSES])
+
+
 def audit(store_path: Path, *, work_store_path: Path | None = None,
-          approvals_path: Path | None = None, evidence_root: Path | None = None) -> dict:
+          approvals_path: Path | None = None, evidence_root: Path | None = None,
+          blockers_path: Path | None = None) -> dict:
     store = UnifiedStore.open_readonly(store_path)
     version = candidate_version(TARGET_ROOT)
     problems: list[dict] = []
@@ -181,6 +229,13 @@ def audit(store_path: Path, *, work_store_path: Path | None = None,
                      and claim["chain"].get("technical_origin") == "live"]
     synthetic_supported = [claim for claim in current if claim["supported"]
                            and claim not in live_eligible]
+    register = blocker_register(blockers_path)
+    for entry in register["blocking"]:
+        problems.append(dict(kind="MANDATORY_BLOCKER_REGISTERED", id=entry["id"],
+                             detail=entry["status"] + " in mandatory phase "
+                                    + (entry["phase"] or "?") + "; completion_rule 要求"
+                                    "「P0/P1全部通过且无阻断才可交审」"
+                                    + ("；登记依据 " + entry["authority"] if entry["authority"] else "")))
     batch_ready = not problems
     return {
         "schemaVersion": "ai-work-lab/acceptance-gate/v2",
@@ -193,11 +248,18 @@ def audit(store_path: Path, *, work_store_path: Path | None = None,
         "verdict": "BACKED" if batch_ready else "REFUSED",
         "batch_readiness": {
             "ready": batch_ready,
+            "scope": ("IN_STORE_CLAIMS_PLUS_BLOCKER_REGISTER" if register["supplied"]
+                      else "IN_STORE_CLAIMS_ONLY"),
             "supported_now": [claim["task_id"] for claim in current if claim["supported"]],
             "synthetic_only": [claim["task_id"] for claim in synthetic_supported],
             "live_eligible": [claim["task_id"] for claim in live_eligible],
             "note": "本批就绪只判断当前有效核验；合成链不会成为 live 证据",
         },
+        "blocker_register": {key: value for key, value in register.items() if key != "blocking"}
+                            | {"blocking": register["blocking"]},
+        "warnings": ([] if register["supplied"] else
+                     ["MANDATORY_BLOCKER_REGISTER_NOT_SUPPLIED：batch_readiness 目前只覆盖存储内"
+                      "的完成声明；必做 BLOCKED/NOT_RUN 清单未参与判定，请传 --blockers"]),
         "full_product_readiness": {
             "ready": False,
             "reason": "本工具只能审计统一存储内的完成声明；下列门不在本存储内，未运行即不就绪",
@@ -220,7 +282,8 @@ def main(argv: list[str]) -> int:
     if not args or "--help" in args:
         print("usage: python scripts/acceptance_gate.py <unified.sqlite3> "
               "[--work-store <canonical/work-store.sqlite3>] [--approvals <path>] "
-              "[--evidence-root <dir>]", file=sys.stderr)
+              "[--evidence-root <dir>] [--blockers <a01-a10-results.json or items register>]",
+              file=sys.stderr)
         return 2
     store_path = Path(args[0])
     if not store_path.is_file():
@@ -232,7 +295,8 @@ def main(argv: list[str]) -> int:
                        work_store_path=Path(options["work-store"]) if "work-store" in options else None,
                        approvals_path=Path(options["approvals"]) if "approvals" in options else None,
                        evidence_root=Path(options["evidence-root"]) if "evidence-root" in options
-                       else None)
+                       else None,
+                       blockers_path=Path(options["blockers"]) if "blockers" in options else None)
     except sqlite3.Error as exc:
         print(json.dumps({"verdict": "UNREADABLE", "reason": type(exc).__name__ + ": " + str(exc)}))
         return 2

@@ -9,7 +9,7 @@ a project it cannot see, or quietly drops the issues it did not bind.
 from __future__ import annotations
 
 import copy
-import importlib.util
+import importlib
 import json
 from pathlib import Path
 import unittest
@@ -18,10 +18,21 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def _load(name: str, relative: str):
-    path = ROOT / relative
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    """Import the subject as a package module, not by repository file path.
+
+    The previous version used `spec_from_file_location(ROOT / relative)`, which only a
+    source checkout can answer: an installed tree puts the same module at
+    `<site-packages-or---target>/domains/work/workflow_core/...`, and the isolated-install
+    verifier deliberately does NOT copy `domains/` next to the staged tests, because a
+    source copy there would shadow the install and void the proof. Importing by the name
+    the package actually ships under resolves against whatever `sys.path` offers, so the
+    same test runs in a checkout and against an install.
+    """
+    dotted = relative[: -len(".py")].replace("/", ".")
+    assert dotted.startswith("domains."), "%s is not a package path in this project" % dotted
+    module = importlib.import_module(dotted)
+    assert Path(module.__file__).name == Path(relative).name, (
+        "imported %s from %s, not the module this guard is about" % (dotted, module.__file__))
     return module
 
 

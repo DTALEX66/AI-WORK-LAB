@@ -59,7 +59,8 @@ from backend.core import origins as origin_rules
 from backend.core import refs as ref_rules
 from backend.core.capabilities import CATALOG_SPEC, derive_catalog
 from backend.core.human_gate import ApprovalLedger, ApprovalError, validate_human_ref
-from backend.core.qualifications import QualificationLedger, candidate_version
+from backend.core.qualifications import (CONNECTION_STATES, QualificationLedger,
+                                         candidate_version, derive)
 from backend.core.unified_store import (ATTEMPT_STATES, TASK_LIFECYCLE, TASK_KINDS,
                                         UnifiedStore, StoreError, DIGEST_V2)
 from backend.core.workpacks import WorkPacks, WorkPackError
@@ -73,6 +74,68 @@ from design_lab.http_service import RequestError
 EVIDENCE_ROOT_NAMES = (".project-local/ai-work-lab/evidence", "exports")
 
 DESIGN_TARGET_VERSION_PREFIX = "plan-r"
+
+#: Tool/connection declarations — identity, entry point and the ONE
+#: capability/operation pair whose probe record speaks for the row.  No status
+#: lives here, and that is the whole point: audit F10 was closed by making
+#: capability qualification come from a record bound to the running candidate,
+#: and this surface had regressed to exactly the shape that finding removed — a
+#: hard-coded list whose ``CONNECTED_LOCAL`` was produced by no probe and no
+#: store read, so ``test_v09_honesty`` could only ever compare a constant against
+#: a constant.  Each row now reuses the ledger ``_v1_capabilities`` already reads
+#: (``backend.core.qualifications`` via ``backend.core.probes``); no second store,
+#: no new ledger, no new vocabulary.
+#:
+#: Nothing in this build ever records ``connection="CONNECTED"`` — the local read
+#: probes observe ``NOT_REQUIRED`` and host/model/executor surfaces stay behind the
+#: Human Gate at ``NOT_PROBED`` — so the honest answer of these two routes is
+#: ``NOT_PROBED`` (or the value a real accepted record actually carries).  A
+#: green label has to be earned by a record, and every row says which record it
+#: looked for.
+TOOL_SPEC = (
+    {"tool_id": "design-lab-service", "role": "design domain runtime",
+     "entry": "backend.app (this process)",
+     "capability_id": "design.plans", "operation": "plans.read",
+     "implementation": "IMPLEMENTED", "authorization": "NOT_REQUIRED",
+     "dependency": "UNKNOWN",
+     "note": "迁移的 DESIGN 运行时就在本进程服务；状态只由 design.plans 的探测记录决定"},
+    {"tool_id": "work-repair-machinery", "role": "task pack lifecycle",
+     "entry": "domains/work/workflow_core",
+     "capability_id": "work.repair_packs", "operation": "repair_pack.lifecycle",
+     "implementation": "IMPLEMENTED", "authorization": "REQUIRED",
+     "dependency": "UNKNOWN",
+     "note": "打包/审批/结果回写走迁移的 WORK 机器；本批未对其做任何连接探测"},
+    {"tool_id": "work-observer-control", "role": "WORK read surfaces + gated control plane",
+     "entry": "domains/work/control (mounted through backend.core.work_surfaces)",
+     "capability_id": "work.observer.read_surface", "operation": "observer.snapshot_reads",
+     "implementation": "IMPLEMENTED", "authorization": "NOT_REQUIRED",
+     "dependency": "UNKNOWN",
+     "note": "观察者只读面由 backend.core.probes 的 observer 探测作证；控制面授权仍是独立轴"},
+    {"tool_id": "quality-gate", "role": "work verification gate",
+     "entry": "work:services/orchestration/run_quality_gate.py (source anchor)",
+     "capability_id": "work.quality_gate", "operation": "quality_gate.run",
+     "implementation": "PARTIAL", "authorization": "REQUIRED",
+     "dependency": "UNKNOWN",
+     "note": "源锚点存在即已迁入；本仓没有为该门写过任何探测记录，所以它不会亮"},
+)
+
+CONNECTION_SPEC = (
+    {"connection_id": "design-native-hosts", "tool_ref": "photoshop/illustrator(COM)",
+     "capability_id": "design.native_hosts", "operation": "native_host.invoke",
+     "implementation": "IMPLEMENTED", "authorization": "NOT_GRANTED",
+     "dependency": "UNKNOWN",
+     "note": "P2 逐次 Human Gate 后受控探测；本机宿主连接未探测，不因内置本地探测升格"},
+    {"connection_id": "design-comfy", "tool_ref": "ComfyUI(HTTP)",
+     "capability_id": "design.generative", "operation": "generative.invoke",
+     "implementation": "IMPLEMENTED", "authorization": "NOT_GRANTED",
+     "dependency": "UNKNOWN",
+     "note": "不联网；本机生成服务未探测，生成能力与连接同属未取证"},
+    {"connection_id": "work-adapters", "tool_ref": "config/adapter-registry.json",
+     "capability_id": "work.executors", "operation": "executor.invoke",
+     "implementation": "PARTIAL", "authorization": "NOT_GRANTED",
+     "dependency": "UNKNOWN",
+     "note": "适配器合同已迁入；执行器连接未探测"},
+)
 
 
 def _now() -> str:
@@ -371,38 +434,85 @@ class V1API:
                              "qualification"],
         })
 
+    def _probe_backed_surface(self, specs) -> list[dict]:
+        """Project declared tool/connection rows from the qualification ledger.
+
+        Same rule ``derive()`` already applies to capabilities, applied to the
+        connection axis: the value comes from the newest probe record naming this
+        capability + operation, and that record only answers for the candidate
+        version it was written against, inside its freshness window, with a live
+        origin.  An accepted record contributes the connection axis it actually
+        observed; anything else — no record, foreign candidate, expired window,
+        synthetic origin, FAILED outcome — leaves ``NOT_PROBED`` together with the
+        reason ``derive`` produced.  There is no literal on this path to go stale.
+        """
+        version = self.candidate()
+        rows = []
+        for spec in specs:
+            capability = {"capability_id": spec["capability_id"],
+                          "operation": spec["operation"],
+                          "implementation": spec["implementation"],
+                          "authorization": spec["authorization"],
+                          # The connection axis is projected below from the record
+                          # itself; declaring NOT_REQUIRED here keeps ``derive`` from
+                          # echoing a declared need back as a reason while the real
+                          # reason is the qualification it could not accept.
+                          "connection_state": "NOT_REQUIRED",
+                          "dependency": spec["dependency"]}
+            record = self.qualifications.latest_for(spec["capability_id"], spec["operation"])
+            derived = derive(capability, record, version=version)
+            observed = str((record or {}).get("connection") or "")
+            accepted = derived["qualification"] == "VERIFIED"
+            state = observed if (accepted and observed in CONNECTION_STATES) else "NOT_PROBED"
+            reasons = list(derived["unavailable_reasons"])
+            if accepted and observed not in CONNECTION_STATES:
+                reasons.append("connection axis absent from the accepted probe record "
+                               + repr(record.get("observed_at")))
+            rows.append({
+                **{key: value for key, value in spec.items()
+                   if key in ("tool_id", "connection_id", "role", "tool_ref", "entry", "note")},
+                "state": state,
+                "qualification": derived["qualification"],
+                "qualification_detail": derived["qualification_detail"],
+                "authorization": derived["authorization"],
+                "dependency": derived["dependency"],
+                "dependency_source": derived["dependency_source"],
+                "connection_observed_by_probe": observed or None,
+                "unavailable_reasons": reasons,
+                "candidate_version": version["digest"],
+                "bound_capability": spec["capability_id"],
+                "operation": spec["operation"],
+                "evidence": None if record is None else {
+                    **derived["probe"],
+                    "expires_at": record.get("expires_at"),
+                    "outcome": record.get("outcome"),
+                    "connection": record.get("connection"),
+                    "matches_running_candidate": record.get("candidate_digest") == version["digest"],
+                },
+                "declared_by": "backend.v1.TOOL_SPEC/CONNECTION_SPEC (declaration only, no status)",
+            })
+        return rows
+
+    def _surface_payload(self, key: str, specs, what: str) -> dict:
+        rows = self._probe_backed_surface(specs)
+        return {key: rows, "count": len(rows),
+                "state_rule": what + " state is read from the qualification-ledger record "
+                                    "bound to this candidate version; no constant, file "
+                                    "existence or compile option grants CONNECTED, and the "
+                                    "default is NOT_PROBED with reasons",
+                "candidate_version": self.candidate()["digest"]}
+
     def _v1_connections(self, handler, match):
         handler.guard()
-        # Honest connection projection: nothing was probed this batch, so nothing
-        # reports CONNECTED. A simulated connection must not read as real.
-        connections = [
-            {"connection_id": "design-native-hosts", "tool_ref": "photoshop/illustrator(COM)",
-             "state": "NOT_PROBED", "supported_operations": [], "permission_scope": None,
-             "note": "P2 逐次 Human Gate 后受控探测；本批未探测，不因内置本地探测而升格"},
-            {"connection_id": "design-comfy", "tool_ref": "ComfyUI(HTTP)",
-             "state": "NOT_PROBED", "supported_operations": [], "permission_scope": None,
-             "note": "不联网；本机服务未探测"},
-            {"connection_id": "work-adapters", "tool_ref": "config/adapter-registry.json",
-             "state": "NOT_PROBED", "supported_operations": [], "permission_scope": None,
-             "note": "适配器合同已迁入；执行器连接未探测"},
-        ]
-        return handler.send_json(200, {"connections": connections})
+        # Derived, not declared: what the ledger says about each connection's bound
+        # capability, or NOT_PROBED with the reason.  Nothing on this path is a
+        # literal, so a simulated connection success cannot read as a real one.
+        return handler.send_json(200, self._surface_payload(
+            "connections", CONNECTION_SPEC, "connection"))
 
     def _v1_tools(self, handler, match):
         handler.guard()
-        tools = [
-            {"tool_id": "design-lab-service", "role": "design domain runtime",
-             "entry": "backend.app (this process)", "state": "CONNECTED_LOCAL"},
-            {"tool_id": "work-repair-machinery", "role": "task pack lifecycle",
-             "entry": "domains/work/workflow_core", "state": "CONNECTED_LOCAL"},
-            {"tool_id": "work-observer-control", "role": "WORK read surfaces + gated control plane",
-             "entry": "domains/work/control (mounted through backend.core.work_surfaces)",
-             "state": "CONNECTED_LOCAL"},
-            {"tool_id": "quality-gate", "role": "work verification gate",
-             "entry": "work:services/orchestration/run_quality_gate.py (source anchor)",
-             "state": "NOT_PROBED"},
-        ]
-        return handler.send_json(200, {"tools": tools})
+        return handler.send_json(200, self._surface_payload("tools", TOOL_SPEC, "tool"))
 
     def _v1_improvements(self, handler, match):
         handler.guard()

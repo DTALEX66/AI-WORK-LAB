@@ -148,6 +148,67 @@ class KnowledgeLibraryTests(unittest.TestCase):
         self.assertEqual('KNOWLEDGE_ENTRY_REVISION_CONFLICT', caught.exception.code)
         self.assertIn('2', str(caught.exception), 'the refusal must name the revision that exists')
 
+    def test_two_simultaneous_revisers_cannot_both_land(self):
+        """L12「并发修订冲突」measured as a race, not as a stale read.
+
+        `test_a_revision_appends_and_a_stale_revision_is_refused` above only proves the
+        refusal when the second writer reads the number the first one already committed.
+        That is a different bug class from the one that matters on a shared store: two
+        writers who both read revision 1 and both prepare against it. Between those two
+        moments the guard at knowledge_library.py:653 can be walked straight through, and
+        the only thing left is the `knowledge_entry_revision` PRIMARY KEY
+        (entry_id, revision) that `_write_revision` turns into a typed 409.
+
+        Which of the two refusals the loser gets is a scheduling fact, not a contract:
+        measured over 12 rounds on this host, 11 losers came back
+        KNOWLEDGE_ENTRY_CONCURRENT_UPDATE (both read revision 1, the key refused the
+        second insert) and 1 KNOWLEDGE_ENTRY_REVISION_CONFLICT (the loser re-read
+        revision 2 first). Both are the same 409 answer to the same question, so this
+        asserts the invariant the clause states -- exactly one correction lands, the
+        other is refused in typed words, never a bare sqlite error -- and it asserts it
+        over several rounds, because a single round can be decided by luck.
+        """
+        refusals = {'KNOWLEDGE_ENTRY_REVISION_CONFLICT', 'KNOWLEDGE_ENTRY_CONCURRENT_UPDATE'}
+        for round_index in range(5):
+            created = self.library.create(entry(title='竞速条目 %d' % round_index))['entry']
+            entry_id = created['knowledge_entry_id']
+            barrier = threading.Barrier(2)
+
+            def revise(writer):
+                barrier.wait()
+                try:
+                    self.library.revise(entry_id, entry(
+                        title='竞速条目 %d 写者%s' % (round_index, writer),
+                        created_by='owner', expected_revision=1))
+                    return 'wrote'
+                except KnowledgeLibraryError as exc:
+                    return '%s/%d' % (exc.code, exc.status)
+                except Exception as exc:  # noqa: BLE001
+                    return 'UNTYPED:' + type(exc).__name__
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                outcomes = sorted(f.result() for f in
+                                  (pool.submit(revise, '甲'), pool.submit(revise, '乙')))
+            self.assertEqual(1, outcomes.count('wrote'),
+                             'both writers landed, or the store refused two corrections for '
+                             'one entry: %s (round %d)' % (outcomes, round_index))
+            loser = outcomes[0] if outcomes[0] != 'wrote' else outcomes[1]
+            code, status = loser.rsplit('/', 1)
+            self.assertIn(code, refusals,
+                          'the losing writer was refused outside the revision-conflict '
+                          'vocabulary, so a caller cannot tell a lost race from any other '
+                          'failure: ' + loser)
+            self.assertEqual('409', status, 'a lost race is a conflict, not a 500: ' + loser)
+            detail = self.library.detail(entry_id)
+            self.assertEqual(2, detail['latest_revision'],
+                             'the two writers produced %r rows instead of exactly one '
+                             'correction: %s' % ([row['revision'] for row in detail['revisions']],
+                                                 outcomes))
+            self.assertEqual([1, 2], [row['revision'] for row in detail['revisions']])
+            landed = [row['title'] for row in detail['revisions'] if row['revision'] == 2]
+            self.assertEqual(1, len(landed))
+            self.assertTrue(landed[0].startswith('竞速条目 %d 写者' % round_index), landed[0])
+
     def test_the_recommended_revision_can_lag_the_latest_one(self):
         created = self.library.create(entry())['entry']
         entry_id = created['knowledge_entry_id']
@@ -430,7 +491,12 @@ class KnowledgeLibraryTests(unittest.TestCase):
                       or set(name.split('.')) & cls.MODEL_FACING)
 
     def test_the_library_reaches_no_model_layer_and_no_network_at_all(self):
-        source = (REPO / 'domains/design/design_lab/knowledge_library.py').read_text(encoding='utf-8')
+        # The bytes scanned are the ones this test actually imported. Spelling
+        # `REPO / 'domains/design/design_lab/...'` assumed a source checkout at a fixed
+        # depth, so an installed tree (design_lab at <install>/design_lab) failed the read
+        # while importing the very module the guard is about; `__file__` is whatever the
+        # interpreter loaded in either mode.
+        source = Path(knowledge_library.__file__).read_text(encoding='utf-8')
         hits = self._model_facing_hits(self._reached_names(source))
         self.assertEqual(hits, [],
                          'the knowledge library now imports something model- or network-facing: '

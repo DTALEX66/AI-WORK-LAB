@@ -28,7 +28,13 @@ class IllustratorDispatchError(RuntimeError):
 def _bridge():
     packaged=files('design_lab').joinpath('resources','adobe','reconstruction-assemble.jsx')
     if packaged.is_file():return packaged.read_bytes()
-    root=Path(__file__).resolve().parents[3]
+    root=None
+    # Marker walk, not parents[N]: this module is one level deeper in the fused checkout
+    # than in the source repository, and a fixed depth lands on an intermediate directory,
+    # so a missing packaged copy would look for the bridge in the wrong tree.
+    for cand in Path(__file__).resolve().parents:
+        if (cand/'pyproject.toml').is_file() and (cand/'design-lab').is_dir(): root=cand; break
+    if root is None: raise IllustratorDispatchError('ILLUSTRATOR_BRIDGE_MISSING')
     source=root/'integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx'
     if source.is_file():return source.read_bytes()
     raise IllustratorDispatchError('ILLUSTRATOR_BRIDGE_MISSING')

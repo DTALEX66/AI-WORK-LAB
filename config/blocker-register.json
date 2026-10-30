@@ -1,0 +1,112 @@
+{
+  "generated_at": "2026-10-30T19:59:46.408375+00:00",
+  "source": "migration/task-acceptance.csv",
+  "rule": "必做阶段(P0/P1)的非通过条款一律阻断本批就绪；owner 明确移出义务的条款登记为 disclosed 并带出处",
+  "clauses": 48,
+  "items": [
+    {
+      "id": "A00#1",
+      "task": "A00",
+      "clause": "不继承ZCODE结论",
+      "status": "PARTIAL",
+      "phase": "AUDIT",
+      "mandatory": false,
+      "scope_excluded_by_owner": false,
+      "authority": "migration/task-acceptance.csv 结论=PARTIAL",
+      "detail": "「不继承上一轮结论」此前只是文字。跟踪文件现读记录被审 SHA 与复审结论；独立复审 PASS 目前不存在，字段必须留 NOT_RUN 而不是空"
+    },
+    {
+      "id": "L00#2",
+      "task": "L00",
+      "clause": "可证明的隔离范围",
+      "status": "BLOCKED",
+      "phase": "P0",
+      "mandatory": true,
+      "scope_excluded_by_owner": true,
+      "authority": "交接提示词 §安全边界：不承诺已证明全机绝无外传；系统级出站隔离不在本批义务内",
+      "detail": "系统级出站隔离未被证明：无防火墙规则读取、无进程沙箱；云端会话模型上下文可能离开本机。本条按边界保持 BLOCKED，不得写成通过"
+    },
+    {
+      "id": "L10#0",
+      "task": "L10",
+      "clause": "无未解释遗漏",
+      "status": "PARTIAL",
+      "phase": "P1",
+      "mandatory": true,
+      "scope_excluded_by_owner": false,
+      "authority": "migration/task-acceptance.csv 结论=PARTIAL",
+      "detail": "逐文件去向：WORK 2,638 / DESIGN 4,049 每行有类别与依据；原 226 行同文模板已拆为「已判定（带 file:line 权威）」与「待 owner 判定」两类，后者逐条不同理由并被测试冻结为已点名集合。仍为 PARTIAL：待判定那部分本身就是要交给 owner 的遗漏清单"
+    },
+    {
+      "id": "L15#1",
+      "task": "L15",
+      "clause": "失败恢复",
+      "status": "PARTIAL",
+      "phase": "P1",
+      "mandatory": true,
+      "scope_excluded_by_owner": false,
+      "authority": "migration/task-acceptance.csv 结论=PARTIAL",
+      "detail": "运行面崩溃恢复已由真实两次进程启动覆盖，业务数据迁移有真 os._exit 杀进程复演；缺口：scripts/migrate_sources.py 只有 os.replace 注入失败，没有进程级 kill 复演"
+    },
+    {
+      "id": "L20#0",
+      "task": "L20",
+      "clause": "真实调用/保存/重开/读回",
+      "status": "BLOCKED",
+      "phase": "P2",
+      "mandatory": false,
+      "scope_excluded_by_owner": true,
+      "authority": "交接提示词 §本批不做：不执行真实 Photoshop/Illustrator 文档写入；宿主写操作走 Human Gate",
+      "detail": "真实 Photoshop/Illustrator 保存-重开-读回需逐次真人授权，本批未拉起宿主，不谎称等价。桥接资产本身已按适配层实际探测的包内路径迁入并与来源仓逐字节相同（两个宿主各一份，见 test_v14 的宿主桥接对；Illustrator 那份本轮才补上，此前既不在包内也不在迁移规则里，ILLUSTRATOR_BRIDGE_MISSING 因此是「资产缺失」而不是「未授权」，这一点本轮纠正）"
+    },
+    {
+      "id": "L21#0",
+      "task": "L21",
+      "clause": "本地契约可先验证",
+      "status": "PARTIAL",
+      "phase": "P2",
+      "mandatory": false,
+      "scope_excluded_by_owner": false,
+      "authority": "migration/task-acceptance.csv 结论=PARTIAL",
+      "detail": "适配器能力卡片非空且 NOT_PROBED 已断；缺口：adapter-registry ↔ 枚举 ↔ 投影三者一致性无对账，来源仓的 adapter_conformance.py 未迁入（映射里仍标 RETAIN）"
+    },
+    {
+      "id": "L30#0",
+      "task": "L30",
+      "clause": "保留接入位置、依赖和验收",
+      "status": "DEFERRED",
+      "phase": "P3",
+      "mandatory": false,
+      "scope_excluded_by_owner": false,
+      "authority": "migration/task-acceptance.csv 结论=DEFERRED_P3",
+      "detail": "多 Agent/跨机协作按 P3 分期，能力目录以 phase/implementation=DECLARED 标注且不可调用；接缝登记未独立成册（同 L03#1 缺口）"
+    },
+    {
+      "id": "L31#0",
+      "task": "L31",
+      "clause": "已有实现保留；仅复杂新增延期",
+      "status": "DEFERRED",
+      "phase": "P3",
+      "mandatory": false,
+      "scope_excluded_by_owner": false,
+      "authority": "migration/task-acceptance.csv 结论=DEFERRED_P3",
+      "detail": "既有实现保留由逐文件去向与 import 图支撑；复杂新增按 P3 延期。同一条款不能既算保留又待判定，待 owner 判定的行已在 L10#0 如实分列"
+    },
+    {
+      "id": "L32#0",
+      "task": "L32",
+      "clause": "候选隔离/独立验收/版本与数据回退",
+      "status": "DEFERRED",
+      "phase": "P3",
+      "mandatory": false,
+      "scope_excluded_by_owner": false,
+      "authority": "migration/task-acceptance.csv 结论=DEFERRED_P3",
+      "detail": "/api/v1/improvements 只回合同与不可用原因，不接执行请求；候选隔离/回滚的接缝未独立登记"
+    }
+  ],
+  "counts": {
+    "total": 9,
+    "blocking": 2,
+    "disclosed": 7
+  }
+}

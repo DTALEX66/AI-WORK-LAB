@@ -60,14 +60,125 @@ _TABLES = (
 )
 
 
-def _run_gate(store_path: Path, work_store: Path | None = None) -> tuple[int, dict]:
+def _run_gate(store_path: Path, work_store: Path | None = None,
+              blockers: Path | None = None) -> tuple[int, dict]:
     command = [str(VENV_PYTHON), "-B", str(GATE), str(store_path)]
     if work_store is not None:
         command += ["--work-store", str(work_store)]
+    if blockers is not None:
+        command += ["--blockers", str(blockers)]
     completed = subprocess.run(command, capture_output=True, text=True, timeout=180,
                                encoding="utf-8", errors="replace")
     assert completed.stdout.strip(), (completed.returncode, completed.stderr[-2000:])
     return completed.returncode, json.loads(completed.stdout)
+
+
+def _backed_chain(server, work_project, key: str) -> dict:
+    """Drive the real API to a genuinely backed completion; returns ids for reuse.
+
+    Both new tests need a store the gate actually accepts, so that a refusal can only
+    come from the thing each test changes — the blocker register, or the verdict's
+    candidate version.
+    """
+    from tests.conftest import produced_after, seed_issue, write_grants
+    from tests.unified.test_v03_work_loop import _result_document
+    seed_issue(server.work.store)
+    status, task = server.client.post("/api/v1/tasks", {
+        "project_id": work_project["project_id"], "kind": "work",
+        "title": "门与新断言 " + key,
+        "input_refs": [{"kind": "work_project", "project_id": work_project["project_id"]}],
+        "acceptance": {"professional_required": False, "data_origin": "test"}})
+    assert status == 201, task
+    status, attempt = server.client.post(f"/api/v1/tasks/{task['task_id']}/attempts",
+                                         {"idempotency_key": key})
+    status, pack_response = server.client.post(
+        f"/api/v1/attempts/{attempt['attempt_id']}/pack", {})
+    write_grants(server)
+    server.client.post(f"/api/v1/attempts/{attempt['attempt_id']}/approval",
+                       {"authorization_ref": "g-" + key, "expected_version": 1})
+    status, handoff = server.client.post(
+        f"/api/v1/attempts/{attempt['attempt_id']}/handoff-declarations",
+        {"claim": "copiedByUser", "target_version": "v1", "actor": "user"})
+    assert status == 200, handoff
+    doc = _result_document(pack_response["pack"]["packId"], work_project["project_id"],
+                           result_id="res-" + key, produced_at=produced_after(handoff))
+    doc["targetVersion"] = "v1"
+    doc["evidenceRefs"] = ["collector_health:demo-collector"]
+    status, imported = server.client.post(
+        f"/api/v1/attempts/{attempt['attempt_id']}/results",
+        {"result": doc, "data_origin": "test"})
+    assert status == 201, imported
+    seed_issue(server.work.store, failures=0)
+    status, verification = server.client.post(
+        f"/api/v1/results/{imported['result']['result_id']}/verifications", {"axis": "technical"})
+    assert verification["outcome"] == "PASS", verification
+    return dict(task_id=task["task_id"], result_id=imported["result"]["result_id"])
+
+
+def test_gate_refuses_when_a_mandatory_blocker_is_registered(server, work_project, tmp_path):
+    """L18「必做阻塞为0才本批完成」was narrative: the gate could print ready=true in the
+    same round whose evidence named a BLOCKED item, because the two halves were never
+    connected. Now a register is an input, and it moves the exit code."""
+    _backed_chain(server, work_project, "gate-blk")
+    store = server.local_root / "unified.sqlite3"
+    work_store = server.local_root / "work-store.sqlite3"
+
+    plain_code, plain = _run_gate(store, work_store=work_store)
+    assert plain_code == 0 and plain["verdict"] == "BACKED", plain
+    # running without the register is possible but is labelled, not silently trusted
+    assert plain["batch_readiness"]["scope"] == "IN_STORE_CLAIMS_ONLY"
+    assert any(w.startswith("MANDATORY_BLOCKER_REGISTER_NOT_SUPPLIED") for w in plain["warnings"])
+
+    register = tmp_path / "blockers.json"
+    register.write_text(json.dumps({"results": {"L17_legacy_projection": "BLOCKED"}}),
+                        encoding="utf-8", newline="\n")
+    code, verdict = _run_gate(store, work_store=work_store, blockers=register)
+    assert code == 1, verdict
+    assert verdict["verdict"] == "REFUSED"
+    assert "MANDATORY_BLOCKER_REGISTERED" in [p["kind"] for p in verdict["problems"]]
+    assert verdict["batch_readiness"]["ready"] is False
+    assert verdict["warnings"] == []
+
+    # completion_rule puts P2/P3 单列 — a conditional-phase gap is disclosed, not blocking
+    register.write_text(json.dumps({"results": {"P2_native_hosts": "BLOCKED"}}),
+                        encoding="utf-8", newline="\n")
+    code2, second = _run_gate(store, work_store=work_store, blockers=register)
+    assert code2 == 0 and second["verdict"] == "BACKED", second
+    assert [row["id"] for row in second["blocker_register"]["disclosed"]] == ["P2_native_hosts"]
+    assert second["blocker_register"]["blocking"] == []
+
+    # a mandatory item the owner excluded from scope is listed with its authority,
+    # and does not silently vanish either
+    register.write_text(json.dumps({"items": [{
+        "id": "A06_real_user_data", "status": "NOT_RUN", "phase": "P1",
+        "scope_excluded_by_owner": True,
+        "authority": "交接提示词 §边界：不主动迁移真实私有数据库"}]}),
+        encoding="utf-8", newline="\n")
+    code3, third = _run_gate(store, work_store=work_store, blockers=register)
+    assert code3 == 0 and third["verdict"] == "BACKED", third
+    disclosed = third["blocker_register"]["disclosed"]
+    assert [row["id"] for row in disclosed] == ["A06_real_user_data"]
+    assert disclosed[0]["authority"].startswith("交接提示词")
+
+
+def test_gate_refuses_verdict_from_other_candidate(server, work_project):
+    """L14「版本绑定」used to be untestable on data rows: the gate implemented
+    VERDICT_FROM_OTHER_CANDIDATE but no store in any test ever carried a foreign
+    candidate digest, so the branch could not fire. This writes one."""
+    chain = _backed_chain(server, work_project, "gate-cand")
+    store = server.local_root / "unified.sqlite3"
+    conn = sqlite3.connect(str(store))
+    try:
+        changed = conn.execute("UPDATE verifications SET candidate_version=?",
+                               ("b" * 64,)).rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    assert changed >= 1, chain
+    code, verdict = _run_gate(store, work_store=server.local_root / "work-store.sqlite3")
+    assert code == 1, verdict
+    kinds = [problem["kind"] for problem in verdict["problems"]]
+    assert "VERDICT_FROM_OTHER_CANDIDATE" in kinds, verdict["problems"]
 
 
 def _forge(path: Path, rows: list[tuple[str, tuple]]) -> None:

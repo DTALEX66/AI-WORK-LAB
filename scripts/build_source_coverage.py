@@ -12,7 +12,16 @@ against ``migration/copies.json`` and ``migration/mapping.csv``, and emits one r
 per (source file, copy record), so a source that is deliberately copied to several
 targets is judged target by target. Registered-but-uncopied paths reuse
 ``build_f01_disposition.classify`` verbatim, so the two registers cannot disagree
-about the same file.
+about the same file — and since 2026-10-31 they reuse the same **AST import graph**
+of the running service, so neither can call an unimported file wired.
+
+The 2026-10-31 rework also closed the second unfalsifiable claim: 226 rows used to
+carry one shared sentence ("需 owner 判定…") while the guard test only looked for the
+literal word ``owner``, so a whole undecided population could sit there without
+failing anything. That class is now split by a decision ladder whose rungs each name
+an in-repo authority (the ``UNREGISTERED_*`` classes, with a ``file:line`` citation),
+and only what the ladder genuinely cannot decide stays as ``OWNER_DECISION_PENDING`` —
+with a justification specific to that row's own bytes, importers and top-level names.
 
 It refuses to miscount: the class totals must equal the number of emitted rows.
 """
@@ -27,7 +36,7 @@ import subprocess
 import sys
 from collections import Counter
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -43,6 +52,9 @@ SKIP_PARTS = {".mimosa", "__pycache__", ".pytest_cache", ".venv", "node_modules"
 GENERATED_NAMES = {"package-lock.json", "yarn.lock", "uv.lock", "poetry.lock"}
 
 _MIGRATE = None
+#: The runtime import closure, built once per run and shared with F01's classifier
+#: so both registers answer the "is it wired?" question with the same graph.
+F01_GRAPH: dict = {}
 
 
 def migrate_module():
@@ -144,6 +156,151 @@ def classify_unregistered(rel: str) -> tuple[str, str]:
                                     "需 owner 判定是否属于产品能力；本批不据其声称能力完整")
 
 
+# ------------------------------------------------------------------ adjudication
+#: Every ``UNREGISTERED_*`` verdict names the in-repo authority it came from, so a
+#: reader can go and read the deciding text instead of trusting this table. Line
+#: numbers are found by searching the cited file for the rule text at build time:
+#: a rule that moves gets a new number, and a rule that disappears makes the
+#: builder say ``AUTHORITY_NOT_FOUND`` rather than keep a stale citation.
+AUTHORITY_SCANNED = {
+    "f01": REPO_ROOT / "scripts" / "build_f01_disposition.py",
+    "policy": REPO_ROOT / "INTEGRATION_POLICY.md",
+    "entry": REPO_ROOT / "docs" / "CODEX-AUDIT-ENTRY.md",
+    "self": REPO_ROOT / "scripts" / "build_source_coverage.py",
+}
+_LINE_CACHE: dict[str, dict[str, int]] = {}
+
+
+def _line_of(kind: str, needle: str) -> str:
+    """``file:line`` for the first non-blank line of ``kind`` holding ``needle``."""
+    path = AUTHORITY_SCANNED[kind]
+    key = str(path)
+    if key not in _LINE_CACHE:
+        try:
+            lines = path.read_text(encoding="utf-8-sig").splitlines()
+        except OSError:
+            lines = []
+        _LINE_CACHE[key] = {}
+        for number, text in enumerate(lines):
+            if text.strip() and text not in _LINE_CACHE[key]:
+                _LINE_CACHE[key][text] = number + 1
+    hit = _LINE_CACHE[key].get(needle)
+    if hit is None:
+        for text, number in _LINE_CACHE[key].items():
+            if needle in text:
+                hit = number
+                break
+    if hit is None:
+        return path.relative_to(REPO_ROOT).as_posix() + ":AUTHORITY_NOT_FOUND"
+    return path.relative_to(REPO_ROOT).as_posix() + ":" + str(hit)
+
+
+INDEX_SKIP_PARTS = SKIP_PARTS | {".project-local", ".git", ".qoder-cn", ".cursor"}
+
+
+def naming_index(root: Path) -> dict[str, set[str]]:
+    """module stem -> files in ``root`` that import it.
+
+    Built once per repository instead of re-walking the tree per row: 226 rows
+    times a full scan is not a check anyone will run, and a check nobody runs is
+    not a check. Scratch copies under the source's own ``.project-local`` are not
+    consumers of the tracked tree, so they are skipped here even though the
+    enumeration口径 (``SKIP_PARTS``) stays exactly as the guard test replicates it.
+    """
+    word = re.compile(r"\b(?:import|from)\s+[\w.]*\b(\w+)\b")
+    index: dict[str, set[str]] = {}
+    for path in root.rglob("*.py"):
+        relative = path.relative_to(root).as_posix()
+        if any(part in INDEX_SKIP_PARTS for part in relative.split("/")):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for match in word.finditer(text):
+            index.setdefault(match.group(1), set()).add(relative)
+    return index
+
+
+def _is_production_importer(relative: str) -> bool:
+    return not ("tests/" in relative or "/tests/" in relative or "/test/" in relative
+                or Path(relative).name.startswith("test_"))
+
+
+def _module_facts(repo: Path, rel: str) -> tuple[bool, list[str]]:
+    """AST facts of the file itself: a ``__main__`` guard and its top-level names.
+
+    Used so an undecided row states what *this* module holds rather than adding
+    another copy of a sentence that fits two hundred rows.
+    """
+    import ast
+
+    try:
+        tree = ast.parse((repo / rel).read_text(encoding="utf-8", errors="replace"))
+    except (OSError, SyntaxError):
+        return (False, [])
+    has_main = any(isinstance(node, ast.If) and "__main__" in ast.dump(node.test)
+                   for node in tree.body)
+    names: list[str] = []
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.append(node.name)
+    return (has_main, names)
+
+
+def adjudicate_unregistered(repo: Path, rel: str, index: dict[str, set[str]],
+                            digest: str) -> tuple[str, str, str]:
+    """(class, authority, reason) for an unregistered ``.py`` the shape rules missed.
+
+    Order matters: a fact about the target tree beats a fact about capability
+    class, which beats a fact about who imports it. What the ladder cannot decide
+    stays visibly undecided, carrying the evidence that makes *that row* a real
+    question — its own bytes, its own importers, its own top-level names — so no
+    two pending rows can share one boilerplate reason.
+    """
+    stem = Path(rel).stem
+    others = sorted(p for p in index.get(stem, set()) if p != rel)
+    producers = [p for p in others if _is_production_importer(p)]
+    cli, symbols = _module_facts(repo, rel)
+
+    target = REPO_ROOT / PurePosixPath(rel).as_posix()
+    if target.is_file():
+        return ("UNREGISTERED_TARGET_PATH_PRESENT",
+                _line_of("self", "UNREGISTERED_TARGET_PATH_PRESENT"),
+                "目标仓同一相对路径已有该文件（"
+                + target.relative_to(REPO_ROOT).as_posix()
+                + "）；未进复制清单不等于缺失")
+
+    for pattern, reason in f01.OUT_OF_SCOPE_RULES:
+        if pattern.search(rel):
+            return ("UNREGISTERED_EXCLUDED_CAPABILITY",
+                    _line_of("f01", pattern.pattern) + " → "
+                    + _line_of("entry", "NOT_RUN**：真实用户数据迁移"),
+                    "能力类被 owner 分期决定排除：" + reason)
+
+    if not producers and (cli or f01.POC_RULE.search(rel) or f01.VERIFY_RULE.search(rel)):
+        cites = [_line_of("self", "def adjudicate_unregistered")]
+        if f01.POC_RULE.search(rel):
+            cites.append(_line_of("f01", "_poc"))
+        if f01.VERIFY_RULE.search(rel):
+            cites.append(_line_of("f01", "verify_"))
+        return ("UNREGISTERED_DEV_TOOLING", ";".join(dict.fromkeys(cites)),
+                "本仓 import 面上零生产 importer（同名 importer 总数 " + str(len(others))
+                + "），" + ("自身是 __main__ 命令行工具" if cli else "命中一次性/POC 规则")
+                + "：不是运行面能力，不迁不构成缺口")
+
+    return ("OWNER_DECISION_PENDING",
+            "NONE（无现成权威覆盖此行）→ " + _line_of("self", "OWNER_DECISION_PENDING"),
+            "待 owner 判定（本行字节 " + digest[:12] + "）："
+            + "未登记、未迁入、目标树同路径无文件；"
+            + ("来源仓内有 " + str(len(producers)) + " 个生产 importer（如 "
+               + "、".join(producers[:2]) + "）" if producers
+               else "来源仓内无生产 importer")
+            + ("；带 __main__ 入口" if cli else "；无 __main__ 入口")
+            + ("；顶层定义 " + "、".join(symbols[:4]) if symbols else "；顶层无具名定义")
+            + "——是否属本批产品能力需逐条判定，本批不据其声称能力完整")
+
+
 def _copied_row(repo_label: str, repo: Path, rel: str, key: str, record: dict,
                 registered: dict, patches: dict) -> dict:
     row = {"repo": repo_label, "path": rel, "registered": "YES" if key in registered else "NO",
@@ -182,49 +339,76 @@ def _copied_row(repo_label: str, repo: Path, rel: str, key: str, record: dict,
     return row
 
 
-def _uncopied_row(repo_label: str, repo: Path, rel: str, key: str, registered: dict) -> dict:
+def _uncopied_row(repo_label: str, repo: Path, rel: str, key: str, registered: dict,
+                  index: dict[str, set[str]]) -> dict:
     row = {"repo": repo_label, "path": rel, "registered": "YES" if key in registered else "NO",
            "source_sha256": sha(repo / rel)}
     if key in registered:
-        category, target, reason = f01.classify(rel, repo)
+        category, target, reason, consumers = f01.classify(rel, repo, F01_GRAPH)
         row["class"] = "REGISTERED_GAP"
         row["disposition"] = category
         row["disposition_target"] = target
         row["gap_id"] = registered[key].get("来源键", "")
+        row["authority"] = ("migration/work-gap-disposition.csv 运行面消费者="
+                           + (consumers or "无"))
         row["reason"] = "登记未迁入：" + reason
         return row
-    category, reason = classify_unregistered(rel)
-    row["class"] = category
+    cls, reason = classify_unregistered(rel)
+    if cls == "SOURCE_UNREGISTERED":
+        cls, authority, reason = adjudicate_unregistered(repo, rel, index,
+                                                         row["source_sha256"])
+        row["authority"] = authority
+    row["class"] = cls
     row["reason"] = reason
     return row
 
 
-def build(repo_label: str, repo: Path, copied: dict, registered: dict, patches: dict) -> dict:
+def build(repo_label: str, repo: Path, copied: dict, registered: dict, patches: dict,
+          graph: dict) -> dict:
+    global F01_GRAPH
+    if not graph or not graph.get("reachable"):
+        raise SystemExit("IMPORT_GRAPH_NOT_BUILT: refusing to label closure rows without it")
+    F01_GRAPH = graph
     files = list_source_files(repo)
+    index = naming_index(repo)
     rows: list[dict] = []
     counts: Counter[str] = Counter()
     for rel in files:
         key = repo_label + ":" + rel
         for record in copied.get(str((repo / rel).resolve())) or [None]:
             if record is None:
-                row = _uncopied_row(repo_label, repo, rel, key, registered)
+                row = _uncopied_row(repo_label, repo, rel, key, registered, index)
             else:
                 row = _copied_row(repo_label, repo, rel, key, record, registered, patches)
             counts[row["class"]] += 1
             rows.append(row)
+    pending = sorted(row["path"] for row in rows if row["class"] == "OWNER_DECISION_PENDING")
+    adjudicated = sorted(row["path"] for row in rows
+                         if row["class"].startswith("UNREGISTERED_"))
+    reasons = Counter(row["reason"] for row in rows
+                      if row["class"] == "OWNER_DECISION_PENDING")
     return {"repo": repo_label, "root": str(repo), "enumerated_files": len(files),
             "class_counts": dict(counts), "rows": rows,
+            "pending_owner_decisions": pending,
+            "adjudicated_population": adjudicated,
+            "pending_reason_duplicates": {text: number for text, number in reasons.items()
+                                          if number > 1},
             "reconciles": sum(counts.values()) == len(rows)}
 
 
 def write_csv(rows: list[dict], path: Path) -> None:
     columns = ["repo", "path", "registered", "gap_id", "class", "disposition",
-               "disposition_target", "target", "source_sha256", "reason"]
+               "disposition_target", "target", "authority", "source_sha256", "reason"]
     present = [name for name in columns if any(name in row for row in rows)]
-    with path.open("w", encoding="utf-8", newline="") as handle:
+    missing = {name for row in rows for name in row if name not in columns}
+    if missing:
+        raise SystemExit("CSV_COLUMN_NOT_DECLARED " + ", ".join(sorted(missing)))
+    temporary = path.with_suffix(".csv.tmp")
+    with temporary.open("w", encoding="utf-8-sig", newline="\n") as handle:
         writer = csv.DictWriter(handle, fieldnames=present, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+    temporary.replace(path)
 
 
 def main(argv=None) -> int:
@@ -234,9 +418,10 @@ def main(argv=None) -> int:
     copied = copied_index()
     registered = registered_keys()
     patches = patch_map()
+    graph = f01.build_runtime_import_graph()
     documents = {}
     for label, repo in (("work", WORK), ("design", DESIGN)):
-        document = build(label, repo, copied, registered, patches)
+        document = build(label, repo, copied, registered, patches, graph)
         csv_path = OUT_DIR / ("source-coverage-" + label + ".csv")
         write_csv(document["rows"], csv_path)
         document["csv"] = str(csv_path)
@@ -247,11 +432,20 @@ def main(argv=None) -> int:
         "schemaVersion": "ai-work-lab/source-coverage/v1",
         "generated_at": now(),
         "note": "逐文件登记来源仓的非忽略工作树；类别之和必须等于行数。登记未迁入沿用 F01 的判定"
-                "规则，未登记人群在本表首次命名，不再留在“无人计数”的状态。",
+                "规则，未登记人群在本表首次命名并按现有权威逐条判定：判不动的行保留为 "
+                "OWNER_DECISION_PENDING，且必须带本行独有的依据，不再共用一句“需 owner 判定”。",
         "repos": {label: {"root": doc["root"], "enumerated_files": doc["enumerated_files"],
                           "rows": len(doc["rows"]), "reconciles": doc["reconciles"],
-                          "csv": doc["csv"], "class_counts": doc["class_counts"]}
+                          "csv": doc["csv"], "class_counts": doc["class_counts"],
+                          "pending_owner_decision_count": len(doc["pending_owner_decisions"]),
+                          "pending_owner_decisions": doc["pending_owner_decisions"],
+                          "adjudicated_by_authority_count": len(doc["adjudicated_population"]),
+                          "adjudicated_by_authority": doc["adjudicated_population"],
+                          "pending_reason_duplicates": doc["pending_reason_duplicates"]}
                   for label, doc in documents.items()},
+        "import_graph": {"entries": list(graph["entries"]),
+                         "reachable_modules": len(graph["reachable"]),
+                         "universe_python_files": graph["universe"]},
         "cross_check": {
             "registered_gap_rows": len(gap_rows),
             "registered_gap_python_paths_by_repo": {
@@ -267,7 +461,7 @@ def main(argv=None) -> int:
             "copy_manifest_records": sum(len(records) for records in copied.values()),
             "copy_manifest_distinct_sources": len(copied)},
     }
-    payload = json.dumps(summary, ensure_ascii=False, indent=2)
+    payload = json.dumps(summary, ensure_ascii=True, indent=2)
     if args.json_out is not None:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(payload, encoding="utf-8")

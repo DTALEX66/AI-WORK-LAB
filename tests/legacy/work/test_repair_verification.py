@@ -32,6 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
+from domains.work.control import completion_authority  # noqa: E402
 from domains.work.workflow_core import issue_projection  # noqa: E402
 from domains.work.workflow_core import project_temp  # noqa: E402
 from domains.work.workflow_core import repair_pack_projection as projection  # noqa: E402
@@ -194,7 +195,12 @@ class ValidatorTests(unittest.TestCase):
 
 class SharedVocabularyTests(unittest.TestCase):
     def test_evidence_levels_are_the_authoritys_own_values_not_a_paraphrase(self) -> None:
-        text = (ROOT / "domains/work/control/completion_authority.py").read_text(encoding="utf-8")
+        # Read the authority's own bytes wherever the import resolved them: a source checkout
+        # and an installed tree put the same module at different depths, and this guard is
+        # about the vocabulary, not about the repository layout. `completion_authority.__file__`
+        # is whatever `import domains.work.control.completion_authority` actually loaded, so
+        # the comparison stays against the module under test in both modes.
+        text = Path(completion_authority.__file__).read_text(encoding="utf-8")
         block = text.split("class EvidenceLevel", 1)[1].split("class ", 1)[0]
         theirs = sorted(re.findall(r'=\s*"([a-z]+)"', block))
         self.assertEqual(theirs, sorted(rv.EVIDENCE_LEVELS),

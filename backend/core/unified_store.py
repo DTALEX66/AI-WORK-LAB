@@ -8,6 +8,8 @@ One outer envelope per 08_前后端交接约定.json:
   have to pass first, server-side.
 * A retry mints a new Attempt; a failed attempt is never overwritten.
 * Every write is a compare-and-swap on ``revision``; a stale writer is refused.
+  The swap is the ``WHERE revision=?`` predicate on the UPDATE plus a ``rowcount``
+  check, so it holds across connections, not only within one Python thread.
 * Idempotency: ``(task_id, idempotency_key)`` is unique — repeating the same
   attempt request reads back the same attempt instead of minting a second one.
 * Crash safety: WAL mode + a single writer connection; on restart the reader
@@ -44,6 +46,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -258,6 +261,13 @@ class UnifiedStore:
         else:
             self.conn = sqlite3.connect(str(path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        # WAL admits one writer at a time; without a busy timeout a second writer is
+        # refused instantly instead of waiting for the row it is contending for.
+        self.conn.execute("PRAGMA busy_timeout=5000")
+        # One connection object is shared by the serving thread and by any caller that
+        # holds the api, so read-modify-write sequences are serialised here rather than
+        # trusting each caller to lock.
+        self._tx = threading.RLock()
         if read_only:
             self.conn.execute("PRAGMA foreign_keys=ON")
         else:
@@ -439,41 +449,47 @@ class UnifiedStore:
                        execution_state: str | None = None, pack_plan_id: str | None = None,
                        pack_ref: dict | None = None, handoff: dict | None = None,
                        binding_sha256: str | None = None, finished_at: str | None = None) -> dict:
-        row = self.conn.execute(
-            "SELECT * FROM attempts WHERE attempt_id=?",
-            (attempt_id,)).fetchone()
-        if row is None:
-            raise StoreError("ATTEMPT_NOT_FOUND")
-        if expected_revision is not None and expected_revision != row["revision"]:
-            raise StoreError("ATTEMPT_REVISION_CONFLICT store revision is " + repr(row["revision"]))
-        if execution_state is not None and execution_state not in ATTEMPT_STATES:
-            raise StoreError(_unknown("ATTEMPT_STATE_UNKNOWN", execution_state, ATTEMPT_STATES))
-        new_revision = row["revision"] + 1
-        new_state = row["execution_state"]
-        if execution_state is not None:
-            new_state = execution_state
-        new_plan = row["pack_plan_id"]
-        if pack_plan_id is not None:
-            new_plan = pack_plan_id
-        new_pack_ref = row["pack_ref"]
-        if pack_ref is not None:
-            new_pack_ref = _dumps(pack_ref)
-        new_handoff = row["handoff"]
-        if handoff is not None:
-            new_handoff = _dumps(handoff)
-        new_binding = row["binding_sha256"]
-        if binding_sha256 is not None:
-            new_binding = binding_sha256
-        new_finished = row["finished_at"]
-        if finished_at is not None:
-            new_finished = finished_at
-        updated_at = _now()
-        self.conn.execute(
-            "UPDATE attempts SET revision=?, execution_state=?, pack_plan_id=?, pack_ref=?, binding_sha256=?, handoff=?, finished_at=?, updated_at=? WHERE attempt_id=?",
-            (new_revision, new_state, new_plan, new_pack_ref, new_binding, new_handoff,
-             new_finished, updated_at, attempt_id))
-        self.conn.commit()
-        return self.get_attempt(attempt_id)
+        with self._tx:
+            row = self.conn.execute(
+                "SELECT * FROM attempts WHERE attempt_id=?",
+                (attempt_id,)).fetchone()
+            if row is None:
+                raise StoreError("ATTEMPT_NOT_FOUND")
+            if expected_revision is not None and expected_revision != row["revision"]:
+                raise StoreError("ATTEMPT_REVISION_CONFLICT store revision is " + repr(row["revision"]))
+            if execution_state is not None and execution_state not in ATTEMPT_STATES:
+                raise StoreError(_unknown("ATTEMPT_STATE_UNKNOWN", execution_state, ATTEMPT_STATES))
+            observed_revision = row["revision"]
+            new_revision = row["revision"] + 1
+            new_state = row["execution_state"]
+            if execution_state is not None:
+                new_state = execution_state
+            new_plan = row["pack_plan_id"]
+            if pack_plan_id is not None:
+                new_plan = pack_plan_id
+            new_pack_ref = row["pack_ref"]
+            if pack_ref is not None:
+                new_pack_ref = _dumps(pack_ref)
+            new_handoff = row["handoff"]
+            if handoff is not None:
+                new_handoff = _dumps(handoff)
+            new_binding = row["binding_sha256"]
+            if binding_sha256 is not None:
+                new_binding = binding_sha256
+            new_finished = row["finished_at"]
+            if finished_at is not None:
+                new_finished = finished_at
+            updated_at = _now()
+            cursor = self.conn.execute(
+                "UPDATE attempts SET revision=?, execution_state=?, pack_plan_id=?, pack_ref=?, binding_sha256=?, handoff=?, finished_at=?, updated_at=? WHERE attempt_id=? AND revision=?",
+                (new_revision, new_state, new_plan, new_pack_ref, new_binding, new_handoff,
+                 new_finished, updated_at, attempt_id, observed_revision))
+            if cursor.rowcount != 1:
+                self.conn.rollback()
+                raise StoreError("ATTEMPT_REVISION_CONFLICT concurrent write at revision "
+                                 + repr(observed_revision))
+            self.conn.commit()
+            return self.get_attempt(attempt_id)
 
     def list_attempts(self, task_id: str) -> list[dict]:
         out = []

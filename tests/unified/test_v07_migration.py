@@ -130,18 +130,53 @@ def test_plan_mode_writes_nothing_to_the_candidate():
     assert (TARGET_ROOT / "migration" / "copies.json").read_bytes() == manifest_before
 
 
-def test_plan_refuses_to_overwrite_the_repairs_already_in_the_candidate():
-    """The F01/F09 import and root repairs are exactly what a rerun used to erase."""
+def test_plan_reports_declared_rework_and_refuses_unexplained_rework():
+    """The F01/F09 import and root repairs are exactly what a rerun used to erase.
+
+    Ten of them are declared with attested bytes now, so the plan no longer has to shout
+    about repairs it can see are intentional — and that is only honest if a NEW, undeclared
+    edit still fails. The second half of this pair plants exactly that.
+    """
     report_path = TARGET_ROOT / ".project-local" / "runs" / "v07-plan-report.json"
     report_path.parent.mkdir(parents=True, exist_ok=True)
     completed = _run(["--plan", "--json-out", str(report_path)], expect=None)
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    modified = {row["target"] for row in report["refusals"] if row["state"] == "MODIFIED"}
+    modified = {str(row["target"]).replace(chr(92), "/")
+                for row in report["refusals"] if row["state"] == "MODIFIED"}
     assert modified, report["summary"]
-    assert "domains/work/control/sidecar.py" in modified, modified
-    assert "domains/work/control/composition_root.py" in modified, modified
-    assert completed.returncode == 1, "a candidate holding repairs must not plan as clean"
+    assert any("domains/work/control/sidecar.py" in path for path in modified), modified
+    assert any("composition_root.py" in path for path in modified), modified
+    rework = report["rework"]
+    assert rework["modified_total"] == len(modified), (rework, modified)
+    assert rework["declared_attested"] == rework["modified_total"], rework
+    assert rework["unattested"] == [], rework
+    assert completed.returncode == 0, (completed.returncode, completed.stdout[-800:])
     assert "unmanaged" in report
+    # a declaration without a reason is decoration
+    for row in report["refusals"]:
+        if row["state"] == "MODIFIED":
+            assert row.get("rework_attested") is True, row
+            assert row.get("rework_reason"), row
+
+
+def test_undeclared_rework_still_fails_the_plan(rehearsal):
+    """Falsification: corrupt one declared file in an applied rehearsal tree, where the
+    engine wrote plain source bytes. The plan must call it unattested and exit non-zero."""
+    target = rehearsal / "domains/work/control/sidecar.py"
+    assert target.is_file(), sorted(str(p) for p in (rehearsal / "domains").rglob("*.py"))[:5]
+    original = target.read_bytes()
+    target.write_bytes(original + b"\n# planted undeclared edit\n")
+    report_path = rehearsal / "drift-plan.json"
+    try:
+        completed = _run(["--plan", "--target-root", str(rehearsal),
+                          "--json-out", str(report_path)], expect=None)
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        assert completed.returncode == 1, (report.get("rework"), report.get("summary"),
+                                           completed.stdout[-500:])
+        assert report["rework"]["unattested"], report["rework"]
+        assert any("sidecar.py" in path for path in report["rework"]["unattested"]), report
+    finally:
+        target.write_bytes(original)
 
 
 def test_apply_without_confirmation_refuses_and_writes_nothing(tmp_path):
@@ -237,23 +272,52 @@ def test_sources_are_byte_identical_before_and_after_a_rerun():
 
 def test_migrated_file_digests_match_their_sources():
     manifest = json.loads((TARGET_ROOT / "migration" / "copies.json").read_text(encoding="utf-8"))
-    patched = {entry["file"] for entry in manifest["patches"]}
-    spot_checks = 0
+    # the patch set is read from the migration script, not only from the manifest: the
+    # manifest is a snapshot of one applied run, so a newly declared patch would be skipped
+    # by luck (a sampled file) or fail for the wrong reason.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "migrate_sources_live", TARGET_ROOT / "scripts" / "migrate_sources.py")
+    live = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(live)
+    patched = ({entry["file"] for entry in manifest["patches"]}
+               | {rel for rel, _old, _new, _reason in live.PATCHES})
+    declared = live.DECLARED_REWORK
+    checked = 0
+    attested = 0
+    drifted = []
+    absent = []
     for entry in manifest["copies"]:
         for record in entry["records"]:
-            if spot_checks >= 25:
-                break
             relative = str(record["target"]).replace(chr(92), "/")
+            key = next((name for name in declared if relative.endswith("/" + name)), None)
+            if key is not None:
+                # rework here is declared, so the only acceptable state is "still exactly
+                # the bytes the declaration attests"; anything else is unannounced drift
+                digest, size, _delta, reason = declared[key]
+                blob = Path(relative).read_bytes()
+                assert hashlib.sha256(blob).hexdigest() == digest, (key, reason)
+                assert len(blob) == size, (key, reason)
+                attested += 1
+                continue
             if any(relative.endswith(patched_file.replace(chr(92), "/"))
                    for patched_file in patched):
                 continue  # patched on purpose after copy; digest recorded pre-patch
             target = Path(relative)
             if not target.is_file():
+                absent.append(relative)
                 continue
             digest = hashlib.sha256(target.read_bytes()).hexdigest()
-            assert digest == record["sha256_target"], relative
-            spot_checks += 1
-    assert spot_checks >= 20
+            if digest != record["sha256_target"]:
+                drifted.append(relative)
+            checked += 1
+    # a full sweep, not a 25-file sample: the previous cap let a patched file pass simply
+    # because the loop happened to break before reaching it
+    assert absent == [], "copied targets vanished from the tree: " + str(absent[:10])
+    assert drifted == [], "copied targets no longer match their recorded digest: " + str(drifted[:10])
+    assert checked >= 1000, checked
+    assert attested == len(declared), (attested, len(declared),
+                                       "every declared rework must still be a copied target")
 
 
 def test_mapping_rerun_is_idempotent():

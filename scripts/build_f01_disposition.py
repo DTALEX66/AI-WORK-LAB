@@ -18,14 +18,23 @@ nothing outside ``migration/work-gap-disposition.csv`` and its own report path.
 Categories:
 
 ``MIGRATED_WIRED``
-    Came over into ``domains/work/orchestration`` and is imported by code the
-    unified service actually runs. The closure was derived from the eight real
-    break sites (an uncaught ``ImportError`` at ``sidecar.py`` worker start and
-    ``composition_root.py``'s unconditional task-ledger read), not from a wish list.
+    Came over into ``domains/work/orchestration`` AND the AST import graph built
+    from the three runtime entry points (``backend/v1.py``,
+    ``backend/core/work_surfaces.py``, ``backend/app.py``) reaches it: the row names
+    the reachable module that actually imports it. Before 2026-10-31 this category
+    was assigned from a hand-written list, which is how ``git_collector.py`` came to
+    be called wired while the only ``git_collector`` in running code is an inline
+    ``def`` inside ``collectors.py`` — a same-named function, not the migrated module.
+``MIGRATED_PRESENT_UNWIRED``
+    The file is in the target tree and imports cleanly, but no reachable module
+    names it: the closure claim is false and is recorded as false rather than
+    quietly kept. Wiring code is out of scope here — the honest outcome of the graph
+    is a downgrade, not a new import.
 ``MIGRATED_AVAILABLE``
     Came over byte-for-byte as part of a named capability family and imports
     cleanly, but nothing in the service imports it: running it is an explicit
-    operator action, never a side effect of a read.
+    operator action, never a side effect of a read. The graph must confirm zero
+    consumers, or the builder refuses to emit the label.
 ``EQUIVALENT_MERGED``
     The behaviour already exists in the target under another path; the row names
     that path so a reader can check the equivalence rather than take it on word.
@@ -51,6 +60,7 @@ Categories:
 """
 from __future__ import annotations
 
+import ast
 import csv
 import hashlib
 import json
@@ -68,7 +78,22 @@ COPIES = REPO_ROOT / "migration" / "copies.json"
 REGISTER = REPO_ROOT / ".project-local/runs/f01-migration/F01-MIGRATION-REGISTER.json"
 OUT_CSV = REPO_ROOT / "migration/work-gap-disposition.csv"
 
-#: Runtime modules that had to come over because target code imports them.
+#: The modules the unified service actually starts from. Every ``MIGRATED_WIRED``
+#: claim is derived from these, transitively, never from a hand-written list.
+RUNTIME_ENTRY_POINTS = (
+    "backend/v1.py",
+    "backend/core/work_surfaces.py",
+    "backend/app.py",
+)
+
+#: Directories that are never part of the running service's import surface.
+GRAPH_SKIP_PARTS = {".venv", "__pycache__", ".git", ".project-local", ".mimosa",
+                    ".pytest_cache", "node_modules", "vendor"}
+
+#: Runtime modules asserted to have had to come over because target code imports
+#: them. The assertion is now CHECKED, not assumed: ``build_runtime_import_graph``
+#: decides whether each one really has a reachable consumer, and an unconfirmed
+#: entry is downgraded to ``MIGRATED_PRESENT_UNWIRED`` instead of being kept.
 CLOSURE_TARGETS = (
     "domains/work/orchestration/collectors.py",
     "domains/work/orchestration/durable_worker.py",
@@ -152,6 +177,160 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# ------------------------------------------------------------------ import graph
+def _first_party_paths(root: Path) -> set[str]:
+    out = set()
+    for path in root.rglob("*.py"):
+        relative = path.relative_to(root).as_posix()
+        if any(part in GRAPH_SKIP_PARTS for part in relative.split("/")):
+            continue
+        if path.is_file():
+            out.add(relative)
+    return out
+
+
+def _as_file(root: Path, dotted_parts: list[str]) -> str | None:
+    """Resolve dotted parts under ``root`` to a repo-relative module file."""
+    if not dotted_parts:
+        return None
+    base = root.joinpath(*dotted_parts)
+    if base.with_suffix(".py").is_file():
+        return base.with_suffix(".py").relative_to(root).as_posix()
+    init = base / "__init__.py"
+    if init.is_file():
+        return init.relative_to(root).as_posix()
+    return None
+
+
+def _ancestors(root: Path, relative: str) -> list[str]:
+    """The package ``__init__.py`` files Python imports on the way to ``relative``.
+
+    ``import backend.v1`` really does execute ``backend/__init__.py`` first, so a
+    claim about what the service touches has to include those or it can hide an
+    import that only an ``__init__`` performs.
+    """
+    parts = relative.split("/")[:-1]
+    out = []
+    for cut in range(len(parts) + 1):
+        prefix = parts[:cut]
+        if not prefix:
+            continue
+        init = (root.joinpath(*prefix) / "__init__.py")
+        if init.is_file():
+            out.append(init.relative_to(root).as_posix())
+    return out
+
+
+def _climb(root: Path, relative: str, levels: int) -> Path:
+    """Directory a ``.``-prefixed import resolves against (PEP 328 arithmetic)."""
+    directory = (root / relative).parent
+    for _ in range(levels - 1):
+        directory = directory.parent
+    return directory
+
+
+def module_imports(root: Path, relative: str) -> set[str]:
+    """Repo-relative first-party modules that ``relative`` names in an import.
+
+    AST-only, so a module-scope ``importlib`` with a computed name would be missed;
+    the repository's own runtime import sites were checked for that and the two
+    places that load by path are named in ``build_runtime_import_graph``'s record.
+    """
+    path = root / relative
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, SyntaxError):
+        return set()
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                hit = _as_file(root, alias.name.split("."))
+                if hit:
+                    found.add(hit)
+                    found.update(_ancestors(root, hit))
+        elif isinstance(node, ast.ImportFrom):
+            module_parts = (node.module or "").split(".") if node.module else []
+            if node.level:
+                base = _climb(root, relative, node.level)
+                target = base.joinpath(*module_parts) if module_parts else base
+                # the module named by the from-clause is imported itself
+                resolved = None
+                if module_parts:
+                    if target.with_suffix(".py").is_file():
+                        resolved = target.with_suffix(".py").relative_to(root).as_posix()
+                    elif (target / "__init__.py").is_file():
+                        resolved = (target / "__init__.py").relative_to(root).as_posix()
+                if resolved:
+                    found.add(resolved)
+                    found.update(_ancestors(root, resolved))
+                # ... and so is each alias, which may be a submodule of it
+                for alias in node.names:
+                    sub = target.joinpath(alias.name)
+                    for cand in (sub.with_suffix(".py"), sub / "__init__.py"):
+                        if cand.is_file():
+                            found.add(cand.relative_to(root).as_posix())
+                            found.update(_ancestors(root, cand.relative_to(root).as_posix()))
+                            break
+            else:
+                resolved = _as_file(root, module_parts) if module_parts else None
+                if resolved:
+                    found.add(resolved)
+                    found.update(_ancestors(root, resolved))
+                for alias in node.names:
+                    hit = _as_file(root, module_parts + [alias.name])
+                    if hit:
+                        found.add(hit)
+                        found.update(_ancestors(root, hit))
+    found.discard(relative)
+    return found
+
+
+def build_runtime_import_graph(root: Path = REPO_ROOT,
+                               entries: tuple = RUNTIME_ENTRY_POINTS) -> dict:
+    """Transitive first-party import closure of the running service's entry points.
+
+    Returns ``{"entries", "reachable", "edges", "consumers", "missing_entries"}`` with
+    every path repo-relative posix. ``consumers[m]`` is the set of reachable modules
+    that name ``m`` in an import statement — that is the only evidence a
+    ``MIGRATED_WIRED`` row is allowed to rest on.
+    """
+    universe = _first_party_paths(root)
+    missing = [e for e in entries if e not in universe]
+    if missing:
+        raise SystemExit("RUNTIME_ENTRY_MISSING " + ", ".join(missing))
+    reachable: set[str] = set()
+    edges: dict[str, set[str]] = {}
+    frontier = list(entries)
+    for entry in entries:
+        reachable.update(_ancestors(root, entry))
+    while frontier:
+        current = frontier.pop()
+        if current in edges:
+            continue
+        edges[current] = module_imports(root, current)
+        reachable.add(current)
+        reachable.update(_ancestors(root, current))
+        for nxt in sorted(edges[current]):
+            if nxt in universe and nxt not in edges:
+                frontier.append(nxt)
+    consumers: dict[str, set[str]] = {}
+    for consumer, imported in edges.items():
+        for imported_module in imported:
+            consumers.setdefault(imported_module, set()).add(consumer)
+    return {"entries": list(entries), "reachable": sorted(reachable & universe),
+            "edges": {k: sorted(v) for k, v in edges.items()},
+            "consumers": {k: sorted(v) for k, v in consumers.items()},
+            "universe": len(universe)}
+
+
+def graph_consumers(target: str, graph: dict) -> list[str]:
+    """Reachable modules that import ``target``; empty means it is not wired."""
+    if not graph:
+        return []
+    return list(graph["consumers"].get(target, []))
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -227,37 +406,64 @@ def already_in_target(relative: str, root: Path) -> tuple[str, str, str] | None:
             + "；由 F01 模块迁移或原复制放入，不是缺失")
 
 
-def classify(relative: str, root: Path = WORK_ROOT) -> tuple[str, str, str]:
-    """(category, target or equivalent, reason) for one registered path."""
+def classify(relative: str, root: Path = WORK_ROOT,
+              graph: dict | None = None) -> tuple[str, str, str, str]:
+    """(category, target or equivalent, reason, runtime consumers) for one path.
+
+    ``graph`` is the runtime import closure; when it is supplied a wired claim is
+    only made if the graph proves a consumer, and the consumer list goes into the
+    register. Without a graph the function refuses to say ``MIGRATED_WIRED`` at all,
+    because that is the exact situation that produced the original false label.
+    """
     present = already_in_target(relative, root)
     if present is not None:
-        return present
+        return present + ("",)
     stem = Path(relative).stem
     for rule_stem, category, target, reason in BY_STEM_RULES:
         if stem == rule_stem:
             if category == "MIGRATED_AVAILABLE" and not (REPO_ROOT / target).is_file():
                 raise SystemExit("DISPOSITION_EVIDENCE_MISSING " + target
                                  + " is claimed available but is not in the target tree")
-            return (category, target, reason)
+            consumers = graph_consumers(target, graph or {})
+            if category == "MIGRATED_AVAILABLE" and consumers:
+                raise SystemExit("DISPOSITION_LABEL_CONTRADICTION " + target
+                                 + " is labelled operator-only but the graph shows "
+                                 + ", ".join(consumers))
+            return (category, target, reason, ";".join(consumers))
     for closure in CLOSURE_TARGETS:
         if Path(closure).stem == stem:
-            return ("MIGRATED_WIRED", closure,
-                    "统一服务实际运行的代码引用它；断链点见 F01-MIGRATION-REGISTER.json 的 "
-                    "consumerFilesEdited")
+            consumers = graph_consumers(closure, graph or {})
+            if consumers:
+                return ("MIGRATED_WIRED", closure,
+                        "AST 导入图从运行入口 " + "、".join(RUNTIME_ENTRY_POINTS)
+                        + " 可达，实际 importer：" + "、".join(consumers),
+                        ";".join(consumers))
+            if graph is None:
+                raise SystemExit("CLOSURE_UNCHECKED " + closure
+                                 + " would be called MIGRATED_WIRED without an import graph")
+            return ("MIGRATED_PRESENT_UNWIRED", closure,
+                    "文件已在目标树且可导入，但 AST 导入图从运行入口 "
+                    + "、".join(RUNTIME_ENTRY_POINTS)
+                    + " 及其全部可达模块中没有找到任何 importer；同名的行内定义"
+                    "（如 collectors.py 里的 def git_collector）不是对该模块的引用，"
+                    "故不再声称已接线",
+                    "")
     if relative in EQUIVALENTS:
         target = EQUIVALENTS[relative]
         if (REPO_ROOT / target).is_file():
-            return ("EQUIVALENT_MERGED", target, "目标仓已有同一行为的落地文件，按行为等价合并")
+            return ("EQUIVALENT_MERGED", target, "目标仓已有同一行为的落地文件，按行为等价合并",
+                    ";".join(graph_consumers(target, graph or {})))
     for pattern, reason in OUT_OF_SCOPE_RULES:
         if pattern.search(relative):
-            return ("OUT_OF_SCOPE_BATCH", "", reason)
+            return ("OUT_OF_SCOPE_BATCH", "", reason, "")
     if VERIFY_RULE.search(relative):
-        return ("TOOL_NOT_RUNTIME", "", "独立校验 CLI（__main__ + exit code），不是运行面能力")
+        return ("TOOL_NOT_RUNTIME", "", "独立校验 CLI（__main__ + exit code），不是运行面能力", "")
     if POC_RULE.search(relative):
-        return ("HISTORICAL_ONLY", "", "POC/一次性脚本，全仓零生产 importer")
+        return ("HISTORICAL_ONLY", "", "POC/一次性脚本，全仓零生产 importer", "")
     imports = importer_count(relative, root)
     return ("RUNTIME_DEPENDENCY_ADJUDICATED", "",
-            "目标仓无任何 importer（来源仓 importer 数 " + repr(imports) + "）；不迁不构成运行缺口")
+            "目标仓无任何 importer（来源仓 importer 数 " + repr(imports) + "）；不迁不构成运行缺口",
+            "")
 
 
 def main(argv: list[str]) -> int:
@@ -267,10 +473,11 @@ def main(argv: list[str]) -> int:
     registered = registered_work_paths()
     copied = copied_source_paths()
     gaps = sorted(set(registered) - copied)
+    graph = build_runtime_import_graph()
     rows = []
     counts: dict[str, int] = {}
     for relative in gaps:
-        category, target, reason = classify(relative)
+        category, target, reason, consumers = classify(relative, WORK_ROOT, graph)
         counts[category] = counts.get(category, 0) + 1
         source = WORK_ROOT / relative
         rows.append({
@@ -284,10 +491,12 @@ def main(argv: list[str]) -> int:
             "来源sha256": hashlib.sha256(source.read_bytes()).hexdigest() if source.is_file() else "",
             "去向类别": category,
             "目标文件": target,
+            "运行面消费者": consumers,
+            "消费者数": str(len(consumers.split(";")) if consumers else 0),
             "判定依据": reason,
         })
     temporary = OUT_CSV.with_suffix(".csv.tmp")
-    with temporary.open("w", encoding="utf-8", newline="") as handle:
+    with temporary.open("w", encoding="utf-8-sig", newline="\n") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
@@ -296,8 +505,12 @@ def main(argv: list[str]) -> int:
                "copied_work_python_paths": len(copied & set(registered)),
                "gap_paths": len(gaps), "categories": counts,
                "csv": str(OUT_CSV), "rows": len(rows),
+               "import_graph": {"entries": graph["entries"],
+                                "reachable_modules": len(graph["reachable"]),
+                                "universe_python_files": graph["universe"]},
                "note": "类别由本文件顶部的规则现算，逐行带来源 sha256 与依据；"
-                       "MIGRATED_WIRED 的闭合依据见 F01-MIGRATION-REGISTER.json"}
+                       "MIGRATED_WIRED 只由 AST 导入图证明的 consumer 决定，"
+                       "没有 consumer 的迁入文件记为 MIGRATED_PRESENT_UNWIRED，不接线也不谎称。"}
     document = {"summary": summary, "rows": rows}
     if report_path is not None:
         report_path.parent.mkdir(parents=True, exist_ok=True)

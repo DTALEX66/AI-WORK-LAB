@@ -95,6 +95,15 @@ AUTOMATION_PACKED_FILES = [
 ]
 
 FILE_COPIES = [
+    # adapters read their host bridge script from the packaged layout FIRST
+    # (design_lab/resources/adobe/<name>); the checkout copy under integrations/ is only a
+    # fallback, so the packaged path must be produced by the migration itself — the
+    # Photoshop copy existed as an undeclared file and the Illustrator one was missing
+    # entirely, which is how ILLUSTRATOR_BRIDGE_MISSING was reachable at all.
+    (DESIGN_SOURCE_ROOT, "integrations/hosts/adobe/photoshop-reconstruction/legacy-assemble.jsx",
+     "domains/design/design_lab/resources/adobe/photoshop-native-assemble.jsx"),
+    (DESIGN_SOURCE_ROOT, "integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx",
+     "domains/design/design_lab/resources/adobe/reconstruction-assemble.jsx"),
     (WORK_SOURCE_ROOT, "packages/client-neutral-core/scripts/canonical_store.py",
      "domains/work/workflow_core/canonical_store.py"),
     (WORK_SOURCE_ROOT, "packages/client-neutral-core/scripts/repair_pack_projection.py",
@@ -191,6 +200,54 @@ PATCHES = [
      "Path(__file__).resolve().parents[3]",
      "Path(__file__).resolve().parents[4]",
      "legacy-assemble.jsx resource anchor depth +1"),
+    # Two modules sit one level deeper than the src/design_lab sweep assumed, so the flat
+    # "+1" rule missed them: governance/ and adapters/ needed +2. They are fixed with a
+    # marker walk instead, because a fixed depth is also wrong in an installed wheel
+    # (state_resources.repo_resource documents exactly that failure).
+    ("domains/design/design_lab/governance/evidence_readback.py",
+     "# REPO_ROOT stays: this projection describes the checkout the service runs from, "
+     "and in a wheel\n# there is no such checkout -- that is a fact about the install, "
+     "not a path to paper over.\nREPO_ROOT = Path(__file__).resolve().parents[3]",
+     "# REPO_ROOT stays: this projection describes the checkout the service runs from, "
+     "and in a wheel\n# there is no such checkout -- that is a fact about the install, "
+     "not a path to paper over.\n"
+     "# The root is found by a marker walk, not a fixed parents[N]: this module sits one "
+     "level\n# deeper in the fused checkout (domains/design/design_lab/governance) than in "
+     "the source\n# repository (src/design_lab/governance), and a hard-coded depth silently "
+     "resolves onto an\n# intermediate directory, so the route refuses a ledger that is simply "
+     "looked for in the\n# wrong place.\n_CHECKOUT_MARKERS = ('pyproject.toml', 'design-lab')\n"
+     "\n\ndef _find_checkout_root(module: Path):\n"
+     "    for candidate in module.parents:\n"
+     "        if all((candidate / marker).exists() for marker in _CHECKOUT_MARKERS):\n"
+     "            return candidate\n    return None\n"
+     "\n\nREPO_ROOT = _find_checkout_root(Path(__file__).resolve())",
+     "repo-root anchor: parents[3] landed on <root>/domains, so the projection looked for "
+     "design-lab/config/task-ledger-r3.json outside the checkout"),
+    ("domains/design/design_lab/governance/evidence_readback.py",
+     "    root = Path(root) if root is not None else REPO_ROOT\n"
+     "    ledger_path = root / reporting.LEDGER",
+     "    root = Path(root) if root is not None else REPO_ROOT\n"
+     "    if root is None:\n"
+     "        raise EvidenceReadbackError(\n"
+     "            'EVIDENCE_LEDGER_ABSENT', ['no checkout root for this install; '\n"
+     "                                       f'{reporting.LEDGER} cannot be read'])\n"
+     "    ledger_path = root / reporting.LEDGER",
+     "an installed wheel has no checkout root: the named refusal must be raised, not a "
+     "TypeError on None"),
+    ("domains/design/design_lab/adapters/illustrator_com.py",
+     "    root=Path(__file__).resolve().parents[3]\n"
+     "    source=root/'integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx'",
+     "    root=None\n"
+     "    # Marker walk, not parents[N]: this module is one level deeper in the fused checkout\n"
+     "    # than in the source repository, and a fixed depth lands on an intermediate directory,\n"
+     "    # so a missing packaged copy would look for the bridge in the wrong tree.\n"
+     "    for cand in Path(__file__).resolve().parents:\n"
+     "        if (cand/'pyproject.toml').is_file() and (cand/'design-lab').is_dir(): "
+     "root=cand; break\n"
+     "    if root is None: raise IllustratorDispatchError('ILLUSTRATOR_BRIDGE_MISSING')\n"
+     "    source=root/'integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx'",
+     "illustrator bridge anchor: parents[3] landed on <root>/domains; the asset is absent "
+     "from the source repo too, so the named refusal is the honest outcome either way"),
     ("domains/design/design_lab/domain_packs.py",
      "Path(__file__).resolve().parents[2]",
      "Path(__file__).resolve().parents[3]",
@@ -538,6 +595,47 @@ def sha256_bytes(payload: bytes) -> str:
 #: source, because this tool applies a documented patch to them.
 PATCHED_TARGETS = frozenset(rel for rel, _old, _new, _reason in PATCHES)
 
+#: Files whose target bytes are intentionally NOT "source + declared patch": they carry
+#: rework from earlier audit rounds or from this round's test repairs, expressed as edits
+#: too interleaved to restate as one anchor pair. Each entry attests the exact bytes
+#: (sha256 + length) and the measured line delta against the read-only source, so
+#: "modified on purpose" is a checkable statement. The migration still refuses to write
+#: these files; the attestation only distinguishes *declared* rework from *unexplained*
+#: rework, which is the thing the plan used to lump together.
+DECLARED_REWORK = {
+    "domains/work/workflow_core/repair_pack_projection.py": (
+        "c4b614eebb8e3bbfae3f63e3f1165ab601553f671a5a201f42e124cca23b35ad", 43539, 7,
+        "F01: 兄弟模块裸导入只在脚本目录恰好留在 sys.path 上时可解析，改为包内相对导入"),
+    "domains/work/control/sidecar.py": (
+        "98ce5565707da17304fa2cde1c9ffe04e278ae85219295334bd43b23aa9862b8", 42788, 82,
+        "F09: 迁入统一内核，复用同一 CanonicalStore 而非第二账本"),
+    "domains/work/control/sse_hub.py": (
+        "511d817125c4349d581466fec01c55f422ec6504945e323969aa77edc21d890e", 6568, 5,
+        "F09/SSE: 帧渲染供统一内核消费面复用，帧内声明非持续流"),
+    "domains/work/control/composition_root.py": (
+        "d01c75913ca99dd3c3674ac571428c1c46372d14b37de82f3e7215ec0df1b678", 45995, 290,
+        "F01/F09: 仓库根锚点纠正（parents[2] 落到 domains/）+ 真实导入与 NOT_PROBED 投影"),
+    "domains/work/control/solution_library.py": (
+        "fda80952451e7290ac202a78bfe972584fcc20e8220ef3a3e56b7350324d0f2e", 35782, 7,
+        "F01/F05: sys.path 注入指向自身目录（那里没有 canonical_store），改为跨包相对导入；"
+        "store_view 成为统一搜索的真实读面"),
+    "domains/work/control/snapshot_validator.py": (
+        "6386e226849c4071c12ee205165ac3cba4bde42305f4a114984208ae359d9f92", 42759, 7,
+        "F01: 词表所属模块迁入 domains/work/orchestration，裸名从不解析导致两个集合为空"),
+    "tests/legacy/work/test_repair_pack_projection.py": (
+        "3ee5e070cf821130b56191c0864d1b3493f3f169aa02543c6e9295c6113b97ba", 31728, 27,
+        "本轮 L17: 被试对象按仓库路径 exec 导致安装态不可测，改为包内导入"),
+    "tests/legacy/work/test_repair_verification.py": (
+        "6dd7aebe3ee9eaf56a8290aa1ba63875626aa804f849328166e1fcd7487b996b", 26564, 28,
+        "本轮 L17: 去掉对仓库根的隐式依赖，改按 __file__/资源搜索解析被试对象"),
+    "tests/legacy/design/test_knowledge_library.py": (
+        "109354c2742f49b1d1005cfde7ca342310b83f9a4479f5cd4ef32477f3d23aa5", 44162, 70,
+        "本轮 L12 + L17: 新增同修订并发写者竞争测试；去掉仓库根隐式依赖"),
+    "tests/legacy/design/test_assistance_plan.py": (
+        "6d854443635f5922d21c11f3526270502dd0aa87256c934e6c24c749e91ba891", 51127, 45,
+        "本轮 L17: 按名称暂存 shell.ts 的用例改为不依赖仓库根解析"),
+}
+
 
 class MigrationRefused(RuntimeError):
     """A preflight condition that makes writing the target unsafe."""
@@ -660,8 +758,30 @@ def _entry(path: Path, target: Path, target_rel: str) -> dict:
         row.update(state="EOL_ONLY", reason="identical text; the on-disk line endings differ "
                                            "from what write_text produced historically")
     else:
-        row.update(state="MODIFIED", reason="the target holds bytes this tool would not write")
+        declared = _declared_rework_for(target)
+        if declared is None:
+            row.update(state="MODIFIED",
+                       reason="the target holds bytes this tool would not write, and nothing "
+                              "declares why")
+        else:
+            digest, size, delta, why = DECLARED_REWORK[declared]
+            attested = row["sha256_target"] == digest and len(actual) == size
+            row.update(state="MODIFIED", declared_rework=declared, rework_attested=attested,
+                       rework_diff_lines=delta, rework_reason=why,
+                       reason=("declared rework; target bytes match the attestation" if attested
+                               else "declared rework but the bytes moved since it was attested "
+                                    "— re-verify the edit and re-attest") + " | " + why)
     return row
+
+
+def _declared_rework_for(target: Path) -> str | None:
+    """Repo-relative key for a target path, matched by suffix so a short rehearsal root
+    (Windows MAX_PATH workaround) still resolves the same declaration."""
+    posix = str(target).replace("\\", "/")
+    for key in DECLARED_REWORK:
+        if posix.endswith("/" + key):
+            return key
+    return None
 
 
 def build_plan(target_root: Path = TARGET_ROOT) -> dict:
@@ -790,6 +910,18 @@ def main(argv=None) -> int:
     summary = plan["summary"]
     report = {"target_root": str(TARGET_ROOT), "summary": summary,
               "unmanaged": plan["unmanaged"],
+              # MODIFIED used to be one undifferentiated thing. Declared rework whose bytes
+              # still match its attestation is reported apart from rework nobody can explain;
+              # the apply step refuses BOTH, because it only ever writes bytes it can
+              # reproduce, so this only changes what a read-only plan run tells a reader.
+              "rework": {"modified_total": summary.get("MODIFIED", 0),
+                         "declared_attested": sum(1 for row in plan["entries"]
+                                                  if row["state"] == "MODIFIED"
+                                                  and row.get("rework_attested")),
+                         "unattested": [str(row["target"]).replace("\\", "/")
+                                        for row in plan["entries"]
+                                        if row["state"] == "MODIFIED"
+                                        and not row.get("rework_attested")]},
               "refusals": [row for row in plan["entries"]
                            if row["state"] in ("MODIFIED", "PATCH_ANCHOR_ABSENT")][:200],
               "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
@@ -828,7 +960,8 @@ def main(argv=None) -> int:
                       "unmanaged_count": len(plan["unmanaged"])}, ensure_ascii=False))
     if args.apply:
         return 0
-    return 1 if (summary.get("PATCH_ANCHOR_ABSENT") or summary.get("MODIFIED")) else 0
+    unattested = report["rework"]["unattested"]
+    return 1 if (summary.get("PATCH_ANCHOR_ABSENT") or unattested) else 0
 
 
 if __name__ == "__main__":
