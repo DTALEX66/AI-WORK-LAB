@@ -256,6 +256,15 @@ Codex 复审的复跑命令在本轮有增补：
 %PY% -B -X utf8 scripts\candidate_snapshot.py
 ```
 
+另有一处**先前就存在、本轮才现形**的登记面缺陷：`write_text(...)` 不传 `newline=""` 时，
+Python 会把每个 `\n` 翻成 `\r\n`，而 csv.writer 的行尾本来就是 `\r\n` —— 于是 `migration/mapping.csv`
+与 `migration/design-tasks.csv` 每一行后面都跟了一个幻影空行（838 与 51 处）。`DictReader`
+静默跳过空行，所以行数、状态直方图与所有下游测试一直是绿的，只有按字节比对才看得见。
+现在两个写入点都显式 `newline=""`，并由
+`tests/unified/test_v14_registers.py::test_no_register_carries_a_doubled_line_ending`
+按原始字节扫全部登记（读文本的检查看不到这个问题）。同一条纪律也用于本轮新出的登记表：
+校验一律 `--check`，不写跟踪文件。
+
 门的新语义（复审时请按这个读）：`--blockers` 缺席时 `batch_readiness.scope` 标为
 `IN_STORE_CLAIMS_ONLY` 并给 warning，不再沉默；必做阶段的非通过条款一律阻断；P2/P3 与 owner
 明确移出义务的条款进 `disclosed` 列表并带出处，不阻断也不消失。**因此本轮的门输出是

@@ -239,12 +239,20 @@ _COLUMNS = ("任务", "期", "条款序号", "条款原文", "结论", "证据�
 
 
 def _csv_text(rows: list[dict]) -> str:
+    """Render the register as CRLF CSV.
+
+    csv.writer already terminates rows with \\r\\n, so the previous post-pass
+    .replace("\\n", "\\r\\n") turned every row end into "\\r\\r\\n": readers using
+    DictReader skipped the resulting empty rows silently, so nothing looked wrong until a
+    byte-level comparison of "the same" register came out different.
+    """
     buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=list(_COLUMNS), extrasaction="ignore")
+    writer = csv.DictWriter(buffer, fieldnames=list(_COLUMNS), extrasaction="ignore",
+                            lineterminator="\r\n")
     writer.writeheader()
     for row in rows:
         writer.writerow(row)
-    return buffer.getvalue().replace("\n", "\r\n")
+    return buffer.getvalue()
 
 
 def _routes() -> set[tuple[str, str]]:
@@ -281,7 +289,10 @@ def _resolve(kind: str, target: str) -> tuple[bool, str]:
             if "::" in target:
                 key = target.split("::", 1)[1]
                 return (key in document), f"JSON 顶层键 {key}"
-            return True, f"跟踪 JSON 可解析（{len(document)} 顶层键）"
+            # the number of top-level keys is deliberately NOT written into the ledger: it
+            # is the first thing a document gains when a field is added, and baking it here
+            # made this register byte-unstable against unrelated edits
+            return True, "跟踪 JSON 可解析"
         return True, "跟踪文件存在"
     path = TARGET_ROOT / target.split("::", 1)[0]
     if not path.is_file():
@@ -303,6 +314,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--json-out")
     parser.add_argument("--fail-on", default="GAP",
                         help="最低失败结论：GAP（默认）或 PARTIAL")
+    parser.add_argument("--check", action="store_true",
+                        help="rebuild and compare only; never write the tracked register")
     args = parser.parse_args(argv[1:])
 
     pack = json.loads(PACK.read_text(encoding="utf-8-sig"))
@@ -334,7 +347,18 @@ def main(argv: list[str]) -> int:
                          ensure_ascii=True), file=sys.stderr)
         return 2
     rows.sort(key=lambda row: (row["任务"], row["条款序号"]))
-    OUT_CSV.write_text(_csv_text(rows), encoding="utf-8-sig", newline="")
+    rendered = _csv_text(rows)
+    drift = None
+    if args.check:
+        # verification must not be a writer: a bare "check the register" run that rewrites a
+        # tracked file makes the audited tree dirty for the next measurement.
+        # Newlines are folded on both sides: the register is written CRLF (csv convention)
+        # while read_text hands back LF, and that difference is not a content drift.
+        on_disk = (OUT_CSV.read_text(encoding="utf-8-sig").replace("\r\n", "\n")
+                   if OUT_CSV.is_file() else None)
+        drift = on_disk != rendered.replace("\r\n", "\n")
+    else:
+        OUT_CSV.write_text(rendered, encoding="utf-8-sig", newline="")
 
     histogram = {status: sum(1 for row in rows if row["结论"] == status) for status in STATUSES}
     mandatory = [row for row in rows if row["期"] in ("P0", "P1")]
@@ -347,6 +371,7 @@ def main(argv: list[str]) -> int:
                             for status in STATUSES},
         unresolved=sorted({row["证据目标"] for row in rows if row["机验结果"].startswith("未解析")}),
         sum_check=sum(histogram.values()) == len(rows),
+        register_drift=drift,
     )
     payload = json.dumps(summary, ensure_ascii=False, indent=2)
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
@@ -362,7 +387,7 @@ def main(argv: list[str]) -> int:
     hard = [row for row in rows if row["期"] in ("P0", "P1") and row["结论"] == "GAP"]
     print(json.dumps(dict(rows=len(rows), mandatory_hard_gaps=len(hard),
                           listed_blockers=len(blockers)), ensure_ascii=True))
-    return 1 if hard else 0
+    return 1 if (hard or drift) else 0
 
 
 if __name__ == "__main__":

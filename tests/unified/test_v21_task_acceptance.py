@@ -89,12 +89,23 @@ def test_unresolved_evidence_is_downgraded_never_deleted():
         assert row["条款原文"].strip(), row
 
 
-def test_rerunning_the_builder_does_not_change_the_register():
+def test_check_mode_reproduces_the_register_without_writing_it():
+    """A verification run must not be a writer.
+
+    The first version of this test called the builder in its normal mode and compared the
+    result, which rewrote a tracked register during the suite — the audited tree went dirty
+    mid-measurement, and the register was byte-unstable against any unrelated field added
+    to a document it merely cites. --check rebuilds in memory and only compares.
+    """
     before = OUT_CSV.read_bytes()
-    code = main(["build_task_acceptance_register.py"])
-    assert code in (0, 1), code
-    after = OUT_CSV.read_bytes()
-    assert before == after, "the register is generated, so a rerun must be byte-identical"
+    check = subprocess.run([sys.executable, "-B",
+                            str(TARGET_ROOT / "scripts" / "build_task_acceptance_register.py"),
+                            "--check"], cwd=str(TARGET_ROOT), capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=600)
+    tail = check.stdout.strip().splitlines()[-1] if check.stdout.strip() else ""
+    assert '"register_drift": false' in check.stdout, check.stdout[-1200:]
+    assert check.returncode == 0, (tail, check.stderr[-500:])
+    assert OUT_CSV.read_bytes() == before, "a --check run wrote the tracked register"
 
 
 DEFERRAL = TARGET_ROOT / "migration" / "deferral-register.json"

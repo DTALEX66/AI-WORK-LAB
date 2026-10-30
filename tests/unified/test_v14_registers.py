@@ -486,3 +486,21 @@ def test_every_adobe_host_bridge_is_packaged_and_byte_identical():
     assert b"illustrator" in illustrator_com._bridge().lower()
     assert photoshop_com is not None
 
+
+def test_no_register_carries_a_doubled_line_ending():
+    """``write_text`` without ``newline=""`` translates every \\n into \\r\\n, so a CSV that
+    already ended rows with \\r\\n comes out as \\r\\r\\n: one phantom empty row per record.
+
+    DictReader skips empty rows silently, so row counts, status histograms and every
+    downstream test stayed green while two shipped registers were byte-malformed. This
+    guard reads raw bytes because no text-mode reader can see the defect.
+    """
+    offenders = {}
+    for path in sorted((TARGET_ROOT / "migration").rglob("*.csv")):
+        blob = path.read_bytes()
+        doubled = blob.count(b"\r\r\n")
+        if doubled:
+            offenders[path.name] = doubled
+    assert offenders == {}, ("registers with doubled line endings (phantom empty rows): "
+                             + str(offenders))
+

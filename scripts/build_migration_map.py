@@ -276,7 +276,7 @@ def main() -> int:
         })
 
     (contain(TARGET_ROOT, OUT_DIR, "mapping.csv")).write_text(
-        csv_text(mapping_rows), encoding="utf-8-sig")
+        csv_text(mapping_rows), encoding="utf-8-sig", newline="")
 
     # 50 current design tasks: definitions frozen at source, status not inherited.
     design_task_rows = []
@@ -299,7 +299,7 @@ def main() -> int:
             "说明": "定义与状态分离；旧DONE不继承；重叠任务归并到同一新实施项",
         })
     (contain(TARGET_ROOT, OUT_DIR, "design-tasks.csv")).write_text(
-        csv_text(design_task_rows), encoding="utf-8-sig")
+        csv_text(design_task_rows), encoding="utf-8-sig", newline="")
 
     write_stamped(contain(TARGET_ROOT, OUT_REVIEW_DIR, "unclassified-review.json"), {
         "reviewed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
