@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/canonical-config-intent/v1",
+  "title": "WORK-LAB Canonical Config Intent",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "intentId",
+    "client",
+    "intent",
+    "plan"
+  ],
+  "properties": {
+    "intentId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "client": {
+      "enum": [
+        "hermes",
+        "codex",
+        "dsh",
+        "github",
+        "opendesign",
+        "openhuman"
+      ]
+    },
+    "intent": {
+      "type": "object",
+      "required": [
+        "type",
+        "target"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "set-field",
+            "add-skill",
+            "remove-skill",
+            "enable-plugin",
+            "disable-plugin",
+            "update-model",
+            "custom"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {},
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "required": [
+        "diff",
+        "approval_required"
+      ],
+      "properties": {
+        "diff": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "operation"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "operation": {
+                "enum": [
+                  "add",
+                  "modify",
+                  "remove"
+                ]
+              },
+              "current_value": {},
+              "proposed_value": {},
+              "file": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "approval_required": {
+          "type": "boolean"
+        },
+        "idempotency_key": {
+          "type": "string"
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "pending_approval",
+        "approved",
+        "applied",
+        "rolled_back",
+        "rejected"
+      ]
+    },
+    "applied_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rollback_of": {
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "work-lab/canonical-config-intent/v1"
+    }
+  },
+  "additionalProperties": false
+}

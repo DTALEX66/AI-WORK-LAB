@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:design-lab:profile-evidence:v1",
+  "$comment": "SPDX-License-Identifier: MIT. Assertions from controlled probe producers; hashes prove integrity, not independent acceptance.",
+  "$ref": "#/$defs/evidence",
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[a-f0-9]{64}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "source",
+        "receipt",
+        "observed_at",
+        "expires_at"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "PASS",
+            "DENIED",
+            "UNKNOWN"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/text"
+        },
+        "receipt": {
+          "$ref": "#/$defs/ref"
+        },
+        "observed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/timestamp"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "profile_id",
+        "repo_sha",
+        "os",
+        "host_version",
+        "adapter_version",
+        "level",
+        "observed_at",
+        "expires_at",
+        "launch",
+        "capabilities",
+        "conditions",
+        "purposes",
+        "regions",
+        "fixture",
+        "artifact",
+        "readback",
+        "rollback",
+        "action"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "design-lab/profile-evidence/v1"
+        },
+        "profile_id": {
+          "$ref": "#/$defs/text"
+        },
+        "repo_sha": {
+          "type": "string",
+          "pattern": "^(?!0{40}$)[a-f0-9]{40}$"
+        },
+        "os": {
+          "$ref": "#/$defs/text"
+        },
+        "host_version": {
+          "$ref": "#/$defs/text"
+        },
+        "adapter_version": {
+          "$ref": "#/$defs/text"
+        },
+        "level": {
+          "enum": [
+            "E0",
+            "E1",
+            "E2",
+            "E3",
+            "E4",
+            "E5"
+          ]
+        },
+        "observed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "launch": {
+          "enum": [
+            "PASS",
+            "DENIED",
+            "UNKNOWN"
+          ]
+        },
+        "readback": {
+          "enum": [
+            "PASS",
+            "DENIED",
+            "UNKNOWN"
+          ]
+        },
+        "rollback": {
+          "enum": [
+            "PASS",
+            "DENIED",
+            "UNKNOWN"
+          ]
+        },
+        "action": {
+          "$ref": "#/$defs/text"
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "format",
+              "operation",
+              "editable",
+              "offline"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9.+_-]{0,31}$"
+              },
+              "operation": {
+                "$ref": "#/$defs/text"
+              },
+              "editable": {
+                "type": "boolean"
+              },
+              "offline": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "conditions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "license",
+            "region",
+            "resources",
+            "dependencies"
+          ],
+          "properties": {
+            "license": {
+              "$ref": "#/$defs/condition"
+            },
+            "region": {
+              "$ref": "#/$defs/condition"
+            },
+            "resources": {
+              "$ref": "#/$defs/condition"
+            },
+            "dependencies": {
+              "$ref": "#/$defs/condition"
+            }
+          }
+        },
+        "purposes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "regions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "fixture": {
+          "$ref": "#/$defs/ref"
+        },
+        "artifact": {
+          "$ref": "#/$defs/ref"
+        },
+        "model_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resource_capacity": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000000
+          }
+        }
+      }
+    }
+  }
+}

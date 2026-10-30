@@ -1,0 +1,221 @@
+# SPDX-License-Identifier: MIT
+# PEP 621 metadata for AI-WORK-LAB, setuptools back end.
+#
+# WHY THIS FILE EXISTS (audit F06, 2026-10-30). Before it,
+#   python -m pip install --no-index --no-deps --no-build-isolation --target <dir> <ROOT>
+# died with "Directory ... is not installable. Neither 'setup.py' nor 'pyproject.toml'
+# found." (.project-local/audit/20261030-codex-independent/offline-install.json,
+# exit 1). Nothing here changes runtime code: it only declares what is already
+# importable in the checkout, so an installed tree can answer the same reads.
+#
+# LAYOUT. The checkout is not a src layout; the importable units sit at three
+# different depths and one of them is reached today by a hand-written sys.path
+# insert (backend/app.py, tests/conftest.py both add `domains/design`). The
+# package-dir mapping below replaces that insert for the installed tree:
+#   backend                     -> ./backend                       (composition root)
+#   domains[.work.*]            -> ./domains                       (WORK-LAB domain)
+#   design_lab[.*]              -> ./domains/design/design_lab     (DESIGN-LAB package)
+# `domains.design` is listed so `import domains.design` still resolves, but
+# `domains.design.design_lab` deliberately is NOT: shipping it a second time
+# would copy the same 7 MB of modules and resources into the wheel under two
+# names, and no code in this repository imports that spelling.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-work-lab"
+# Same string as backend/__init__.py:__version__, which is what /api/v1/health
+# reports; the two must not be able to disagree.
+version = "0.1.0-alpha.0+fusion.r1"
+description = "AI-WORK-LAB unified local backend: DESIGN-LAB design intelligence plus the WORK-LAB work loop"
+requires-python = ">=3.11"
+dependencies = [
+  # jsonschema: a hard import on both domain paths
+  # (domains/work/control/control_service.py `import jsonschema`;
+  #  design_lab/governance/r5_contract.py, readiness/*, creative/* import
+  #  Draft202012Validator at module level). Present in .venv (4.26.0).
+  "jsonschema>=4.18,<5",
+  # Pillow: module-level `from PIL import Image` in
+  # design_lab/adapters/{photoshop_com,illustrator_com}.py and
+  # packages/capabilities/reconstruction/adobe_lowering.py. Present in .venv
+  # (13.0.0).
+  "Pillow>=11,<14",
+  # PyYAML: a genuine runtime import, but a lazy one
+  # (domains/work/control/control_service.py:_field_presence parses a config
+  # document to answer "does this key exist"). NOT PRESENT in .venv and NOT
+  # obtainable offline, so this release is installable-but-degraded for that
+  # one read: the call answers DOCUMENT_UNPARSEABLE instead of a verdict. It
+  # stays declared because hiding a real import would be a false dependency
+  # list, and it is recorded as a gap in the F06 report rather than installed
+  # from the network.
+  "PyYAML>=6,<7",
+]
+
+[project.scripts]
+# backend/__main__.py:main exists and is the whole CLI: it reads the service
+# token from stdin, binds 127.0.0.1 on --port (0 = free) and serves both
+# domains. Note that `pip install --target` does not generate console-script
+# wrappers, so verification runs `python -m backend` and imports main
+# directly; the entry point is declared for normal prefix installs.
+ai-work-lab = "backend.__main__:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+  "backend",
+  "backend.core",
+  "domains",
+  "domains.design",
+  "domains.work",
+  "domains.work.control",
+  "domains.work.orchestration",
+  "domains.work.workflow_core",
+  "design_lab",
+  "design_lab.adapters",
+  "design_lab.analysis",
+  "design_lab.assurance",
+  "design_lab.creative",
+  "design_lab.creative.generative",
+  "design_lab.creative.media",
+  "design_lab.generators",
+  "design_lab.governance",
+  "design_lab.interop",
+  "design_lab.readiness",
+  "design_lab.reconstruction",
+  "design_lab.reconstruction.providers",
+  "design_lab.resources.reconstruction",
+  "design_lab.resources.workbench",
+  "design_lab.runtime",
+  # Third-party source records the capability library reads (see the
+  # package-dir mappings below). These three names are NOT importable and are
+  # not meant to be: `analysis/capability_library.py:222` probes
+  #   files("design_lab").joinpath("resources", "capability-library")
+  # and the last two segments carry hyphens, which no importable package name
+  # can spell. setuptools turns a dotted name into a directory path and nothing
+  # else, so mapping them is the only way to put those bytes inside the package
+  # without writing into domains/** -- the alternative the code already offers
+  # (REPO_ROOT = parents[4] of the module) is unreachable in an installed tree.
+  "design_lab.resources.capability-library.vendor",
+  "design_lab.resources.capability-library.research.candidates",
+  "design_lab.resources.capability-library.design-lab.readiness",
+  # Data-only directories, shipped to mirror the repository root inside the
+  # install tree. They carry no __init__.py (setuptools treats them as
+  # namespace packages, which is fine) and no Python modules are claimed from
+  # `packages.capabilities`: nothing in the runtime import closure imports it.
+  # They are here because WORK-LAB code spells its contract paths relative to
+  # the repository root, computed by walking up from the module:
+  #   domains/work/control/control_service.py  _ROOT = parents[3]
+  #   domains/work/control/solution_library.py parents[3]
+  # parents[3] of <install-root>/domains/work/control/x.py IS <install-root>,
+  # so <install-root>/packages/contracts/... is the only place those reads can
+  # succeed once installed. `migration` rides the same rule for the audit
+  # ledger files tests/unified/test_v07_migration.py opens.
+  #
+  # `config` is the same rule a third time, added in this run because the first
+  # build shipped `domains/work/orchestration/resources.py` but not the directory
+  # that file resolves against, so an installed tree answered every WORK registry
+  # read as "missing":
+  #   domains/work/orchestration/resources.py:31  REPO_ROOT = PACKAGE_ROOT.parents[2]
+  #                             -> <install>/config   (CONFIG_DIR, resources.py:32)
+  #   domains/work/control/composition_root.py:57 _ROOT = parents[3]  -> <install>
+  #   domains/work/control/composition_root.py:65 _ROOT / "config" / "software-registry.json"
+  #   domains/work/control/snapshot_validator.py:74 _REPO_ROOT = parents[3], reads
+  #                             config/capability-matrix.json
+  #   domains/work/workflow_core/repair_pack_projection.py:714 root / "config" /
+  #                             "adapter-registry.json"
+  # Those four call sites spell `config/` against the repository root and no
+  # packaged copy exists anywhere else in the tree (resources.py's own docstring,
+  # lines 15-30, is what makes the root the single location), so the root
+  # directory has to travel. Same fail-closed trade-off already taken for
+  # `packages` and `migration`: a top-level data directory appears in the install
+  # root. `__init__.py` is absent in all three, on purpose -- nothing imports
+  # `config`, and shipping it is about paths, not about a new import name.
+  "config",
+  "packages",
+  "migration",
+]
+
+[tool.setuptools.package-dir]
+design_lab = "domains/design/design_lab"
+# design_lab.reconstruction is the one package whose implementation does not live
+# under design_lab in this checkout. domains/design/design_lab/reconstruction/__init__.py
+# is a source-checkout BRIDGE: it appends
+# `<repo-root>/packages/capabilities/reconstruction` to __path__, which only works
+# while the interpreter can walk up to a real repository root -- and an installed
+# wheel has none. The served import closure needs it
+# (design_lab/analysis/plan_to_rir.py and design_lab/native_plan.py both do
+# `from ..reconstruction.contracts import validate_rir`), so the two directories are
+# mapped onto each other and the wheel carries the canonical package initialiser
+# instead of the bridge. This mirrors what the predecessor project's wheel did with
+# hatch force-include (design-lab/pyproject.toml, "packages/capabilities/reconstruction/
+# {__init__,contracts,adobe_job,adobe_lowering}.py" -> "design_lab/reconstruction/..."),
+# expressed as pure package-dir mapping. Consequence, stated rather than hidden: the
+# installed tree has NO importable `packages.capabilities.reconstruction` -- those
+# modules exist only as design_lab.reconstruction.*; and the bridge file under
+# domains/design/design_lab/reconstruction/ is not shipped on purpose.
+"design_lab.reconstruction" = "packages/capabilities/reconstruction"
+"design_lab.reconstruction.providers" = "packages/capabilities/reconstruction/providers"
+# design_lab/reconstruction/contracts.py validates every RIR against a committed
+# schema, and it looks for that schema in exactly one place once installed:
+#   files('design_lab') / 'resources' / 'reconstruction' / name
+# (its source-checkout branch reads <repo-root>/design-lab/schemas/reconstruction).
+# Those two bytes therefore have to be inside the package. The mapping below puts
+# the committed schema directory at the installed location under the name the code
+# probes -- the setuptools equivalent of the predecessor's
+# `"design-lab/schemas/reconstruction/reconstruction-ir.schema.json" =
+#  "design_lab/resources/reconstruction/reconstruction-ir.schema.json"` lines.
+"design_lab.resources.reconstruction" = "design-lab/schemas/reconstruction"
+# design_lab/workbench.py serves exactly three documents and probes
+#   files('design_lab') / 'resources' / 'workbench' / name
+# first, falling back to <repo-root>/apps/workbench only in a source checkout.
+# Without this mapping an installed wheel 500s on /workbench AND on /api/health,
+# because _health reports the served bundle's digest through the same resolver --
+# measured in this run: installed /api/health answered 503 PROJECT_STORE_UNAVAILABLE
+# until these three files shipped. Listed by name, never by directory: the
+# predecessor project learned the hard way that a whole-directory include dragged
+# apps/workbench/node_modules (tens of megabytes) into every local wheel build.
+"design_lab.resources.workbench" = "apps/workbench"
+# The capability library's four inputs keep the repository's own spelling under a
+# packaged root, because capability_library.py joins these same relative paths onto
+# whatever root it picked (LOCK_REL/REVISIONS_REL/RADAR_REL/TAXONOMY_REL at lines
+# 27-30) and its packaged root is fixed at resources/capability-library. Source
+# bytes: vendor/sources.lock.json, vendor/sources.revisions.json,
+# research/candidates/CANDIDATE-TAXONOMY.json, design-lab/readiness/model-radar.json.
+"design_lab.resources.capability-library.vendor" = "vendor"
+"design_lab.resources.capability-library.research.candidates" = "research/candidates"
+"design_lab.resources.capability-library.design-lab.readiness" = "design-lab/readiness"
+
+[tool.setuptools.package-data]
+# Everything the read paths open at run time is already inside the package:
+# design_lab/resources/state/*.sql (runtime/state_resources.py:state_schema)
+# and design_lab/resources/repo/** (runtime/state_resources.py:repo_resource),
+# which carries the 13 domain packs, all schema contracts, config/*.json,
+# production/profiles, readiness/*.json, integrations/adapter-registry.json
+# and the archived manifest. A recursive glob is used instead of the
+# predecessor project's file-by-file force-include list, because here the
+# bytes already live under the package directory. The `.*` companion pattern is
+# not decoration: Python's glob never matches a leading dot, so without it the
+# wheel silently loses config/.verify-chain-ok (464 of 465 resource bytes).
+"design_lab" = ["resources/**/*", "resources/**/.*"]
+"design_lab.resources.reconstruction" = ["*.json"]
+"design_lab.resources.workbench" = ["index.html", "style.css", "build/main.js"]
+# The capability library's packaged root, named exactly as the code probes it.
+"design_lab.resources.capability-library.vendor" = ["*.json"]
+"design_lab.resources.capability-library.research.candidates" = ["CANDIDATE-TAXONOMY.json"]
+"design_lab.resources.capability-library.design-lab.readiness" = ["model-radar.json"]
+# The WORK registries migrated by scripts/migrate_work_modules.py (F01, change
+# class c): all five JSON documents at the repository root, read through
+# domains/work/orchestration/resources.py. Listed by extension, not per file, so a
+# registry added to config/ next month is carried without editing this file.
+"config" = ["*.json"]
+"packages" = ["contracts/**/*"]
+"migration" = ["*.csv", "*.json", "*.md", "review/**/*"]
+
+[tool.setuptools.exclude-package-data]
+# Byte-code and dependency trees must never reach the wheel. apps/workbench is
+# mapped in by name only (index.html, style.css, build/main.js); this guard is
+# what keeps node_modules and __pycache__ out even if a pattern is widened later.
+"*" = ["__pycache__/*", "__pycache__/**/*", "*.pyc", "*.pyo", "node_modules/*",
+       "node_modules/**/*", ".mimosa/*", ".mimosa/**/*"]

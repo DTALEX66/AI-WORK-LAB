@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/design-project-state.schema.json",
+  "title": "DesignProject State (V2 kernel)",
+  "description": "唯一权威设计项目状态（DL-V2 P1-A）。设计过程保存为显式状态而非聊天消息；每次修改产生 State N -> command/decision -> State N+1 -> quality evaluation。",
+  "type": "object",
+  "required": [
+    "project_id",
+    "schemaVersion",
+    "stage",
+    "quality_status",
+    "revision",
+    "history",
+    "objects"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/design-project-state/v2"
+    },
+    "stage": {
+      "enum": [
+        "draft",
+        "research",
+        "direction",
+        "system",
+        "variant",
+        "critique",
+        "revision",
+        "approved",
+        "render",
+        "preflight",
+        "packaged",
+        "delivered",
+        "archived"
+      ]
+    },
+    "quality_status": {
+      "enum": [
+        "pending",
+        "passed",
+        "failed",
+        "blocked"
+      ]
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "user_mode": {
+      "enum": [
+        "guided",
+        "copilot",
+        "director",
+        "method",
+        "production"
+      ]
+    },
+    "domain": {
+      "type": "string"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "at",
+          "from_stage",
+          "to_stage",
+          "reason"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from_stage": {
+            "type": "string"
+          },
+          "to_stage": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "objects": {
+      "type": "object",
+      "properties": {
+        "brief": {
+          "type": "string",
+          "description": "brief object id or ref"
+        },
+        "researchSet": {
+          "type": "string"
+        },
+        "referenceDna": {
+          "type": "string"
+        },
+        "directionSet": {
+          "type": "string"
+        },
+        "system": {
+          "type": "string"
+        },
+        "variantSet": {
+          "type": "string"
+        },
+        "critique": {
+          "type": "string"
+        },
+        "selectedVariant": {
+          "type": "string"
+        },
+        "qualityReport": {
+          "type": "string"
+        },
+        "preflightReport": {
+          "type": "string"
+        },
+        "deliveryManifest": {
+          "type": "string"
+        },
+        "memoryRecords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

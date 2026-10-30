@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/delivery-receipt.schema.json",
+  "title": "delivery-receipt",
+  "description": "Receipt of a delivered production artifact. status is enum-constrained (F03: free-string status rejected).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "receipt_id",
+    "schemaVersion",
+    "delivery_id",
+    "status",
+    "delivered_at"
+  ],
+  "properties": {
+    "receipt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/delivery-receipt/v1"
+    },
+    "delivery_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "PENDING",
+        "DELIVERED",
+        "PARTIAL",
+        "REJECTED",
+        "FAILED"
+      ]
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "artifact_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    },
+    "note": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/media-audio-provider.json",
+  "title": "DESIGN-LAB audio provider declaration (DL-P1-140)",
+  "description": "Structural declaration of the ASR/TTS/SFX/music provider contract and its local external model inventory. Models are named by path alias key only: an absolute user path is never stored in a repository document. A model may only be QUALIFIED with a measured host-live receipt, and no model is enabled by default.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "provider_id",
+    "adapter_version",
+    "evidence_level",
+    "host_execution",
+    "declared_aliases",
+    "stages",
+    "models"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/media-audio-provider/v1"
+    },
+    "provider_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "adapter_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_level": {
+      "enum": ["E0", "E1", "E2", "E3", "E4", "E5"]
+    },
+    "host_execution": {
+      "const": "NOT_EXECUTED"
+    },
+    "declared_aliases": {
+      "description": "Alias keys that may be used as path_ref. Keys only, never paths.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+      }
+    },
+    "stages": {
+      "description": "One declaration per audio stage. supported=true requires a measured receipt and is never produced by a structural build.",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stage",
+          "supported",
+          "evidence",
+          "note",
+          "evidence_requirements"
+        ],
+        "properties": {
+          "stage": {
+            "enum": ["asr", "tts", "sfx", "music"]
+          },
+          "supported": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "enum": ["E0", "E1", "E2", "E3", "E4", "E5"]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_requirements": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "models": {
+      "description": "Local external assets. Nothing here is bundled, downloaded or enabled.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "model_id",
+          "path_ref",
+          "sha256",
+          "license_id",
+          "qualification",
+          "defaultEnabled",
+          "evidence",
+          "note"
+        ],
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+          },
+          "path_ref": {
+            "description": "Path alias key, never an absolute or relative user path.",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:(?!0{64}$)[0-9a-f]{64}$"
+          },
+          "license_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "qualification": {
+            "enum": [
+              "QUALIFIED",
+              "UNQUALIFIED_DECLARED",
+              "UNQUALIFIED_NOT_INSTALLED",
+              "UNQUALIFIED_CHECKSUM",
+              "DISABLED_LICENSE_CONFLICT"
+            ]
+          },
+          "defaultEnabled": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "enum": ["E0", "E1", "E2", "E3", "E4", "E5"]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "host_live_reference": {
+            "description": "Measured receipt that justified QUALIFIED. An identifier, not a path and not a URL.",
+            "type": "string",
+            "pattern": "^host-live:[^\\s]+$"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "qualification": {
+                  "const": "QUALIFIED"
+                }
+              },
+              "required": ["qualification"]
+            },
+            "then": {
+              "required": ["host_live_reference"]
+            },
+            "else": {
+              "properties": {
+                "defaultEnabled": {
+                  "const": false
+                }
+              },
+              "required": ["defaultEnabled"]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

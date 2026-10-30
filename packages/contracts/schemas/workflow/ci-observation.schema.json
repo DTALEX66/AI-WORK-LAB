@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/ci-observation.schema.json",
+  "title": "Workflow CI Observation Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_id", "repository", "commit", "state", "observed_at", "retry_budget"],
+  "properties": {
+    "schema_version": {"const": "workflow/ci-observation/v1"},
+    "observation_id": {"type": "string", "minLength": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "commit": {"type": "string", "minLength": 1},
+    "state": {"enum": ["NOT_REQUESTED", "TRIGGER_EXPECTED", "DISCOVERING", "QUEUED_NO_JOB", "QUEUED_WITH_JOB", "RUNNING", "SUCCEEDED", "FAILED_PRODUCT", "FAILED_INFRASTRUCTURE", "CI_OUTAGE", "PLATFORM_OUTAGE", "CI_RATE_LIMITED", "TIMED_OUT", "CANCELLED", "STALE", "BLOCKED", "DEFERRED_CI"]},
+    "workflow": {"type": ["string", "null"], "minLength": 1},
+    "run_id": {"type": ["integer", "string", "null"]},
+    "attempt": {"type": ["integer", "null"], "minimum": 1},
+    "queue_age_seconds": {"type": ["integer", "null"], "minimum": 0},
+    "job_count": {"type": ["integer", "null"], "minimum": 0},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "next_observation_at": {"type": ["string", "null"], "format": "date-time"},
+    "retry_budget": {"type": "integer", "minimum": 0},
+    "message": {"type": "string"}
+  }
+}

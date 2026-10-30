@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/run-event.schema.json",
+  "title": "Workflow Run Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "run_id",
+    "task_id",
+    "phase",
+    "status",
+    "timestamp"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/run-event/v1"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "enum": [
+        "planning",
+        "approval",
+        "execution",
+        "observation",
+        "delivery",
+        "review",
+        "rollback"
+      ]
+    },
+    "status": {
+      "enum": [
+        "QUEUED",
+        "PLANNING",
+        "WAITING_APPROVAL",
+        "RUNNING",
+        "RETRYING",
+        "PAUSED",
+        "BLOCKED",
+        "REVIEWING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "checkpoint": {
+          "type": "string"
+        },
+        "error_code": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

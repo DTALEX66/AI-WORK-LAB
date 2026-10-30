@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/config/tool-resolution.schema.json",
+  "title": "Tool Resolution Receipt (Prompt B-B/E, DL-CLOUD-2026-09-25)",
+  "description": "GENERATED CONTEXT, not SSOT. One record per tool launch/resolution attempt. status semantics: FOUND (path exists, not yet verified), VERIFIED (FOUND + expected sha256 or version observed-matched), MISSING (no candidate resolved; fix is actionable, no install attempted), AMBIGUOUS (multiple writable candidates; fail closed, caller must pick), BLOCKED (unregistered logical_id, or an install action without a valid install-authorization receipt). locator_method is the single winning strategy; version/sha256 are observed-only and null unless actually observed (never fabricated).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "logical_id", "candidate_locations", "resolved_path",
+    "version", "sha256", "locator_method", "verified_at", "status", "fix"
+  ],
+  "properties": {
+    "schema_version": { "const": "design-lab/tool-resolution/v1" },
+    "logical_id": { "type": "string", "minLength": 1 },
+    "candidate_locations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Every location checked, in strategy order, with the strategy name."
+    },
+    "resolved_path": { "type": ["string", "null"] },
+    "version": { "type": ["string", "null"], "description": "Observed only. Null unless a version probe was actually run." },
+    "sha256": { "type": ["string", "null"], "description": "Observed only. Null unless a hash was actually computed or matched." },
+    "locator_method": { "enum": ["explicit", "env", "registry-metadata", "path", "canonical-root", null] },
+    "verified_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}" },
+    "status": { "enum": ["FOUND", "VERIFIED", "MISSING", "AMBIGUOUS", "BLOCKED"] },
+    "fix": { "type": "string" }
+  }
+}

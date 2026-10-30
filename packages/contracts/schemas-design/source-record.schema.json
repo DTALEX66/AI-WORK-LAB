@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/source-record.schema.json",
+  "title": "SourceRecord — 受治理知识来源记录（唯一来源对象）",
+  "description": "DL-KNW-001 唯一来源对象。所有外部来源事实必须封装为标准 SourceRecord；禁止维护两套不一致字段。Git 来源 version 必须是完整 40 位 commit SHA；contentHash 必须是原始获取内容的 sha256:<64 hex>；commit SHA 不得冒充内容 SHA-256；reviewedBy 必须是明确人工责任人。",
+  "type": "object",
+  "required": [
+    "sourceId",
+    "origin",
+    "author",
+    "license",
+    "licenseStatus",
+    "allowedUsage",
+    "version",
+    "acquiredAt",
+    "contentHash",
+    "redistributable",
+    "modelInputAllowed",
+    "commercialUse",
+    "reviewedBy",
+    "reviewedAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "sourceId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "唯一来源 ID（小写连字符）。"
+    },
+    "origin": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "uri",
+          "description": "规范来源 URI（Git 仓库 / 规范文档页）。"
+        },
+        {
+          "type": "string",
+          "pattern": "^external-library-alias:",
+          "description": "外置共用库别名引用，不允许本地绝对路径。"
+        }
+      ]
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "description": "明确作者/权利人/组织。"
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "description": "实际 SPDX 标识或明确的授权条款；UNVERIFIED/REFERENCE-ONLY 不视为许可证。"
+    },
+    "licenseStatus": {
+      "enum": [
+        "reviewed",
+        "unknown",
+        "reference-only"
+      ],
+      "description": "reviewed=人工确认；unknown/reference-only 不得进入运行时或模型输入。"
+    },
+    "allowedUsage": {
+      "type": "string",
+      "minLength": 1,
+      "description": "明确允许的使用范围描述。"
+    },
+    "version": {
+      "type": "string",
+      "description": "版本或提交 pin。Git 来源必须为完整 40 位 commit SHA。",
+      "pattern": "^(v?[0-9][0-9a-zA-Z._-]*|[0-9a-f]{40})$"
+    },
+    "acquiredAt": {
+      "type": "string",
+      "format": "date",
+      "description": "原始获取日期。"
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "原始获取内容的 SHA-256（sha256:<64 hex>）。git:<sha> / doc-pin: 不是内容哈希。"
+    },
+    "redistributable": {
+      "type": "boolean"
+    },
+    "modelInputAllowed": {
+      "type": "boolean",
+      "description": "false 时不得进入任何生成/模型上下文。"
+    },
+    "commercialUse": {
+      "type": "boolean",
+      "description": "false 时不得进入商业生产包。"
+    },
+    "reviewedBy": {
+      "type": "string",
+      "minLength": 1,
+      "description": "明确人工责任人；不得自动生成。"
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date",
+      "description": "人工审核日期；reviewed_at 旧字段不得代替 reviewedBy+reviewedAt。"
+    }
+  }
+}

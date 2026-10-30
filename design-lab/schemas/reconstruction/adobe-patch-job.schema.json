@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/adobe-patch-job/v1",
+  "title": "Closed Illustrator patch job (host contract)",
+  "description": "The document src/design_lab/adapters/illustrator_com.py accepts for a patch dispatch. Every constraint here is one that execute() already enforced by hand before this file existed; path containment, checkpoint bytes, target-side text and point limits stay hand checks because a JSON Schema cannot see the filesystem or the document being patched.",
+  "type": "object",
+  "required": ["schemaVersion", "jobId", "rirHash", "runRoot", "artboard", "layers", "assets", "targets", "operations", "authorization", "checkpoint", "checkpointSha256", "patch"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/adobe-patch-job/v1"},
+    "jobId": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"},
+    "rirHash": {"type": "string", "pattern": "^[0-9a-f]{64}$", "not": {"const": "0000000000000000000000000000000000000000000000000000000000000000"}},
+    "runRoot": {"type": "string", "minLength": 1},
+    "artboard": {"type": "object"},
+    "layers": {"type": "array"},
+    "assets": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {"type": "object", "required": ["id", "path"], "additionalProperties": false, "properties": {"id": {"type": "string"}, "path": {"type": "string", "minLength": 1}}}
+    },
+    "targets": {
+      "type": "object",
+      "required": ["ai", "png", "svg"],
+      "additionalProperties": false,
+      "properties": {"ai": {"type": "string", "minLength": 1}, "png": {"type": "string", "minLength": 1}, "svg": {"type": "string", "minLength": 1}}
+    },
+    "operations": {"const": ["openAI", "readback", "patchObject", "saveAI", "reopen", "readback", "exportPNG", "exportSVG"]},
+    "authorization": {"type": "object"},
+    "checkpoint": {"type": "string", "minLength": 1},
+    "checkpointSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "patch": {
+      "oneOf": [
+        {"type": "object", "required": ["kind", "id", "text"], "additionalProperties": false, "properties": {"kind": {"const": "text"}, "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"}, "text": {"type": "string"}}},
+        {"type": "object", "required": ["kind", "id", "points"], "additionalProperties": false, "properties": {"kind": {"const": "path"}, "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"}, "points": {"type": "array"}}}
+      ]
+    }
+  }
+}

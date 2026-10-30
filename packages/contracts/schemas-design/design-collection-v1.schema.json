@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/design-collection-v1.json",
+  "title": "Design collection envelope — the live-row list the design layer pages (GET .../directions, GET .../design-system-tokens)",
+  "description": "Three ledger rows were the last unbound list reads in this family -- the packaged design-system catalog included, because the same catalog rows are already bound inside design-layer-rollup-v1.schema.json ($defs.design_system) and leaving the route that serves them alone would have made that shape a second authority able to disagree with the read path. What the catalog answers: `GET /api/projects/<id>/directions` answers a paged list in the same shape the already-bound brief list uses, and `GET /api/projects/<id>/design-system-tokens` answers one row per design system that has a live token document. Both were bare wrappers with no version, and both answer `[]` for a project that has nothing — which is the reading a person must be able to tell apart from a failure. `collection` names which list is being served, because the two lists carry different rows and a page that swapped them would otherwise look like a valid empty answer. `directions` items are `$ref`'d from `design-lab/schemas/design-record-v1.schema.json` (`$defs.direction`), the owner of that row shape, and are NOT re-declared here. `token_document` is owned by this file: the row wrapper (identity, project, design system, count, digest, actor, chain pointer) is a design-layer read-back shape, while its `document` property is `$ref`'d to `design-lab/schemas/interop-dtcg-document.schema.json`, which already binds the DTCG document itself and is checked again before every write. `next_cursor` is required and nullable on the direction branch because `src/design_lab/design_layer.py` lists_directions always emits it; the token branch has no cursor at all — the writer reads every live row, so inventing a paging field there would describe a limit the code does not enforce.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "collection"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/design-collection/v1"
+    },
+    "collection": {
+      "enum": [
+        "directions",
+        "token_documents",
+        "design_systems"
+      ]
+    },
+    "directions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "https://dtalex66.local/schemas/design-record-v1.json#/$defs/direction"
+      }
+    },
+    "token_documents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/token_document"
+      }
+    },
+    "next_cursor": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^direction-[0-9a-f]{32}$"
+    },
+    "design_systems": {
+      "type": "array",
+      "items": {
+        "$ref": "https://dtalex66.local/schemas/design-layer-rollup-v1.json#/$defs/design_system"
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "title": "the project's direction page",
+      "required": [
+        "schemaVersion",
+        "collection",
+        "directions",
+        "next_cursor"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "collection": {
+          "const": "directions"
+        },
+        "directions": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "https://dtalex66.local/schemas/design-record-v1.json#/$defs/direction"
+          }
+        },
+        "next_cursor": {
+          "$ref": "#/$defs/next_cursor"
+        }
+      }
+    },
+    {
+      "title": "the project's live token documents",
+      "required": [
+        "schemaVersion",
+        "collection",
+        "token_documents"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "collection": {
+          "const": "token_documents"
+        },
+        "token_documents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/token_document"
+          }
+        }
+      }
+    },
+    {
+      "title": "the packaged design-system catalog",
+      "required": [
+        "schemaVersion",
+        "collection",
+        "design_systems"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "collection": {
+          "const": "design_systems"
+        },
+        "design_systems": {
+          "type": "array",
+          "items": {
+            "$ref": "https://dtalex66.local/schemas/design-layer-rollup-v1.json#/$defs/design_system"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "schemaVersion": {
+      "const": "design-lab/design-collection/v1"
+    },
+    "next_cursor": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^direction-[0-9a-f]{32}$"
+    },
+    "token_document": {
+      "type": "object",
+      "required": [
+        "token_document_id",
+        "project_id",
+        "design_system_name",
+        "document",
+        "token_count",
+        "dtcg_schema_version",
+        "spec_sha256",
+        "actor",
+        "actor_kind",
+        "version",
+        "superseded_by",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "token_document_id": {
+          "type": "string",
+          "pattern": "^tokdoc-[0-9a-f]{32}$"
+        },
+        "project_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "design_system_name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "document": {
+          "$ref": "https://dtalex66.local/schemas/interop-dtcg-document.schema.json"
+        },
+        "token_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "dtcg_schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spec_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "actor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 400
+        },
+        "actor_kind": {
+          "enum": [
+            "human",
+            "agent",
+            null
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "superseded_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^tokdoc-[0-9a-f]{32}$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

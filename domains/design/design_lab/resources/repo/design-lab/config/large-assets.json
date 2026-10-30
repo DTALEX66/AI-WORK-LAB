@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "design-lab/large-assets/v1",
+  "note": "体积止血声明表。任何 >= declareAboveKiB 的跟踪二进制必须落在某个已声明 bundle 内，且该 bundle 的总字节不得超过 budgetMib。新增大块或让已有块超预算都会让 verify_asset_governance 红：必须先在评审里写明理由，这比事后清理历史便宜。budgetMib 取当前实测值 + 余量，reports/history 与 docs/projects 是冻结面，余量故意为 0/很小。",
+  "declareAboveKiB": 256,
+  "workingTreeBudgetMib": 64,
+  "bundles": [
+    {
+      "prefix": "docs/projects/",
+      "budgetMib": 8.0,
+      "measuredMib": 6.6,
+      "reason": "真实设计项目交付产物（nebula 文化墙等）；产品血统证据，不重生。"
+    },
+    {
+      "prefix": "fixtures/domains/",
+      "budgetMib": 5.0,
+      "measuredMib": 4.36,
+      "reason": "域 fixture 素材；game-visual 构建面受 clean-tree 门钉住，字节必须稳定。"
+    },
+    {
+      "prefix": "docs/audits/",
+      "budgetMib": 2.0,
+      "measuredMib": 0.63,
+      "reason": "审计证据附件；允许小幅增长，超预算须说明是哪次审计。"
+    },
+    {
+      "prefix": "docs/history/archive-2026-10-19/UI-CONVERGENCE-20260930/",
+      "budgetMib": 3.0,
+      "measuredMib": 0.29,
+      "reason": "UI 截图证据（每轮界面变更后整轮重拍）。工作区只留最新一轮，历史增长交给 pack 预算门。"
+    },
+    {
+      "prefix": "reports/history/",
+      "budgetMib": 1.1,
+      "measuredMib": 1.1,
+      "reason": "冻结历史（含 2 段 mp4 证据）。HISTORY-FREEZE-RULES 禁止增改，故余量为 0。"
+    },
+    {
+      "prefix": "design-lab/evidence/current-execution/task-artifacts/kb-20261023/",
+      "budgetMib": 4.0,
+      "measuredMib": 3.11,
+      "reason": "批次 K 知识库纵切（DL-KB-02/03/04/06）的 E2 证据：检索日志、路由读回 JSON、1440/1280 截图与缩放截图。账本 currentExecution 的 artifact_sha256 直接绑定这些字节，不能挪进 Git 忽略的 .project-local；按轮新增，不重拍历史轮。"
+    }
+  ]
+}

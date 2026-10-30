@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "control-capability-matrix.schema.json",
+  "title": "DESIGN-LAB Host Control Capability Matrix (P1-CONTROL-SPIKE)",
+  "type": "object",
+  "required": ["$schema", "version", "generated_at", "policy", "hosts"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "version": {"type": "string"},
+    "generated_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "policy": {"type": "string", "minLength": 1},
+    "hosts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/host"}
+    }
+  },
+  "$defs": {
+    "host": {
+      "type": "object",
+      "required": ["host", "control_transport", "reachability_model", "truth_model",
+                     "capabilities", "authorization", "failure_recovery"],
+      "properties": {
+        "host": {"type": "string", "minLength": 1},
+        "host_version": {"type": ["string", "null"]},
+        "control_transport": {"enum": ["native", "script", "computer-use", "cloud-api"]},
+        "reachability_model": {"enum": ["computer-use", "native-launch", "none"]},
+        "truth_model": {"enum": ["host-native-readback", "artifact-rehash", "none"]},
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/capability"}
+        },
+        "authorization": {"$ref": "#/$defs/authorization"},
+        "failure_recovery": {"type": "string", "minLength": 1}
+      }
+    },
+    "capability": {
+      "type": "object",
+      "required": ["name", "supported", "evidence_level", "qualified_sha", "note"],
+      "properties": {
+        "name": {"enum": ["launch", "inspect", "create", "patch", "save-editable", "export",
+                            "reopen-verify", "readback"]},
+        "supported": {"type": "boolean"},
+        "evidence_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+        "qualified_sha": {"type": ["string", "null"], "pattern": "^[0-9a-f]{7,64}$"},
+        "note": {"type": "string"}
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "required": ["user_authorized", "no_bypass_license", "bounded_command"],
+      "properties": {
+        "user_authorized": {"type": "boolean"},
+        "no_bypass_license": {"type": "boolean"},
+        "bounded_command": {"type": "boolean"}
+      }
+    }
+  }
+}

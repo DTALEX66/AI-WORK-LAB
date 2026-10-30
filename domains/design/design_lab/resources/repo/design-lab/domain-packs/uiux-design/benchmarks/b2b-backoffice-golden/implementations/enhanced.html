@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>运营工作台 — Enhanced</title>
+<style>
+  :root {
+    --bg: #F4F6F9; --accent: #2563EB; --text: #0F172A; --text-dim: #64748B;
+    --surface: #FFFFFF; --success: #059669; --danger: #DC2626; --border: #E2E8F0;
+    --radius: 10px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .app { display: grid; grid-template-columns: 1fr; min-height: 100vh; }
+  @media (min-width: 768px) { .app { grid-template-columns: 220px 1fr; } }
+  .sidebar {
+    background: var(--surface); border-right: 1px solid var(--border);
+    padding: var(--space-4); display: flex; gap: var(--space-2); overflow-x: auto;
+  }
+  @media (min-width: 768px) { .sidebar { flex-direction: column; } }
+  .nav-item {
+    background: none; border: none; border-radius: 8px; padding: 10px 12px;
+    cursor: pointer; font-size: 14px; color: var(--text-dim); text-align: left; white-space: nowrap;
+  }
+  .nav-item[aria-current="page"] { background: rgba(37,99,235,0.08); color: var(--accent); font-weight: 600; }
+  .content { padding: var(--space-4); }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+  .topbar h1 { font-size: 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4); }
+  .kpi-card .label { font-size: 12px; color: var(--text-dim); }
+  .kpi-card .value { font-size: 24px; font-weight: 700; margin-top: 2px; }
+  .kpi-card .trend { font-size: 12px; color: #047857; }
+  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .table-toolbar { display: flex; gap: var(--space-2); padding: var(--space-3); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .table-toolbar select, .table-toolbar input {
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; background: var(--surface);
+  }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  th, td { text-align: left; padding: 10px var(--space-3); border-bottom: 1px solid var(--border); }
+  th { background: #F8FAFC; font-weight: 600; color: var(--text-dim); }
+  .status-badge { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .status-badge.open { background: rgba(37,99,235,0.14); color: #1D4ED8; }
+  .status-badge.done { background: rgba(5,150,105,0.14); color: #047857; }
+  .status-badge.waiting { background: rgba(100,116,139,0.16); color: #475569; }
+  .row-actions { display: flex; gap: var(--space-2); }
+  .icon-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+  .bulk-bar {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3); border-top: 1px solid var(--border); background: #F8FAFC;
+  }
+  .bulk-bar .count { font-weight: 600; font-size: 13px; }
+  .btn-primary { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-danger { background: var(--danger); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar" aria-label="主导航">
+      <button class="nav-item" aria-current="page">工作台</button>
+      <button class="nav-item">工单</button>
+      <button class="nav-item">客户</button>
+      <button class="nav-item">报表</button>
+      <button class="nav-item">设置</button>
+    </nav>
+
+    <div class="content">
+      <header class="topbar">
+        <h1>运营工作台</h1>
+        <button class="btn-primary" type="button">新建工单</button>
+      </header>
+
+      <section class="kpis" aria-label="关键指标">
+        <div class="kpi-card"><p class="label">待处理工单</p><p class="value">128</p><p class="trend">↓ 12%</p></div>
+        <div class="kpi-card"><p class="label">今日完成</p><p class="value">86</p><p class="trend">↑ 8%</p></div>
+        <div class="kpi-card"><p class="label">平均响应</p><p class="value">4.2m</p><p class="trend">↓ 0.5m</p></div>
+        <div class="kpi-card"><p class="label">满意度</p><p class="value">98.6%</p><p class="trend">→ 持平</p></div>
+      </section>
+
+      <section class="table-card" aria-label="工单列表">
+        <div class="table-toolbar">
+          <label for="filter-status" class="sr-only">按状态筛选</label>
+          <select id="filter-status" aria-label="按状态筛选">
+            <option>全部状态</option><option>待处理</option><option>已完成</option><option>等待中</option>
+          </select>
+          <label for="search-input" class="sr-only">搜索工单</label>
+          <input id="search-input" type="search" placeholder="搜索工单号/客户…" aria-label="搜索工单">
+        </div>
+        <div class="table-wrap">
+          <table aria-label="工单列表">
+            <thead><tr><th scope="col"><input type="checkbox" aria-label="全选"></th><th scope="col">工单号</th><th scope="col">客户</th><th scope="col">状态</th><th scope="col">创建时间</th><th scope="col">操作</th></tr></thead>
+            <tbody>
+              <tr><td><input type="checkbox" aria-label="选择工单 WD-1012"></td><td>WD-1012</td><td>华东供应链</td><td><span class="status-badge open">待处理</span></td><td>08-11 09:20</td><td><span class="row-actions"><button class="icon-btn" type="button">查看</button><button class="icon-btn" type="button">指派</button></span></td></tr>
+              <tr><td><input type="checkbox" aria-label="选择工单 WD-1011"></td><td>WD-1011</td><td>华南零售</td><td><span class="status-badge done">已完成</span></td><td>08-11 08:45</td><td><span class="row-actions"><button class="icon-btn" type="button">查看</button></span></td></tr>
+              <tr><td><input type="checkbox" aria-label="选择工单 WD-1010"></td><td>WD-1010</td><td>华北制造</td><td><span class="status-badge waiting">等待中</span></td><td>08-10 17:30</td><td><span class="row-actions"><button class="icon-btn" type="button">查看</button></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="bulk-bar" aria-label="批量操作">
+          <p class="count">已选 0 项</p>
+          <button class="btn-primary" type="button">批量指派</button>
+          <button class="btn-danger" type="button">批量关闭</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/generative-model-asset.json",
+  "title": "DESIGN-LAB model-as-external-asset entry (DL-P0-091)",
+  "description": "A model is an external asset declared by alias, with expected files, digests, licence and machine evidence. Unqualified models are disabled and the resolver refuses them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "model_id",
+    "family",
+    "source",
+    "root_alias",
+    "files",
+    "state",
+    "machine_state",
+    "rights",
+    "hardware",
+    "default_enabled",
+    "notes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/generative-model-asset/v1"
+    },
+    "model_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{1,127}$"
+    },
+    "family": {
+      "enum": [
+        "image-generation",
+        "image-edit",
+        "upscale",
+        "segmentation",
+        "detection",
+        "ocr",
+        "asr",
+        "tts",
+        "audio-generation",
+        "video-generation",
+        "three-d",
+        "embedding",
+        "vision-language",
+        "other"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "ref",
+        "license_id"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "huggingface",
+            "modelscope",
+            "vendor",
+            "local",
+            "unknown"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "root_alias": {
+      "description": "Alias declared in .project/paths.json shared_inputs; never an absolute path.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "bytes"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "state": {
+      "enum": [
+        "DECLARED",
+        "PRESENT_UNVERIFIED",
+        "HASH_VERIFIED",
+        "LICENSE_CLEARED",
+        "QUALIFIED",
+        "BLOCKED"
+      ]
+    },
+    "machine_state": {
+      "description": "Stage vocabulary shared with design_lab.analysis.model_manifest.",
+      "enum": [
+        "ABSENT",
+        "METADATA_ONLY",
+        "WEIGHTS_COMPLETE",
+        "LOAD_VERIFIED",
+        "INFERENCE_VERIFIED"
+      ]
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "license_id",
+        "territory_limits",
+        "commercial_use"
+      ],
+      "properties": {
+        "license_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "territory_limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commercial_use": {
+          "enum": [
+            "PERMITTED",
+            "RESTRICTED",
+            "UNKNOWN"
+          ]
+        },
+        "adjudicated_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vram_gib_required",
+        "verdict"
+      ],
+      "properties": {
+        "vram_gib_required": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "verdict": {
+          "enum": [
+            "FITS",
+            "TIGHT",
+            "EXCEEDS",
+            "UNKNOWN"
+          ]
+        }
+      }
+    },
+    "default_enabled": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

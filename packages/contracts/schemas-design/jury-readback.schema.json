@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/jury-readback.schema.json",
+  "title": "Jury Readback V1 (what GET /api/projects/<id>/jury answers)",
+  "$comment": "Written against two payloads the product really emitted on 2026-10-08 -- one project holding an APPROVE verdict plus an agent proposal, and one project with nothing filed -- captured through design_lab.http_service.make_server on a live socket; see design-lab/scripts/verify_route_payload_contracts.py. Emitter: src/design_lab/jury_review.py (JuryReview.list). THE RECORDS ARE REFERENCED, NOT RESTATED: each element of `records` and each value of `current_verdicts` is the jury document itself, bound by design-lab/schemas/assurance-jury-record-v2.schema.json (a verdict matches the root, a proposal matches $defs/proposal). Copying those fields into this file would create a second authority able to disagree with the contract the write path already enforces, so a v2 change moves here by reference. `human_acceptance` is a sentence about the PROJECT: ACCEPTED requires at least one ACTIVE reviewable version and a current APPROVE for every one of them, which is why accepted_versions and reviewable_active_versions travel with it rather than being inferred from verdict_count.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project_id",
+    "records",
+    "verdict_count",
+    "proposal_count",
+    "current_verdicts",
+    "reviewable_versions",
+    "accepted_versions",
+    "reviewable_active_versions",
+    "human_acceptance"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/jury-readback/v1"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "records": {
+      "type": "array",
+      "items": {"anyOf": [
+        {"$ref": "https://dtalex66.local/schemas/assurance-jury-record-v2.json"},
+        {"$ref": "https://dtalex66.local/schemas/assurance-jury-record-v2.json#/$defs/proposal"}
+      ]}
+    },
+    "verdict_count": {"type": "integer", "minimum": 0},
+    "proposal_count": {"type": "integer", "minimum": 0},
+    "current_verdicts": {
+      "type": "object",
+      "propertyNames": {"pattern": "^version:v-[0-9a-f]{32}$"},
+      "additionalProperties": {
+        "$ref": "https://dtalex66.local/schemas/assurance-jury-record-v2.json"
+      }
+    },
+    "reviewable_versions": {"type": "array", "items": {"$ref": "#/$defs/reviewableVersion"}},
+    "accepted_versions": {"type": "integer", "minimum": 0},
+    "reviewable_active_versions": {"type": "integer", "minimum": 0},
+    "human_acceptance": {"enum": ["ACCEPTED", "NOT_ACCEPTED"]}
+  },
+  "allOf": [
+    {
+      "$comment": "An empty reviewable set is NOT_ACCEPTED on purpose: 'all zero of zero passed' is vacuously true and would read as a human gate nobody went through.",
+      "if": {"properties": {"reviewable_active_versions": {"const": 0}},
+             "required": ["reviewable_active_versions"]},
+      "then": {"properties": {"human_acceptance": {"const": "NOT_ACCEPTED"},
+                               "accepted_versions": {"const": 0}}}
+    },
+    {
+      "if": {"properties": {"human_acceptance": {"const": "ACCEPTED"}}, "required": ["human_acceptance"]},
+      "then": {"properties": {"reviewable_active_versions": {"minimum": 1}}}
+    }
+  ],
+  "$defs": {
+    "reviewableVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject_ref", "version_id", "asset_id", "version_no",
+                   "artifact_sha256", "created_at"],
+      "properties": {
+        "subject_ref": {"type": "string", "pattern": "^version:v-[0-9a-f]{32}$"},
+        "version_id": {"type": "string", "pattern": "^v-[0-9a-f]{32}$"},
+        "asset_id": {"type": "string", "minLength": 1},
+        "version_no": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The revision number of the version on offer. reviewable_versions returns one row per asset -- the highest ACTIVE version_no it has -- so a reviewer cannot sign a superseded draft and have it count as acceptance."
+        },
+        "artifact_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "created_at": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

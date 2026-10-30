@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "design-lab/ui-layering/v1",
+  "measuredBy": "design-lab/scripts/verify_ui_layering.py --write",
+  "source": "apps/workbench/style.css (:root + every z-index declaration)",
+  "status": "proposed-for-owner-acceptance",
+  "rule": "新增层层必须先在此表登记；界面源文件里的 z-index 一律 var(--layer-*)",
+  "layers": [
+    {
+      "token": "--layer-canvas-grid",
+      "value": -3,
+      "selectors": [
+        ".grid-bg"
+      ],
+      "usedBy": 1,
+      "name": "canvas-grid",
+      "purpose": "画布底纹网格：所有内容的下方，不参与交互",
+      "note": null
+    },
+    {
+      "token": "--layer-canvas-ambient",
+      "value": -2,
+      "selectors": [
+        ".ambient,.ambient::before,.ambient::after",
+        ".motion-particles"
+      ],
+      "usedBy": 2,
+      "name": "canvas-ambient",
+      "purpose": "环境光晕与其伪元素，以及可选的粒子 canvas（?motion=enhanced 才挂载）：底纹之上、面板之下",
+      "note": null
+    },
+    {
+      "token": "--layer-flow-figure",
+      "value": 0,
+      "selectors": [
+        ".flow-svg"
+      ],
+      "usedBy": 1,
+      "name": "flow-figure",
+      "purpose": "流程图 SVG 画布：面板内部的基准层",
+      "note": "rendered observation: `.flow-svg` did not exist in the DOM on any of the 12 routes at 1440/820/390, so this layer is declared in the stylesheet but unobserved in the product -- suspected dead style, not deleted here"
+    },
+    {
+      "token": "--layer-flow-node",
+      "value": 2,
+      "selectors": [
+        ".node"
+      ],
+      "usedBy": 1,
+      "name": "flow-node",
+      "purpose": "流程图节点：基准画布之上，只在 .flow 内部比较",
+      "note": "rendered observation: `.node` did not exist in the DOM on any of the 12 routes at 1440/820/390; paired with --layer-flow-figure as one suspected dead component"
+    },
+    {
+      "token": "--layer-topbar",
+      "value": 50,
+      "selectors": [
+        ".dl-shell > header"
+      ],
+      "usedBy": 1,
+      "name": "topbar",
+      "purpose": "壳层顶栏：与路由面板同文档流，靠相对定位",
+      "note": null
+    },
+    {
+      "token": "--layer-nav-rail",
+      "value": 60,
+      "selectors": [
+        ".app-nav"
+      ],
+      "usedBy": 1,
+      "name": "nav-rail",
+      "purpose": "宽屏固定侧栏：盖住内容列，不盖住浮层",
+      "note": null
+    },
+    {
+      "token": "--layer-detail-panel",
+      "value": 70,
+      "selectors": [
+        ".cap-drawer"
+      ],
+      "usedBy": 1,
+      "name": "detail-panel",
+      "purpose": "R2 §5 的能力详情面板：地址决定存在，非模态，浮在路由内容之上，但低于工作区抽屉与命令面板，避免地址化面板盖住全局浮层",
+      "note": "2026-10-09 新增。取 70：nav-rail 60 之上、drawer 88 之下，所以抽屉打开时仍会盖住详情面板"
+    },
+    {
+      "token": "--layer-drawer",
+      "value": 88,
+      "selectors": [
+        ".drawer",
+        ".sidebar"
+      ],
+      "usedBy": 2,
+      "name": "drawer",
+      "purpose": "离屏抽屉族（工作区抽屉与窄屏侧栏）：导航之上、遮罩之下",
+      "note": "`.sidebar` computes 88 only at <=840px (measured: 88 at 820 and 390, `auto` at 1440 where it is a sticky column); `.drawer` computes 88 at every width"
+    },
+    {
+      "token": "--layer-scrim",
+      "value": 90,
+      "selectors": [
+        ".overlay"
+      ],
+      "usedBy": 1,
+      "name": "scrim",
+      "purpose": "模态遮罩：压住抽屉与页面，接受点击关闭",
+      "note": null
+    },
+    {
+      "token": "--layer-palette",
+      "value": 95,
+      "selectors": [
+        ".palette"
+      ],
+      "usedBy": 1,
+      "name": "palette",
+      "purpose": "命令面板：遮罩之上的可输入浮层",
+      "note": null
+    },
+    {
+      "token": "--layer-toast",
+      "value": 110,
+      "selectors": [
+        ".toast"
+      ],
+      "usedBy": 1,
+      "name": "toast",
+      "purpose": "瞬时通知：所有浮层之上，不接收焦点",
+      "note": null
+    },
+    {
+      "token": "--layer-skip-link",
+      "value": 200,
+      "selectors": [
+        ".skip-link"
+      ],
+      "usedBy": 1,
+      "name": "skip-link",
+      "purpose": "键盘跳转链：仅在聚焦时出现，必须高于一切",
+      "note": null
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>商品详情与结算 — Enhanced</title>
+<style>
+  :root {
+    --bg: #FAFAF7; --accent: #C9362B; --text: #1A1A1A; --text-dim: #6B6B6B;
+    --surface: #FFFFFF; --success: #1E7B45; --danger: #C9362B; --border: #E5E2DA;
+    --radius: 12px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .topbar { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
+  .topbar h1 { font-size: 17px; flex: 1; }
+  main { max-width: 520px; margin: 0 auto; padding: var(--space-4); }
+  @media (min-width: 768px) {
+    main { max-width: 960px; display: grid; grid-template-columns: 1.1fr 1fr; gap: var(--space-5); align-items: start; }
+  }
+  .gallery { background: linear-gradient(135deg, #F3EDE4, #E9E2D6); border-radius: var(--radius); min-height: 280px; display: grid; place-items: center; }
+  .gallery span { font-size: 44px; }
+  .price-block { margin: var(--space-4) 0; }
+  .price { font-size: 26px; font-weight: 700; }
+  .price .orig { color: var(--text-dim); text-decoration: line-through; font-size: 15px; margin-left: var(--space-2); font-weight: 400; }
+  .promo { display: inline-block; background: rgba(201,54,43,0.14); color: #A8271F; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; margin-top: var(--space-2); }
+  .stock { color: var(--success); font-size: 13px; font-weight: 600; margin-top: var(--space-2); }
+  fieldset { border: none; margin: var(--space-3) 0; }
+  legend { font-weight: 600; font-size: 14px; margin-bottom: var(--space-2); }
+  .variants { display: flex; gap: var(--space-2); }
+  .variant {
+    padding: 8px 16px; border: 1px solid var(--border); border-radius: 999px;
+    background: var(--surface); cursor: pointer; font-size: 14px;
+  }
+  .variant[aria-checked="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .cart-summary { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4); margin: var(--space-4) 0; }
+  .cart-summary h2 { font-size: 15px; margin-bottom: var(--space-2); }
+  .cart-row { display: flex; justify-content: space-between; font-size: 14px; padding: 2px 0; }
+  .checkout-steps { list-style: none; display: flex; gap: 0; margin: var(--space-4) 0; }
+  .checkout-steps li { flex: 1; text-align: center; font-size: 12px; color: var(--text-dim); position: relative; }
+  .checkout-steps li.active { color: var(--accent); font-weight: 600; }
+  .sticky-checkout { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: var(--space-3) var(--space-4); display: flex; gap: var(--space-3); align-items: center; }
+  .sticky-checkout .total { flex: 1; font-weight: 700; }
+  .sticky-checkout .total small { display: block; color: var(--text-dim); font-weight: 400; font-size: 12px; }
+  .btn-primary { background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <button class="btn-back" aria-label="返回" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;">←</button>
+    <h1>商品详情</h1>
+    <span aria-hidden="true" style="font-size:20px;">🛒</span>
+  </header>
+
+  <main>
+    <section aria-labelledby="pdp-heading">
+      <h2 id="pdp-heading" class="sr-only">商品信息</h2>
+      <div class="gallery" role="img" aria-label="商品主图：无线降噪耳机">
+        <span aria-hidden="true">🎧</span>
+      </div>
+      <div class="price-block">
+        <p class="price">¥899 <span class="orig">¥1,299</span></p>
+        <span class="promo">限时立减 ¥400</span>
+        <p class="stock">现货：有货（72 小时内发货）</p>
+      </div>
+      <fieldset>
+        <legend>颜色</legend>
+        <div class="variants" role="radiogroup" aria-label="颜色选择">
+          <button class="variant" role="radio" aria-checked="true" aria-label="曜石黑">曜石黑</button>
+          <button class="variant" role="radio" aria-checked="false" aria-label="珍珠白">珍珠白</button>
+          <button class="variant" role="radio" aria-checked="false" aria-label="雾霾蓝">雾霾蓝</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>规格</legend>
+        <div class="variants" role="radiogroup" aria-label="规格选择">
+          <button class="variant" role="radio" aria-checked="true" aria-label="标准版">标准版</button>
+          <button class="variant" role="radio" aria-checked="false" aria-label="Pro 版">Pro 版</button>
+        </div>
+      </fieldset>
+    </section>
+
+    <section aria-label="结算区域">
+      <h2 class="sr-only">结算</h2>
+      <ol class="checkout-steps" aria-label="结算步骤">
+        <li class="active" aria-current="step">1 确认商品</li>
+        <li>2 收货地址</li>
+        <li>3 支付</li>
+      </ol>
+      <div class="cart-summary" aria-label="购物车摘要">
+        <h2>购物车摘要</h2>
+        <div class="cart-row"><span>无线降噪耳机 × 1</span><span>¥899</span></div>
+        <div class="cart-row"><span>优惠</span><span style="color:var(--danger);">-¥400</span></div>
+        <div class="cart-row"><span>运费</span><span>免运费</span></div>
+      </div>
+      <div class="sticky-checkout">
+        <p class="total">合计 ¥899<small>含优惠后价格</small></p>
+        <button class="btn-primary" type="button">去结算</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/assistance-plan-readback-v1.schema.json",
+  "title": "Assistance Plan Readback V1 (one plan, its revisions, its basis and its four states)",
+  "$comment": "DL-KB-07/08. GET .../assistance-plans/{id} answers with this document. `states` is where the screen's four labels come from, computed by the service rather than by the view: SAVED is this readback existing, PROVIDED means the current revision carries a neutral creative, CHOSEN means a named human adopted a revision, and EXTERNALLY_VERIFIED is constrained to false -- no route in this repository dispatches an external step, so the only honest value is 'not verified'. `reference_status` re-reads each referenced object at its live revision: CURRENT means the bytes are still the ones the plan recorded, CHANGED means the object moved on, and `analysis` reports ANALYZED only when a stored reversal for that exact asset digest exists -- a reference that was registered as a link stays LINKED_ONLY.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "plan_id", "project_id", "latest_revision", "revisions", "current",
+               "basis", "reference_status", "analysis_summary", "choice", "external", "states",
+               "does_not_say"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assistance-plan-readback/v1"},
+    "plan_id": {"type": "string", "pattern": "^aplan-[0-9a-f]{32}$"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "latest_revision": {"type": "integer", "minimum": 1},
+    "revisions": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["revision", "content_sha256", "created_at", "created_by", "readable"],
+        "properties": {
+          "revision": {"type": "integer", "minimum": 1},
+          "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "created_at": {"type": "string", "minLength": 1},
+          "created_by": {"type": "string", "minLength": 1},
+          "readable": {"type": "boolean"}
+        }
+      }
+    },
+    "current": {"anyOf": [
+      {"$ref": "https://design-lab.local/schemas/assistance-plan-v1.schema.json"},
+      {"type": "null"}
+    ]},
+    "basis": {
+      "type": "array", "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "id", "revision", "sha256"],
+        "properties": {
+          "kind": {"enum": ["ASSET", "BRIEF", "DIRECTION", "PROMPT_RESULT", "KNOWLEDGE"]},
+          "id": {"type": "string", "minLength": 1},
+          "revision": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "reference_status": {
+      "type": "array", "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "id", "recorded_revision", "recorded_sha256", "current_revision",
+                     "current_sha256", "state", "analysis"],
+        "properties": {
+          "kind": {"enum": ["ASSET", "BRIEF", "DIRECTION", "PROMPT_RESULT", "KNOWLEDGE"]},
+          "id": {"type": "string", "minLength": 1},
+          "recorded_revision": {"type": "integer", "minimum": 1},
+          "recorded_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "current_revision": {"type": ["integer", "null"], "minimum": 1},
+          "current_sha256": {"type": ["string", "null"]},
+          "state": {"enum": ["CURRENT", "CHANGED", "MISSING"]},
+          "analysis": {"enum": ["ANALYZED", "LINKED_ONLY", null]}
+        }
+      }
+    },
+    "analysis_summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["analyzed", "linked_only"],
+      "properties": {
+        "analyzed": {"type": "integer", "minimum": 0},
+        "linked_only": {"type": "integer", "minimum": 0}
+      }
+    },
+    "choice": {
+      "type": "object", "additionalProperties": false,
+      "required": ["chosen", "revision", "actor", "actor_kind", "chosen_at", "is_latest"],
+      "properties": {
+        "chosen": {"type": "boolean"},
+        "revision": {"type": ["integer", "null"]},
+        "actor": {"type": ["string", "null"]},
+        "actor_kind": {"enum": ["human", null]},
+        "chosen_at": {"type": ["string", "null"]},
+        "is_latest": {"type": "boolean"}
+      }
+    },
+    "external": {
+      "type": "object", "additionalProperties": false,
+      "required": ["verified", "steps", "supplied_ids"],
+      "properties": {
+        "verified": {"const": false},
+        "steps": {"type": "integer", "minimum": 0},
+        "supplied_ids": {"type": "array", "maxItems": 64,
+                         "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "states": {
+      "type": "object", "additionalProperties": false,
+      "required": ["saved", "provided", "chosen", "externally_verified"],
+      "properties": {
+        "saved": {"const": true},
+        "provided": {"type": "boolean"},
+        "chosen": {"type": "boolean"},
+        "externally_verified": {"const": false}
+      }
+    },
+    "does_not_say": {"type": "array", "minItems": 1,
+                     "items": {"type": "string", "minLength": 1}}
+  }
+}

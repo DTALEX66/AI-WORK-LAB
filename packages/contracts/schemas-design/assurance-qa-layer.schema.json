@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/assurance-qa-layer.json",
+  "title": "Assurance QA plane inventory, findings and aggregate gate (DL-P1-170 / DLDS-F070)",
+  "description": "QA plane split of DESIGN-LAB: three separated planes (DETERMINISTIC / MODEL_ASSISTED / HUMAN) with per-plane evidence ceilings, one finding contract, and the plane-aware aggregate gate. The outcome vocabulary is the frozen DLDS-F070 policy: PASS / WARN / REVIEW_REQUIRED / HARD_BLOCK for the automated planes (a model-assisted finding escalates with REVIEW_REQUIRED and never produces a final REJECT), and the final APPROVE / REJECT for the human jury, which is the only plane allowed to carry a verdict. The rights/security policy row is a check family inside the deterministic plane (HARD_BLOCK and its non-blocking outcomes). This schema cannot resolve layer_id to its declaring plane, so the module (src/design_lab/assurance/qa_plane.py) additionally refuses an outcome the plane may not produce, a final REJECT on an automated plane, a verdict from a non-HUMAN plane, a BLOCKER or HARD_BLOCK from a plane with can_block false, a human finding without a signed verdict, and a recommendation from a DETERMINISTIC plane. This contract does not replace the existing quality gate (design-lab/schemas/quality-gate.schema.json, packages/capabilities/quality/**); it separates the planes and their evidence ceilings.",
+  "type": "object",
+  "required": ["schemaVersion", "planes"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assurance-qa-layer/v1"},
+    "planes": {
+      "type": "array",
+      "minItems": 3,
+      "items": {"$ref": "#/$defs/plane"}
+    },
+    "findings": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/finding"}
+    },
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "description": "Lowercase nonzero artifact digest; an all-zero digest is not evidence.",
+      "pattern": "^(?!sha256:0{64}$)sha256:[0-9a-f]{64}$"
+    },
+    "plane": {
+      "type": "object",
+      "required": ["layer_id", "kind", "evidence_ceiling", "owner", "description", "can_block", "pipeline_layers"],
+      "additionalProperties": false,
+      "properties": {
+        "layer_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["DETERMINISTIC", "MODEL_ASSISTED", "HUMAN"]},
+        "evidence_ceiling": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]}
+        },
+        "owner": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "can_block": {"type": "boolean"},
+        "pipeline_layers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Layer ids copied from packages/capabilities/quality/pipeline-layers.json.",
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "DETERMINISTIC"}}},
+          "then": {
+            "properties": {
+              "evidence_ceiling": {"items": {"enum": ["E1", "E2"]}},
+              "can_block": {"const": true}
+            }
+          }
+        },
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "MODEL_ASSISTED"}}},
+          "then": {
+            "properties": {
+              "evidence_ceiling": {"items": {"enum": ["E2", "E3"]}},
+              "can_block": {"const": false}
+            },
+            "description": "A model-assisted plane may only recommend: it never vetoes and never signs."
+          }
+        },
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "HUMAN"}}},
+          "then": {
+            "properties": {
+              "evidence_ceiling": {"items": {"enum": ["E4"]}},
+              "can_block": {"const": true}
+            }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Free-form evidence detail. artifact_sha256 is mandatory: every outcome the frozen policy admits is a claim about one artifact, and a claim not bound to that artifact's digest is not evidence. The module bounds any claimed evidence_level by the plane ceiling.",
+      "required": ["artifact_sha256"],
+      "properties": {
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]}
+      },
+      "additionalProperties": true
+    },
+    "finding": {
+      "type": "object",
+      "required": ["finding_id", "layer_id", "check_id", "subject_ref", "outcome", "severity", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {"type": "string", "minLength": 1},
+        "layer_id": {"type": "string", "minLength": 1},
+        "check_id": {"type": "string", "minLength": 1},
+        "subject_ref": {"type": "string", "minLength": 1},
+        "outcome": {
+          "enum": ["PASS", "WARN", "REVIEW_REQUIRED", "HARD_BLOCK", "APPROVE", "REJECT"],
+          "description": "Closed vocabulary of the frozen policy. DETERMINISTIC (which carries the RIGHTS/SECURITY checks) may produce PASS/WARN/HARD_BLOCK; MODEL_ASSISTED may produce PASS/WARN/REVIEW_REQUIRED and never REJECT or REJECTED; HUMAN produces APPROVE/REJECT only. The per-plane restriction cannot be expressed here without resolving layer_id, so the module enforces it."
+        },
+        "severity": {"enum": ["BLOCKER", "MAJOR", "MINOR", "INFO"]},
+        "evidence": {"$ref": "#/$defs/evidence"},
+        "recommendation": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Required for MODEL_ASSISTED, refused for DETERMINISTIC."
+        },
+        "verdict": {
+          "enum": [null, "APPROVE", "REJECT"],
+          "description": "The signed final verdict. Permitted only in a HUMAN plane, mandatory there, and it must repeat that finding's outcome."
+        }
+      },
+      "allOf": [
+        {
+          "if": {"required": ["verdict"], "properties": {"verdict": {"const": "APPROVE"}}},
+          "then": {
+            "properties": {"outcome": {"const": "APPROVE"}},
+            "description": "A human finding states one decision; the signed verdict may not disagree with the outcome it signs."
+          }
+        },
+        {
+          "if": {"required": ["verdict"], "properties": {"verdict": {"const": "REJECT"}}},
+          "then": {
+            "properties": {"outcome": {"const": "REJECT"}},
+            "description": "A human REJECT is the only final rejection; an automated plane may not reach it."
+          }
+        }
+      ]
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "plane_summary": {
+      "type": "object",
+      "required": ["layer_ids", "finding_count", "outcomes", "severities", "human_verdict", "blocking"],
+      "additionalProperties": false,
+      "properties": {
+        "layer_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "finding_count": {"type": "integer", "minimum": 0},
+        "outcomes": {"$ref": "#/$defs/counts"},
+        "severities": {"$ref": "#/$defs/counts"},
+        "human_verdict": {"enum": [null, "APPROVE", "REJECT"]},
+        "blocking": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "layer_summary": {
+      "type": "object",
+      "required": ["layer_id", "kind", "can_block", "evidence_ceiling", "finding_count", "outcomes", "severities", "human_verdict"],
+      "additionalProperties": false,
+      "properties": {
+        "layer_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["DETERMINISTIC", "MODEL_ASSISTED", "HUMAN"]},
+        "can_block": {"type": "boolean"},
+        "evidence_ceiling": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "finding_count": {"type": "integer", "minimum": 0},
+        "outcomes": {"$ref": "#/$defs/counts"},
+        "severities": {"$ref": "#/$defs/counts"},
+        "human_verdict": {"enum": [null, "APPROVE", "REJECT"]}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Plane-aware aggregate. PASS is impossible while a HUMAN plane owes a verdict; BLOCKED outranks any human verdict, and a human REJECT is itself blocking.",
+      "required": ["schemaVersion", "gate", "planes", "layers", "blocking", "blocking_findings", "human_verdicts", "missing_human_verdicts", "finding_count", "explanation"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {"const": "design-lab/assurance-qa-summary/v1"},
+        "gate": {"enum": ["BLOCKED", "NEEDS_HUMAN_VERDICT", "PASS"]},
+        "planes": {"type": "object", "additionalProperties": {"$ref": "#/$defs/plane_summary"}},
+        "layers": {"type": "object", "additionalProperties": {"$ref": "#/$defs/layer_summary"}},
+        "blocking": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "blocking_findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+        "human_verdicts": {
+          "type": "object",
+          "additionalProperties": {"enum": ["APPROVE", "REJECT"]}
+        },
+        "missing_human_verdicts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "finding_count": {"type": "integer", "minimum": 0},
+        "explanation": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

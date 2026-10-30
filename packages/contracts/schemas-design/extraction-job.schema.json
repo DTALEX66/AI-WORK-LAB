@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/extraction-job.schema.json",
+  "title": "ExtractionJob (external asset conversion)",
+  "description": "外置设计资料转化链：SourceRecord -> ExtractionJob -> CandidateKnowledge -> compiled artifact。大原件外置；未明确版权保持 QUARANTINED。",
+  "type": "object",
+  "required": [
+    "job_id",
+    "schemaVersion",
+    "source_id",
+    "state",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "job_id": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "design-lab/extraction-job/v1"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "SOURCE_REGISTRY sourceId"
+    },
+    "state": {
+      "enum": [
+        "queued",
+        "extracting",
+        "compiling",
+        "review-required",
+        "compiled",
+        "rejected"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "output_knowledge_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reviewer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

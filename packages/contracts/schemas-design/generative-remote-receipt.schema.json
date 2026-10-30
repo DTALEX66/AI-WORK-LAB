@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/generative-remote-receipt.json",
+  "title": "DESIGN-LAB remote generative receipt (DL-P0-090)",
+  "description": "Request identity, provider response and LOCAL readback for one hosted generation. A succeeded provider status alone never qualifies an output.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "provider_kind",
+    "model_ref",
+    "version_ref",
+    "request_sha256",
+    "params_sha256",
+    "input_sha256",
+    "provider_status",
+    "output_refs",
+    "metrics",
+    "local_artifact_sha256",
+    "readback_sha256",
+    "rights",
+    "axes",
+    "limitations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/generative-remote-receipt/v1"
+    },
+    "provider_kind": {
+      "const": "REMOTE_HOSTED"
+    },
+    "model_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "params_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "input_sha256": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    },
+    "prediction_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provider_status": {
+      "enum": [
+        "starting",
+        "processing",
+        "succeeded",
+        "failed",
+        "canceled"
+      ]
+    },
+    "output_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "ref_sha256"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ref_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "local_artifact_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "readback_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "territory_limits"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "UNKNOWN",
+            "DECLARED",
+            "CLEARED",
+            "BLOCKED"
+          ]
+        },
+        "territory_limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation",
+        "unit",
+        "host_live",
+        "delivery"
+      ],
+      "properties": {
+        "implementation": {
+          "enum": [
+            "IMPLEMENTED_LOCAL",
+            "PARTIAL",
+            "NOT_IMPLEMENTED"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "PASS",
+            "PARTIAL",
+            "NOT_RUN"
+          ]
+        },
+        "host_live": {
+          "enum": [
+            "PASS",
+            "PARTIAL",
+            "NOT_VERIFIED"
+          ]
+        },
+        "delivery": {
+          "enum": [
+            "PASS",
+            "PARTIAL",
+            "NOT_DELIVERED"
+          ]
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

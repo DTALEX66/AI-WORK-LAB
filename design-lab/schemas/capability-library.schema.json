@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/capability-library.schema.json",
+  "title": "Capability Library V1 (what GET /api/capabilities answers)",
+  "$comment": "Written against the 60-record payload the product emitted on 2026-10-08 (46 sources from vendor/sources.lock.json + 14 models from design-lab/readiness/model-radar.json), captured through design_lab.http_service.make_server on a live socket; see design-lab/scripts/verify_route_payload_contracts.py. Emitter: src/design_lab/analysis/capability_library.py:247 (SCHEMA_VERSION at line 26). Every capability record carries the same 26 keys whichever kind it is, so `required` names all 26 and the document is closed. WHERE A VOCABULARY COMES FROM IS RECORDED HONESTLY: `kind` and `revisionState` are the emitter's own words and are enumerated; `disposition`, `presence`, `license`, `sourceType` and `evidenceLevel` are passed through from the committed records (design-lab/schemas/source-record.schema.json and readiness-model-radar.schema.json own them), so they are typed here and not frozen into an enum the projection does not control. `qualified` and `qualificationEvidence` were const null until 2026-10-10: that was honest for the payload this schema was written against, and it became a contract that forbade the DL-FINAL-T06 read-back, which returns a recorded boolean and a real evidence list. They are now typed, and null still means there is no qualification recorded rather than false or 0; qualification remains a host run plus a human acceptance, neither of which a registry can yield. `axes` carries the per-axis values the taxonomy holds (null, a list of strings, or an object), which is the same passthrough T06 asks for.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "classification",
+    "meaning",
+    "unmeasuredMeans",
+    "counts",
+    "sources",
+    "capabilities"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/capability-library/v1"},
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["joined", "unclassifiedAxes", "note"],
+      "properties": {
+        "joined": {"type": "integer", "minimum": 0},
+        "unclassifiedAxes": {"$ref": "#/$defs/axisList"},
+        "note": {"type": "string", "minLength": 1}
+      }
+    },
+    "meaning": {"type": "string", "minLength": 1},
+    "unmeasuredMeans": {"type": "string", "minLength": 1},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "joinedToTaxonomy", "byKind", "byLicense", "byRevisionState",
+                   "qualificationVerdicts", "qualifiedTrue", "qualifiedFalse",
+                   "qualificationNotAdjudicated"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "joinedToTaxonomy": {"type": "integer", "minimum": 0},
+        "byKind": {
+          "type": "object",
+          "propertyNames": {"enum": ["source", "model"]},
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "byLicense": {
+          "type": "object",
+          "propertyNames": {"type": "string", "minLength": 1},
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "byRevisionState": {
+          "type": "object",
+          "propertyNames": {"enum": ["VERIFIED", "UNRESOLVED", "NOT_VERIFIED"]},
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
+        "qualificationVerdicts": {"type": "integer", "minimum": 0},
+        "qualifiedTrue": {"type": "integer", "minimum": 0},
+        "qualifiedFalse": {"type": "integer", "minimum": 0},
+        "qualificationNotAdjudicated": {"type": "integer", "minimum": 0}
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lock", "revisions", "radar"],
+      "properties": {
+        "lock": {"const": "vendor/sources.lock.json"},
+        "revisions": {"const": "vendor/sources.revisions.json"},
+        "radar": {"const": "design-lab/readiness/model-radar.json"}
+      }
+    },
+    "capabilities": {"type": "array", "items": {"$ref": "#/$defs/capability"}}
+  },
+  "$defs": {
+    "axisValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domains", "artifactTypes", "capabilityLayers", "aestheticAxes", "styleArchetypes", "tier", "designQuality"],
+      "properties": {
+        "domains": {"type": ["array", "null"], "items": {"type": "string", "minLength": 1}, "description": "declared taxonomy values for this axis, or null when the axis is unclassified for this record"},
+        "artifactTypes": {"type": ["array", "null"], "items": {"type": "string", "minLength": 1}, "description": "declared taxonomy values for this axis, or null when the axis is unclassified for this record"},
+        "capabilityLayers": {"type": ["array", "null"], "items": {"type": "string", "minLength": 1}, "description": "declared taxonomy values for this axis, or null when the axis is unclassified for this record"},
+        "aestheticAxes": {"type": ["object", "null"], "description": "declared taxonomy values for this axis, or null when the axis is unclassified for this record"},
+        "styleArchetypes": {"type": ["array", "null"], "items": {"type": "string", "minLength": 1}, "description": "declared taxonomy values for this axis, or null when the axis is unclassified for this record"},
+        "tier": {"type": ["array", "null"], "items": {"type": "string", "minLength": 1}, "description": "declared taxonomy values for this axis, or null when the axis is unclassified for this record"},
+        "designQuality": {"type": ["object", "null"], "description": "declared taxonomy values for this axis, or null when the axis is unclassified for this record"}
+      },
+      "description": "CLASSIFICATION_AXES (capability_library.py:35) carried per record: DL-FINAL-T06 asks for the values, not just the names of the axes that are empty."
+    },
+    "axisList": {
+      "type": "array",
+      "items": {
+        "enum": ["domains", "artifactTypes", "capabilityLayers", "aestheticAxes",
+                 "styleArchetypes", "tier", "designQuality"]
+      },
+      "description": "A subset of CLASSIFICATION_AXES (capability_library.py:35): the axes the taxonomy declares but no observed candidate has filled."
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "kind", "domain", "title", "disposition", "license", "presence", "url",
+        "revision", "revisionState", "revisionReason", "repo", "observedAt", "contentDigest",
+        "qualified", "qualificationEvidence", "qualificationReason", "sourceType",
+        "evidenceLevel", "upstreamOwner", "licenseUrl", "rightsNotes", "removalPath",
+        "popularity", "unclassifiedAxes", "axes"
+      ],
+      "properties": {
+        "id": {"type": "string"},
+        "kind": {"enum": ["source", "model"]},
+        "domain": {"type": ["string", "null"]},
+        "title": {"type": "string", "minLength": 1},
+        "disposition": {"type": "string"},
+        "license": {"type": ["string", "null"]},
+        "presence": {"type": "string"},
+        "url": {"type": ["string", "null"]},
+        "revision": {"type": ["string", "null"]},
+        "revisionState": {"enum": ["VERIFIED", "UNRESOLVED", "NOT_VERIFIED"]},
+        "revisionReason": {"type": ["string", "null"]},
+        "repo": {"type": ["string", "null"]},
+        "observedAt": {"type": ["string", "null"]},
+        "contentDigest": {"type": ["string", "null"]},
+        "qualified": {"type": ["boolean", "null"], "description": "null means no qualification recorded, not false and not 0; true or false only when a recorded verdict exists"},
+        "qualificationEvidence": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"type": "string", "minLength": 1}}]},
+        "sourceType": {"type": ["string", "null"]},
+        "evidenceLevel": {"type": ["string", "null"]},
+        "upstreamOwner": {"type": ["string", "null"]},
+        "licenseUrl": {"type": ["string", "null"]},
+        "rightsNotes": {"type": ["string", "null"]},
+        "removalPath": {"type": ["string", "null"]},
+        "popularity": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/popularity"}]},
+        "unclassifiedAxes": {"$ref": "#/$defs/axisList"},
+        "axes": {"$ref": "#/$defs/axisValues"},
+        "qualificationReason": {"type": ["string", "null"], "description": "why there is no verdict yet; null once a recorded verdict exists"}
+      },
+      "allOf": [
+        {
+          "$comment": "revisionState is derived, not declared: VERIFIED only when the vendor revision record pinned this exact identity, UNRESOLVED only when the record lists it as unresolved. A source with neither is NOT_VERIFIED -- never 'no provenance'.",
+          "if": {"properties": {"kind": {"const": "model"}}, "required": ["kind"]},
+          "then": {
+            "properties": {
+              "revisionState": {"const": "NOT_VERIFIED"},
+              "revision": {"const": null},
+              "contentDigest": {"const": null},
+              "repo": {"const": null},
+              "url": {"const": null}
+            }
+          }
+        }
+      ]
+    },
+    "popularity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stargazerCount", "forkCount", "observedAt", "source", "isNotQuality"],
+      "properties": {
+        "stargazerCount": {"type": ["integer", "null"]},
+        "forkCount": {"type": ["integer", "null"]},
+        "observedAt": {"type": ["string", "null"]},
+        "source": {"type": ["string", "null"]},
+        "isNotQuality": {"const": true}
+      }
+    }
+  }
+}

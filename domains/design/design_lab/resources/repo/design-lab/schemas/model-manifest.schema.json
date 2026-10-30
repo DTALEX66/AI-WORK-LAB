@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:design-lab:model-manifest:v1",
+  "$comment": "SPDX-License-Identifier: MIT. Reviewed upstream file inventory; never inferred from a cache directory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "model_id",
+    "revision",
+    "source",
+    "files"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "design-lab/model-manifest/v1"
+    },
+    "model_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    },
+    "revision": {
+      "type": "string",
+      "pattern": "^(?!0{40}$)[a-f0-9]{40}$"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "size",
+          "sha256",
+          "role"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1099511627776
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^(?!0{64}$)[a-f0-9]{64}$"
+          },
+          "role": {
+            "enum": [
+              "weight",
+              "config",
+              "tokenizer",
+              "index",
+              "support"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/model-policy.schema.json",
+  "title": "Workflow Model and Context Policy Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "policy_id", "task_class", "model_class", "selection", "context_budget", "cost", "redaction", "degradation"],
+  "properties": {
+    "schema_version": {"const": "workflow/model-policy/v1"},
+    "policy_id": {"type": "string", "minLength": 1},
+    "task_class": {"enum": ["planning", "coding", "review", "observer", "design", "recovery"]},
+    "model_class": {"enum": ["reasoning", "general", "fast", "local", "unknown"]},
+    "selection": {"enum": ["user-selected", "capability-match", "offline-fixture", "unavailable"]},
+    "context_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "reserved_tokens", "overflow"],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "reserved_tokens": {"type": "integer", "minimum": 0},
+        "overflow": {"enum": ["fail-closed", "summarize", "drop-oldest"]}
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "source"],
+      "properties": {
+        "mode": {"enum": ["unknown", "estimated", "subscription", "not-metered", "reconciled"]},
+        "currency": {"type": "string", "minLength": 1},
+        "unit_price_per_million_tokens": {"type": "number", "minimum": 0},
+        "effective_at": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "estimated"}}},
+          "then": {"required": ["currency", "unit_price_per_million_tokens", "effective_at"]}
+        }
+      ]
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_response_bodies", "credentials"],
+      "properties": {
+        "prompt_response_bodies": {"const": "excluded"},
+        "credentials": {"const": "excluded"}
+      }
+    },
+    "degradation": {"enum": ["unknown-when-unavailable", "blocked-when-unavailable"]}
+  }
+}

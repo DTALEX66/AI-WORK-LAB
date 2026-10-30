@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/design-ir-v2.schema.json",
+  "title": "DesignIR v2 (Design Intermediate Representation)",
+  "description": "宿主中立交换层：画布 + 图层节点 + 组件 + 约束 + tokens + 资产引用 + 色彩空间 + 时间线 + 3D + 权利 + provenance。不是新画布存储格式。",
+  "type": "object",
+  "required": ["ir_version", "document_id", "revision", "canvas", "layers"],
+  "additionalProperties": true,
+  "properties": {
+    "ir_version": {
+      "const": "design-lab/design-ir/v2"
+    },
+    "document_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "canvas": {
+      "$ref": "#/$defs/canvas"
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/layer"
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/component"
+      },
+      "description": "可复用组件定义"
+    },
+    "tokens": {
+      "$ref": "#/$defs/design-tokens"
+    },
+    "colorSpace": {
+      "$ref": "#/$defs/color-space"
+    },
+    "timeline": {
+      "$ref": "#/$defs/timeline"
+    },
+    "scene3d": {
+      "$ref": "#/$defs/scene-3d"
+    },
+    "rights": {
+      "$ref": "#/$defs/rights"
+    },
+    "provenance": {
+      "$ref": "#/$defs/provenance"
+    },
+    "assetReferences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset-reference"
+      },
+      "description": "OpenAssetIO 风格的稳定 entity reference"
+    }
+  },
+  "$defs": {
+    "canvas": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "number", "minimum": 1 },
+        "height": { "type": "number", "minimum": 1 },
+        "depth": { "type": "number", "description": "3D 画布深度" },
+        "background": { "type": "string" },
+        "colorSpace": { "type": "string", "default": "sRGB" },
+        "dpi": { "type": "number", "default": 72 },
+        "bleed": { "type": "number", "description": "出血区域（mm）" }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "required": ["id", "type", "name"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": {
+          "enum": ["text", "image", "vector", "3d", "group", "component-instance", "frame", "shape"]
+        },
+        "name": { "type": "string" },
+        "visible": { "type": "boolean", "default": true },
+        "locked": { "type": "boolean", "default": false },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
+        "blendMode": { "type": "string", "default": "normal" },
+        "transform": { "$ref": "#/$defs/transform" },
+        "constraints": { "$ref": "#/$defs/constraints" },
+        "styles": { "$ref": "#/$defs/styles" },
+        "text": { "$ref": "#/$defs/text-properties" },
+        "image": { "$ref": "#/$defs/image-properties" },
+        "vector": { "$ref": "#/$defs/vector-properties" },
+        "shape3d": { "$ref": "#/$defs/shape-3d" },
+        "componentRef": { "type": "string", "description": "引用 component.id" },
+        "overrides": { "type": "object", "description": "组件实例覆盖" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/layer" },
+          "description": "group/frame 子层"
+        },
+        "rights": { "$ref": "#/$defs/rights" },
+        "metadata": { "type": "object", "description": "宿主特定字段（保留未知字段）" }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number", "description": "3D 深度" },
+        "scaleX": { "type": "number", "default": 1 },
+        "scaleY": { "type": "number", "default": 1 },
+        "scaleZ": { "type": "number", "default": 1 },
+        "rotation": { "type": "number", "description": "2D 旋转（度）" },
+        "rotationX": { "type": "number" },
+        "rotationY": { "type": "number" },
+        "rotationZ": { "type": "number" },
+        "skewX": { "type": "number" },
+        "skewY": { "type": "number" }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "description": "布局约束（响应式）",
+      "properties": {
+        "horizontal": { "enum": ["left", "right", "center", "left-right", "scale"] },
+        "vertical": { "enum": ["top", "bottom", "center", "top-bottom", "scale"] },
+        "fixedWidth": { "type": "boolean" },
+        "fixedHeight": { "type": "boolean" }
+      }
+    },
+    "styles": {
+      "type": "object",
+      "properties": {
+        "fill": { "type": "string" },
+        "stroke": { "type": "string" },
+        "strokeWidth": { "type": "number" },
+        "strokeAlign": { "enum": ["inside", "outside", "center"] },
+        "cornerRadius": { "type": "number" },
+        "shadow": { "$ref": "#/$defs/shadow" },
+        "blur": { "$ref": "#/$defs/blur" },
+        "gradient": { "$ref": "#/$defs/gradient" }
+      }
+    },
+    "shadow": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "blur": { "type": "number" },
+        "spread": { "type": "number" },
+        "color": { "type": "string" }
+      }
+    },
+    "blur": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["gaussian", "background", "motion"] },
+        "radius": { "type": "number" }
+      }
+    },
+    "gradient": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["linear", "radial", "angular", "diamond"] },
+        "stops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": { "type": "number", "minimum": 0, "maximum": 1 },
+              "color": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "text-properties": {
+      "type": "object",
+      "properties": {
+        "content": { "type": "string" },
+        "fontFamily": { "type": "string" },
+        "fontSize": { "type": "number" },
+        "fontWeight": { "type": "number" },
+        "fontStyle": { "enum": ["normal", "italic", "oblique"] },
+        "lineHeight": { "type": "number" },
+        "letterSpacing": { "type": "number" },
+        "wordSpacing": { "type": "number" },
+        "color": { "type": "string" },
+        "alignment": { "enum": ["left", "center", "right", "justify"] },
+        "verticalAlignment": { "enum": ["top", "center", "bottom"] },
+        "textDecoration": { "enum": ["none", "underline", "line-through", "overline"] },
+        "textTransform": { "enum": ["none", "uppercase", "lowercase", "capitalize"] },
+        "textIndent": { "type": "number" },
+        "writingMode": { "enum": ["horizontal-tb", "vertical-rl", "vertical-lr"] }
+      }
+    },
+    "image-properties": {
+      "type": "object",
+      "properties": {
+        "srcRef": { "type": "string", "description": "asset:// ref 到文件资产" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "fit": { "enum": ["fill", "contain", "cover", "none", "scale-down"] },
+        "filters": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "vector-properties": {
+      "type": "object",
+      "properties": {
+        "pathData": { "type": "string", "description": "SVG path data" },
+        "fill": { "type": "string" },
+        "stroke": { "type": "string" },
+        "strokeWidth": { "type": "number" },
+        "fillRule": { "enum": ["nonzero", "evenodd"] }
+      }
+    },
+    "shape-3d": {
+      "type": "object",
+      "properties": {
+        "geometry": { "enum": ["box", "sphere", "cylinder", "cone", "torus", "plane", "custom"] },
+        "sceneRef": { "type": "string", "description": "asset:// ref 到 3D 场景" },
+        "material": { "$ref": "#/$defs/material-3d" },
+        "camera": { "type": "object" },
+        "lighting": { "type": "object" }
+      }
+    },
+    "material-3d": {
+      "type": "object",
+      "properties": {
+        "baseColor": { "type": "string" },
+        "metallic": { "type": "number", "minimum": 0, "maximum": 1 },
+        "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "emissive": { "type": "string" },
+        "normalMap": { "type": "string" },
+        "occlusionMap": { "type": "string" },
+        "materialXRef": { "type": "string", "description": "MaterialX 文件引用" }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": ["id", "name", "variants"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "variants": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/layer" }
+        },
+        "defaultVariant": { "type": "string" },
+        "properties": { "type": "object", "description": "可配置属性定义" }
+      }
+    },
+    "design-tokens": {
+      "type": "object",
+      "description": "DTCG 风格的设计 tokens",
+      "properties": {
+        "colors": { "type": "object" },
+        "typography": { "type": "object" },
+        "spacing": { "type": "object" },
+        "radii": { "type": "object" },
+        "shadows": { "type": "object" },
+        "motion": { "type": "object" }
+      }
+    },
+    "color-space": {
+      "type": "object",
+      "properties": {
+        "working": { "type": "string", "default": "sRGB" },
+        "output": { "type": "string" },
+        "ocioConfig": { "type": "string", "description": "OpenColorIO 配置路径" },
+        "luts": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "timeline": {
+      "type": "object",
+      "description": "OpenTimelineIO 兼容时间线",
+      "properties": {
+        "duration": { "type": "number", "description": "总时长（秒）" },
+        "frameRate": { "type": "number", "default": 24 },
+        "tracks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "enum": ["video", "audio", "effect"] },
+              "clips": { "type": "array" }
+            }
+          }
+        },
+        "otioRef": { "type": "string", "description": "OTIO 文件引用" }
+      }
+    },
+    "scene-3d": {
+      "type": "object",
+      "properties": {
+        "usdRef": { "type": "string", "description": "USD 文件引用" },
+        "gltfRef": { "type": "string", "description": "glTF 文件引用" },
+        "materialXRef": { "type": "string", "description": "MaterialX 文件引用" },
+        "nodes": { "type": "array" },
+        "materials": { "type": "array" },
+        "lights": { "type": "array" },
+        "cameras": { "type": "array" }
+      }
+    },
+    "asset-reference": {
+      "type": "object",
+      "description": "OpenAssetIO 风格的稳定 entity reference",
+      "properties": {
+        "entityRef": { "type": "string", "description": "稳定 entity reference（不随物理路径变化）" },
+        "trait": { "type": "string", "description": "资产类型 trait" },
+        "versionIntent": { "enum": ["latest", "pinned", "frozen"] },
+        "resolvedLocation": { "type": "string", "description": "运行时解析的物理路径（不写入 portable IR）" },
+        "publishRelationship": { "type": "string" },
+        "rights": { "$ref": "#/$defs/rights" }
+      }
+    },
+    "rights": {
+      "type": "object",
+      "description": "权利与许可",
+      "properties": {
+        "license": { "type": "string" },
+        "copyright": { "type": "string" },
+        "commercialUse": { "type": "boolean" },
+        "attribution": { "type": "string" },
+        "restrictions": { "type": "array", "items": { "type": "string" } },
+        "thirdPartyAssets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "assetRef": { "type": "string" },
+              "license": { "type": "string" },
+              "source": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "description": "来源与变更历史",
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "repoSha": { "type": "string", "description": "创建时的 Git SHA" },
+        "adapterVersion": { "type": "string" },
+        "hostVersion": { "type": "string" },
+        "os": { "type": "string" },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": { "type": "string", "format": "date-time" },
+              "by": { "type": "string" },
+              "action": { "type": "string" },
+              "sha": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

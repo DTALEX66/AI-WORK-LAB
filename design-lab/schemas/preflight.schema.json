@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/preflight.schema.json",
+  "$comment": "WHAT THIS FILE DESCRIBES, RECORDED 2026-10-08 after a contract audit claimed a status/verdict drift against the artifact emitter. This schema is bound to the PROFILE documents design-lab/production/profiles/preflight-{print,digital,video}.json: they carry const schemaVersion design-lab/preflight/v2 and exactly the four top-level fields required here (preflight_id, schemaVersion, profile, required_checks), and design-lab/scripts/verify_production_preflight.py validates them against this file. The optional nested `result` (status: pass|fail, checks[].status) is the second half named in the description -- the machine-readable report read by src/design_lab/assurance/handoff_readiness.py::_preflight_gates, which expects preflight['result']['status'] alongside preflight['required_checks']. Nothing in this file requires a TOP-LEVEL `status`: `status` is not in `required` and appears only under `result.properties`. The artifact report emitted by src/design_lab/assurance/production_preflight.py is a different contract with its own version (design-lab/artifact-preflight/v1), a top-level `verdict`, and no `result` object; it is schema-bound to schemas/artifact-preflight.schema.json, NOT here. Do not 'align' the emitter to this file: that would rename a field apps/workbench reads from the HTTP response today, and would force profile-only fields (preflight_id, required_checks) into a report that has no business declaring them.",
+  "title": "Preflight Contract V2 (production checks)",
+  "description": "生产预检契约：required_checks 结构（id/severity/tool/standard_ref）+ 机器可读报告。印刷/数字/视频 profiles。",
+  "type": "object",
+  "required": [
+    "preflight_id",
+    "schemaVersion",
+    "profile",
+    "required_checks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "preflight_id": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "design-lab/preflight/v2"
+    },
+    "profile": {
+      "enum": [
+        "print",
+        "digital",
+        "video",
+        "ui"
+      ]
+    },
+    "required_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "tool"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "blocker",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "tool": {
+            "type": "string"
+          },
+          "standard_ref": {
+            "type": "string",
+            "description": "标准引用（PDF/X、WCAG 等）"
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "required": [
+        "status",
+        "checks"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pass",
+            "fail"
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "pass",
+                  "fail",
+                  "warning"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

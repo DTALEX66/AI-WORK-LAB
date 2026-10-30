@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/assistance-plan-list-v1.schema.json",
+  "title": "Assistance Plan List V1 (one project's plans, newest first)",
+  "$comment": "DL-KB-07. GET /api/projects/{id}/assistance-plans answers with this document. Each row is a summary of the plan's current revision plus whether a named human has adopted a revision and whether the plan carries a neutral creative (the same `provided` fact the detail screen's state derives from). The rows are read from the stored revision documents; nothing here is counted from a side table that could drift from them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "total", "offset", "limit", "returned", "next_offset", "plans"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assistance-plan-list/v1"},
+    "total": {"type": "integer", "minimum": 0},
+    "offset": {"type": "integer", "minimum": 0},
+    "limit": {"type": "integer", "minimum": 1},
+    "returned": {"type": "integer", "minimum": 0},
+    "next_offset": {"type": ["integer", "null"]},
+    "plans": {
+      "type": "array", "maxItems": 200,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["plan_id", "revision", "objective", "output_type", "created_at", "created_by",
+                     "reference_count", "provided", "chosen_revision"],
+        "properties": {
+          "plan_id": {"type": "string", "pattern": "^aplan-[0-9a-f]{32}$"},
+          "revision": {"type": "integer", "minimum": 1},
+          "objective": {"type": "string", "minLength": 1},
+          "output_type": {"enum": ["IMAGE", "UI", "MOTION", "STORYBOARD", "AUDIO", "CAMPAIGN"]},
+          "created_at": {"type": "string", "minLength": 1},
+          "created_by": {"type": "string", "minLength": 1},
+          "reference_count": {"type": "integer", "minimum": 0},
+          "provided": {"type": "boolean"},
+          "chosen_revision": {"type": ["integer", "null"]}
+        }
+      }
+    }
+  }
+}

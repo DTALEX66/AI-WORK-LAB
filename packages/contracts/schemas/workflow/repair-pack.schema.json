@@ -1,0 +1,625 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/repair-pack.schema.json",
+  "title": "Workflow RepairPack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "packId",
+    "generatedAt",
+    "status",
+    "readiness",
+    "target",
+    "binds",
+    "verification",
+    "handoff",
+    "provenance",
+    "plan"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "workflow/repair-pack/v1"
+    },
+    "packId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{3,120}$"
+    },
+    "generatedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "WAITING_APPROVAL",
+        "BLOCKED"
+      ],
+      "description": "A subset of the eight action-plan statuses on purpose: this module can only ever prepare a pack (WAITING_APPROVAL) or say why it cannot (BLOCKED). APPROVED/EXECUTING/SUCCEEDED are states a pack can reach only through a later slice that consumes a real result, so the contract refuses to let a draft claim them."
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reasons"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "READY",
+            "BLOCKED"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "no-open-issues",
+              "adapter-not-declared",
+              "adapter-does-not-declare-invoke",
+              "project-unregistered",
+              "project-root-missing",
+              "issue-has-no-project",
+              "verification-command-unknown",
+              "pack-cap-reached"
+            ]
+          }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "projectId",
+        "projectName",
+        "projectRoot",
+        "projectStatus",
+        "adapter",
+        "adapterDisplayName",
+        "adapterSupportLevel",
+        "declaredOperations",
+        "operation",
+        "routingSource"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ADAPTER_INVOKE",
+            "MANUAL_COPY"
+          ],
+          "description": "CL-03: two routes that must never borrow each other's claims. ADAPTER_INVOKE names an executor whose registry entry declares `invoke`; MANUAL_COPY names no adapter at all -- the material is copied to any tool a human chooses, and no adapter capability is asserted. The enum exists so `adapter: null` cannot be read as an adapter that merely forgot its name."
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projectName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "projectRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projectStatus": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "adapter": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Non-empty for ADAPTER_INVOKE; null for MANUAL_COPY. A manual pack never carries the name of an adapter it did not choose."
+        },
+        "adapterDisplayName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "adapterSupportLevel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "declaredOperations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "detect",
+              "capabilities",
+              "plan",
+              "apply",
+              "invoke",
+              "observe",
+              "rollback"
+            ]
+          }
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "invoke",
+            "copy-handoff"
+          ]
+        },
+        "routingSource": {
+          "const": "caller-choice",
+          "description": "The executor is named by whoever asked for the pack. Attribution says which software a problem belongs to; that is not evidence about which software should fix it, so the projection refuses to infer a route."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "ADAPTER_INVOKE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "operation": {
+                "const": "invoke"
+              },
+              "adapter": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "MANUAL_COPY"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "operation": {
+                "const": "copy-handoff"
+              },
+              "adapter": {
+                "type": "null"
+              },
+              "adapterDisplayName": {
+                "type": "null"
+              },
+              "adapterSupportLevel": {
+                "type": "null"
+              },
+              "declaredOperations": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "binds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issueFingerprints",
+        "evidenceRefs",
+        "classes",
+        "priorities",
+        "issueCount",
+        "softwareIds",
+        "unattributedCount"
+      ],
+      "properties": {
+        "issueFingerprints": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$"
+          }
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+:.+$"
+          }
+        },
+        "classes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "SOURCE_CIRCUIT_OPEN",
+              "SOURCE_REFUSAL",
+              "SOURCE_FAILURE",
+              "SOURCE_DATA_DROPPED",
+              "SOURCE_STALE",
+              "SOURCE_INCOMPLETE_COVERAGE",
+              "EXECUTION_STALLED",
+              "EXECUTION_CONFLICT",
+              "TASK_BLOCKED",
+              "TASK_FAILED"
+            ]
+          }
+        },
+        "priorities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "P1",
+              "P2",
+              "P3"
+            ]
+          }
+        },
+        "issueCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "softwareIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "unattributedCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "known",
+        "command",
+        "basis"
+      ],
+      "properties": {
+        "known": {
+          "type": "boolean"
+        },
+        "command": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "copyable",
+        "sent",
+        "dispatched",
+        "copiedByUser",
+        "userDeclaredHandoff",
+        "externalReceipt",
+        "authorizationRef",
+        "requiresOwnerAction"
+      ],
+      "properties": {
+        "mode": {
+          "const": "manual-copy",
+          "description": "CL-03: the only delivery mode this slice produces. The text a human copies is the material; there is no send path, so no other mode may be claimed."
+        },
+        "copyable": {
+          "const": true,
+          "description": "The material may be copied to any tool. This is a property of the material, not evidence that any copy happened."
+        },
+        "sent": {
+          "const": false,
+          "description": "WORK-LAB transmission. Distinct from `copiedByUser` in the same way a local copy is distinct from a send: writing a file or putting text on a clipboard is not a transmission and cannot turn this field true."
+        },
+        "dispatched": {
+          "const": false
+        },
+        "copiedByUser": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "declared",
+            "declaredAt",
+            "channel"
+          ],
+          "properties": {
+            "declared": {
+              "const": false,
+              "description": "Only a user's own statement can make this true, and a generated pack carries no user statement. WORK-LAB cannot observe a clipboard."
+            },
+            "declaredAt": {
+              "type": "null"
+            },
+            "channel": {
+              "type": "null"
+            }
+          }
+        },
+        "userDeclaredHandoff": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "declared",
+            "declaredAt",
+            "channel",
+            "claimedRecipient"
+          ],
+          "properties": {
+            "declared": {
+              "const": false,
+              "description": "A user saying \"I handed it over\" is a claim about the user's action. It says nothing about whether the other side received anything, which is `externalReceipt` -- a separate field that this draft cannot fill."
+            },
+            "declaredAt": {
+              "type": "null"
+            },
+            "channel": {
+              "type": "null"
+            },
+            "claimedRecipient": {
+              "type": "null"
+            }
+          }
+        },
+        "externalReceipt": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "received",
+            "receivedAt",
+            "externalId",
+            "source"
+          ],
+          "properties": {
+            "received": {
+              "const": false,
+              "description": "Only an external system's own response can fill this. A user-declared handoff must never be copied into here, or the claim would start wearing the evidence's clothes."
+            },
+            "receivedAt": {
+              "type": "null"
+            },
+            "externalId": {
+              "type": "null"
+            },
+            "source": {
+              "type": "null"
+            }
+          }
+        },
+        "authorizationRef": {
+          "type": "null"
+        },
+        "requiresOwnerAction": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "derivationScope",
+        "inferencePerformed",
+        "contentIncluded",
+        "authorityClaimed",
+        "applied"
+      ],
+      "properties": {
+        "derivationScope": {
+          "enum": [
+            "open-issue-rows-plus-registered-projects-plus-adapter-registry",
+            "open-issue-rows-plus-registered-projects"
+          ],
+          "description": "The second value is the CL-03 manual route: it consulted no adapter registry, so naming one would claim a source it never read."
+        },
+        "inferencePerformed": {
+          "const": false
+        },
+        "contentIncluded": {
+          "const": false
+        },
+        "authorityClaimed": {
+          "const": false
+        },
+        "applied": {
+          "const": false
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "plan_id",
+        "status",
+        "target",
+        "steps",
+        "approval",
+        "rollback"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "workflow/action-plan/v1"
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]{3,96}$"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "DRAFT",
+            "WAITING_APPROVAL",
+            "APPROVED",
+            "EXECUTING",
+            "SUCCEEDED",
+            "FAILED",
+            "BLOCKED",
+            "ROLLED_BACK"
+          ]
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "adapter",
+            "operation",
+            "project_root"
+          ],
+          "properties": {
+            "adapter": {
+              "type": "string",
+              "minLength": 1
+            },
+            "operation": {
+              "type": "string",
+              "minLength": 1
+            },
+            "project_root": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "action",
+              "mode",
+              "side_effects"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mode": {
+                "enum": [
+                  "read",
+                  "write",
+                  "execute"
+                ]
+              },
+              "side_effects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "approval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "approval_required",
+            "status"
+          ],
+          "properties": {
+            "approval_required": {
+              "const": true
+            },
+            "status": {
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED"
+              ]
+            },
+            "approved_by": {
+              "type": "string"
+            }
+          }
+        },
+        "rollback": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "available",
+            "strategy"
+          ],
+          "properties": {
+            "available": {
+              "const": true
+            },
+            "strategy": {
+              "type": "string",
+              "minLength": 1
+            },
+            "artifact": {
+              "type": "string"
+            }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allowed_paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "forbidden_paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "network": {
+              "enum": [
+                "none",
+                "explicit"
+              ]
+            }
+          }
+        }
+      },
+      "description": "Inlined rather than $ref'd because scripts/ci/generate_contract_types.py cannot follow a $ref: a referenced body collapses to Record<string, unknown> and the plan stops being a projected shape. tests/workflow-assistance/test_repair_pack_projection.py compares this inlined body, property for property, against packages/contracts/schemas/workflow/action-plan.schema.json so the copy cannot drift."
+    }
+  }
+}

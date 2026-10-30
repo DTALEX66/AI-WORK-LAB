@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/assistance-plan-v1.schema.json",
+  "title": "Assistance Plan V1 (one stored revision of a neutral design intent)",
+  "$comment": "DL-KB-07, extended by DL-KB-11 (2026-10-24). This is the document one assistance_plan_revision row stores, byte for byte: the create route writes it, the revise route writes the next revision, and the detail route serves the stored bytes inside `current` rather than rebuilding them. A plan is a record of what a person asked for and what material it was built from -- not a hint that a model ran. `references` are frozen here with the revision and digest each object had when the plan was written; the readback re-reads the live objects and says whether they moved (STALE), which is how '所用资料修订' stays answerable later. `external_steps` carry only labels a person supplied (`job_id`/`operation_id`, or the literal UNUSED); this service never dispatched them and cannot verify them. `shots` (DL-KB-11) is OPTIONAL on purpose: every plan stored before shot rows existed stays valid against this same version, because adding an optional field to a closed object is a compatible move and re-versioning the document would have rewritten bytes that were never wrong. A shot row is one entry of a 分镜表 the person wrote -- `duration_s`/`camera`/`sound`/`reference_role` are null when the person left them blank, which is not the same thing as the plan-level UNKNOWN because a row's empty cell is read by a spreadsheet, not by this service's state words. The 分镜 CSV export refuses to render an absent shot list rather than delivering an empty table dressed up as a storyboard.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "plan_id", "revision", "project_id", "objective", "output_type",
+               "neutral_creative", "brand_constraints", "role_constraints", "lens", "sound",
+               "references", "external_steps", "known_gaps", "limits", "content_sha256",
+               "created_at", "created_by", "claims_not_made"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assistance-plan/v1"},
+    "plan_id": {"type": "string", "pattern": "^aplan-[0-9a-f]{32}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "objective": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "output_type": {"enum": ["IMAGE", "UI", "MOTION", "STORYBOARD", "AUDIO", "CAMPAIGN"]},
+    "neutral_creative": {"type": "string", "minLength": 1, "maxLength": 8000},
+    "brand_constraints": {"type": "array", "maxItems": 32,
+                          "items": {"type": "string", "minLength": 1, "maxLength": 400}},
+    "role_constraints": {"type": "array", "maxItems": 32,
+                         "items": {"type": "string", "minLength": 1, "maxLength": 400}},
+    "lens": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "sound": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "shots": {
+      "$comment": "DL-KB-11. Optional: absent means the plan was written before shot rows existed, or its output type never has them (a poster). The store, not this schema, is the one that can say `index` is unique -- JSON Schema has no cross-item identity constraint -- so _shots() refuses a duplicated or out-of-range index by name instead of letting a 分镜表 with two 镜头 3 reach a spreadsheet.",
+      "type": "array", "maxItems": 60,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["index", "duration_s", "purpose", "camera", "sound", "reference_role"],
+        "properties": {
+          "index": {"type": "integer", "minimum": 1, "maximum": 60},
+          "duration_s": {"type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 86400},
+          "purpose": {"type": "string", "minLength": 1, "maxLength": 800},
+          "camera": {"type": ["string", "null"], "minLength": 1, "maxLength": 400},
+          "sound": {"type": ["string", "null"], "minLength": 1, "maxLength": 400},
+          "reference_role": {"type": ["string", "null"], "minLength": 1, "maxLength": 400}
+        }
+      }
+    },
+    "references": {
+      "type": "array", "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "id", "revision", "sha256"],
+        "properties": {
+          "kind": {"enum": ["ASSET", "BRIEF", "DIRECTION", "PROMPT_RESULT", "KNOWLEDGE"]},
+          "id": {"type": "string", "minLength": 1},
+          "revision": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "external_steps": {
+      "type": "array", "maxItems": 32,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["step", "tool", "job_id", "operation_id"],
+        "properties": {
+          "step": {"type": "string", "minLength": 1, "maxLength": 400},
+          "tool": {"type": "string", "minLength": 1, "maxLength": 400},
+          "job_id": {"type": "string", "minLength": 1, "maxLength": 200},
+          "operation_id": {"type": "string", "minLength": 1, "maxLength": 200}
+        }
+      }
+    },
+    "known_gaps": {"type": "array", "maxItems": 32,
+                   "items": {"type": "string", "minLength": 1, "maxLength": 400}},
+    "limits": {"type": "array", "maxItems": 32,
+               "items": {"type": "string", "minLength": 1, "maxLength": 400}},
+    "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "created_at": {"type": "string", "minLength": 1},
+    "created_by": {"type": "string", "minLength": 1},
+    "claims_not_made": {"type": "array", "minItems": 1,
+                        "items": {"type": "string", "minLength": 1}}
+  }
+}

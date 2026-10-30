@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/model-asset.schema.json",
+  "title": "Model asset metadata contract (WL3-330)",
+  "description": "Metadata contract for a local model asset. Never carries weights, credentials, prompt/response bodies, or private host paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "asset_id",
+    "display_name",
+    "family",
+    "architecture_status",
+    "modality",
+    "format",
+    "library_relative_path",
+    "storage_mode",
+    "owner",
+    "lifecycle",
+    "quality_state"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/model-asset/v1"
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{2,63}$"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "family": {
+      "type": "string",
+      "minLength": 1
+    },
+    "architecture_status": {
+      "enum": [
+        "UNVERIFIED",
+        "CONFIRMED",
+        "UNSUPPORTED"
+      ]
+    },
+    "modality": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "text",
+          "vision",
+          "video",
+          "audio",
+          "embedding",
+          "reranker",
+          "image"
+        ]
+      }
+    },
+    "format": {
+      "enum": [
+        "safetensors",
+        "gguf",
+        "ckpt",
+        "onnx",
+        "unknown"
+      ]
+    },
+    "quantization": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "size_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "source_uri": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "source_revision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "license_status": {
+      "enum": [
+        "VERIFIED",
+        "UNKNOWN",
+        "RESTRICTED"
+      ]
+    },
+    "digest_algorithm": {
+      "const": "sha256"
+    },
+    "digest": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "digest_state": {
+      "enum": [
+        "UNAVAILABLE",
+        "CACHED",
+        "VERIFIED"
+      ]
+    },
+    "library_relative_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "storage_mode": {
+      "enum": [
+        "managed",
+        "in_place_frozen",
+        "reference_only"
+      ]
+    },
+    "owner": {
+      "enum": [
+        "user-shared",
+        "design-lab",
+        "work-lab",
+        "external"
+      ]
+    },
+    "project_scopes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capability_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "conformance_status": {
+      "enum": [
+        "UNVERIFIED",
+        "PASS",
+        "FAIL",
+        "BLOCKED"
+      ]
+    },
+    "runtime_candidates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "estimated_vram_mib": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "estimated_ram_mib": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "context_range": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lifecycle": {
+      "enum": [
+        "DISCOVERED",
+        "PROVENANCE_VERIFIED",
+        "CONTENT_VERIFIED",
+        "ACTIVE",
+        "QUARANTINED",
+        "RETIRED"
+      ]
+    },
+    "ui_frozen": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_verified_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "quality_state": {
+      "enum": [
+        "UNKNOWN",
+        "PARTIAL",
+        "OK",
+        "BLOCKED"
+      ]
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/knowledge-entry-v1.schema.json",
+  "title": "Knowledge Entry V1 (one stored revision of one knowledge entry)",
+  "$comment": "DL-KB-02. This is the document src/design_lab/knowledge_library.py stores, one row per revision, and serves back verbatim. Every minimum field the taskpack names is present: internal id, type, title, summary, domain/task tags, body, applicability, counterexamples/limits, source, source version and observation time, license and citation scope, content digest, revision, and supersession. A field the caller did not supply is the literal string UNKNOWN -- the store writes that, it does not omit the key, so 'missing' is visible in the bytes a reader receives instead of being indistinguishable from 'empty'. A link in `source.origin` proves nothing: `source.verification` is always UNVERIFIED at this version, and the store refuses a caller that says otherwise. `content_sha256` covers the content-bearing fields only (see the module's _content_digest), so re-writing identical content as a new revision with a different recommendation is not a content change.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "knowledge_entry_id", "revision", "entry_type", "title",
+               "summary", "domain_tags", "task_tags", "target_tools", "body", "applicability",
+               "limits", "source", "related_capability_ids", "content_sha256", "supersedes",
+               "recommended", "created_at", "created_by", "claims_not_made"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/knowledge-entry/v1"},
+    "knowledge_entry_id": {"type": "string", "pattern": "^kentry-[0-9a-f]{32}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "entry_type": {"enum": ["STANDARD", "METHOD", "PROMPT", "MODEL_GUIDE", "RECIPE", "CASE"]},
+    "title": {"type": "string", "minLength": 1, "maxLength": 200},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 400},
+    "domain_tags": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "task_tags": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "target_tools": {"type": "array", "minItems": 1,
+                     "items": {"type": "string", "minLength": 1}},
+    "body": {"type": "string", "minLength": 1},
+    "applicability": {"type": "string", "minLength": 1},
+    "limits": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Counterexamples and limits. UNKNOWN when the caller supplied none -- an empty string would read as 'no limits', which is a claim nobody made."
+    },
+    "source": {"$ref": "#/$defs/source"},
+    "related_capability_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "supersedes": {
+      "oneOf": [
+        {"type": "string", "pattern": "^kentry-[0-9a-f]{32}$"},
+        {"type": "null"}
+      ]
+    },
+    "recommended": {"type": "boolean"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "created_by": {"type": "string", "minLength": 1},
+    "claims_not_made": {"type": "array", "minItems": 1,
+                        "items": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The field names are SourceRecord's own (design-lab/schemas/source-record.schema.json), so a reader who knows that record already knows this one. What is relaxed is only the strictness: SourceRecord forbids a missing license by schema, while a knowledge entry has to be able to say a field was not filled -- so the same keys carry UNKNOWN here. Nothing is upgraded to 'reviewed' by being written.",
+      "required": ["sourceId", "origin", "author", "license", "licenseStatus", "allowedUsage",
+                   "citationScope", "version", "observedAt", "contentHash", "verification"],
+      "properties": {
+        "sourceId": {"type": "string", "minLength": 1},
+        "origin": {"type": "string", "minLength": 1},
+        "author": {"type": "string", "minLength": 1},
+        "license": {"type": "string", "minLength": 1},
+        "licenseStatus": {"enum": ["reviewed", "unknown", "reference-only"]},
+        "allowedUsage": {"type": "string", "minLength": 1},
+        "citationScope": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "observedAt": {"type": "string", "minLength": 1},
+        "contentHash": {"type": "string", "minLength": 1},
+        "verification": {"const": "UNVERIFIED"}
+      },
+      "allOf": [
+        {
+          "$comment": "An unknown license may not be labelled reviewed, and a reviewed license may not be the literal UNKNOWN. The store enforces the same rule before validation; stating it in the contract keeps a second reader from having to trust the module.",
+          "if": {"properties": {"license": {"const": "UNKNOWN"}}, "required": ["license"]},
+          "then": {"properties": {"licenseStatus": {"const": "unknown"}}}
+        }
+      ]
+    }
+  }
+}

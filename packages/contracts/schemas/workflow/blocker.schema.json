@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/blocker.schema.json",
+  "title": "Workflow Blocker Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "blocker_id", "class", "scope", "retry_policy", "fingerprint", "message", "created_at"],
+  "properties": {
+    "schema_version": {"const": "workflow/blocker/v1"},
+    "blocker_id": {"type": "string", "minLength": 1},
+    "class": {"enum": ["CODE_DEFECT", "TEST_FAILURE", "POLICY_VIOLATION", "APPROVAL_REQUIRED", "MISSING_CAPABILITY", "REMOTE_DIVERGENCE", "CI_OUTAGE", "CI_QUEUE_STALLED", "CI_RATE_LIMITED", "FLAKY_GATE", "ENVIRONMENT_UNAVAILABLE"]},
+    "scope": {"enum": ["task", "batch", "gate", "delivery", "release", "observation"]},
+    "retry_policy": {"enum": ["never", "once_after_recovery", "retry_after_retry_after", "budgeted_diagnostic"]},
+    "fingerprint": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "message": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "resolved_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}

@@ -1,0 +1,386 @@
+{
+  "schema_version": "design-lab/readiness-model-radar/v1",
+  "task_id": "DL-P1-100",
+  "observed_at": "2026-09-13T14:54:08+00:00",
+  "inventory_ref": "reports/current/MACHINE_INVENTORY.json",
+  "external_assets_ref": "design-lab/config/external-assets-index.json",
+  "policy": [
+    "This registry records what is present and what is claimed; it never loads, downloads, hashes, or runs a model.",
+    "machine_state reuses the model_manifest stage vocabulary (ABSENT, METADATA_ONLY, WEIGHTS_COMPLETE, LOAD_VERIFIED, INFERENCE_VERIFIED); a stage describes the machine, never the licence.",
+    "Existing bytes stay registered in design-lab/config/external-assets-index.json; this radar references those ids and does not create a parallel asset registry.",
+    "No entry is default_enabled unless radar_state is QUALIFIED_LOCAL, which additionally needs machine_state >= LOAD_VERIFIED and a nonzero recorded weight hash.",
+    "A local file set is not a licence grant: the MiniMax H3 component licences are NOT adjudicated here and stay BLOCKED_BY_LICENSE with commercial_use UNKNOWN until the project owner decides.",
+    "An unmeasured hardware fit is recorded as UNKNOWN rather than assumed to fit the declared 8151 MiB ceiling."
+  ],
+  "hardware": {
+    "available_vram_mib": 8151,
+    "gpu": "NVIDIA GeForce RTX 5060",
+    "source": "reports/current/MACHINE_INVENTORY.json host.gpu, read-only nvidia-smi query of total VRAM"
+  },
+  "entries": [
+    {
+      "model_id": "minimax-h3-diffusion",
+      "family": "video-generation",
+      "source": {
+        "kind": "local",
+        "ref": "model-library:ComfyUI/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "license_id": "PENDING-OWNER-ADJUDICATION"
+      },
+      "radar_state": "BLOCKED_BY_LICENSE",
+      "machine_state": "WEIGHTS_COMPLETE",
+      "local_path": "model-library:ComfyUI/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "asset_index_ids": ["h3-diffusion-model"],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 20, "verdict": "EXCEEDS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": "licence adjudication pending with the project owner; docs/LOCAL_ENVIRONMENT.md records the usable conditions as unconfirmed",
+      "evidence_ref": "docs/decisions/R3-READBACK-AND-H3-PREFLIGHT-2026-09-07.md",
+      "rights": {
+        "license_id": "PENDING-OWNER-ADJUDICATION",
+        "territory_limits": [],
+        "commercial_use": "UNKNOWN"
+      },
+      "notes": "WEIGHTS_COMPLETE is copied from the recorded four-component verification (fixed upstream revision 4cc1d817b6184899b41293954329f576cb5ae86b); this repository records no per-file sha256, so weights_sha256 stays empty rather than inventing one. The bytes are registered in the existing external-asset registry. Not loaded and not inferred. The licence question is NOT decided here."
+    },
+    {
+      "model_id": "minimax-h3-text-encoder",
+      "family": "image-generation",
+      "source": {
+        "kind": "local",
+        "ref": "model-library:ComfyUI/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "license_id": "PENDING-OWNER-ADJUDICATION"
+      },
+      "radar_state": "BLOCKED_BY_LICENSE",
+      "machine_state": "WEIGHTS_COMPLETE",
+      "local_path": "model-library:ComfyUI/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "asset_index_ids": ["h3-text-encoder"],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 12, "verdict": "EXCEEDS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": "licence adjudication pending with the project owner; encoder loading and operator qualification were never performed",
+      "evidence_ref": "docs/decisions/R3-READBACK-AND-H3-PREFLIGHT-2026-09-07.md",
+      "rights": {
+        "license_id": "PENDING-OWNER-ADJUDICATION",
+        "territory_limits": [],
+        "commercial_use": "UNKNOWN"
+      },
+      "notes": "Component of the H3 set, covered by the same recorded full-set integrity check and the same unresolved licence question. Present bytes do not imply that the encoder loads or that the operators are qualified."
+    },
+    {
+      "model_id": "minimax-h3-video-vae",
+      "family": "video-generation",
+      "source": {
+        "kind": "local",
+        "ref": "model-library:ComfyUI/vae/minimax_h3_video_vae_fp16.safetensors",
+        "license_id": "PENDING-OWNER-ADJUDICATION"
+      },
+      "radar_state": "BLOCKED_BY_LICENSE",
+      "machine_state": "WEIGHTS_COMPLETE",
+      "local_path": "model-library:ComfyUI/vae/minimax_h3_video_vae_fp16.safetensors",
+      "asset_index_ids": ["h3-video-vae"],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 8, "verdict": "EXCEEDS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": "licence adjudication pending with the project owner; H3 load, resource peak, and output are unmeasured",
+      "evidence_ref": "docs/decisions/R3-READBACK-AND-H3-PREFLIGHT-2026-09-07.md",
+      "rights": {
+        "license_id": "PENDING-OWNER-ADJUDICATION",
+        "territory_limits": [],
+        "commercial_use": "UNKNOWN"
+      },
+      "notes": "Component of the H3 set. The declared requirement is a structural estimate for the 8 GiB class card and is explicitly not a measurement."
+    },
+    {
+      "model_id": "minimax-h3-audio-vae",
+      "family": "video-generation",
+      "source": {
+        "kind": "local",
+        "ref": "model-library:ComfyUI/vae/minimax_h3_audio_vae_fp32.safetensors",
+        "license_id": "PENDING-OWNER-ADJUDICATION"
+      },
+      "radar_state": "BLOCKED_BY_LICENSE",
+      "machine_state": "WEIGHTS_COMPLETE",
+      "local_path": "model-library:ComfyUI/vae/minimax_h3_audio_vae_fp32.safetensors",
+      "asset_index_ids": ["h3-audio-vae"],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 4, "verdict": "UNKNOWN"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": "licence adjudication pending with the project owner; the audio VAE was never loaded and its fit was never measured",
+      "evidence_ref": "docs/decisions/R3-READBACK-AND-H3-PREFLIGHT-2026-09-07.md",
+      "rights": {
+        "license_id": "PENDING-OWNER-ADJUDICATION",
+        "territory_limits": [],
+        "commercial_use": "UNKNOWN"
+      },
+      "notes": "Component of the H3 set. No fit measurement exists, so the verdict stays UNKNOWN even though the file is small."
+    },
+    {
+      "model_id": "whisper-large-v3-turbo",
+      "family": "asr",
+      "source": {
+        "kind": "local",
+        "ref": "model-library:whisper/faster-whisper-large-v3-turbo",
+        "license_id": "MIT"
+      },
+      "radar_state": "EVALUATING",
+      "machine_state": "METADATA_ONLY",
+      "local_path": "model-library:whisper/faster-whisper-large-v3-turbo",
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 3, "verdict": "FITS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": "docs/decisions/R3-ASR-CPU-VAD-AUDIT-2026-09-07.md",
+      "rights": {
+        "license_id": "MIT",
+        "territory_limits": [],
+        "commercial_use": "PERMITTED"
+      },
+      "notes": "Recorded AUDIT evidence (docs/LOCAL_ENVIRONMENT.md) is CPU INT8 transcription with a VAD comparison; that record also states it proves controlled recognition only, not TTS, GPU, natural-recording, or production qualification. METADATA_ONLY is recorded because this repository holds no verified manifest or weight hash for the cache, so the greater stage is not claimed. Default-disabled because EVALUATING is not QUALIFIED_LOCAL."
+    },
+    {
+      "model_id": "paddleocr-onnx",
+      "family": "ocr",
+      "source": {
+        "kind": "local",
+        "ref": ".project-local/task-artifacts/ocr-qualification (controlled detection+recognition artifacts)",
+        "license_id": "Apache-2.0"
+      },
+      "radar_state": "EVALUATING",
+      "machine_state": "METADATA_ONLY",
+      "local_path": ".project-local/task-artifacts/ocr-qualification",
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 1, "verdict": "FITS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": "docs/decisions/R3-OCR-ONNX-CONTROLLED-2026-09-08.md",
+      "rights": {
+        "license_id": "Apache-2.0",
+        "territory_limits": [],
+        "commercial_use": "RESTRICTED"
+      },
+      "notes": "Controlled ONNX detection+recognition is recorded (two rounds, five synthetic categories), but the record states this is not production qualification. commercial_use is RESTRICTED rather than PERMITTED because design-lab/config/provider-capabilities.json notes that AGPL transitive dependencies must be isolated before use."
+    },
+    {
+      "model_id": "omniparser",
+      "family": "segmentation",
+      "source": {
+        "kind": "vendor",
+        "ref": "microsoft/OmniParser",
+        "license_id": "MIXED-CC-BY-4.0-AGPL-3.0-MIT"
+      },
+      "radar_state": "REJECTED",
+      "machine_state": "ABSENT",
+      "local_path": null,
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 4, "verdict": "UNKNOWN"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": "commercial use denied by the mixed licence set (AGPL-3.0 icon-detection weights); already disabled in design-lab/config/reconstruction-models.json",
+      "evidence_ref": "design-lab/config/reconstruction-models.json",
+      "rights": {
+        "license_id": "MIXED-CC-BY-4.0-AGPL-3.0-MIT",
+        "territory_limits": [],
+        "commercial_use": "UNKNOWN"
+      },
+      "notes": "REJECTED records the already-decided licence conflict; no weights are present on this machine and none may be fetched."
+    },
+    {
+      "model_id": "sam2",
+      "family": "segmentation",
+      "source": {
+        "kind": "huggingface",
+        "ref": "https://github.com/facebookresearch/sam2",
+        "license_id": "Apache-2.0"
+      },
+      "radar_state": "WATCH",
+      "machine_state": "ABSENT",
+      "local_path": null,
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 6, "verdict": "FITS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": null,
+      "rights": {
+        "license_id": "Apache-2.0",
+        "territory_limits": [],
+        "commercial_use": "PERMITTED"
+      },
+      "notes": "Candidate for layer decomposition and foreground matting, registered in design-lab/config/reconstruction-models.json with qualification UNQUALIFIED_CHECKSUM. FITS is a declared requirement, not a measurement of this machine."
+    },
+    {
+      "model_id": "birefnet",
+      "family": "segmentation",
+      "source": {
+        "kind": "huggingface",
+        "ref": "https://huggingface.co/ZhengPeng7/BiRefNet",
+        "license_id": "MIT"
+      },
+      "radar_state": "WATCH",
+      "machine_state": "ABSENT",
+      "local_path": null,
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 5, "verdict": "FITS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": null,
+      "rights": {
+        "license_id": "MIT",
+        "territory_limits": [],
+        "commercial_use": "PERMITTED"
+      },
+      "notes": "Candidate matting model, registered in design-lab/config/reconstruction-models.json with qualification UNQUALIFIED_CHECKSUM. Nothing may be downloaded in this build."
+    },
+    {
+      "model_id": "grounding-dino",
+      "family": "segmentation",
+      "source": {
+        "kind": "huggingface",
+        "ref": "https://github.com/IDEA-Research/GroundingDINO",
+        "license_id": "Apache-2.0"
+      },
+      "radar_state": "WATCH",
+      "machine_state": "ABSENT",
+      "local_path": null,
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 6, "verdict": "FITS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": null,
+      "rights": {
+        "license_id": "Apache-2.0",
+        "territory_limits": [],
+        "commercial_use": "PERMITTED"
+      },
+      "notes": "Candidate open-vocabulary box detector, marked optional-runtime and checksum-unqualified in design-lab/config/reconstruction-models.json."
+    },
+    {
+      "model_id": "swin2sr",
+      "family": "upscaling",
+      "source": {
+        "kind": "huggingface",
+        "ref": "https://huggingface.co/caidas/swin2SR-classical-sr-x2-64",
+        "license_id": "Apache-2.0"
+      },
+      "radar_state": "WATCH",
+      "machine_state": "ABSENT",
+      "local_path": null,
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 4, "verdict": "UNKNOWN"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": null,
+      "rights": {
+        "license_id": "Apache-2.0",
+        "territory_limits": [],
+        "commercial_use": "PERMITTED"
+      },
+      "notes": "WATCH candidate covering the upscaling family. The fit was never measured for tiled 2x/4x inference, so the verdict is UNKNOWN rather than a guess, and nothing may be downloaded."
+    },
+    {
+      "model_id": "ltx-video-2b",
+      "family": "video-generation",
+      "source": {
+        "kind": "huggingface",
+        "ref": "https://huggingface.co/Lightricks/LTX-Video",
+        "license_id": "LTXV-OPEN-WEIGHTS"
+      },
+      "radar_state": "WATCH",
+      "machine_state": "ABSENT",
+      "local_path": null,
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 12, "verdict": "EXCEEDS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": null,
+      "rights": {
+        "license_id": "LTXV-OPEN-WEIGHTS",
+        "territory_limits": [],
+        "commercial_use": "RESTRICTED"
+      },
+      "notes": "WATCH candidate for local video generation, kept in the radar precisely because its declared requirement exceeds this machine's ceiling. UNKNOWN territory limits are recorded as an empty list, not as 'no limits'."
+    },
+    {
+      "model_id": "kokoro-82m",
+      "family": "tts",
+      "source": {
+        "kind": "huggingface",
+        "ref": "https://huggingface.co/hexgrad/Kokoro-82M",
+        "license_id": "Apache-2.0"
+      },
+      "radar_state": "WATCH",
+      "machine_state": "ABSENT",
+      "local_path": null,
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 2, "verdict": "FITS"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": null,
+      "rights": {
+        "license_id": "Apache-2.0",
+        "territory_limits": [],
+        "commercial_use": "PERMITTED"
+      },
+      "notes": "WATCH candidate covering the TTS family, which has no local presence on this machine. FITS is the published requirement for the 82M checkpoint, not a measurement taken here; nothing may be downloaded in this build."
+    },
+    {
+      "model_id": "hunyuan3d-2",
+      "family": "3d",
+      "source": {
+        "kind": "huggingface",
+        "ref": "https://huggingface.co/tencent/Hunyuan3D-2",
+        "license_id": "TENCENT-HUNYUAN3D"
+      },
+      "radar_state": "WATCH",
+      "machine_state": "ABSENT",
+      "local_path": null,
+      "asset_index_ids": [],
+      "weights_sha256": [],
+      "hash_source": null,
+      "hardware_fit": {"vram_gib_required": 8, "verdict": "UNKNOWN"},
+      "default_enabled": false,
+      "qualified_by": null,
+      "blocking_reason": null,
+      "evidence_ref": null,
+      "rights": {
+        "license_id": "TENCENT-HUNYUAN3D",
+        "territory_limits": ["territorial scope not verified offline"],
+        "commercial_use": "UNKNOWN"
+      },
+      "notes": "WATCH 3D candidate. Territory scope and commercial terms were not verified because this build performs no network access, so commercial_use stays UNKNOWN."
+    }
+  ]
+}

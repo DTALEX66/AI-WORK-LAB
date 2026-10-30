@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/error.schema.json",
+  "title": "Workflow Error Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "error_code",
+    "class",
+    "retryable",
+    "external_write_retryable",
+    "message"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/error/v1"
+    },
+    "error_code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_.-]{2,63}$"
+    },
+    "class": {
+      "enum": [
+        "validation",
+        "permission",
+        "network",
+        "timeout",
+        "conflict",
+        "dependency",
+        "runtime",
+        "unknown"
+      ]
+    },
+    "retryable": {
+      "type": "boolean"
+    },
+    "external_write_retryable": {
+      "const": false
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "checkpoint": {
+      "type": "string"
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": false
+    }
+  }
+}

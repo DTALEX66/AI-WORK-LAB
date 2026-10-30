@@ -1,0 +1,1198 @@
+{
+  "$comment": "The contract-binding ledger for design-lab/schemas/contracts/. One row per schema, one row per route src/design_lab/http_service.py dispatches on. Re-checked on every run by design-lab/scripts/verify_contract_bindings.py: a BINDING row's named producer/consumer must still exist and still contain the declared version string, and an INERT row must state what is actually true rather than describing unimplemented work as pending. Paths are repo-relative; instance and test refs are path:line.",
+  "schemaVersion": "design-lab/contract-bindings/v1",
+  "recorded": "2026-10-08",
+  "status_vocabulary": {
+    "BINDING": "a place in src/ produces or consumes this exact shape and names this version",
+    "INERT": "nothing in src/ produces or consumes this shape; the row says what exists instead"
+  },
+  "route_kind_vocabulary": {
+    "BOUND_SCHEMA": "the payload is validated by the named schema file against the named emitter",
+    "SCHEMA_LESS": "no schema validates this payload; the reason states why, and a version-bearing row must state the debt outright"
+  },
+  "contracts": [
+    {
+      "schema": "design-lab/schemas/contracts/action-plan.schema.json",
+      "version": "design-lab/action-plan/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. plan_id/jobs appear nowhere in src/. The action-plan boundary that does exist is bound by design-lab/schemas/tool-action-plan.schema.json, checked by design-lab/scripts/verify_tool_action_plan.py against design-lab/evals/tool-action-plan/sample-hero.json -- a different document with a different field vocabulary, which this schema does not describe."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/asset-manifest.schema.json",
+      "version": "design-lab/asset-manifest/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Two documents claim one version identity. This file requires snake_case manifest_id/assets while design-lab/schemas/asset-manifest.schema.json carries $id design-lab/asset-manifest/v1 and requires camelCase manifestId. The camelCase one is the file scripts/verify_contract_graph.py:79 reads; no src/ module produces either shape."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/asset-ref.schema.json",
+      "version": "design-lab/asset-ref/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. content_hash/trait_set/runtime_binding appear nowhere in src/. The asset_ref hits in src/design_lab/interop/timeline.py:607 are a plain string field of the OTIO timeline contract, a different shape under a colliding name; test_illustrator_job_validation.py:67 matches on the word assetId, not on this schema."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/audit-event.schema.json",
+      "version": "design-lab/audit-event/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Half of this shape is real and the schema cannot be satisfied by it. The live audit_event table (design-lab/schemas/state/design-lab-state-v1.sql:45, written at src/design_lab/runtime/asset_store.py:144) carries exactly audit_id/actor/action/at -- this schema's four required fields other than schemaVersion -- but never emits a schemaVersion, so a real row fails this closed document. No JSON audit-event payload exists in src/."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/capability-def.schema.json",
+      "version": "design-lab/capability-def/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. capability_id plus integration_id as a required pair appears nowhere outside this file. The capability surface the product serves is /api/capabilities (src/design_lab/analysis/capability_library.py), which emits design-lab/capability-library/v1 and is not bound by any schema."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/capability-evidence.schema.json",
+      "version": "design-lab/capability-evidence/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [
+        "design-lab/tests/test_contract_schema_integrity.py:108",
+        "design-lab/tests/test_contract_schema_integrity.py:127"
+      ],
+      "fixtures": [],
+      "reason": "Superseded in place. The records the product actually reads and writes are design-lab/capability-evidence-current/v1 (design-lab/config/capability-evidence-current.json) and design-lab/capability-evidence-index/v3, whose fields are capability_id/declared_level/supported_current and actualEvidence/artifact/evidence/run. The only instances of THIS document are the two synthetic fixtures in the tests named above; src/design_lab/governance/reporting.py:337 reads the current record, never this shape."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/capability-ref.schema.json",
+      "version": "design-lab/capability-ref/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. registry_id and capability_ref appear nowhere outside this file."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/change-set.schema.json",
+      "version": "design-lab/change-set/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. change_set_id/changes appear nowhere in src/. Revision history that does exist is the design-layer superseded_by chain (src/design_lab/design_layer.py), a per-record chain with no change-set document at any boundary."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/delivery-receipt.schema.json",
+      "version": "design-lab/delivery-receipt/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Superseded by a shape this file would reject. The live receipt is design-lab/delivery-receipt/v2, emitted at src/design_lab/interop/delivery_receipt.py:36 and bound by design-lab/schemas/interop-delivery-receipt-v2.schema.json. v2 requires receipt_sha256/job_id/deliverables/axes, none of which this additionalProperties:false document declares, and requires delivery_id/delivered_at/status, which v2 does not carry. Nothing produces the v1 shape."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/design-context.schema.json",
+      "version": "design-lab/design-context/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. context_id and the revision pairing appear nowhere in src/."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/design-control-mcp.schema.json",
+      "version": "design-lab/design-control-mcp/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. allowed_tools/forbidden appear nowhere in src/, apps/, packages/ or integrations/. The MCP surface the product exposes is the host adapter path, which carries no such document."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/design-diff.schema.json",
+      "version": "design-lab/design-diff/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. diff_id/before_revision/after_revision appear nowhere in src/."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/document-session.schema.json",
+      "version": "design-lab/document-session/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. session_id with lease_state/dirty/checkpoint appears nowhere in src/; DESIGN-LAB holds no document session -- AGENTS.md rules out a second canvas, and no route serves one."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/evidence-ttl.schema.json",
+      "version": "design-lab/evidence-ttl/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. ttl_days appears nowhere in src/. Evidence ageing is handled by the ledger projections in src/design_lab/governance/reporting.py, which carry no TTL document."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/execution-envelope.schema.json",
+      "version": "design-lab/execution-envelope/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. envelope_id and a capability_ref/payload pairing appear nowhere in src/. Execution that exists is recorded in the native_execution_v1 table (src/design_lab/native_bundles.py:101) as request_json/receipt_json per attempt, an envelope-free shape, and design-lab/schemas/execution-result.schema.json is the document that describes it -- which this schema does not describe."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/host-session.schema.json",
+      "version": "design-lab/host-session/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. session_kind/session_mode/ownership appear nowhere in src/. Host identity that does exist is per-attempt in native_tasks/native_workers, under the job vocabularies, with no host-session document."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/integration-def.schema.json",
+      "version": "design-lab/integration-def/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. integration_id/executable_ref appear nowhere in src/."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/job-attempt.schema.json",
+      "version": "design-lab/job-attempt/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [
+        "design-lab/tests/test_contract_schema_integrity.py:149",
+        "design-lab/tests/test_contract_schema_integrity.py:160"
+      ],
+      "fixtures": [],
+      "reason": "Contradicted by the store it describes. The live job_attempt table (design-lab/schemas/state/design-lab-state-v1.sql:19, written at src/design_lab/runtime/job_store.py:158) stores job_id/attempt_no/started_at only -- no attempt_id and no status, both required here. The only instances that satisfy this document are the two synthetic fixtures named above; TaskQueries builds attempt records from the DB row, not from this shape."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/job-spec.schema.json",
+      "version": "design-lab/job-spec/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [
+        "design-lab/tests/test_contract_schema_integrity.py:63",
+        "design-lab/tests/test_contract_schema_integrity.py:80"
+      ],
+      "fixtures": [],
+      "reason": "One-sided version bump plus a shape nobody emits. src/design_lab/creative/creative_job.py:126 writes design-lab/job-spec/v2 into the job table while design-lab/schemas/state/design-lab-state-v1.sql:16 still defaults the column to v1 and this schema binds v1. The job document that IS validated is design-lab/creative-job/v1 (creative_job.py:27-28 against design-lab/schemas/creative-job.schema.json), whose fields are not job_id/schemaVersion/operation_intent/attempt_no. Only the two synthetic fixtures above satisfy this file."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/jury-decision.schema.json",
+      "version": "design-lab/jury-decision/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Superseded. The jury payload that crosses the boundary is design-lab/assurance-jury-record/v2 (src/design_lab/assurance/human_jury.py:77, bound by design-lab/schemas/assurance-jury-record-v2.schema.json) and the readback envelope design-lab/jury-readback/v1 (src/design_lab/jury_review.py:45). jury_id/score/decision as a required trio appear nowhere in src/; packages/capabilities/quality/jury/JuryRecord.template.json shares the jury_id name but binds design-lab/schemas/jury-record.schema.json instead."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/knowledge-candidate.schema.json",
+      "version": "design-lab/knowledge-candidate/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Superseded. The KnowledgeCandidate exit is bound by design-lab/schemas/candidate-knowledge.schema.json (design-lab/candidate-knowledge/v1) and by assurance-knowledge-candidate-v2.schema.json, named in scripts/deepseek_worktree_reconciliation.py:124. candidate_id/knowledge_type/state as this file requires them appear nowhere in src/."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/operation-intent.schema.json",
+      "version": "design-lab/operation-intent/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [
+        "design-lab/tests/test_contract_schema_integrity.py:72"
+      ],
+      "fixtures": [],
+      "reason": "The concept is live; this document is not. operation_intent is a real table (design-lab/schemas/state/design-lab-state-v1.sql:4, written at src/design_lab/creative/store.py:232) carrying operation_id/idempotency_scope/idempotency_key/request_hash plus created_at -- the same four fields minus schemaVersion, as SQL columns that are never serialised as a JSON document. The idempotency_key the routes accept is checked only by the exact-key-set test in http_service.py body(). This schema is exercised only as the nested $defs of job-spec's synthetic fixture."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/operation-receipt.schema.json",
+      "version": "design-lab/operation-receipt/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this, and the table that shares its name is dead: operation_receipt is created by design-lab/schemas/state/design-lab-state-v1.sql:26 but no INSERT or SELECT for it exists anywhere in src/. Its stale_fence/received_at columns are not declared by this additionalProperties:false document, so a real row would be rejected."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/permission-manifest.schema.json",
+      "version": "design-lab/permission-manifest/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. manifest_id with a permissions array appears nowhere in src/. Host authorization that exists is the per-attempt authorization dict built in src/design_lab/native_delivery.py and consumed by the COM adapters, with no permission-manifest document."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/planar-decomposition.schema.json",
+      "version": "design-lab/planar-decomposition/v1",
+      "status": "BINDING",
+      "instances": [
+        "src/design_lab/analysis/decomposition.py:164"
+      ],
+      "tests": [
+        "design-lab/tests/test_planar_decomposition.py:82",
+        "design-lab/tests/test_ocr_object_plan.py:35",
+        "design-lab/tests/host_fixtures/qualify_ocr_object_plan.py:28"
+      ],
+      "fixtures": [
+        "design-lab/tests/host_fixtures/qualify_ocr_object_plan.py:45"
+      ],
+      "reason": "The only contract in this directory with a real emitter: DecompositionPlan.to_contract() at src/design_lab/analysis/decomposition.py:164 writes this exact schemaVersion const and field set, and test_planar_decomposition.py:82 validates the emitted JSON against this file rather than a hand-written fixture. src/design_lab/analysis/plan_to_rir.py consumes the plan but names it only in prose, so it is not listed as an instance: an instance the gate cannot re-check against the version literal is a rot risk, not coverage. The fixtures entry is the generator, not a committed file: the plan instance is assembled and jsonschema-validated at run time on that line, so no JSON sits under design-lab/tests/ for this contract, and the citation is checked for existence and line range like any other."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/probe-result.schema.json",
+      "version": "design-lab/probe-result/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. probe_id appears nowhere in src/. Host probing that exists emits design-lab/adobe-host-job/v1 and design-lab/photoshop-native-job/v1 (src/design_lab/adapters/illustrator_com.py:129, src/design_lab/adapters/photoshop_com.py:155), neither of which is this shape."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/projection-cursor.schema.json",
+      "version": "design-lab/projection-cursor/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. cursor_id appears nowhere in src/. Pagination that exists is the opaque after= token on the list routes, carried as a query parameter and never as a document."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/retry-policy.schema.json",
+      "version": "design-lab/retry-policy/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. policy_id and max_attempts appear nowhere in src/; retry and requeue behaviour lives as constants inside src/design_lab/native_workers.py and is never published as a policy document."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/rights-decision.schema.json",
+      "version": "design-lab/rights-decision/v1",
+      "status": "BINDING",
+      "instances": [
+        "src/design_lab/assurance/rights_ledger.py:73"
+      ],
+      "tests": [
+        "design-lab/tests/test_rights_ledger.py:56",
+        "design-lab/tests/test_rights_http.py:53"
+      ],
+      "fixtures": [],
+      "reason": "Bound 2026-10-08. src/design_lab/assurance/rights_ledger.py loads this file at read time (contract(), lru-cached) and validates every document against it before a row is written, including the decision enum and the closed property set; src/design_lab/rights_review.py exposes the same loaded set as the route's exact key set. Nothing in the store or the facade copies the field list, so a schema word that moves moves the gate with it -- design-lab/tests/test_rights_ledger.py re-reads the SQL CHECK list against the loaded enum for exactly that reason."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/run-event.schema.json",
+      "version": "design-lab/run-event/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. The outbox table (design-lab/schemas/state/design-lab-state-v1.sql:52) has event_id/event_type/payload but is created and never written -- no INSERT or SELECT for outbox exists in src/. Events on the wire come from src/design_lab/task_queries.py events(), a different shape with no schemaVersion."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/run-receipt.schema.json",
+      "version": "design-lab/run-receipt/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. run_id paired with a provenance object appears nowhere in src/. Execution records that exist are design-lab/execution-result/v1 and the native_execution_v1 table, neither of which is this shape."
+    },
+    {
+      "schema": "design-lab/schemas/contracts/runtime-binding.schema.json",
+      "version": "design-lab/runtime-binding/v1",
+      "status": "INERT",
+      "instances": [],
+      "tests": [],
+      "fixtures": [],
+      "reason": "Nothing implements this. binding_id/adapter_id/binding as a required trio appear nowhere in src/. src/design_lab/design_layer.py:799 mints a bind id for a design-system binding, an unrelated concept; the adapter contract that is live is design-lab/schemas/adapter-contract.schema.json."
+    }
+  ],
+  "routes": [
+    {
+      "route": "/api/assistance-plan-output-types",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "AssistancePlans",
+      "schema": "design-lab/schemas/assistance-plan-output-types-v1.schema.json",
+      "version": "design-lab/assistance-plan-output-types/v1",
+      "emitter": "src/design_lab/assistance_plan.py:50",
+      "reason": "DL-KB-08. The initial screen must offer an output type before any workspace exists, so this read is deliberately project-independent: the project-scoped list route answers 404 until a project is created, which would leave the first plan unsaveable. The six values and their Chinese labels are the same table the create route validates against, served from the store's OUTPUT_TYPES/OUTPUT_LABELS rather than hand-copied into the view -- a second copy in TypeScript could offer a word the service refuses, and the page would only find out on submit."
+    },
+    {
+      "route": "/api/automation-connectors",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "_automation_connectors",
+      "reason": "No schema and none is needed for the envelope: src/design_lab/automation_connectors.py returns a projection built from two committed records (integrations/adapter-registry.json and the 2026-10-28 delivery registration) and declares no schemaVersion of its own. Every connector row answers NOT_PROBED with enabled:false, so the payload states a reading of registrations rather than a runtime verdict; the probe and activation receipts, when they exist, will be separate records bound to their own bytes."
+    },
+    {
+      "route": "/api/capabilities",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "capability_library",
+      "schema": "design-lab/schemas/capability-library.schema.json",
+      "version": "design-lab/capability-library/v1",
+      "emitter": "src/design_lab/analysis/capability_library.py:247",
+      "reason": "Debt paid 2026-10-08. design-lab/schemas/capability-library.schema.json binds the 24-key record the projection really emits (46 sources + 14 models in this checkout), keeping the emitter's own vocabulary (kind, revisionState) enumerated while disposition/presence/license/sourceType stay pass-through strings owned by source-record.schema.json and readiness-model-radar.schema.json, and holding qualified at const null because no host run and no human acceptance exists yet. A real GET payload is checked against it by design-lab/scripts/verify_route_payload_contracts.py."
+    },
+    {
+      "route": "/api/design-briefs/(brief-[0-9a-f]{32})/lineage",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "project_of_brief",
+      "schema": "design-lab/schemas/design-lineage-v1.schema.json",
+      "version": "design-lab/design-lineage/v1",
+      "emitter": "src/design_lab/design_layer.py:106",
+      "reason": "The id-scoped form of the brief chain: the same document, with the owner project resolved through project_of_brief so a foreign id fails closed instead of reading another project's history. Debt paid 2026-10-23. design-lab/schemas/design-lineage-v1.schema.json binds the wrapper (schemaVersion, subject_kind) and the chain node: root_id, requested_id, live_id and a versions array whose items are `$ref`'d from the record owner. design_layer._check_design_lineage() runs it on every chain read and answers 500 DESIGN_LINEAGE_CONTRACT_VIOLATION on a mismatch."
+    },
+    {
+      "route": "/api/design-briefs/(brief-[0-9a-f]{32})/revisions",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "revise_brief",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "The id-scoped brief revision, which resolves the owner project before writing so a foreign id cannot append to a chain it does not belong to. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/design-directions/(direction-[0-9a-f]{32})/lineage",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "project_of_direction",
+      "schema": "design-lab/schemas/design-lineage-v1.schema.json",
+      "version": "design-lab/design-lineage/v1",
+      "emitter": "src/design_lab/design_layer.py:106",
+      "reason": "The id-scoped form of the direction chain, resolved through project_of_direction. Debt paid 2026-10-23. design-lab/schemas/design-lineage-v1.schema.json binds the wrapper (schemaVersion, subject_kind) and the chain node: root_id, requested_id, live_id and a versions array whose items are `$ref`'d from the record owner. design_layer._check_design_lineage() runs it on every chain read and answers 500 DESIGN_LINEAGE_CONTRACT_VIOLATION on a mismatch."
+    },
+    {
+      "route": "/api/design-directions/(direction-[0-9a-f]{32})/revisions",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "revise_direction",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "The id-scoped direction revision, same owner resolution before writing. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/design-systems",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "design_systems",
+      "schema": "design-lab/schemas/design-collection-v1.schema.json",
+      "version": "design-lab/design-collection/v1",
+      "emitter": "src/design_lab/design_layer.py:105",
+      "reason": "The bindable design-system catalog: src/design_lab/design_layer.py design_systems() answers the packaged manifests read by catalog() -- four rows measured 2026-10-23, each with name, title, version and evidence_level. Debt paid 2026-10-23 as the third branch of design-lab/schemas/design-collection-v1.schema.json (collection='design_systems'), because the row shape was already bound inside design-lab/schemas/design-layer-rollup-v1.schema.json ($defs.design_system, which this branch $refs rather than restates): leaving the route that serves those very rows unbound would have made the roll-up the only place the catalog shape was judged, so the same bytes answered bound in one route and unjudged in another. design_layer._check_design_collection() runs the envelope on every read and answers 500 DESIGN_COLLECTION_CONTRACT_VIOLATION on a mismatch; the branch declares no next_cursor because catalog() is not paged."
+    },
+    {
+      "route": "/api/domains",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "domain_packs",
+      "schema": "design-lab/schemas/domain-pack-readback.schema.json",
+      "version": "design-lab/domain-pack-readback/v1",
+      "emitter": "src/design_lab/domain_packs.py:205",
+      "reason": "Debt paid 2026-10-08. The inner packs were always bound (design-lab/schemas/domain-pack.schema.json, judged by design-lab/scripts/verify_domain_pack_v2.py); this row was the unboud half. design-lab/schemas/domain-pack-readback.schema.json now closes the envelope, enumerates all four validation states and requires counts.byValidation to carry each of them, so a zero is never an absent category. Validated against the real response by design-lab/scripts/verify_route_payload_contracts.py."
+    },
+    {
+      "route": "/api/environment",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "describe",
+      "schema": "design-lab/schemas/path-diagnostic.schema.json",
+      "version": "design-lab/path-diagnostic/v1",
+      "emitter": "src/design_lab/runtime/paths.py:212",
+      "reason": "Debt paid 2026-10-08. ProjectPaths.describe() wrote design-lab/path-diagnostic/v1 with no schema behind it; design-lab/schemas/path-diagnostic.schema.json now describes the envelope that actually ships -- the four project-owned roots, the DECLARED_NOT_PROBED shared inputs, the five tool_bindings() states and the NOT_EXECUTED write/migration markers -- and design-lab/scripts/verify_route_payload_contracts.py validates the bytes this route really wrote against it."
+    },
+    {
+      "route": "/api/evidence-projection",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "evidence_projection",
+      "schema": "design-lab/schemas/evidence-projection.schema.json",
+      "version": "design-lab/evidence-projection/v1",
+      "emitter": "src/design_lab/governance/evidence_readback.py:30",
+      "reason": "Debt paid 2026-10-08 by section 30 and 31 of docs/audits/DESIGNLAB-LAUNCH-REVIEW-PREFLIGHT-2026-10-08.md: the projection answered two questions -- integrity (are these bytes still where the receipt says they came from) and currency (does this receipt still describe the bytes we are running) -- and nobody outside reporting.py could read either, so the evidence link of the chain was visible only to the code that wrote it. evidence_readback.projection() recomputes project_ledger over THIS checkout from the ledger and the object database (never from reports/current/, which is bound to whatever commit it was generated at) and validates its own payload, so a renamed key, a new reason token registered in code but not in the schema, or a record field leaking into the readback answers a named 500 instead of a short record a reader would call 'no evidence problems'. The reason vocabularies are two closed enums because the two questions are not the same question, and `current` is a subset of `verified` by construction -- the totals carry both counts and a test asserts that relation on the live payload."
+    },
+    {
+      "route": "/api/health",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "served_bundle_sha256",
+      "reason": "No schema and none is needed: a five-field liveness projection (status/version/scope/bundleSha256/bundleOrigin) asserted field by field by the service and wheel-install gates."
+    },
+    {
+      "route": "/api/knowledge-entries",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeLibrary",
+      "schema": "design-lab/schemas/knowledge-entry-write-v1.schema.json",
+      "version": "design-lab/knowledge-entry-write/v1",
+      "emitter": "src/design_lab/knowledge_library.py:626",
+      "reason": "DL-KB-02. The caller supplies inputs; the document is built and validated server-side (_document -> knowledge-entry-v1.schema.json) and the answer is the write envelope whose `entry` member is that stored document, not a re-built copy. `schemaVersion` is not one of the accepted request fields, so a stale client cannot choose the version the read path will have to understand. Every minimum field is present in the stored bytes: a field the caller left out is the literal UNKNOWN, never an omitted key. Refusals: 400 KNOWLEDGE_CONTENT_MISSING / KNOWLEDGE_TYPE_INVALID / KNOWLEDGE_AUTHOR_REQUIRED / KNOWLEDGE_FIELD_MALFORMED, 404 KNOWLEDGE_SUPERSEDES_UNKNOWN, 409 KNOWLEDGE_SUPERSESSION_CONFLICT, 409 KNOWLEDGE_ENTRY_CONCURRENT_UPDATE."
+    },
+    {
+      "route": "/api/knowledge-entries/(kentry-[0-9a-f]{32})",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeLibrary",
+      "schema": "design-lab/schemas/knowledge-entry-readback-v1.schema.json",
+      "version": "design-lab/knowledge-entry-readback/v1",
+      "emitter": "src/design_lab/knowledge_library.py:807",
+      "reason": "DL-KB-02, extended 2026-10-24 for DL-KB-05 D5. The detail read keeps three things separate that a single \"current\" field would blur: `latest_revision` (the newest bytes), `recommended_revision` (the revision a person last said to use) and `status` (ACTIVE or SUPERSEDED). A newer revision written with recommended:false makes the first two differ, and the answer renders the recommended document separately instead of pretending they agree. `revisions` lists every stored revision with its own digest and a `readable` flag, and `unreadable_count` counts rows whose JSON no longer parses rather than hiding them. `recommendation_basis` names which of the two possible owners decided `recommended_revision` (the flag written with the revision, or a later recorded judgement) so a reader can tell 'recommended when the bytes were written' from 'a person moved it back here later'; `recommendation_judgement` and `source_state` carry those recorded judgements and `judgements` is the whole trail. An unknown id is 404 KNOWLEDGE_ENTRY_NOT_FOUND.",
+      "instances": [
+        "design-lab/tests/test_knowledge_judgement.py"
+      ]
+    },
+    {
+      "route": "/api/knowledge-entries/(kentry-[0-9a-f]{32})/judgements",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeLibrary",
+      "schema": "design-lab/schemas/knowledge-entry-readback-v1.schema.json",
+      "version": "design-lab/knowledge-entry-readback/v1",
+      "emitter": "src/design_lab/knowledge_library.py:807",
+      "reason": "DL-KB-05 D5, added 2026-10-24. Recording a judgement is the only way the recommendation can move BACK: knowledge_entry_revision is append-only by trigger, so the flag written with a revision never changes, and a mutable pointer would be a second truth source. The answer is the same readback document the GET serves, so a caller sees the moved number rather than a receipt. `recorded_by_kind` must be 'HUMAN' with a named `recorded_by` (400 KNOWLEDGE_HUMAN_JUDGEMENT_REQUIRED) -- the owner ruling of 2026-10-21 keeps local acceptance human-only, so an agent cannot re-rank the library. A RECOMMENDATION must name a stored revision (404 KNOWLEDGE_JUDGEMENT_REVISION_REQUIRED) and a SOURCE_STATE that says INVALID must name a `replaced_by` entry (400 KNOWLEDGE_SOURCE_REPLACEMENT_REQUIRED); the field that does not belong to the kind is refused rather than ignored. `recorded_at` is stamped by the service, not accepted from the caller. Same body resent answers the same entry readback with one row written."
+    },
+    {
+      "route": "/api/knowledge-entries/(kentry-[0-9a-f]{32})/revisions",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeLibrary",
+      "schema": "design-lab/schemas/knowledge-entry-write-v1.schema.json",
+      "version": "design-lab/knowledge-entry-write/v1",
+      "emitter": "src/design_lab/knowledge_library.py:661",
+      "reason": "DL-KB-02. A correction is a new revision: the previous row keeps its bytes and \"current\" is MAX(revision) at read time, because a mutable active pointer would be a second truth source. `expected_revision` is required, and a write prepared against a revision that has since moved answers 409 KNOWLEDGE_ENTRY_REVISION_CONFLICT naming the actual current revision instead of silently overwriting the other writer. An unknown id is 404 KNOWLEDGE_ENTRY_NOT_FOUND. The envelope is the same write contract as create, so one document shape has one schema."
+    },
+    {
+      "route": "/api/knowledge-entries/import",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeLibrary",
+      "schema": "design-lab/schemas/knowledge-import-v1.schema.json",
+      "version": "design-lab/knowledge-import/v1",
+      "emitter": "src/design_lab/knowledge_library.py:748",
+      "reason": "DL-KB-02. Import identity is sha256(sourceId + \"\\x00\" + version), so the same source and version land on the same entry id: re-importing identical bytes answers DUPLICATE with no write, the same version with different bytes answers 409 KNOWLEDGE_IMPORT_VERSION_CONFLICT, and a different version of the same source is kept beside the others as VERSIONED. A hand-created entry carrying the same source and version under a different id is reported as CREATED with an explanation that says the library now holds two records of that version -- calling it VERSIONED would claim a new version exists when one does not. source.verification stays UNVERIFIED: an import writes a record, it does not fetch or check the source."
+    },
+    {
+      "route": "/api/knowledge-entries/index-rebuild",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeLibrary",
+      "schema": "design-lab/schemas/knowledge-index-rebuild-v1.schema.json",
+      "version": "design-lab/knowledge-index-rebuild/v1",
+      "emitter": "src/design_lab/knowledge_library.py:1134",
+      "reason": "DL-KB-04. The rebuild is the index's proof of derivability: it deletes every FTS5 row and reconstructs them from knowledge_entry_revision, then answers with `indexed` (rows written during this rebuild) and `index` (the state the read routes will report from now on) as separate numbers, so a rebuild that indexed nothing is visible instead of reading as healthy. It never writes a canonical row -- an index that could change the entries would be a second truth source. The request body is an exact empty object: the route takes no parameter it would only pretend to honour."
+    },
+    {
+      "route": "/api/knowledge-entries/search",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeLibrary",
+      "schema": "design-lab/schemas/knowledge-library-readback-v1.schema.json",
+      "version": "design-lab/knowledge-library/v1",
+      "emitter": "src/design_lab/knowledge_library.py:1033",
+      "reason": "DL-KB-02/04. The list is a search answer, not a table dump: a term of three characters or more is gated by the FTS5 trigram index, a shorter term or one the index answers with nothing runs the substring fallback, and `strategy` names the mechanisms that actually ran (BROWSE / TRIGRAM / SHORT_FALLBACK / MIXED). The canonical bytes still decide each row, so an index row left over from a superseded revision cannot resurrect a term the current revision dropped. Every row carries the fields and terms it matched computed from that row's own stored bytes, and an empty result carries `explanation` that says why it is empty instead of offering near-matches the search never made. Search lives on its own path so the collection path carries exactly one answer (POST creates); browsing is this route with no `q`. The route declares path_only so a present `?q=` reaches the handler rather than turning into a 404 -- the same declaration /api/task-preflight uses. `index` reports rows/indexed/rebuilt_at from the derived table, so a stale index is visible in the answer rather than assumed healthy. Refusals keep their codes: 400 KNOWLEDGE_TYPE_INVALID, KNOWLEDGE_FILTER_MALFORMED, KNOWLEDGE_OFFSET_INVALID, KNOWLEDGE_LIMIT_INVALID, KNOWLEDGE_QUERY_TOO_LONG (the declared MAX_QUERY bound is enforced rather than merely written down, so a pasted document cannot become an unbounded contains-scan over every stored revision)."
+    },
+    {
+      "route": "/api/local-session",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "local_session",
+      "marker": "SAME_ORIGIN_REQUIRED",
+      "reason": "No schema and none is needed: the response is the single-field token handoff {'token': ...} for the launcher this server itself served. It is not a design payload and crosses no product boundary; the fail-closed rules are the same-origin and Host pins in guard()."
+    },
+    {
+      "route": "/api/models",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "schema": "design-lab/schemas/model-catalog-v1.schema.json",
+      "version": "design-lab/model-catalog/v1",
+      "handler": "model_catalog",
+      "emitter": "src/design_lab/model_catalog.py:123",
+      "reason": "Paid on 2026-10-20: design-lab/schemas/model-catalog-v1.schema.json binds the shape that the schemaVersion emitted at src/design_lab/model_catalog.py:123 names, and design-lab/scripts/verify_route_payload_contracts.py feeds it the live GET /api/models payload. Its two row shapes are restated there rather than $ref'd because this document is a projection: a model row drops local_path, asset_index_ids, hash_source, qualified_by and notes from the entry bound by design-lab/schemas/readiness-model-radar.schema.json, and an endpoint row drops schemaVersion, model_ref, policy_note and license_risk_note from the row bound by design-lab/schemas/provider-capability.schema.json, so citing either source record here would claim a reader sees the whole thing. `placement` is closed to the three words the histogram counts, which is narrower than the radar's own source.kind enum (it also admits `modelscope`): a fourth placement is a deliberate widening of this schema, design-lab/schemas/model-selection-v1.schema.json and the state store's CHECK together, and design-lab/tests/test_model_catalog.py is what convicts such a row first. The fail-closed claims are bound as invariants instead of left as prose -- if counts.qualified_local is 0 no row may claim QUALIFIED_LOCAL, if counts.default_enabled_true is 0 no row may be default_enabled, if counts.weights_recorded is 0 no row may record a weight -- which is what stops the page rendering a readiness chip the registry does not support. What the route is for: the owner un-locked model choice on 2026-10-20 (「不锁死 做好菜单导航和接口 用户自行选择本地或者是云端模型」), and a picker needs one honest document. It returns the two registries the product already keeps -- design-lab/readiness/model-radar.json (14 candidate models) and design-lab/config/provider-capabilities.json (9 endpoints) -- with join.key null and a stated reason, because no field is shared between model_id and provider_id and a merged table would fabricate the relationship. Counts are measured, not asserted: qualified_local 0, default_enabled_true 0, weights_recorded 0, placement local 6 / huggingface 7 / vendor 1, so the page cannot render a readiness chip the registry does not support. selection.transport is NOT_CONNECTED and executed is false: choosing here records an operator action and sends nothing, and a cloud choice has to name that material leaves the machine. An unreadable registry answers 503 MODEL_CATALOG_UNAVAILABLE rather than an empty list that would read as \"no candidates exist\". Bound by design-lab/tests/test_model_catalog.py, which re-reads both registries in the test so a counter bug and a hand-written expectation cannot move together."
+    },
+    {
+      "route": "/api/projects",
+      "method": "GET+POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "list_projects",
+      "schema": "design-lab/schemas/project-list-v1.schema.json",
+      "emitter": "src/design_lab/project_index.py:36",
+      "version": "design-lab/project-list/v1",
+      "reason": "Paid 2026-10-22 (backend A, for Stitch screen D01). The GET half now answers design-lab/project-list/v1: each project row carries per-surface record counts, the newest stored timestamp and the numbers still waiting on a named human, and the contract binds the one distinction a page cannot recover afterwards -- a count is null exactly when that surface's table has never been created here (the surface is then named in absentSurfaces), and 0 exactly when the table exists and holds nothing. It refuses both directions, and it refuses a pending number for a surface the row admits it never opened. The counts are not re-derived: prompt-result states come through the same _state_of predicate the prompt-result read-back uses, and the candidate counters come out of that resource's own read-back. The POST half is still this dispatch's honest gap: the creation echo {'project': {id, name, created_at}} carries no schemaVersion, so it is named here rather than counted as bound by the GET half."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "get_project",
+      "reason": "No schema and none is needed: one project row from the project store wrapped as {'project': ...}. Recorded debt only if that envelope ever grows fields; today it is an identifier read."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assets",
+      "method": "POST",
+      "kind": "SCHEMA_LESS",
+      "handler": "ImageAssets",
+      "reason": "No schema and none is needed: the body is exactly content_base64 plus idempotency_key, size- and content-type-pinned by http_service.py body(), and the response is an asset identifier record with no schemaVersion."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assets(?:/(img-[0-9a-f]{64})/content)?",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "ImageAssets",
+      "reason": "No schema and none is needed for the shape: the list branch is identifiers from the asset store, the content branch is raw image bytes. src/design_lab/image_assets.py declares no schemaVersion."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assets/(img-[0-9a-f]{64})/analysis",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "AssetAnalysis",
+      "schema": "design-lab/schemas/reconstruction/reconstruction-ir.schema.json",
+      "version": "design-lab/reconstruction-ir/v1",
+      "emitter": "src/design_lab/analysis/plan_to_rir.py:160",
+      "reason": "The route answers with an envelope whose `rir` member is the reconstruction-ir/v1 document the bridge produced, validated by validate_rir before it is sent. The emitter is the bridge that writes the version, not this handler: the handler adds no schemaVersion of its own, and the IR is the payload whose shape matters. Observations are supplied by the caller because no local OCR backend is qualified (readiness/model-radar.json: QUALIFIED_LOCAL=0, every entry default_enabled:false); an empty observation set is refused with NO_OBSERVATIONS rather than answered with an empty document."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assets/(img-[0-9a-f]{64})/prompt-reversal",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "PromptIntelligence",
+      "schema": "design-lab/schemas/prompt-reversal-v1.schema.json",
+      "version": "design-lab/prompt-reversal/v1",
+      "emitter": "src/design_lab/prompt_intelligence.py:49",
+      "reason": "Same envelope and same runtime check as the composition route, binding the reversal document. Observations are supplied by the caller and lowered by the existing reconstruction bridge, because no local vision backend is qualified (readiness/model-radar.json: QUALIFIED_LOCAL=0, every entry default_enabled:false); an empty set is refused with NO_OBSERVATIONS rather than answered with a prompt that looks described, and `unknown` must keep the semantic-content, colour and font entries so the document cannot be read as a description of what the picture depicts. An asset id that is not this project's answers the same 404 ASSET_NOT_FOUND as an id that was never imported, so the route is not an existence oracle over other projects' assets."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "AssistancePlans",
+      "schema": "design-lab/schemas/assistance-plan-write-v1.schema.json",
+      "version": "design-lab/assistance-plan-write/v1",
+      "emitter": "src/design_lab/assistance_plan.py:47",
+      "reason": "DL-KB-07. A short task is written down as one neutral plan: objective, output type, neutral creative, brand/role constraints, lens and sound, references, external steps, known gaps and limits. The caller supplies only inputs; the document is built and validated server-side (assistance-plan-v1 via the write envelope's $ref) and the answer's `plan` member is the stored document, not a rebuilt copy. References are two-key {kind,id}: revision and digest are pinned from the live object by the store, and a caller that supplies them is refused, because a caller-authored digest would be a claim this service never measured. A missing job_id/operation_id is the literal UNUSED -- the service mints no external id. Refusals keep their codes: 400 ASSISTANCE_PLAN_OUTPUT_TYPE_INVALID / FIELD_MISSING / REFERENCE_KIND_INVALID, 404 ASSISTANCE_PLAN_REFERENCE_NOT_FOUND / PROJECT_NOT_FOUND, 409 ASSISTANCE_PLAN_REFERENCE_PROJECT_MISMATCH / REFERENCE_NOT_READY."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans(?:\\?[^#]*)?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "AssistancePlans",
+      "schema": "design-lab/schemas/assistance-plan-list-v1.schema.json",
+      "version": "design-lab/assistance-plan-list/v1",
+      "emitter": "src/design_lab/assistance_plan.py:49",
+      "reason": "DL-KB-07. The collection lists each plan at its newest revision with the one sentence a reader needs to pick one: objective, output type, author, reference count, whether a creative was provided, and which revision a human chose (null until someone does). The query is named in the route pattern -- the same reason /api/knowledge-entries keeps search on its own path -- so one ledger row describes one document; offset/limit are parsed inside the handler, and a malformed number answers ASSISTANCE_PLAN_OFFSET_INVALID / LIMIT_INVALID rather than being silently ignored. next_offset is null on the last page, and an unknown project is 404 PROJECT_NOT_FOUND."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans/(aplan-[0-9a-f]{32})",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "AssistancePlans",
+      "schema": "design-lab/schemas/assistance-plan-readback-v1.schema.json",
+      "version": "design-lab/assistance-plan-readback/v1",
+      "emitter": "src/design_lab/assistance_plan.py:48",
+      "reason": "DL-KB-07/08. The readback is where the screen's four states come from, computed by the service rather than the view: saved (this readback exists), provided (the current revision carries a creative), chosen (a named human adopted a revision), externally_verified (const false -- no route dispatches an external step). `reference_status` re-reads every pinned reference at its live revision: CURRENT means the bytes are still the ones the plan recorded, CHANGED means the object moved on, and `analysis` reports ANALYZED only when a stored reversal exists for that exact asset digest -- a reference registered as a link stays LINKED_ONLY, which is the measurement DL-KB-08's image state depends on. `current` is the stored document via $ref, not a re-render."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans/(aplan-[0-9a-f]{32})/choose",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "AssistancePlans",
+      "schema": "design-lab/schemas/assistance-plan-readback-v1.schema.json",
+      "version": "design-lab/assistance-plan-readback/v1",
+      "emitter": "src/design_lab/assistance_plan.py:48",
+      "reason": "DL-KB-07. Choosing is a Human Gate record, not a preference toggle: the route refuses actor_kind other than 'human' with 409 ASSISTANCE_PLAN_CHOICE_NOT_HUMAN, the table repeats the rule as a storage CHECK so the rule survives an application bug, and a revision outside the stored range is 400 CHOICE_REVISION_INVALID. The answer is the same readback the GET route serves, so the state the page shows after choosing is not a second envelope that could disagree. A second choice on the same revision is 409 ALREADY_CHOSEN: the record is a statement, not a switch."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans/(aplan-[0-9a-f]{32})/export(?:\\?[^#]*)?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "PlanExport",
+      "schema": "design-lab/schemas/plan-export-v1.schema.json",
+      "version": "design-lab/plan-export/v1",
+      "emitter": "src/design_lab/plan_export.py:67",
+      "reason": "DL-KB-11. The handoff material a plan produces on the way out: markdown, plain text, structured JSON and the 分镜 CSV, all four rendered from ONE builder (plan_export._intent) so 'the three exports agree' is a property of the code rather than of three hand-copied templates -- the schema's allOf block also ties each format word to the content_type and the filename extension a reader actually receives, because a mismatched pair is the shape a page cannot detect from the text. Every answer carries the revision it exported with that revision's content digest, the pinned reference snapshot copied from the stored document (an export freezes what the plan claimed; whether an object has since moved is the readback's reference_status, and an export may not quietly restate today's bytes), the emitter contract version, and an explicit not-executed statement. `sent`, `executed` and `external_verified` are `const false` in this contract: there is no outbound transport in this repository, so a download is a file in the designer's own folder and no flag can turn it into a delivery -- the exported bytes likewise never print 已发送/发送成功/delivered/模型已执行, which design-lab/tests/test_plan_export.py reads all four formats to prove. The route writes nothing and leaves the plan's four states byte-identical, and its two refusals are the point rather than edge cases: 409 PLAN_EXPORT_NO_SHOTS when the 分镜 CSV would be an empty table dressed as a storyboard (the reason `shots` had to become stored, validated, digest-covered data first -- an optional field added to assistance-plan/v1, so a plan stored before it existed still validates, and the create/revise routes accept the key without demanding it), and 400 PLAN_EXPORT_FORMAT_REQUIRED/_INVALID so an unnamed or unknown material keeps its own code instead of a 404 that reads like a deleted plan. A shot row filed under an output type that has no 分镜 is refused where it is written (409 ASSISTANCE_PLAN_SHOTS_NOT_APPLICABLE), so no plan can reach this route holding rows its own type disowns. Spreadsheet formula cells are handled by stating the rule to the reader, not by rewriting what a person typed: every field goes through csv.writer untouched (RFC4180 quoting, CRLF, leading BOM) and a 镜头说明 containing a quote, a comma or a newline is proven to survive the round trip."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans/(aplan-[0-9a-f]{32})/feedback",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "PlanFeedback",
+      "schema": "design-lab/schemas/plan-feedback-write-v1.schema.json",
+      "version": "design-lab/plan-feedback-write/v1",
+      "emitter": "src/design_lab/plan_feedback.py:39",
+      "reason": "DL-KB-16 acceptance 「反馈不得覆盖草稿/材料准备等独立状态」. A voluntary report. Outcome is one of the three words declared in design-lab/config/state-vocabularies.json and checked against plan_feedback.OUTCOMES in both directions by verify_state_vocabularies.py; there is no UNKNOWN outcome because not recording is the absence of a row, and sent/delivered/executed are not outcome words here since the service has no outbound transport. The actor is a named human (the table CHECK pins actor_kind), an absent source_ref becomes the literal UNUSED rather than an id minted here, and `revision` is required because a report is about the material somebody actually took away. `plan_states_unchanged` is a constant true and the plan readback still answers externally_verified=false afterwards: a satisfied report is somebody's word about an external tool, not the system confirming a run. Refusals: 400 OUTCOME_INVALID / REVISION_INVALID / FIELD_NOT_IN_CONTRACT, 404 PROJECT_NOT_FOUND / ASSISTANCE_PLAN_NOT_FOUND, 409 REVISION_NOT_FOUND."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans/(aplan-[0-9a-f]{32})/feedback(?:\\?[^#]*)?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "PlanFeedback",
+      "schema": "design-lab/schemas/plan-feedback-list-v1.schema.json",
+      "version": "design-lab/plan-feedback-list/v1",
+      "emitter": "src/design_lab/plan_feedback.py:40",
+      "reason": "DL-KB-16, 「方案与适用经验可再次查找复用」. Every report recorded for one plan, oldest first, with the histogram computed from the same rows the page lists and `latest` a pointer into them: history is served whole rather than merged into one current value, because 「在 Meshy 里可用」 and 「在 Meshy 里不可用」 are both facts someone may need later and a merged field would erase the correction trail. `externally_verified` is a constant false for the collection -- reading reports back never verifies an external run. offset/limit are parsed in the handler and refused loudly (PLAN_FEEDBACK_FILTER_MALFORMED / LIMIT_INVALID / OFFSET_INVALID) rather than failing inside the contract check, which would report a caller typo as a defect in the registry."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans/(aplan-[0-9a-f]{32})/revisions",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "AssistancePlans",
+      "schema": "design-lab/schemas/assistance-plan-write-v1.schema.json",
+      "version": "design-lab/assistance-plan-write/v1",
+      "emitter": "src/design_lab/assistance_plan.py:47",
+      "reason": "DL-KB-07. A correction is a new revision: the previous row keeps its bytes and current is MAX(revision) at read time, so no mutable current-marker can become a second truth source. expected_revision is required by the route's exact key set and again by the store; a write prepared against a revision that has since moved answers 409 ASSISTANCE_PLAN_REVISION_CONFLICT naming the actual current revision instead of silently overwriting the other writer. An unknown plan id is 404 ASSISTANCE_PLAN_NOT_FOUND. The envelope is the same write contract as create, so one document shape has one schema."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/assistance-plans/(aplan-[0-9a-f]{32})/revisions/([1-9][0-9]{0,8})",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "AssistancePlans",
+      "schema": "design-lab/schemas/assistance-plan-revision-v1.schema.json",
+      "version": "design-lab/assistance-plan-revision/v1",
+      "emitter": "src/design_lab/assistance_plan.py:51",
+      "reason": "DL-KB-12, 「新版本不覆盖历史；对比页读的是两份真实修订」. The readback above serves only the NEWEST revision's document -- its `revisions` rows carry a digest, a created_at and an author, and nothing else -- so the stored body of an older revision was unreadable through every route and a comparison page could only restate hashes or guess the old text. This row binds the read that returns one row's own bytes: `document` is the stored JSON served verbatim, $ref-ed to design-lab/schemas/assistance-plan-v1.schema.json (the contract the write path validated those bytes against when they were filed) rather than restated here, and `content_sha256`/`created_at`/`created_by` are THIS row's columns while `latest_revision` and `is_latest` say where the plan has since moved -- so two calls that return the same document are a visible defect rather than the quiet bug. `is_chosen` is computed by the one query the readback's `choice` is built from (assistance_plan._choice_row), not by a second rule about a Human Gate record. There is no query string by design: the revision number is a path segment matched against the raw target, so `?revision=2` is a 404 rather than a parameter this route would pretend to honour, and `revisions/0` never reaches the store at all. Each refusal keeps its own code instead of collapsing into one generic error: unknown project 404 PROJECT_NOT_FOUND, a plan that is not in this project 404 ASSISTANCE_PLAN_NOT_FOUND, a number no row carries 404 ASSISTANCE_PLAN_REVISION_NOT_FOUND naming the plan id and the highest revision that does exist, an unparseable `document_json` 409 ASSISTANCE_PLAN_REVISION_UNREADABLE because the service does not hand back a guessed version, and a row whose published digest no longer covers its own bytes 500 ASSISTANCE_PLAN_REVISION_BYTES_MOVED -- the discipline of PLAN_FEEDBACK_BYTES_MOVED, since serving those bytes anyway would put one revision's digest beside another revision's words. What is deliberately NOT claimed: this is a read of stored history, so it reports no run, no send, no delivery and no model execution and declares no field that could imply one; the plan's four-state block stays the readback's single answer instead of being copied into a second envelope that could drift; and `reference_status` is not recomputed here, because whether a pinned reference has moved is a statement about the plan read today and must not silently rewrite what a 2026 revision said it used."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/briefs",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "create_brief",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "The brief create: five exact body fields in, one wrapped brief back (201), and a replayed idempotency key returns the SAME wrapped record through the same envelope check. This is NOT design-lab/schemas/design-brief.schema.json, whose discipline/objective/audience/deliverables content model no code stores; that divergence stays an open owner decision. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/briefs(?:\\?after=(brief-[0-9a-f]{32}))?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "list_briefs",
+      "schema": "design-lab/schemas/brief-readback.schema.json",
+      "version": "design-lab/brief-readback/v1",
+      "emitter": "src/design_lab/design_layer.py:64",
+      "reason": "Debt paid 2026-10-08. The envelope carried no identity, so the brief list the Workbench pages through was described only by a TypeScript interface in shell.ts. design-lab/schemas/brief-readback.schema.json now closes the envelope (schemaVersion, briefs, next_cursor), pins the record fields it actually serves, and bounds the page at 100 rows with at most 32 references per brief -- the limits the writer already enforces. design_layer._check_brief_readback() runs it on every read, so a code change that renames a key or drops the sha256: prefix answers 500 BRIEF_CONTRACT_VIOLATION with the field paths instead of serving a short record. This is NOT design-lab/schemas/design-brief.schema.json, whose discipline/objective/audience/deliverables model no code stores; that divergence stays an open decision."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/briefs/(brief-[0-9a-f]{32})",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "get_brief",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "One brief, wrapped in {brief: ...}. The record stopped being unjudged on 2026-10-08 (validated through $defs.brief of design-lab/schemas/brief-readback.schema.json on every read); what stayed unpaid was the wrapper, which carried no schemaVersion. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/briefs/(brief-[0-9a-f]{32})/lineage",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "lineage_brief",
+      "schema": "design-lab/schemas/design-lineage-v1.schema.json",
+      "version": "design-lab/design-lineage/v1",
+      "emitter": "src/design_lab/design_layer.py:106",
+      "reason": "The brief's superseded_by chain. The reason this row carried before 2026-10-23 said the document was \"the chain plus design_layer_event rows\" -- that was wrong, and the measured payload corrects it: _chain() READS design_layer_event to find each row's parent (the brief-revised payloads map new_id to old_id) and then serves records; no event row is in the answer. The event kinds themselves stay pinned by EVENT_KINDS and the table CHECK, not by this schema. Debt paid 2026-10-23. design-lab/schemas/design-lineage-v1.schema.json binds the wrapper (schemaVersion, subject_kind) and the chain node: root_id, requested_id, live_id and a versions array whose items are `$ref`'d from the record owner. design_layer._check_design_lineage() runs it on every chain read and answers 500 DESIGN_LINEAGE_CONTRACT_VIOLATION on a mismatch."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/briefs/(brief-[0-9a-f]{32})/revisions",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "revise_brief",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "The next immutable version of a brief: a new row, the parent superseded_by pointer moved in the same transaction, and 409 STALE_REVISION if the caller revises a row that is already superseded. The answer is the wrapped new version. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/bundles",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "Bundles",
+      "reason": "No schema and none is needed for the envelope: a read-back listing of a project's design bundles from the state DB, with no schemaVersion declared by src/design_lab/native_assets.py Bundles."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/bundles/(bundle-native-[0-9a-f]{64})/preflight(?:\\?profile=(print|digital|video))?",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "preflight_bundle",
+      "schema": "design-lab/schemas/artifact-preflight.schema.json",
+      "version": "design-lab/artifact-preflight/v1",
+      "emitter": "src/design_lab/assurance/production_preflight.py:383",
+      "reason": "The precedent this ledger is modelled on: the artifact report declares design-lab/artifact-preflight/v1 and is checked against its schema over two real wire-serialised payloads by design-lab/scripts/verify_artifact_preflight_contract.py."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/bundles/(bundle-native-[0-9a-f]{64})/versions/(v-[0-9a-f]{32})/content",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "NativeDelivery",
+      "marker": "application/zip",
+      "reason": "No schema and none is needed for the response: it is the delivery archive as application/zip with an X-Content-SHA256 digest. The manifest inside the archive IS schema'd -- design-lab/asset-bundle/v1 and design-lab/delivery-receipt/v2 are validated by src/design_lab/interop/delivery_receipt.py, bound by the /bundle route row below."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/bundles/(bundle-native-[0-9a-f]{64})/versions/(v-[0-9a-f]{32})/receipt",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "NativeDelivery",
+      "schema": "design-lab/schemas/delivery-receipt-readback.schema.json",
+      "version": "design-lab/delivery-receipt-readback/v1",
+      "emitter": "src/design_lab/native_delivery.py:72",
+      "reason": "Re-bound 2026-10-08. The route no longer answers with the bare receipt document: it answers with the design-lab/delivery-receipt-readback/v1 envelope, whose `receipt` member is that document returned verbatim and whose new members resolve each deliverable's rollback reference against the asset ledger. The document is not extended, because it signs its own bytes with receipt_sha256; the resolution therefore travels beside it, and this row binds the envelope schema and the emitter that writes its version. Both still hold: NativeDelivery.readback() reaches the same _load() that delivery_receipt.loads() re-verifies on every read, and test_delivery_evidence_ui_contract.py pins that the envelope carries the stored document rather than a rebuilt one. The two refusals keep their own codes: 404 DELIVERY_RECEIPT_NOT_FOUND means no receipt was recorded for this ACTIVE version, 409 DELIVERY_RECEIPT_UNVERIFIED means a stored document contradicts its own bytes and the service will not certify them."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/design-layer",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "get_design_layer",
+      "schema": "design-lab/schemas/design-layer-rollup-v1.schema.json",
+      "version": "design-lab/design-layer-rollup/v1",
+      "emitter": "src/design_lab/design_layer.py:107",
+      "reason": "The project's design-layer roll-up, assembled in src/design_lab/design_layer.py. Debt was that the assembler stated no version, so the one document the Workbench evidence panel and the standalone-chain acceptance both read was described only by whatever the page happened to index. Debt paid 2026-10-23. design-lab/schemas/design-layer-rollup-v1.schema.json binds the wrapper and the six keys of the slice, with chosen_direction and active_binding as oneOf[null, record] -- the two fields that must go null rather than fall back to a plausible row (P0-02: no invented Human Choice; P0-D: a binding left on a direction that is no longer chosen). design_layer._check_design_rollup() answers 500 DESIGN_LAYER_ROLLUP_CONTRACT_VIOLATION on a mismatch."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/design-system-tokens",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "list_token_documents",
+      "schema": "design-lab/schemas/design-collection-v1.schema.json",
+      "version": "design-lab/design-collection/v1",
+      "emitter": "src/design_lab/design_layer.py:105",
+      "reason": "The project's LIVE token documents. Each document inside was already bound on the write path; the list wrapper declared nothing about itself, and this row also carries the honesty of having no cursor -- the reader takes every live row, so the schema forbids a next_cursor here instead of implying paging that does not exist. Debt paid 2026-10-23. design-lab/schemas/design-collection-v1.schema.json binds the wrapper (schemaVersion, the `collection` discriminator, the row array and the cursor branch the writer actually has) and, through `$ref`, the rows themselves; design_layer._check_design_collection() runs it on every read, so a short row answers 500 DESIGN_COLLECTION_CONTRACT_VIOLATION rather than an empty panel."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/design-system-tokens/(<DESIGN_SYSTEM_NAME_PATTERN>)",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "write_tokens",
+      "schema": "design-lab/schemas/interop-dtcg-document.schema.json",
+      "version": "2025.10",
+      "emitter": "src/design_lab/interop/dtcg.py:79",
+      "reason": "A submitted token document is validated against this schema plus the canonical semantic rules BEFORE anything is persisted, and the write fails closed when no validator is importable (src/design_lab/design_layer.py:291, src/design_lab/interop/dtcg.py:566)."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/design-system-tokens/(<DESIGN_SYSTEM_NAME_PATTERN>)(/lineage)?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "get_tokens",
+      "schema": "design-lab/schemas/interop-dtcg-document.schema.json",
+      "version": "2025.10",
+      "emitter": "src/design_lab/interop/dtcg.py:79",
+      "reason": "The token document this route returns is the stored DTCG document, which was validated against this schema before it was ever persisted (design_layer.py validate_token_document, src/design_lab/interop/dtcg.py:566)."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/directions",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "create_direction",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "The direction create: six exact body fields in, one wrapped direction back, and the same envelope on an idempotent replay. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/directions(?:\\?after=(direction-[0-9a-f]{32}))?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "list_directions",
+      "schema": "design-lab/schemas/design-collection-v1.schema.json",
+      "version": "design-lab/design-collection/v1",
+      "emitter": "src/design_lab/design_layer.py:105",
+      "reason": "The paged direction list of one project. Debt was that this is the sibling of the brief list -- same page shape, same 100-row cap, same null cursor on a full page -- but only one of the two had a contract. Debt paid 2026-10-23. design-lab/schemas/design-collection-v1.schema.json binds the wrapper (schemaVersion, the `collection` discriminator, the row array and the cursor branch the writer actually has) and, through `$ref`, the rows themselves; design_layer._check_design_collection() runs it on every read, so a short row answers 500 DESIGN_COLLECTION_CONTRACT_VIOLATION rather than an empty panel."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/directions/(direction-[0-9a-f]{32})",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "get_direction",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "One direction, wrapped in {direction: ...}. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/directions/(direction-[0-9a-f]{32})/bind",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "bind_design_system",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "A binding row plus its event, refused before the write unless the design system is in the packaged catalog (UNKNOWN_DESIGN_SYSTEM). The answer is the wrapped binding record. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/directions/(direction-[0-9a-f]{32})/choose",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "choose_direction",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "The Human-Gate direction choice. The decision itself stays guarded by the code, not by a payload document: actor_kind must be the literal human or the route answers 403 HUMAN_DIRECTION_CHOICE_REQUIRED, and the single-choice invariant is one transaction that de-selects the previous direction before selecting this one. What is bound here is the answer the caller receives. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/directions/(direction-[0-9a-f]{32})/lineage",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "lineage_direction",
+      "schema": "design-lab/schemas/design-lineage-v1.schema.json",
+      "version": "design-lab/design-lineage/v1",
+      "emitter": "src/design_lab/design_layer.py:106",
+      "reason": "The direction's chain, same document as the brief chain with the direction's own id-coordinate. Debt paid 2026-10-23. design-lab/schemas/design-lineage-v1.schema.json binds the wrapper (schemaVersion, subject_kind) and the chain node: root_id, requested_id, live_id and a versions array whose items are `$ref`'d from the record owner. design_layer._check_design_lineage() runs it on every chain read and answers 500 DESIGN_LINEAGE_CONTRACT_VIOLATION on a mismatch."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/directions/(direction-[0-9a-f]{32})/revisions",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "revise_direction",
+      "schema": "design-lab/schemas/design-record-v1.schema.json",
+      "version": "design-lab/design-record/v1",
+      "emitter": "src/design_lab/design_layer.py:104",
+      "reason": "The direction revision chain, same append-only rules as the brief revision. Debt paid 2026-10-23. design-lab/schemas/design-record-v1.schema.json binds the wrapper (schemaVersion, record_kind, and exactly one record key) and, through `$ref`, the record itself; design_layer._check_design_record() runs it on every one of these answers, so a renamed wrapper key or a record that drifted out of its own definition answers 500 DESIGN_RECORD_CONTRACT_VIOLATION with the field paths instead of being served."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/jury",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "JuryReview",
+      "schema": "design-lab/schemas/jury-readback.schema.json",
+      "version": "design-lab/jury-readback/v1",
+      "emitter": "src/design_lab/jury_review.py:54",
+      "reason": "Debt paid 2026-10-08. The records this envelope wraps were always bound (each is a design-lab/assurance-jury-record/v2 document validated on the way in by the two write routes below); the read path was the unboud half. design-lab/schemas/jury-readback.schema.json now closes the envelope and REFERENCES those records by $ref to assurance-jury-record-v2.schema.json rather than restating them, so one contract owns a jury record. It also binds what a reader can be misled by: ACCEPTED requires at least one ACTIVE reviewable version and a current APPROVE for every one of them, and an empty reviewable set is NOT_ACCEPTED with accepted_versions 0. Two real responses -- a filed review and an empty project -- are validated by design-lab/scripts/verify_route_payload_contracts.py, which is what caught reviewable_versions gaining version_no when the store began offering one row per asset."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/jury/proposal",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "JuryReview",
+      "schema": "design-lab/schemas/assurance-jury-record-v2.schema.json",
+      "version": "design-lab/assurance-jury-record/v2",
+      "emitter": "src/design_lab/assurance/human_jury.py:77",
+      "reason": "An agent proposal is checked against the same contract, not merely its key set (src/design_lab/assurance/human_jury.py:330 _validate_proposal_schema)."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/jury/verdict",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "JuryReview",
+      "schema": "design-lab/schemas/assurance-jury-record-v2.schema.json",
+      "version": "design-lab/assurance-jury-record/v2",
+      "emitter": "src/design_lab/assurance/human_jury.py:77",
+      "reason": "The body's exact key set is refused at the route and the record is validated against this schema before it is stored (src/design_lab/assurance/human_jury.py:185)."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/knowledge-candidates",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeReview",
+      "schema": "design-lab/schemas/assurance-knowledge-candidate-readback-v1.schema.json",
+      "version": "design-lab/assurance-knowledge-candidate-readback/v1",
+      "emitter": "src/design_lab/knowledge_review.py:317",
+      "reason": "Closed on creation 2026-10-18: the readback envelope is described by its own schema and the candidate bodies it projects are bound separately by assurance-knowledge-candidate-v2.schema.json. The schema fixes what a reader could otherwise misread: outbound.transport is const NOT_CONNECTED and sent_count const 0 because no ArcheAxis transport exists in this repository, export_ready is a local contract check and not a delivery, freshness UNKNOWN is not CURRENT, disposition counts cannot exceed candidate_count, and the conflict vocabulary is closed so a new disagreement kind cannot be printed without moving this contract. design-lab/tests/test_knowledge_http.py validates real responses against it."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/knowledge-candidates(?:\\?supersedes=([A-Za-z0-9_.:-]{1,80}))?",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeReview",
+      "schema": "design-lab/schemas/assurance-knowledge-candidate-v2.schema.json",
+      "version": "design-lab/assurance-knowledge-candidate/v2",
+      "emitter": "src/design_lab/assurance/knowledge_feedback.py:289",
+      "reason": "The route refuses an unknown body field and build_candidate validates the document against this closed schema before anything is stored; the document is always PENDING_HUMAN_APPROVAL and cannot carry a review, so an agent cannot create an approved candidate. The persisted revision is re-validated on every read (knowledge_review.validate_candidate)."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/knowledge-candidates/([A-Za-z0-9_.:-]{1,80})/export",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeReview",
+      "schema": "design-lab/schemas/assurance-knowledge-candidate-export-envelope-v1.schema.json",
+      "version": "design-lab/assurance-knowledge-candidate-export-envelope/v1",
+      "emitter": "src/design_lab/knowledge_review.py:596",
+      "reason": "Paid on 2026-10-20: the envelope now writes its own schemaVersion (design-lab/assurance-knowledge-candidate-export-envelope/v1) and design-lab/schemas/assurance-knowledge-candidate-export-envelope-v1.schema.json binds it, fed the live payload by design-lab/scripts/verify_route_payload_contracts.py. What it wraps was already bound: the `export` member is the v2 export document, produced by knowledge_feedback.export_payload(), which validates itself against assurance-knowledge-candidate-v2.schema.json#/$defs/export before returning, and `v1_projection` is bound by design-lab/schemas/candidate-knowledge.schema.json -- the envelope $refs both instead of restating them, so a move in either record is a finding here rather than a silent gap. The debt this row used to name was that binding the v2 schema here would have claimed a shape nothing checks (ROUTE_VERSION_UNBOUND: the v2 schema's own const is .../candidate/v2); the fix was the envelope's own version, not a restated string in this row. This route is the caller `export_payload` and `to_v1_projection` never had: before it they had zero callers in src/ and 'exportable' existed only as the readback's export_ready boolean. Producing the document is still not delivering it -- outbound.transport is NOT_CONNECTED and sent_count is 0 because no ArcheAxis transport exists in this repository, `bytes` counts what was assembled, and a candidate the contract will not release (not APPROVED, agent reviewer_kind, rights not CHECKED, or revoked) answers 409 CANDIDATE_EXPORT_REFUSED with the refusal sentence instead of 200. source.job_id and source.operation_id are echoed exactly as stored; this route never fills a provenance field on the caller's behalf."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/knowledge-candidates/([A-Za-z0-9_.:-]{1,80})/review",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeReview",
+      "schema": "design-lab/schemas/assurance-knowledge-candidate-v2.schema.json",
+      "version": "design-lab/assurance-knowledge-candidate/v2",
+      "emitter": "src/design_lab/assurance/knowledge_feedback.py:289",
+      "reason": "A decision is applied by approve()/reject(), which require reviewer_kind 'human' with a named reviewer and an RFC3339 timestamp and re-validate the updated document against this schema before it is appended. The facade refuses reviewer_kind other than 'human' with KNOWLEDGE_HUMAN_REVIEW_REQUIRED, so this route cannot fabricate a human gate."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/knowledge-candidates/([A-Za-z0-9_.:-]{1,80})/revoke",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "KnowledgeReview",
+      "schema": "design-lab/schemas/assurance-knowledge-candidate-revocation-v1.schema.json",
+      "version": "design-lab/assurance-knowledge-candidate-revocation/v1",
+      "emitter": "src/design_lab/assurance/knowledge_feedback.py:434",
+      "reason": "The response is the revocation receipt itself, validated as a closed document with export_blocked const true before it is stored alongside the REVOKED revision in one commit. A receipt is never transferable: apply_revocation binds it to the candidate id and the facade replays an identical revocation rather than rewriting its reason or actor."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/model-selection",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "schema": "design-lab/schemas/model-selection-readback-v1.schema.json",
+      "version": "design-lab/model-selection-readback/v1",
+      "emitter": "src/design_lab/model_selection.py:39",
+      "reason": "Paid on 2026-10-20: design-lab/schemas/model-selection-readback-v1.schema.json describes the envelope that writes design-lab/model-selection-readback/v1 at src/design_lab/model_selection.py:39, and design-lab/scripts/verify_route_payload_contracts.py feeds it three live payloads -- a pick, an explicit 「不用」, and a project nobody has asked. The debt it replaces was named rather than left unremarkable because the gate convicted the alternative (SCHEMA_LESS_DEBT_UNNAMED fires when a row drops the version its emitter still writes). Every element of `selection` and `history` $refs design-lab/schemas/model-selection-v1.schema.json instead of restating it, so the record and its read-back cannot drift: those documents are validated on the way in and re-read from the stored bytes on the way out. The envelope exists to keep three answers apart -- CHOSEN, DECLINED (the operator's explicit 「不用」) and NEVER_ASKED -- and `does_not_say` states in the visible text that the last two are not the same fact, which is the failure this surface would otherwise invite: an empty list reading as a decision."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/model-selection/choose",
+      "method": "POST",
+      "kind": "SCHEMA_LESS",
+      "handler": "ModelSelection",
+      "reason": "No schema validates this answer and none is claimed: the response is the operation receipt (status MODEL_SELECTION, the stored selection, replayed, revision_count, state) and it carries no schemaVersion of its own, while the selection document inside it IS bound by design-lab/schemas/model-selection-v1.schema.json -- validated by model_selection._check() before any row is written, so a document the contract refuses cannot reach the store. Refusals keep distinct codes: 400 MODEL_SELECTION_REQUIRED when neither a model nor an explicit declination is given, 400 MODEL_SELECTION_CONFLICT when both are, 400 ACTOR_REQUIRED and 400 INVALID_ACTOR_KIND (the design layer's lowercase human/agent vocabulary, not a second one), 404 MODEL_NOT_IN_CATALOGUE so a choice can only be made from what the registries record, and 409 MODEL_SELECTION_CONCURRENT_UPDATE. Replaying the same choice returns the existing revision with replayed true rather than appending a no-op, because the decision path has to stay readable."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/native-assets(?:\\?after=(native-[0-9a-f]{64}))?",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "NativeAssets",
+      "reason": "No schema and none is needed for the envelope: src/design_lab/native_assets.py returns a paging list of asset identifiers read from the state DB, and carries no schemaVersion of its own. The receipt documents it points at are bound elsewhere in this ledger."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/native-assets/(native-[0-9a-f]{64})/verify",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "NativeAssets",
+      "reason": "No schema and none is needed for the envelope: a verify verdict over stored digests, produced by src/design_lab/native_assets.py with no schemaVersion. Its inputs are the persisted receipt documents."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/native-plans",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "NativeSubmissions",
+      "schema": "design-lab/schemas/reconstruction/photoshop-native-job.schema.json",
+      "emitter": "src/design_lab/adapters/photoshop_com.py:120",
+      "version": "design-lab/photoshop-native-job/v1",
+      "reason": "Paid 2026-10-22 (B2b). The job this submission builds declares design-lab/photoshop-native-job/v1 and is now judged by design-lab/schemas/reconstruction/photoshop-native-job.schema.json, which src/design_lab/adapters/photoshop_com.py loads from its own version map before the first COM call -- the defect this row used to name was that the sibling adobe-host-job file existed while no src/ module read it, and that is fixed on both sides now: the Illustrator adapter reads adobe-host-job.schema.json and adobe-patch-job.schema.json, this one reads the two Photoshop files. The canvas AREA bound, the run-root containment, the not-yet-existing outputs and the image decode remain hand checks; a schema cannot multiply two fields or open a file."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/native-runtime",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "native_runtime.readback",
+      "version": "design-lab/native-runtime-readback/v1",
+      "emitter": "src/design_lab/native_runtime.py:31",
+      "reason": "Paid 2026-10-22: design-lab/schemas/native-runtime-readback.schema.json closes the envelope that src/design_lab/native_runtime.py writes, fed the same route read twice -- before any native table existed (every section ABSENT, every count null) and after one attempt held the host, reached quiescence with a receipt, opened a reconciliation, recorded os-lock-v1 and left an execution row. The absent/present split this route exists to keep apart is bound per section (table ABSENT exactly when rows is null) and every count allows null, so a future emitter cannot collapse ABSENT into 0. budget stays null and the two honesty flags stay const false.",
+      "schema": "design-lab/schemas/native-runtime-readback.schema.json"
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/prompt-results",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "schema": "design-lab/schemas/prompt-result-readback-v1.schema.json",
+      "version": "design-lab/prompt-result-readback/v1",
+      "emitter": "src/design_lab/prompt_results.py:45",
+      "reason": "Added 2026-10-22 with the route, in the same change rather than after it: test_contract_bindings.test_new_route_without_a_row_is_red refuses a dispatched route with no row. This is the read side of the slice that closes the audit gap \"prompt results were produced and thrown away\": every composition and reversal this service generated is now stored under the id the document itself carries, and a human acceptance is kept as a separate append-only row quoting the content_sha256 it judged. The stored prompt documents are REFERENCED by $ref to prompt-composition-v1 / prompt-reversal-v1 rather than restated, and the review rows to prompt-result-review-v1. Three honesty rules are bound here rather than left to prose: executed is const false (nothing ran), columns_match_document is const true (the scalar columns may not drift from the document they restate), and state NONE may not coexist with a nonzero count -- NONE means this service never produced a prompt, UNREVIEWED means it produced one nobody signed, and NOT_CURRENT means a signature exists about other bytes. Bounded 2026-10-26 (DL-KB-13, the register entry retired in the same change): `results` is now one page, defaulting to PROMPT_RESULT_LIMIT=100 with a maximum of 200, and the envelope says which page it is -- total_readable is the whole readable set taken BEFORE slicing, result_count still counts database rows including unparseable ones, and returned/truncated/next_offset state whether more follows. No count or verdict is taken from the page, so paging a list cannot make 400 prompts read as 100, and `reviews` is deliberately never paginated because truncating the acceptance history would hide decisions. The route declares path_only so a query reaches the handler instead of turning into a 404, and its refusals keep their own codes: 400 PROMPT_RESULT_FILTER_MALFORMED (limit/offset not an integer), PROMPT_RESULT_OFFSET_INVALID (negative), PROMPT_RESULT_LIMIT_INVALID (outside 1..200)."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/prompt-results/((?:prompt|reversal)-[0-9a-f]{32})/review",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "schema": "design-lab/schemas/prompt-result-review-v1.schema.json",
+      "version": "design-lab/prompt-result-review/v1",
+      "emitter": "src/design_lab/prompt_results.py:46",
+      "reason": "Added 2026-10-22 with the route. The body's exact key set is the contract's own property names, read from what the store validates: prompt_results.py checks the review document against prompt-result-review-v1 on the way in and the table repeats the two rules the schema cannot enforce alone -- reviewer_kind = 'human' and a foreign key onto a result this project actually stored. Owner ruling 2026-10-21 keeps local acceptance human-only as well as the outbound approval, so an agent signature is refused with a message quoting that ruling; a review naming an unstored result is 404 rather than a row that could never be re-read. The response wraps the stored document and adds a revision number; it does not re-sign anything."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/prompts",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "PromptIntelligence",
+      "schema": "design-lab/schemas/prompt-composition-v1.schema.json",
+      "version": "design-lab/prompt-composition/v1",
+      "emitter": "src/design_lab/prompt_intelligence.py:48",
+      "reason": "The route answers with a PROMPT_READBACK envelope whose `document` member is this contract; the document is validated by prompt_intelligence.check_document before the handler can return it, so a shortened or re-labelled prompt is a named 500 rather than a page that reads an incomplete prompt as a complete one. Nothing is persisted: the document is derived from the design_brief and design_direction rows, so `sections[].source` must carry the owning id, version and spec_sha256 (or be a framing rule this module names), and `model.executed` is const false because no model runs here. Refusals keep distinct codes: 404 BRIEF_NOT_FOUND, 409 STALE_REVISION for a superseded brief or a choice that points at one, 409 DIRECTION_NOT_UNDER_BRIEF, 400 UNKNOWN_TARGET for a family the model radar does not record. This is the entry point AUTHORITY.md's Prompt Intelligence domain claimed while `prompt` had zero occurrences in the route table, the CLI and the workbench."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/research",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "ResearchReview",
+      "version": "design-lab/research-readback/v1",
+      "emitter": "src/design_lab/research_review.py:40",
+      "reason": "Paid 2026-10-22: design-lab/schemas/research-readback.schema.json closes the envelope that src/design_lab/research_review.py writes, fed two live responses -- a finding plus the row that superseded it, and a project with nothing filed. Findings are REFERENCED by $ref to design-lab/schemas/research-finding.schema.json. What this surface still deliberately has no is a project-level verdict word, and that absence is now bound rather than merely asserted: research_verdict is type null, proves_design_quality and is_knowledge_export are const false. Rights has rights_clearance because a rights gate exists; research publishes counts because writing findings down clears no gate.",
+      "schema": "design-lab/schemas/research-readback.schema.json"
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/research(?:\\?supersedes=([A-Za-z0-9_.:-]{1,80}))?",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "ResearchReview",
+      "schema": "design-lab/schemas/research-finding.schema.json",
+      "version": "https://dtalex66.local/schemas/research-finding.json",
+      "emitter": "src/design_lab/assurance/research_store.py:84",
+      "reason": "Added 2026-10-08 with the route. The body's exact key set is the contract's own property names, read from the loaded schema (src/design_lab/research_review.py write_fields -> research_store.field_names) rather than restated in the dispatcher, so an unknown field is refused instead of dropped; the document is then validated against design-lab/schemas/research-finding.schema.json AS LOADED (src/design_lab/assurance/research_store.py _validate_against_contract) before any row is written. The required trio, the confidence enum, additionalProperties:false and the notDesignRule const all come from that file -- no field list is copied into Python, and the source-list field is located by structure (the required field declared as an array), not by a hardcoded name. The version named here is the schema's `$id`, not a design-lab/x/v1 token, because this contract declares NO schemaVersion property: its closed property set is exactly finding_id/claim/sourceRefs/confidence/notDesignRule, so `$id` is the only identity it binds and research_store.CONTRACT_ID (line 84) is the value compared and refused against. The rules the schema cannot express are enforced beside it: a sourceRefs list that is empty, whitespace-only or duplicated is refused as the guess it is, one row cannot be superseded twice, and a supersede may not reach into another project. This row is also the whole claim about research-finding.schema.json: the ledger's `contracts` array accounts for design-lab/schemas/contracts/*.json only (verify_contract_bindings.py derives its coverage from that directory), and this schema has always lived one level up, so it has no INERT row to flip -- before 2026-10-08 nothing in src/ read it at all, and now two named test files do."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/rights",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "RightsReview",
+      "version": "design-lab/rights-readback/v1",
+      "emitter": "src/design_lab/rights_review.py:48",
+      "reason": "Paid 2026-10-22: design-lab/schemas/rights-readback.schema.json closes the envelope that src/design_lab/rights_review.py writes, and the payload cases in design-lab/scripts/verify_route_payload_contracts.py feed it three live responses -- one APPROVED scope (CLEARED), an APPROVED plus a DENIED (NOT_REVIEWED with a real unapproved_scopes entry), and a project nobody filed. The decisions it wraps were always bound and are REFERENCED by $ref to design-lab/schemas/contracts/rights-decision.schema.json rather than restated, so one contract owns a rights decision. The clearance rule the facade documents is now machine-checked in the schema: CLEARED requires filed_scope_count >= 1 and an empty unapproved_scopes, and filed_scope_count == 0 forces NOT_REVIEWED, so an emitter that starts reading 0-of-0 as cleared violates this document instead of quietly agreeing with the prose. PENDING_REVIEW stays a word a human may file inside decision_states and never one this facade infers.",
+      "schema": "design-lab/schemas/rights-readback.schema.json"
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/rights(?:\\?supersedes=([A-Za-z0-9_.:-]{1,80}))?",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "RightsReview",
+      "schema": "design-lab/schemas/contracts/rights-decision.schema.json",
+      "version": "design-lab/rights-decision/v1",
+      "emitter": "src/design_lab/assurance/rights_ledger.py:73",
+      "reason": "The body's exact key set is the contract's own property names, read from the loaded schema (src/design_lab/rights_review.py write_fields) rather than restated in the dispatcher, so an unknown field is refused instead of dropped; the document is then validated against this schema before the row is written (src/design_lab/assurance/rights_ledger.py _validate_against_contract). The enum, the required trio and additionalProperties:false all come from the file named here. The one thing the schema cannot express is checked beside it: an actor that names automation is refused by name, and the signing kind is a column on the row because the closed contract has no field for it."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/tasks(?:\\?after=((?:native-)?job-[0-9a-f]{64}))?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "TaskQueries",
+      "schema": "design-lab/schemas/task-readback-v1.schema.json",
+      "emitter": "src/design_lab/task_queries.py:24",
+      "version": "design-lab/task-readback/v1",
+      "reason": "Paid 2026-10-22 (backend D, for Stitch screen D08). The list read now answers the shared design-lab/task-readback/v1 envelope: it names its own 100-row page size, says whether it truncated and gives the cursor from the same comparison (the contract refuses truncated=false next to a cursor, and refuses an empty page claiming truncation), carries the attempt-state words out of design-lab/config/state-vocabularies.json instead of re-typing them, and states the operation-level truth the code actually holds -- those words exist only as literals at the job_store._op() write sites, so the payload lists what this page observed rather than a closed list nobody declared. Two claims in the old row were wrong and are corrected here rather than carried forward: it cited design-lab/schemas/status-vocabulary, which is not a file in this repository (the vocabulary contract is the config above, guarded by design-lab/scripts/verify_state_vocabularies.py), and cancel.acknowledged is reachable -- job_store.acknowledge_cancel sets it on a CANCEL_REQUESTED attempt and moves the state to RECONCILING with the note 'adapter acknowledged cancellation; readback still required' -- so the envelope says what the flag asserts (the adapter confirmed the cancellation) and what it never asserts (the host stopped, or the artifact was reconciled)."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/tasks/((?:native-)?job-[0-9a-f]{64})(/events)?(?:\\?after=([0-9]{1,16}))?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "TaskQueries",
+      "schema": "design-lab/schemas/task-readback-v1.schema.json",
+      "emitter": "src/design_lab/task_queries.py:24",
+      "version": "design-lab/task-readback/v1",
+      "reason": "Paid 2026-10-22 (backend D). One dispatch serves the single-task read and its event page, and both now answer the same design-lab/task-readback/v1 envelope with a `surface` discriminator ('task' or 'events'); the contract requires the payload key that belongs to the announced surface and forbids the other two, so a route cannot answer a list where a record was asked. The rows come from job / operation_intent / operation_state / attempt_state / attempt_resolution -- the earlier reason said native_execution_v1, which is the execution receipt table, not what this read joins. The detail surface pins truncated=false and next_cursor=null because it has no page to continue."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/tasks/(native-job-[0-9a-f]{64})/bundle",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "NativeDelivery",
+      "schema": "design-lab/schemas/interop-delivery-receipt-v2.schema.json",
+      "version": "design-lab/delivery-receipt/v2",
+      "emitter": "src/design_lab/interop/delivery_receipt.py:36",
+      "reason": "The export writes a delivery receipt validated against this schema before it is persisted and re-verified on every read-back (src/design_lab/native_bundles.py:6, src/design_lab/native_delivery.py:51). Note this is v2: the contracts/delivery-receipt.schema.json v1 document in the same repository binds a shape nothing emits."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/tasks/(native-job-[0-9a-f]{64})/cancel",
+      "method": "POST",
+      "kind": "SCHEMA_LESS",
+      "handler": "TaskCommands",
+      "reason": "No schema and none is needed: body is one attempt_id field, response is the cancel/readback verdict enforced by the native task state machine in src/design_lab/native_tasks.py rather than by a payload document."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/tasks/(native-job-[0-9a-f]{64})/patch",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "NativePatchSubmissions",
+      "schema": "design-lab/schemas/reconstruction/adobe-patch-job.schema.json",
+      "emitter": "src/design_lab/adapters/illustrator_com.py:117",
+      "version": "design-lab/adobe-patch-job/v1",
+      "reason": "Paid 2026-10-22 (B2b). This one POST dispatches a patch job for either Adobe host, so two contracts cover it: design-lab/schemas/reconstruction/adobe-patch-job.schema.json for design-lab/adobe-patch-job/v1 (the version this row binds) and design-lab/schemas/reconstruction/photoshop-patch-job.schema.json for design-lab/photoshop-patch-job/v1. Both versions are keyed in each adapter's own JOB_CONTRACTS map (src/design_lab/adapters/illustrator_com.py, src/design_lab/adapters/photoshop_com.py), so the shape is judged by the file that states it and not only by hand-written key sets: the adapter loads the contract for the version in the body and refuses a mismatch before any COM call. The hand checks stayed; the schema adds the fields they never typed (layers must be an array, artboard and authorization must be objects). The filesystem rules -- run-root containment, the checkpoint's own bytes, width x height area, the target existing yet -- remain hand checks because a JSON Schema cannot see them, and design-lab/tests/test_illustrator_com_adapter.py and design-lab/tests/test_photoshop_com_adapter.py hold the falsifiers."
+    },
+    {
+      "route": "/api/projects/([0-9a-f]{32})/tasks/(native-job-[0-9a-f]{64})/run",
+      "method": "POST",
+      "kind": "SCHEMA_LESS",
+      "handler": "NativeWorkers",
+      "reason": "No schema and none is needed: the body is exactly one field (attempt_id), refused by the exact-key-set rule in http_service.py body(), and the response is a start verdict with no schemaVersion."
+    },
+    {
+      "route": "/api/target-profile-axes",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "TargetProfiles",
+      "schema": "design-lab/schemas/target-profile-axes-v1.schema.json",
+      "version": "design-lab/target-profile-axes/v1",
+      "emitter": "src/design_lab/target_profile.py:47",
+      "reason": "DL-KB-09/10. The closed vocabulary the selection panel builds its selects from: the seven identity axes (07 line 29) and the thirteen capability fields (02 line 64), the five provenance kinds, the four support states, the five entry kinds and the nine validation dimensions. It is project-independent and served from the store's own constants because a hand-copy in TypeScript would be a second table that can offer a word the service refuses. `measured_fields` travels with it so the 「本项目未测试」 column is a number read from the service rather than a label the view decided."
+    },
+    {
+      "route": "/api/target-profiles",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "TargetProfiles",
+      "schema": "design-lab/schemas/target-profile-write-v1.schema.json",
+      "version": "design-lab/target-profile-write/v1",
+      "emitter": "src/design_lab/target_profile.py:45",
+      "reason": "DL-KB-09, deliverable「用户可添加草稿档案，标未验证」. `stored: true` claims only that the bytes are in the state database. The route accepts the seven axes plus actor, source_ref and fields -- anything else is refused, so a draft cannot invent a column -- support_state is not settable (the table CHECK pins USER_DRAFT), and an absent source_ref becomes the literal UNUSED rather than an id this service minted. Writing PROJECT_MEASURED is 409 TARGET_PROFILE_MEASUREMENT_NOT_AVAILABLE: a measurement needs a run record bound to a real call and a readback, which no draft can supply. claims_not_made carries the denials on the answer itself."
+    },
+    {
+      "route": "/api/target-profiles(?:\\?[^#]*)?",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "TargetProfiles",
+      "schema": "design-lab/schemas/target-profile-list-v1.schema.json",
+      "version": "design-lab/target-profile-list/v1",
+      "emitter": "src/design_lab/target_profile.py:46",
+      "reason": "DL-KB-09. The registry: five seeded profiles served read-only from the tracked config plus any draft a person wrote. The two histograms are part of the contract, not decoration -- the panel separates 官方支持 from 本项目未测试 using them, and PROJECT_MEASURED is 0 here because this round runs no external product or model. offset/limit are parsed in the handler and refused loudly (TARGET_PROFILE_FILTER_MALFORMED / LIMIT_INVALID) instead of failing inside the contract check, which would report a caller's typo as a defect in the registry."
+    },
+    {
+      "route": "/api/target-profiles/(tprof-[0-9a-f]{32})",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "TargetProfiles",
+      "schema": "design-lab/schemas/target-profile-v1.schema.json",
+      "version": "design-lab/target-profile/v1",
+      "emitter": "src/design_lab/target_profile.py:44",
+      "reason": "DL-KB-09. One profile document, byte for byte what the config carries or the draft stored: a seeded id is derived from its own profile_key (never minted), a draft id is the one the create route wrote. Every field keeps its own provenance, an UNKNOWN keeps the reason it is unknown, `executable` is const false and `external_run_record` is const null. An unknown id is 404 TARGET_PROFILE_NOT_FOUND saying a profile is either a seeded config row or somebody's draft, so no caller can read a miss as \"unsupported\"."
+    },
+    {
+      "route": "/api/target-profiles/(tprof-[0-9a-f]{32})/validate",
+      "method": "POST",
+      "kind": "BOUND_SCHEMA",
+      "handler": "TargetProfiles",
+      "schema": "design-lab/schemas/target-profile-validate-v1.schema.json",
+      "version": "design-lab/target-profile-validate/v1",
+      "emitter": "src/design_lab/target_profile.py:48",
+      "reason": "DL-KB-09, acceptance B3. Input validation against what the profile's own fields say: DOCUMENTED_NOT_SUPPORT keeps a documented incompatibility in the vendor's words (FLUX.2 has no negative prompt) instead of smoothing it into silence, and UNKNOWN keeps its reason. A verdict never grants executability -- `grants_execution` is const false on every verdict and `executable` const false on the answer -- so no caller can read a validation as a go-ahead, and the fallback field travels with the answer because the honest output of an unreached entry is planning material, not a payload."
+    },
+    {
+      "route": "/api/task-preflight",
+      "method": "GET",
+      "kind": "BOUND_SCHEMA",
+      "handler": "task_resources",
+      "schema": "design-lab/schemas/task-resource-preflight.schema.json",
+      "version": "design-lab/task-resource-preflight/v1",
+      "emitter": "src/design_lab/runtime/task_resources.py:194",
+      "reason": "Debt paid 2026-10-08, the same shape of gap commit 1ea64bbe closed for artifact-preflight. design-lab/schemas/task-resource-preflight.schema.json binds the four resource branches the preflight really returns (tool, model, declared host/licence/external, inert) and pins the verdict to the list it is computed from: BLOCKED requires a named blocker, READY forbids one, and local_config_fallback appears exactly when no registry was read. REGISTRY_INERT is named in the module docstring and never emitted, so the enum does not promise it. Three real task payloads are validated by design-lab/scripts/verify_route_payload_contracts.py. The registry this reads is still checked only by the hand-written equality at task_resources.py:52 -- that is design-lab/task-resources/v1, an input document, not this boundary."
+    },
+    {
+      "route": "/workbench",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "workbench",
+      "marker": "data-local-session=\"auto\"",
+      "reason": "No schema and none is needed: the same static page, with one body attribute injected when the launcher's auto-connect handshake is on. Bytes are covered by the workbench bundle-digest gates, not by a payload schema."
+    },
+    {
+      "route": "workbench.ROUTES",
+      "method": "GET",
+      "kind": "SCHEMA_LESS",
+      "handler": "workbench",
+      "marker": "workbench.resource",
+      "reason": "No schema and none is needed: static bundle bytes (HTML/JS/CSS) served with the workbench CSP, not a JSON product payload."
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/design-record-v1.json",
+  "title": "Design record envelope — the one-object answer the design layer gives (GET/POST briefs, directions, bindings)",
+  "description": "Measured 2026-10-23 against a live `design_lab.http_service.make_server` boot: ten routes in this family answer with exactly one record wrapped in a bare key and no version of their own — the brief create/revise pair and its id-scoped form, the direction create/revise/choose pair and its id-scoped form, the binding write, and the two single reads. This file binds that wrapper. The record SHAPES are not restated here: a brief is `$ref`'d from `design-lab/schemas/brief-readback.schema.json` (`$defs.brief`), which already owns it and is validated on every read since 2026-10-08, so this document adds the envelope rather than a second description of the same row. `direction` and `binding` have no earlier owner, so they are declared here for the first time, with the nullability and the limits their own writer enforces: `src/design_lab/design_layer.py` runs title through `_text` (max 400), style notes through `_string_list` (64 items, 300 characters each), and the database CHECK on `actor_kind` admits only `human`, `agent` or NULL (`design-lab/schemas/state/design-lab-state-design-layer-v1.sql`). `record_kind` exists because the wrapper key alone would let a page read a binding row as a direction row: it is a discriminator the emitter computes from the record it is serving, not from the route that was called, so a route that starts answering a different record type fails here instead of re-labelling it.",
+  "type": "object",
+  "required": ["schemaVersion", "record_kind"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/design-record/v1"
+    },
+    "record_kind": {
+      "enum": ["brief", "direction", "binding"]
+    },
+    "brief": {
+      "$ref": "https://dtalex66.local/schemas/brief-readback.json#/$defs/brief"
+    },
+    "direction": {
+      "$ref": "#/$defs/direction"
+    },
+    "binding": {
+      "$ref": "#/$defs/binding"
+    }
+  },
+  "oneOf": [
+    {
+      "title": "a brief record",
+      "required": ["schemaVersion", "record_kind", "brief"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "record_kind": {
+          "const": "brief"
+        },
+        "brief": {
+          "$ref": "https://dtalex66.local/schemas/brief-readback.json#/$defs/brief"
+        }
+      }
+    },
+    {
+      "title": "a direction record",
+      "required": ["schemaVersion", "record_kind", "direction"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "record_kind": {
+          "const": "direction"
+        },
+        "direction": {
+          "$ref": "#/$defs/direction"
+        }
+      }
+    },
+    {
+      "title": "a binding record",
+      "required": ["schemaVersion", "record_kind", "binding"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "record_kind": {
+          "const": "binding"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "schemaVersion": {
+      "const": "design-lab/design-record/v1"
+    },
+    "direction": {
+      "type": "object",
+      "required": ["direction_id", "brief_id", "title", "style_notes", "color_mood",
+                   "typography_mood", "chosen", "actor", "actor_kind", "spec_sha256",
+                   "version", "superseded_by", "created_at"],
+      "additionalProperties": false,
+      "properties": {
+        "direction_id": {
+          "type": "string",
+          "pattern": "^direction-[0-9a-f]{32}$"
+        },
+        "brief_id": {
+          "type": "string",
+          "pattern": "^brief-[0-9a-f]{32}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "style_notes": {
+          "type": ["array", "null"],
+          "maxItems": 64,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        },
+        "color_mood": {
+          "type": ["string", "null"],
+          "maxLength": 400
+        },
+        "typography_mood": {
+          "type": ["string", "null"],
+          "maxLength": 400
+        },
+        "chosen": {
+          "type": "boolean"
+        },
+        "actor": {
+          "type": ["string", "null"],
+          "maxLength": 400
+        },
+        "actor_kind": {
+          "enum": ["human", "agent", null]
+        },
+        "spec_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "superseded_by": {
+          "type": ["string", "null"],
+          "pattern": "^direction-[0-9a-f]{32}$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "required": ["binding_id", "direction_id", "design_system_name", "spec_sha256",
+                   "version", "superseded_by", "created_at"],
+      "additionalProperties": false,
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "pattern": "^bind-[0-9a-f]{32}$"
+        },
+        "direction_id": {
+          "type": "string",
+          "pattern": "^direction-[0-9a-f]{32}$"
+        },
+        "design_system_name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "spec_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "superseded_by": {
+          "type": ["string", "null"],
+          "pattern": "^bind-[0-9a-f]{32}$"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

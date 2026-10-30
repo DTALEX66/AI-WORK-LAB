@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/cloud-event-envelope/v1",
+  "title": "WORK-LAB CloudEvent Envelope",
+  "type": "object",
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "time",
+    "schema_version"
+  ],
+  "properties": {
+    "specversion": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "datacontenttype": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "workUnitId": {
+          "type": "string"
+        },
+        "adapterId": {
+          "type": "string"
+        },
+        "attemptIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "receipt": {
+          "$ref": "#/$defs/receipt"
+        }
+      }
+    },
+    "otel": {
+      "type": "object",
+      "properties": {
+        "traceId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "spanId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{16}$"
+        },
+        "traceFlags": {
+          "type": "string"
+        }
+      }
+    },
+    "schema_version": {
+      "const": "work-lab/cloud-event-envelope/v1"
+    }
+  },
+  "$defs": {
+    "receipt": {
+      "type": "object",
+      "required": [
+        "receiptId",
+        "workUnitId",
+        "adapterId",
+        "status",
+        "createdAt"
+      ],
+      "properties": {
+        "receiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workUnitId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapterId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "success",
+            "failure",
+            "partial",
+            "skipped"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inToto": {
+          "type": "object",
+          "properties": {
+            "link": {
+              "type": "object"
+            },
+            "signature": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

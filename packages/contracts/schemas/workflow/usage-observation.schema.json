@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/usage-observation.schema.json",
+  "title": "Model usage/runtime observation contract (WL3-520)",
+  "description": "Nullable field-level usage truth. Every field may be null (unknown/not applicable); null is NEVER converted to 0. Provider lifecycle distinguishes ACTIVE/RETIRED.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observation_id",
+    "plan_id",
+    "task_id",
+    "project_id",
+    "provider_lifecycle",
+    "measurement_source",
+    "completeness"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/usage-observation/v1"
+    },
+    "observation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "plan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provider_lifecycle": {
+      "enum": [
+        "ACTIVE",
+        "RETIRED",
+        "LOCAL",
+        "AGENT",
+        "UNKNOWN"
+      ]
+    },
+    "model_binding": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "input_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "output_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "reasoning_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "cache_read_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "cache_write_tokens": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "tool_calls": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "subagent_calls": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "latency_ms": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "queue_ms": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "load_ms": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "first_token_ms": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "runtime_seconds": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "cost_amount": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "currency": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "measurement_source": {
+      "enum": [
+        "OBSERVED",
+        "ESTIMATED",
+        "DERIVED",
+        "UNAVAILABLE"
+      ]
+    },
+    "completeness": {
+      "enum": [
+        "FULL",
+        "PARTIAL",
+        "EMPTY"
+      ]
+    },
+    "quality_state": {
+      "enum": [
+        "UNKNOWN",
+        "PARTIAL",
+        "OK",
+        "BLOCKED"
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "occurred_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

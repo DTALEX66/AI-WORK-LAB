@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/platform-identity.schema.json",
+  "title": "Platform Identity and Installation Instance Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "platform_id", "logical_instance_id", "package_identity", "publisher", "install_channel", "executable_realpath", "binary_digest", "discovered_version", "launcher_id", "launcher_target", "arguments", "working_directory", "effective_config_root", "profile_id", "user_context", "capabilities", "evidence_source", "observed_at", "freshness", "state"],
+  "properties": {
+    "schema_version": {"const": "workflow/platform-identity/v1"},
+    "platform_id": {"type": "string", "minLength": 1, "pattern": "^[a-z][a-z0-9-]{1,63}$"},
+    "logical_instance_id": {"type": "string", "minLength": 1, "pattern": "^[a-zA-Z0-9._:-]{1,160}$"},
+    "package_identity": {"type": "string", "minLength": 1, "maxLength": 512},
+    "publisher": {"type": "string", "minLength": 1, "maxLength": 256},
+    "install_channel": {"enum": ["store", "official-installer", "package-manager", "portable", "source", "unknown"]},
+    "executable_realpath": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "binary_digest": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+    "discovered_version": {"type": "string", "minLength": 1, "maxLength": 128},
+    "launcher_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "launcher_target": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "arguments": {"type": "array", "items": {"type": "string", "maxLength": 2048}},
+    "working_directory": {"type": "string", "maxLength": 2048},
+    "effective_config_root": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "profile_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "user_context": {"type": "string", "enum": ["current-user", "service-user", "unknown"]},
+    "capabilities": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,63}$"}, "uniqueItems": true},
+    "evidence_source": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,63}$"}, "uniqueItems": true},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "freshness": {"enum": ["CURRENT", "STALE", "UNKNOWN"]},
+    "state": {"enum": ["UNIQUE", "ALIAS_DUPLICATE", "STALE_SHORTCUT", "CONFIG_SPLIT", "VERSION_COLLISION", "DUAL_INSTALLATION", "PROFILE_SPLIT", "IDENTITY_AMBIGUOUS", "UNAVAILABLE"]}
+  }
+}

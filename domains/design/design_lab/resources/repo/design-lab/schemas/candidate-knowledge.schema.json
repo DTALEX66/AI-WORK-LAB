@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/candidate-knowledge.schema.json",
+  "title": "CandidateKnowledge (compiled knowledge unit)",
+  "description": "从外置资料提取的知识候选：经 review 后编译为可用知识；未确认版权者保持 quarantine。",
+  "type": "object",
+  "required": [
+    "candidate_id",
+    "schemaVersion",
+    "source_id",
+    "knowledge_type",
+    "content_hash",
+    "state"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "candidate_id": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "design-lab/candidate-knowledge/v1"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "knowledge_type": {
+      "enum": [
+        "rule",
+        "method",
+        "reference",
+        "skill",
+        "rubric",
+        "benchmark"
+      ]
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "state": {
+      "enum": [
+        "quarantined",
+        "review-required",
+        "compiled"
+      ]
+    },
+    "compiled_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/domain-pack/uiux-design/brief.json",
+  "title": "UI/UX Design Brief",
+  "description": "V42-0401. Brief contract for UI/UX design cases: goals, users, scope, constraints, references, acceptance.",
+  "type": "object",
+  "required": ["brief_id", "title", "project_type", "goals", "users", "scope", "constraints", "acceptance"],
+  "additionalProperties": false,
+  "properties": {
+    "brief_id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "project_type": {"enum": ["b2b-backoffice", "mobile-task-flow", "ecommerce-pdp-checkout", "settings-accessibility", "responsive-content-page"]},
+    "goals": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "users": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "goals", "pain_points"],
+        "additionalProperties": false,
+        "properties": {
+          "role": {"type": "string", "minLength": 1},
+          "goals": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+          "pain_points": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+        }
+      },
+      "minItems": 1
+    },
+    "scope": {
+      "type": "object",
+      "required": ["in", "out"],
+      "additionalProperties": false,
+      "properties": {
+        "in": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+        "out": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "required": ["viewports", "accessibility_level", "design_system"],
+      "additionalProperties": false,
+      "properties": {
+        "viewports": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 3},
+        "accessibility_level": {"enum": ["wcag-aa", "wcag-aaa"]},
+        "design_system": {"type": "string", "minLength": 1},
+        "keyboard_path_required": {"type": "boolean", "default": true}
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "license_status"],
+        "additionalProperties": false,
+        "properties": {
+          "source": {"type": "string", "minLength": 1},
+          "license_status": {"enum": ["owned", "allowed", "reference-only", "review-required", "unknown"]},
+          "note": {"type": "string"}
+        }
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "required": ["axe_critical_serious", "human_score_min", "enhancement_preference_min"],
+      "additionalProperties": false,
+      "properties": {
+        "axe_critical_serious": {"type": "integer", "minimum": 0},
+        "human_score_min": {"type": "number", "minimum": 0, "maximum": 100},
+        "enhancement_preference_min": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    }
+  }
+}

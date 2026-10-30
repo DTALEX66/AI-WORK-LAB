@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/knowledge-library-readback-v1.schema.json",
+  "title": "Knowledge Library Readback V1 (the search answer and its compact rows)",
+  "$comment": "DL-KB-03/DL-KB-04. The rows carry what the list column is allowed to show -- title, one-line purpose, applicable target, revision and status -- plus the licence pair the detail page opens with. `matched_fields` and `matched_terms` are computed from the stored bytes of the row that was returned, so 'why did this hit' is a reading, not a guess. `strategy` names which mechanism produced the rows: TRIGRAM (FTS5), SHORT_FALLBACK (LIKE over the current revision, used for queries the trigram index cannot match), MIXED, or BROWSE when there was no query at all. An empty result set always carries `explanation`; there is deliberately no `related` field, because inventing near-matches to fill a blank screen is the behaviour the taskpack forbids. `entryTypes` is the service's own table of the six type names, carried with the answer so the screen's type filter reads one vocabulary instead of a hand-typed copy; an offline page receives an empty list and shows no options rather than inventing labels.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "query",
+    "filters",
+    "entryTypes",
+    "licenseStates",
+    "strategy",
+    "matched_terms",
+    "total",
+    "offset",
+    "limit",
+    "returned",
+    "next_offset",
+    "entries",
+    "explanation",
+    "index",
+    "does_not_say"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/knowledge-library/v1"
+    },
+    "query": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "domain",
+        "task",
+        "target"
+      ],
+      "properties": {
+        "type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "domain": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "task": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "entryTypes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "label"
+        ],
+        "properties": {
+          "value": {
+            "enum": [
+              "STANDARD",
+              "METHOD",
+              "PROMPT",
+              "MODEL_GUIDE",
+              "RECIPE",
+              "CASE"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "licenseStates": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "reviewed",
+          "unknown",
+          "reference-only"
+        ]
+      }
+    },
+    "strategy": {
+      "enum": [
+        "BROWSE",
+        "TRIGRAM",
+        "SHORT_FALLBACK",
+        "MIXED"
+      ]
+    },
+    "matched_terms": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "returned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "next_offset": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "explanation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rows",
+        "indexed",
+        "rebuilt_at"
+      ],
+      "properties": {
+        "rows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indexed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rebuilt_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "does_not_say": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "knowledge_entry_id",
+        "revision",
+        "latest_revision",
+        "recommended_revision",
+        "recommended_is_latest",
+        "entry_type",
+        "title",
+        "summary",
+        "domain_tags",
+        "task_tags",
+        "target_tools",
+        "status",
+        "content_sha256",
+        "updated_at",
+        "license",
+        "license_status",
+        "source_id",
+        "source_version",
+        "matched_fields",
+        "matched_terms"
+      ],
+      "properties": {
+        "knowledge_entry_id": {
+          "type": "string",
+          "pattern": "^kentry-[0-9a-f]{32}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "latest_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recommended_revision": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "recommended_is_latest": {
+          "type": "boolean"
+        },
+        "entry_type": {
+          "enum": [
+            "STANDARD",
+            "METHOD",
+            "PROMPT",
+            "MODEL_GUIDE",
+            "RECIPE",
+            "CASE"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "domain_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "task_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "SUPERSEDED"
+          ]
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "license": {
+          "type": "string"
+        },
+        "license_status": {
+          "enum": [
+            "reviewed",
+            "unknown",
+            "reference-only"
+          ]
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "source_version": {
+          "type": "string"
+        },
+        "matched_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "matched_terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

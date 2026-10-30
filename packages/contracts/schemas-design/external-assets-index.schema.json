@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/external-assets-index/v1",
+  "title": "DESIGN-LAB External Assets Index",
+  "description": "本项目在共用外部库（模型库/设计资料库等）中的资产清单与指向关系，用于在跨项目共享目录中明确归属。",
+  "type": "object",
+  "required": ["version", "generated_at", "shared_roots", "assets"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "version": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "policy": {"type": "string"},
+    "shared_roots": {
+      "type": "object",
+      "description": "共用库根路径映射，key 为库名，value 为绝对路径",
+      "additionalProperties": {"type": "string"}
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "shared_root", "relative_path", "kind", "owned_by"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+          "shared_root": {"type": "string", "description": "指向 shared_roots 中的 key"},
+          "relative_path": {"type": "string", "description": "相对该共用库根的路径"},
+          "kind": {
+            "type": "string",
+            "enum": ["model-weight", "design-asset", "source-code", "reference", "quarantine"]
+          },
+          "category": {"type": "string"},
+          "size_bytes": {"type": "integer", "minimum": 0},
+          "owned_by": {"type": "string"},
+          "status": {"type": "string", "enum": ["active", "quarantine", "review-required"]},
+          "note": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

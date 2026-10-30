@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/target-profile-v1.schema.json",
+  "title": "Target Profile V1 (one software x model x entry answer, graded field by field)",
+  "$comment": "DL-KB-09. The identity axes come from the pack's 07_接口与数据演进.md line 29 (软件、Agent、模型、提供方、版本、入口、任务模式) and the capability fields from 02_完整产品方案.md line 64 (输入模态…退路); the two lists disagree on structure, so the union is taken -- axes as key, capability fields as values -- instead of silently picking one. Every field carries its own provenance: the four kinds 02:58 demands, plus PROJECT_POLICY for statements of our own rule, because labelling 退路 or 测试日期 as 本项目实测 would put a fake measurement on the screen. A field nobody read stays state UNKNOWN with a reason: an empty cell must say why it is empty. `executable` is a constant false and `external_run_record` a constant null: this round runs no external product or model, so promoting a profile to executable requires a contract change and a real run record, not a flag flip.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profile_id", "profile_key", "origin", "support_state",
+               "axes", "axis_reasons", "fields", "executable", "external_run_record",
+               "content_sha256"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/target-profile/v1"},
+    "profile_id": {"type": "string", "pattern": "^tprof-[0-9a-f]{32}$"},
+    "profile_key": {"type": "string", "minLength": 1, "maxLength": 200},
+    "origin": {"enum": ["SEEDED", "DRAFT"]},
+    "support_state": {"enum": ["DOCUMENTED_CLAIM", "CONDITIONAL", "UNREACHED", "USER_DRAFT"]},
+    "conditional_reason": {"type": ["string", "null"]},
+    "reach_attempts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "fetch_note": {"type": ["string", "null"]},
+    "seed_file": {"type": ["string", "null"]},
+    "source_ref": {"type": "string", "maxLength": 200},
+    "revision": {"type": "integer", "minimum": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "created_by": {"type": "string", "minLength": 1},
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["software", "agent", "model", "provider", "version", "entry", "task_mode"],
+      "properties": {
+        "software": {"type": ["string", "null"]},
+        "agent": {"type": ["string", "null"]},
+        "model": {"type": ["string", "null"]},
+        "provider": {"type": ["string", "null"]},
+        "version": {"type": ["string", "null"]},
+        "entry": {"enum": ["API", "WEB_APP", "DESKTOP_CLIENT", "COMFYUI_NODE", "UNSTATED"]},
+        "task_mode": {"type": ["string", "null"]}
+      }
+    },
+    "axis_reasons": {"type": "object", "additionalProperties": {"type": ["string", "null"]}},
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_modality", "reference_roles", "asset_limits", "ranges", "prompt_style",
+                    "negative_input", "available_parameters", "parameter_location", "output_form",
+                    "known_conflicts", "official_basis", "tested_at", "fallback"],
+      "properties": {
+        "input_modality": {"$ref": "#/$defs/field"},
+        "reference_roles": {"$ref": "#/$defs/field"},
+        "asset_limits": {"$ref": "#/$defs/field"},
+        "ranges": {"$ref": "#/$defs/field"},
+        "prompt_style": {"$ref": "#/$defs/field"},
+        "negative_input": {"$ref": "#/$defs/field"},
+        "available_parameters": {"$ref": "#/$defs/field"},
+        "parameter_location": {"$ref": "#/$defs/field"},
+        "output_form": {"$ref": "#/$defs/field"},
+        "known_conflicts": {"$ref": "#/$defs/field"},
+        "official_basis": {"$ref": "#/$defs/field"},
+        "tested_at": {"$ref": "#/$defs/field"},
+        "fallback": {"$ref": "#/$defs/field"}
+      }
+    },
+    "executable": {"const": false},
+    "external_run_record": {"const": null},
+    "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "value", "provenance"],
+      "properties": {
+        "state": {"enum": ["DOCUMENTED", "NOT_DOCUMENTED", "UNKNOWN"]},
+        "value": {"type": ["string", "null"]},
+        "provenance": {"enum": ["OFFICIAL_DOC", "OPEN_SOURCE_IMPL", "PROJECT_MEASURED",
+                                "USER_FEEDBACK", "PROJECT_POLICY"]},
+        "quote": {"type": ["string", "null"]},
+        "source": {"type": ["string", "null"]},
+        "observed_at": {"type": ["string", "null"], "pattern": "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"},
+        "reason": {"type": ["string", "null"]},
+        "gap": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "UNKNOWN"}},
+                 "required": ["state"]},
+          "then": {"required": ["reason"],
+                   "properties": {"reason": {"type": "string", "minLength": 1}}}
+        },
+        {
+          "if": {"properties": {"state": {"const": "DOCUMENTED"},
+                                 "provenance": {"const": "OFFICIAL_DOC"}},
+                 "required": ["state", "provenance"]},
+          "then": {"required": ["source", "observed_at"],
+                   "properties": {"source": {"type": "string", "minLength": 1},
+                                  "observed_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}}}
+        }
+      ]
+    }
+  }
+}

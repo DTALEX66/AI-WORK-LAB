@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/evidence-manifest.schema.json",
+  "title": "Workflow Evidence Manifest Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_id", "source_identity", "plan", "evidence", "redaction"],
+  "properties": {
+    "schema_version": {"const": "workflow/evidence-manifest/v1"},
+    "manifest_id": {"type": "string", "minLength": 1},
+    "source_identity": {"$ref": "#/$defs/sourceIdentity"},
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest", "base_oid", "head_oid"],
+      "properties": {
+        "digest": {"$ref": "#/$defs/digest"},
+        "base_oid": {"type": "string", "minLength": 1},
+        "head_oid": {"type": "string", "minLength": 1}
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate_id", "state", "coverage", "input_fingerprint", "log_digest", "started_at", "completed_at", "duration_ms"],
+        "properties": {
+          "gate_id": {"type": "string", "minLength": 1},
+          "state": {"enum": ["PASS", "FAIL", "BLOCKED", "UNVERIFIED", "NOT_RUN", "SKIPPED_OPTIONAL"]},
+          "coverage": {"enum": ["targeted", "module", "full", "release"]},
+          "input_fingerprint": {"$ref": "#/$defs/digest"},
+          "log_digest": {"$ref": "#/$defs/digest"},
+          "started_at": {"type": "string", "format": "date-time"},
+          "completed_at": {"type": "string", "format": "date-time"},
+          "duration_ms": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "secrets_stored"],
+      "properties": {
+        "policy": {"const": "secrets-never-stored"},
+        "secrets_stored": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {"type": "string", "minLength": 1},
+        "value": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "commit": {"$ref": "#/$defs/gitObject"},
+        "tree": {"$ref": "#/$defs/gitObject"}
+      }
+    },
+    "gitObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "object_type", "oid"],
+      "properties": {
+        "algorithm": {"type": "string", "minLength": 1},
+        "object_type": {"enum": ["commit", "tree", "blob"]},
+        "oid": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

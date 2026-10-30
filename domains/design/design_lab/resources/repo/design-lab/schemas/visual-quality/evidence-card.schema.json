@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/evidence-card/v1",
+  "title": "Open Design Evidence Card",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "card_id", "benchmark_id", "card_status", "evidence_level", "artifact", "references", "hard_gates", "human_calibration"],
+  "properties": {
+    "schema_version": {"const": "design-lab/evidence-card/v1"},
+    "card_id": {"type": "string", "minLength": 1},
+    "benchmark_id": {"type": "string", "minLength": 1},
+    "card_status": {"enum": ["not-run", "isolated", "human-review", "accepted", "blocked"]},
+    "evidence_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "scope"],
+      "properties": {
+        "kind": {"enum": ["fixture", "local-artifact", "external-artifact"]},
+        "path": {"type": "string", "minLength": 1},
+        "scope": {"enum": ["local-fixture", "project-runtime", "external-reference"]}
+      }
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["brief", "rubric", "evidence_schema"],
+      "properties": {
+        "brief": {"type": "string", "minLength": 1},
+        "rubric": {"type": "string", "minLength": 1},
+        "evidence_schema": {"type": "string", "minLength": 1}
+      }
+    },
+    "hard_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "status": {"enum": ["not-run", "pass", "fail"]}
+        }
+      }
+    },
+    "human_calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "status", "boundary"],
+      "properties": {
+        "required": {"const": true},
+        "status": {"enum": ["pending", "completed", "unavailable"]},
+        "boundary": {"const": "not-authoritative-before-completed-human-review"}
+      }
+    },
+    "evidence_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "DL-CLOUDAUDIT-B5 (R13): the canonical sha256 of this record's substantive fields (every field except evidence_id and supersedes). A committed id that no longer matches the content is an in-place overwrite of the record and must fail the gate. Required on any record with card_status 'accepted' and on every record that participates in a supersedes chain."
+    },
+    "supersedes": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "DL-CLOUDAUDIT-B5 (R13): append-only revision. The evidence_id of the earlier record of the same card_id that this record supersedes; revisions append a record, they never rewrite the superseded one. A card_id's records form one linear chain (one genesis without supersedes, no forks, no cycles, no dangling links)."
+    }
+  }
+}

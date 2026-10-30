@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/reconstruction-bundle/v1",
+  "title": "DESIGN-LAB reconstruction evidence bundle manifest",
+  "description": "Complete bundle topology is the manifest.json control file plus every non-manifest file declared by artifacts[].",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "state",
+    "checkedOutSourceSha256",
+    "sourceTreeState",
+    "executionSourceDigest",
+    "artifacts",
+    "releaseEvidence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/reconstruction-bundle/v1"},
+    "runId": {"$ref": "#/$defs/stableId"},
+    "state": {
+      "enum": [
+        "ANALYZED",
+        "RECONSTRUCTED_LOCAL",
+        "PIXEL_VERIFIED_DETERMINISTIC",
+        "ILLUSTRATOR_ASSEMBLED",
+        "ILLUSTRATOR_READBACK_VERIFIED",
+        "DELIVERY_CANDIDATE_UNVERIFIED_EXTERNAL",
+        "DELIVERY_READY"
+      ]
+    },
+    "checkedOutSourceSha256": {"$ref": "#/$defs/gitSha256"},
+    "sourceTreeState": {"enum": ["CLEAN_EXACT_HEAD", "DIRTY_UNPUBLISHED"]},
+    "executionSourceDigest": {"$ref": "#/$defs/sha256"},
+    "artifacts": {
+      "description": "Exact topology for every bundle file other than the non-self-hashed manifest.json control file.",
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/artifact"}
+    },
+    "releaseEvidence": {"$ref": "#/$defs/releaseEvidence"}
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "gitSha256": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "artifact": {
+      "type": "object",
+      "not": {
+        "required": ["path"],
+        "properties": {"path": {"const": "manifest.json"}}
+      },
+      "required": [
+        "path",
+        "mediaType",
+        "byteSize",
+        "sha256",
+        "producerPhase",
+        "ownershipClass"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "path": {"$ref": "#/$defs/relativePath"},
+        "mediaType": {
+          "enum": [
+            "application/json",
+            "image/png",
+            "image/svg+xml",
+            "application/vnd.adobe.illustrator"
+          ]
+        },
+        "byteSize": {"type": "integer", "minimum": 1, "maximum": 268435456},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "producerPhase": {
+          "enum": [
+            "intake",
+            "reconstruction",
+            "deterministic-render",
+            "deterministic-metrics",
+            "pipeline-state",
+            "evidence-package",
+            "adobe-illustrator",
+            "release-qualification"
+          ]
+        },
+        "ownershipClass": {
+          "enum": [
+            "normalized-source",
+            "canonical-vector",
+            "semantic-raster",
+            "deterministic-evidence",
+            "run-control",
+            "bundle-report",
+            "native-deliverable",
+            "host-readback",
+            "release-evidence"
+          ]
+        }
+      }
+    },
+    "evidenceRef": {
+      "type": ["object", "null"],
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "releaseEvidence": {
+      "type": "object",
+      "required": [
+        "nativeAi",
+        "illustratorPreview",
+        "illustratorReadback",
+        "goldenCorpus",
+        "exactShaCi",
+        "rights",
+        "installedRuntime"
+        ,"authorityReceipt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "nativeAi": {"$ref": "#/$defs/evidenceRef"},
+        "illustratorPreview": {"$ref": "#/$defs/evidenceRef"},
+        "illustratorReadback": {"$ref": "#/$defs/evidenceRef"},
+        "goldenCorpus": {"$ref": "#/$defs/evidenceRef"},
+        "exactShaCi": {"$ref": "#/$defs/evidenceRef"},
+        "rights": {"$ref": "#/$defs/evidenceRef"},
+        "installedRuntime": {"$ref": "#/$defs/evidenceRef"}
+        ,"authorityReceipt": {"$ref": "#/$defs/evidenceRef"}
+      }
+    }
+  }
+}

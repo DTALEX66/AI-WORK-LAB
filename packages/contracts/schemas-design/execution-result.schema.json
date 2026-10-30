@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/execution-result.schema.json",
+  "title": "ExecutionResult (V2 kernel)",
+  "description": "DesignCommand 的执行结果：标准错误码、provenance、artifact revision。adapter 异常不得泄漏给 Kernel。",
+  "type": "object",
+  "required": [
+    "command_id",
+    "schemaVersion",
+    "status",
+    "adapter",
+    "adapter_version",
+    "project_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "command_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/execution-result/v1"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "success",
+        "validation_error",
+        "unsupported_capability",
+        "adapter_error",
+        "timeout"
+      ]
+    },
+    "adapter": {
+      "type": "string"
+    },
+    "adapter_version": {
+      "type": "string"
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "artifact_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

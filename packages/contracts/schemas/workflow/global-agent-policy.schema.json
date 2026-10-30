@@ -1,0 +1,333 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/workflow/global-agent-policy.schema.json",
+  "title": "WORK-LAB Global Agent Policy — cross-software semantic SSOT",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "ownership",
+    "communication",
+    "execution",
+    "authority_discovery",
+    "authorization",
+    "workspace_boundary",
+    "protected_storage",
+    "credentials",
+    "session_privacy",
+    "network",
+    "git_safety",
+    "evidence_semantics",
+    "verification",
+    "parallelism",
+    "model_neutrality"
+  ],
+  "properties": {
+    "schema_version": {"const": "workflow/global-agent-policy/v1"},
+    "policy_id": {"type": "string", "minLength": 1},
+    "revision": {"type": "integer", "minimum": 1},
+    "created": {"type": "string"},
+    "supersedes": {"type": "string"},
+
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "mode", "single_source", "is_authority"],
+      "properties": {
+        "layer": {"const": "USER_OVERLAY"},
+        "mode": {"const": "MANAGE"},
+        "single_source": {"const": true},
+        "is_authority": {"const": false},
+        "note": {"type": "string"}
+      }
+    },
+
+    "communication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_language", "avoid_low_value_clarification"],
+      "properties": {
+        "default_language": {"type": "string", "minLength": 1},
+        "proceed_on_obvious_default": {"type": "boolean"},
+        "avoid_low_value_clarification": {"type": "boolean"},
+        "ask_only_when_scope_risk_or_side_effect_changes": {"type": "boolean"}
+      }
+    },
+
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proportionate_to_scale_and_risk", "preserve_dirty_work"],
+      "properties": {
+        "proportionate_to_scale_and_risk": {"type": "boolean"},
+        "finish_to_closure": {"type": "boolean"},
+        "keep_concise_plan_for_multistep": {"type": "boolean"},
+        "one_actively_owned_item": {"type": "boolean"},
+        "preserve_dirty_work": {"type": "boolean"}
+      }
+    },
+
+    "authority_discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolve_current_main_first", "historical_records_non_normative"],
+      "properties": {
+        "resolve_current_main_first": {"type": "boolean"},
+        "read_top_authority_before_history": {"type": "boolean"},
+        "historical_records_non_normative": {"type": "boolean"},
+        "precedence": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      }
+    },
+
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid_within_task",
+        "grants_do_not_outlive_their_task",
+        "task_grant_respects_platform_hard_limits",
+        "privilege_ladder"
+      ],
+      "properties": {
+        "valid_within_task": {"type": "boolean"},
+        "grants_do_not_outlive_their_task": {"type": "boolean"},
+        "low_value_confirmation_avoided": {"type": "boolean"},
+        "task_grant_respects_platform_hard_limits": {"type": "boolean"},
+        "explicit_side_effects_require_explicit_authorization": {"type": "boolean"},
+        "privilege_ladder": {
+          "type": "array",
+          "minItems": 4,
+          "items": {"type": "string"},
+          "description": "Privilege invariants. The schema verifier enforces that each entry is present."
+        }
+      }
+    },
+
+    "task_grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "granular_permissions_required": {"type": "boolean"},
+        "read_only_default": {"type": "boolean"},
+        "side_effects_default": {"type": "string"},
+        "cannot_override_platform_hard_limits": {"type": "boolean"}
+      }
+    },
+
+    "workspace_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_scope", "keep_task_data_in_project"],
+      "properties": {
+        "default_scope": {"type": "string"},
+        "keep_task_data_in_project": {"type": "boolean"},
+        "never_spill_to_user_home_or_other_projects": {"type": "boolean"},
+        "project_local_runtime_root": {"type": "string"},
+        "external_output_requires_exact_auth": {"type": "boolean"}
+      }
+    },
+
+    "protected_storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protected_drives", "drive_default", "authorization_granularity"],
+      "properties": {
+        "protected_drives": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[A-Z]$"},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "drive_default": {"const": "deny"},
+        "authorization_granularity": {"const": "exact_path_and_operation"},
+        "forbid_before_authorization": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1
+        }
+      }
+    },
+
+    "credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plaintext_forbidden", "never_print_or_commit"],
+      "properties": {
+        "plaintext_forbidden": {"const": true},
+        "never_print_or_commit": {"const": true},
+        "session_access_default": {"type": "string"},
+        "session_access_ladder": {"type": "array", "items": {"type": "string"}},
+        "raw_body_min_needed_only": {"type": "boolean"},
+        "project_rules_cannot_weaken_credential_boundary": {"type": "boolean"}
+      }
+    },
+
+    "session_privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "minimum_necessary_access"],
+      "properties": {
+        "default": {"type": "string"},
+        "minimum_necessary_access": {"type": "boolean"},
+        "redacted_summary_preferred": {"type": "boolean"},
+        "permission_denial_is_a_correct_boundary_signal": {"type": "boolean"},
+        "never_elevate_to_bypass_a_denied_private_path": {"type": "boolean"}
+      }
+    },
+
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "public_read_scoped_to_current_sandbox_or_tool": {"type": "boolean"},
+        "authenticated_write_requires_auth": {"type": "boolean"},
+        "upload_requires_auth": {"type": "boolean"},
+        "paid_model_call_requires_auth": {"type": "boolean"},
+        "paid_service_requires_auth": {"type": "boolean"}
+      }
+    },
+
+    "git_safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preserve_dirty_work", "stage_owned_changes_only", "no_default_git_add_all", "no_force_push_default"],
+      "properties": {
+        "preserve_dirty_work": {"type": "boolean"},
+        "stage_owned_changes_only": {"type": "boolean"},
+        "no_default_git_add_all": {"type": "boolean"},
+        "no_default_reset_or_clean": {"type": "boolean"},
+        "no_force_push_default": {"type": "boolean"},
+        "do_not_rewrite_history_default": {"type": "boolean"}
+      }
+    },
+
+    "dependency_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prefer_project_interpreter_and_locked_deps": {"type": "boolean"},
+        "lockfile_regeneration_is_destructive": {"type": "boolean"},
+        "save_exact_diff_before_regenerating": {"type": "boolean"},
+        "no_unsolicited_new_dependencies": {"type": "boolean"}
+      }
+    },
+
+    "evidence_semantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unknown_is_zero",
+        "unknown_is_success",
+        "simulated_is_real",
+        "local_test_is_ci",
+        "build_is_runtime",
+        "merge_is_installed",
+        "plan_equals_write",
+        "apply_equals_verified",
+        "real_evidence_requires_readback"
+      ],
+      "properties": {
+        "unknown_is_zero": {"const": false},
+        "unknown_is_success": {"const": false},
+        "simulated_is_real": {"const": false},
+        "local_test_is_ci": {"const": false},
+        "build_is_runtime": {"const": false},
+        "merge_is_installed": {"const": false},
+        "plan_equals_write": {"const": false},
+        "apply_equals_verified": {"const": false},
+        "real_evidence_requires_readback": {"const": true},
+        "missing_is_unknown_never_fabricated": {"type": "boolean"},
+        "evidence_levels": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 5
+        }
+      }
+    },
+
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["report_layers_independently", "honest_status_vocabulary"],
+      "properties": {
+        "report_layers_independently": {"type": "boolean"},
+        "structural_check_separate_from_runtime": {"type": "boolean"},
+        "failed_or_skipped_required_check_is_not_pass": {"type": "boolean"},
+        "honest_status_vocabulary": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 5
+        },
+        "independent_readback_required_for_verified": {"type": "boolean"}
+      }
+    },
+
+    "parallelism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["independent_reads", "overlapping_writes", "one_writer_owns_a_checkout"],
+      "properties": {
+        "independent_reads": {"type": "string"},
+        "isolated_writers": {"type": "string"},
+        "overlapping_writes": {"const": "serial"},
+        "one_writer_owns_a_checkout": {"type": "boolean"}
+      }
+    },
+
+    "skills": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scan_before_executing": {"type": "boolean"},
+        "load_matching_skill_before_manual_attempt": {"type": "boolean"},
+        "complex_techniques_are_on_demand_skills_not_global_policy": {"type": "boolean"},
+        "skill_is_guidance_not_authorization": {"type": "boolean"}
+      }
+    },
+
+    "model_neutrality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preserve_user_provider",
+        "preserve_user_model",
+        "preserve_user_reasoning",
+        "preserve_user_auth",
+        "no_hardcoded_model_id_default",
+        "user_model_is_user_owned_not_worklab_managed"
+      ],
+      "properties": {
+        "preserve_user_provider": {"const": true},
+        "preserve_user_model": {"const": true},
+        "preserve_user_reasoning": {"const": true},
+        "preserve_user_auth": {"const": true},
+        "no_hardcoded_model_id_default": {"const": true},
+        "no_global_cost_or_rate_clamp_default": {"type": "boolean"},
+        "user_model_is_user_owned_not_worklab_managed": {"const": true}
+      }
+    },
+
+    "tool_truth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "use_real_command_output": {"type": "boolean"},
+        "never_fabricate_or_invent_state": {"type": "boolean"},
+        "do_not_invent_files_apis_or_commands": {"type": "boolean"},
+        "keep_working_until_verified_or_exact_blocker": {"type": "boolean"}
+      }
+    },
+
+    "historical_record_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frozen_and_non_normative": {"type": "boolean"},
+        "current_authority_first": {"type": "boolean"},
+        "never_bulk_search_history_by_default": {"type": "boolean"},
+        "history_retrievable_from_frozen_commit": {"type": "boolean"}
+      }
+    }
+  }
+}

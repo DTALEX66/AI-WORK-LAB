@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/asset-ref.schema.json",
+  "title": "asset-ref",
+  "description": "Reference to one asset used by the runtime. Carries content integrity (sha256) plus the rights decision and runtime binding that authorize and locate the asset (F03: rights/runtime binding were missing).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "asset_id",
+    "schemaVersion",
+    "version",
+    "content_hash",
+    "trait_set",
+    "rights",
+    "runtime_binding"
+  ],
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/asset-ref/v1"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "trait_set": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "rights": {
+      "$comment": "Inline RightsDecision shape (see rights-decision.schema.json); status is enum-constrained.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "decided_by",
+        "decided_at"
+      ],
+      "properties": {
+        "decision": {
+          "enum": [
+            "APPROVED",
+            "DENIED",
+            "PENDING_REVIEW",
+            "BLOCKED_BY_LICENSE"
+          ]
+        },
+        "decided_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decided_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "decision_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "territory": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "runtime_binding": {
+      "$comment": "Inline RuntimeBinding shape (see runtime-binding.schema.json).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_id",
+        "adapter_id"
+      ],
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "binding": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

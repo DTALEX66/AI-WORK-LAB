@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/project-profile.schema.json",
+  "title": "Workflow Project Profile Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project", "configuration", "modules", "risk_zones", "gates", "ci"],
+  "properties": {
+    "schema_version": {"const": "workflow/project-profile/v1"},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "root_policy", "windows_native_first"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "root_policy": {"enum": ["discover_git_root", "explicit_git_root"]},
+        "windows_native_first": {"type": "boolean"}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["precedence"],
+      "properties": {
+        "precedence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["global_defaults", "project_profile", "local_runtime", "environment", "cli"]}
+        }
+      }
+    },
+    "modules": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "risk_zones": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string", "minLength": 1},
+        "uniqueItems": true
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/profileGate"}
+    },
+    "ci": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stable_aggregate_check", "exact_sha_required_for", "outage_blocks"],
+      "properties": {
+        "stable_aggregate_check": {"type": "string", "minLength": 1},
+        "stable_aggregate_job": {"type": "string", "minLength": 1},
+        "workflow_file": {"type": "string", "minLength": 1},
+        "workflow_name": {"type": "string", "minLength": 1},
+        "release_workflow": {"type": "string", "minLength": 1},
+        "observation_privacy_policy": {"type": "string", "minLength": 1},
+        "watcher_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "base_delay_seconds": {"type": "integer", "minimum": 1},
+            "max_delay_seconds": {"type": "integer", "minimum": 1},
+            "observation_window_seconds": {"type": "integer", "minimum": 1},
+            "queue_stall_seconds": {"type": "integer", "minimum": 1},
+            "retry_budget": {"type": "integer", "minimum": 0}
+          }
+        },
+        "exact_sha_required_for": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "outage_blocks": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  },
+  "$defs": {
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roots"],
+      "properties": {
+        "roots": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "observation_only": {"type": "boolean"},
+        "active": {"type": "boolean"}
+      }
+    },
+    "profileGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "tiers", "platform"],
+      "properties": {
+        "command": {"type": "string", "minLength": 1},
+        "tiers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["TARGETED", "STAGE", "NIGHTLY", "RC", "RELEASE"]}},
+        "platform": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

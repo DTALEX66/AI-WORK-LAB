@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/runtime-registry.schema.json",
+  "title": "Local model runtime registry contract (WL3-330)",
+  "description": "Contract for discovered/declared local model runtimes (Ollama, llama.cpp, ComfyUI endpoint, etc.). Ports/paths come from discovery or machine overlay, never hard-coded defaults.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "runtime_id",
+    "kind",
+    "discovery_method",
+    "bind_scope",
+    "resource_class",
+    "evidence_state"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/runtime-registry/v1"
+    },
+    "runtime_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{2,63}$"
+    },
+    "kind": {
+      "enum": [
+        "ollama",
+        "llama-cpp",
+        "comfyui",
+        "faster-whisper",
+        "lm-studio",
+        "deepseek-api",
+        "codex-exec",
+        "unknown"
+      ]
+    },
+    "discovery_method": {
+      "enum": [
+        "executable-probe",
+        "port-probe",
+        "declared-overlay",
+        "process-probe",
+        "unknown"
+      ]
+    },
+    "executable_identity": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "detected_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "version_state": {
+      "enum": [
+        "UNKNOWN",
+        "DETECTED",
+        "VERIFIED",
+        "DRIFT"
+      ]
+    },
+    "endpoint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "bind_scope": {
+      "enum": [
+        "loopback",
+        "unknown"
+      ]
+    },
+    "supported_formats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supported_modalities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "health_probe": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "health_state": {
+      "enum": [
+        "UNKNOWN",
+        "HEALTHY",
+        "UNHEALTHY",
+        "ABSENT"
+      ]
+    },
+    "launch_mode": {
+      "enum": [
+        "managed-sidecar",
+        "external",
+        "system-service",
+        "unknown"
+      ]
+    },
+    "auto_start_policy": {
+      "enum": [
+        "never",
+        "on-demand",
+        "always"
+      ]
+    },
+    "resource_class": {
+      "enum": [
+        "gpu.heavy",
+        "cpu.heavy",
+        "io.hash",
+        "none"
+      ]
+    },
+    "process_ownership": {
+      "enum": [
+        "work-lab-managed",
+        "user-external",
+        "unknown"
+      ]
+    },
+    "unload_contract": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "stop_contract": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rollback_contract": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evidence_state": {
+      "enum": [
+        "UNVERIFIED",
+        "OBSERVED",
+        "BLOCKED",
+        "SKIPPED_OPTIONAL"
+      ]
+    }
+  }
+}

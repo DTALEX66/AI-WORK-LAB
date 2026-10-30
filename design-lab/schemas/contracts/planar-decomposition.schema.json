@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/planar-decomposition.schema.json",
+  "title": "planar-decomposition",
+  "description": "DL-TP-T06 (MULTIMODAL-2026-09-05): result of decomposing a planar reference into objects (text/shape/image/occlusion) with an optional host-object mapping. Every object carries a stable id, a source region, a class, and an explicit mapping state. Mapping to a real AI/PS object is host-side and stays '待实机' until verified; this contract only fixes the structural shape and honest states.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decomposition_id",
+    "schemaVersion",
+    "source_ref",
+    "canvas",
+    "objects"
+  ],
+  "properties": {
+    "decomposition_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/planar-decomposition/v1"
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1}
+      }
+    },
+    "objects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/object"}
+    }
+  },
+  "$defs": {
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_id", "kind", "region", "mapping_state"],
+      "properties": {
+        "object_id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": ["text", "shape", "image", "occlusion", "group", "unknown"]
+        },
+        "region": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "width", "height"],
+          "properties": {
+            "x": {"type": "number"},
+            "y": {"type": "number"},
+            "width": {"type": "number", "minimum": 0},
+            "height": {"type": "number", "minimum": 0}
+          }
+        },
+        "text_content": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "font_status": {
+          "enum": ["matched", "substituted", "missing", "unknown"]
+        },
+        "mapping_state": {
+          "enum": ["unmapped", "auto", "corrected", "locked", "unrecovered"]
+        },
+        "host_object_id": {
+          "type": ["string", "null"],
+          "description": "AI/PS object id when mapped. Non-null only when mapping was actually verified (host side)."
+        },
+        "module": {
+          "type": ["string", "null"],
+          "description": "Which replaceable module produced this object (ocr/vector-trace/heuristic)."
+        },
+        "note": {"type": "string"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "source_polygon": {
+          "type": "array", "minItems": 4, "maxItems": 4,
+          "items": {
+            "type": "array", "minItems": 2, "maxItems": 2,
+            "items": {"type": "number", "minimum": 0}
+          }
+        }
+      }
+    }
+  }
+}

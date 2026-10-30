@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/provenance.schema.json",
+  "title": "DESIGN-LAB Artifact Provenance Record",
+  "type": "object",
+  "required": ["schemaVersion", "project_id", "artifact", "runtime", "agent", "source_refs", "steps", "evidence"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/provenance/v1"},
+    "project_id": {"type": "string", "minLength": 1},
+    "artifact": {
+      "type": "object",
+      "required": ["id", "path", "type", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "type": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "created_at": {"type": "string"}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["name", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "string"},
+        "status": {"enum": ["isolated", "open-design-live", "blocked", "unknown"]},
+        "task_id": {"type": "string"}
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["name", "mode"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "mode": {"enum": ["hermes", "codex", "open-design", "compatible-agent", "unknown"]},
+        "model": {"type": "string"}
+      }
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "location", "license_status"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {"enum": ["user-provided", "local-project", "registry", "public-reference", "generated", "unknown"]},
+          "location": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string"},
+          "license_status": {"enum": ["owned", "allowed", "reference-only", "review-required", "unknown"]}
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "stage", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "stage": {"type": "string", "minLength": 1},
+          "atom": {"type": "string"},
+          "status": {"enum": ["NOT_RUN", "PASS", "FAIL", "BLOCKED", "UNVERIFIED", "SKIPPED_OPTIONAL"]},
+          "evidence": {"type": "string"}
+        }
+      },
+      "minItems": 1
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["level", "state", "claim"],
+      "additionalProperties": false,
+      "properties": {
+        "level": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+        "state": {"enum": ["NOT_RUN", "PASS", "FAIL", "BLOCKED", "UNVERIFIED", "SKIPPED_OPTIONAL"]},
+        "claim": {"type": "string", "minLength": 1},
+        "read_back": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

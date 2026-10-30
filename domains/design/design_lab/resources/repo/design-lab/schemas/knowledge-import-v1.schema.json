@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/knowledge-import-v1.schema.json",
+  "title": "Knowledge Import V1 (what happened to one imported entry, and why)",
+  "$comment": "DL-KB-02 acceptance A4. An import has three honest outcomes and the response has to name which one happened: CREATED (nothing with this source/version/content existed), DUPLICATE (the same bytes from the same source at the same version were already stored -- nothing was written), and VERSIONED (this source is already in the library at another version or digest; the new entry is kept beside it and `related_entries` names the siblings). `explanation` is required in every outcome: 'already there' without saying what matched is the kind of message that makes an operator re-import twice.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "outcome", "explanation", "knowledge_entry_id", "revision",
+               "related_entries", "entry", "claims_not_made"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/knowledge-import/v1"},
+    "outcome": {"enum": ["CREATED", "DUPLICATE", "VERSIONED"]},
+    "explanation": {"type": "string", "minLength": 1},
+    "knowledge_entry_id": {"type": "string", "pattern": "^kentry-[0-9a-f]{32}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "related_entries": {"type": "array", "items": {"type": "string",
+                                                   "pattern": "^kentry-[0-9a-f]{32}$"}},
+    "entry": {"$ref": "https://design-lab.local/schemas/knowledge-entry-v1.schema.json"},
+    "claims_not_made": {"type": "array", "minItems": 1,
+                        "items": {"type": "string", "minLength": 1}}
+  }
+}

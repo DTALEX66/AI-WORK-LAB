@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/context-capsule/v1",
+  "title": "WORK-LAB Context Continuity Protocol Capsule",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "capsuleId",
+    "source",
+    "content",
+    "integrity"
+  ],
+  "properties": {
+    "capsuleId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "client",
+        "format",
+        "exportedAt"
+      ],
+      "properties": {
+        "client": {
+          "enum": [
+            "hermes",
+            "codex",
+            "dsh",
+            "github",
+            "chatgpt-export",
+            "opendesign"
+          ]
+        },
+        "format": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exportedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "originalPath": {
+          "type": "string"
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "required": [
+        "type",
+        "body"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "session",
+            "decision",
+            "task-state",
+            "config-snapshot",
+            "knowledge",
+            "handoff"
+          ]
+        },
+        "body": {
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "contentHash",
+        "algorithm"
+      ],
+      "properties": {
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "algorithm": {
+          "const": "sha256"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "supersedes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "redacted": {
+          "type": "boolean"
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "schema_version": {
+      "const": "work-lab/context-capsule/v1"
+    }
+  },
+  "additionalProperties": false
+}

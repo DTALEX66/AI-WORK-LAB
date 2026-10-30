@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/release-evidence.schema.json",
+  "title": "DESIGN-LAB Release Evidence Record",
+  "description": "ODA4-0107. Binds every release claim to a specific branch/HEAD/tree/workflow run. A prior green CI on another SHA is NOT evidence for the current tree.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "capability_id",
+    "subject",
+    "version",
+    "branch",
+    "head_sha",
+    "tree_sha",
+    "worktree",
+    "evidence_level",
+    "state",
+    "claim",
+    "environment",
+    "ci",
+    "reviewer",
+    "timestamp"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/release-evidence/v1"},
+    "capability_id": {"type": "string", "minLength": 1},
+    "subject": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1},
+    "branch": {"type": "string", "minLength": 1},
+    "head_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "tree_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "worktree": {"enum": ["clean", "dirty"]},
+    "evidence_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+    "state": {"enum": ["NOT_RUN", "PASS", "FAIL", "BLOCKED", "UNVERIFIED", "SKIPPED_OPTIONAL"]},
+    "claim": {"type": "string", "minLength": 1},
+    "environment": {"type": "string", "minLength": 1},
+    "ci": {
+      "type": "object",
+      "required": ["workflow_name", "run_id", "head_sha", "conclusion"],
+      "additionalProperties": false,
+      "properties": {
+        "workflow_name": {"type": "string", "minLength": 1},
+        "run_id": {"type": "string", "minLength": 1},
+        "attempt": {"type": "integer", "minimum": 1},
+        "head_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "conclusion": {"enum": ["success", "failure", "cancelled", "skipped", "pending", "blocked"]},
+        "url": {"type": "string"}
+      }
+    },
+    "reviewer": {"type": "string", "minLength": 1},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "read_back": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "remote_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "remote_branch": {"type": "string"},
+        "verified": {"type": "boolean"}
+      }
+    },
+    "notes": {"type": "string"}
+  }
+}

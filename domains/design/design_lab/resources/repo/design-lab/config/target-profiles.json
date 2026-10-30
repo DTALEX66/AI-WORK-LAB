@@ -1,0 +1,602 @@
+{
+  "schemaVersion": "design-lab/target-profile-seeds/v1",
+  "note": "DL-KB-09. The first target profiles, keyed by software x model x entry x task mode. Every capability field carries its own provenance, and a field we could not read stays UNKNOWN with the reason it is unknown -- the registry never fills a gap by inferring support. Nothing here is 本项目实测: no external product or model was run this round, so executable is false and tested_at is the literal UNTESTED in every profile. Quoted fragments are what the named page said on the day it was read; two FLUX pages state different reference-image limits, so both numbers are kept under their own source instead of being merged into one.",
+  "provenanceKinds": [
+    "OFFICIAL_DOC",
+    "OPEN_SOURCE_IMPL",
+    "PROJECT_MEASURED",
+    "USER_FEEDBACK",
+    "PROJECT_POLICY"
+  ],
+  "fieldStates": [
+    "DOCUMENTED",
+    "NOT_DOCUMENTED",
+    "UNKNOWN"
+  ],
+  "entryKinds": [
+    "API",
+    "WEB_APP",
+    "DESKTOP_CLIENT",
+    "COMFYUI_NODE",
+    "UNSTATED"
+  ],
+  "seeds": [
+    {
+      "profile_key": "minimax-h3--api--video-reference",
+      "software": "MiniMax H3",
+      "agent": null,
+      "agent_reason": "UNKNOWN -- 所读页面是平台 API 文档，没有描述任何 Agent 形态，不能替它补一个。",
+      "model": "minimax-h3",
+      "provider": "MiniMax（platform.minimax.io）",
+      "version": null,
+      "version_reason": "UNKNOWN -- platform 文档页未给版本或日期标记；design.minimax.io 页脚只有 V.1.0 · DIRECTOR'S BUILD，那是该工具页自己的标记，不能当成 API 版本。",
+      "entry": "API",
+      "task_mode": "视频参考生成（图/视频/音频作参考）",
+      "support_state": "DOCUMENTED_CLAIM",
+      "fields": {
+        "input_modality": {
+          "state": "DOCUMENTED",
+          "value": "文本、图像、视频、音频四种输入",
+          "quote": "understands text, image, video, and audio inputs",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "reference_roles": {
+          "state": "DOCUMENTED",
+          "value": "参考图（reference_image）与参考视频（reference_video）；音频可作输入但表格未点名专属角色",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24",
+          "gap": "音频的参考角色未在 API 表格中命名；另一页把音频描述为 voice 用途，两页口径不同，不合并。"
+        },
+        "asset_limits": {
+          "state": "DOCUMENTED",
+          "value": "图 ≤9 张（或 2 帧）；视频 ≤3 段且合计 ≤15s；音频 ≤3 段且合计 ≤15s；混合上限 12 个文件；单文件 Video ≤50 MB / Image ≤30 MB / Audio ≤15 MB；请求体 ≤64 MB",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "ranges": {
+          "state": "DOCUMENTED",
+          "value": "时长 4–15s（H3）/ 5–15s（H3 Max）；画幅 2:5–5:2；分辨率 H3 768P/2K，H3 Max 480P/768P",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "prompt_style": {
+          "state": "DOCUMENTED",
+          "value": "自然语言，并建议显式写镜头运动（如 [pan]、[zoom]、[static]）",
+          "quote": "add camera motion instructions (e.g., [pan], [zoom], [static])",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "negative_input": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "UNKNOWN -- 该页未提负向提示或排除输入；未提不等于不支持。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "available_parameters": {
+          "state": "DOCUMENTED",
+          "value": "model、content、duration、resolution、ratio；content 内 type/text/image_url/role",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "parameter_location": {
+          "state": "DOCUMENTED",
+          "value": "JSON 请求体字段（API）",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "output_form": {
+          "state": "DOCUMENTED",
+          "value": "异步任务 id，随后取视频下载地址（content.url）",
+          "quote": "video download URL (`content.url`)",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "known_conflicts": {
+          "state": "DOCUMENTED",
+          "value": "H3 T2V 必须给 ratio，不接受 'adaptive'；H3 I2V 的 ratio 恒为 'adaptive'。API 有某功能不推出桌面客户端已开放该功能。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "official_basis": {
+          "state": "DOCUMENTED",
+          "value": "platform.minimax.io 视频生成指南（本轮直取正文，HTTP 200）",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://platform.minimax.io/docs/guides/video-generation",
+          "observed_at": "2026-10-24"
+        },
+        "tested_at": {
+          "state": "NOT_DOCUMENTED",
+          "value": "UNTESTED",
+          "reason": "本轮不部署模型、不接通生成，也没有对外部产品做任何实测；不存在可写的测试日期。",
+          "provenance": "PROJECT_POLICY",
+          "source": null,
+          "observed_at": null
+        },
+        "fallback": {
+          "state": "DOCUMENTED",
+          "value": "入口或参数无法核实时，只导出标明未验证的规划材料（提示文本 + 参考角色表 + 待向官方确认的问题），不产出可直接执行的调用载荷。",
+          "provenance": "PROJECT_POLICY",
+          "source": "本项目自己的边界：docs/taskpacks/20261023-ui-kb/source/06_分阶段实施与验收.md#B3",
+          "observed_at": "2026-10-24"
+        }
+      }
+    },
+    {
+      "profile_key": "flux2--api--image-generation",
+      "software": "Black Forest Labs FLUX.2",
+      "agent": null,
+      "agent_reason": "UNKNOWN -- 所读两页都是 API 文档，未描述 Agent 形态。",
+      "model": "FLUX.2 [pro] / [flex] / [max]",
+      "provider": "Black Forest Labs（docs.bfl.ai）",
+      "version": null,
+      "version_reason": "UNKNOWN -- 页面给出模型变体标记（[pro]/[flex]/[max]）与 FLUX 3、FLUX.2 的名称，但没有文档版本或日期，不推断。",
+      "entry": "API",
+      "task_mode": "图像生成与单图编辑",
+      "support_state": "DOCUMENTED_CLAIM",
+      "fields": {
+        "input_modality": {
+          "state": "DOCUMENTED",
+          "value": "文本 + 参考图像",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2",
+          "observed_at": "2026-10-24"
+        },
+        "reference_roles": {
+          "state": "DOCUMENTED",
+          "value": "参考图用于定义主体与风格；多参考须逐一说明各自扮演的角色；单图编辑把一张图当基准，改什么写在 prompt 里",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2 与 https://docs.bfl.ai/guides/prompting_editing_single_reference",
+          "observed_at": "2026-10-24"
+        },
+        "asset_limits": {
+          "state": "DOCUMENTED",
+          "value": "[pro] API 输入+输出合计 9MP；1MP 输出可用到 8 张参考图，2MP 输出最多 7 张；最大输出 4MP（2048x2048），输出尺寸须为 16 的倍数。另：单图编辑那页写多参考可合到 10 张，两页口径不同，各自保留，不择一写成确定上限。",
+          "quote": "[pro] API has a 9MP total limit... At 1MP output you can use up to 8 reference images, at 2MP output up to 7",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2; https://docs.bfl.ai/guides/prompting_editing_single_reference",
+          "observed_at": "2026-10-24"
+        },
+        "ranges": {
+          "state": "DOCUMENTED",
+          "value": "画幅 1:1 / 16:9 / 9:16 / 4:3 / 21:9；最小 64x64；建议至 2MP；输出尺寸须为 16 的倍数",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2",
+          "observed_at": "2026-10-24",
+          "gap": "时长：图像任务不适用；单图编辑那页未给尺寸范围。"
+        },
+        "prompt_style": {
+          "state": "DOCUMENTED",
+          "value": "自然语言与结构化表达同等支持，不强迫 JSON",
+          "quote": "FLUX.2 understands both formats equally well",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2",
+          "observed_at": "2026-10-24"
+        },
+        "negative_input": {
+          "state": "DOCUMENTED",
+          "value": "不支持负向提示，改用正向描述",
+          "quote": "FLUX.2 does not support negative prompts.",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2",
+          "observed_at": "2026-10-24"
+        },
+        "available_parameters": {
+          "state": "DOCUMENTED",
+          "value": "seed、guidance（仅 [flex]）、steps（仅 [flex]）；单图编辑那页用 images 与 prompt",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2; https://docs.bfl.ai/guides/prompting_editing_single_reference",
+          "observed_at": "2026-10-24",
+          "gap": "prompt_upsampling 出现在本轮抓取报告里，但我自己复核同一页时列出的参数只有 seed / guidance / steps，未确认该名字在页面上的位置，因此不写入档案值。"
+        },
+        "parameter_location": {
+          "state": "DOCUMENTED",
+          "value": "API 请求字段（页面以 API fields 表述）",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2",
+          "observed_at": "2026-10-24",
+          "gap": "未取回任何 FLUX 桌面或网页客户端页面，因此不得写成客户端暴露这些参数。"
+        },
+        "output_form": {
+          "state": "DOCUMENTED",
+          "value": "图像",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2",
+          "observed_at": "2026-10-24"
+        },
+        "known_conflicts": {
+          "state": "DOCUMENTED",
+          "value": "无负向提示可用；hex 色值必须绑定到具体对象；不同版本不能直接混用；单图编辑那页把保留项写成文本约束（Keep the rest of the scene exactly unchanged）而非参数。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2; https://docs.bfl.ai/guides/prompting_editing_single_reference",
+          "observed_at": "2026-10-24"
+        },
+        "official_basis": {
+          "state": "DOCUMENTED",
+          "value": "docs.bfl.ai 两页指南，2026-10-24 直取正文并逐句复核（无负面提示 / 9MP / 8·7 张参考 / 两种提示格式同等）。投递包 04_调研来源与证据.csv 的 S13/S14 当时只标「官方检索结果（正文未读）」；本轮升到已读正文，包内原件字节不动。归档检索确认本机不留存这两页的抓取副本，所以依据是本轮在线读取，不是一条本地证据。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.bfl.ai/guides/prompting_guide_flux2; https://docs.bfl.ai/guides/prompting_editing_single_reference",
+          "observed_at": "2026-10-24"
+        },
+        "tested_at": {
+          "state": "NOT_DOCUMENTED",
+          "value": "UNTESTED",
+          "reason": "本轮不接通生成、不做外部实测；包内 CSV 的「本轮实测」列对全部 38 行都写的是未执行外部产品/模型测试。",
+          "provenance": "PROJECT_POLICY",
+          "source": null,
+          "observed_at": null
+        },
+        "fallback": {
+          "state": "DOCUMENTED",
+          "value": "两页数值冲突未消解前，导出材料必须把两个口径都带出并标未验证，不得只挑一个写成可执行参数。",
+          "provenance": "PROJECT_POLICY",
+          "source": "本项目自己的边界：docs/taskpacks/20261023-ui-kb/source/06_分阶段实施与验收.md#B3",
+          "observed_at": "2026-10-24"
+        }
+      }
+    },
+    {
+      "profile_key": "meshy--unstated--3d",
+      "software": "Meshy",
+      "agent": null,
+      "agent_reason": "UNKNOWN -- 未取得任何页面字节。",
+      "model": null,
+      "model_reason": "UNKNOWN -- 域名整体不可达，没有可读的官方文本来命名模型。",
+      "provider": "Meshy（docs.meshy.ai）",
+      "version": null,
+      "version_reason": "UNKNOWN -- 同上。",
+      "entry": "UNSTATED",
+      "task_mode": "3D 生成（提示词建模）",
+      "support_state": "UNREACHED",
+      "reach_attempts": [
+        "WebFetch https://docs.meshy.ai/en/webapp/guides/prompting -> fetch failed",
+        "WebFetch https://docs.meshy.ai/guides/prompting -> fetch failed",
+        "WebFetch https://docs.meshy.ai/en/api/text-to-3d -> fetch failed",
+        "curl https://docs.meshy.ai/ -> TCP connect failure (code 000, port 443 unreachable)"
+      ],
+      "fields": {
+        "input_modality": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "四次取回尝试均未得到任何字节（域名级不可达，非 403/404/付费墙）。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "reference_roles": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "页面未到达，无可引用的官方陈述。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "asset_limits": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "页面未到达。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "ranges": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "页面未到达。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "prompt_style": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "投递包 CSV 的 S15 行自称「已读正文」并记下主体/材质/风格/技术约束，但本轮无法复现取回；不把包内作者叙述当本项目证据，保留 UNKNOWN。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "negative_input": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "页面未到达。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "available_parameters": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "页面未到达；不从 URL 路径或同类产品推断参数集。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "parameter_location": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "页面未到达。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "output_form": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "页面未到达。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "known_conflicts": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "无法核实即保留 UNKNOWN；不推断桌面端可用，也不推断不支持。",
+          "provenance": "OFFICIAL_DOC",
+          "source": null,
+          "observed_at": null
+        },
+        "official_basis": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "URL 中的 /webapp/ 只是命名线索，不构成入口证据。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://docs.meshy.ai/en/webapp/guides/prompting",
+          "observed_at": "2026-10-24"
+        },
+        "tested_at": {
+          "state": "NOT_DOCUMENTED",
+          "value": "UNTESTED",
+          "reason": "既未读亦未测。",
+          "provenance": "PROJECT_POLICY",
+          "source": null,
+          "observed_at": null
+        },
+        "fallback": {
+          "state": "DOCUMENTED",
+          "value": "未知入口只能导出标明未验证的规划材料：把想向 Meshy 确认的问题列成待问清单，不输出可执行载荷，也不伪造支持。",
+          "provenance": "PROJECT_POLICY",
+          "source": "docs/taskpacks/20261023-ui-kb/source/06_分阶段实施与验收.md#B3",
+          "observed_at": "2026-10-24"
+        }
+      }
+    },
+    {
+      "profile_key": "elevenlabs--web-app--music",
+      "software": "ElevenLabs",
+      "agent": null,
+      "agent_reason": "UNKNOWN -- 音乐那页未描述 Agent 形态（同域 TTS 那页提到 Agents Platform 暴露 speed，但那不是音乐能力，不搬用）。",
+      "model": "Eleven v4 / Eleven v4 Turbo（页面顶部横幅）",
+      "provider": "ElevenLabs（elevenlabs.io）",
+      "version": null,
+      "version_reason": "UNKNOWN -- 页面只给模型代际横幅，没有文档版本或日期。",
+      "entry": "WEB_APP",
+      "task_mode": "音乐生成（含音频参考）",
+      "support_state": "DOCUMENTED_CLAIM",
+      "fetch_note": "WebFetch 对该域返回 303，改用带浏览器 UA 的 curl 取到 HTTP 200 后本地去标签阅读。",
+      "fields": {
+        "input_modality": {
+          "state": "DOCUMENTED",
+          "value": "文本提示 + 可选音频参考",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "reference_roles": {
+          "state": "DOCUMENTED",
+          "value": "上传一段自作曲作为 Audio Reference，模型匹配其 feel / groove / palette 而不抄音符；提示仍负责参考未涵盖的部分",
+          "quote": "Upload a track (a voice memo qualifies) as an Audio Reference, and the model matches its feel, groove, and palette without copying the notes",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "asset_limits": {
+          "state": "DOCUMENTED",
+          "value": "上传约 30 秒量级（页面用 ~30 seconds 的说法，是建议不是硬上限）；每段参考先过版权检查，该功能为「你自己做的音乐」设计；数量与文件格式白名单页面未陈述",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24",
+          "gap": "「~30 seconds」是约数；数量上限与格式白名单 UNKNOWN。"
+        },
+        "ranges": {
+          "state": "DOCUMENTED",
+          "value": "时长可显式指定（例如 '60 seconds'）或用 auto 模式由模型决定；画幅/分辨率不适用",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "prompt_style": {
+          "state": "DOCUMENTED",
+          "value": "结构化描述五要素 genre / mood / instrumentation / tempo / production era，可用录音室术语；也允许简单的意象关键词，且页面明说提示越长不一定更好；需要精细控制时改用 composition plans",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "negative_input": {
+          "state": "DOCUMENTED",
+          "value": "没有独立负向参数；否定语义作为提示文本使用（如 'No melody, just drums'），且页面强调沉默需要显式标注，否则模型会填满；排除人声写 'instrumental only'",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "available_parameters": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "UNKNOWN -- 该页用 UI 措辞与提示约定表达（follow-ups、composition plans），没有给出 API 字段名。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "parameter_location": {
+          "state": "DOCUMENTED",
+          "value": "页面描述的是网页产品内的提示与后续追问；未列 API 字段位置",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24",
+          "gap": "字段名与其 API 位置 UNKNOWN，不得由同域 TTS 页的字段代填。"
+        },
+        "output_form": {
+          "state": "DOCUMENTED",
+          "value": "音乐/音频，可含人声与音效；分轨可通过提示（'solo'、'a cappella'）表达",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "known_conflicts": {
+          "state": "DOCUMENTED",
+          "value": "Director's Mode 官方自述仍在开发中，未交付；音频标签类能力官方称尚不完善（部分实验性标签不稳定，需上线前自测）。付费/区域门槛：两页均未陈述，保留 UNKNOWN，不从定价页推断。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices; https://elevenlabs.io/docs/overview/capabilities/text-to-speech/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "official_basis": {
+          "state": "DOCUMENTED",
+          "value": "ElevenLabs 音乐 best-practices 页（本轮取到 HTTP 200 并读正文）；同域 TTS best-practices 页一并读取，作为版本互斥的旁证（SSML break 在 v4/v3 不支持、音素标签仅 eleven_flash_v2、PVC 在 v3 未完全优化）",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://elevenlabs.io/docs/overview/capabilities/music/best-practices",
+          "observed_at": "2026-10-24"
+        },
+        "tested_at": {
+          "state": "NOT_DOCUMENTED",
+          "value": "UNTESTED",
+          "reason": "本轮不接通生成，也无本项目生成实测。",
+          "provenance": "PROJECT_POLICY",
+          "source": null,
+          "observed_at": null
+        },
+        "fallback": {
+          "state": "DOCUMENTED",
+          "value": "字段名缺失时导出材料只给提示结构与待确认项，不构造 API 载荷；条件行（Director's Mode 等）在导出里保持条件状态。",
+          "provenance": "PROJECT_POLICY",
+          "source": "本项目自己的边界：docs/taskpacks/20261023-ui-kb/source/06_分阶段实施与验收.md#B3",
+          "observed_at": "2026-10-24"
+        }
+      }
+    },
+    {
+      "profile_key": "minimax-h3-comfyui--comfyui-node--conditional",
+      "software": "MiniMax H3（ComfyUI 集成）",
+      "agent": null,
+      "agent_reason": "UNKNOWN -- 工具页未描述 Agent。",
+      "model": "minimax-h3",
+      "provider": "MiniMax Design（design.minimax.io）",
+      "version": null,
+      "version_reason": "UNKNOWN -- 页脚 V.1.0 · DIRECTOR'S BUILD 是该工具页自身的标记，不是集成版本。",
+      "entry": "COMFYUI_NODE",
+      "task_mode": "视频参考生成（ComfyUI 节点）",
+      "support_state": "CONDITIONAL",
+      "conditional_reason": "官方页自述 ComfyUI integration has been announced as coming soon —— 未交付，不能记成 supported；API 那页的能力也不迁移成节点已可用。",
+      "fields": {
+        "input_modality": {
+          "state": "DOCUMENTED",
+          "value": "文本、图像、视频、音频参考组合",
+          "quote": "Combine text, images, video, and audio references",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "reference_roles": {
+          "state": "DOCUMENTED",
+          "value": "图像承担 identity/style，视频承担 motion，音频承担 voice；页面要求显式分配参考角色",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "asset_limits": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "UNKNOWN -- 该页未陈述数量/格式/体积；API 那页的上限挂在 API 入口上，不迁移到节点入口。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "ranges": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "UNKNOWN -- 该页未陈述时长/画幅/分辨率。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "prompt_style": {
+          "state": "DOCUMENTED",
+          "value": "结构化提示覆盖 scene / subject / action / camera / visual style / dialogue / sound",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "negative_input": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "UNKNOWN -- 该页未提负向输入。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "available_parameters": {
+          "state": "UNKNOWN",
+          "value": null,
+          "reason": "UNKNOWN -- 页面只泛称 Set the generation parameters，未列字段名；不编造。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "parameter_location": {
+          "state": "DOCUMENTED",
+          "value": "ComfyUI 节点/图内设置（页面为 ComfyUI 工具页）",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "output_form": {
+          "state": "DOCUMENTED",
+          "value": "带同步原生音频的视频",
+          "quote": "synchronized visuals, motion, and sound",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "known_conflicts": {
+          "state": "DOCUMENTED",
+          "value": "集成官方自述 coming soon；平台与模型分开验收；ComfyUI 本身在本项目属冻结项，本轮不启动不测试。",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "official_basis": {
+          "state": "DOCUMENTED",
+          "value": "design.minimax.io 的 minimax-h3-comfyui 工具页（本轮取到 HTTP 200 并读正文）",
+          "provenance": "OFFICIAL_DOC",
+          "source": "https://design.minimax.io/tools/minimax-h3-comfyui",
+          "observed_at": "2026-10-24"
+        },
+        "tested_at": {
+          "state": "NOT_DOCUMENTED",
+          "value": "UNTESTED",
+          "reason": "不部署模型、不动 ComfyUI。",
+          "provenance": "PROJECT_POLICY",
+          "source": null,
+          "observed_at": null
+        },
+        "fallback": {
+          "state": "DOCUMENTED",
+          "value": "条件入口只出规划材料与「何时可执行」的前置问题清单；ComfyUI 侧不做任何连接尝试。",
+          "provenance": "PROJECT_POLICY",
+          "source": "本项目自己的边界：docs/taskpacks/20261023-ui-kb/source/06_分阶段实施与验收.md#B3",
+          "observed_at": "2026-10-24"
+        }
+      }
+    }
+  ],
+  "provenanceNote": "四种出处按投递包 02 第 58 行的分档保留；PROJECT_POLICY 是第五档，只用于本项目自己的规则与非行动（退路、测试日期），不得被读成对外部目标的实测。本轮 PROJECT_MEASURED 在全部档案里为空：没有跑过任何外部产品或模型。"
+}

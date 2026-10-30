@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/creative-job.json",
+  "title": "DESIGN-LAB CreativeJob (Deep Adaptation DL-P0-020)",
+  "description": "A creative execution job: one brief/direction, explicit deliverables, declared host targets and a rights profile. The job is the unit of work, lineage and evidence; it is not a chat session and not a canvas.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project_id",
+    "brief_ref",
+    "rights_profile",
+    "deliverables",
+    "host_targets"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/creative-job/v1"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brief_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brief_id",
+        "sha256"
+      ],
+      "properties": {
+        "brief_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "source_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "direction_ref": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "direction_id",
+        "sha256"
+      ],
+      "properties": {
+        "direction_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "gate_state": {
+          "enum": [
+            "DRAFT",
+            "APPROVED",
+            "REJECTED"
+          ]
+        }
+      }
+    },
+    "rights_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "gate_state"
+      ],
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gate_state": {
+          "description": "BLOCKED is a legal gate, not a warning: a job with a blocked rights profile cannot be created.",
+          "enum": [
+            "DECLARED",
+            "CHECKED",
+            "BLOCKED"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "deliverables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "deliverable_id",
+          "asset_kind",
+          "host_target",
+          "editable"
+        ],
+        "properties": {
+          "deliverable_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "asset_kind": {
+            "enum": [
+              "raster",
+              "vector",
+              "text",
+              "audio",
+              "video",
+              "blend",
+              "psd",
+              "ai",
+              "doc",
+              "other"
+            ]
+          },
+          "host_target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "editable": {
+            "type": "boolean"
+          },
+          "acceptance": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "host_targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "host_id",
+          "mode",
+          "editable_source",
+          "evidence_level"
+        ],
+        "properties": {
+          "host_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "host_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "adapter_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode": {
+            "enum": [
+              "process-isolated",
+              "in-process",
+              "external-cli",
+              "external-local-api",
+              "none"
+            ]
+          },
+          "editable_source": {
+            "type": "boolean"
+          },
+          "evidence_level": {
+            "description": "Declared adapter evidence. E0/E1 is structural only and cannot stand in for a live host run.",
+            "enum": [
+              "E0",
+              "E1",
+              "E2",
+              "E3",
+              "E4",
+              "E5"
+            ]
+          }
+        }
+      }
+    },
+    "domain_packs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "constraints": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/assistance-plan-revision-v1.schema.json",
+  "title": "Assistance Plan Revision V1 (one stored revision of one plan, read back as its own bytes)",
+  "$comment": "DL-KB-12. GET /api/projects/{id}/assistance-plans/{aplan}/revisions/{revision} answers this envelope. The readback (.../assistance-plan-readback/v1) can only serve the NEWEST revision's document -- its `revisions` rows carry a digest, a timestamp and an author, and nothing else -- so before this route the stored body of an older revision was unreadable through any route, and a comparison page could only restate hashes or guess the old text. This document is what makes 「新版本不覆盖历史；对比页读的是两份真实修订」 checkable: two calls, two real documents. `document` is the stored JSON served verbatim and bound by $ref to design-lab/schemas/assistance-plan-v1.schema.json -- the same contract the write path validated these bytes against when they were filed -- rather than being restated here, because a second copy of a document shape is how two owners start disagreeing. `revision` is the number that was asked for and `latest_revision` is the plan's highest, so `is_latest` is the pair a reader can check by hand instead of a word the service asserts; `is_chosen` is true only when a named human adopted THIS revision, computed by the same one query the readback's `choice` is built from. `provided` is this revision's own answer to 'does this row carry creative text', mirroring the readback's `_provided`, and `content_sha256` / `created_at` / `created_by` are this row's columns, not the newest row's. Deliberately absent: the plan's four-state block (`saved`/`provided`/`chosen`/`externally_verified`) is the readback's answer and is not copied here -- two envelopes computing the same states is two truths that can drift -- and there is no field at all that could report a run, a send or a delivery, because reading one stored revision neither performs nor proves any of those. `does_not_say` is the plan store's own list, served unchanged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "plan_id", "project_id", "revision", "latest_revision",
+               "is_latest", "is_chosen", "provided", "content_sha256", "created_at", "created_by",
+               "document", "does_not_say"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assistance-plan-revision/v1"},
+    "plan_id": {"type": "string", "pattern": "^aplan-[0-9a-f]{32}$"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "latest_revision": {"type": "integer", "minimum": 1},
+    "is_latest": {"type": "boolean"},
+    "is_chosen": {"type": "boolean"},
+    "provided": {"type": "boolean"},
+    "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "created_at": {"type": "string", "minLength": 1},
+    "created_by": {"type": "string", "minLength": 1},
+    "document": {"$ref": "https://design-lab.local/schemas/assistance-plan-v1.schema.json"},
+    "does_not_say": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  }
+}

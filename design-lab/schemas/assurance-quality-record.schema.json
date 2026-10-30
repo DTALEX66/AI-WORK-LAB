@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/assurance-quality-record.json",
+  "title": "Assurance Quality Record (DL-CLOUDAUDIT-B3 / G-3)",
+  "description": "Sealed per-artifact QualityRecord: the record counterpart of the frozen QA policy owned by qa_plane.py and human_jury.py. The quality triple (deterministic / automated_judge / human_jury) is carried as three physically separated, closed fields that cannot overwrite each other: each plane field is an object with a 'findings' list (additionalProperties false) and the human_jury field is either null or a signed JURY_VERDICT document. An automated judge can never fill the human field (the module runs every human_jury value through human_jury.assert_not_agent_signed, and a proposal-marked or agent-signed document is refused even when re-tagged JURY_VERDICT), and no model score reaches the gate: final_gate is derived exclusively from the deterministic and human planes (the tested qa_plane.aggregate), so the automated_judge findings are advisory-only and structurally excluded from the gate. A record whose human_jury is null can only report NEEDS_HUMAN_VERDICT or BLOCKED; PASS requires a signed human APPROVE. The schema cannot resolve a finding's layer_id to its declaring plane, so the module (quality_record.py) additionally refuses a finding placed in the wrong plane field, an outcome a plane may not produce, an unsigned human outcome, and a verdict from a non-human plane.",
+  "type": "object",
+  "required": ["schemaVersion", "quality_record_id", "subject_ref", "artifact_sha256", "deterministic", "automated_judge", "human_jury", "final_gate", "created_at"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assurance-quality-record/v1"},
+    "quality_record_id": {"type": "string", "minLength": 1},
+    "subject_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The design subject the record describes (job, deliverable or artifact reference)."
+    },
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "deterministic": {"$ref": "#/$defs/plane_findings"},
+    "automated_judge": {
+      "allOf": [{"$ref": "#/$defs/plane_findings"}],
+      "description": "Advisory only. The automated judge's findings never contribute to final_gate; the module computes the gate from the deterministic and human planes alone."
+    },
+    "human_jury": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/jury_verdict"}
+      ],
+      "description": "The signed human verdict, or null before the human gate is reached. The module runs any non-null value through human_jury.assert_not_agent_signed, so an agent-signed or proposal-marked document is refused even when re-tagged."
+    },
+    "final_gate": {
+      "enum": ["BLOCKED", "NEEDS_HUMAN_VERDICT", "PASS"],
+      "description": "Derived by the module from the deterministic and human planes only; the module re-derives it on validation and fails closed on a mismatch, so an automated judge can never supply it."
+    },
+    "created_at": {"$ref": "#/$defs/rfc3339"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "description": "Lowercase nonzero artifact digest; an all-zero digest is not evidence.",
+      "pattern": "^(?!sha256:0{64}$)sha256:[0-9a-f]{64}$"
+    },
+    "rfc3339": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp with an explicit UTC offset. The module enforces this with a regex because the installed jsonschema has no date-time checker.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([Zz]|[+-]\\d{2}:\\d{2})$"
+    },
+    "plane_findings": {
+      "type": "object",
+      "description": "One plane's block. Closed: a finding belongs to the plane that produced it and the block cannot carry another plane's findings or any field it does not declare.",
+      "required": ["findings"],
+      "additionalProperties": false,
+      "properties": {
+        "findings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/finding"}
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "description": "The per-finding contract shared with assurance-qa-layer.schema.json. Per-plane outcome restrictions and plane-field placement cannot be expressed here without resolving layer_id, so the module enforces them.",
+      "required": ["finding_id", "layer_id", "check_id", "subject_ref", "outcome", "severity", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "finding_id": {"type": "string", "minLength": 1},
+        "layer_id": {"type": "string", "minLength": 1},
+        "check_id": {"type": "string", "minLength": 1},
+        "subject_ref": {"type": "string", "minLength": 1},
+        "outcome": {
+          "enum": ["PASS", "WARN", "REVIEW_REQUIRED", "HARD_BLOCK", "APPROVE", "REJECT"],
+          "description": "Closed vocabulary of the frozen DLDS-F070 policy."
+        },
+        "severity": {"enum": ["BLOCKER", "MAJOR", "MINOR", "INFO"]},
+        "evidence": {
+          "type": "object",
+          "required": ["artifact_sha256"],
+          "properties": {
+            "artifact_sha256": {"$ref": "#/$defs/sha256"},
+            "evidence_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]}
+          },
+          "additionalProperties": true
+        },
+        "recommendation": {"type": ["string", "null"], "minLength": 1},
+        "verdict": {
+          "enum": [null, "APPROVE", "REJECT"],
+          "description": "Permitted only in a HUMAN plane; the module enforces it."
+        }
+      }
+    },
+    "jury_verdict": {
+      "type": "object",
+      "description": "A signed human-jury verdict (the assurance-jury-record-v2 root shape). Roots differ in 'kind' and closed property sets from a JURY_PROPOSAL, so a proposal document cannot validate here and the module refuses it by name even when re-tagged.",
+      "required": ["schemaVersion", "kind", "jury_record_id", "subject_ref", "artifact_sha256", "juror", "criteria", "verdict", "decided_at", "supersedes", "evidence_refs"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {"const": "design-lab/assurance-jury-record/v2"},
+        "kind": {"const": "JURY_VERDICT"},
+        "jury_record_id": {"type": "string", "minLength": 1},
+        "subject_ref": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "juror": {
+          "type": "object",
+          "required": ["juror_id", "kind", "attestation"],
+          "additionalProperties": false,
+          "properties": {
+            "juror_id": {"type": "string", "minLength": 1},
+            "kind": {
+              "enum": ["HUMAN", "PANEL"],
+              "description": "Only a human or a named panel may sign; any agent/model/system kind is refused by the module."
+            },
+            "attestation": {"type": "string", "minLength": 1},
+            "members": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/criterion"}
+        },
+        "verdict": {"enum": ["APPROVE", "REJECT"]},
+        "decided_at": {"$ref": "#/$defs/rfc3339"},
+        "supersedes": {"type": ["string", "null"], "minLength": 1},
+        "evidence_refs": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"required": ["verdict"], "properties": {"verdict": {"const": "REJECT"}}},
+          "then": {"properties": {"evidence_refs": {"minItems": 1}}}
+        },
+        {
+          "if": {"required": ["juror"], "properties": {"juror": {"required": ["kind"], "properties": {"kind": {"const": "PANEL"}}}}},
+          "then": {"properties": {"juror": {"required": ["members"], "properties": {"members": {"minItems": 1}}}}}
+        }
+      ],
+      "not": {"anyOf": [{"required": ["proposal_id"]}, {"required": ["proposer"]}, {"required": ["suggested_verdict"]}, {"required": ["is_verdict"]}]}
+    },
+    "criterion": {
+      "type": "object",
+      "required": ["criterion_id", "weight", "score", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "criterion_id": {"type": "string", "minLength": 1},
+        "weight": {"type": "number", "minimum": 0, "maximum": 1},
+        "score": {"type": "number", "minimum": 0, "maximum": 5},
+        "note": {"type": ["string", "null"], "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["score"], "properties": {"score": {"type": "number", "minimum": 5}}},
+          "then": {"required": ["note"], "properties": {"note": {"type": "string", "minLength": 1}}}
+        },
+        {
+          "if": {"required": ["score"], "properties": {"score": {"type": "number", "maximum": 0}}},
+          "then": {"required": ["note"], "properties": {"note": {"type": "string", "minLength": 1}}}}
+      ]
+    }
+  }
+}

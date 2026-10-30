@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/adapter-registry.schema.json",
+  "title": "Workflow Adapter Provenance Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "interface",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/adapter-registry/v1"
+    },
+    "interface": {
+      "type": "array",
+      "const": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ]
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "display_name",
+          "support_level",
+          "operations",
+          "detection",
+          "provenance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{2,31}$"
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "support_level": {
+            "enum": [
+              "deep",
+              "manifest-only",
+              "experimental",
+              "blocked"
+            ]
+          },
+          "operations": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "detect",
+                "capabilities",
+                "plan",
+                "apply",
+                "invoke",
+                "observe",
+                "rollback"
+              ]
+            }
+          },
+          "detection": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "evidence_state"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "static",
+                  "isolated",
+                  "runtime",
+                  "external"
+                ]
+              },
+              "evidence_state": {
+                "enum": [
+                  "NOT_RUN",
+                  "PASS",
+                  "FAIL",
+                  "BLOCKED",
+                  "UNVERIFIED",
+                  "SKIPPED_OPTIONAL"
+                ]
+              }
+            }
+          },
+          "provenance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_kind",
+              "source_ref",
+              "version",
+              "scope",
+              "risk",
+              "status",
+              "hash"
+            ],
+            "properties": {
+              "version_readback": {
+                "description": "AG-07 (2026-10-01): a structured record of a native version observation, separated from `note` so drift stays machine-checkable instead of buried in prose. `observed_at` is required because an undated observation cannot be aged; `verified_version` is required because the whole point is what the native readback actually returned.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "observed_at",
+                  "verified_version",
+                  "method"
+                ],
+                "properties": {
+                  "observed_at": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "verified_version": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "method": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "native_readback": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "command": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reproducible": {
+                    "description": "2026-10-20: false only when the launch-free read that produced verified_version can no longer be taken on this machine. Naming un-readability is the alternative to treating an uninstall as a data error: 'the number is wrong' and 'the number cannot be read' are two states, and a vocabulary with only the first one pushes a reader to edit the claim until the gate stops firing.",
+                    "type": "boolean"
+                  },
+                  "not_reproducible_since": {
+                    "description": "2026-10-20: the date on which the re-read was measured to be impossible, so a later reader can tell an abandoned client from a fresh observation.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "not_reproducible_verdict": {
+                    "description": "2026-10-20: the exact verdict the launch-free probe returned (for instance NOT_RESOLVED_AND_NOT_IN_UNINSTALL_REGISTRY). It must be the probe's own string, which is what stops an unreadable row from becoming a licence to keep any claim.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "commit": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "install_method": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "conflict_note": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "authority_note": {
+                    "description": "2026-10-07: why the named source is the authority rather than a stand-in for it - required when the source is not the one a human would assume (hermes reads its install stamp because its own resolver lists that file first).",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "superseded_observation": {
+                    "description": "2026-10-07: the previous reading, kept verbatim when a source change replaces it. Deleting a superseded observation would destroy the only evidence of how long the old claim stood, which is what makes staleness auditable.",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "observed_at",
+                      "verified_version",
+                      "method"
+                    ],
+                    "properties": {
+                      "observed_at": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "verified_version": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "method": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "commit": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "note": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "install_path_policy": {
+                "description": "AG-07 (2026-10-01): how the install root for this client is obtained. RESOLVE_AT_RUNTIME_NOT_HARDCODED means the root is derived at call time (registry entry / shortcut TargetPath / vendor default) and no drive letter may be pinned in the registry.",
+                "type": "string",
+                "minLength": 1
+              },
+              "source_kind": {
+                "enum": [
+                  "repository",
+                  "external-manifest",
+                  "official-cli",
+                  "user-selected"
+                ]
+              },
+              "source_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version_historical": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scope": {
+                "type": "string",
+                "minLength": 1
+              },
+              "risk": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "quarantined",
+                  "blocked",
+                  "retired",
+                  "legacy_observe"
+                ]
+              },
+              "hash": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "algorithm",
+                  "value",
+                  "state",
+                  "basis",
+                  "files"
+                ],
+                "properties": {
+                  "algorithm": {
+                    "const": "sha256"
+                  },
+                  "value": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "state": {
+                    "enum": [
+                      "AVAILABLE",
+                      "UNAVAILABLE"
+                    ]
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "uniqueItems": true
+                  }
+                }
+              }
+            }
+          },
+          "policy_projection": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Global Agent Policy projection capability for this adapter. A single boolean is insufficient: each capability is described independently and a renderer must emit a ProjectionLossReport.",
+            "required": [
+              "supported",
+              "projection_mode"
+            ],
+            "properties": {
+              "supported": {
+                "type": "boolean"
+              },
+              "projection_mode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "renderer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "extensions_path": {
+                "type": "string"
+              },
+              "native_targets": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "detect_supported": {
+                "type": "boolean"
+              },
+              "plan_supported": {
+                "type": "boolean"
+              },
+              "apply_supported": {
+                "type": "boolean"
+              },
+              "readback_supported": {
+                "type": "boolean"
+              },
+              "rollback_supported": {
+                "type": "boolean"
+              },
+              "drift_supported": {
+                "type": "boolean"
+              },
+              "capability_states": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "enum": [
+                    "NATIVE_ENFORCED",
+                    "NATIVE_GUIDANCE",
+                    "WORKFLOW_GUARD",
+                    "OBSERVE_ONLY",
+                    "UNSUPPORTED"
+                  ]
+                }
+              },
+              "capability_coverage_complete": {
+                "type": "boolean",
+                "description": "True when this adapter's capability_states classify the FULL Global Agent Policy capability set (all 19 capabilities). False (default) means only a coarse detect/plan/observe declaration was recorded and the adapter has not done a full policy projection yet. A verified adapter (codex/hermes) carries the full set plus a persisted loss report."
+              },
+              "maturity": {
+                "type": "string",
+                "enum": [
+                  "POLICY_DEFINED",
+                  "POLICY_COMPATIBLE",
+                  "DETECTED",
+                  "PLAN_SUPPORTED",
+                  "APPLY_SUPPORTED",
+                  "READBACK_VERIFIED",
+                  "GLOBAL_POLICY_VERIFIED_RUNTIME",
+                  "OBSERVE_ONLY",
+                  "UNSUPPORTED"
+                ]
+              },
+              "maturity_note": {
+                "description": "AG-06h / audit F02 + F10 (2026-10-01): why `maturity` holds its current value, in particular after a DOWNGRADE. `maturity` describes implementation maturity; deployment state must not be inferred from it.",
+                "type": "string",
+                "minLength": 1
+              },
+              "deployment_observation": {
+                "description": "AG-06h / audit F10 (2026-10-01): the deployment half of the split the audit asks for. `maturity` records what the adapter IMPLEMENTS; this records what was actually OBSERVED on the live client surface, with the exact targets checked and the date. A drift here must not be smoothed back into `maturity`.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "status",
+                  "reason",
+                  "observed_at"
+                ],
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "VERIFIED",
+                      "UNVERIFIED",
+                      "DRIFT",
+                      "NOT_APPLICABLE",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "observed_at": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "checked": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "authority": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

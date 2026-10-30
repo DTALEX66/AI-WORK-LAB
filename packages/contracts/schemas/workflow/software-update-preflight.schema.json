@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/software-update-preflight.schema.json",
+  "title": "Software Update Preflight contract",
+  "description": "P0-07 / TaskPack §15-16, §18-19. The fail-closed preflight gate that MUST pass before any software WRITE. It binds an update to an installation identity and enforces UPDATE != RELOCATION: a plain update may change version/binary/compatible-runtime but must NOT move install_root / drive / create a second install / migrate config or data. Any location change is a distinct RELOCATION requiring explicit approval. After a write, location readback compares BEFORE/AFTER install_root and executable_realpath.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "software_id",
+    "update_mode",
+    "location_status",
+    "location_readback_required"
+  ],
+  "properties": {
+    "schema_version": {"const": "workflow/software-update-preflight/v1"},
+    "software_id": {"type": "string", "minLength": 1},
+    "update_mode": {
+      "type": "string",
+      "enum": [
+        "IN_PLACE_ONLY",
+        "RELOCATION",
+        "FRESH_INSTALL",
+        "BLOCKED",
+        "PRESERVE_OFFICIAL_CHANNEL"
+      ]
+    },
+    "location_status": {
+      "type": "string",
+      "enum": [
+        "NOT_INSTALLED",
+        "SINGLE_VERIFIED",
+        "SINGLE_UNVERIFIED",
+        "LOCATION_DRIFT",
+        "DUAL_INSTALLATION",
+        "MISSING_EXPECTED_INSTALL",
+        "RELOCATION_REQUESTED",
+        "OS_MANAGED"
+      ]
+    },
+    "approved_operation": {
+      "type": ["string", "null"],
+      "enum": ["UPDATE", "RELOCATION", null]
+    },
+    "relocation_approved": {"type": "boolean"},
+    "before": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["install_root", "executable_realpath"],
+      "properties": {
+        "install_root": {"type": ["string", "null"], "minLength": 1},
+        "executable_realpath": {"type": ["string", "null"], "minLength": 1},
+        "launcher": {"type": ["string", "null"], "minLength": 1},
+        "version": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "after": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["install_root", "executable_realpath"],
+      "properties": {
+        "install_root": {"type": ["string", "null"], "minLength": 1},
+        "executable_realpath": {"type": ["string", "null"], "minLength": 1},
+        "launcher": {"type": ["string", "null"], "minLength": 1},
+        "version": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "location_readback_required": {"type": "boolean"},
+    "location_readback_passed": {
+      "type": ["boolean", "null"],
+      "description": "null until readback has run; must become true when before.install_root == after.install_root for a plain UPDATE. false -> LOCATION_READBACK_FAIL."
+    },
+    "overall": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "PENDING"]
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "IN_PLACE_UPDATE_OK",
+          "INSTALL_ROOT_CHANGE_REQUIRES_EXPLICIT_RELOCATION",
+          "DUAL_INSTALLATION_UPDATE_BLOCKED",
+          "LOCATION_DRIFT_UPDATE_BLOCKED",
+          "MISSING_EXPECTED_INSTALL_NO_VENDOR_FALLBACK",
+          "SINGLE_UNVERIFIED_IDENTITY_VALIDATION_FIRST",
+          "OS_MANAGED_PRESERVE_OFFICIAL_CHANNEL",
+          "LOCATION_READBACK_FAIL",
+          "RELOCATION_APPROVED",
+          "RELOCATION_NOT_APPROVED"
+        ]
+      }
+    }
+  }
+}

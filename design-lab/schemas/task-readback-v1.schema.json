@@ -1,0 +1,426 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/task-readback/v1",
+  "title": "Task read-back envelope (list, one task, or its events)",
+  "description": "What src/design_lab/task_queries.py answers on the three task reads since 2026-10-22 (backend D, for Stitch screen D08). One version, one discriminator: the three reads share the limit facts, the state vocabulary and the refusal to let a page invent a status, and differ only in which payload key they carry. The state words are NOT re-declared here: stateVocabulary is copied out of design-lab/config/state-vocabularies.json at read time, and design-lab/scripts/verify_state_vocabularies.py owns that file. `truncated=false` forbids a cursor, because a page that reads 'the end' while holding one would stop paging through work it never saw. Identifier shapes are typed as strings rather than re-patterning the route regexes: the routes in http_service.py are the boundary that decides them.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "surface",
+    "limit",
+    "truncated",
+    "next_cursor",
+    "stateVocabulary",
+    "count",
+    "does_not_say"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/task-readback/v1"
+    },
+    "surface": {
+      "enum": [
+        "list",
+        "task",
+        "events"
+      ]
+    },
+    "limit": {
+      "const": 100
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "next_cursor": {
+      "type": [
+        "string",
+        "integer",
+        "null"
+      ]
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "does_not_say": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "string",
+        "minLength": 12
+      }
+    },
+    "stateVocabulary": {
+      "type": "object",
+      "required": [
+        "attemptStates",
+        "operationStates",
+        "vocabularyFile"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "vocabularyFile": {
+          "const": "design-lab/config/state-vocabularies.json"
+        },
+        "attemptStates": {
+          "type": "object",
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "terminal": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "failed": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "needsHuman": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "inFlight": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "done": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "operationStates": {
+          "type": "object",
+          "required": [
+            "owner",
+            "declaredAs",
+            "observedInThisPage"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "owner": {
+              "const": "src/design_lab/runtime/job_store.py"
+            },
+            "declaredAs": {
+              "const": "inline literals at the _op() write sites; no named set exists"
+            },
+            "observedInThisPage": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/task"
+      }
+    },
+    "task": {
+      "$ref": "#/$defs/task"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event_no",
+          "attempt_id",
+          "attempt_no",
+          "from_state",
+          "to_state",
+          "at"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "event_no": {
+            "type": "integer"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "attempt_no": {
+            "type": "integer"
+          },
+          "from_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "surface": {
+            "const": "list"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "tasks"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "task"
+              ]
+            },
+            {
+              "required": [
+                "events"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "surface": {
+            "const": "task"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "task"
+        ],
+        "properties": {
+          "next_cursor": {
+            "const": null
+          },
+          "truncated": {
+            "const": false
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "tasks"
+              ]
+            },
+            {
+              "required": [
+                "events"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "surface": {
+            "const": "events"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "events"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "tasks"
+              ]
+            },
+            {
+              "required": [
+                "task"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "truncated": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "next_cursor": {
+            "const": null
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "truncated": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "next_cursor": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "count": {
+            "const": 0
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "truncated": {
+            "const": false
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "task": {
+      "type": "object",
+      "required": [
+        "job_id",
+        "operation_id",
+        "kind",
+        "state",
+        "updated_at",
+        "cancel",
+        "attempt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updated_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cancel": {
+          "type": "object",
+          "required": [
+            "requested",
+            "acknowledged"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "requested": {
+              "type": "boolean"
+            },
+            "acknowledged": {
+              "type": "boolean"
+            }
+          }
+        },
+        "attempt": {
+          "type": "object",
+          "required": [
+            "attempt_id",
+            "attempt_no",
+            "state",
+            "started_at",
+            "ended_at"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "attempt_id": {
+              "type": "string"
+            },
+            "attempt_no": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "type": "string",
+              "minLength": 1
+            },
+            "started_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ended_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

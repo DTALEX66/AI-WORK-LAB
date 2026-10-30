@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/interop-penpot-adapter.schema.json",
+  "title": "DESIGN-LAB interop: Penpot adapter declaration package (DL-P1-111)",
+  "description": "Structural contract for the Penpot adapter declaration DESIGN-LAB owns: the adapter contract itself (validated against design-lab/schemas/adapter-contract.schema.json through the $ref below), the .penpot file boundary, and the read-only import plan. The $ref is resolved from the repository through an offline referencing registry, never over the network.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "task_id",
+    "adapter_contract",
+    "file_boundary",
+    "import_plan"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/interop-penpot-adapter/v1"
+    },
+    "task_id": {
+      "const": "DL-P1-111"
+    },
+    "adapter_contract": {
+      "$ref": "https://design-lab.local/schemas/adapter-contract.schema.json"
+    },
+    "file_boundary": {
+      "$ref": "#/$defs/fileBoundary"
+    },
+    "import_plan": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/importPlan"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "fileBoundary": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "asset_kind",
+        "extension",
+        "container",
+        "access",
+        "state",
+        "validation",
+        "prohibited",
+        "notes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "task_id": {
+          "const": "DL-P1-111"
+        },
+        "asset_kind": {
+          "const": "penpot-file"
+        },
+        "extension": {
+          "const": ".penpot"
+        },
+        "container": {
+          "type": "object",
+          "required": [
+            "format",
+            "index_entry",
+            "index_is_json",
+            "schema_owner",
+            "stability"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "zip"
+            },
+            "index_entry": {
+              "const": "manifest.json"
+            },
+            "index_is_json": {
+              "const": true
+            },
+            "schema_owner": {
+              "const": "Penpot"
+            },
+            "stability": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "access": {
+          "type": "object",
+          "required": [
+            "read_policy",
+            "write_policy",
+            "copy_policy",
+            "user_personal_libraries"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "read_policy": {
+              "const": "opaque-read-only-external-asset"
+            },
+            "write_policy": {
+              "const": "never"
+            },
+            "copy_policy": {
+              "type": "string",
+              "minLength": 1
+            },
+            "user_personal_libraries": {
+              "const": "NEVER_READ"
+            }
+          }
+        },
+        "state": {
+          "type": "object",
+          "required": [
+            "importer",
+            "exporter",
+            "live_run",
+            "evidence_level"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "importer": {
+              "const": "NOT_IMPLEMENTED"
+            },
+            "exporter": {
+              "const": "NOT_IMPLEMENTED"
+            },
+            "live_run": {
+              "const": "NOT_EXECUTED"
+            },
+            "evidence_level": {
+              "const": "E1"
+            }
+          }
+        },
+        "validation": {
+          "$ref": "#/$defs/structuralValidation"
+        },
+        "prohibited": {
+          "$ref": "#/$defs/stringList"
+        },
+        "notes": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "structuralValidation": {
+      "type": "object",
+      "description": "The offline structural validator for a .penpot archive (design_lab.interop.penpot.validate_penpot_archive): what it reads, what it allows without a declaration, what it rejects, and the fact that it is not a Penpot run.",
+      "required": [
+        "entry_point",
+        "scope",
+        "reads",
+        "extraction",
+        "declared_file_list_keys",
+        "undeclared_allow_list",
+        "rejects",
+        "live_run",
+        "evidence_level",
+        "note"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entry_point": {
+          "const": "validate_penpot_archive"
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reads": {
+          "$ref": "#/$defs/stringList"
+        },
+        "extraction": {
+          "const": "NEVER"
+        },
+        "declared_file_list_keys": {
+          "$ref": "#/$defs/stringList"
+        },
+        "undeclared_allow_list": {
+          "$ref": "#/$defs/stringList"
+        },
+        "rejects": {
+          "$ref": "#/$defs/stringList"
+        },
+        "live_run": {
+          "const": "NOT_EXECUTED"
+        },
+        "evidence_level": {
+          "const": "E1"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "step",
+        "action",
+        "reads",
+        "writes",
+        "gate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "step": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reads": {
+          "$ref": "#/$defs/stringList"
+        },
+        "writes": {
+          "$ref": "#/$defs/stringList"
+        },
+        "gate": {
+          "enum": [
+            "NONE",
+            "HUMAN_GATE_RIGHTS",
+            "HUMAN_GATE_PRODUCTION",
+            "REQUIRES_LIVE_HOST"
+          ]
+        }
+      }
+    },
+    "importPlan": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "mode",
+        "target",
+        "steps",
+        "terminates_with",
+        "status",
+        "evidence_level"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "task_id": {
+          "const": "DL-P1-111"
+        },
+        "mode": {
+          "const": "read-only-plan"
+        },
+        "target": {
+          "type": "object",
+          "required": [
+            "path",
+            "extension",
+            "location",
+            "source_probed",
+            "read_performed"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "extension": {
+              "const": ".penpot"
+            },
+            "location": {
+              "enum": [
+                "inside-repository",
+                "outside-repository"
+              ]
+            },
+            "source_probed": {
+              "const": "NOT_EXECUTED"
+            },
+            "read_performed": {
+              "const": false
+            }
+          }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "terminates_with": {
+          "const": "requires a live Penpot run: NOT_EXECUTED"
+        },
+        "status": {
+          "const": "PLAN_ONLY_NOT_EXECUTED"
+        },
+        "evidence_level": {
+          "const": "E1"
+        }
+      }
+    }
+  }
+}

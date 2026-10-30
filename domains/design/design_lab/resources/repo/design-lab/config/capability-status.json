@@ -1,0 +1,185 @@
+{
+  "$schema": "../schemas/capability-status.schema.json",
+  "schemaVersion": "design-lab/capability-status/v1",
+  "evidenceLevels": [
+    {
+      "id": "E0",
+      "label": "declared",
+      "claim": "intent or documentation exists",
+      "proof": "document path or task card"
+    },
+    {
+      "id": "E1",
+      "label": "structural",
+      "claim": "files, schema, manifest or static validation passes",
+      "proof": "hash, parser, schema or linter output"
+    },
+    {
+      "id": "E2",
+      "label": "controlled-runtime",
+      "claim": "a controlled isolated runtime command succeeds and reads back its own state",
+      "proof": "command, exit code, output summary and read-back artifact"
+    },
+    {
+      "id": "E3",
+      "label": "real-workflow",
+      "claim": "a real host/Agent runtime (an approved host adapter, e.g. Open Design) executes the capability end-to-end",
+      "proof": "runtime ID/version, task ID, artifact hash, stage/provenance read-back"
+    },
+    {
+      "id": "E4",
+      "label": "independent-acceptance",
+      "claim": "an independent reviewer / human acceptance of the capability is recorded",
+      "proof": "independent acceptance record, reviewer identity, review read-back"
+    },
+    {
+      "id": "E5",
+      "label": "released",
+      "claim": "the capability is released and repeatably provable at an exact SHA",
+      "proof": "release, exact-SHA CI evidence, repeatable read-back and artifact hash"
+    }
+  ],
+  "states": [
+    "NOT_RUN",
+    "PASS",
+    "FAIL",
+    "BLOCKED",
+    "UNVERIFIED",
+    "SKIPPED_OPTIONAL"
+  ],
+  "capabilityStates": [
+    "missing",
+    "declared-only",
+    "structural-pass",
+    "isolated-pass",
+    "runtime-pass",
+    "release-verified",
+    "commercially-proven",
+    "blocked",
+    "superseded"
+  ],
+  "capabilityRecords": {
+    "research-evidence": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-08-14",
+      "note": "source registry + governance rules structurally present; runtime qualification pending"
+    },
+    "design-intelligence": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-08-14",
+      "note": "atoms/scenarios and brief-routing structural checks pass; isolated/live runtime evidence pending"
+    },
+    "visual-quality": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-08-14",
+      "note": "rubrics + scoring scripts verified; historical runtime evidence is not reused after tree changes"
+    },
+    "style-master-method": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-08-15",
+      "note": "497 masters, 77 anchor method cards and 47+47 lineage/analysis records pass the deterministic structural verifier; source verification and research-to-method-card closure remain Phase 7 work"
+    },
+    "professional-visual-domains": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-08-14",
+      "note": "domain packs, scenarios and profiles pass structural verification; live runtime evidence pending"
+    },
+    "production-handoff": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-08-14",
+      "note": "preflight/handoff schemas and adapter contracts verified; runtime delivery evidence pending"
+    },
+    "creative-toolchain": {
+      "state": "runtime-pass",
+      "evidenceLevel": "E3",
+      "lastVerified": "2026-08-16",
+      "note": "ComfyUI 0.33.1 用户授权部署 + H3 t2va 真实生成取证（prompt 79013288-…，22 帧 384px，回读通过）；生产级参数与音频导出待后续"
+    },
+    "release-evidence": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-08-14",
+      "note": "canonical CI was green on the audited main baseline; this tree still requires human acceptance, independent review and release evidence for E4"
+    },
+    "asset-task-service": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-09-05",
+      "note": "MULTIMODAL T05 structural layer: asset_store + job_store + single-writer lock; unit tests green; no host/runtime execution claimed"
+    },
+    "planar-decomposition": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-09-05",
+      "note": "MULTIMODAL T06 structural layer: decomposition contract + replaceable module seams + model-cache probe (fail-closed); real OCR/trace and AI/PS mapping remain 待实机"
+    },
+    "generation-task-protocol": {
+      "state": "structural-pass",
+      "evidenceLevel": "E1",
+      "lastVerified": "2026-09-05",
+      "note": "MULTIMODAL T09 structural layer: ComfyUI task protocol + state machine; cache-hit never reported as new generation; live ComfyUI execution remains 待实机"
+    }
+  },
+  "promotionRules": [
+    {
+      "from": "declared-only",
+      "to": "structural-pass",
+      "requires": [
+        "JSON/Markdown/schema parse",
+        "referenced local paths exist",
+        "status PASS"
+      ]
+    },
+    {
+      "from": "structural-pass",
+      "to": "isolated-pass",
+      "requires": [
+        "staging command executed",
+        "exit code 0",
+        "artifact/read-back evidence"
+      ]
+    },
+    {
+      "from": "isolated-pass",
+      "to": "runtime-pass",
+      "requires": [
+        "host/Agent runtime registration (approved host adapter)",
+        "minimal scenario/atom task",
+        "artifact/provenance read-back"
+      ]
+    },
+    {
+      "from": "runtime-pass",
+      "to": "release-verified",
+      "requires": [
+        "frozen exact tree",
+        "independent review",
+        "commit/push or release authorization",
+        "exact-SHA CI success"
+      ]
+    },
+    {
+      "from": "release-verified",
+      "to": "commercially-proven",
+      "requires": [
+        "real project",
+        "human/external review",
+        "production/developer/customer acceptance",
+        "external acceptance record"
+      ]
+    }
+  ],
+  "hardRules": [
+    "Static files do not prove host runtime availability.",
+    "Model or VLM self-score alone does not prove design quality.",
+    "Reference-only or license-unclear material cannot enter runtime prompts as absorbed content.",
+    "A previous successful CI run on another SHA is not release evidence for the current tree.",
+    "Commercially proven requires external acceptance, not an internal demo."
+  ]
+}

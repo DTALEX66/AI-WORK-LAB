@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/assurance-knowledge-candidate-readback-v1.json",
+  "title": "Assurance knowledge candidate readback v1 (what GET /api/projects/<id>/knowledge-candidates answers)",
+  "$comment": "Emitter: src/design_lab/knowledge_review.py (KnowledgeReview.list). Each element of `candidates` is a projection of the latest stored revision, NOT the candidate document; the document itself is bound by design-lab/schemas/assurance-knowledge-candidate-v2.schema.json. The projection exists so a reviewer can see the state of the gate without being handed the payload body, and so `freshness` / `export_ready` are computed against this checkout at read time rather than restated by the writer. `outbound.transport` is const NOT_CONNECTED and `sent_count` is const 0 on purpose: this repository has no ArcheAxis transport, and a count that could otherwise read as 'sent successfully' must not be writable. `revocation_receipts` are the stored receipts themselves, resolved by reference to their own contract, so a receipt change moves here by reference rather than by copy. `conflicts` names disagreement between rows and the contract; the read still answers 200 because a corrupt row is a fact to report, not a reason to hide the rest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project_id",
+    "candidates",
+    "candidate_count",
+    "unreadable_count",
+    "pending_review_count",
+    "approved_count",
+    "rejected_count",
+    "revoked_count",
+    "export_ready_count",
+    "conflicts",
+    "revocation_receipts",
+    "head_sha",
+    "outbound",
+    "does_not_say"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assurance-knowledge-candidate-readback/v1"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "candidates": {"type": "array", "items": {"$ref": "#/$defs/candidate"}},
+    "candidate_count": {"type": "integer", "minimum": 0},
+    "unreadable_count": {"type": "integer", "minimum": 0},
+    "pending_review_count": {"type": "integer", "minimum": 0},
+    "approved_count": {"type": "integer", "minimum": 0},
+    "rejected_count": {"type": "integer", "minimum": 0},
+    "revoked_count": {"type": "integer", "minimum": 0},
+    "export_ready_count": {"type": "integer", "minimum": 0},
+    "conflicts": {"type": "array", "items": {"$ref": "#/$defs/conflict"}},
+    "revocation_receipts": {
+      "type": "array",
+      "items": {"$ref": "https://dtalex66.local/schemas/assurance-knowledge-candidate-revocation-v1.json"}
+    },
+    "head_sha": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{40,64}$"
+    },
+    "outbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transport", "destination", "sent_count", "last_attempt_at", "note"],
+      "properties": {
+        "transport": {"const": "NOT_CONNECTED"},
+        "destination": {"const": "ArcheAxis"},
+        "sent_count": {"const": 0},
+        "last_attempt_at": {"type": "null"},
+        "note": {"type": "string", "minLength": 1}
+      }
+    },
+    "does_not_say": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+  },
+  "allOf": [
+    {
+      "$comment": "The counts are of what the store supports; a project with zero readable candidates cannot report any decided or export-ready rows.",
+      "if": {"properties": {"candidate_count": {"const": 0}}, "required": ["candidate_count"]},
+      "then": {"properties": {
+        "approved_count": {"const": 0},
+        "rejected_count": {"const": 0},
+        "revoked_count": {"const": 0},
+        "export_ready_count": {"const": 0}
+      }}
+    },
+    {
+      "if": {"properties": {"export_ready_count": {"minimum": 1}}, "required": ["export_ready_count"]},
+      "then": {"properties": {"candidate_count": {"minimum": 1}}}
+    }
+  ],
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "candidate_type",
+        "review_state",
+        "revocation_state",
+        "revision",
+        "created_at",
+        "updated_at",
+        "source_design_lab_sha",
+        "payload_sha256",
+        "supersedes",
+        "title",
+        "statement",
+        "applies_to",
+        "license_id",
+        "rights_gate_state",
+        "reviewer_id",
+        "reviewed_at",
+        "revoked_by",
+        "revoked_at",
+        "revocation_reason",
+        "freshness",
+        "export_ready",
+        "export_blocked_by"
+      ],
+      "properties": {
+        "candidate_id": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,80}$"},
+        "candidate_type": {"enum": ["METHOD", "JURY_CORRECTION", "PRODUCTION_LESSON"]},
+        "review_state": {"enum": ["PENDING_HUMAN_APPROVAL", "APPROVED", "REJECTED"]},
+        "revocation_state": {"enum": ["ACTIVE", "REVOKED"]},
+        "revision": {"type": "integer", "minimum": 1},
+        "created_at": {"type": ["string", "null"]},
+        "updated_at": {"type": "string"},
+        "source_design_lab_sha": {"type": ["string", "null"]},
+        "payload_sha256": {"type": ["string", "null"]},
+        "supersedes": {"type": ["string", "null"]},
+        "title": {"type": ["string", "null"]},
+        "statement": {"type": ["string", "null"]},
+        "applies_to": {"type": "array", "items": {"type": "string"}},
+        "license_id": {"type": ["string", "null"]},
+        "rights_gate_state": {"enum": ["UNCHECKED", "CHECKED", "BLOCKED", null]},
+        "reviewer_id": {"type": ["string", "null"]},
+        "reviewed_at": {"type": ["string", "null"]},
+        "revoked_by": {"type": ["string", "null"]},
+        "revoked_at": {"type": ["string", "null"]},
+        "revocation_reason": {"type": ["string", "null"]},
+        "freshness": {"enum": ["CURRENT", "STALE", "UNKNOWN"]},
+        "export_ready": {"type": "boolean"},
+        "export_blocked_by": {"type": ["string", "null"]}
+      }
+    },
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_id", "kind", "detail"],
+      "properties": {
+        "candidate_id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": [
+            "ADDRESS_INVALID",
+            "DOCUMENT_UNREADABLE",
+            "DOCUMENT_INVALID",
+            "DOCUMENT_MISMATCH",
+            "PAYLOAD_DIGEST_MISMATCH",
+            "SUPERSEDES_UNKNOWN",
+            "SUPERSEDE_FORK",
+            "REVOCATION_RECEIPT_MISSING",
+            "REVOCATION_RECEIPT_UNAPPLIED",
+            "REVOCATION_RECEIPT_UNREADABLE"
+          ]
+        },
+        "detail": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

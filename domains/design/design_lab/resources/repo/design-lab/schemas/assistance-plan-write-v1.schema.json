@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/assistance-plan-write-v1.schema.json",
+  "title": "Assistance Plan Write V1 (the answer to a create or a revision)",
+  "$comment": "DL-KB-07. POST /api/projects/{id}/assistance-plans and POST .../revisions answer with this envelope, whose `plan` member is the stored revision document exactly as the writer validated it. `stored: true` is a statement about this request only: the bytes are in the state database and readable through the detail route. It is not a statement that a model produced the plan, that any external step ran, or that a reference was analysed -- those are separate facts the readback reports with their own evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "stored", "plan", "revision", "claims_not_made"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assistance-plan-write/v1"},
+    "status": {"const": "ASSISTANCE_PLAN"},
+    "stored": {"const": true},
+    "plan": {"$ref": "https://design-lab.local/schemas/assistance-plan-v1.schema.json"},
+    "revision": {"type": "integer", "minimum": 1},
+    "claims_not_made": {"type": "array", "minItems": 1,
+                        "items": {"type": "string", "minLength": 1}}
+  }
+}

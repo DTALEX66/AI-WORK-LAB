@@ -1,0 +1,289 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/plan-feedback-v1.schema.json",
+  "title": "Plan Feedback V1 (one voluntary report about taking a plan's material outward)",
+  "$comment": "DL-KB-16. The whole-record outcome and the per-dimension verdicts share the same three words (符合/部分符合/不符合), both declared in config/state-vocabularies.json and checked back against plan_feedback.py. The dimension NAME is the reporter's own words on purpose: a fixed axis list here would be this service deciding which aspects a plan cares about, declared in design-lab/config/state-vocabularies.json and checked against plan_feedback.OUTCOMES in both directions. There is no UNKNOWN outcome: not recording is the absence of a row, and a person who declines to report should not have to file a statement. `externally_verified` is a constant false and `voluntary` a constant true -- a coerced or inferred report would not be this record. `actor_kind` is const human; the table repeats it as a CHECK so an application bug cannot file a machine's guess as somebody's experience. `source_ref` falls back to the literal UNUSED, because this service mints no external identifier.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "plan_id",
+    "revision",
+    "feedback_no",
+    "outcome",
+    "target_key",
+    "actor",
+    "actor_kind",
+    "note",
+    "source_ref",
+    "recorded_at",
+    "voluntary",
+    "externally_verified",
+    "does_not_say",
+    "content_sha256",
+    "target_model",
+    "target_model_reason",
+    "dimensions",
+    "issue_timecodes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/plan-feedback/v1"
+    },
+    "plan_id": {
+      "type": "string",
+      "pattern": "^aplan-[0-9a-f]{32}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "feedback_no": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "outcome": {
+      "enum": [
+        "MATCHES",
+        "PARTIALLY_MATCHES",
+        "DOES_NOT_MATCH"
+      ]
+    },
+    "outcome_label": {
+      "enum": [
+        "符合",
+        "部分符合",
+        "不符合"
+      ]
+    },
+    "target_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "actor_kind": {
+      "const": "human"
+    },
+    "note": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 4000
+    },
+    "source_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "recorded_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "voluntary": {
+      "const": true
+    },
+    "externally_verified": {
+      "const": false
+    },
+    "does_not_say": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "content_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "target_model": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "target_model_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "issue_timecodes": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "verdict",
+          "verdict_label",
+          "note"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "verdict": {
+            "enum": [
+              "MATCHES",
+              "PARTIALLY_MATCHES",
+              "DOES_NOT_MATCH"
+            ]
+          },
+          "verdict_label": {
+            "enum": [
+              "符合",
+              "部分符合",
+              "不符合"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "verdict": {
+                  "const": "MATCHES"
+                }
+              },
+              "required": [
+                "verdict"
+              ]
+            },
+            "then": {
+              "properties": {
+                "verdict_label": {
+                  "const": "符合"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "verdict": {
+                  "const": "PARTIALLY_MATCHES"
+                }
+              },
+              "required": [
+                "verdict"
+              ]
+            },
+            "then": {
+              "properties": {
+                "verdict_label": {
+                  "const": "部分符合"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "verdict": {
+                  "const": "DOES_NOT_MATCH"
+                }
+              },
+              "required": [
+                "verdict"
+              ]
+            },
+            "then": {
+              "properties": {
+                "verdict_label": {
+                  "const": "不符合"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "MATCHES"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome_label": {
+            "const": "符合"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "PARTIALLY_MATCHES"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome_label": {
+            "const": "部分符合"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "DOES_NOT_MATCH"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome_label": {
+            "const": "不符合"
+          }
+        }
+      }
+    }
+  ]
+}

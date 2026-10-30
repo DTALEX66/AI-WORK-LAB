@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/provider-capability.schema.json",
+  "title": "ProviderCapability (Provider SPI V1)",
+  "description": "模型/推理能力的能力描述层。Provider 不等于工具 Adapter；业务代码只依赖 capability，不依赖具体模型名（模型中立铁律）。",
+  "type": "object",
+  "required": [
+    "provider_id",
+    "schemaVersion",
+    "capabilities",
+    "endpoint_ref",
+    "license",
+    "source"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "provider_id": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "design-lab/provider-capability/v1"
+    },
+    "endpoint_ref": {
+      "type": "string",
+      "pattern": "^provider:",
+      "description": "本地 gateway / API 端点引用（provider: 前缀）；禁止绝对路径进业务代码"
+    },
+    "model_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "local_first": {
+      "type": "boolean",
+      "default": false
+    },
+    "policy_note": {
+      "type": "string"
+    },
+    "license": {
+      "type": "string",
+      "enum": [
+        "MIT",
+        "Apache-2.0",
+        "BSD-3-Clause",
+        "MPL-2.0",
+        "GPL-2.0",
+        "GPL-3.0",
+        "CC-BY-NC-SA-4.0",
+        "proprietary",
+        "unverified"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_level": {
+      "type": "string",
+      "default": "E0"
+    },
+    "license_risk": {
+      "type": "string",
+      "default": "low"
+    },
+    "license_risk_note": {
+      "type": "string"
+    }
+  }
+}

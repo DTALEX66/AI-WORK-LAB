@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/plan-export-v1.schema.json",
+  "title": "Plan Export V1 (one handoff material rendered from one stored plan revision)",
+  "$comment": "DL-KB-11. GET /api/projects/{id}/assistance-plans/{aplan}/export?format=markdown|txt|json|storyboard_csv answers this envelope. `body` is the exported material itself -- the bytes the designer keeps -- and everything else is what makes those bytes traceable: which revision they came from (`revision`, `plan_content_sha256`), the pinned dependency snapshot the plan recorded (`reference_snapshot`, copied from the stored document rather than re-resolved, so an export freezes what the plan claimed instead of restating today's objects), the emitter contract version (`emitter_version`), and the not-executed statement. Three of these are constants on purpose: `sent`, `executed` and `external_verified` are `const false`, because this repository has no outbound transport and no dispatch, so the only honest answer is a value a flag-flip cannot move -- turning any of them true requires a contract change here, not a code path elsewhere. `states` repeats the plan's own four states exactly as the readback computed them, with `externally_verified` pinned false again: exporting reads, it does not change. The `allOf` block ties `format` to the `content_type` and the filename extension a reader will actually get, so an answer that calls itself a 分镜 CSV and hands out a text/plain -- or names a .md file for a JSON body -- is refused by the contract and not merely by care; the shape a page can confuse is a mismatched pair, not a missing field. No schema here claims an export was delivered, and no field could: there is no such field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "format", "format_label", "filename", "content_type", "encoding",
+               "body", "body_bytes", "body_sha256", "plan_id", "project_id", "revision",
+               "plan_content_sha256", "plan_schema_version", "emitter_version",
+               "reference_snapshot", "shot_count", "states", "external_verified", "sent",
+               "executed", "not_executed", "claims_not_made"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/plan-export/v1"},
+    "format": {"enum": ["markdown", "txt", "json", "storyboard_csv"]},
+    "format_label": {"type": "string", "minLength": 1},
+    "filename": {"type": "string",
+                 "pattern": "^design-plan-[0-9a-f]{8}-r[1-9][0-9]{0,3}\\.(md|txt|json|csv)$"},
+    "content_type": {"type": "string", "minLength": 1},
+    "encoding": {"const": "utf-8"},
+    "body": {"type": "string", "minLength": 1},
+    "body_bytes": {"type": "integer", "minimum": 1},
+    "body_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "plan_id": {"type": "string", "pattern": "^aplan-[0-9a-f]{32}$"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "plan_content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "plan_schema_version": {"const": "design-lab/assistance-plan/v1"},
+    "emitter_version": {"const": "design-lab/plan-export/v1"},
+    "reference_snapshot": {
+      "type": "array", "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "id", "revision", "content_sha256"],
+        "properties": {
+          "kind": {"enum": ["ASSET", "BRIEF", "DIRECTION", "PROMPT_RESULT", "KNOWLEDGE"]},
+          "id": {"type": "string", "minLength": 1},
+          "revision": {"type": "integer", "minimum": 1},
+          "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "shot_count": {"type": "integer", "minimum": 0, "maximum": 60},
+    "states": {
+      "type": "object", "additionalProperties": false,
+      "required": ["saved", "provided", "chosen", "externally_verified"],
+      "properties": {
+        "saved": {"const": true},
+        "provided": {"type": "boolean"},
+        "chosen": {"type": "boolean"},
+        "externally_verified": {"const": false}
+      }
+    },
+    "external_verified": {"const": false},
+    "sent": {"const": false},
+    "executed": {"const": false},
+    "not_executed": {"type": "string", "minLength": 1},
+    "claims_not_made": {"type": "array", "minItems": 1,
+                        "items": {"type": "string", "minLength": 1}}
+  },
+  "allOf": [
+    {
+      "$comment": "format <-> content_type <-> extension, in all four pairs. A markdown body served as text/csv, or a .csv filename around a JSON document, is the mismatch a reader cannot detect from the text alone.",
+      "if": {"properties": {"format": {"const": "markdown"}}, "required": ["format"]},
+      "then": {"properties": {"content_type": {"const": "text/markdown"},
+                              "filename": {"pattern": "^design-plan-[0-9a-f]{8}-r[1-9][0-9]{0,3}\\.md$"}}}
+    },
+    {
+      "if": {"properties": {"format": {"const": "txt"}}, "required": ["format"]},
+      "then": {"properties": {"content_type": {"const": "text/plain"},
+                              "filename": {"pattern": "^design-plan-[0-9a-f]{8}-r[1-9][0-9]{0,3}\\.txt$"}}}
+    },
+    {
+      "if": {"properties": {"format": {"const": "json"}}, "required": ["format"]},
+      "then": {"properties": {"content_type": {"const": "application/json"},
+                              "filename": {"pattern": "^design-plan-[0-9a-f]{8}-r[1-9][0-9]{0,3}\\.json$"}}}
+    },
+    {
+      "$comment": "The 分镜 CSV is the only material with a byte-order mark, because it is the only one a spreadsheet opens directly; a CSV body without the BOM is the shape that shows 镜头说明 as mojibake in Excel.",
+      "if": {"properties": {"format": {"const": "storyboard_csv"}}, "required": ["format"]},
+      "then": {"properties": {"content_type": {"const": "text/csv"},
+                              "filename": {"pattern": "^design-plan-[0-9a-f]{8}-r[1-9][0-9]{0,3}\\.csv$"},
+                              "body": {"pattern": "^\\ufeff"},
+                              "shot_count": {"minimum": 1}}}
+    }
+  ]
+}

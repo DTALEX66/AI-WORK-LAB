@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/task-resource-preflight.schema.json",
+  "title": "Task Resource Preflight V1 (what GET /api/task-preflight?task=... answers)",
+  "$comment": "Written against three payloads the product really emitted on 2026-10-08 for DLDS-H020, DL-R5-012 and DL-R5-008, captured through design_lab.http_service.make_server on a live socket (see design-lab/scripts/verify_route_payload_contracts.py). Emitter: src/design_lab/runtime/task_resources.py:194. TWO HONEST NOTES. (1) The module docstring names a third verdict, REGISTRY_INERT, and the emitter NEVER writes it: a missing or unreadable registry sets registry_state NOT_AVAILABLE and still returns READY or BLOCKED. The enum below is what the code produces, not what the prose promises. (2) A resource `ref` the registry does not describe, and any kind outside tool/model/host/licence/external, both land in the closed UNRESOLVED_INERT shape -- which is why the fallback branch constrains `state` to that one value rather than to the whole vocabulary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "task_full_id",
+    "taskpack_id",
+    "task_key",
+    "registry_state",
+    "local_config_fallback",
+    "resources",
+    "blocked_resources",
+    "verdict",
+    "machine_scope",
+    "authority_source",
+    "permissions",
+    "install_executed",
+    "licence_accepted",
+    "meaning"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/task-resource-preflight/v1"},
+    "task_full_id": {"type": "string", "pattern": "^[^:]+::[^:]+$"},
+    "taskpack_id": {"type": "string", "minLength": 1},
+    "task_key": {"type": "string", "minLength": 1},
+    "registry_state": {"enum": ["PRESENT", "NOT_AVAILABLE"]},
+    "local_config_fallback": {"enum": ["paths.json", null]},
+    "resources": {"type": "array", "items": {"anyOf": [
+      {"$ref": "#/$defs/toolResource"},
+      {"$ref": "#/$defs/modelResource"},
+      {"$ref": "#/$defs/declaredResource"},
+      {"$ref": "#/$defs/unresolvedResource"}
+    ]}},
+    "blocked_resources": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "verdict": {"enum": ["READY", "BLOCKED"]},
+    "machine_scope": {"type": "string", "minLength": 1},
+    "authority_source": {"const": "taskpack_full_id"},
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["install", "licence_accept", "external_traverse", "meaning"],
+      "properties": {
+        "install": {"const": false},
+        "licence_accept": {"const": false},
+        "external_traverse": {"const": false},
+        "meaning": {"type": "string", "minLength": 1}
+      }
+    },
+    "install_executed": {"const": false},
+    "licence_accepted": {"const": false},
+    "meaning": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "$comment": "local_config_fallback is the registry-absent signal and nothing else: paths.json is named exactly when no registry was read.",
+      "if": {"properties": {"registry_state": {"const": "PRESENT"}}, "required": ["registry_state"]},
+      "then": {"properties": {"local_config_fallback": {"const": null}}}
+    },
+    {
+      "if": {"properties": {"registry_state": {"enum": ["NOT_AVAILABLE"]}}, "required": ["registry_state"]},
+      "then": {"properties": {"local_config_fallback": {"const": "paths.json"}}}
+    },
+    {
+      "$comment": "BLOCKED is a sentence about this list: the verdict is computed from blocked_resources, so READY with a named blocker or BLOCKED with none is a real drift.",
+      "if": {"properties": {"verdict": {"const": "BLOCKED"}}, "required": ["verdict"]},
+      "then": {"properties": {"blocked_resources": {"minItems": 1}}}
+    },
+    {
+      "if": {"properties": {"verdict": {"const": "READY"}}, "required": ["verdict"]},
+      "then": {"properties": {"blocked_resources": {"maxItems": 0}}}
+    }
+  ],
+  "$defs": {
+    "toolResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "kind", "host_scope", "resolved_path", "path_source", "search_scope",
+                   "declared_version", "state", "meaning"],
+      "properties": {
+        "ref": {"type": "string", "minLength": 1},
+        "kind": {"const": "tool"},
+        "host_scope": {"type": "string", "minLength": 1},
+        "resolved_path": {"type": ["string", "null"]},
+        "path_source": {
+          "type": ["string", "null"],
+          "pattern": "^(declared:\\.project/paths\\.json#tools\\..+|project-venv:\\.venv|shutil\\.which)$"
+        },
+        "search_scope": {"enum": [
+          "declared binding, then current process PATH",
+          "project venv layouts, then current process PATH",
+          "current process PATH only"
+        ]},
+        "declared_version": {"type": ["string", "null"]},
+        "state": {"enum": ["RESOLVED", "UNAVAILABLE"]},
+        "meaning": {"enum": [
+          "tool found in search scope; version NOT re-proven here",
+          "tool absent from the current search scope"
+        ]},
+        "declared_binding_state": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"state": {"const": "RESOLVED"}}, "required": ["state"]},
+          "then": {"properties": {"resolved_path": {"type": "string"},
+                                   "path_source": {"type": "string"}}}
+        },
+        {
+          "if": {"properties": {"state": {"const": "UNAVAILABLE"}}, "required": ["state"]},
+          "then": {"properties": {"resolved_path": {"const": null},
+                                   "path_source": {"const": null}}}
+        }
+      ]
+    },
+    "modelResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "kind", "host_scope", "state", "path", "licence", "meaning"],
+      "properties": {
+        "ref": {"type": "string", "minLength": 1},
+        "kind": {"const": "model"},
+        "host_scope": {"type": "string", "minLength": 1},
+        "state": {"const": "METADATA_ONLY"},
+        "path": {"type": ["string", "null"]},
+        "licence": {"type": ["string", "null"]},
+        "meaning": {"const": "model resource is recorded, not loaded or run"}
+      }
+    },
+    "declaredResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "kind", "host_scope", "state", "path", "licence", "meaning"],
+      "properties": {
+        "ref": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["host", "licence", "external"]},
+        "host_scope": {"type": "string", "minLength": 1},
+        "state": {"const": "DECLARED_NOT_PROBED"},
+        "path": {"type": ["string", "null"]},
+        "licence": {"type": ["string", "null"]},
+        "meaning": {"const": "external/host/licence root is declared, never traversed"}
+      }
+    },
+    "unresolvedResource": {
+      "$comment": "Both inert paths land here: a ref the task map names but the registry does not describe (kind 'unknown'), and a registry entry whose kind the preflight does not implement (kind is then whatever the registry declared). Neither gets a guessed state.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "kind", "host_scope", "state", "meaning"],
+      "properties": {
+        "ref": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "host_scope": {"type": "string", "minLength": 1},
+        "state": {"const": "UNRESOLVED_INERT"},
+        "meaning": {"enum": [
+          "resource is referenced but not described in the registry",
+          "unsupported resource kind"
+        ]}
+      }
+    }
+  }
+}

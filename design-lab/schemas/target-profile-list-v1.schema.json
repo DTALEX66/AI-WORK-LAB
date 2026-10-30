@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/target-profile-list-v1.schema.json",
+  "title": "Target Profile List V1 (every registered profile, seeded and draft)",
+  "$comment": "DL-KB-09. The two histograms are part of the contract, not decoration: the panel's 「本项目未测试」 column is built from them, so an answer that lists profiles without saying how many fields carry each provenance cannot be used to imply measurement. `measured` counts come out of the same fields the profiles carry, and `executable` stays a constant false for the whole collection.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "total", "offset", "limit", "profiles", "support_histogram",
+               "provenance_histogram", "executable"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/target-profile-list/v1"},
+    "total": {"type": "integer", "minimum": 0},
+    "offset": {"type": "integer", "minimum": 0},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+    "profiles": {"type": "array", "items": {
+      "$ref": "https://design-lab.local/schemas/target-profile-v1.schema.json"}},
+    "support_histogram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["DOCUMENTED_CLAIM", "CONDITIONAL", "UNREACHED", "USER_DRAFT"],
+      "properties": {
+        "DOCUMENTED_CLAIM": {"type": "integer", "minimum": 0},
+        "CONDITIONAL": {"type": "integer", "minimum": 0},
+        "UNREACHED": {"type": "integer", "minimum": 0},
+        "USER_DRAFT": {"type": "integer", "minimum": 0}
+      }
+    },
+    "provenance_histogram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["OFFICIAL_DOC", "OPEN_SOURCE_IMPL", "PROJECT_MEASURED", "USER_FEEDBACK",
+                   "PROJECT_POLICY"],
+      "properties": {
+        "OFFICIAL_DOC": {"type": "integer", "minimum": 0},
+        "OPEN_SOURCE_IMPL": {"type": "integer", "minimum": 0},
+        "PROJECT_MEASURED": {"type": "integer", "minimum": 0},
+        "USER_FEEDBACK": {"type": "integer", "minimum": 0},
+        "PROJECT_POLICY": {"type": "integer", "minimum": 0}
+      }
+    },
+    "executable": {"const": false}
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/domain-pack-readback.schema.json",
+  "title": "Domain Pack Readback V1 (what GET /api/domains answers)",
+  "$comment": "Written against the payload the product emitted on 2026-10-08 (13 pack directories, 12 VALIDATES and 1 INVALID), captured through design_lab.http_service.make_server on a live socket; see design-lab/scripts/verify_route_payload_contracts.py. Emitter: src/design_lab/domain_packs.py:181 (SCHEMA_VERSION at line 41). This is the OUTER envelope only: the manifest each pack declares is bound by design-lab/schemas/domain-pack.schema.json and judged by design-lab/scripts/verify_domain_pack_v2.py, whose verdict this document reports. `manifestSchemaVersion` is passed through exactly as the manifest declares it (design-lab/domain-pack/v2 for twelve packs and workflow/domain-pack/v1 for minigame-design), so it is a string-or-null and NOT an enum -- an enum here would be this projection restating an identity the packs own. The three states the envelope cannot reach are still named in the vocabulary because a pack that cannot be read (UNREADABLE) or that the checker could not be judged (NOT_CHECKED) must appear rather than be dropped, and counts.byValidation always carries all four keys so a zero is never confused with an absent category.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "root",
+    "rootState",
+    "meaning",
+    "unmeasuredMeans",
+    "validationVocabulary",
+    "checker",
+    "sources",
+    "counts",
+    "packs"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/domain-pack-readback/v1"},
+    "root": {"const": "design-lab/domain-packs"},
+    "rootState": {"enum": ["PRESENT", "MISSING", "UNREADABLE"]},
+    "meaning": {"type": "string", "minLength": 1},
+    "unmeasuredMeans": {"type": "string", "minLength": 1},
+    "validationVocabulary": {
+      "const": ["VALIDATES", "INVALID", "UNREADABLE", "NOT_CHECKED"],
+      "description": "VALIDATION_STATES in declaration order; the reader is told the whole vocabulary so a missing category is visibly zero."
+    },
+    "checker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "state", "note"],
+      "properties": {
+        "path": {"const": "design-lab/scripts/verify_domain_pack_v2.py"},
+        "state": {"enum": ["LOADED", "UNAVAILABLE"]},
+        "note": {"type": ["string", "null"]}
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packRoot", "schema", "checker"],
+      "properties": {
+        "packRoot": {"const": "design-lab/domain-packs"},
+        "schema": {"const": "design-lab/schemas/domain-pack.schema.json"},
+        "checker": {"const": "design-lab/scripts/verify_domain_pack_v2.py"}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packs", "byValidation"],
+      "properties": {
+        "packs": {"type": "integer", "minimum": 0},
+        "byValidation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["VALIDATES", "INVALID", "UNREADABLE", "NOT_CHECKED"],
+          "properties": {
+            "VALIDATES": {"type": "integer", "minimum": 0},
+            "INVALID": {"type": "integer", "minimum": 0},
+            "UNREADABLE": {"type": "integer", "minimum": 0},
+            "NOT_CHECKED": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "packs": {"type": "array", "items": {"$ref": "#/$defs/pack"}}
+  },
+  "allOf": [
+    {
+      "$comment": "No root, no packs: the MISSING and UNREADABLE branches return before the directory is listed, so a non-empty pack list requires PRESENT.",
+      "if": {"properties": {"rootState": {"enum": ["MISSING", "UNREADABLE"]}}, "required": ["rootState"]},
+      "then": {"properties": {"packs": {"maxItems": 0}}}
+    }
+  ],
+  "$defs": {
+    "pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["directory", "packId", "version", "displayName", "domain",
+                   "manifestSchemaVersion", "dependencies", "validation",
+                   "validationErrors", "validationErrorCount", "note"],
+      "properties": {
+        "directory": {"type": "string", "minLength": 1},
+        "packId": {"type": ["string", "null"]},
+        "version": {"type": ["string", "null"]},
+        "displayName": {"type": ["string", "null"]},
+        "domain": {"type": ["string", "null"]},
+        "manifestSchemaVersion": {"type": ["string", "null"]},
+        "dependencies": {"type": ["array", "null"], "items": {"type": "string"}},
+        "validation": {"enum": ["VALIDATES", "INVALID", "UNREADABLE", "NOT_CHECKED"]},
+        "validationErrors": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "validationErrorCount": {"type": "integer", "minimum": 0},
+        "note": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "$comment": "VALIDATES is the checker's own pass: it cannot arrive with a reason attached.",
+          "if": {"properties": {"validation": {"const": "VALIDATES"}}, "required": ["validation"]},
+          "then": {"properties": {"validationErrors": {"maxItems": 0},
+                                   "validationErrorCount": {"const": 0}}}
+        },
+        {
+          "if": {"properties": {"validation": {"const": "INVALID"}}, "required": ["validation"]},
+          "then": {"properties": {"validationErrors": {"minItems": 1}}}
+        },
+        {
+          "$comment": "An unreadable pack declares no identity, so every manifest field is null rather than a defaulted string.",
+          "if": {"properties": {"validation": {"const": "UNREADABLE"}}, "required": ["validation"]},
+          "then": {"properties": {"packId": {"const": null}, "version": {"const": null},
+                                   "displayName": {"const": null}, "domain": {"const": null},
+                                   "manifestSchemaVersion": {"const": null},
+                                   "dependencies": {"const": null}}}
+        }
+      ]
+    }
+  }
+}

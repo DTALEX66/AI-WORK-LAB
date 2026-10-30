@@ -1,0 +1,982 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/project-list/v1",
+  "title": "Project roll-up for the desk front page",
+  "description": "What GET /api/projects answers since 2026-10-22. Each project row carries the record counts per surface, the newest stored timestamp, and the numbers that still need a named human. A count is null exactly when its table has never been created on this checkout, and the surface is then named in absentSurfaces: null is \"nobody has opened this here\", 0 is \"this project holds none\". The contract refuses the two readings being swapped.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "projects",
+    "surfaceRule",
+    "does_not_say"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/project-list/v1"
+    },
+    "surfaceRule": {
+      "type": "string",
+      "minLength": 20
+    },
+    "does_not_say": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "string",
+        "minLength": 12
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/project"
+      }
+    }
+  },
+  "$defs": {
+    "project": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "created_at",
+        "objects",
+        "absentSurfaces",
+        "last_activity_at",
+        "waiting"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "last_activity_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "absentSurfaces": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "assets",
+              "briefs",
+              "currentBriefs",
+              "directions",
+              "designSystemBindings",
+              "designLayerEvents",
+              "promptResults",
+              "knowledgeCandidates",
+              "juryRecords",
+              "rightsDecisions",
+              "researchFindings",
+              "creativeJobs",
+              "modelSelectionRevisions",
+              "qualityRecords"
+            ]
+          }
+        },
+        "objects": {
+          "type": "object",
+          "required": [
+            "assets",
+            "briefs",
+            "currentBriefs",
+            "directions",
+            "designSystemBindings",
+            "designLayerEvents",
+            "promptResults",
+            "knowledgeCandidates",
+            "juryRecords",
+            "rightsDecisions",
+            "researchFindings",
+            "creativeJobs",
+            "modelSelectionRevisions",
+            "qualityRecords"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "assets": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "briefs": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "currentBriefs": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "directions": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "designSystemBindings": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "designLayerEvents": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "promptResults": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "knowledgeCandidates": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "juryRecords": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "rightsDecisions": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "researchFindings": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "creativeJobs": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "modelSelectionRevisions": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "qualityRecords": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          }
+        },
+        "waiting": {
+          "type": "object",
+          "required": [
+            "knowledgeCandidatesExportReady",
+            "knowledgeCandidatesPendingReview",
+            "promptResultsNotCurrent",
+            "promptResultsUnsigned"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "promptResultsUnsigned": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "promptResultsNotCurrent": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "knowledgeCandidatesPendingReview": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "knowledgeCandidatesExportReady": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "assets": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "assets"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "briefs": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "briefs"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "currentBriefs": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "currentBriefs"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "directions": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "directions"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "designSystemBindings": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "designSystemBindings"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "designLayerEvents": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "designLayerEvents"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "promptResults": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "promptResults"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "knowledgeCandidates": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "knowledgeCandidates"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "juryRecords": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "juryRecords"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "rightsDecisions": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "rightsDecisions"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "researchFindings": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "researchFindings"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "creativeJobs": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "creativeJobs"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "modelSelectionRevisions": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "modelSelectionRevisions"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "qualityRecords": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "qualityRecords"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "assets"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "assets": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "briefs"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "briefs": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "currentBriefs"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "currentBriefs": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "directions"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "directions": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "designSystemBindings"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "designSystemBindings": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "designLayerEvents"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "designLayerEvents": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "promptResults"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "promptResults": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "knowledgeCandidates"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "knowledgeCandidates": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "juryRecords"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "juryRecords": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "rightsDecisions"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "rightsDecisions": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "researchFindings"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "researchFindings": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "creativeJobs"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "creativeJobs": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "modelSelectionRevisions"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "modelSelectionRevisions": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "qualityRecords"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "objects": {
+                "properties": {
+                  "qualityRecords": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "waiting": {
+                "properties": {
+                  "promptResultsUnsigned": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "promptResults"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "waiting": {
+                "properties": {
+                  "promptResultsNotCurrent": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "promptResults"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "waiting": {
+                "properties": {
+                  "knowledgeCandidatesPendingReview": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "knowledgeCandidates"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "waiting": {
+                "properties": {
+                  "knowledgeCandidatesExportReady": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "knowledgeCandidates"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "absentSurfaces": {
+                "contains": {
+                  "const": "promptResults"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "waiting": {
+                "properties": {
+                  "promptResultsUnsigned": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

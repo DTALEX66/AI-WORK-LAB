@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Visual Quality Report",
+  "type": "object",
+  "required": [
+    "artifact",
+    "discipline",
+    "axes",
+    "hard_gates",
+    "overall",
+    "evidence"
+  ],
+  "properties": {
+    "artifact": {
+      "type": "string"
+    },
+    "discipline": {
+      "type": "string"
+    },
+    "axes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "score",
+          "evidence",
+          "fix"
+        ],
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "fix": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "hard_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "pass"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pass": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "overall": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "top_interventions": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "string"
+      }
+    },
+    "human_calibration": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/workflow/policy-projection-loss-report.schema.json",
+  "title": "WORK-LAB Policy Projection Loss Report",
+  "description": "Honest per-capability classification that a software renderer MUST emit when projecting the Global Agent Policy into native configuration. 'Rendered successfully' never implies 100% support. Only capabilities that were actually verified count toward support coverage.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "adapter",
+    "policy_version",
+    "schema_version",
+    "native_enforced",
+    "native_guidance",
+    "workflow_guard",
+    "observe_only",
+    "unsupported"
+  ],
+  "properties": {
+    "schema_version": {"const": "workflow/policy-projection-loss-report/v1"},
+    "adapter": {"type": "string", "minLength": 1},
+    "policy_version": {"type": "string", "minLength": 1},
+    "projection_state": {
+      "type": "string",
+      "enum": [
+        "UNSUPPORTED",
+        "DETECTED",
+        "PLANNED",
+        "WAITING_AUTHORIZATION",
+        "APPLIED",
+        "APPLIED_UNVERIFIED",
+        "READBACK_VERIFIED",
+        "DRIFT",
+        "ROLLBACK_REQUIRED",
+        "ROLLBACK_VERIFIED"
+      ]
+    },
+    "native_enforced": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Capabilities the software enforces natively (machine-blocking)."
+    },
+    "native_guidance": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Capabilities delivered as native prompt/guidance text, not machine-enforced."
+    },
+    "workflow_guard": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Capabilities enforced by WORK-LAB workflow guards rather than the software itself."
+    },
+    "observe_only": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Capabilities the software only exposes for observation, not enforcement."
+    },
+    "unsupported": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Capabilities this software cannot express at all."
+    },
+    "readback_verified": {"type": "boolean"},
+    "notes": {"type": "string"}
+  }
+}

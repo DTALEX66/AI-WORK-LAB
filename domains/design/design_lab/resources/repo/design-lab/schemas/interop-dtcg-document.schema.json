@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/interop-dtcg-document.schema.json",
+  "title": "DESIGN-LAB interop: DTCG design-token document (DL-P0-110)",
+  "description": "Structural contract for a canonical Design Tokens Community Group (DTCG) 2025.10 stable token document. Groups are objects whose non-'$' members are tokens or nested groups; a token is an object carrying '$value'. Semantic rules that this schema cannot express -- $type inheritance, alias resolution, alias-cycle rejection, composite member completeness and per-type value shape -- are enforced by design_lab.interop.dtcg.validate_document, and for the typography composite that means all five members (fontFamily, fontSize, fontWeight, letterSpacing, lineHeight) are required. The pre-2025.10 'string'/'boolean' token types are NOT part of this canonical schema: they are converted by the explicitly named adapter design_lab.interop.dtcg.from_legacy_document, and no flag on the canonical entry points accepts them.",
+  "type": "object",
+  "$ref": "#/$defs/rootGroup",
+  "$defs": {
+    "node": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/group"
+        },
+        {
+          "$ref": "#/$defs/token"
+        }
+      ]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "token": {
+      "type": "object",
+      "description": "A DTCG token: an object that carries $value. $type is optional at the token when an ancestor group declares it. A canonical typography $value must state all five members (fontFamily, fontSize, fontWeight, letterSpacing, lineHeight); $value shape is enforced per type by design_lab.interop.dtcg.validate_document because a token may inherit $type from an ancestor group, which this schema cannot resolve.",
+      "required": [
+        "$value"
+      ],
+      "properties": {
+        "$value": true,
+        "$type": {
+          "$ref": "#/$defs/name"
+        },
+        "$description": {
+          "type": "string"
+        },
+        "$extensions": {
+          "type": "object",
+          "description": "Free-form vendor extension map (DTCG reserves this key for tools)."
+        },
+        "$deprecated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "group": {
+      "type": "object",
+      "description": "A DTCG group: an object whose non-'$' members are tokens or nested groups. $root carries the group's own value.",
+      "properties": {
+        "$type": {
+          "$ref": "#/$defs/name"
+        },
+        "$description": {
+          "type": "string"
+        },
+        "$extensions": {
+          "type": "object"
+        },
+        "$deprecated": {
+          "type": "boolean"
+        },
+        "$root": {
+          "$ref": "#/$defs/token"
+        }
+      },
+      "patternProperties": {
+        "^[^$]": {
+          "$ref": "#/$defs/node"
+        }
+      },
+      "additionalProperties": false
+    },
+    "rootGroup": {
+      "type": "object",
+      "description": "The document root is a group. It may additionally pin the DTCG schema URL; a top-level $root token is not supported because it has no flattened path.",
+      "minProperties": 1,
+      "properties": {
+        "$schema": {
+          "$ref": "#/$defs/name"
+        },
+        "$type": {
+          "$ref": "#/$defs/name"
+        },
+        "$description": {
+          "type": "string"
+        },
+        "$extensions": {
+          "type": "object"
+        },
+        "$deprecated": {
+          "type": "boolean"
+        }
+      },
+      "patternProperties": {
+        "^[^$]": {
+          "$ref": "#/$defs/node"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

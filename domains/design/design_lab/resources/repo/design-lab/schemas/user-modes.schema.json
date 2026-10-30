@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/user-modes.schema.json",
+  "title": "DESIGN-LAB User Modes (Guided/Copilot/Director/Method/Production)",
+  "description": "V42-0203: five user modes over a single capability engine.",
+  "type": "object",
+  "required": ["schemaVersion", "source", "modes", "constraints"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"type": "string"},
+    "schemaVersion": {"const": "design-lab/user-modes/v1"},
+    "source": {"type": "string", "minLength": 1},
+    "modes": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["id", "user", "disclosure", "control", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"enum": ["guided", "copilot", "director", "method", "production"]},
+          "user": {"type": "string", "minLength": 1},
+          "disclosure": {"enum": ["low", "medium", "high"]},
+          "control": {"enum": ["low", "medium", "high"]},
+          "value": {"type": "string", "minLength": 1},
+          "safeDefaults": {"type": "boolean"},
+          "highRiskHidden": {"type": "boolean"}
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1
+    }
+  }
+}

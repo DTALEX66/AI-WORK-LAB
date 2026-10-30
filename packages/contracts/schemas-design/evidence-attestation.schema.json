@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/evidence-attestation.schema.json",
+  "title": "Evidence Attestation (DL-EVD-002)",
+  "description": "主体-SHA 证据证明书。区分 Capability Claim Index / Evidence Attestation / Release Evidence。若被提交进 Git：提交 N+1 可证明提交 N；不得声称证明 N+1 自身（自引用禁止）。Release Evidence 由 CI 在运行时生成（Actions Artifact / Attestation），不作为必须预先存在于被证明提交中的文件。",
+  "type": "object",
+  "required": [
+    "attestationId",
+    "subjectCommitSha",
+    "subjectTreeSha",
+    "producer",
+    "environment",
+    "command",
+    "exitCode",
+    "artifactDigests",
+    "createdAt",
+    "reviewer",
+    "evidenceLevel"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "attestationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subjectCommitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "被证明提交的完整 40 位 commit SHA。"
+    },
+    "subjectTreeSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "被证明提交的完整 40 位 tree SHA。"
+    },
+    "producer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "产生该证据的运行者（CI / 工具 / 人工）。"
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exitCode": {
+      "type": "integer",
+      "description": "0 = 通过；非零 = 失败，失败证据不得宣称通过。"
+    },
+    "artifactDigests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "产物摘要（sha256:<64hex> 或 Actions artifact 标识）。"
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewer": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "明确人工审核人；null 表示尚无人审（非权威）。"
+    },
+    "evidenceLevel": {
+      "enum": [
+        "E0",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ]
+    },
+    "requiresRequalification": {
+      "type": "boolean",
+      "description": "祖先证据（HISTORICAL_VALID）必须为 true。"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

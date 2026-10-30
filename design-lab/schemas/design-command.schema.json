@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/design-command.schema.json",
+  "title": "DesignCommand (V2 kernel)",
+  "description": "对设计对象的显式命令：领域要求 capability，runtime 决定由哪个 adapter 执行（capability-based，不绑定具体工具/模型）。",
+  "type": "object",
+  "required": [
+    "command_id",
+    "schemaVersion",
+    "capability",
+    "document",
+    "args",
+    "project_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "command_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/design-command/v1"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capability": {
+      "type": "string",
+      "minLength": 1,
+      "description": "capability id，如 image.layer.mask；不得是具体工具名"
+    },
+    "target_adapter": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "description": "显式指定 adapter（可选）；默认由 runtime 路由"
+    },
+    "document": {
+      "type": "string",
+      "minLength": 1,
+      "description": "artifact:// 或 object ref"
+    },
+    "args": {
+      "type": "object"
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "editable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

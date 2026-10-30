@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/design-critique.json",
+  "title": "Evidence-based Design Critique",
+  "type": "object",
+  "required": [
+    "artifact",
+    "discipline",
+    "rubric_version",
+    "scores",
+    "evidence",
+    "decision"
+  ],
+  "properties": {
+    "artifact": {
+      "type": "string"
+    },
+    "discipline": {
+      "type": "string"
+    },
+    "rubric_version": {
+      "type": "string"
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "axis",
+          "score",
+          "weight",
+          "evidence"
+        ],
+        "properties": {
+          "axis": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "weight": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fix": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "automated_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "result"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "pass",
+              "fail",
+              "warning",
+              "not-applicable"
+            ]
+          },
+          "evidence": {}
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decision": {
+      "enum": [
+        "accept",
+        "revise",
+        "reject"
+      ]
+    },
+    "next_prompt": {
+      "type": "string"
+    },
+    "reviewer_independence": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

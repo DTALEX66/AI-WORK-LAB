@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/model-selection-readback-v1.schema.json",
+  "title": "Model selection read-back v1 (this project's recorded choice, its decision path, and the three answers kept apart)",
+  "$comment": "Emitter: src/design_lab/model_selection.py (ModelSelection.readback), served by GET /api/projects/<id>/model-selection. What this envelope adds over the stored rows is the distinction between three states, because collapsing them is the failure this surface invites: CHOSEN is a recorded selection, DECLINED is the operator's explicit 「不用」, and NEVER_ASKED means nobody was asked -- an empty list is not a decision. The documents inside `selection` and every `history` element are $ref'd to design-lab/model-selection-v1.schema.json rather than restated here, so the record and the read-back cannot drift apart; they are validated on the way in by model_selection._check() and re-read from the stored bytes on the way out. `revision_count` counts rows, `history` carries the readable ones, and `unreadable_count` names the difference -- so NEVER_ASKED can occur with revision_count > 0 when every stored row failed to parse, which is why the only count invariant stated here is the one direction that always holds.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project_id",
+    "state",
+    "selection",
+    "revision_count",
+    "unreadable_count",
+    "history",
+    "claims_not_made",
+    "does_not_say"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/model-selection-readback/v1"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "state": {"enum": ["CHOSEN", "DECLINED", "NEVER_ASKED"]},
+    "selection": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "https://dtalex66.local/schemas/model-selection-v1.schema.json"}
+      ]
+    },
+    "revision_count": {"type": "integer", "minimum": 0},
+    "unreadable_count": {"type": "integer", "minimum": 0},
+    "history": {
+      "type": "array",
+      "items": {"$ref": "https://dtalex66.local/schemas/model-selection-v1.schema.json"}
+    },
+    "claims_not_made": {"type": "array", "minItems": 4, "items": {"type": "string", "minLength": 1}},
+    "does_not_say": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  },
+  "allOf": [
+    {
+      "$comment": "A project nobody was asked about cannot carry a selection, and a selection that says a model was chosen cannot be read out of a state that says otherwise.",
+      "if": {"properties": {"state": {"const": "NEVER_ASKED"}}, "required": ["state"]},
+      "then": {"properties": {"selection": {"const": null}}}
+    },
+    {
+      "if": {"properties": {"state": {"const": "CHOSEN"}}, "required": ["state"]},
+      "then": {"properties": {"selection": {"type": "object",
+                                            "properties": {"declared_unused": {"const": false}}}}}
+    },
+    {
+      "if": {"properties": {"state": {"const": "DECLINED"}}, "required": ["state"]},
+      "then": {"properties": {"selection": {"type": "object",
+                                            "properties": {"declared_unused": {"const": true}}}}}
+    },
+    {
+      "if": {"properties": {"revision_count": {"const": 0}}, "required": ["revision_count"]},
+      "then": {"properties": {"history": {"maxItems": 0},
+                              "state": {"const": "NEVER_ASKED"},
+                              "unreadable_count": {"const": 0}}}
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/plan-feedback-list-v1.schema.json",
+  "title": "Plan Feedback List V1 (every report recorded for one plan, oldest first)",
+  "$comment": "DL-KB-16, 「方案与适用经验可再次查找复用」. History is served whole rather than merged into a single current value: 「在 Meshy 里可用」 and 「在 Meshy 里不可用」 are both facts someone may need later, and a merged field would erase the correction trail. The histogram is computed from the same rows the page lists, and `externally_verified` is a constant false for the whole collection. `outcome_words` and `dimension_verdict_words` carry the value/label pairs the service is enforcing, because LANGUAGE-POLICY §5 forbids hand-copying a status word into the screen; a select built from this answer cannot disagree with the writer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "plan_id",
+    "total",
+    "offset",
+    "limit",
+    "next_offset",
+    "records",
+    "outcome_histogram",
+    "latest",
+    "externally_verified",
+    "does_not_say",
+    "outcome_words",
+    "dimension_verdict_words"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/plan-feedback-list/v1"
+    },
+    "plan_id": {
+      "type": "string",
+      "pattern": "^aplan-[0-9a-f]{32}$"
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "next_offset": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "$ref": "https://design-lab.local/schemas/plan-feedback-v1.schema.json"
+      }
+    },
+    "outcome_histogram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "MATCHES",
+        "PARTIALLY_MATCHES",
+        "DOES_NOT_MATCH"
+      ],
+      "properties": {
+        "MATCHES": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "PARTIALLY_MATCHES": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "DOES_NOT_MATCH": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "latest": {
+      "anyOf": [
+        {
+          "$ref": "https://design-lab.local/schemas/plan-feedback-v1.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "externally_verified": {
+      "const": false
+    },
+    "does_not_say": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "outcome_words": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "label"
+        ],
+        "properties": {
+          "value": {
+            "enum": [
+              "MATCHES",
+              "PARTIALLY_MATCHES",
+              "DOES_NOT_MATCH"
+            ]
+          },
+          "label": {
+            "enum": [
+              "符合",
+              "部分符合",
+              "不符合"
+            ]
+          }
+        }
+      }
+    },
+    "dimension_verdict_words": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "label"
+        ],
+        "properties": {
+          "value": {
+            "enum": [
+              "MATCHES",
+              "PARTIALLY_MATCHES",
+              "DOES_NOT_MATCH"
+            ]
+          },
+          "label": {
+            "enum": [
+              "符合",
+              "部分符合",
+              "不符合"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

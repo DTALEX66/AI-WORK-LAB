@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/capability-manifest.schema.json",
+  "title": "Capability Manifest",
+  "description": "显式 capability 声明。只有符合此 schema 的条目才能进入 capability-index.json。",
+  "type": "object",
+  "required": [
+    "capabilityId",
+    "owner",
+    "consumer",
+    "source",
+    "license",
+    "hash",
+    "evidenceLevel"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "capabilityId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "唯一标识符（如 adapter-comfyui、reconstruction-pipeline）"
+    },
+    "version": {
+      "type": "string",
+      "description": "语义版本或 commit SHA"
+    },
+    "owner": {
+      "type": "string",
+      "description": "负责模块路径（如 integrations/generators/comfyui）"
+    },
+    "consumer": {
+      "type": "string",
+      "description": "使用方（如 reconstruction-pipeline、design-ir、human-gate）"
+    },
+    "schema": {
+      "type": "string",
+      "description": "数据 schema 路径（可选）"
+    },
+    "tests": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "测试文件路径列表"
+    },
+    "source": {
+      "type": "string",
+      "description": "源码路径或 upstream URL"
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX 许可证标识"
+    },
+    "hash": {
+      "type": "string",
+      "description": "内容 SHA-256 hash"
+    },
+    "evidenceLevel": {
+      "enum": ["E0", "E1", "E2", "E3", "E4", "E5"],
+      "description": "证据等级"
+    },
+    "status": {
+      "enum": ["declared", "structural", "controlled-runtime", "real-workflow", "independent-acceptance", "released"],
+      "description": "当前状态"
+    },
+    "supported": {
+      "type": "boolean",
+      "default": false,
+      "description": "是否已验证支持"
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "已知限制"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "额外元数据"
+    }
+  }
+}

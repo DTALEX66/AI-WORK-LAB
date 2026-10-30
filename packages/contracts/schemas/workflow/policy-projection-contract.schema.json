@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/workflow/policy-projection-contract.schema.json",
+  "title": "WORK-LAB Policy Projection Contract",
+  "description": "Uniform renderer interface: GlobalAgentPolicy + software extension -> SoftwarePolicyRenderer -> NativeProjection + ProjectionLossReport. Every adapter MUST emit a loss report; the five-state capability vocabulary is mandatory. A single boolean 'supported' is not enough.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "adapter",
+    "policy_version",
+    "renderer",
+    "capability_states"
+  ],
+  "properties": {
+    "schema_version": {"const": "workflow/policy-projection-contract/v1"},
+    "adapter": {"type": "string", "minLength": 1},
+    "policy_version": {"type": "string", "minLength": 1},
+    "renderer": {"type": "string", "minLength": 1, "description": "Module path or class that performs the projection."},
+    "capability_states": {
+      "type": "object",
+      "additionalProperties": {"enum": ["NATIVE_ENFORCED", "NATIVE_GUIDANCE", "WORKFLOW_GUARD", "OBSERVE_ONLY", "UNSUPPORTED"]},
+      "minProperties": 1
+    },
+    "detect_supported": {"type": "boolean"},
+    "plan_supported": {"type": "boolean"},
+    "apply_supported": {"type": "boolean"},
+    "readback_supported": {"type": "boolean"},
+    "rollback_supported": {"type": "boolean"},
+    "drift_supported": {"type": "boolean"},
+    "native_targets": {"type": "array", "items": {"type": "string"}},
+    "extensions_path": {"type": "string", "description": "Software-specific extension file (kept OUT of the neutral global core)."},
+    "loss_report": {"type": ["object", "null"], "description": "Inline ProjectionLossReport if the projection has been run."}
+  }
+}

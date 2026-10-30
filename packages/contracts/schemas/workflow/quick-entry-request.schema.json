@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/quick-entry-request/v1",
+  "title": "WORK-LAB Quick Entry Request",
+  "description": "The field and permission spec for the thin unified entry (blueprint §15.2, coverage item OD05 said this mode had no spec anywhere in the source). One request carries everything the five release conditions are judged from: the input revision the caller actually holds, the permission the entry may exercise, whether the chosen client is available, the recovery attempt, and cancellation. It is a request envelope only -- the context it produces is the ContextBundle (scripts/context_bundle.py), and this contract deliberately does not restate those fields, so there is one owner per predicate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "requestId", "verb", "input", "project", "permission", "client"],
+  "properties": {
+    "schema_version": {
+      "const": "work-lab/quick-entry-request/v1"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Caller-generated; the same id on a retry is what makes the operation idempotent."
+    },
+    "verb": {
+      "type": "string",
+      "enum": ["publish", "view", "resume", "adjust", "return"],
+      "description": "The unified verb the user asked for. This enum is the contract; entry_semantics.UNIFIED_VERBS is checked against it by tests/ci/test_quick_entry_contract_agrees.py so the two cannot drift."
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseRevision", "currentRevision"],
+      "properties": {
+        "baseRevision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the caller's text was built against (a task revision, a file-set digest, a commit). UNKNOWN is a value, not an empty string: use the literal 'UNKNOWN' and the entry reports it rather than guessing."
+        },
+        "currentRevision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the target holds now. A difference from baseRevision is the INPUT_REVISED outcome -- the entry must not silently proceed on stale input."
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectId"],
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An approved project id. The entry resolves it through the approved index; a path is never taken from the caller's text."
+        }
+      }
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["observe", "propose", "execute"],
+          "description": "observe reads; propose produces a candidate with no side effect; execute may cause one. Refusal is a normal outcome, not an error."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this mode was granted, when the caller has one."
+        }
+      }
+    },
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostId"],
+      "properties": {
+        "hostId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "declaredAvailable": {
+          "type": "boolean",
+          "description": "The caller's belief only. The entry re-checks and reports CLIENT_UNAVAILABLE on disagreement -- a claimed availability is not evidence."
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt"],
+      "description": "Present when this request follows a failure. Absent means the first attempt.",
+      "properties": {
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "previousOutcome": {
+          "type": "string",
+          "enum": ["FAILED", "TIMED_OUT", "PARTIAL", "ABANDONED"]
+        },
+        "carriedForward": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Which stable facts survived the failed attempt, so recovery cannot quietly lose one."
+        }
+      }
+    },
+    "cancellation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested"],
+      "description": "Absent means not cancelled.",
+      "properties": {
+        "requested": { "type": "boolean" },
+        "sideEffectsAlreadyMade": {
+          "type": "boolean",
+          "description": "A cancel after a side effect is not a rollback; the entry must say which of the two happened."
+        }
+      }
+    }
+  }
+}

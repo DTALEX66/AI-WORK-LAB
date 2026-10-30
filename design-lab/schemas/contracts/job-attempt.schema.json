@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/job-attempt.schema.json",
+  "title": "job-attempt",
+  "description": "One job attempt. attempt_id is the globally unique audit identity (matches operation_receipt.attempt_id in the LocalStateStore DDL); status is enum-constrained.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "attempt_id",
+    "job_id",
+    "schemaVersion",
+    "attempt_no",
+    "status"
+  ],
+  "properties": {
+    "attempt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/job-attempt/v1"
+    },
+    "attempt_no": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "enum": [
+        "PENDING",
+        "RUNNING",
+        "RECEIPTED",
+        "FAILED",
+        "TIMED_OUT"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "SUCCEEDED",
+        "FAILED",
+        "TIMED_OUT",
+        "OUTCOME_UNKNOWN"
+      ]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failure_reason": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

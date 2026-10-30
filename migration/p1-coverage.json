@@ -1,0 +1,29 @@
+{
+  "generated": "2026-10-30",
+  "note": "P1 实际迁入并运行验证的语义能力覆盖。逐条与 migration/mapping.csv 的来源键对应；映射的『目标状态』由本文件补充为 P1_MIGRATED（其余保持 MAPPED_P0，去向已在映射登记）。",
+  "verified_evidence": [
+    ".project-local/audit/20261029-local-fusion-p0p1/04_verification_logs/pytest-full.log (198 passed)",
+    ".project-local/audit/20261029-local-fusion-p0p1/04_verification_logs/boot-probe.log (verdict OK)"
+  ],
+  "migrated_capabilities": [
+    {"source_keys": ["design:src/design_lab/http_service.py#module", "design:src/design_lab/http_service.py#L144", "design:src/design_lab/http_service.py#L146", "87+ design HTTP_ROUTE 条目"], "target": "domains/design/design_lab/http_service.py（内核+89 路由，/api/v1 扩展点）", "evidence": "boot-probe 全部 200/401；tests/unified/test_v02_surface.py"},
+    {"source_keys": ["design:src/design_lab/service.py#module", "design:src/design_lab/runtime/*"], "target": "domains/design/design_lab/service.py + runtime/（ProjectService、路径策略、崩溃恢复）", "evidence": "boot-probe reconciled_attempts 输出；V03 重启读回"},
+    {"source_keys": ["design:src/design_lab/knowledge_library.py#module", "design:design-knowledge 族 11 条"], "target": "domains/design/design_lab/knowledge_library.py（FTS5+trigram+中文短词回退+索引重建）", "evidence": "tests/unified/test_v06_knowledge.py；legacy test_knowledge_library.py 全过"},
+    {"source_keys": ["design:src/design_lab/assistance_plan.py#module", "design:design-plan 族"], "target": "domains/design/design_lab/assistance_plan.py（方案修订/冲突/选择）", "evidence": "tests/unified/test_v04_design_loop.py；legacy test_assistance_plan.py 全过"},
+    {"source_keys": ["design:src/design_lab/target_profile.py#module", "design:design-target 族 18 条"], "target": "domains/design/design_lab/target_profile.py", "evidence": "legacy test_target_profile.py 全过；V04 引用绑定"},
+    {"source_keys": ["design:packages/capabilities/reconstruction/**（25+ 文件）"], "target": "packages/capabilities/reconstruction/** + 设计包桥接", "evidence": "桥接导入成功（ contracts 可加载）；资格保持 NOT_VERIFIED（诚实状态）"},
+    {"source_keys": ["design:src/design_lab/** 其余运行模块（adapters/creative/analysis/assurance/governance 等）"], "target": "domains/design/design_lab/**（全量保留，资格未验证的保持 NOT_VERIFIED）", "evidence": "迁移清单 sha256 校验；/api/capabilities 兼容面 200"},
+    {"source_keys": ["work:packages/client-neutral-core/scripts/repair_pack_projection.py", "work:packages/client-neutral-core/scripts/repair_state.py", "work:packages/client-neutral-core/scripts/repair_verification.py", "work:packages/client-neutral-core/scripts/issue_projection.py", "work:packages/client-neutral-core/scripts/canonical_store.py", "work:task 族 28 条"], "target": "domains/work/workflow_core/（repair 三件套+问题投影+规范存储）", "evidence": "tests/unified/test_v03_work_loop.py 闭环；legacy test_repair_state/test_repair_pack_projection/test_repair_verification 全过"},
+    {"source_keys": ["work:services/control/control_service.py", "work:services/orchestration/{sidecar,sidecar_lock,sse_hub,sidecar_endpoint,composition_root,live_gate,sse_revision}.py", "work:packages/client-neutral-core/scripts/{permission_gate,path_text,plan_candidate,evidence_range_reader,project_temp,snapshot_api,solution_library,open_task_register_projection,product_project,project_identity_resolver,workspace_evidence,snapshot_validator,artifact_flow_policy}.py", "work:services/task-governance/{permission_gate,completion_authority}.py"], "target": "domains/work/control/", "evidence": "包导入成功；solution_library 进统一检索面（v1 knowledge/search solutions 段）"},
+    {"source_keys": ["design:apps/workbench/**（兼容 UI）"], "target": "apps/workbench/**", "evidence": "boot-probe /workbench 200"},
+    {"source_keys": ["design:design-lab/schemas/**", "design:design-lab/{config,domain-packs,production,readiness}", "design:vendor/sources.*", "design:research/candidates/CANDIDATE-TAXONOMY.json", "work:packages/contracts/**"], "target": "打包资源布局 + 根布局（capability 库/契约读取验证通过）", "evidence": "/api/capabilities 200；/api/v1/capabilities 200"},
+    {"source_keys": ["design:src/design_lab/{__init__,__main__,cli}.py"], "target": "backend/__main__.py 统一入口（python -m backend，stdin token 同协议）", "evidence": "boot-probe LISTENING json"},
+    {"source_keys": ["tests: work test_repair_state/test_repair_pack_projection/test_repair_verification；design test_knowledge_library/test_assistance_plan/test_target_profile"], "target": "tests/legacy/{work,design}/", "evidence": "169 passed（V08）"}
+  ],
+  "deferred_not_deleted": [
+    "native 宿主执行（photoshop_com/illustrator_com COM 适配器全量保留，资格 BLOCKED_HOST_VALIDATION）",
+    "执行器/Agent 联网派发（适配器合同保留，P2/P3）",
+    "reconstruction 深层重建、generative 管线（实现保留，P3）",
+    "自身开发执行链（ImprovementCandidate 合同保留，v1 /api/v1/improvements 返回 CONTRACT_ONLY）"
+  ]
+}

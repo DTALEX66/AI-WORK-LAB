@@ -1,0 +1,370 @@
+{
+  "schema_version": "design-lab/readiness-host-matrix/v1",
+  "task_id": "DL-P0-070",
+  "inventory_ref": "reports/current/MACHINE_INVENTORY.json",
+  "inventory_observed_at": "2026-09-13T14:54:08+00:00",
+  "evidence_level": "E1",
+  "note": "Claimed versus recorded host capability for this machine. Populated only from reports/current/MACHINE_INVENTORY.json (DL-P0-010) and docs/LOCAL_ENVIRONMENT.md. No host was launched, attached to, or queried while producing this document, so every api.verified is false and every verification.state is NOT_VERIFIED: NOT_FOUND_IN_SCOPE means 'no match within the recorded search scope', never proof of universal absence. Version strings and inventory_name values are copied verbatim so a reviewer can diff this file against the inventory.",
+  "entries": [
+    {
+      "host_id": "adobe-photoshop",
+      "host_version": "26.7.0.15",
+      "inventory_name": "Adobe Photoshop 2025",
+      "install_alias": "adobe-photoshop-2025",
+      "present": true,
+      "presence_basis": "recorded inventory PRESENT via registry + path probe; exe_exists true. Installed != process running != workflow verified.",
+      "apis": [
+        {
+          "api_id": "photoshop-com-automation",
+          "kind": "COM",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "COM automation is the historical bridge route. A live COM readback for version 26.7.0 is recorded in docs/LOCAL_ENVIRONMENT.md, but it was not re-observed in this build and this deployment is not qualified by it."
+        },
+        {
+          "api_id": "photoshop-uxp-plugin",
+          "kind": "UXP",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "UXP described as an intended surface; no UXP plugin has been authored, loaded, or exercised in this repository."
+        },
+        {
+          "api_id": "photoshop-plugin-binary",
+          "kind": "PLUGIN",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "C++ plugin surface assumed to exist with the host; never built or loaded here."
+        },
+        {
+          "api_id": "photoshop-psd",
+          "kind": "FILE_FORMAT",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "PSD is the editable delivery format. Format presence is asserted from the host product identity only."
+        }
+      ],
+      "editable_delivery": true,
+      "readback_method": "reopen the delivered PSD and re-read layer/object state; historical controlled roundtrip is recorded in docs/decisions/R3-PHOTOSHOP-NATIVE-ROUNDTRIP-2026-09-08.md and is NOT re-verified here",
+      "known_limits": [
+        "A live readback must target exactly this host version; another version is a different capability.",
+        "The COM bridge needs a running host process that may be the user's own session; batch execution is not proven.",
+        "Complex workbench/reference cases and UXP runtime remain unproven.",
+        "No absolute install path is stored here; resolve the install through the alias and the recorded inventory."
+      ],
+      "evidence_refs": [
+        "reports/current/MACHINE_INVENTORY.json",
+        "docs/LOCAL_ENVIRONMENT.md",
+        "docs/decisions/R3-PHOTOSHOP-NATIVE-ROUNDTRIP-2026-09-08.md",
+        "docs/decisions/R3-READBACK-AND-H3-PREFLIGHT-2026-09-07.md"
+      ],
+      "verification": {
+        "state": "NOT_VERIFIED",
+        "by": "not-recorded",
+        "at": null,
+        "evidence_ref": null
+      }
+    },
+    {
+      "host_id": "adobe-illustrator",
+      "host_version": "29.5.1",
+      "inventory_name": "Adobe Illustrator 2025",
+      "install_alias": "adobe-illustrator-2025",
+      "present": true,
+      "presence_basis": "recorded inventory PRESENT via registry + path probe; exe_exists true. Installed != process running != workflow verified.",
+      "apis": [
+        {
+          "api_id": "illustrator-com-automation",
+          "kind": "COM",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "COM automation is the historical bridge route; the production bridge is recorded as incomplete."
+        },
+        {
+          "api_id": "illustrator-uxp-plugin",
+          "kind": "UXP",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Declared surface; no UXP plugin exists in this repository."
+        },
+        {
+          "api_id": "illustrator-plugin-binary",
+          "kind": "PLUGIN",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Native plugin surface assumed present with the host; never built or loaded here."
+        },
+        {
+          "api_id": "illustrator-ai-svg",
+          "kind": "FILE_FORMAT",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "AI/SVG are the editable vector delivery formats; SVG byte-level differences against expectation are recorded as an open limit."
+        }
+      ],
+      "editable_delivery": true,
+      "readback_method": "reopen the delivered AI/SVG and re-read object/text state; historical batch and recovery audits are recorded in docs/decisions and are NOT re-verified here",
+      "known_limits": [
+        "SVG output bytes are recorded as differing from the expected form; treat byte equality as unproven.",
+        "Legitimate path rejections are recorded and remain an open defect.",
+        "The production bridge (create-without-host-session) remains incomplete.",
+        "A live readback must target exactly this host version."
+      ],
+      "evidence_refs": [
+        "reports/current/MACHINE_INVENTORY.json",
+        "docs/LOCAL_ENVIRONMENT.md",
+        "docs/decisions/R3-ILLUSTRATOR-BATCH-AUDIT-2026-09-07.md",
+        "docs/decisions/R3-ILLUSTRATOR-RECOVERY-AUDIT-2026-09-07.md"
+      ],
+      "verification": {
+        "state": "NOT_VERIFIED",
+        "by": "not-recorded",
+        "at": null,
+        "evidence_ref": null
+      }
+    },
+    {
+      "host_id": "adobe-photoshop",
+      "host_version": "2023",
+      "inventory_name": "Adobe Photoshop 2023",
+      "install_alias": "adobe-photoshop-2023",
+      "present": true,
+      "presence_basis": "recorded inventory PRESENT via directory listing; recorded as a legacy version retained, not the primary test target.",
+      "apis": [
+        {
+          "api_id": "photoshop-com-automation",
+          "kind": "COM",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Legacy COM registration was not probed in this build."
+        },
+        {
+          "api_id": "photoshop-psd",
+          "kind": "FILE_FORMAT",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "PSD assumed available with the legacy product."
+        }
+      ],
+      "editable_delivery": true,
+      "readback_method": "reopen the delivered PSD in this exact legacy build; never executed in this repository",
+      "known_limits": [
+        "Legacy build retained only; it is not the primary test target and carries no capability of the 2025 build.",
+        "No COM registration, plugin, or readback evidence is recorded for this version."
+      ],
+      "evidence_refs": [
+        "reports/current/MACHINE_INVENTORY.json"
+      ],
+      "verification": {
+        "state": "NOT_VERIFIED",
+        "by": "not-recorded",
+        "at": null,
+        "evidence_ref": null
+      }
+    },
+    {
+      "host_id": "adobe-illustrator",
+      "host_version": "2023",
+      "inventory_name": "Adobe Illustrator 2023",
+      "install_alias": "adobe-illustrator-2023",
+      "present": true,
+      "presence_basis": "recorded inventory PRESENT via directory listing; recorded as a legacy version retained, not the primary test target.",
+      "apis": [
+        {
+          "api_id": "illustrator-com-automation",
+          "kind": "COM",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Legacy COM registration was not probed in this build."
+        },
+        {
+          "api_id": "illustrator-ai-svg",
+          "kind": "FILE_FORMAT",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "AI/SVG assumed available with the legacy product."
+        }
+      ],
+      "editable_delivery": true,
+      "readback_method": "reopen the delivered AI/SVG in this exact legacy build; never executed in this repository",
+      "known_limits": [
+        "Legacy build retained only; it is not the primary test target.",
+        "No capability is inherited from the 2025 build or vice versa."
+      ],
+      "evidence_refs": [
+        "reports/current/MACHINE_INVENTORY.json"
+      ],
+      "verification": {
+        "state": "NOT_VERIFIED",
+        "by": "not-recorded",
+        "at": null,
+        "evidence_ref": null
+      }
+    },
+    {
+      "host_id": "adobe-premiere-pro",
+      "host_version": "2025",
+      "inventory_name": "Adobe Premiere Pro 2025",
+      "install_alias": "adobe-premiere-pro-2025",
+      "present": false,
+      "presence_basis": "recorded inventory NOT_FOUND_IN_SCOPE: search covered HKLM/HKCU Uninstall fields plus the C:/Program Files/Adobe listing. Not found in the searched scope != proof of absence on all volumes.",
+      "apis": [
+        {
+          "api_id": "premiere-uxp-plugin",
+          "kind": "UXP",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Declared as an intended target surface; the host itself was not located in the recorded scope."
+        },
+        {
+          "api_id": "premiere-project-file",
+          "kind": "FILE_FORMAT",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Project format declared for future delivery; no artifact exists."
+        }
+      ],
+      "editable_delivery": false,
+      "readback_method": null,
+      "known_limits": [
+        "Host absent from the recorded inventory scope; nothing may be delivered or read back.",
+        "Any future presence finding requires a fresh recorded inventory, not an assumption."
+      ],
+      "evidence_refs": [
+        "reports/current/MACHINE_INVENTORY.json"
+      ],
+      "verification": {
+        "state": "NOT_VERIFIED",
+        "by": "not-recorded",
+        "at": null,
+        "evidence_ref": null
+      }
+    },
+    {
+      "host_id": "adobe-media-encoder",
+      "host_version": "2025",
+      "inventory_name": "Adobe Media Encoder 2025",
+      "install_alias": "adobe-media-encoder-2025",
+      "present": false,
+      "presence_basis": "recorded inventory NOT_FOUND_IN_SCOPE using the same search scope as Premiere Pro 2025.",
+      "apis": [
+        {
+          "api_id": "media-encoder-cli",
+          "kind": "CLI",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Headless encode/watch-folder CLI is a declared integration route only; the binary was not located and was never invoked."
+        }
+      ],
+      "editable_delivery": false,
+      "readback_method": null,
+      "known_limits": [
+        "Host absent from the recorded inventory scope; no encode path is available.",
+        "No command line, preset, or watch folder was probed."
+      ],
+      "evidence_refs": [
+        "reports/current/MACHINE_INVENTORY.json"
+      ],
+      "verification": {
+        "state": "NOT_VERIFIED",
+        "by": "not-recorded",
+        "at": null,
+        "evidence_ref": null
+      }
+    },
+    {
+      "host_id": "adobe-indesign",
+      "host_version": "2025",
+      "inventory_name": "Adobe InDesign 2025",
+      "install_alias": "adobe-indesign-2025",
+      "present": false,
+      "presence_basis": "recorded inventory NOT_FOUND_IN_SCOPE using the same search scope as Premiere Pro 2025.",
+      "apis": [
+        {
+          "api_id": "indesign-uxp-plugin",
+          "kind": "UXP",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Declared target surface for layout delivery; the host was not located in the recorded scope."
+        },
+        {
+          "api_id": "indesign-idml-format",
+          "kind": "FILE_FORMAT",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "IDML interchange declared as a future uncompressed delivery route; no artifact exists."
+        }
+      ],
+      "editable_delivery": false,
+      "readback_method": null,
+      "known_limits": [
+        "Host absent from the recorded inventory scope; no layout delivery or readback path exists."
+      ],
+      "evidence_refs": [
+        "reports/current/MACHINE_INVENTORY.json"
+      ],
+      "verification": {
+        "state": "NOT_VERIFIED",
+        "by": "not-recorded",
+        "at": null,
+        "evidence_ref": null
+      }
+    },
+    {
+      "host_id": "adobe-after-effects",
+      "host_version": "2025",
+      "inventory_name": "Adobe After Effects 2025",
+      "install_alias": "adobe-after-effects-2025",
+      "present": false,
+      "presence_basis": "recorded inventory NOT_FOUND_IN_SCOPE using the same search scope as Premiere Pro 2025.",
+      "apis": [
+        {
+          "api_id": "after-effects-scripting",
+          "kind": "CLI",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Scripting/headless render is a declared integration route; the host was not located and nothing was executed."
+        },
+        {
+          "api_id": "after-effects-aep-format",
+          "kind": "FILE_FORMAT",
+          "declared": true,
+          "verified": false,
+          "evidence_level": "E1",
+          "note": "Project format declared for future motion delivery; no artifact exists."
+        }
+      ],
+      "editable_delivery": false,
+      "readback_method": null,
+      "known_limits": [
+        "Host absent from the recorded inventory scope; no motion delivery or readback path exists."
+      ],
+      "evidence_refs": [
+        "reports/current/MACHINE_INVENTORY.json"
+      ],
+      "verification": {
+        "state": "NOT_VERIFIED",
+        "by": "not-recorded",
+        "at": null,
+        "evidence_ref": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/capability-status.schema.json",
+  "title": "DESIGN-LAB Capability Status Enumeration",
+  "type": "object",
+  "required": ["schemaVersion", "evidenceLevels", "states", "capabilityStates", "promotionRules", "hardRules"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"type": "string"},
+    "schemaVersion": {"const": "design-lab/capability-status/v1"},
+    "evidenceLevels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "claim", "proof"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+          "label": {"type": "string", "minLength": 1},
+          "claim": {"type": "string", "minLength": 1},
+          "proof": {"type": "string", "minLength": 1}
+        }
+      },
+      "minItems": 6,
+      "maxItems": 6
+    },
+    "states": {
+      "type": "array",
+      "items": {"enum": ["NOT_RUN", "PASS", "FAIL", "BLOCKED", "UNVERIFIED", "SKIPPED_OPTIONAL"]},
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true
+    },
+    "capabilityStates": {
+      "type": "array",
+      "items": {"enum": ["missing", "declared-only", "structural-pass", "isolated-pass", "runtime-pass", "release-verified", "commercially-proven", "blocked", "superseded"]},
+      "minItems": 9,
+      "maxItems": 9,
+      "uniqueItems": true
+    },
+    "capabilityRecords": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["state", "evidenceLevel"],
+        "additionalProperties": false,
+        "properties": {
+          "state": {"enum": ["missing", "declared-only", "structural-pass", "isolated-pass", "runtime-pass", "release-verified", "commercially-proven", "blocked", "superseded"]},
+          "evidenceLevel": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+          "lastVerified": {"type": "string"},
+          "note": {"type": "string"},
+          "effectiveEvidence": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+          "effectiveNote": {"type": "string"}
+        }
+      }
+    },
+    "promotionRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "requires"],
+        "additionalProperties": false,
+        "properties": {
+          "from": {"type": "string", "minLength": 1},
+          "to": {"type": "string", "minLength": 1},
+          "requires": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+        }
+      },
+      "minItems": 5
+    },
+    "hardRules": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+  }
+}

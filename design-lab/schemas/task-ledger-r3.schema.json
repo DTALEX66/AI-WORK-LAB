@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/task-ledger-r3.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "taskpack", "plan_path", "baseline_sha", "updated_at", "source", "tasks", "evidence"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/task-ledger/r3-v1"},
+    "taskpack": {"const": "DL-TP-20260906-R3"},
+    "plan_path": {"type": "string", "minLength": 1},
+    "baseline_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["archive_sha256", "tasks_sha256", "body_sha256"],
+      "properties": {
+        "archive_sha256": {"$ref": "#/$defs/hash"},
+        "tasks_sha256": {"const": "85174ee8c3ff037aa08bdc4bafa435be768378be3420a179cac0735b4c69b8e4"},
+        "body_sha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "tasks": {"type": "array", "minItems": 24, "maxItems": 24, "items": {
+      "type": "object",
+      "required": ["id", "title", "depends_on", "required_axes", "axes", "acceptance"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^R3-(0[1-9]|1[0-9]|2[0-4])$"},
+        "title": {"type": "string", "minLength": 1},
+        "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "acceptance": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "required_axes": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"enum": ["implementation", "unit", "host_live", "delivery"]}},
+        "axes": {"type": "object", "additionalProperties": false,
+          "required": ["implementation", "unit", "host_live", "delivery"],
+          "properties": {
+            "implementation": {"$ref": "#/$defs/axis"}, "unit": {"$ref": "#/$defs/axis"},
+            "host_live": {"$ref": "#/$defs/axis"}, "delivery": {"$ref": "#/$defs/axis"}
+          }
+        }
+      }
+    }},
+    "evidence": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "task_ids", "kind", "outcome", "subject_sha", "binding", "observed_at", "software", "subject_files", "artifacts", "note"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "task_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^R3-(0[1-9]|1[0-9]|2[0-4])$"}},
+        "kind": {"enum": ["structural", "local_test", "host_live", "delivery"]},
+        "outcome": {"enum": ["PASS", "PARTIAL", "FAIL", "NOT_EXECUTED"]},
+        "subject_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "binding": {"enum": ["WORKTREE_FILES", "COMMIT"]},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "software": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string"}},
+        "subject_files": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/hash"}},
+        "artifacts": {"type": "array", "minItems": 1, "items": {
+          "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+          "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/hash"}}
+        }},
+        "note": {"type": "string"}
+      }
+    }}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$", "not": {"const": "0000000000000000000000000000000000000000000000000000000000000000"}},
+    "axis": {"type": "object", "additionalProperties": false, "required": ["state", "evidence"],
+      "properties": {
+        "state": {"enum": ["NOT_EXECUTED", "NOT_REQUIRED", "PARTIAL", "IMPLEMENTED_LOCAL", "PASS", "BLOCKED"]},
+        "evidence": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    }
+  }
+}

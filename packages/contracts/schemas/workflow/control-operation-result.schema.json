@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://work-lab.invalid/schemas/control-operation-result.schema.json",
+  "title": "Control Surface Operation Result",
+  "description": "The typed answer to one control request. Three things stay separate here because collapsing them is how a product starts lying: what was asked (source), what actually happened (execution fact), and what may be concluded (verdict). An unimplemented capability answers NOT_IMPLEMENTED with a reason — it never returns a success shape, and evidence_level can never be raised by the caller.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "operation", "idempotency_key", "status", "reason_code", "reason", "task_id", "receipt", "readback", "evidence_level", "observed_at", "next_action"],
+  "properties": {
+    "schema_version": {"const": "worklab/control-operation-result/v1"},
+    "operation": {"type": "string", "minLength": 1, "maxLength": 200},
+    "idempotency_key": {"type": "string", "minLength": 8, "maxLength": 200},
+    "status": {
+      "enum": ["ACCEPTED", "PLANNED", "REFUSED", "NEEDS_HUMAN", "NOT_IMPLEMENTED", "FAILED", "READBACK_MISMATCH"]
+    },
+    "reason_code": {"type": "string", "minLength": 1, "maxLength": 120},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "task_id": {"type": ["string", "null"], "maxLength": 200},
+    "receipt": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["receipt_id", "kind", "observed_at", "digest"],
+      "properties": {
+        "receipt_id": {"type": "string", "minLength": 1, "maxLength": 200},
+        "kind": {"type": "string", "minLength": 1, "maxLength": 120},
+        "observed_at": {"type": "string", "maxLength": 64},
+        "digest": {"type": ["string", "null"], "maxLength": 128}
+      }
+    },
+    "readback": {
+      "type": ["object", "null"],
+      "description": "The state re-read from the store after the write, or null when nothing was read back. A callback return is not a readback."
+    },
+    "evidence_level": {"enum": ["NO_EVIDENCE", "SIMULATED", "SYNTHETIC", "INTEGRATED", "REAL"]},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "next_action": {"type": ["string", "null"], "maxLength": 2000}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "ACCEPTED"}}, "required": ["status"]},
+      "then": {
+        "properties": {
+          "receipt": {"type": "object"},
+          "readback": {"type": "object"},
+          "evidence_level": {"enum": ["SYNTHETIC", "INTEGRATED", "REAL"]}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"enum": ["NOT_IMPLEMENTED", "REFUSED", "NEEDS_HUMAN"]}}, "required": ["status"]},
+      "then": {"properties": {"receipt": {"type": "null"}, "readback": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "PLANNED"}}, "required": ["status"]},
+      "then": {
+        "description": "A plan is an answer about what a write would do, not a write: it carries no receipt and must state written=false.",
+        "properties": {
+          "receipt": {"type": "null"},
+          "readback": {
+            "type": "object",
+            "required": ["plan_only", "written"],
+            "properties": {
+              "plan_only": {"const": true},
+              "written": {"const": false}
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,521 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/task-ledger-r5-v1.schema.json",
+  "title": "DESIGN-LAB R5 task ledger (design-lab/task-ledger/r5-v1)",
+  "description": "Contract for the live ledger design-lab/config/task-ledger-r3.json, whose schemaVersion is design-lab/task-ledger/r5-v1. The file name keeps the r3 spelling because that path is the ledger's own history: the ledger migrated r3-v1 -> r5-v1 in place on 2026-09-09 and no r5-v1 schema was written then, which is the drift this file closes. Every shape here was read off the live ledger and off the semantic rules already enforced in src/design_lab/governance/r5_contract.py: enums are the observed vocabulary, patterns are the observed ids, required lists are the observed keys, and every closed object sets additionalProperties false so a field the ledger grows without declaring it here fails. NOT expressible in JSON Schema, therefore owned by r5_contract.py and deliberately not restated as a weaker shape rule here: (1) dependency acyclicity over depends_on plus required conditional_dependencies; (2) cross-record referential integrity -- every axes.*.evidence id must exist in evidence[], evidence[].task_ids must name real tasks, and task and receipt ids must be unique; (3) equality of each task's definition/title/depends_on against the frozen taskpack docs/history/taskpacks/r5-20260908/tasks.json, and of predecessor_task_ids against the R3->R5 successor mapping; (4) required_axes derived from a task's acceptance rather than from what the ledger happens to declare; (5) axis-state coherence (implementation cannot qualify another axis, a required axis cannot be waived, a completion state requires reassessment REVIEWED); (6) the embedded predecessor must be byte-identical to the frozen r3 file and its sha256 must match; (7) RFC3339 strictness beyond format, via validate_timestamp(). The r3-v1 contract for the embedded predecessor and for docs/history/taskpacks/r3-ledger-pre-r5-20260909.json stays in task-ledger-r3.schema.json -- that file's bytes are SHA-pinned inside six evidence records, so this schema references it instead of copying it; a second copy of one contract is how the two got out of sync in the first place.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskpack",
+    "plan_path",
+    "baseline_sha",
+    "updated_at",
+    "source",
+    "predecessor",
+    "tasks",
+    "evidence"
+  ],
+  "properties": {
+    "currentExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-contract-delegated": "design_lab.governance.current_execution.validate",
+      "required": [
+        "taskpack",
+        "plan_path",
+        "source",
+        "decision_path",
+        "legacy_snapshot",
+        "legacy_disposition",
+        "mobile",
+        "tasks",
+        "evidence",
+        "note"
+      ],
+      "properties": {
+        "taskpack": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plan_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        },
+        "decision_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "legacy_snapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        },
+        "legacy_disposition": {
+          "const": "FROZEN_EVIDENCE_ONLY_NOT_DISPATCH"
+        },
+        "mobile": {
+          "const": "FROZEN_DEFERRED"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tasks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "state",
+              "evidence"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state": {
+                "enum": [
+                  "NOT_STARTED",
+                  "IN_PROGRESS",
+                  "PARTIAL",
+                  "BLOCKED",
+                  "DONE",
+                  "FROZEN_DEFERRED"
+                ]
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              }
+            }
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "task_id",
+              "axis",
+              "outcome",
+              "subject_sha",
+              "artifact_path",
+              "artifact_sha256",
+              "command",
+              "exit_code",
+              "observed_at"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "task_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "axis": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "PARTIAL",
+                  "BLOCKED",
+                  "NOT_EXECUTED"
+                ]
+              },
+              "subject_sha": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{40}$"
+              },
+              "artifact_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "artifact_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "command": {
+                "type": "string",
+                "minLength": 1
+              },
+              "exit_code": {
+                "type": "integer"
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemaVersion": {
+      "const": "design-lab/task-ledger/r5-v1",
+      "description": "The only version this file is the contract for. verify_ledger_schema_pairing.py selects schemas BY this value and fails hard when a version names no file -- that is exactly the branch's root cause."
+    },
+    "taskpack": {
+      "const": "DL-TP-20260908-R5",
+      "description": "r5_contract.py pins this as const read from the frozen source's id; same value, so the shape and the provenance agree."
+    },
+    "plan_path": {
+      "const": "docs/history/taskpacks/r5-20260908/02-TASKS.md",
+      "description": "r5_contract.py pins the const and separately requires the file to be readable."
+    },
+    "baseline_sha": {
+      "const": "ed8d45ab2857b312f6056c43f7bb5e19dd9b65eb",
+      "description": "The frozen R5 source developmentSha (40 hex); r5_contract.py pins it as a const read from tasks.json."
+    },
+    "updated_at": {"$ref": "#/$defs/timestamp"},
+    "source": {
+      "type": "object",
+      "description": "The R5 source shape is {path, sha256}; the r3-v1 shape was {archive_sha256, tasks_sha256, body_sha256}. r5_contract.py pins the whole object as one const, so both fields are pinned here.",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"const": "docs/history/taskpacks/r5-20260908/tasks.json"},
+        "sha256": {"const": "31dde89eb4ede81fe88c0a5c5144adfb86af8db4c4d8c263bde2199180369b69"}
+      }
+    },
+    "predecessor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskpack", "sha256", "ledger"],
+      "description": "The frozen R3 ledger this taskpack succeeded. History only through this record: it never qualifies new work (r5_contract.py).",
+      "properties": {
+        "taskpack": {"const": "DL-TP-20260906-R3"},
+        "sha256": {"const": "2df7e722b96443dbfa451060f6747cfff135fa48847eb6eb212fae5fe46d65fb"},
+        "ledger": {
+          "type": "object",
+          "description": "The whole frozen r3 ledger, inline. Its contract is design-lab/schemas/task-ledger-r3.schema.json, which verify_ledger_schema_pairing.py applies to the file at docs/history/taskpacks/r3-ledger-pre-r5-20260909.json and separately proves this inline copy deep-equals that file; r5_contract.py pins it as a const against the same bytes. Not re-described here on purpose.",
+          "x-contract-delegated": "design-lab/schemas/task-ledger-r3.schema.json"
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 28,
+      "maxItems": 28,
+      "description": "28 pinned tasks, ids DL-R5-001..DL-R5-028. The inventory must also EQUAL the frozen source, which is a cross-record rule owned by r5_contract.py.",
+      "items": {"$ref": "#/$defs/task"}
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Append-only receipts. No maxItems on purpose: records are added by every bounded work wave, and a count pin here would be a date disguised as a contract. Uniqueness of ids and the axes -> evidence reference integrity are owned by r5_contract.py.",
+      "items": {"$ref": "#/$defs/evidenceRecord"}
+    }
+  },
+  "$defs": {
+    "r5TaskId": {
+      "type": "string",
+      "pattern": "^DL-R5-(00[1-9]|01[0-9]|02[0-8])$"
+    },
+    "r3TaskId": {
+      "type": "string",
+      "pattern": "^R3-(0[1-9]|1[0-9]|2[0-4])$"
+    },
+    "evidenceId": {
+      "type": "string",
+      "pattern": "^r5-[a-z0-9-]+$",
+      "description": "The naming convention all 40 live receipts follow: r5-<subject>-<YYYYMMDD>."
+    },
+    "axisName": {
+      "enum": ["implementation", "unit", "host_live", "delivery"],
+      "description": "The four evidence axes; identical to the r3-v1 vocabulary and to reporting.KINDS."
+    },
+    "gitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "not": {"const": "0000000000000000000000000000000000000000000000000000000000000000"},
+      "description": "Carried over from the r3-v1 $defs.hash: a zero digest is not evidence."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "The same RFC3339 shape r5_contract.validate_timestamp() requires; that module additionally parses it with datetime.fromisoformat."
+    },
+    "axis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "evidence"],
+      "properties": {
+        "state": {
+          "enum": ["NOT_EXECUTED", "NOT_REQUIRED", "PARTIAL", "IMPLEMENTED_LOCAL", "PASS", "BLOCKED"],
+          "description": "The r3-v1 vocabulary is unchanged in r5. Which states a given axis may hold, and that IMPLEMENTED_LOCAL on a non-implementation axis is a lie, is cross-field logic owned by r5_contract.py."
+        },
+        "evidence": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "May be empty -- 55 of the live ledger's 112 axis records declare no evidence, the honest shape for NOT_EXECUTED/PARTIAL work. Every id here must exist in evidence[]; that is a cross-record rule owned by r5_contract.py.",
+          "items": {"$ref": "#/$defs/evidenceId"}
+        }
+      }
+    },
+    "conditionDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "reason"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "reason": {"type": "string", "pattern": "\\S"}
+      }
+    },
+    "taskDefinition": {
+      "type": "object",
+      "description": "The frozen R5 taskpack delta for this task, copied verbatim from docs/history/taskpacks/r5-20260908/tasks.json; r5_contract.py rejects any edit to it by comparing against the source, so this is also a shape statement about the frozen source.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "depends_on",
+        "priority",
+        "execution_state",
+        "baseline_observation",
+        "implementation",
+        "acceptance",
+        "rollback",
+        "evidence_required",
+        "axes",
+        "execution_owner"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/r5TaskId"},
+        "title": {"type": "string", "minLength": 1},
+        "depends_on": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/r5TaskId"}
+        },
+        "priority": {"enum": ["P0", "P1"]},
+        "execution_state": {"enum": ["PLANNED_DELTA"]},
+        "baseline_observation": {"type": "string", "minLength": 1},
+        "implementation": {"type": "string", "minLength": 1},
+        "acceptance": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "rollback": {"type": "string", "minLength": 1},
+        "evidence_required": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "description": "The provenance fields every R5 receipt must carry; the live vocabulary is exactly these six and appears on all 28 tasks.",
+          "items": {
+            "enum": [
+              "source_sha",
+              "environment_versions",
+              "commands_and_exit_codes",
+              "artifact_hashes",
+              "limitations",
+              "rollback_record"
+            ]
+          }
+        },
+        "axes": {
+          "type": "object",
+          "description": "Per-axis intent as stated by the frozen taskpack. Values are const-pinned to the words all 28 frozen definitions use.",
+          "additionalProperties": false,
+          "required": ["implementation", "unit", "host_live", "delivery"],
+          "properties": {
+            "implementation": {"const": "REASSESS_FROM_R3"},
+            "unit": {"const": "REASSESS_FROM_R3"},
+            "host_live": {"const": "NOT_VERIFIED_BY_THIS_AUDIT"},
+            "delivery": {"const": "NOT_ACCEPTED"}
+          }
+        },
+        "execution_owner": {"type": "string", "minLength": 1},
+        "conditional_gate": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Present on the two Comfy-gated tasks (DL-R5-008, DL-R5-024): a gate that blocks only tasks using the capability."
+        },
+        "conditional_dependencies": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Case-conditional edges (DL-R5-019). Whether a condition is required, and the acyclicity of the edges it adds, are decided by condition_decisions and r5_contract.py, not by shape.",
+          "additionalProperties": {"$ref": "#/$defs/r5TaskId"}
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "depends_on",
+        "definition",
+        "predecessor_task_ids",
+        "reassessment",
+        "required_axes",
+        "axes"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/r5TaskId"},
+        "title": {"type": "string", "minLength": 1},
+        "depends_on": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "May be empty (DL-R5-001). Acyclicity and the existence of every named id are owned by r5_contract.py.",
+          "items": {"$ref": "#/$defs/r5TaskId"}
+        },
+        "definition": {"$ref": "#/$defs/taskDefinition"},
+        "predecessor_task_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Historical R3 lineage only; it never qualifies new work. It must equal the R3->R5 successor mapping, which r5_contract.py checks.",
+          "items": {"$ref": "#/$defs/r3TaskId"}
+        },
+        "reassessment": {
+          "enum": ["PENDING_EVIDENCE_REVIEW", "REVIEWED"],
+          "description": "A completion state (PASS/IMPLEMENTED_LOCAL) on any axis requires REVIEWED; that cross-field rule is r5_contract.py's."
+        },
+        "required_axes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "description": "implementation + unit always, host_live and delivery by acceptance. The set is derived from the task number by r5_contract.required_axes(), so this is a shape statement only.",
+          "items": {"$ref": "#/$defs/axisName"}
+        },
+        "axes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["implementation", "unit", "host_live", "delivery"],
+          "properties": {
+            "implementation": {"$ref": "#/$defs/axis"},
+            "unit": {"$ref": "#/$defs/axis"},
+            "host_live": {"$ref": "#/$defs/axis"},
+            "delivery": {"$ref": "#/$defs/axis"}
+          }
+        },
+        "condition_decisions": {
+          "type": "object",
+          "description": "Owner decisions over a task's definition.conditional_dependencies, each with a reason. Declared because r5_contract.py accepts it and AGENTS.md requires the case-selection record; the live ledger carries none today, so this path is registered as declared-but-unused in verify_ledger_schema_pairing.py and must leave that register the moment a ledger uses it.",
+          "additionalProperties": {"$ref": "#/$defs/conditionDecision"}
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "description": "Same item shape as the r3-v1 schema's artifacts. Existence and digest truth are checked elsewhere -- verify_evidence_artifact_presence.py and reporting.project_ledger().",
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "evidenceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_ids",
+        "kind",
+        "outcome",
+        "subject_sha",
+        "binding",
+        "observed_at",
+        "software",
+        "subject_files",
+        "artifacts",
+        "note"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/evidenceId"},
+        "task_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/r5TaskId"}
+        },
+        "kind": {
+          "enum": ["structural", "local_test", "host_live", "delivery"],
+          "description": "Which kind may support which axis is reporting.KINDS, not a shape rule."
+        },
+        "outcome": {"enum": ["PASS", "PARTIAL", "FAIL", "NOT_EXECUTED"]},
+        "subject_sha": {"$ref": "#/$defs/gitSha"},
+        "binding": {
+          "enum": ["COMMIT", "WORKTREE_FILES"],
+          "description": "WORKTREE_FILES says the bytes came from a dirty tree and may never be presented as a commit."
+        },
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "software": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "What produced the observation. Keys are open on purpose -- the live ledger already uses 18 distinct names (python, os, runner, node, host, torch, gh, git, observation, review, platform, test_manifest, worktree_digest, typecheck, full_suite, clean_install, typescript, vite) and a closed list would block an honest new measurement rather than a false one. Values stay non-empty strings so a version cannot arrive as a nested claim.",
+          "additionalProperties": {"type": "string", "minLength": 1}
+        },
+        "subject_files": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "{repository-relative POSIX path: sha256 of the bytes observed}. Required non-empty because this is the only part of a receipt a stranger can recompute -- see verify_ledger_subject_binding.py. Path safety (no drive letters, no escapes, declared public roots) is enforced by reporting._safe(), not by pattern.",
+          "additionalProperties": {"$ref": "#/$defs/hash"}
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Documents the receipt produced. An empty list was one of the two defects that froze the projections; the r3-v1 schema already required one.",
+          "items": {"$ref": "#/$defs/artifact"}
+        },
+        "note": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

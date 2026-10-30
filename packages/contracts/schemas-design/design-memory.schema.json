@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/design-memory.schema.json",
+  "title": "MemoryRecord (Design Memory V1)",
+  "description": "设计记忆记录：semantic/procedural/episodic/visual/failure。写入需去重+证据+验证（候选→validated→active），防止幻觉沉淀为知识。",
+  "type": "object",
+  "required": [
+    "id",
+    "schemaVersion",
+    "type",
+    "domain",
+    "title",
+    "statement",
+    "confidence",
+    "created_by",
+    "created_at",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/design-memory/v1"
+    },
+    "type": {
+      "enum": [
+        "semantic",
+        "procedural",
+        "episodic",
+        "visual",
+        "failure_pattern"
+      ]
+    },
+    "domain": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 10,
+      "description": "可执行的规则/经验陈述"
+    },
+    "severity": {
+      "enum": [
+        "must",
+        "should",
+        "may"
+      ],
+      "default": "should"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "type": "string"
+        },
+        "medium": {
+          "type": "string"
+        }
+      }
+    },
+    "observation": {
+      "type": "string"
+    },
+    "cause": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "ref"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "validated_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "status": {
+      "enum": [
+        "candidate",
+        "validated",
+        "active",
+        "rejected",
+        "expired"
+      ]
+    }
+  }
+}

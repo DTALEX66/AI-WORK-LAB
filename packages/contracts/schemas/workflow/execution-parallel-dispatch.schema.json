@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/execution-parallel-dispatch.schema.json",
+  "title": "Workflow Execution Parallel Dispatch",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "Contract for the execution-federation parallel-dispatch capability: fan a single ACP operation out to multiple executors concurrently, isolate per-executor failures, and aggregate a receipt. PASSIVE: the dispatcher orchestrates concurrency only; each leg reuses an existing executor adapter. Workflow namespace only.",
+  "required": [
+    "schema_version",
+    "op",
+    "executors",
+    "status",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/execution-parallel-dispatch/v1"
+    },
+    "op": {
+      "enum": [
+        "NEW",
+        "PROMPT"
+      ]
+    },
+    "executors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "payload": {
+      "type": "object"
+    },
+    "adapter_kind": {
+      "enum": [
+        "new",
+        "prompt"
+      ]
+    },
+    "per_executor_timeout": {
+      "type": "number",
+      "minimum": 0
+    },
+    "fail_fast": {
+      "type": "boolean"
+    },
+    "status": {
+      "enum": [
+        "OK",
+        "PARTIAL",
+        "DEGRADED",
+        "FAILED"
+      ]
+    },
+    "per_executor": {
+      "type": "object"
+    },
+    "succeeded": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "failed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timed_out": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unknown": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "executor",
+          "phase",
+          "ts",
+          "ok",
+          "status"
+        ],
+        "properties": {
+          "executor": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phase": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ts": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "events_stream": {
+      "description": "Real-time event stream produced by ParallelDispatcher.fanout_stream() (P3/sub_F): same per-event shape and ordering as 'events' (STARTED per started route, then terminal DONE/FAILED/TIMEOUT per route), but consumed incrementally as routes start and settle — intended for SSE/live monitoring. For any given fanout run, the drained stream equals the final 'events' list.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "executor",
+          "phase",
+          "ts",
+          "ok",
+          "status"
+        ],
+        "properties": {
+          "executor": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phase": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ts": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "streamed": {
+      "description": "Receipt flag (P3/sub_F): true when this receipt's events were captured through the real-time fanout_stream() generator; false/absent for the batch fanout() path where 'events' are collected during the run but delivered only with the final aggregate.",
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/evidence-projection.json",
+  "title": "EvidenceProjection — 证据账本投影的读回信封（GET /api/evidence-projection）",
+  "description": "What a person is allowed to conclude about the evidence link of the chain. Every number and token here is recomputed by src/design_lab/governance/evidence_readback.py from design-lab/config/task-ledger-r3.json plus the object database -- never read out of reports/current/, which is a generated projection that binds whatever commit it was written at. Two separate questions are kept separate because conflating them made every receipt unverifiable on 2026-10-08: `verified` asks whether the bytes a receipt hashed are still where the receipt says they came from, `current` asks whether that receipt still describes the bytes this service is running. The reason lists are closed enums: a new reason token in the code without a registration here is a contract violation, so the vocabulary a reader sees cannot drift from the vocabulary the projection emits. An empty `receipts` list means the ledger has no records; it never means 'the evidence is fine', which is why totals are required alongside it.",
+  "type": "object",
+  "required": ["schemaVersion", "subjectSha", "ledger", "totals", "reasonCounts", "receipts", "taskCounts"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/evidence-projection/v1"
+    },
+    "subjectSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "The commit this readback was computed against. A receipt's own subjectSha may be an ancestor; that is what `current` distinguishes."
+    },
+    "ledger": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Repository-relative path of the ledger the receipts were read from, so a reader knows which record set the numbers describe."
+    },
+    "totals": {
+      "type": "object",
+      "required": ["records", "outcomePass", "verified", "unverified", "current"],
+      "additionalProperties": false,
+      "properties": {
+        "records": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outcomePass": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Receipts whose outcome is PASS. A PARTIAL or FAIL receipt is honest history and is never counted as verified evidence."
+        },
+        "verified": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unverified": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Subset of `verified` whose claimed bytes still equal the bytes at subjectSha."
+        }
+      }
+    },
+    "reasonCounts": {
+      "type": "object",
+      "required": ["integrity", "currency"],
+      "additionalProperties": false,
+      "properties": {
+        "integrity": {
+          "$ref": "#/$defs/countMap"
+        },
+        "currency": {
+          "$ref": "#/$defs/countMap"
+        }
+      }
+    },
+    "receipts": {
+      "type": "array",
+      "maxItems": 400,
+      "items": {
+        "$ref": "#/$defs/receipt"
+      }
+    },
+    "taskCounts": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Z][A-Z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "description": "Projected task status counts, so a reader cannot be shown evidence strength without the acceptance state it belongs to."
+    }
+  },
+  "$defs": {
+    "countMap": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Z][A-Z0-9_]*$"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "integrityReason": {
+      "type": "string",
+      "pattern": "^(OUTCOME_NOT_PASS|EVIDENCE_FILE_MISSING|EVIDENCE_DIGEST_DIFFERS|RUNTIME_ARTIFACT_ABSENT_ON_THIS_MACHINE|RUNTIME_ARTIFACT_DIGEST_DIFFERS|PATH_NOT_IN_BOUND_COMMIT|ARTIFACT_IS_NOT_VERSIONED|DIGEST_NOT_REPRODUCIBLE_AT_BOUND_COMMIT|DIGEST_CONFLICT_FOR_SAME_PATH|SUBJECT_COMMIT_ABSENT)(:.+)?$",
+      "description": "Why the receipt's own byte claims no longer reproduce where the receipt says they came from."
+    },
+    "currencyReason": {
+      "type": "string",
+      "pattern": "^(STALE_SUBJECT_SHA|MOVED_SINCE_BOUND_COMMIT|LOCALLY_MODIFIED_SINCE_SUBJECT|PROJECTION_SUBJECT_NOT_A_COMMIT)(:.+)?$",
+      "description": "Why an intact receipt is not evidence about the bytes this service is running."
+    },
+    "receipt": {
+      "type": "object",
+      "required": ["id", "taskIds", "kind", "outcome", "subjectSha", "binding", "observedAt",
+                   "verified", "current", "integrityReasons", "currencyReasons"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taskIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "kind": {
+          "enum": ["structural", "local_test", "host_live", "delivery"]
+        },
+        "outcome": {
+          "enum": ["PASS", "PARTIAL", "FAIL", "NOT_EXECUTED"]
+        },
+        "subjectSha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "binding": {
+          "enum": ["COMMIT", "WORKTREE_FILES"]
+        },
+        "observedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "integrityReasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/integrityReason"
+          }
+        },
+        "currencyReasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/currencyReason"
+          }
+        }
+      }
+    }
+  }
+}

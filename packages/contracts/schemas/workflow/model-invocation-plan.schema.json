@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/model-invocation-plan.schema.json",
+  "title": "Model invocation plan contract (WL3-330)",
+  "description": "Per-task model invocation plan produced by the capability resolver. Records selection, rejection reasons, approvals and the resource lease; never carries prompt/response bodies.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "task_id",
+    "project_id",
+    "required_capabilities",
+    "data_class",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/model-invocation-plan/v1"
+    },
+    "plan_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "checkout_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "policy_revision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "required_capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "modality": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "data_class": {
+      "enum": [
+        "PUBLIC",
+        "PROJECT",
+        "PRIVATE",
+        "SECRET",
+        "UNKNOWN"
+      ]
+    },
+    "cloud_egress": {
+      "type": "boolean",
+      "default": false
+    },
+    "write_intent": {
+      "type": "boolean",
+      "default": false
+    },
+    "context_estimate": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "selected_asset_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "selected_runtime_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "selection_reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rejected_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asset_id",
+          "reason_code"
+        ],
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "reason_code": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "fallback_chain": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resource_lease_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "validation_contract": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "telemetry_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "enum": [
+        "NOT_STARTED",
+        "PLANNED",
+        "APPROVED",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "BLOCKED",
+        "WAITING_APPROVAL"
+      ]
+    }
+  }
+}

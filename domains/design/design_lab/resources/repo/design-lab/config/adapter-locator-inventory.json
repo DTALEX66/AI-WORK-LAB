@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "design-lab/adapter-locator-inventory/v1",
+  "audit": "DL-CLOUDAUDIT-B4 / G-4 (CROSSWALK R10 — adapter hard-coded machine-location audit)",
+  "generatedBy": "design-lab/scripts/verify_adapter_locator_audit.py --emit-inventory",
+  "policy": {
+    "triage_kinds": [
+      "violation",
+      "guard",
+      "locator"
+    ],
+    "note": "kind 'violation' = a hard-coded machine location that should eventually become a locator (env-var / registry / PATH-first, fail-closed fallback); 'guard' = a fail-closed deny-set that intentionally names machine roots; 'locator' = a correct env-first locator input, recorded to show it was considered. Every entry stays pinned=true while the code still carries the assumption: when a refactor removes one, the gate reports it STALE and the inventory must be re-triaged."
+  },
+  "findings": [
+    {
+      "id": "bbb30c5b0f6f9449",
+      "file": "design-lab/scripts/configure_open_design_windows.py",
+      "line": 38,
+      "kind": "locator",
+      "reason": "Windows home/appdata env",
+      "classification": "correct-env-first-locator: windows_home() reads USERPROFILE and falls back to Path.home(); no machine assumption, recorded to show it was considered",
+      "recommended_locator": "none — already env-first with a portable fallback",
+      "pinned": true
+    },
+    {
+      "id": "1bf2e56cd857f29c",
+      "file": "design-lab/scripts/configure_open_design_windows.py",
+      "line": 42,
+      "kind": "locator",
+      "reason": "Windows home/appdata env",
+      "classification": "correct-env-first-locator: default_config_path() reads APPDATA and falls back to <home>/AppData/Roaming; the per-install namespace tail is product data, not a machine path",
+      "recommended_locator": "none — already env-first with a documented fallback",
+      "pinned": true
+    },
+    {
+      "id": "e1361fededc09ca8",
+      "file": "design-lab/scripts/configure_open_design_windows.py",
+      "line": 49,
+      "kind": "violation",
+      "reason": "drive-rooted path/exe",
+      "classification": "refactored-locator: hardcoded-default: default_open_design_exe() returns D:\\Programs\\Open Design\\Ope — REFACTORED 2026-09-25 (cloud audit DL-CLOUD-2026-09-25 Prompt B agent slice): the hard-coded owner-machine default was replaced by the shared fail-closed locator design-lab/scripts/resolve_open_design_locator.py (env OPEN_DESIGN_EXE -> PATH, fail-closed with an actionable receipt; no download/clone/install; Win32 App Paths registry probe remains a documented owner-gated extension). Un-pinned: the live violation is removed, so this entry is historical triage, not a live guard.",
+      "recommended_locator": "locator refactor: resolve in priority order — env OPEN_DESIGN_EXE, Win32 registry App Paths (Open Design key), shutil.which on PATH; fail closed with an actionable message when none exists (mirrors the Codex CLI auto-detection already done by find_codex_bin). Refactor is the owner-gated TaskPack handoff this inventory defines; the entry is un-pinned when the refactor lands.",
+      "pinned": false
+    },
+    {
+      "id": "48694a6de9f2317d",
+      "file": "design-lab/scripts/configure_open_design_windows.py",
+      "line": 202,
+      "kind": "guard",
+      "reason": "drive-rooted path/exe",
+      "classification": "fail-closed-deny-set: wide_exact names D:\\All projects as a forbidden *target* root (refuse to configure against a drive root / user home / the projects parent); the machine-specific values are the guard's whole purpose — without naming them the guard cannot fail closed",
+      "recommended_locator": "none — do NOT convert to a locator; a deny-set that does not name its targets is a security hole. Recorded as a guard so the gate does not flag it as a machine assumption.",
+      "pinned": true
+    },
+    {
+      "id": "b26d24fd6491a5ed",
+      "file": "design-lab/scripts/configure_open_design_windows.py",
+      "line": 202,
+      "kind": "guard",
+      "reason": "drive-rooted path/exe",
+      "classification": "fail-closed-deny-set: C:\\Users is the forbidden user-home target root (configuring against a home directory would sweep the user's personal files); same rationale as the sibling entry — naming is the guard's job",
+      "recommended_locator": "none — keep as a guard; a home-target refusal must remain fail-closed and explicit",
+      "pinned": true
+    },
+    {
+      "id": "0f53d3a602860c73",
+      "file": "design-lab/scripts/doctor_open_design_windows.py",
+      "line": 38,
+      "kind": "locator",
+      "reason": "Windows home/appdata env",
+      "classification": "correct-env-first-locator: identical windows_home() to the configure script (USERPROFILE then Path.home()); recorded to show it was considered, not missed",
+      "recommended_locator": "none — already env-first with a portable fallback; a future TaskPack can factor the two duplicated windows_home/default_config_path helpers into one shared module",
+      "pinned": true
+    },
+    {
+      "id": "7395ad0957bc6029",
+      "file": "design-lab/scripts/doctor_open_design_windows.py",
+      "line": 42,
+      "kind": "locator",
+      "reason": "Windows home/appdata env",
+      "classification": "correct-env-first-locator: APPDATA with a <home>/AppData/Roaming fallback, as in the configure script",
+      "recommended_locator": "none — already env-first with a documented fallback",
+      "pinned": true
+    },
+    {
+      "id": "3701f566fab56410",
+      "file": "design-lab/scripts/doctor_open_design_windows.py",
+      "line": 47,
+      "kind": "violation",
+      "reason": "drive-rooted path/exe",
+      "classification": "refactored-locator: hardcoded-default: default_open_design_exe() returns D:\\Programs\\Open Design\\Ope — REFACTORED 2026-09-25 (cloud audit DL-CLOUD-2026-09-25 Prompt B agent slice): the hard-coded owner-machine default was replaced by the shared fail-closed locator design-lab/scripts/resolve_open_design_locator.py (env OPEN_DESIGN_EXE -> PATH, fail-closed with an actionable receipt; no download/clone/install; Win32 App Paths registry probe remains a documented owner-gated extension). Un-pinned: the live violation is removed, so this entry is historical triage, not a live guard.",
+      "recommended_locator": "same locator refactor as the configure entry (env OPEN_DESIGN_EXE → registry App Paths → PATH, fail closed); deduplicate the helper into a shared module so the assumption exists in exactly one place",
+      "pinned": false
+    }
+  ]
+}

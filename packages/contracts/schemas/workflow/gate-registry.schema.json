@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/gate-registry.schema.json",
+  "title": "Workflow Gate Registry Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "gate"],
+  "properties": {
+    "schema_version": {"const": "workflow/gate-registry/v1"},
+    "gate": {"$ref": "#/$defs/gate"}
+  },
+  "$defs": {
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "inputs", "depends_on", "tiers", "platform", "execution", "evidence", "failure"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "description": {"type": "string", "minLength": 1},
+        "inputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["paths", "invalidators"],
+          "properties": {
+            "paths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+            "invalidators": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+          }
+        },
+        "depends_on": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "tiers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["TARGETED", "STAGE", "NIGHTLY", "RC", "RELEASE"]}},
+        "platform": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capabilities", "operating_system"],
+          "properties": {
+            "capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+            "operating_system": {"type": "string", "minLength": 1}
+          }
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["command", "timeout", "cacheable", "resource_class"],
+          "properties": {
+            "command": {"type": "string", "minLength": 1},
+            "timeout": {"type": ["integer", "string"], "minimum": 1},
+            "cacheable": {"type": "boolean"},
+            "resource_class": {"enum": ["cpu", "io", "network", "browser", "native"]}
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["release_blocking", "history_sensitive", "cache_trust"],
+          "properties": {
+            "release_blocking": {"type": "boolean"},
+            "history_sensitive": {"type": "boolean"},
+            "cache_trust": {"enum": ["same_project", "same_tree", "never"]}
+          }
+        },
+        "failure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["product_exit_codes", "infrastructure_classification", "automatic_retry_budget"],
+          "properties": {
+            "product_exit_codes": {"type": "array", "uniqueItems": true, "items": {"type": "integer"}},
+            "infrastructure_classification": {"type": "string", "minLength": 1},
+            "automatic_retry_budget": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    }
+  }
+}

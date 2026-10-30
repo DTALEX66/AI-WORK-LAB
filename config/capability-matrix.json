@@ -1,0 +1,534 @@
+{
+  "$schema": "workflow/capability-matrix/v1",
+  "schema_version": "workflow/capability-matrix/v1",
+  "generated_at": "2026-08-15",
+  "generated_by": "WL3-100 subagent research, reconciled by DeepSeek Harness on current tree",
+  "purpose": "Machine-readable capability matrix for WORK-LAB adapters, reconciled against current tracked sources (adapter-registry.json + workflow-manifest.yaml + config-ownership.json).",
+  "sources": [
+    "packages/client-neutral-core/workflow-manifest.yaml",
+    "config/adapter-registry.json",
+    "config/config-ownership.json",
+    "config/capability-conformance.json",
+    "packages/contracts/schemas/workflow/adapter-registry.schema.json",
+    "packages/contracts/schemas/workflow/client-adapter.schema.json",
+    "packages/client-neutral-core/scripts/real_adapters.py"
+  ],
+  "interface_contract": [
+    "detect",
+    "capabilities",
+    "plan",
+    "apply",
+    "invoke",
+    "observe",
+    "rollback"
+  ],
+  "apply_policy": "approval_required_action_plan",
+  "clients": [
+    {
+      "id": "hermes",
+      "role": "agent_runtime",
+      "support_level": "deep",
+      "operations": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "writes": "approval_required",
+      "registry_status": "active",
+      "risk": "high",
+      "runtime_adapter": "HermesAdapter",
+      "config_ownership_default": {
+        "layer": "USER_OVERLAY",
+        "mode": "MANAGE",
+        "preserve_unknown": true
+      }
+    },
+    {
+      "id": "codex",
+      "role": "agent_runtime",
+      "support_level": "deep",
+      "operations": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "writes": "approval_required",
+      "registry_status": "quarantined",
+      "risk": "high",
+      "runtime_adapter": "CodexAdapter",
+      "config_ownership_default": {
+        "layer": "USER_OVERLAY",
+        "mode": "MANAGE",
+        "preserve_unknown": true
+      }
+    },
+    {
+      "id": "cc-switch",
+      "role": "provider_router",
+      "support_level": "deep",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "writes": "unavailable",
+      "registry_status": "legacy_observe",
+      "risk": "high",
+      "runtime_adapter": "CCSwitchAdapter",
+      "config_ownership_default": {
+        "layer": "USER_OVERLAY",
+        "mode": "OBSERVE",
+        "preserve_unknown": true
+      },
+      "ownership_rule": "cc_switch_owns_supported_client_provider_routing_only"
+    },
+    {
+      "id": "github",
+      "role": "vcs_host",
+      "support_level": "deep",
+      "operations": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ],
+      "detection": {
+        "mode": "static",
+        "evidence_state": "UNVERIFIED"
+      },
+      "writes": "approval_required",
+      "registry_status": "quarantined",
+      "risk": "high",
+      "runtime_adapter": "GitHubAdapter",
+      "config_ownership_default": {
+        "layer": "USER_OVERLAY",
+        "mode": "OBSERVE",
+        "preserve_unknown": true
+      }
+    },
+    {
+      "id": "openhuman",
+      "support_level": "experimental",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "writes": "unavailable",
+      "registry_status": "quarantined",
+      "risk": "medium",
+      "runtime_adapter": null,
+      "config_ownership_default": {
+        "layer": "PLATFORM_INTERNAL",
+        "mode": "OBSERVE",
+        "preserve_unknown": true
+      },
+      "note": "manifest-declared read-only scan verification; no vendored RealAdapter"
+    },
+    {
+      "id": "open-design",
+      "role": "design_client",
+      "support_level": "experimental",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "external",
+        "evidence_state": "UNVERIFIED"
+      },
+      "writes": "unavailable",
+      "registry_status": "quarantined",
+      "risk": "medium",
+      "runtime_adapter": null,
+      "config_ownership_default": {
+        "layer": "PROJECT_OVERLAY",
+        "mode": "OBSERVE",
+        "preserve_unknown": true
+      },
+      "note": "client desired-state MANAGE with apply_supported=false; design capability owned by external DESIGN-LAB project"
+    },
+    {
+      "id": "deepseek-harness",
+      "role": "agent_runtime",
+      "support_level": "experimental",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "writes": "approval_required",
+      "registry_status": "active",
+      "risk": "medium",
+      "runtime_adapter": "DeepSeekHarnessAdapter",
+      "config_ownership_default": null,
+      "note": "agent runtime, not a config-layer client; apply UNSUPPORTED without approved runtime-install task"
+    }
+  ],
+  "manifest_only_clients": [
+    {
+      "id": "cursor",
+      "support_level": "manifest-only",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "registry_status": "blocked"
+    },
+    {
+      "id": "claude-code",
+      "support_level": "manifest-only",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "registry_status": "blocked"
+    },
+    {
+      "id": "workbuddy",
+      "support_level": "manifest-only",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "registry_status": "blocked"
+    }
+  ],
+  "reconciliation_notes": [
+    "Registry now contains openhuman/open-design (previous research noted them MISSING; since fixed).",
+    "Registry source_ref uses stable workflow-manifest.yaml#adapters.entries[id=<id>] form (previous index-offset drift fixed).",
+    "deepseek-harness is the first agent_runtime-kind adapter; it is a runtime, not a config-layer client.",
+    "client-adapter.schema.json $id fixed to its own path (was a copy of adapter-registry.schema.json's $id).",
+    "platform_discovery.py implements codex/hermes discovery only; cc-switch/github have custom detect in real_adapters.py; openhuman/open-design are manifest-declared."
+  ],
+  "global_agent_policy_coverage": {
+    "schema": "workflow/global-agent-policy-coverage/v1",
+    "derived_from": {
+      "source": "config/adapter-registry.json#entries[].policy_projection.capability_states + config/loss-reports/*-policy-loss-report.json",
+      "note": "Derived read-only cross-software policy-coverage view. NOT a second registry: the single source of truth is each adapter's policy_projection (registry) and the two verified loss reports. Regenerated by scripts/ci/verify_policy_coverage.py on every change."
+    },
+    "coverage_states": [
+      "NATIVE_ENFORCED",
+      "NATIVE_GUIDANCE",
+      "WORKFLOW_GUARD",
+      "OBSERVE_ONLY",
+      "UNSUPPORTED"
+    ],
+    "policy_capabilities": [
+      "communication",
+      "execution",
+      "authority_discovery",
+      "authorization",
+      "task_grant",
+      "workspace_boundary",
+      "protected_storage",
+      "credentials",
+      "session_privacy",
+      "network",
+      "git_safety",
+      "dependency_policy",
+      "evidence_semantics",
+      "verification",
+      "parallelism",
+      "skills",
+      "model_neutrality",
+      "tool_truth",
+      "historical_record_policy"
+    ],
+    "software": [
+      "codex",
+      "hermes",
+      "deepseek-harness",
+      "cc-switch",
+      "github",
+      "openhuman",
+      "open-design",
+      "cursor",
+      "claude-code",
+      "workbuddy"
+    ],
+    "coverage": {
+      "communication": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "execution": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "authority_discovery": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "authorization": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "task_grant": {
+        "codex": "WORKFLOW_GUARD",
+        "hermes": "WORKFLOW_GUARD",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "workspace_boundary": {
+        "codex": "NATIVE_ENFORCED",
+        "hermes": "WORKFLOW_GUARD",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "protected_storage": {
+        "codex": "WORKFLOW_GUARD",
+        "hermes": "NATIVE_ENFORCED",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "credentials": {
+        "codex": "WORKFLOW_GUARD",
+        "hermes": "WORKFLOW_GUARD",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "session_privacy": {
+        "codex": "OBSERVE_ONLY",
+        "hermes": "OBSERVE_ONLY",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "network": {
+        "codex": "WORKFLOW_GUARD",
+        "hermes": "WORKFLOW_GUARD",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "git_safety": {
+        "codex": "WORKFLOW_GUARD",
+        "hermes": "WORKFLOW_GUARD",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "dependency_policy": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "evidence_semantics": {
+        "codex": "WORKFLOW_GUARD",
+        "hermes": "WORKFLOW_GUARD",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "verification": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "parallelism": {
+        "codex": "WORKFLOW_GUARD",
+        "hermes": "WORKFLOW_GUARD",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "skills": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "model_neutrality": {
+        "codex": "OBSERVE_ONLY",
+        "hermes": "OBSERVE_ONLY",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "tool_truth": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      },
+      "historical_record_policy": {
+        "codex": "NATIVE_GUIDANCE",
+        "hermes": "NATIVE_GUIDANCE",
+        "deepseek-harness": "UNSUPPORTED",
+        "cc-switch": "UNSUPPORTED",
+        "github": "UNSUPPORTED",
+        "openhuman": "UNSUPPORTED",
+        "open-design": "UNSUPPORTED",
+        "cursor": "UNSUPPORTED",
+        "claude-code": "UNSUPPORTED",
+        "workbuddy": "UNSUPPORTED"
+      }
+    },
+    "maturity_by_software": {
+      "codex": "APPLY_SUPPORTED",
+      "hermes": "READBACK_VERIFIED",
+      "deepseek-harness": "PLAN_SUPPORTED",
+      "cc-switch": "OBSERVE_ONLY",
+      "github": "PLAN_SUPPORTED",
+      "openhuman": "OBSERVE_ONLY",
+      "open-design": "OBSERVE_ONLY",
+      "cursor": "OBSERVE_ONLY",
+      "claude-code": "OBSERVE_ONLY",
+      "workbuddy": "OBSERVE_ONLY"
+    },
+    "loss_report_paths": [
+      "config/loss-reports/codex-policy-loss-report.json",
+      "config/loss-reports/hermes-policy-loss-report.json"
+    ],
+    "invariant": "No cell may be promoted to a VERIFIED/READBACK state unless that adapter's loss report + registry both assert apply+readback+rollback+drift. OBSERVE_ONLY / UNSUPPORTED cells are honest gaps, not omissions.",
+    "maturity_by_software_note": "Synchronized 2026-10-01 with config/adapter-registry.json (this file declares that registry as a source): codex maturity READBACK_VERIFIED -> APPLY_SUPPORTED per ERR-095 / audit F02."
+  }
+}

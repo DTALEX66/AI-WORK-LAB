@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/asset-manifest/v1",
+  "title": "WORK-LAB Asset Manifest",
+  "type": "object",
+  "required": ["manifestId", "assets"],
+  "properties": {
+    "manifestId": {"type": "string", "minLength": 1},
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256", "source", "licenseStatus"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "source": {"type": "string", "minLength": 1},
+          "licenseStatus": {"type": "string", "enum": ["verified", "unknown", "restricted", "reference-only"]}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

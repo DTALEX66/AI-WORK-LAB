@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://work-lab.invalid/schemas/control-operation.schema.json",
+  "title": "Control Surface Operation Request",
+  "description": "One write request to the loopback-only Control service. The Observer never accepts this shape; a write is addressed to a control plane that re-checks scope, version, and idempotency instead of trusting the caller. `operation` is a closed enum so a client cannot invent a verb the product has not declared.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "operation", "project_id", "task_id", "revision", "attempt", "scope", "expected_version", "idempotency_key", "actor", "requested_at", "payload"],
+  "properties": {
+    "schema_version": {"const": "worklab/control-operation/v1"},
+    "operation": {
+      "description": "`work-unit.materialize` consumes an AG-16 PlanningCandidate: the service re-runs the candidate's authorization check against its own local record, so an `authorized` claim inside this request is never the evidence. `work-unit.create` remains the direct write.",
+      "enum": [
+        "work-unit.create",
+        "work-unit.materialize",
+        "work-unit.revise",
+        "work-unit.dispatch",
+        "approval.decide",
+        "execution.cancel",
+        "execution.retry",
+        "execution.resume",
+        "config.discover",
+        "config.diff",
+        "config.apply",
+        "config.readback",
+        "config.rollback"
+      ]
+    },
+    "project_id": {"type": "string", "minLength": 1, "maxLength": 200},
+    "task_id": {"type": ["string", "null"], "maxLength": 200},
+    "revision": {"type": ["integer", "null"], "minimum": 0},
+    "attempt": {"type": ["integer", "null"], "minimum": 0},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundaries", "granted_by"],
+      "properties": {
+        "boundaries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1, "maxLength": 400}
+        },
+        "granted_by": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "expected_version": {"type": ["string", "null"], "maxLength": 200},
+    "idempotency_key": {"type": "string", "minLength": 8, "maxLength": 200},
+    "actor": {"type": "string", "minLength": 1, "maxLength": 200},
+    "requested_at": {"type": "string", "format": "date-time"},
+    "payload": {
+      "type": "object",
+      "description": "Operation-specific input. A control result never echoes it back, and no projection of it enters the read-only Observer snapshot.",
+      "additionalProperties": true
+    }
+  }
+}

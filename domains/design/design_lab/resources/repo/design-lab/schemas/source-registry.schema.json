@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/source-registry.schema.json",
+  "title": "DESIGN-LAB Source Registry (v3)",
+  "description": "DL-KNW-002 唯一来源登记。每条登记 = 标准 SourceRecord（$ref）+ 集成元数据。禁止遗留字段对：category/categories、id/sourceId、url/origin、reviewed_at/reviewedBy+reviewedAt。",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "generated_at",
+    "policy",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/source-registry/v3"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "policy": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "integration"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "$ref": "#/$defs/sourceRecord"
+          },
+          "integration": {
+            "type": "object",
+            "required": [
+              "mode",
+              "status"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "enum": [
+                  "vendor-adapt",
+                  "adapter",
+                  "derive",
+                  "reference",
+                  "quarantine"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "reference-only",
+                  "review-required"
+                ]
+              },
+              "target": {
+                "type": "string"
+              },
+              "restrictions": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "sourceRecord": {
+      "$ref": "./source-record.schema.json"
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "worklab/operation-progress/v1",
+  "title": "operation-progress (WUI-21 server-side contract)",
+  "description": "One read-model record for the progress of a single operation, as the Observer may render it.\n\nEvery enum member is traceable to a producer, and the states the owner's pack names but this repository\ncannot yet answer are carried as declared gaps instead of being dropped or invented: `SUBMITTING` (the\nclient-to-ledger handoff is recorded nowhere) has no state value, and a lost or unreadable answer becomes\n`UNKNOWN`, never a default. Timeout is its own state: `UNKNOWN_OR_TIMEOUT` — a lease that expired says the\nobservation stopped being trustworthy, which is not the same claim as `FAILED`.\n",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "observed_at",
+    "state",
+    "ledger_status",
+    "last_trusted_progress",
+    "transport_state",
+    "sourceTimes",
+    "producer_gaps"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "worklab/operation-progress/v1"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The operation identity. It is never replaced by a display name and never guessed from a similar one."
+    },
+    "observed_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "When this record was built. A record whose transport is offline keeps reporting the time it was read, not the time the state last held."
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "NOT_STARTED",
+        "QUEUED",
+        "PLANNING",
+        "WAITING_APPROVAL",
+        "RUNNING",
+        "RETRYING",
+        "PAUSED",
+        "BLOCKED",
+        "REVIEWING",
+        "PASSED",
+        "FAILED",
+        "CANCELLED",
+        "UNKNOWN_OR_TIMEOUT",
+        "UNKNOWN"
+      ],
+      "description": "The pack's five named stages plus every state the ledger really has. PASSED comes from COMPLETED and nothing else: a submitted plan is not a passed operation. There is deliberately no SUBMITTING member — no producer answers it, so it appears in producer_gaps instead."
+    },
+    "ledger_status": {
+      "type": ["string", "null"],
+      "description": "The Task Ledger's own spelling, kept beside the mapped state so a reader can see the mapping rather than trust it. null when the ledger did not answer."
+    },
+    "last_trusted_progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "at", "basis"],
+      "description": "The last progress this repository can stand behind. It survives a dropped connection: the current state may go UNKNOWN while this stays, and the two are never merged.",
+      "properties": {
+        "state": {
+          "type": ["string", "null"]
+        },
+        "at": {
+          "type": ["string", "null"]
+        },
+        "basis": {
+          "type": "string",
+          "enum": ["LEDGER_UPDATED_AT", "LEDGER_HEARTBEAT", "NONE"],
+          "description": "Which observation the trusted value rests on. NONE means there is no trusted progress to show, and is not the same as an empty timestamp."
+        }
+      }
+    },
+    "transport_state": {
+      "type": ["string", "null"],
+      "description": "Transport as the snapshot names it (ONLINE / DELAYED / OFFLINE / …), or null when nothing observed it. Copying it here lets the page explain that a stale answer is stale, without deciding what the operation is doing."
+    },
+    "producer_gaps": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["SUBMITTING_STAGE", "TARGET_BEHAVIOUR_CONFIRMATION", "TRIAL_ISOLATION", "DURATION",
+                 "PROGRESS_SEQUENCE"]
+      },
+      "description": "Fields the pack asks for that no producer in this repository answers. The list is part of the contract so the UI renders a named gap rather than a zero or a spinner forever. PROGRESS_SEQUENCE (added 2026-10-13) is the pack's `sequence`: nothing names a per-operation progress counter, and the snapshot's revision is the STORE's cursor, not this operation's — borrowing it would make two different monotonic things look like one."
+    },
+    "sourceTimes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["createdAt", "updatedAt", "heartbeatAt"],
+      "description": "When each underlying source attested this operation, kept separate from `observed_at` (which is when WE read). All three come from the Task Ledger record the producer just read: createdAt/updatedAt from the record itself, heartbeatAt only from its lease (TaskLedger spells that stamp heartbeat_at). A null is an unattested value and is never filled from a neighbour.",
+      "properties": {
+        "createdAt": {
+          "type": ["string", "null"]
+        },
+        "updatedAt": {
+          "type": ["string", "null"]
+        },
+        "heartbeatAt": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "target_behaviour": {
+      "type": ["string", "null"],
+      "enum": ["CONFIRMED", "PENDING", "ABSENT", "CONFLICT", null],
+      "description": "Separate result #3. Carried only when the ledger holds an external-effect record for this task (EXTERNAL_EFFECT_STATES in packages/client-neutral-core/scripts/task_ledger.py:21); null means nothing was reconciled, which is not a failure and not a pass."
+    }
+  }
+}

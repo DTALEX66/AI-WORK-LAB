@@ -1,0 +1,337 @@
+{
+  "protocol": "ai-work-lab/handoff-coordination/v1-draft",
+  "status": "PROPOSED_NOT_IMPLEMENTED",
+  "rules": [
+    "共用外层合同，不重造第二状态机；旧字段保留映射",
+    "本合同不表示API已实现；实际路径有差异需记录兼容表",
+    "任务完成由验收要求计算；结果收到不等于通过",
+    "本轮禁止外部派发；未来联网能力由独立授权开启",
+    "所有操作在服务端验证项目、状态、修订与权限"
+  ],
+  "execution_policy": {
+    "current": "LOCAL_ONLY_NO_REMOTE_ACTIONS",
+    "allow_loopback_http": true,
+    "remote_repository_write": false,
+    "automatic_external_dispatch": false,
+    "package_download": false,
+    "cloud_build": false,
+    "system_network_isolation": "NOT_PROVEN_BY_THIS_DOCUMENT"
+  },
+  "entities": {
+    "Project": [
+      "project_id",
+      "source_refs",
+      "display_name",
+      "scope",
+      "updated_at"
+    ],
+    "Task": [
+      "task_id",
+      "project_id",
+      "kind",
+      "lifecycle",
+      "input_refs",
+      "acceptance_ref",
+      "current_attempt_id",
+      "revision",
+      "created_at",
+      "updated_at"
+    ],
+    "Attempt": [
+      "attempt_id",
+      "task_id",
+      "base_fingerprint",
+      "execution_mode",
+      "executor_ref",
+      "native_session_ref",
+      "execution_state",
+      "idempotency_key",
+      "started_at",
+      "finished_at"
+    ],
+    "Result": [
+      "result_id",
+      "task_id",
+      "attempt_id",
+      "subject_fingerprint",
+      "artifact_refs",
+      "received_at",
+      "data_origin"
+    ],
+    "Verification": [
+      "verification_id",
+      "result_id",
+      "axis",
+      "outcome",
+      "subject_fingerprint",
+      "command_ref",
+      "evidence_refs",
+      "verifier_ref",
+      "observed_at"
+    ],
+    "DesignPlan": [
+      "plan_id",
+      "project_id",
+      "revision",
+      "intent_ref",
+      "knowledge_refs",
+      "target_profile_refs",
+      "source_refs",
+      "updated_at"
+    ],
+    "TargetProfile": [
+      "profile_id",
+      "revision",
+      "software_ref",
+      "model_ref",
+      "entry_mode",
+      "requirements",
+      "capability_refs"
+    ],
+    "Artifact": [
+      "artifact_id",
+      "project_id",
+      "role",
+      "media_type",
+      "local_ref",
+      "sha256",
+      "size_bytes",
+      "revision",
+      "source_refs"
+    ],
+    "Capability": [
+      "capability_id",
+      "source_refs",
+      "domain",
+      "operation",
+      "implementation",
+      "qualification",
+      "connection_ref",
+      "authorization",
+      "dependency",
+      "can_probe",
+      "can_invoke",
+      "unavailable_reasons",
+      "phase",
+      "data_origin"
+    ],
+    "Connection": [
+      "connection_id",
+      "tool_ref",
+      "native_entry_ref",
+      "state",
+      "observed_version",
+      "last_probed_at",
+      "supported_operations",
+      "permission_scope"
+    ],
+    "ImprovementCandidate": [
+      "candidate_id",
+      "task_id",
+      "base_fingerprint",
+      "candidate_fingerprint",
+      "write_scope",
+      "diff_ref",
+      "verification_refs",
+      "activation_state",
+      "rollback_ref"
+    ]
+  },
+  "enums": {
+    "data_origin": [
+      "demo",
+      "test",
+      "live"
+    ],
+    "task_kind": [
+      "work",
+      "design",
+      "repair",
+      "improvement"
+    ],
+    "task_lifecycle": [
+      "DRAFT",
+      "READY",
+      "ACTIVE",
+      "COMPLETED",
+      "CANCELLED",
+      "ARCHIVED"
+    ],
+    "execution_mode": [
+      "MANUAL_COPY",
+      "LOCAL_TOOL",
+      "NATIVE_AGENT",
+      "ACP",
+      "MCP_TOOL"
+    ],
+    "attempt_execution_state": [
+      "PREPARED",
+      "WAITING_HANDOFF",
+      "HANDOFF_DECLARED",
+      "QUEUED",
+      "RUNNING",
+      "WAITING_INPUT",
+      "WAITING_PERMISSION",
+      "DISCONNECTED_UNKNOWN",
+      "CANCEL_REQUESTED",
+      "CANCELLED",
+      "RESULT_RECEIVED",
+      "FAILED"
+    ],
+    "verification_outcome": [
+      "PENDING",
+      "RUNNING",
+      "PASS",
+      "FAIL",
+      "BLOCKED",
+      "NOT_RUN"
+    ],
+    "verification_axis": [
+      "technical",
+      "professional",
+      "migration",
+      "host_readback"
+    ],
+    "implementation": [
+      "DECLARED",
+      "PARTIAL",
+      "IMPLEMENTED",
+      "DEFERRED"
+    ],
+    "qualification": [
+      "NOT_VERIFIED",
+      "VERIFIED",
+      "FAILED",
+      "STALE"
+    ],
+    "connection_state": [
+      "NOT_PROBED",
+      "NOT_CONFIGURED",
+      "DISCONNECTED",
+      "CONNECTED",
+      "UNAVAILABLE"
+    ],
+    "authorization": [
+      "NOT_REQUIRED",
+      "NOT_GRANTED",
+      "GRANTED",
+      "EXPIRED"
+    ],
+    "dependency": [
+      "UNKNOWN",
+      "MISSING",
+      "SATISFIED"
+    ],
+    "activation_state": [
+      "PROPOSED",
+      "CANDIDATE",
+      "VERIFYING",
+      "FAILED",
+      "VERIFIED",
+      "READY_TO_ACTIVATE",
+      "ACTIVE",
+      "ROLLED_BACK",
+      "UNAVAILABLE"
+    ]
+  },
+  "invariants": [
+    "复制/导出不产生外部接收确认；人工交接声明由用户事件产生，测试模拟不作生产证明",
+    "Result_received不直接完成Task；技术与必需的专业验收均满足才能COMPLETED",
+    "重试新增Attempt；断连先对账；取消请求不等于取消成功",
+    "所有结果和证据绑定项目、任务、尝试及目标内容摘要；空仓使用工作树摘要，不造HEAD",
+    "can_invoke由实现、目标资格、依赖、连接、授权和执行策略综合派生，不接受客户端任意设true",
+    "探测与执行分开；未验证能力可按授权进行受控探测，但不能借此宣称正式可用",
+    "demo/test记录不授予live运行资格；来源旧DONE不继承新仓VERIFIED",
+    "原始任务内容与遥测分离；凭证保持工具原生所有权",
+    "所有native/ACP/MCP枚举表示未来可映射执行方式，不代表本轮允许外部调用"
+  ],
+  "api_proposals": [
+    [
+      "GET",
+      "/api/v1/health",
+      "实际服务/版本/数据模式；不伪造所有依赖健康"
+    ],
+    [
+      "GET",
+      "/api/v1/projects",
+      "统一项目列表与来源"
+    ],
+    [
+      "GET",
+      "/api/v1/capabilities",
+      "按域/阶段/资格查询，不可用原因"
+    ],
+    [
+      "GET",
+      "/api/v1/connections",
+      "连接、版本与探测状态"
+    ],
+    [
+      "POST",
+      "/api/v1/tasks",
+      "创建并持久化任务"
+    ],
+    [
+      "GET",
+      "/api/v1/tasks/{task_id}",
+      "含尝试和验收摘要"
+    ],
+    [
+      "POST",
+      "/api/v1/tasks/{task_id}/attempts",
+      "有幂等键的新尝试"
+    ],
+    [
+      "POST",
+      "/api/v1/attempts/{attempt_id}/pack",
+      "生成可复制正文与本地包"
+    ],
+    [
+      "POST",
+      "/api/v1/attempts/{attempt_id}/handoff-declarations",
+      "用户人工交接声明"
+    ],
+    [
+      "POST",
+      "/api/v1/attempts/{attempt_id}/results",
+      "受控结果导入"
+    ],
+    [
+      "POST",
+      "/api/v1/results/{result_id}/verifications",
+      "独立验收入口，不信客户端PASS"
+    ],
+    [
+      "GET",
+      "/api/v1/knowledge/search",
+      "统一查询，保留来源类型"
+    ],
+    [
+      "GET",
+      "/api/v1/design/plans",
+      "方案修订与源引用"
+    ],
+    [
+      "GET",
+      "/api/v1/design/target-profiles",
+      "软件/模型/入口组合"
+    ],
+    [
+      "GET",
+      "/api/v1/improvements",
+      "候选记录或诚实未实现说明；不得假返回成功执行"
+    ]
+  ],
+  "error_shape": {
+    "code": "stable_reason_code",
+    "message": "清晰用户说明",
+    "retryable": false,
+    "required_action": "必要下一步或null",
+    "details_ref": "本地可见的脱敏引用或null"
+  },
+  "implementation_notes": [
+    "复用旧API或字段可优于新路径，须与STITCH交接对应表",
+    "空列表是合法数据；缺模块不可冒充合法空结果",
+    "无实现返回明确不支持；测试替身不得映射到正式live路由"
+  ]
+}

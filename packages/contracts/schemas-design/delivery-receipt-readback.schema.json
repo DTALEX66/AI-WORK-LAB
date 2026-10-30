@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/delivery-receipt-readback.schema.json",
+  "title": "Delivery receipt read-back envelope (v1)",
+  "description": "What GET /api/projects/{id}/bundles/{bundle}/versions/{version}/receipt answers. Authored from a live capture (.project-local/task-runtime/receipt-readback-live.json), produced by src/design_lab/native_delivery.py NativeDelivery.readback() over a real published archive, not written from intention.\n\nThe reason this envelope exists is the rollback record. A receipt states, per deliverable, `backup_ref` naming the immutable source version the archive was exported from, and its own procedure text says a restore has not been performed -- that part was always honest. What nothing did was look the reference up, so the promise was printed and believed. `rollback_proofs` is the lookup, and `state_meaning` travels with it so a reader is told what each word decides and what it leaves undecided.\n\n`receipt` is the stored document verbatim and is bound by its own schema by reference, never by a copy: the document carries `receipt_sha256` over its own bytes, so adding a field to it on the way out would make the digest describe something other than what is signed. That is why the new fact sits beside it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "receipt",
+    "rollback_state",
+    "rollback_state_vocabulary",
+    "rollback_states",
+    "state_meaning",
+    "rollback_proofs",
+    "does_not_prove"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/delivery-receipt-readback/v1"
+    },
+    "receipt": {
+      "$ref": "https://dtalex66.local/schemas/interop-delivery-receipt-v2.schema.json"
+    },
+    "rollback_state": {
+      "enum": [
+        "ALL_RESOLVED",
+        "PARTLY_UNRESOLVED",
+        "NONE_RESOLVED",
+        "NOTHING_TO_CHECK",
+        "LEDGER_UNREADABLE"
+      ]
+    },
+    "rollback_state_vocabulary": {
+      "description": "The aggregate words this envelope can use, published so the Workbench renders the vocabulary it received rather than a hand copy. The five entries are required, not a floor: a page that sees three cannot tell whether a fourth was dropped or never existed.",
+      "type": "array",
+      "items": {
+        "enum": [
+          "ALL_RESOLVED",
+          "PARTLY_UNRESOLVED",
+          "NONE_RESOLVED",
+          "NOTHING_TO_CHECK",
+          "LEDGER_UNREADABLE"
+        ]
+      },
+      "minItems": 5,
+      "uniqueItems": true
+    },
+    "rollback_states": {
+      "description": "The per-deliverable words a proof can carry. Same rule as above.",
+      "type": "array",
+      "items": {
+        "enum": [
+          "RESOLVED",
+          "SOURCE_MISSING",
+          "OTHER_PROJECT",
+          "SOURCE_NOT_ACTIVE",
+          "REF_UNPARSED"
+        ]
+      },
+      "minItems": 5,
+      "uniqueItems": true
+    },
+    "state_meaning": {
+      "description": "What each state word decides, in the emitter's own sentence. Required with all ten keys bound: a reader given a label without its meaning is being asked to trust the label.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "RESOLVED",
+        "SOURCE_MISSING",
+        "OTHER_PROJECT",
+        "SOURCE_NOT_ACTIVE",
+        "REF_UNPARSED",
+        "ALL_RESOLVED",
+        "PARTLY_UNRESOLVED",
+        "NONE_RESOLVED",
+        "NOTHING_TO_CHECK",
+        "LEDGER_UNREADABLE"
+      ],
+      "properties": {
+        "RESOLVED": {
+          "$ref": "#/$defs/meaning"
+        },
+        "SOURCE_MISSING": {
+          "$ref": "#/$defs/meaning"
+        },
+        "OTHER_PROJECT": {
+          "$ref": "#/$defs/meaning"
+        },
+        "SOURCE_NOT_ACTIVE": {
+          "$ref": "#/$defs/meaning"
+        },
+        "REF_UNPARSED": {
+          "$ref": "#/$defs/meaning"
+        },
+        "ALL_RESOLVED": {
+          "$ref": "#/$defs/meaning"
+        },
+        "PARTLY_UNRESOLVED": {
+          "$ref": "#/$defs/meaning"
+        },
+        "NONE_RESOLVED": {
+          "$ref": "#/$defs/meaning"
+        },
+        "NOTHING_TO_CHECK": {
+          "$ref": "#/$defs/meaning"
+        },
+        "LEDGER_UNREADABLE": {
+          "$ref": "#/$defs/meaning"
+        }
+      }
+    },
+    "rollback_proofs": {
+      "description": "One entry per deliverable of the receipt, in document order. May be empty, and an empty list carries two different facts that the aggregate word separates: NOTHING_TO_CHECK means the document names no deliverable, LEDGER_UNREADABLE means the ledger could not be asked. Neither is the same statement as every entry resolving.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/proof"
+      }
+    },
+    "does_not_prove": {
+      "description": "The limit of this read-back, sent with every response rather than only when something failed. The person most likely to over-read ALL_RESOLVED is the person about to rely on it.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "meaning": {
+      "type": "string",
+      "minLength": 8
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deliverable_id",
+        "backup_ref",
+        "procedure",
+        "state",
+        "reason",
+        "asset_id",
+        "version_id",
+        "version_no",
+        "source_state"
+      ],
+      "properties": {
+        "deliverable_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "backup_ref": {
+          "description": "The reference exactly as the receipt states it, so an unparsed one can be read rather than only described. A missing reference is null, which is a different fact from a present-but-unrecognised string.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "procedure": {
+          "description": "The plan text the receipt carries, transponded and not paraphrased.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "enum": [
+            "RESOLVED",
+            "SOURCE_MISSING",
+            "OTHER_PROJECT",
+            "SOURCE_NOT_ACTIVE",
+            "REF_UNPARSED"
+          ]
+        },
+        "reason": {
+          "description": "Why this state, naming the identifiers the lookup used. Emitted for every state, because a label alone is a claim the reader cannot check.",
+          "type": "string",
+          "minLength": 8
+        },
+        "asset_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version_no": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "source_state": {
+          "description": "The asset_version.state column as stored, or null when nothing was looked up. Reported even for RESOLVED so a reader sees the check happened rather than taking the word for it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "RESOLVED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "asset_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version_no": {
+                "type": "integer"
+              },
+              "source_state": {
+                "const": "ACTIVE"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "REF_UNPARSED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "asset_id": {
+                "type": "null"
+              },
+              "version_id": {
+                "type": "null"
+              },
+              "version_no": {
+                "type": "null"
+              },
+              "source_state": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

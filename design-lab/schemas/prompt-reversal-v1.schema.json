@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/prompt-reversal-v1.schema.json",
+  "title": "Prompt reversal v1 (the document POST /api/projects/<id>/assets/<img>/prompt-reversal derives)",
+  "$comment": "Emitter: src/design_lab/prompt_intelligence.py (PromptIntelligence.reverse). The route answers with the same readback envelope shape as the composition route, whose `document` member is this shape. A reversal is a restatement of recorded observations, not a description of a picture: the observations arrive from the caller and are lowered by the existing reconstruction bridge, because no qualified vision backend exists to read pixels (design-lab/readiness/model-radar.json reports QUALIFIED_LOCAL=0 with every entry default_enabled false). That is why `unknown` must carry the semantic-content, colour and font entries and why each layer keeps the observation module's own `confidence` -- the honest reading of this document is 'what was observed', never 'what the image shows'. `asset.sha256` binds the reversal to the stored bytes the import route verified. `model.executed` is const false.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reversal_id",
+    "project_id",
+    "asset",
+    "observation",
+    "prompt_text",
+    "layers",
+    "unknown",
+    "model",
+    "claims_not_made"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/prompt-reversal/v1"},
+    "reversal_id": {"type": "string", "pattern": "^reversal-[0-9a-f]{32}$"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256", "width", "height", "media_type"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^img-[0-9a-f]{64}$"},
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "media_type": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module", "decomposition_id", "rir_sha256", "object_count"],
+      "properties": {
+        "module": {"type": "string", "minLength": 1, "maxLength": 64},
+        "decomposition_id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "rir_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "object_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "prompt_text": {"type": "string", "minLength": 1},
+    "layers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "name", "bounds", "confidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "maxLength": 80},
+          "type": {"type": "string", "enum": ["text", "path", "primitive", "image", "group"]},
+          "name": {"type": "string", "minLength": 1, "maxLength": 300},
+          "bounds": {"$ref": "#/$defs/bounds"},
+          "confidence": {"$ref": "#/$defs/confidence"}
+        }
+      }
+    },
+    "unknown": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "reason"],
+        "properties": {
+          "field": {"type": "string", "minLength": 1, "maxLength": 80},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 400}
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected", "selection_state", "executed"],
+      "description": "$comment: same three states as the composition contract -- a recorded choice is echoed, a declination and never-being-asked are reported as themselves, and `executed` is const false because no model ran.",
+      "properties": {
+        "selected": {"type": ["object", "null"]},
+        "selection_state": {"enum": ["CHOSEN", "DECLINED", "NEVER_ASKED"]},
+        "executed": {"const": false}
+      }
+    },
+    "claims_not_made": {"type": "array", "minItems": 3, "items": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {"type": "number"},
+        "y": {"type": "number"},
+        "width": {"type": "number", "minimum": 0},
+        "height": {"type": "number", "minimum": 0}
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "method"],
+      "properties": {
+        "score": {"type": "number", "minimum": 0, "maximum": 1},
+        "method": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    }
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/design-lineage-v1.json",
+  "title": "Design lineage envelope — one record's whole version chain (GET .../lineage, both id-scoped forms)",
+  "description": "Four ledger rows read a version chain and said nothing about themselves: the project-scoped brief and direction lineage, and their id-addressed twins under `/api/design-briefs` and `/api/design-directions`. Measured 2026-10-23 against a live boot, the document is `{lineage: {<id_of_the_subject>, root_id, requested_id, live_id, versions[]}}` — and it carries NO event rows. The debt text this file replaces claimed 'the superseded_by chain plus design_layer_event rows': `src/design_lab/design_layer.py` `_chain()` reads `design_layer_event` to find each row's PARENT (the `*-revised` payloads map new_id to old_id), then serves records, not events. That claim was wrong and is corrected here rather than left in a prose field. The four honesty properties this binds are the ones the emitter already implements: `versions` is oldest-first and includes the row that was asked for (`requested_id`), `root_id` is reached by walking parents so any member of the chain resolves to the same lineage, and `live_id` names the current tip explicitly because `version` alone cannot say it — the ACTIVE-version rule of this state store means several rows can hold content and only `superseded_by IS NULL` is current. `subject_kind` is required and must agree with which key the subject id uses, so a brief chain cannot be served under a direction heading. Record shapes are `$ref`'d from their owners: `brief-readback.schema.json` `$defs.brief` and `design-record-v1.schema.json` `$defs.direction`.",
+  "type": "object",
+  "required": ["schemaVersion", "subject_kind"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/design-lineage/v1"
+    },
+    "subject_kind": {
+      "enum": ["brief", "direction"]
+    },
+    "lineage": {
+      "$ref": "#/$defs/lineage"
+    }
+  },
+  "oneOf": [
+    {
+      "title": "a brief chain",
+      "required": ["schemaVersion", "subject_kind", "lineage"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "subject_kind": {
+          "const": "brief"
+        },
+        "lineage": {
+          "$ref": "#/$defs/briefLineage"
+        }
+      }
+    },
+    {
+      "title": "a direction chain",
+      "required": ["schemaVersion", "subject_kind", "lineage"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/schemaVersion"
+        },
+        "subject_kind": {
+          "const": "direction"
+        },
+        "lineage": {
+          "$ref": "#/$defs/directionLineage"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "schemaVersion": {
+      "const": "design-lab/design-lineage/v1"
+    },
+    "lineage": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/briefLineage"
+        },
+        {
+          "$ref": "#/$defs/directionLineage"
+        }
+      ]
+    },
+    "briefLineage": {
+      "type": "object",
+      "required": ["brief_id", "root_id", "requested_id", "live_id", "versions"],
+      "additionalProperties": false,
+      "properties": {
+        "brief_id": {
+          "type": "string",
+          "pattern": "^brief-[0-9a-f]{32}$"
+        },
+        "root_id": {
+          "type": "string",
+          "pattern": "^brief-[0-9a-f]{32}$"
+        },
+        "requested_id": {
+          "type": "string",
+          "pattern": "^brief-[0-9a-f]{32}$"
+        },
+        "live_id": {
+          "type": "string",
+          "pattern": "^brief-[0-9a-f]{32}$"
+        },
+        "versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://dtalex66.local/schemas/brief-readback.json#/$defs/brief"
+          }
+        }
+      }
+    },
+    "directionLineage": {
+      "type": "object",
+      "required": ["direction_id", "root_id", "requested_id", "live_id", "versions"],
+      "additionalProperties": false,
+      "properties": {
+        "direction_id": {
+          "type": "string",
+          "pattern": "^direction-[0-9a-f]{32}$"
+        },
+        "root_id": {
+          "type": "string",
+          "pattern": "^direction-[0-9a-f]{32}$"
+        },
+        "requested_id": {
+          "type": "string",
+          "pattern": "^direction-[0-9a-f]{32}$"
+        },
+        "live_id": {
+          "type": "string",
+          "pattern": "^direction-[0-9a-f]{32}$"
+        },
+        "versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://dtalex66.local/schemas/design-record-v1.json#/$defs/direction"
+          }
+        }
+      }
+    }
+  }
+}

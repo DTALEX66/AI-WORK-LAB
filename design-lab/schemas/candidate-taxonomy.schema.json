@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/candidate-taxonomy/v1",
+  "title": "CandidateTaxonomy index (multi-axis classification of external design candidates)",
+  "description": "Projection of the global design-capability intake. This is RETRIEVAL METADATA, not capability authority: it records what a candidate is and which axes were MEASURED. Every unmeasured axis is null. Nothing here may promote a candidate into runtime on its own -- that stays with the Source Registry, Rights/Security review and benchmarks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "policy",
+    "entries"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/candidate-taxonomy/v1"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nullMeansUnmeasured",
+        "popularityIsNotQuality",
+        "humanReviewOnly",
+        "notes"
+      ],
+      "properties": {
+        "nullMeansUnmeasured": {
+          "const": true
+        },
+        "popularityIsNotQuality": {
+          "const": true
+        },
+        "humanReviewOnly": {
+          "const": true,
+          "description": "reviewedBy/reviewedAt are human responsibility fields; an agent must leave them null."
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "$defs": {
+    "sourceType": {
+      "enum": [
+        "skill",
+        "plugin",
+        "plugin-pack",
+        "MCP",
+        "host-adapter",
+        "component-library",
+        "component-registry",
+        "design-system",
+        "DESIGN.md",
+        "reference-dataset",
+        "benchmark",
+        "audit-tool",
+        "generator",
+        "workflow",
+        "discovery-index"
+      ]
+    },
+    "capabilityLayer": {
+      "enum": [
+        "L0-discovery",
+        "L1-taste-art-direction",
+        "L2-research-reference",
+        "L3-design-system-token",
+        "L4-component-pattern",
+        "L5-generation",
+        "L6-specialist-craft",
+        "L7-critique-audit-qa",
+        "L8-host-tool-adapter",
+        "L9-production-handoff"
+      ]
+    },
+    "disposition": {
+      "enum": [
+        "DISCOVERED",
+        "CONDITIONAL_POC",
+        "STATICALLY_VERIFIED",
+        "QUARANTINE",
+        "BENCHMARKED",
+        "ABSORBED",
+        "REFERENCE_ONLY",
+        "DEFERRED",
+        "REJECTED"
+      ]
+    },
+    "tier": {
+      "enum": [
+        "S",
+        "A",
+        "B",
+        "C",
+        "R",
+        "Q",
+        "X"
+      ]
+    },
+    "axisLevel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "measured": {
+      "description": "A score is only a score when something measured it. evidenceRef must name the benchmark/eval artifact; tier S/A additionally require a non-none benchmarkStatus.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "evidenceRef"
+      ],
+      "properties": {
+        "level": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/axisLevel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidenceRef": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "canonicalName",
+        "canonicalUrl",
+        "sourceType",
+        "capabilityLayers",
+        "domains",
+        "artifactTypes",
+        "styleArchetypes",
+        "referenceLineages",
+        "aestheticAxes",
+        "adoption",
+        "designQuality",
+        "tier",
+        "disposition",
+        "rights",
+        "risk",
+        "benchmarkStatus",
+        "evidenceLevel",
+        "removalPath",
+        "reviewedBy",
+        "reviewedAt"
+      ],
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,63}$"
+        },
+        "canonicalName": {
+          "type": "string"
+        },
+        "canonicalUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Null only when no single canonical upstream exists (see rightsNotes). Never a placeholder domain."
+        },
+        "canonicalRepo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "upstreamOwner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceType": {
+          "$ref": "#/$defs/sourceType"
+        },
+        "currentVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pinnedCommitSHA": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "discoveredAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastActivityAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "capabilityLayers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/capabilityLayer"
+          }
+        },
+        "domains": {
+          "type": "array",
+          "description": "Must name an existing design-lab/domain-packs directory. Adding a parallel product taxonomy is forbidden.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "artifactTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "styleArchetypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "referenceLineages": {
+          "type": "array",
+          "description": "Brand names belong here as lineage only; they must never become a global default style id.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "aestheticAxes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/measured"
+          }
+        },
+        "adoption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observedAt",
+            "source",
+            "parentRepoStars",
+            "skillSpecificSignal",
+            "metrics"
+          ],
+          "properties": {
+            "observedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parentRepoStars": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "description": "Adoption of the containing repository, kept separate so it can never be reported as the candidate's own."
+            },
+            "skillSpecificSignal": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "metrics": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "designQuality": {
+          "type": "object",
+          "description": "Separate from adoption by construction: every non-null field must carry an evidenceRef.",
+          "additionalProperties": {
+            "$ref": "#/$defs/measured"
+          }
+        },
+        "tier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/tier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "disposition": {
+          "$ref": "#/$defs/disposition"
+        },
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "license",
+            "licenseURL",
+            "rightsNotes"
+          ],
+          "properties": {
+            "license": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "licenseURL": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rightsNotes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "risk": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sideEffects",
+            "destructiveCapability",
+            "network",
+            "credentials",
+            "notes"
+          ],
+          "properties": {
+            "sideEffects": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "destructiveCapability": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "network": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "credentials": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "benchmarkStatus": {
+          "enum": [
+            "none",
+            "planned",
+            "partial",
+            "complete"
+          ]
+        },
+        "evidenceLevel": {
+          "enum": [
+            "E0",
+            "E1",
+            "E2",
+            "E3",
+            "E4",
+            "E5"
+          ]
+        },
+        "removalPath": {
+          "type": "string"
+        },
+        "reviewedBy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reviewedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "humanApprovalRef": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Required before reviewedBy/reviewedAt may be filled."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/design-ir.schema.json",
+  "title": "DesignIR (Design Intermediate Representation)",
+  "description": "可编辑文档对象模型（类比代码 AST/LLVM IR）：画布 + 图层节点（text/image/vector/3d/group）。artifact=文件资产；IR=文档对象。可双向转换 PSD/Figma/SVG/PDF（经 adapter capability）。",
+  "type": "object",
+  "required": [
+    "ir_version",
+    "document_id",
+    "revision",
+    "canvas",
+    "layers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "ir_version": {
+      "const": "design-lab/design-ir/v1"
+    },
+    "document_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "canvas": {
+      "type": "object",
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "type": "number",
+          "minimum": 1
+        },
+        "height": {
+          "type": "number",
+          "minimum": 1
+        },
+        "background": {
+          "type": "string"
+        }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/layer"
+      }
+    }
+  },
+  "$defs": {
+    "layer": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "text",
+            "image",
+            "vector",
+            "3d",
+            "group"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true
+        },
+        "locked": {
+          "type": "boolean",
+          "default": false
+        },
+        "transform": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "scale": {
+              "type": "number"
+            },
+            "rotation": {
+              "type": "number"
+            }
+          }
+        },
+        "styles": {
+          "type": "object",
+          "properties": {
+            "fill": {
+              "type": "string"
+            },
+            "stroke": {
+              "type": "string"
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "blend": {
+              "type": "string"
+            }
+          }
+        },
+        "text": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "font_family": {
+              "type": "string"
+            },
+            "font_size": {
+              "type": "number"
+            },
+            "font_weight": {
+              "type": "number"
+            },
+            "color": {
+              "type": "string"
+            },
+            "alignment": {
+              "type": "string"
+            }
+          }
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "src_ref": {
+              "type": "string",
+              "description": "artifact:// ref 到文件资产"
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "vector": {
+          "type": "object",
+          "properties": {
+            "path_data": {
+              "type": "string"
+            },
+            "fill": {
+              "type": "string"
+            },
+            "stroke": {
+              "type": "string"
+            },
+            "stroke_width": {
+              "type": "number"
+            }
+          }
+        },
+        "3d": {
+          "type": "object",
+          "properties": {
+            "scene_ref": {
+              "type": "string"
+            },
+            "camera": {
+              "type": "object"
+            }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/layer"
+          },
+          "description": "group 子层"
+        }
+      }
+    }
+  }
+}

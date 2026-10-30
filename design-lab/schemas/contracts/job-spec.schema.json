@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/job-spec.schema.json",
+  "title": "job-spec",
+  "description": "A job carries the full immutable operation intent snapshot it executes (idempotency + audit).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "job_id",
+    "schemaVersion",
+    "operation_intent",
+    "attempt_no"
+  ],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/job-spec/v1"
+    },
+    "operation_intent": {
+      "$ref": "#/$defs/operationIntentRef"
+    },
+    "attempt_no": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "$defs": {
+    "operationIntentRef": {
+      "$comment": "Registered OperationIntent contract (operation-intent.schema.json) inlined so a job-spec is self-validating.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "schemaVersion",
+        "idempotency_scope",
+        "idempotency_key",
+        "request_hash"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schemaVersion": {
+          "const": "design-lab/operation-intent/v1"
+        },
+        "idempotency_scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request_hash": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/assurance-jury-record-v2.json",
+  "title": "Assurance jury record v2 (DL-P0-171)",
+  "description": "Human jury record for DESIGN-LAB's quality gate. It is a superset of the guarantees of design-lab/schemas/jury-record.schema.json (V1): jury_id -> jury_record_id, boundTreeSha (git short SHA) -> artifact_sha256 (exact nonzero artifact digest), humanReview{reviewer,date,verdict} -> juror{juror_id,kind,attestation} + decided_at (RFC3339 with offset), axes{5 named 1-5 integers} -> criteria[{criterion_id,weight,score,note}] with weights summing to 1, evidence[{level,artifact}] -> evidence_refs[], and verdict PASS/REVISE/REJECT -> APPROVE/REJECT. The final vocabulary is the one frozen by DLDS-F070: the human jury's only outcomes are APPROVE and REJECT, and the non-final REVISE this record previously carried was dropped with that policy, so a wanted revision is stated as REJECT plus evidence_refs rather than as a third state a reader could mistake for acceptance. V1 additionally carried an inline 'deterministic' block that this v2 record omits on purpose: deterministic evidence is recorded as a DETERMINISTIC finding in assurance-qa-layer.schema.json and referenced here by evidence_refs, so a model or an agent cannot restate a rule result as part of a human verdict. The signing actor must be a HUMAN or PANEL juror; automation may only produce $defs/proposal, which cannot validate against this root because the roots differ in 'kind' and in their closed property sets (a record carrying proposal_id, proposer, suggested_verdict or is_verdict is refused by the root and by the module even when re-tagged JURY_VERDICT).",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "jury_record_id", "subject_ref", "artifact_sha256", "juror", "criteria", "verdict", "decided_at", "supersedes", "evidence_refs"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assurance-jury-record/v2"},
+    "kind": {"const": "JURY_VERDICT"},
+    "jury_record_id": {"type": "string", "minLength": 1},
+    "subject_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The design subject the judgement is about (job, deliverable or artifact reference)."
+    },
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "juror": {"$ref": "#/$defs/juror"},
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/criterion"}
+    },
+    "verdict": {
+      "enum": ["APPROVE", "REJECT"],
+      "description": "The final human verdict (DLDS-F070). There is no non-final value here: a wanted revision is REJECT with evidence_refs, so no reader can mistake a verdict for a request."
+    },
+    "decided_at": {"$ref": "#/$defs/rfc3339"},
+    "supersedes": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "Append-only edge to the jury_record_id this record replaces (never itself)."
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"required": ["verdict"], "properties": {"verdict": {"const": "REJECT"}}},
+      "then": {
+        "properties": {"evidence_refs": {"minItems": 1}},
+        "description": "A rejection must cite at least one evidence_ref so it can be reviewed."
+      }
+    },
+    {
+      "if": {"required": ["juror"], "properties": {"juror": {"required": ["kind"], "properties": {"kind": {"const": "PANEL"}}}}},
+      "then": {
+        "properties": {"juror": {"required": ["members"], "properties": {"members": {"minItems": 1}}}},
+        "description": "An unnamed panel is not a human actor."
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "description": "Lowercase nonzero artifact digest; an all-zero digest is not a judged artifact.",
+      "pattern": "^(?!sha256:0{64}$)sha256:[0-9a-f]{64}$"
+    },
+    "rfc3339": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp with an explicit UTC offset. The module enforces this with a regex because the installed jsonschema has no date-time checker, and Python's fromisoformat would accept a bare date.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([Zz]|[+-]\\d{2}:\\d{2})$"
+    },
+    "juror": {
+      "type": "object",
+      "required": ["juror_id", "kind", "attestation"],
+      "additionalProperties": false,
+      "properties": {
+        "juror_id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": ["HUMAN", "PANEL"],
+          "description": "Only a human or a named panel may sign; any agent/model/system kind is refused by the module."
+        },
+        "attestation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How this human's judgement was obtained and witnessed; not a model summary of it."
+        },
+        "members": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1},
+          "description": "Named humans in the panel; confidence stays null below two members."
+        }
+      }
+    },
+    "criterion": {
+      "type": "object",
+      "required": ["criterion_id", "weight", "score", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "criterion_id": {"type": "string", "minLength": 1},
+        "weight": {"type": "number", "minimum": 0, "maximum": 1},
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "0-5, mirroring the V1 five-axis scale; 0 is only for a hard failure."
+        },
+        "note": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Required at either extreme score by allOf below; the module enforces the same rule."
+        }
+      },
+      "allOf": [
+        {
+          "if": {"required": ["score"], "properties": {"score": {"type": "number", "minimum": 5}}},
+          "then": {"required": ["note"], "properties": {"note": {"type": "string", "minLength": 1}}}
+        },
+        {
+          "if": {"required": ["score"], "properties": {"score": {"type": "number", "maximum": 0}}},
+          "then": {"required": ["note"], "properties": {"note": {"type": "string", "minLength": 1}}}
+        }
+      ]
+    },
+    "proposal": {
+      "title": "JuryProposal (an agent suggestion; explicitly not a verdict)",
+      "type": "object",
+      "required": ["schemaVersion", "kind", "proposal_id", "subject_ref", "artifact_sha256", "proposer", "criteria", "suggested_verdict", "rationale", "created_at", "is_verdict"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {"const": "design-lab/assurance-jury-record/v2"},
+        "kind": {"const": "JURY_PROPOSAL"},
+        "proposal_id": {"type": "string", "minLength": 1},
+        "subject_ref": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "proposer": {"type": "string", "minLength": 1},
+        "criteria": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/criterion"}},
+        "suggested_verdict": {
+          "enum": ["APPROVE", "REJECT"],
+          "description": "What the agent suggests. It is a suggestion in a proposal document, never a verdict: the same word in the verdict field of the root is what only a HUMAN or PANEL juror may sign."
+        },
+        "rationale": {"type": "string", "minLength": 1},
+        "created_at": {"$ref": "#/$defs/rfc3339"},
+        "is_verdict": {
+          "const": false,
+          "description": "Always false. A proposal is a recommendation and every function that accepts a verdict refuses it."
+        }
+      },
+      "not": {"anyOf": [{"required": ["verdict"]}, {"required": ["juror"]}, {"required": ["jury_record_id"]}]}
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/product-manifest.schema.json",
+  "title": "DESIGN-LAB Product Manifest",
+  "type": "object",
+  "required": ["schemaVersion", "product", "evidencePolicy", "directoryRoles", "capabilityFamilies", "entrypoints", "safetyBoundaries"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"type": "string"},
+    "schemaVersion": {"const": "design-lab/product-manifest/v1"},
+    "product": {
+      "type": "object",
+      "required": ["id", "name", "version", "positioning", "nonGoals"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "positioning": {"type": "string", "minLength": 20},
+        "productDefinition": {"type": "string", "minLength": 1},
+        "boundaryContract": {"type": "string", "minLength": 1},
+        "userModes": {"type": "string", "minLength": 1},
+        "objectModel": {"type": "string", "minLength": 1},
+        "nonGoals": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+        "neutralityPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["modelNeutral", "styleNeutral", "domainNeutral", "platformNeutral", "versionNeutral"],
+          "properties": {
+            "modelNeutral": {"type": "string", "minLength": 1},
+            "styleNeutral": {"type": "string", "minLength": 1},
+            "domainNeutral": {"type": "string", "minLength": 1},
+            "platformNeutral": {"type": "string", "minLength": 1},
+            "versionNeutral": {"type": "string", "minLength": 1}
+          }
+        },
+        "rightsPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "defaultUnknown", "requires"],
+          "properties": {
+            "mode": {"type": "string", "minLength": 1},
+            "defaultUnknown": {"type": "string", "minLength": 1},
+            "requires": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+          }
+        }
+      }
+    },
+    "evidencePolicy": {
+      "type": "object",
+      "required": ["levels", "states", "runtimeReadyRequires"],
+      "additionalProperties": false,
+      "properties": {
+        "levels": {"type": "array", "items": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]}, "minItems": 6, "uniqueItems": true},
+        "states": {"type": "array", "items": {"enum": ["NOT_RUN", "PASS", "FAIL", "BLOCKED", "UNVERIFIED", "SKIPPED_OPTIONAL"]}, "minItems": 6, "uniqueItems": true},
+        "runtimeReadyRequires": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 3}
+      }
+    },
+    "directoryRoles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "role"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "role": {"type": "string", "minLength": 1}
+        }
+      },
+      "minItems": 1
+    },
+    "capabilityFamilies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "paths", "minimumEvidence"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "title": {"type": "string", "minLength": 1},
+          "paths": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+          "minimumEvidence": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+          "domain": {"type": "string", "minLength": 1},
+          "adapters": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "standards": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "license": {"type": "string", "minLength": 1},
+          "benchmark": {"type": "string", "minLength": 1},
+          "owner": {"type": "string", "minLength": 1},
+          "lastVerified": {"type": "string"}
+        }
+      },
+      "minItems": 1
+    },
+    "entrypoints": {
+      "type": "object",
+      "required": ["human", "machine", "verification"],
+      "additionalProperties": false,
+      "properties": {
+        "human": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "machine": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "verification": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      }
+    },
+    "safetyBoundaries": {
+      "type": "object",
+      "required": ["forbiddenRoots", "forbiddenSecrets", "requiresExplicitAuthorization"],
+      "additionalProperties": false,
+      "properties": {
+        "forbiddenRoots": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "forbiddenSecrets": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "requiresExplicitAuthorization": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      }
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/rights-readback.schema.json",
+  "title": "Rights Readback V1 (what GET /api/projects/<id>/rights answers)",
+  "$comment": "Written against three payloads the product really emitted on 2026-10-22 -- a project holding one APPROVED scope plus one DENIED scope, a project whose only scope is APPROVED, and a project nobody filed anything for -- captured through design_lab.http_service.make_server on a live socket; see design-lab/scripts/verify_route_payload_contracts.py. Emitter: src/design_lab/rights_review.py (readback). THE DECISIONS ARE REFERENCED, NOT RESTATED: every element of `decisions` and every value of `current_decisions` is the rights decision itself, bound by design-lab/schemas/contracts/rights-decision.schema.json. Copying those fields here would create a second authority able to disagree with the contract the write path already enforces, so a v1 decision change moves into this file by reference. `rights_clearance` is the one word a reader can be misled by, and the rule behind it is bound below rather than left to prose: CLEARED requires at least one filed scope and cannot be carried by an empty set, so 0-of-0 reads NOT_REVIEWED. PENDING_REVIEW never appears here as a clearance -- it is a word a human may file inside `decision_states`, never one this facade infers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project_id",
+    "decisions",
+    "decision_count",
+    "current_decisions",
+    "decision_states",
+    "filed_scope_count",
+    "approved_scope_count",
+    "unapproved_scopes",
+    "ever_filed_scopes",
+    "scope_conflicts",
+    "name_checked_only",
+    "rights_clearance",
+    "clearance_vocabulary",
+    "decision_vocabulary",
+    "does_not_prove"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/rights-readback/v1"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "decisions": {
+      "type": "array",
+      "items": {"$ref": "https://design-lab.local/schemas/rights-decision.schema.json"}
+    },
+    "decision_count": {"type": "integer", "minimum": 0},
+    "current_decisions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "https://design-lab.local/schemas/rights-decision.schema.json"
+      }
+    },
+    "decision_states": {
+      "$comment": "One entry per word the decision contract allows, including zero -- a vocabulary member that silently disappeared from this map is how a state word stops being emittable without anything going red.",
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "filed_scope_count": {"type": "integer", "minimum": 0},
+    "approved_scope_count": {"type": "integer", "minimum": 0},
+    "unapproved_scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["use_scope", "decision", "decision_id", "decided_by"],
+        "properties": {
+          "use_scope": {"type": "string", "minLength": 1},
+          "decision": {
+            "enum": ["APPROVED", "DENIED", "PENDING_REVIEW", "BLOCKED_BY_LICENSE"]
+          },
+          "decision_id": {"type": "string", "minLength": 1},
+          "decided_by": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "ever_filed_scopes": {
+      "$comment": "Scopes with any row, including ones retired by supersede. Kept apart from `current_decisions` so a retired decision cannot be read as no decision ever having existed.",
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "scope_conflicts": {
+      "$comment": "A forked chain: more than one live row for one scope. The facade picks the newest for `current_decisions` and publishes the fork here instead of hiding the tie-break.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["use_scope", "decision_ids"],
+        "properties": {
+          "use_scope": {"type": "string", "minLength": 1},
+          "decision_ids": {
+            "type": "array",
+            "minItems": 2,
+            "items": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "name_checked_only": {
+      "$comment": "Scopes whose current decision states no actor kind. Over this boundary no decision can carry one, so HTTP-filed rows land here; an empty list would mean a declared kind, which the contract cannot express.",
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "rights_clearance": {"enum": ["CLEARED", "NOT_REVIEWED"]},
+    "clearance_vocabulary": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"enum": ["CLEARED", "NOT_REVIEWED"]}
+    },
+    "decision_vocabulary": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"enum": ["APPROVED", "DENIED", "PENDING_REVIEW", "BLOCKED_BY_LICENSE"]}
+    },
+    "does_not_prove": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "The clearance rule, machine-checked: CLEARED is a sentence about the project, so it may not be carried by an empty scope set nor by part of one. filed_scope_count and approved_scope_count travel with the word precisely so a reader never has to trust the word alone.",
+      "if": {
+        "properties": {"rights_clearance": {"const": "CLEARED"}},
+        "required": ["rights_clearance"]
+      },
+      "then": {
+        "properties": {
+          "filed_scope_count": {"minimum": 1},
+          "approved_scope_count": {"minimum": 1},
+          "unapproved_scopes": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "$comment": "The same rule read from the other side: 0-of-0 is vacuously 'all approved' and must never be reported as cleared. An emitter that starts computing clearance with `all(...)` over an empty scope set violates this document, not just the prose above it.",
+      "if": {
+        "properties": {"filed_scope_count": {"const": 0}},
+        "required": ["filed_scope_count"]
+      },
+      "then": {
+        "properties": {"rights_clearance": {"const": "NOT_REVIEWED"}}
+      }
+    }
+  ]
+}

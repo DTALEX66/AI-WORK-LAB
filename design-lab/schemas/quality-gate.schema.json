@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/quality-gate.schema.json",
+  "title": "QualityGate Policy (V2)",
+  "description": "质量门禁：分层评分与 hard blockers 独立；blocker 不可被加权平均覆盖（DL-V2 P1-E）。",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "gate_id",
+    "minimum_total",
+    "minimum_dimensions",
+    "blocking_rules",
+    "dimensions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "packages/capabilities/quality-gate/v1"
+    },
+    "gate_id": {
+      "type": "string"
+    },
+    "minimum_total": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "minimum_dimensions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      }
+    },
+    "blocking_rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "weight"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      }
+    },
+    "target_false_pass_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.02
+    }
+  }
+}

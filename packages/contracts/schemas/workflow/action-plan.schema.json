@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/action-plan.schema.json",
+  "title": "Workflow ActionPlan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "status",
+    "target",
+    "steps",
+    "approval",
+    "rollback"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/action-plan/v1"
+    },
+    "plan_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9._-]{3,96}$"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "DRAFT",
+        "WAITING_APPROVAL",
+        "APPROVED",
+        "EXECUTING",
+        "SUCCEEDED",
+        "FAILED",
+        "BLOCKED",
+        "ROLLED_BACK"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "operation",
+        "project_root"
+      ],
+      "properties": {
+        "adapter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_root": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "action",
+          "mode",
+          "side_effects"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mode": {
+            "enum": [
+              "read",
+              "write",
+              "execute"
+            ]
+          },
+          "side_effects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approval_required",
+        "status"
+      ],
+      "properties": {
+        "approval_required": {
+          "const": true
+        },
+        "status": {
+          "enum": [
+            "PENDING",
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        "approved_by": {
+          "type": "string"
+        }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "strategy"
+      ],
+      "properties": {
+        "available": {
+          "const": true
+        },
+        "strategy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifact": {
+          "type": "string"
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network": {
+          "enum": [
+            "none",
+            "explicit"
+          ]
+        }
+      }
+    }
+  }
+}

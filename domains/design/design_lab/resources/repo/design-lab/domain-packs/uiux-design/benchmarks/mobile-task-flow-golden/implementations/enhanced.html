@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>订单追踪与客服沟通 — Enhanced</title>
+<style>
+  :root {
+    --bg: #0E1116; --accent: #4F8CFF; --success: #34C77B;
+    --warning: #F5A623; --danger: #E5484D; --text: #E8ECF1;
+    --text-dim: #9AA5B1; --surface: #161B22; --surface-2: #1D2430;
+    --radius: 10px; --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+    min-height: 100vh;
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .app-header {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: rgba(14,17,22,0.92); backdrop-filter: blur(6px);
+    border-bottom: 1px solid #222B36;
+  }
+  .app-header h1 { font-size: 17px; font-weight: 600; flex: 1; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); display: grid; place-items: center;
+    font-weight: 700; font-size: 14px; color: #0E1116;
+  }
+  .back-btn, .icon-btn {
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid #2A3542; border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3); cursor: pointer;
+    font-size: 14px;
+  }
+  .back-btn:hover, .icon-btn:hover { background: #242E3B; }
+  main { padding: var(--space-4); max-width: 480px; margin: 0 auto; }
+  @media (min-width: 768px) {
+    main { max-width: 900px; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  }
+  .status-timeline { list-style: none; padding: var(--space-3) 0; }
+  .status-timeline li {
+    display: flex; gap: var(--space-3); padding-bottom: var(--space-3);
+    position: relative; align-items: flex-start;
+  }
+  .status-timeline li::before {
+    content: ""; position: absolute; left: 7px; top: 22px; bottom: -4px;
+    width: 2px; background: #2A3542;
+  }
+  .status-timeline li:last-child::before { display: none; }
+  .dot {
+    width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+    background: #2A3542; border: 2px solid #39424F; margin-top: 2px;
+  }
+  .status-timeline li.done .dot { background: var(--success); border-color: var(--success); }
+  .status-timeline li.current .dot {
+    background: var(--accent); border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(79,140,255,0.25);
+  }
+  .status-timeline li.warn .dot { background: var(--warning); border-color: var(--warning); }
+  .status-label { font-weight: 600; font-size: 14px; }
+  .status-time { color: var(--text-dim); font-size: 12px; }
+  .order-card {
+    background: var(--surface); border: 1px solid #222B36; border-radius: var(--radius);
+    padding: var(--space-4); margin: var(--space-3) 0;
+  }
+  .order-card h2 { font-size: 15px; margin-bottom: var(--space-2); }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+  }
+  .badge.shipping { background: #1D3F6E; color: #A8C9FF; }
+  .order-meta { color: var(--text-dim); font-size: 13px; margin-top: var(--space-2); }
+  .chat { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) 0; }
+  .bubble {
+    max-width: 82%; padding: 10px 14px; border-radius: 14px; font-size: 14px;
+  }
+  .bubble.agent { background: var(--surface-2); border-bottom-left-radius: 4px; align-self: flex-start; }
+  .bubble.user { background: var(--accent); color: #0E1116; border-bottom-right-radius: 4px; align-self: flex-end; }
+  .quick-reply {
+    position: sticky; bottom: 0; background: var(--bg);
+    padding: var(--space-3) 0; border-top: 1px solid #222B36;
+    display: flex; gap: var(--space-2);
+  }
+  .quick-reply input {
+    flex: 1; background: var(--surface); border: 1px solid #2A3542;
+    border-radius: var(--radius); padding: 10px var(--space-3);
+    color: var(--text); font-size: 14px;
+  }
+  .quick-reply button {
+    background: var(--accent); color: #0E1116; border: none;
+    border-radius: var(--radius); padding: 10px 18px; font-weight: 600; cursor: pointer;
+  }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+  <header class="app-header">
+    <button class="back-btn" aria-label="返回订单列表">←</button>
+    <h1>订单追踪</h1>
+    <div class="avatar" aria-hidden="true">客</div>
+  </header>
+
+  <main>
+    <section aria-labelledby="status-heading">
+      <h2 id="status-heading" class="sr-only">订单状态</h2>
+      <ol class="status-timeline">
+        <li class="done">
+          <span class="dot" aria-hidden="true"></span>
+          <div><p class="status-label">已下单</p><p class="status-time">07-30 14:02</p></div>
+        </li>
+        <li class="done">
+          <span class="dot" aria-hidden="true"></span>
+          <div><p class="status-label">已发货</p><p class="status-time">07-31 09:15</p></div>
+        </li>
+        <li class="current">
+          <span class="dot" aria-hidden="true"></span>
+          <div><p class="status-label">运输中</p><p class="status-time">预计 08-02 送达</p></div>
+        </li>
+        <li>
+          <span class="dot" aria-hidden="true"></span>
+          <div><p class="status-label">已送达</p><p class="status-time">等待</p></div>
+        </li>
+      </ol>
+
+      <article class="order-card" aria-label="订单 #OD-2026-0811 摘要">
+        <h2>订单 #OD-2026-0811</h2>
+        <p><span class="badge shipping">运输中</span></p>
+        <p class="order-meta">金额 ¥1,280.00 ｜ 3 件商品 ｜ 顺丰 SF1234567890</p>
+      </article>
+    </section>
+
+    <section aria-labelledby="chat-heading">
+      <h2 id="chat-heading" class="sr-only">与客服沟通</h2>
+      <div class="chat" role="log" aria-live="polite">
+        <div class="bubble agent">您好，您的订单正在运输中，预计 08-02 送达。</div>
+        <div class="bubble user">能帮我改一下收货地址吗？</div>
+        <div class="bubble agent">已为您记录，配送员出发前可修改，请稍候确认。</div>
+      </div>
+      <form class="quick-reply" aria-label="快捷回复">
+        <label class="sr-only" for="reply-input">回复客服</label>
+        <input id="reply-input" type="text" placeholder="输入消息…" autocomplete="off">
+        <button type="submit">发送</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,1621 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/workflow-snapshot/v3",
+  "title": "WORK-LAB read-only Observer snapshot (workflow/snapshot/v3)",
+  "description": "The cross-language shape of the projection the sidecar answers at GET /api/v1/snapshot and pushes over /api/v1/events. Registered in the contract catalog because WUI-15's acceptance says the JSON Schema set is the single source of truth, and until now this payload was outside it: the shape lived in packages/client-neutral-core/scripts/snapshot_validator.py (Python) and apps/observer/frontend/src/types.ts (TypeScript) with nothing proving the two agreed, which is how ERR-225 happened — the producer emitted entryProbe/versionDrift that the front model never declared, so the facts could not be rendered and every gate stayed green. Division of labour, deliberately not a duplication: THIS schema owns the key set, the optionality of each key and the primitive types; snapshot_validator.py keeps the semantic invariants JSON Schema cannot state (capability-ladder monotonicity, checkpoint digest shape, duplicate handles, truncation without an ordering key). Top level is additionalProperties:false on purpose — a new producer key must arrive here as a decision, because an undeclared key is precisely the drift direction that is invisible from the reading side. Key set and optionality measured 2026-10-09 from the live sidecar readbacks .project-local/runs/wui-20261009/snapshot-readback.json and snapshot-readback2.json (20 top-level keys, 15 always present, 5 conditional), and the enum values are copied from apps/observer/frontend/src/types.ts:13-21 rather than invented.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "revision",
+    "generatedAt",
+    "sourceWatermark",
+    "transport",
+    "coverage",
+    "governance",
+    "workspace",
+    "projects",
+    "executions",
+    "tasks",
+    "tokenSummary",
+    "git",
+    "ci",
+    "sourceRefs"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "workflow/snapshot/v3",
+      "description": "Compared, never re-derived: api.ts parses the payload by comparing this literal, and the static contract refuses any file that EMBEDS a v3 snapshot literal."
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic source of ordering. api.ts rejects a lower revision arriving after a higher one rather than letting a late older projection replace newer facts on screen."
+    },
+    "generatedAt": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "RFC3339, the same rule snapshot_validator.py enforces with RFC3339_RE."
+    },
+    "sourceWatermark": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T",
+      "description": "Nullable and required: the key is always present, and null is the statement that no source watermark was read. Absent-vs-null is not a distinction here; null-vs-a-timestamp is, so the field must never be dropped."
+    },
+    "transport": {
+      "type": "object",
+      "required": [
+        "transportState",
+        "freshnessState"
+      ],
+      "properties": {
+        "transportState": {
+          "enum": [
+            "LIVE",
+            "DELAYED",
+            "OFFLINE",
+            "CONNECTING",
+            "UNKNOWN"
+          ]
+        },
+        "freshnessState": {
+          "enum": [
+            "FRESH",
+            "STALE",
+            "UNKNOWN"
+          ]
+        },
+        "eventsUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "connectedSince": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastHeartbeatAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "writerWatermarkAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "eventStreamConnected": {
+          "type": "boolean"
+        }
+      },
+      "description": "Disconnect is not stop: OFFLINE never licenses a downstream 'stopped' claim (the read-only iron law)."
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "numerator",
+        "denominator",
+        "scope"
+      ],
+      "properties": {
+        "numerator": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "denominator": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Nullable: build_snapshot emits coverage.scope = None when no coverage scope was computed. The first draft of this schema said `string` because the one live readback it was read off carried a string — validating the producer's minimal call instead of only its full one is what caught it. types.ts:36 already declared `string | null`, so the front model was right and the schema was wrong."
+        }
+      },
+      "description": "A null denominator means unmeasurable, not zero, and the UI must not divide it into a percentage."
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "state",
+        "families"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "CLEAN",
+            "DRIFT",
+            "UNKNOWN"
+          ]
+        },
+        "families": {
+          "type": "object"
+        }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "description": "Plan/sources/history/governance projection. Interior keys are owned by the workflow side and validated semantically, not here."
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "projectId",
+          "agentPlatform",
+          "displayName",
+          "identityState",
+          "activityState",
+          "attentionState",
+          "activeExecutionCount",
+          "workingAreas",
+          "visibility",
+          "quality",
+          "lastStrongEvidenceAt",
+          "repositories",
+          "git",
+          "token",
+          "ci",
+          "executionIds",
+          "sourceRefs"
+        ],
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "agentPlatform": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identityState": {
+            "type": "string"
+          },
+          "activityState": {
+            "enum": [
+              "ACTIVE",
+              "REGISTERED",
+              "IDLE",
+              "UNKNOWN"
+            ]
+          },
+          "attentionState": {
+            "type": "string"
+          },
+          "activeExecutionCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "workingAreas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "quality": {
+            "type": "string"
+          },
+          "lastStrongEvidenceAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Newest `observed_at` among this project's strong `source_quality` rows (the label `collectors.py` writes when it read a source exactly — `EXACT_SOURCE`), passed through verbatim by `composition_root._strong_evidence_map`. Null means this project owns no strong observation; it is not zero, not the snapshot's own `generatedAt`, and not 'never observed' — the Observer renders it as 无强证据时间 and the daily card's 最近变化 falls back to 待确认. Before 2026-10-27 the producer never emitted this key at all, so every card read 待确认 regardless of what the store held."
+          },
+          "repositories": {
+            "type": "array"
+          },
+          "git": {
+            "type": "object",
+            "required": [
+              "matchState"
+            ],
+            "properties": {
+              "localSha": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "remoteSha": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "matchState": {
+                "enum": [
+                  "MATCH",
+                  "LOCAL_REMOTE_MATCH",
+                  "LOCAL_CI_MATCH",
+                  "NO_LOCAL_CLAIM",
+                  "UNVERIFIED",
+                  "MISMATCH"
+                ]
+              },
+              "branch": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "dirtyCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "observedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "quality": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "freshness": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sourceRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sourceProjectId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "WL-L01 (2026-10-11): whose Git observation this block is showing. Equal to the row's own projectId for an own observation, null when the project has none — and never another project's id, because the old code fell back to whatever repository came first and printed its SHA/branch under this project's name. Null is the honest 'no Git row for this project'; it is not a licence to borrow."
+              }
+            },
+            "additionalProperties": false
+          },
+          "token": {
+            "type": "object",
+            "required": [
+              "costQuality"
+            ],
+            "properties": {
+              "inputTokens": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "outputTokens": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "totalTokens": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "costQuality": {
+                "enum": [
+                  "EXACT",
+                  "ESTIMATED",
+                  "UNKNOWN"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "ci": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "runId",
+                "projectId",
+                "workflow",
+                "headSha",
+                "status",
+                "conclusion",
+                "sourceRef"
+              ],
+              "properties": {
+                "runId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "workflow": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "headSha": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "conclusion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sourceRef": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "description": "The project's rows selected from `ci_runs` by `projectId` (`snapshot_api.py:268`). Each item is a whole composition-root row, so it carries `projectId` — a row without one can never enter this list, because the filter compares it to the project id."
+          },
+          "executionIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sourceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "description": "One row per product project. additionalProperties:false here is the point of this section: the top level has been closed since ERR-225 while this nested block kept seven of seventeen keys and accepted the other ten silently, so ten projected facts had no authority and a new one would still arrive un-named. Key set and types measured 2026-10-10 from snapshot_api.py::_project_projection (253-286) and pinned three ways by tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py against apps/observer/frontend/src/types.ts::Project. Note what the row does NOT carry: git.ciSha, so a row can state matchState=MATCH (computed from the upstream git dict) that cannot be re-derived from the row alone — the enum keeps all six values because reachability depends on the input, not on the emitted keys. token.* stays null for unknown and is never padded to 0."
+      }
+    },
+    "executions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "executionId",
+          "state"
+        ],
+        "properties": {
+          "executionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "RUNNING",
+              "STARTING",
+              "WAITING_USER",
+              "WAITING_APPROVAL",
+              "BLOCKED",
+              "COMPLETED",
+              "FAILED",
+              "UNKNOWN"
+            ]
+          },
+          "anchorProjectId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "Count map, not a record list: the task rows themselves are taskRecords, and the two carry different statements."
+    },
+    "tokenSummary": {
+      "type": "object",
+      "required": [
+        "costQuality"
+      ],
+      "properties": {
+        "inputTokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "totalTokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "costQuality": {
+          "enum": [
+            "EXACT",
+            "ESTIMATED",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "description": "Tokens stay separate from credits, subscription, cost and resource metrics; null is unknown and is never displayed as 0."
+    },
+    "git": {
+      "type": "object",
+      "required": [
+        "matchState"
+      ],
+      "properties": {
+        "localSha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remoteSha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ciSha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "matchState": {
+          "enum": [
+            "MATCH",
+            "LOCAL_REMOTE_MATCH",
+            "LOCAL_CI_MATCH",
+            "NO_LOCAL_CLAIM",
+            "UNVERIFIED",
+            "MISMATCH"
+          ],
+          "description": "The six returns of snapshot_api.py::_git_match_state (366-380), in the order the function tests them. apps/observer/frontend/src/types.ts used to declare 'MATCH' | 'UNVERIFIED' | 'DRIFT' | 'UNKNOWN': three real outcomes were un-declarable and DRIFT/UNKNOWN could never arrive, so the shipped row (ProjectSummaryTable.tsx:119) prints the raw token while any code switching on DRIFT was dead. The pairing test pins this enum against the TypeScript union in both directions."
+        },
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dirtyCount": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "observedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quality": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "freshness": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceRef": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "ci": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "runId",
+          "workflow",
+          "headSha",
+          "status",
+          "conclusion",
+          "sourceRef"
+        ],
+        "properties": {
+          "runId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "workflow": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "headSha": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "conclusion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceRef": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "The flat CI projection (`snapshot_api.py:97-107`): the six row facts without `projectId`, which is re-attached for the per-project view. Every key is emitted on every row even when the read missed, so the keys are required and their values nullable."
+    },
+    "sourceRefs": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "software": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "softwareId"
+        ],
+        "properties": {
+          "softwareId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "locationStatus": {
+            "type": "string"
+          },
+          "duplicateInstallation": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Install identity projection (U17/P0-07). ABSENT means the source was not read; the panel then shows UNKNOWN, never a fabricated Healthy."
+    },
+    "taskRecords": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "taskId",
+          "projectId",
+          "status",
+          "checkpointPresent",
+          "checkpointKeys"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fencingToken": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "checkpointPresent": {
+            "type": "boolean"
+          },
+          "checkpointKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checkpointDigest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Added 2026-10-27. `snapshot_api.project_task_record` has always emitted these four store fields; the item simply never named them, so a projected fact had no authority (the same hole ERR-225 closed at the top level and the projects row closed in 2026-10-10). Null means the source states no time — a register row's `createdAt` is null because OPEN-TASK-REGISTER.md has no timestamp column, not because the row is new."
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leaseHolder": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "leaseExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "register": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "source",
+              "state",
+              "priority",
+              "work",
+              "workChars",
+              "workTruncated",
+              "cellsRealigned",
+              "evidenceRef",
+              "reason"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "const": "OPEN_TASK_REGISTER"
+              },
+              "state": {
+                "enum": [
+                  "READ",
+                  "UNREADABLE",
+                  "ID_CONFLICT"
+                ],
+                "description": "READ = this record is one parsed table row. UNREADABLE = the register could not be read or judged (missing file, no pipe table, header that is not ID|Priority|Status|Work, zero data rows, or a row count that disagrees with scripts/ci/verify_register_table_shape.py) and this record is the single marker saying so — never an empty list, which would claim 'queried, nothing registered'. ID_CONFLICT = a register row whose taskId already belongs to a canonical `tasks` row; the register row was not projected and this marker names it."
+              },
+              "priority": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The Priority cell exactly as written (P0/P1/...). Null when the cell is blank."
+              },
+              "work": {
+                "type": "string",
+                "maxLength": 600,
+                "description": "A verbatim PREFIX of the Work cell — prose the owner wrote, escaped pipes restored. Capped because the cell is measured up to 18,447 characters (121,257 across the 42 live rows) and this list is re-sent on every snapshot; `open_task_register_projection.WORK_EXCERPT_CHARS` and this maxLength are the same number and a test pins them together. The cap is disclosed by workChars/workTruncated, never applied in silence."
+              },
+              "workChars": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The Work cell's true character count before the cap, so a reader knows how much they are not seeing."
+              },
+              "workTruncated": {
+                "type": "boolean"
+              },
+              "cellsRealigned": {
+                "type": "boolean",
+                "description": "True when the row declared more (or fewer) cells than its own header — the historical defect where an unescaped pipe inside backticked shell text split one sentence into extra columns. The surplus was rejoined into Work instead of dropped, and this flag says the row was reshaped."
+              },
+              "evidenceRef": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Where to re-read this row: `<register path>#L<line>`."
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Why the row is a marker, or what was irregular about it (blank ID, blank Status, realigned cells). Null on an ordinary row."
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Deep-link targets. ABSENT means the producer did not query the task table, which is a different statement from an empty list (queried, nothing there); the checkpoint VALUES never enter a read-only projection, only their key names and a digest. Two sources feed this list and a row says which one it is: the canonical `tasks` table (no `register` key — measured 0 rows on this machine, 2026-10-27) and the live open-task register `taskpacks/current/OPEN-TASK-REGISTER.md`, projected by `open_task_register_projection` with `register.source = OPEN_TASK_REGISTER`. The register carries no project column, so its rows are attributed to the repository that owns the register (`work-lab`) rather than to a guessed per-row project."
+    },
+    "adapterCapabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "clientId",
+          "layers"
+        ],
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "layer",
+                "state"
+              ],
+              "properties": {
+                "layer": {
+                  "enum": [
+                    "REGISTERED",
+                    "INSTALLED",
+                    "LOADED_CONNECTED",
+                    "QUALIFIED",
+                    "ENABLED_FOR_TASK",
+                    "NATIVE_PROJECTION",
+                    "OBSERVED_IN_EXECUTION"
+                  ]
+                },
+                "state": {
+                  "enum": [
+                    "MET",
+                    "NOT_PROBED",
+                    "NOT_SUPPORTED"
+                  ]
+                }
+              }
+            }
+          },
+          "role": {
+            "enum": [
+              "agent_runtime",
+              "provider_router",
+              "vcs_host",
+              "design_client",
+              "UNKNOWN"
+            ],
+            "description": "What kind of software this row is, so a provider router or a repository host is never painted as if it executed the work. Declared by the operator in config/capability-matrix.json#clients[].role; UNKNOWN means the matrix declares none for this client, which is a source gap and not a guess."
+          }
+        }
+      },
+      "description": "Seven-layer ladder cards. ABSENT is a source gap, not 'no adapters'. Ladder monotonicity is the validator's job, not this schema's."
+    },
+    "artifactHandles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "handle",
+          "surface",
+          "kind"
+        ],
+        "properties": {
+          "handle": {
+            "type": "string",
+            "minLength": 1
+          },
+          "surface": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "modifiedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "surfaceRoot": {
+            "type": "string"
+          },
+          "digestRecorded": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Identity-only evidence rows for the byte-range route: the validator refuses a row that carries content fields, so no payload body can ride in on a handle."
+    },
+    "artifactHandlesSummary": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "cap",
+        "enumeratedCount",
+        "projectedCount",
+        "omittedCount",
+        "truncated",
+        "orderingKey"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "type": "string"
+        },
+        "cap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "enumeratedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "projectedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "omittedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "orderingKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refused": {
+          "type": "object"
+        }
+      },
+      "description": "The enumeration scope of that exact list. An enumeration can be capped; it can never be quietly capped, which is why a truncated list without its ordering key is refused by the validator."
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "fingerprint",
+          "class",
+          "priority",
+          "priorityRule",
+          "origin",
+          "evidenceRef",
+          "occurrences",
+          "status",
+          "softwareId",
+          "softwareVersion",
+          "softwareVersionSource"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "workflow/issue/v1"
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$"
+          },
+          "class": {
+            "enum": [
+              "SOURCE_CIRCUIT_OPEN",
+              "SOURCE_REFUSAL",
+              "SOURCE_FAILURE",
+              "SOURCE_DATA_DROPPED",
+              "SOURCE_STALE",
+              "SOURCE_INCOMPLETE_COVERAGE",
+              "EXECUTION_STALLED",
+              "EXECUTION_CONFLICT",
+              "TASK_BLOCKED",
+              "TASK_FAILED"
+            ]
+          },
+          "projectId": {
+            "type": ["string", "null"]
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidenceRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "priority": {
+            "enum": ["P1", "P2", "P3"]
+          },
+          "priorityRule": {
+            "type": "string",
+            "minLength": 1
+          },
+          "safeToReread": {
+            "type": "boolean"
+          },
+          "firstSeenAt": {
+            "type": ["string", "null"]
+          },
+          "lastSeenAt": {
+            "type": ["string", "null"]
+          },
+          "occurrences": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "magnitude": {
+            "type": "object"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "status": {
+            "const": "OPEN"
+          },
+          "softwareId": {
+            "type": ["string", "null"]
+          },
+          "softwareVersion": {
+            "type": ["string", "null"]
+          },
+          "softwareVersionSource": {
+            "enum": [
+              "discovered",
+              "not-discovered",
+              "unmatched",
+              "ambiguous",
+              "source-names-no-software",
+              "identity-source-absent"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Problems derived only from facts the canonical store already recorded. A row names the table and key it came from, the rule that set its priority, and how many source rows folded into it; nothing here is inferred about a cause."
+    },
+    "issuesSummary": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "cap",
+        "rowsScanned",
+        "distinctIssueCount",
+        "emittedCount",
+        "omittedCount",
+        "foldedOccurrences",
+        "truncated",
+        "sourcesRead",
+        "sourcesAbsent",
+        "orderingKey",
+        "softwareAttribution"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "worklab/issues-summary/v1"
+        },
+        "generatedAt": {
+          "type": "string"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "state"],
+            "properties": {
+              "source": {
+                "type": "string"
+              },
+              "state": {
+                "enum": ["read", "absent", "error"]
+              },
+              "rowsScanned": {
+                "type": ["integer", "null"]
+              },
+              "issuesDerived": {
+                "type": ["integer", "null"]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "sourcesRead": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourcesAbsent": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rowsScanned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scanLimits": {
+          "type": "object",
+          "properties": {
+            "telemetry_events": {
+              "type": ["integer", "null"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "scanTruncated": {
+          "type": "object",
+          "properties": {
+            "telemetry_events": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "distinctIssueCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "emittedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "omittedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "foldedOccurrences": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "softwareAttribution": {
+          "type": "object",
+          "required": [
+            "attributed",
+            "unmatched",
+            "ambiguous",
+            "unattributable",
+            "versionKnown",
+            "identitySourceAbsent"
+          ],
+          "properties": {
+            "attributed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unmatched": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ambiguous": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unattributable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "versionKnown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "identitySourceAbsent": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "priorityCounts": {
+          "type": "object",
+          "properties": {
+            "P1": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "P2": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "P3": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "classesPresent": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "classVocabulary": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "projectsCovered": {
+          "type": "array",
+          "items": {
+            "type": ["string", "null"]
+          }
+        },
+        "unattributedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "order": {
+          "type": "string"
+        },
+        "orderingKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "orderingRule": {
+          "type": "string"
+        },
+        "derivationScope": {
+          "const": "canonical-store-facts-only"
+        },
+        "inferencePerformed": {
+          "const": false
+        },
+        "contentIncluded": {
+          "const": false
+        },
+        "sourceErrors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cost": {
+          "type": "object",
+          "properties": {
+            "elapsedMs": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "description": "The scope report of that exact list: which sources answered, which did not, what the scan limit absorbed, and what the cap dropped. It travels with the list or with neither."
+    },
+    "operationProgress": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "task_id",
+          "observed_at",
+          "state",
+          "ledger_status",
+          "last_trusted_progress",
+          "transport_state",
+          "producer_gaps"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "worklab/operation-progress/v1"
+          },
+          "task_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "description": "The contract's own stage enum, restated as a string so a ledger spelling this repository cannot map stays readable as UNKNOWN instead of failing validation. COMPLETED is the only ledger status that maps to PASSED; an expired lease answers UNKNOWN_OR_TIMEOUT, which is not a failure."
+          },
+          "ledger_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_trusted_progress": {
+            "type": "object",
+            "required": [
+              "state",
+              "at",
+              "basis"
+            ],
+            "properties": {
+              "state": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "basis": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "transport_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "producer_gaps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sourceTimes": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "target_behaviour": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "description": "WUI-21: one `worklab/operation-progress/v1` document per task, embedded verbatim. The shape is owned by packages/contracts/schemas/workflow/operation-progress.schema.json; it is restated here only because the snapshot validator is closed (additionalProperties:false at the top level since ERR-225), not because a second definition was wanted."
+      }
+    },
+    "isolatedTrials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "trial_id",
+          "parent_task_id",
+          "child_task_id",
+          "observed_at",
+          "isolation",
+          "separated_results",
+          "producer_gaps"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": "worklab/isolated-trial/v1"
+          },
+          "trial_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_task_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "child_task_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": "string"
+          },
+          "isolation": {
+            "type": "object"
+          },
+          "separated_results": {
+            "type": "object",
+            "description": "Three named stages, NOT an array and not one aggregate verdict: write / native_readback / target_behaviour. Each carries its own status AND basis, so a stage with basis NO_PRODUCER can never be summarised as PASSED.",
+            "required": [
+              "write",
+              "native_readback",
+              "target_behaviour"
+            ],
+            "properties": {
+              "write": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "basis",
+                  "note"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "description": "Never null: an unanswered stage reads UNKNOWN, so 'not observed' cannot be mistaken for 'observed and fine'."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "LEDGER_STATE / EXTERNAL_EFFECT_RECONCILED / WORKTREE_ID / SESSION_ID / NONE / NO_PRODUCER. The basis, not the status, is the evidence."
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "native_readback": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "basis",
+                  "note"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "description": "Never null: an unanswered stage reads UNKNOWN, so 'not observed' cannot be mistaken for 'observed and fine'."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "LEDGER_STATE / EXTERNAL_EFFECT_RECONCILED / WORKTREE_ID / SESSION_ID / NONE / NO_PRODUCER. The basis, not the status, is the evidence."
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "target_behaviour": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "basis",
+                  "note"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "description": "Never null: an unanswered stage reads UNKNOWN, so 'not observed' cannot be mistaken for 'observed and fine'."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "LEDGER_STATE / EXTERNAL_EFFECT_RECONCILED / WORKTREE_ID / SESSION_ID / NONE / NO_PRODUCER. The basis, not the status, is the evidence."
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "producer_gaps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "description": "WUI-21: one `worklab/isolated-trial/v1` document per trial, embedded verbatim. There is no aggregate success field on purpose — each separated result carries its own status AND basis, so a trial cannot be summarised into one verdict it never earned."
+      }
+    },
+    "collectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "collector": {
+            "type": "string",
+            "minLength": 1
+          },
+          "totalRuns": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastRunAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastSuccessAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consecutiveFailures": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "circuitOpen": {
+            "type": "boolean"
+          },
+          "droppedEvents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "refusedRows": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deliveredRows": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastRefusalReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fresh": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "collector",
+          "totalRuns",
+          "lastRunAt",
+          "lastSuccessAt",
+          "consecutiveFailures",
+          "circuitOpen",
+          "droppedEvents",
+          "refusedRows",
+          "deliveredRows",
+          "lastRefusalReason",
+          "fresh"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Per-collector delivery and refusal counts, read from `collector_health` by `composition_root._collector_delivery_rows`. ABSENT means the health table could not be read at all; an empty list means every registered collector was read and none is registered — two different statements, which is why the section is optional rather than defaulted. `refusedRows` is the cumulative count of rows the source offered that were refused by named rule (ERR-256), and `lastRefusalReason` names the most frequent one plus the first place it happened; `droppedEvents` stays separate because it means events dropped from the collector's bounded queue, a different fault with a different remedy. `circuitOpen` is a boolean on purpose: the stored `circuit_open_until` is a `time.monotonic()` value from another process and means nothing to a reader. `fresh` is the SAME predicate `coverage.numerator` is counted with, so a collector cannot look healthy in one lane and stale in another."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "issues"
+        ]
+      },
+      "then": {
+        "required": [
+          "issuesSummary"
+        ]
+      },
+      "description": "An issue list with no stated scope is a claim that nothing was omitted, which the projection cannot make."
+    },
+    {
+      "if": {
+        "required": [
+          "issuesSummary"
+        ]
+      },
+      "then": {
+        "required": [
+          "issues"
+        ]
+      },
+      "description": "A scope report for an issue list this snapshot does not carry is a claim about a snapshot the reader is not looking at."
+    },
+    {
+      "if": {
+        "required": [
+          "artifactHandles"
+        ]
+      },
+      "then": {
+        "required": [
+          "artifactHandlesSummary"
+        ]
+      },
+      "description": "A handle list with no stated scope reads as a complete list whether or not it is one."
+    },
+    {
+      "if": {
+        "required": [
+          "artifactHandlesSummary"
+        ]
+      },
+      "then": {
+        "required": [
+          "artifactHandles"
+        ]
+      },
+      "description": "A scope report for a list this snapshot does not carry is a claim about a snapshot the reader is not looking at."
+    }
+  ]
+}

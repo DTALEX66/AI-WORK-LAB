@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/target-profile-validate-v1.schema.json",
+  "title": "Target Profile Validate V1 (what the profile's own fields say about a proposed input)",
+  "$comment": "DL-KB-09, acceptance B3. A verdict reports the profile's stance on one dimension and never whether the request would run: `grants_execution` is a constant false on every verdict and `executable` is a constant false on the answer, so no caller can read a validation as a go-ahead. `DOCUMENTED_NOT_SUPPORT` exists to say a documented incompatibility in the vendor's own words (FLUX.2 has no negative prompt) instead of smoothing it into silence, and `UNKNOWN` keeps its reason attached, which is the only honest answer for an entry nobody reached.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profile_id", "profile_key", "support_state", "verdicts",
+               "conflicts", "executable", "execution_note", "fallback"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/target-profile-validate/v1"},
+    "profile_id": {"type": "string", "pattern": "^tprof-[0-9a-f]{32}$"},
+    "profile_key": {"type": "string", "minLength": 1},
+    "support_state": {"enum": ["DOCUMENTED_CLAIM", "CONDITIONAL", "UNREACHED", "USER_DRAFT"]},
+    "verdicts": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["dimension", "asked", "verdict", "field", "provenance", "source",
+                   "observed_at", "reason", "grants_execution"],
+      "properties": {
+        "dimension": {"type": "string", "minLength": 1},
+        "asked": {},
+        "verdict": {"enum": ["DOCUMENTED_SUPPORT", "DOCUMENTED_NOT_SUPPORT", "UNKNOWN",
+                             "NOT_APPLICABLE"]},
+        "field": {"type": "string", "minLength": 1},
+        "provenance": {"enum": ["OFFICIAL_DOC", "OPEN_SOURCE_IMPL", "PROJECT_MEASURED",
+                                "USER_FEEDBACK", "PROJECT_POLICY"]},
+        "source": {"type": ["string", "null"]},
+        "observed_at": {"type": ["string", "null"]},
+        "reason": {"type": "string", "minLength": 1},
+        "grants_execution": {"const": false}
+      }
+    }},
+    "conflicts": {"type": "array", "items": {
+      "$ref": "https://design-lab.local/schemas/target-profile-v1.schema.json#/$defs/field"}},
+    "executable": {"const": false},
+    "execution_note": {"type": "string", "minLength": 1},
+    "fallback": {"$ref": "https://design-lab.local/schemas/target-profile-v1.schema.json#/$defs/field"}
+  }
+}

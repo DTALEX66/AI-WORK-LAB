@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/native-runtime-readback.schema.json",
+  "title": "Native Runtime Readback V1 (what GET /api/projects/<id>/native-runtime answers)",
+  "$comment": "Written against two payloads the product really emitted on 2026-10-22 -- the same route read before any native table existed (every section ABSENT, every count null) and the same route read after one attempt held the host, reached quiescence with a receipt, opened a reconciliation, recorded os-lock-v1 and left an execution row -- captured through design_lab.http_service.make_server on a live socket; see design-lab/scripts/verify_route_payload_contracts.py. Emitter: src/design_lab/native_runtime.py (readback). THIS IS AN OBSERVATION, NOT A VERDICT: the envelope carries no health word. `proves_production_ready` and `is_host_action_performed` are bound to false, `budget` is bound to null and never to 0, because no table in this repository records a budget, quota or cost and a zero would read as 'budget available'. The absent / present split is bound per section: `table` is ABSENT exactly when `rows` is null, so 'no attempt holds the host' and 'this service never ran a native attempt' cannot collapse into one another. The row objects carry the columns the read selects -- nothing else -- and each shape is proven by the payload named above rather than copied from the DDL.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project_id",
+    "host_guard",
+    "quiescence",
+    "reconciliation",
+    "recovery_protocol",
+    "executions",
+    "counts",
+    "budget",
+    "budget_reason",
+    "proves_production_ready",
+    "is_host_action_performed",
+    "does_not_say"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/native-runtime-readback/v1"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "host_guard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "rows"],
+      "properties": {
+        "table": {"enum": ["ABSENT", "PRESENT"]},
+        "rows": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["host", "attempt_id", "acquired_at"],
+                "properties": {
+                  "host": {"enum": ["illustrator", "photoshop"]},
+                  "attempt_id": {"type": "string", "minLength": 1},
+                  "acquired_at": {"type": "string", "minLength": 1}
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "quiescence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "rows"],
+      "properties": {
+        "table": {"enum": ["ABSENT", "PRESENT"]},
+        "rows": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["attempt_id", "started_at", "receipt_json"],
+                "properties": {
+                  "attempt_id": {"type": "string", "minLength": 1},
+                  "started_at": {"type": "string", "minLength": 1},
+                  "receipt_json": {"type": ["string", "null"]}
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "rows"],
+      "properties": {
+        "table": {"enum": ["ABSENT", "PRESENT"]},
+        "rows": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["attempt_id", "started_at"],
+                "properties": {
+                  "attempt_id": {"type": "string", "minLength": 1},
+                  "started_at": {"type": "string", "minLength": 1}
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "recovery_protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "rows"],
+      "properties": {
+        "table": {"enum": ["ABSENT", "PRESENT"]},
+        "rows": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["attempt_id", "protocol"],
+                "properties": {
+                  "attempt_id": {"type": "string", "minLength": 1},
+                  "protocol": {"const": "os-lock-v1"}
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "executions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "rows"],
+      "properties": {
+        "table": {"enum": ["ABSENT", "PRESENT"]},
+        "rows": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["attempt_id", "host", "receipt_json", "result_json"],
+                "properties": {
+                  "attempt_id": {"type": "string", "minLength": 1},
+                  "host": {"enum": ["illustrator", "photoshop"]},
+                  "receipt_json": {"type": ["string", "null"]},
+                  "result_json": {"type": ["string", "null"]}
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "counts": {
+      "$comment": "Each count is null exactly when its table is absent and a number otherwise -- the honest version of 'we did not look'. Binding the null branch is what stops a future emitter from turning ABSENT into 0.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hosts_held", "attempts_quiescent_receipted", "reconciliations_open",
+                   "executions_receipted", "executions_with_result"],
+      "properties": {
+        "hosts_held": {"type": ["integer", "null"], "minimum": 0},
+        "attempts_quiescent_receipted": {"type": ["integer", "null"], "minimum": 0},
+        "reconciliations_open": {"type": ["integer", "null"], "minimum": 0},
+        "executions_receipted": {"type": ["integer", "null"], "minimum": 0},
+        "executions_with_result": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "budget": {"type": "null"},
+    "budget_reason": {"type": "string", "minLength": 1},
+    "proves_production_ready": {"const": false},
+    "is_host_action_performed": {"const": false},
+    "does_not_say": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "The absent / present split, locked in both directions per counted section: a count is null exactly while its table is absent, and a number exactly once it exists. Without these branches `hosts_held: 0` is a perfectly valid way to say 'this service never ran a native attempt', which is the collapse this projection exists to prevent. Planting that lie is asserted red by design-lab/tests/test_route_payload_contracts.py.",
+      "if": {
+        "properties": {"host_guard": {"properties": {"table": {"const": "ABSENT"}},
+                                       "required": ["table"]}},
+        "required": ["host_guard"]
+      },
+      "then": {
+        "properties": {"counts": {"properties": {"hosts_held": {"type": "null"}}}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"host_guard": {"properties": {"table": {"const": "PRESENT"}},
+                                       "required": ["table"]}},
+        "required": ["host_guard"]
+      },
+      "then": {
+        "properties": {"counts": {"properties": {"hosts_held": {"type": "integer"}}}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"quiescence": {"properties": {"table": {"const": "ABSENT"}},
+                                       "required": ["table"]}},
+        "required": ["quiescence"]
+      },
+      "then": {
+        "properties": {"counts":
+                        {"properties": {"attempts_quiescent_receipted": {"type": "null"}}}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"quiescence": {"properties": {"table": {"const": "PRESENT"}},
+                                       "required": ["table"]}},
+        "required": ["quiescence"]
+      },
+      "then": {
+        "properties": {"counts":
+                        {"properties": {"attempts_quiescent_receipted": {"type": "integer"}}}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"reconciliation": {"properties": {"table": {"const": "ABSENT"}},
+                                            "required": ["table"]}},
+        "required": ["reconciliation"]
+      },
+      "then": {
+        "properties": {"counts": {"properties": {"reconciliations_open": {"type": "null"}}}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"reconciliation": {"properties": {"table": {"const": "PRESENT"}},
+                                            "required": ["table"]}},
+        "required": ["reconciliation"]
+      },
+      "then": {
+        "properties": {"counts": {"properties": {"reconciliations_open": {"type": "integer"}}}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"executions": {"properties": {"table": {"const": "ABSENT"}},
+                                       "required": ["table"]}},
+        "required": ["executions"]
+      },
+      "then": {
+        "properties": {"counts": {"properties": {"executions_receipted": {"type": "null"},
+                                                  "executions_with_result": {"type": "null"}}}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"executions": {"properties": {"table": {"const": "PRESENT"}},
+                                       "required": ["table"]}},
+        "required": ["executions"]
+      },
+      "then": {
+        "properties": {"counts": {"properties": {"executions_receipted": {"type": "integer"},
+                                                  "executions_with_result": {"type": "integer"}}}}
+      }
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/assurance-knowledge-candidate-export-envelope-v1.json",
+  "title": "Knowledge candidate export envelope v1 (both outbound projections of one stored candidate, and the proof nothing was sent)",
+  "$comment": "Emitter: src/design_lab/knowledge_review.py (KnowledgeReview.export_document), served by GET /api/projects/<id>/knowledge-candidates/<candidate_id>/export. This envelope is what `export_payload` and `to_v1_projection` were finally called by: producing the document is not delivering it, so `outbound.transport` is const NOT_CONNECTED and `sent_count` const 0 while `bytes` counts what was assembled, not what left the machine. The two projections are $ref'd, never restated: `export` is design-lab/assurance-knowledge-candidate-v2.schema.json#/$defs/export (self-validated by knowledge_feedback.export_payload before it returns) and `v1_projection` is candidate-knowledge.schema.json, whose v1 `source_id` is built by concatenating the ids the submitter stored. `provenance` echoes those stored ids as they are -- this route never fills a provenance field on a caller's behalf, and a blank is refused at write time, so both ids being non-empty text is the write contract's guarantee restated where a reader can check it. The literal `UNUSED` is the operator's explicit 「不用」 (owner ruling 2026-10-20) and is reported as state EXPLICITLY_UNUSED, not as an absent id. `freshness` compares only the candidate's recorded design_lab_sha against this checkout's HEAD: UNKNOWN means one of the two was unreadable, which is not a claim of同步.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "project_id",
+    "candidate_id",
+    "revision",
+    "export",
+    "v1_projection",
+    "provenance",
+    "freshness",
+    "outbound",
+    "does_not_say"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assurance-knowledge-candidate-export-envelope/v1"},
+    "status": {"const": "CANDIDATE_EXPORT"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "candidate_id": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,80}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "export": {"$ref": "https://dtalex66.local/schemas/assurance-knowledge-candidate-v2.json#/$defs/export"},
+    "v1_projection": {"$ref": "https://design-lab.local/schemas/candidate-knowledge.schema.json"},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job_id", "operation_id", "job_id_state", "operation_id_state",
+                   "design_lab_sha", "payload_sha256"],
+      "properties": {
+        "job_id": {"type": "string", "minLength": 1},
+        "operation_id": {"type": "string", "minLength": 1},
+        "job_id_state": {"enum": ["USER_SUPPLIED", "EXPLICITLY_UNUSED"]},
+        "operation_id_state": {"enum": ["USER_SUPPLIED", "EXPLICITLY_UNUSED"]},
+        "design_lab_sha": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+        "payload_sha256": {"$ref": "https://dtalex66.local/schemas/assurance-knowledge-candidate-v2.json#/$defs/sha256"}
+      }
+    },
+    "freshness": {"enum": ["CURRENT", "STALE", "UNKNOWN"]},
+    "outbound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transport", "sent_count", "bytes"],
+      "properties": {
+        "transport": {"const": "NOT_CONNECTED"},
+        "sent_count": {"const": 0},
+        "bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "does_not_say": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  }
+}

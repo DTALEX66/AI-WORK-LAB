@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/prompt-result-review-v1.schema.json",
+  "title": "Prompt Result Review V1 (one human acceptance or refusal of one stored result)",
+  "$comment": "Written by src/design_lab/prompt_results.py (PromptResults.review). `reviewer_kind` is const 'human' and the table's own CHECK repeats it: owner ruling 2026-10-21 keeps local acceptance human-only, exactly as the outbound candidate approval does, so an agent signature cannot be stored here at all -- and a self-issued agent acceptance would be a second E4 nobody signed. `content_sha256` is copied from the stored row, never from the caller: quoting the bytes the reviewer actually judged is what makes a later recomposition stop being described by this signature, instead of somebody having to remember to clear a flag.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "project_id", "review_revision", "result_id", "content_sha256",
+               "decision", "reviewer", "reviewer_kind", "reviewed_at", "note",
+               "claims_not_made"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/prompt-result-review/v1"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "review_revision": {"type": "integer", "minimum": 1},
+    "result_id": {"type": "string", "pattern": "^(prompt|reversal)-[0-9a-f]{32}$"},
+    "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "decision": {"enum": ["ACCEPTED", "DECLINED"]},
+    "reviewer": {"type": "string", "minLength": 1},
+    "reviewer_kind": {"const": "human"},
+    "reviewed_at": {"type": "string", "format": "date-time"},
+    "note": {"type": ["string", "null"]},
+    "claims_not_made": {"type": "array", "minItems": 1, "items": {"type": "string",
+                                                                   "minLength": 1}}
+  }
+}

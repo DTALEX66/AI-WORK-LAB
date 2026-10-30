@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/model-selection-v1.schema.json",
+  "title": "Model selection v1 (one recorded act of choosing a model, or of declining to)",
+  "$comment": "Emitter: src/design_lab/model_selection.py (ModelSelection.record), stored as document_json in design-lab/schemas/state/design-lab-state-model-selection-v1.sql and served by GET/POST /api/projects/<id>/model-selection. The owner un-locked model choice on 2026-10-20 (「不锁死 做好菜单导航和接口 用户自行选择本地或者是云端模型」), and this document is the record of that choice -- not a qualification. `snapshot` is copied by the service from the catalogue row it validated the model_id against, so a submission cannot assert its own readiness; it is null exactly when declared_unused is true, which is the operator's explicit 「不用」 rather than an absence of data. There is no run, result, duration, cost or output field and no `applied` flag: choosing loads nothing and sends nothing (this repository has no outbound transport), and 'current' is decided by the reader as the highest revision, never stored as a mutable bit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project_id",
+    "revision",
+    "model_id",
+    "declared_unused",
+    "snapshot",
+    "actor",
+    "actor_kind",
+    "recorded_at",
+    "claims_not_made"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/model-selection/v1"},
+    "project_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "model_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 120},
+    "declared_unused": {"type": "boolean"},
+    "snapshot": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["placement", "radar_state", "machine_state", "commercial_use",
+                       "weights_recorded", "qualified_local"],
+          "properties": {
+            "placement": {"enum": ["local", "huggingface", "vendor"]},
+            "radar_state": {"enum": ["WATCH", "EVALUATING", "QUALIFIED_LOCAL", "REJECTED",
+                                     "BLOCKED_BY_LICENSE"]},
+            "machine_state": {"enum": ["ABSENT", "METADATA_ONLY", "WEIGHTS_COMPLETE",
+                                       "LOAD_VERIFIED", "INFERENCE_VERIFIED"]},
+            "commercial_use": {"enum": ["PERMITTED", "RESTRICTED", "UNKNOWN"]},
+            "weights_recorded": {"type": "integer", "minimum": 0},
+            "qualified_local": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "actor": {"type": "string", "minLength": 1, "maxLength": 120},
+    "actor_kind": {"enum": ["human", "agent"]},
+    "recorded_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "claims_not_made": {"type": "array", "minItems": 4, "items": {"type": "string", "minLength": 1}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"declared_unused": {"const": true}}, "required": ["declared_unused"]},
+      "then": {"properties": {"model_id": {"const": null}, "snapshot": {"const": null}}}
+    },
+    {
+      "if": {"properties": {"declared_unused": {"const": false}}, "required": ["declared_unused"]},
+      "then": {"properties": {"model_id": {"type": "string"}, "snapshot": {"type": "object"}}}
+    }
+  ]
+}

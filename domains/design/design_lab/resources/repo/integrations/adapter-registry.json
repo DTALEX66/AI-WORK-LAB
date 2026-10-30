@@ -1,0 +1,1123 @@
+{
+  "schemaVersion": "design-lab/adapter-registry/v3",
+  "task": "DL-ADP-001",
+  "defaultBinding": "none",
+  "hostSelection": "local-profile-or-project-approved-config",
+  "status_model": {
+    "declared": "documented intent only (E0); no schema, version or task evidence",
+    "structural": "schema/manifest/version present and statically verified (E1); no live runtime task",
+    "runtime": "real runtime task executed with artifact + exit code (E2/E3); evidence fields populated",
+    "missing": "tool not installed / capability unsupported; never advertised as available"
+  },
+  "adapters": [
+    {
+      "adapter_id": "adapter-open-design",
+      "tool": "Open Design",
+      "hostAdapter": "open-design",
+      "capabilities": [
+        {
+          "name": "studio-canvas",
+          "supported": false
+        },
+        {
+          "name": "agent-launch",
+          "supported": false
+        },
+        {
+          "name": "artifact-export",
+          "supported": false
+        }
+      ],
+      "status": "structural",
+      "mode": "in-process",
+      "license": "proprietary (runtime), used via plugin contract",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "0.18.1 (compatibility-baseline.json)",
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "historical structural only (E1); no current execute/readback/rollback on tree 2aca27f | Plugin/Bundle manifests exist and pass structural verification; live Open Design runtime registration (E3) is pending Phase 3."
+      },
+      "rollback": "git history revert + plugin manifest version pin; host updates are user-managed (第三方应用更新缓存不迁移)"
+    },
+    {
+      "adapter_id": "adapter-figma",
+      "tool": "Figma",
+      "capabilities": [
+        {
+          "name": "import",
+          "supported": false
+        },
+        {
+          "name": "export",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "reference",
+      "fallback": "Penpot",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "no current execute evidence | No versioned CLI integration or runtime task recorded; capability is reference-only until exercised."
+      },
+      "rollback": "switch to fallback (Penpot) or git revert of exported tokens/manifest"
+    },
+    {
+      "adapter_id": "adapter-penpot",
+      "tool": "Penpot",
+      "capabilities": [
+        {
+          "name": "import",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MPL-2.0",
+      "fallback": "Figma",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "no current execute evidence | No versioned CLI integration or runtime task recorded; capability is reference-only until exercised."
+      },
+      "rollback": "switch to fallback (Figma) or git revert of exported tokens/manifest"
+    },
+    {
+      "adapter_id": "adapter-blender",
+      "tool": "Blender",
+      "capabilities": [
+        {
+          "name": "3d-render",
+          "supported": false
+        },
+        {
+          "name": "gltf-export",
+          "supported": false
+        }
+      ],
+      "status": "missing",
+      "mode": "process-isolated",
+      "license": "GPL-2.0+",
+      "fallback": "glTF via adapter; process isolation required",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "Blender not installed in current environment; capabilities stay unsupported and are never advertised as available."
+      },
+      "rollback": "git revert of blend/gLTF artifacts; process isolation prevents host state mutation"
+    },
+    {
+      "adapter_id": "adapter-ffmpeg",
+      "tool": "FFmpeg",
+      "capabilities": [
+        {
+          "name": "video-transcode",
+          "supported": false
+        },
+        {
+          "name": "audio-encode",
+          "supported": false
+        }
+      ],
+      "status": "missing",
+      "mode": "process-isolated",
+      "license": "LGPL/GPL",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "FFmpeg not installed in current environment; capabilities stay unsupported and are never advertised as available."
+      },
+      "rollback": "git revert of transcoded outputs; no host state mutation"
+    },
+    {
+      "adapter_id": "adapter-browser",
+      "tool": "Chromium/browser",
+      "capabilities": [
+        {
+          "name": "dom-render",
+          "supported": false
+        },
+        {
+          "name": "visual-regression",
+          "supported": false
+        },
+        {
+          "name": "axe-a11y",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MIT/BSD",
+      "fallback": "Playwright",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "no current execute evidence | Browser/Playwright harness not yet exercised against a pinned version; declared only until a runtime task records artifact + exit code."
+      },
+      "rollback": "switch to fallback (Playwright) or git revert of captured evidence"
+    },
+    {
+      "adapter_id": "adapter-comfyui",
+      "tool": "ComfyUI",
+      "capabilities": [
+        {
+          "name": "image-generation",
+          "supported": false
+        },
+        {
+          "name": "workflow-execution",
+          "supported": false
+        }
+      ],
+      "status": "runtime",
+      "mode": "process-isolated",
+      "license": "GPL-3.0 (runtime), custom nodes vary",
+      "fallback": "none",
+      "evidence": {
+        "level": "E3",
+        "runtime_version": "ComfyUI 0.33.1",
+        "task_ids": [
+          "79013288-adfd-4fad-be6d-77d15e93770d"
+        ],
+        "artifact_paths": [
+          "evidence/E3-20260816-end-to-end-generation.md"
+        ],
+        "note": "historical E3 (2026-08-16) (pre-convergence); no current-tree requalification | 用户授权：H3 t2va 真实生成 + artifact 回读通过"
+      },
+      "rollback": "git revert of generated artifacts; process isolation prevents host state mutation"
+    },
+    {
+      "adapter_id": "adapter-adobe-photoshop",
+      "tool": "Adobe Photoshop",
+      "capabilities": [
+        {
+          "name": "editable-delivery",
+          "supported": false
+        },
+        {
+          "name": "psd-export",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "proprietary (Adobe subscription), used via scripting contract",
+      "fallback": "Krita / GIMP (open alternatives, not yet bound)",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "Adobe uninstalled 2026-08-22; historical only | DL-ADB-PS-001: E0 占位已建；需真实 Photoshop 运行时（manifest/policy 已补全）"
+      },
+      "rollback": "git revert of exported PSD/artifacts; process isolation prevents host state mutation"
+    },
+    {
+      "adapter_id": "adapter-minimax-h3",
+      "tool": "MiniMax H3",
+      "capabilities": [
+        {
+          "name": "video-generation",
+          "supported": false
+        },
+        {
+          "name": "motion-bridge",
+          "supported": false
+        }
+      ],
+      "status": "BLOCKED_BY_LICENSE",
+      "mode": "process-isolated",
+      "license": "proprietary (MiniMax API/weights terms)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E3",
+        "runtime_version": "ComfyUI 0.33.1",
+        "task_ids": [
+          "79013288-adfd-4fad-be6d-77d15e93770d"
+        ],
+        "artifact_paths": [
+          "evidence/E3-20260816-end-to-end-generation.md"
+        ],
+        "note": "historical E3 (2026-08-16, pre-convergence); no current-tree requalification; BLOCKED_BY_LICENSE per Rights Decision R0-006 (personal-research noncommercial; H3 works third-party distribution forbidden; territory gate) | 用户授权：H3 t2va 最小端到端生成成功"
+      },
+      "rollback": "git revert of generated video artifacts; process isolation prevents host state mutation"
+    },
+    {
+      "adapter_id": "adapter-mcp",
+      "tool": "MCP (Model Context Protocol)",
+      "capabilities": [
+        {
+          "name": "tool.discovery",
+          "supported": false
+        },
+        {
+          "name": "tool.execution",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MIT (protocol spec)",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "Protocol standard (Linux Foundation Agentic AI Foundation); no MCP server connected; capabilities stay unsupported."
+      },
+      "rollback": "no host state mutation; adapter is read-only until a server is authorized"
+    },
+    {
+      "adapter_id": "adapter-inkscape",
+      "tool": "Inkscape CLI",
+      "capabilities": [
+        {
+          "name": "svg.export",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "GPL-2.0-or-later",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "headless CLI (GPL, subprocess contract; not vendored)"
+      },
+      "rollback": "output files only; no host state mutation"
+    },
+    {
+      "adapter_id": "adapter-imagemagick",
+      "tool": "ImageMagick",
+      "capabilities": [
+        {
+          "name": "image.process",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "ImageMagick (SPDX)",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "CLI external process"
+      },
+      "rollback": "output files only"
+    },
+    {
+      "adapter_id": "adapter-sharp",
+      "tool": "sharp (libvips)",
+      "capabilities": [
+        {
+          "name": "image.process",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "Apache-2.0",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "Node native dep; adapter only"
+      },
+      "rollback": "output files only"
+    },
+    {
+      "adapter_id": "adapter-resvg",
+      "tool": "resvg",
+      "capabilities": [
+        {
+          "name": "svg.render",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MIT/Apache-2.0",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "MIT/Apache dual since 0.45.1"
+      },
+      "rollback": "output files only"
+    },
+    {
+      "adapter_id": "adapter-svgo",
+      "tool": "svgo",
+      "capabilities": [
+        {
+          "name": "svg.optimize",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MPL-2.0",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "v4.0.0; file-level MPL ok for vendored"
+      },
+      "rollback": "output files only"
+    },
+    {
+      "adapter_id": "adapter-librsvg",
+      "tool": "librsvg (rsvg-convert)",
+      "capabilities": [
+        {
+          "name": "svg.export",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "LGPL-2.1-or-later",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "multi-size batch export"
+      },
+      "rollback": "output files only"
+    },
+    {
+      "adapter_id": "adapter-playwright-visual",
+      "tool": "Playwright toHaveScreenshot",
+      "capabilities": [
+        {
+          "name": "visual.regression",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "Apache-2.0",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "multi-size screenshot baseline diff"
+      },
+      "rollback": "screenshots only"
+    },
+    {
+      "adapter_id": "adapter-verapdf",
+      "tool": "veraPDF",
+      "capabilities": [
+        {
+          "name": "pdf.preflight",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MPL/GPL/LGPL",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "PDF/X-1a/3, PDF/A gate (v1.26+)"
+      },
+      "rollback": "no host mutation"
+    },
+    {
+      "adapter_id": "adapter-ghostscript",
+      "tool": "Ghostscript",
+      "capabilities": [
+        {
+          "name": "pdf.render",
+          "supported": false
+        },
+        {
+          "name": "pdf.compress",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "AGPL-3.0-or-later",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "AGPL: adapter only, no vendored code"
+      },
+      "rollback": "output files only"
+    },
+    {
+      "adapter_id": "adapter-style-dictionary",
+      "tool": "Style Dictionary",
+      "capabilities": [
+        {
+          "name": "token.build",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "Apache-2.0",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "token JSON to CSS/Android resources"
+      },
+      "rollback": "generated files only"
+    },
+    {
+      "adapter_id": "adapter-dtcg",
+      "tool": "W3C Design Tokens (DTCG)",
+      "capabilities": [
+        {
+          "name": "token.standard",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "W3C (no fee)",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "standard alignment for Tokens Studio/Penpot interop"
+      },
+      "rollback": "n/a"
+    },
+    {
+      "adapter_id": "adapter-figma-rest",
+      "tool": "Figma REST API",
+      "capabilities": [
+        {
+          "name": "figma.read",
+          "supported": false
+        },
+        {
+          "name": "figma.export",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "Apache-2.0 (spec)",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "official OpenAPI spec absorbed as contract source"
+      },
+      "rollback": "no host mutation"
+    },
+    {
+      "adapter_id": "adapter-blender-bpy",
+      "tool": "Blender Python API",
+      "capabilities": [
+        {
+          "name": "three_d.operate",
+          "supported": false
+        },
+        {
+          "name": "three_d.render",
+          "supported": false
+        }
+      ],
+      "status": "missing",
+      "mode": "process-isolated",
+      "license": "GPL-2.0-or-later",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "bpy in-process only; subprocess contract"
+      },
+      "rollback": "output files only"
+    },
+    {
+      "adapter_id": "adapter-photoshop-mcp",
+      "tool": "Photoshop MCP (alisaitteke)",
+      "capabilities": [
+        {
+          "name": "photoshop.operate",
+          "supported": false
+        },
+        {
+          "name": "photoshop.export",
+          "supported": false
+        }
+      ],
+      "status": "structural",
+      "mode": "external-cli",
+      "license": "MIT",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "photoshop-mcp-windows-first (MIT, 90+ tools)",
+        "task_ids": [
+          "ps-mcp-connect-20260819"
+        ],
+        "artifact_paths": [],
+        "note": "Adobe uninstalled; historical connection smoke only | MCP server connected to PS 2023 (24.5); tool enumeration and a history-state smoke step completed. Editable-file execution, reopen/readback, rollback, and repeated fixture evidence remain unverified."
+      },
+      "rollback": "no host mutation until server connected"
+    },
+    {
+      "adapter_id": "adapter-illustrator-mcp",
+      "tool": "Illustrator MCP (ie3jp)",
+      "capabilities": [
+        {
+          "name": "illustrator.operate",
+          "supported": false
+        }
+      ],
+      "status": "structural",
+      "mode": "external-cli",
+      "license": "MIT",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "illustrator-mcp-server (MIT, 66 tools)",
+        "task_ids": [
+          "ai-mcp-connect-20260819"
+        ],
+        "artifact_paths": [],
+        "note": "Adobe uninstalled; historical connection smoke only | MCP connected (66 tools enumerated) BUT version gate: requires CC 2024+ (local AI 2023 = 27.5.0 rejected); upgrade needed for execution"
+      },
+      "rollback": "no host mutation until server connected"
+    },
+    {
+      "adapter_id": "adapter-figma-mcp",
+      "tool": "Figma Dev Mode MCP (official)",
+      "capabilities": [
+        {
+          "name": "figma.read",
+          "supported": false
+        },
+        {
+          "name": "figma.export",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MIT",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "official figma-developer-mcp; needs Dev Mode"
+      },
+      "rollback": "no host mutation until server connected"
+    },
+    {
+      "adapter_id": "adapter-inkscape-mcp",
+      "tool": "Inkscape MCP (grumpydevorg)",
+      "capabilities": [
+        {
+          "name": "svg.export",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MIT",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "CLI+DOM dual channel with safety boundary"
+      },
+      "rollback": "no host mutation until server connected"
+    },
+    {
+      "adapter_id": "adapter-generator-mcp",
+      "tool": "Adobe Generator MCP (official)",
+      "capabilities": [
+        {
+          "name": "photoshop.operate",
+          "supported": false
+        },
+        {
+          "name": "acrobat.operate",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "Apache-2.0",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": null,
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "Adobe official generator remote MCP"
+      },
+      "rollback": "no host mutation until server connected"
+    },
+    {
+      "adapter_id": "adapter-eagle-webapi",
+      "tool": "Eagle (eagle.cool) Web API",
+      "capabilities": [
+        {
+          "name": "asset.query",
+          "supported": false
+        },
+        {
+          "name": "asset.import",
+          "supported": false
+        },
+        {
+          "name": "library.switch",
+          "supported": false
+        }
+      ],
+      "status": "structural",
+      "mode": "external-local-api",
+      "license": "commercial (Eagle app; API free)",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "Eagle 4.0.0 (local Web API loopback)",
+        "task_ids": [
+          "eagle-install-20260819",
+          "eagle-web-api-readback-20260821"
+        ],
+        "artifact_paths": [],
+        "note": "Loopback Web API handshake and read-only application/library metadata readback succeeded on 2026-08-21. No import, mutation, test-library operation, or rollback was performed. Controlled import/readback/rollback remains required for E2+."
+      },
+      "rollback": "no host mutation"
+    },
+    {
+      "adapter_id": "adapter-eagle-mcp",
+      "tool": "eagle-mcp-server (npm)",
+      "capabilities": [
+        {
+          "name": "asset.query",
+          "supported": false
+        },
+        {
+          "name": "asset.import",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-cli",
+      "license": "MIT",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E0",
+        "runtime_version": "npm 1.1.7",
+        "task_ids": [],
+        "artifact_paths": [],
+        "note": "MCP server for Eagle (tuki0918, MIT); manages local media files"
+      },
+      "rollback": "no host mutation"
+    },
+    {
+      "adapter_id": "adapter-delivery-sketchup",
+      "tool": "SketchUp MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-local-api",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 8 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-grasshopper",
+      "tool": "Grasshopper MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "external-local-api",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack did not handshake this connector in its run evidence; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-autocad",
+      "tool": "AutoCAD MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 7 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-rhino",
+      "tool": "Rhino MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 38 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-blender",
+      "tool": "Blender MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "missing",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none yet",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 28 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here.  the row's status is `missing`, not `declared`, because this repository's large-tools guard (design-lab/tests/test_oda4_0206_adapters.py::test_large_tools_process_isolated) refuses to present a Blender adapter as available while nothing has been proven here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-3dsmaxMCP",
+      "tool": "3ds Max MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 151 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-indesign",
+      "tool": "InDesign MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 27 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-revit",
+      "tool": "Revit MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 138 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-photoshop",
+      "tool": "Photoshop MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 80 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-illustrator",
+      "tool": "Illustrator MCP (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack handshook this bridge and listed 66 tools with nativeToolCalled:false; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    },
+    {
+      "adapter_id": "adapter-delivery-windows",
+      "tool": "Windows desktop automation (delivery pack)",
+      "capabilities": [
+        {
+          "name": "connect",
+          "supported": false
+        },
+        {
+          "name": "native-tool-call",
+          "supported": false
+        }
+      ],
+      "status": "declared",
+      "mode": "process-isolated",
+      "license": "mixed per upstream component; NOT adjudicated -- the pack's NOTICE.md declines a single licence for the whole set and the materials derive from the commercial app JZXZ 1.1.27 (Rights gate)",
+      "fallback": "none",
+      "evidence": {
+        "level": "E1",
+        "runtime_version": "delivery pack jzxz-portable-windows-x64-20261028 (zip sha256 d0daeb54ea13b499…)",
+        "task_ids": [
+          "DL-KB-06"
+        ],
+        "artifact_paths": [
+          "docs/taskpacks/20261028-automation/OWNER-DECISION-2026-10-28.md",
+          "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json",
+          "design-lab/evidence/current-execution/task-artifacts/kb-20261028/dl-kb-06-automation-connectors-read-only-projection-20261028.json"
+        ],
+        "note": "registered from the delivery pack's own records: the pack did not handshake this connector in its run evidence; DESIGN-LAB has probed nothing (NOT_PROBED), enabled nothing, and called no tool. Listed tools are not a capability count, and no E3 host run, E4 human acceptance or release is claimed here. This connector is desktop UI automation and is NOT ACTIVATED by owner 2026-10-28."
+      },
+      "rollback": "remove or disable this registry row and the MCP client entry; no project state or host document is written by registering it"
+    }
+  ],
+  "note": "No adapter is labelled 'available' without runtime evidence. Statuses follow the model above; E3 claims require a task ID, artifact path/hash and exit code in the evidence block."
+}

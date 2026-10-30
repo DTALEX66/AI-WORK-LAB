@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/interop-delivery-receipt-v2.schema.json",
+  "title": "DESIGN-LAB interop: DeliveryReceipt V2 (DL-P0-161)",
+  "description": "Structural contract for a deterministic delivery receipt. The receipt records digests of an unsigned C2PA-shaped provenance structure; it is never a signature, never an acceptance and never a host readback performed by DESIGN-LAB. Semantic rules that this schema cannot express -- recomputed receipt hash, nonzero sha256 digests and the rule that axes.delivery may not claim PASS without a host readback for every deliverable -- are enforced by design_lab.interop.delivery_receipt.verify_receipt.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "receipt_id",
+    "receipt_sha256",
+    "job_id",
+    "deliverables",
+    "axes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/delivery-receipt/v2"
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^receipt-[0-9a-f]{16}$"
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Caller-supplied ISO-8601 timestamp. The receipt never reads the wall clock, so it stays reproducible."
+    },
+    "deliverables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/deliverable"
+      }
+    },
+    "axes": {
+      "type": "object",
+      "required": [
+        "delivery"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "delivery": {
+          "enum": [
+            "PASS",
+            "PARTIAL"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "readback": {
+      "type": "object",
+      "required": [
+        "host_id",
+        "host_version",
+        "readback_sha256",
+        "opened_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "host_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "readback_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "opened_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "required": [
+        "req_id",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "req_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "NOT_RUN",
+            "PASS",
+            "FAIL",
+            "BLOCKED",
+            "UNVERIFIED",
+            "SKIPPED_OPTIONAL"
+          ]
+        }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "required": [
+        "backup_ref",
+        "procedure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "backup_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "procedure": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "deliverable": {
+      "type": "object",
+      "required": [
+        "deliverable_id",
+        "artifact_sha256",
+        "byte_size",
+        "editable",
+        "host_readback",
+        "provenance",
+        "requirements",
+        "rollback",
+        "readback_matches_artifact"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "deliverable_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifact_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "host_readback": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/readback"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/digest",
+          "description": "Digest of the unsigned C2PA-shaped provenance structure, never the structure itself."
+        },
+        "requirements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        },
+        "rollback": {
+          "$ref": "#/$defs/rollback"
+        },
+        "readback_matches_artifact": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

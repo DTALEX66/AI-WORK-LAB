@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/assistance-plan-output-types-v1.schema.json",
+  "title": "Assistance Plan Output Types V1 (the closed vocabulary the create route accepts)",
+  "$comment": "DL-KB-08. GET /api/assistance-plan-output-types answers with this document. The initial screen must offer an output type before any project exists, so the vocabulary cannot ride the project-scoped list route; it also cannot be hand-copied into TypeScript, because a second table would let the page offer a word the service refuses. Every value here is exactly what `assistance_plan.OUTPUT_TYPES` accepts, and the label is the Chinese name the screen shows for it. DL-KB-11 (2026-10-24) added `export_formats` to the same envelope under the same version: the material list is produced by `plan_export.material_table()` at the composition root, and this is the only surface the handoff screen reads before a plan exists, so it is where a page can learn which formats the service renders without typing the four words a second time. Each row is welded -- a format word, the content type and the filename extension a reader actually receives travel together, so a table that pairs markdown with .csv cannot be served through this contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "output_types", "export_formats"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assistance-plan-output-types/v1"},
+    "output_types": {
+      "type": "array", "minItems": 6, "maxItems": 6,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["value", "label"],
+        "properties": {
+          "value": {"enum": ["IMAGE", "UI", "MOTION", "STORYBOARD", "AUDIO", "CAMPAIGN"]},
+          "label": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "export_formats": {
+      "type": "array", "minItems": 4, "maxItems": 4,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["value", "label", "content_type", "extension"],
+        "properties": {
+          "value": {"enum": ["markdown", "txt", "json", "storyboard_csv"]},
+          "label": {"type": "string", "minLength": 1},
+          "content_type": {"enum": ["text/markdown", "text/plain", "application/json",
+                                    "text/csv"]},
+          "extension": {"enum": ["md", "txt", "json", "csv"]}
+        },
+        "allOf": [
+          {"if": {"properties": {"value": {"const": "markdown"}}, "required": ["value"]},
+           "then": {"properties": {"content_type": {"const": "text/markdown"},
+                                    "extension": {"const": "md"}}}},
+          {"if": {"properties": {"value": {"const": "txt"}}, "required": ["value"]},
+           "then": {"properties": {"content_type": {"const": "text/plain"},
+                                    "extension": {"const": "txt"}}}},
+          {"if": {"properties": {"value": {"const": "json"}}, "required": ["value"]},
+           "then": {"properties": {"content_type": {"const": "application/json"},
+                                    "extension": {"const": "json"}}}},
+          {"if": {"properties": {"value": {"const": "storyboard_csv"}}, "required": ["value"]},
+           "then": {"properties": {"content_type": {"const": "text/csv"},
+                                    "extension": {"const": "csv"}}}}
+        ]
+      }
+    }
+  }
+}

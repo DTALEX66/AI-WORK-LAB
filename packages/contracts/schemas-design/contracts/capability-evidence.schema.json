@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/capability-evidence.schema.json",
+  "title": "capability-evidence",
+  "description": "One capability evidence record bound to a current tree. Identity fields reject empty/fake values; bound_sha must be a real 40-hex tree SHA (not all zeros); runtime levels require runtime binding (host/OS/fixture/artifact/readback/rollback); E4/E5 add approval and repeatable release identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_id",
+    "schemaVersion",
+    "capability_id",
+    "adapter_id",
+    "evidence_level",
+    "bound_sha",
+    "adapter_version",
+    "host",
+    "host_version",
+    "os",
+    "commands"
+  ],
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/capability-evidence/v1"
+    },
+    "capability_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "adapter_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_level": {
+      "enum": [
+        "E0",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ]
+    },
+    "bound_sha": {
+      "description": "Exact repo tree SHA this evidence was produced on. Rejects empty and all-zero values.",
+      "type": "string",
+      "pattern": "^(?!0+$)[0-9a-f]{40}$"
+    },
+    "adapter_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "host": {
+      "type": "string",
+      "minLength": 1
+    },
+    "host_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "os": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fixture_hash": {
+      "description": "Hash of the synthetic/real fixture used for the run.",
+      "type": "string",
+      "pattern": "^(sha256:|git:)[0-9a-f]{40,64}$"
+    },
+    "artifact_hash": {
+      "description": "Hash of the produced artifact (E2+ real workflow).",
+      "type": "string",
+      "pattern": "^(sha256:|git:)[0-9a-f]{40,64}$"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "readback": {
+      "description": "Probe/prepare/execute/observe/readback result summary (free object; key fields enforced by verifier).",
+      "type": "object"
+    },
+    "rollback": {
+      "description": "How the adapter rollback was exercised or verified.",
+      "type": "object"
+    },
+    "ttl_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ttl_seconds"
+      ],
+      "properties": {
+        "ttl_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "refresh_after": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "approval": {
+      "description": "Independent human acceptance (E4+).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approver",
+        "approved_at"
+      ],
+      "properties": {
+        "approver": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approved_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "release_id": {
+      "description": "exact-SHA repeatable release identity (E5).",
+      "type": "string",
+      "minLength": 1
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "E2+ (controlled runtime) requires fixture/artifact identity and readback/rollback.",
+      "if": {
+        "properties": {
+          "evidence_level": {
+            "enum": [
+              "E2",
+              "E3",
+              "E4",
+              "E5"
+            ]
+          }
+        },
+        "required": [
+          "evidence_level"
+        ]
+      },
+      "then": {
+        "required": [
+          "fixture_hash",
+          "artifact_hash",
+          "run_id",
+          "readback",
+          "rollback"
+        ]
+      }
+    },
+    {
+      "$comment": "E3+ (real workflow) also binds a task id and TTL policy.",
+      "if": {
+        "properties": {
+          "evidence_level": {
+            "enum": [
+              "E3",
+              "E4",
+              "E5"
+            ]
+          }
+        },
+        "required": [
+          "evidence_level"
+        ]
+      },
+      "then": {
+        "required": [
+          "task_id",
+          "ttl_policy"
+        ]
+      }
+    },
+    {
+      "$comment": "E4+ requires independent human approval; E5 requires a release identity.",
+      "if": {
+        "properties": {
+          "evidence_level": {
+            "enum": [
+              "E4",
+              "E5"
+            ]
+          }
+        },
+        "required": [
+          "evidence_level"
+        ]
+      },
+      "then": {
+        "required": [
+          "approval"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_level": {
+            "const": "E5"
+          }
+        },
+        "required": [
+          "evidence_level"
+        ]
+      },
+      "then": {
+        "required": [
+          "release_id"
+        ]
+      }
+    }
+  ]
+}

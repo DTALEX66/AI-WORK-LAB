@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/quarantine-registry.schema.json",
+  "title": "DESIGN-LAB Quarantine Registry (v1)",
+  "description": "DL-KNW-003 隔离登记：缺少任一 SourceRecord 事实的来源逐条隔离于此，记录 missingFields 与 reason，不得进入能力加载、模型上下文或标记 reviewed。",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "generated_at",
+    "policy",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/quarantine-registry/v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "policy": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceId",
+          "name",
+          "origin",
+          "license",
+          "licenseStatus",
+          "version",
+          "contentHashOriginal",
+          "missingFields",
+          "reason",
+          "quarantinedAt",
+          "originalRecord"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "license": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "licenseStatus": {
+            "enum": [
+              "reviewed",
+              "unknown",
+              "reference-only",
+              null
+            ]
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contentHashOriginal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "missingFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "quarantinedAt": {
+            "type": "string",
+            "format": "date"
+          },
+          "originalRecord": {
+            "type": "object",
+            "description": "遗留登记原始记录逐字保留（历史证据，不修改）。"
+          }
+        }
+      }
+    },
+    "$schema": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/knowledge-entry-write-v1.schema.json",
+  "title": "Knowledge Entry Write V1 (the answer to a create or a revision)",
+  "$comment": "DL-KB-02. POST /api/knowledge-entries and POST /api/knowledge-entries/{id}/revisions answer with this envelope, whose `entry` member is the revision document exactly as it was stored -- the same object GET .../{id} returns inside `current`, not a re-built copy. `stored: true` is a statement about this request only: the bytes are in the state database and readable through the read route. It is not a statement that the source was checked (source.verification stays UNVERIFIED) and not a statement that the entry was reviewed. The envelope exists so the write answer has a version of its own instead of borrowing the entry document's.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "stored", "entry", "revision", "claims_not_made"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/knowledge-entry-write/v1"},
+    "status": {"const": "KNOWLEDGE_ENTRY"},
+    "stored": {"const": true},
+    "entry": {"$ref": "https://design-lab.local/schemas/knowledge-entry-v1.schema.json"},
+    "revision": {"type": "integer", "minimum": 1},
+    "claims_not_made": {"type": "array", "minItems": 1,
+                        "items": {"type": "string", "minLength": 1}}
+  }
+}

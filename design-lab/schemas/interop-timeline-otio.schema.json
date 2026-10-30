@@ -1,0 +1,471 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/interop-timeline-otio.schema.json",
+  "title": "DESIGN-LAB interop: OpenTimelineIO timeline document (DL-P1-130)",
+  "description": "Structural contract for an OpenTimelineIO (OTIO) Timeline.1 JSON document, the interchange format DESIGN-LAB hands to a video host. DESIGN-LAB does not own video rendering: this document describes an editorial plan, not pixels. Semantic rules that this schema cannot express -- layout arithmetic, duration arithmetic, overlap reporting and asset declaration checks -- are enforced by design_lab.interop.timeline.",
+  "type": "object",
+  "$ref": "#/$defs/timeline",
+  "$defs": {
+    "metadata": {
+      "type": "object",
+      "description": "OTIO metadata is a free-form map; DESIGN-LAB owns only the 'design_lab' key inside it."
+    },
+    "rationalTime": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "rate", "value"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "RationalTime.1"
+        },
+        "rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "value": {
+          "type": "number"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeRange": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "start_time", "duration"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "TimeRange.1"
+        },
+        "start_time": {
+          "$ref": "#/$defs/rationalTime"
+        },
+        "duration": {
+          "$ref": "#/$defs/rationalTime"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "externalReference": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "target_url"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "ExternalReference.1"
+        },
+        "target_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "available_range": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timeRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "available_image_bounds": true,
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "missingReference": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "MissingReference.1"
+        },
+        "available_range": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timeRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "available_image_bounds": true,
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "generatorReference": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "generator_kind"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "GeneratorReference.1"
+        },
+        "generator_kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "available_range": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timeRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "imageSequenceReference": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "target_url_base", "name_prefix", "name_suffix", "start_frame", "frame_step", "rate"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "ImageSequenceReference.1"
+        },
+        "target_url_base": {
+          "type": "string"
+        },
+        "name_prefix": {
+          "type": "string"
+        },
+        "name_suffix": {
+          "type": "string"
+        },
+        "start_frame": {
+          "type": "integer"
+        },
+        "frame_step": {
+          "type": "integer"
+        },
+        "rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "frame_zero_padding": {
+          "type": "integer"
+        },
+        "available_range": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timeRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "available_image_bounds": true,
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "mediaReference": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/externalReference"
+        },
+        {
+          "$ref": "#/$defs/missingReference"
+        },
+        {
+          "$ref": "#/$defs/generatorReference"
+        },
+        {
+          "$ref": "#/$defs/imageSequenceReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "item": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/clip"
+        },
+        {
+          "$ref": "#/$defs/gap"
+        },
+        {
+          "$ref": "#/$defs/stack"
+        },
+        {
+          "$ref": "#/$defs/transition"
+        }
+      ]
+    },
+    "clip": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "Clip.1"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source_range": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timeRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "media_reference": {
+          "$ref": "#/$defs/mediaReference"
+        },
+        "active_media_reference_key": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "effects": {
+          "type": "array"
+        },
+        "markers": {
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gap": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "source_range"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "Gap.1"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source_range": {
+          "$ref": "#/$defs/timeRange"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "effects": {
+          "type": "array"
+        },
+        "markers": {
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "transition": {
+      "type": "object",
+      "description": "A Transition.1 is not laid out sequentially: it consumes no track time and is applied to the two items on either side. in_offset and out_offset are RationalTime values relative to the transition, and the range it covers is covered_range = [transition_start - in_offset, transition_start + out_offset], where transition_start is the point at which the two neighbouring items meet. design_lab.interop.timeline.overlaps reports the intersection of that covered range with each neighbour.",
+      "required": ["OTIO_SCHEMA", "transition_type", "in_offset", "out_offset"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "Transition.1"
+        },
+        "name": {
+          "type": "string"
+        },
+        "transition_type": {
+          "enum": ["SMPTE_Dissolve", "Custom"]
+        },
+        "in_offset": {
+          "$ref": "#/$defs/rationalTime"
+        },
+        "out_offset": {
+          "$ref": "#/$defs/rationalTime"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stack": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "children"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "Stack.1"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source_range": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timeRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "effects": {
+          "type": "array"
+        },
+        "markers": {
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "track": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "kind", "children"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "Track.1"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": ["Video", "Audio"]
+        },
+        "source_range": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timeRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "effects": {
+          "type": "array"
+        },
+        "markers": {
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeline": {
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "tracks"],
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "OTIO_SCHEMA": {
+          "const": "Timeline.1"
+        },
+        "name": {
+          "type": "string"
+        },
+        "global_start_time": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/rationalTime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "tracks": {
+          "$ref": "#/$defs/tracksStack"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tracksStack": {
+      "description": "Timeline.tracks is a Stack.1 whose children are Track.1 objects -- the only place a Track.1 may appear.",
+      "type": "object",
+      "required": ["OTIO_SCHEMA", "children"],
+      "properties": {
+        "OTIO_SCHEMA": {
+          "const": "Stack.1"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source_range": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timeRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "effects": {
+          "type": "array"
+        },
+        "markers": {
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/track"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

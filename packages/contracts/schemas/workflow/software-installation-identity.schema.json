@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/software-installation-identity.schema.json",
+  "title": "Software Installation Identity contract",
+  "description": "P0-07 / TaskPack §10. Captures a verified installation IDENTITY, distinct from machine_identity (which is the host/OS identity). It separates the install root from the config / data / cache / runtime roots (a software location and a user-data location are not the same concept) and records a single location_status from the fail-closed enum in §13. It is Observed User State evidence, not a fourth authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "software_id",
+    "installed",
+    "location_status"
+  ],
+  "properties": {
+    "schema_version": {"const": "workflow/software-installation-identity/v1"},
+    "software_id": {"type": "string", "minLength": 1},
+    "package_identity": {"type": ["string", "null"], "minLength": 1},
+    "installed": {"type": "boolean"},
+    "install_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "community_desktop_release", "isolated_source_checkout",
+        "native_package_manager", "os_managed", "store_appx",
+        "portable", "unknown", null
+      ]
+    },
+    "install_root": {"type": ["string", "null"], "minLength": 1},
+    "executable_realpath": {"type": ["string", "null"], "minLength": 1},
+    "launcher_targets": {
+      "type": "array",
+      "items": {"type": ["string", "null"], "minLength": 1}
+    },
+    "config_root": {"type": ["string", "null"], "minLength": 1},
+    "data_root": {"type": ["string", "null"], "minLength": 1},
+    "cache_root": {"type": ["string", "null"], "minLength": 1},
+    "runtime_root": {"type": ["string", "null"], "minLength": 1},
+    "discovered_version": {"type": ["string", "null"], "minLength": 1},
+    "release_channel": {
+      "type": ["string", "null"],
+      "enum": ["stable", "beta", "canary", "dev", "unknown", null]
+    },
+    "active_process_path": {"type": ["string", "null"], "minLength": 1},
+    "discovery_sources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "user_declared", "observed_existing", "os_registered",
+          "package_manager", "project_adapter_known_candidate",
+          "running_process", "start_menu_launcher", "desktop_launcher",
+          "vendor_default", "worklab_recommended", "none"
+        ]
+      }
+    },
+    "user_declared_location": {"type": ["string", "null"], "minLength": 1},
+    "observed_existing_location": {"type": ["string", "null"], "minLength": 1},
+    "os_registered_location": {"type": ["string", "null"], "minLength": 1},
+    "location_status": {
+      "type": "string",
+      "enum": [
+        "NOT_INSTALLED",
+        "SINGLE_VERIFIED",
+        "SINGLE_UNVERIFIED",
+        "LOCATION_DRIFT",
+        "DUAL_INSTALLATION",
+        "MISSING_EXPECTED_INSTALL",
+        "RELOCATION_REQUESTED",
+        "OS_MANAGED"
+      ]
+    },
+    "location_basis": {"type": ["string", "null"]},
+    "binary_digest": {"type": ["string", "null"], "minLength": 1},
+    "verified_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}

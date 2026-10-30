@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/design-layer-rollup-v1.json",
+  "title": "Design layer roll-up — the whole vertical slice for one project (GET /api/projects/<id>/design-layer)",
+  "description": "The read the Workbench evidence panel and the standalone-chain acceptance both hang on, and the one row in this family that assembles rather than serves: `src/design_lab/design_layer.py` get_design_layer re-reads the brief page, the direction page, every binding row and the packaged design-system catalog, then decides two nullable answers on its own. Those two are the reason this needed a contract instead of a comment. P0-02: `chosen_direction` is null unless a direction really carries `chosen=1` — it must never fall back to the most recently created direction, which would fabricate a Human Choice that never happened. P0-D: `active_binding` is null unless the binding belongs to THAT chosen direction — switching the choice from A to B leaves B unbound, so the field must go null rather than keep pointing at A. Both are expressed as `oneOf [null, record]` so a silent fallback to the wrong row is a schema violation, not a plausible-looking panel. `briefs` and `directions` are the FIRST PAGE only: the roll-up calls the paging readers with no cursor, and the 100-item cap the writer applies is bound here so a reader cannot take a truncated slice for the project's whole history. Record shapes are `$ref`'d from their owners (`brief-readback.schema.json`, `design-record-v1.schema.json`), never restated; `design_system` is owned here because the catalog projection is what this document creates — four keys measured out of `catalog()` over the four packaged manifests on 2026-10-23, with `evidence_level` bounded to the E0-E5 ladder AGENTS.md defines and the name bounded by `DESIGN_SYSTEM_NAME_PATTERN`.",
+  "type": "object",
+  "required": ["schemaVersion", "design_layer"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/design-layer-rollup/v1"
+    },
+    "design_layer": {
+      "$ref": "#/$defs/rollup"
+    }
+  },
+  "$defs": {
+    "rollup": {
+      "type": "object",
+      "required": ["briefs", "directions", "chosen_direction", "bindings", "active_binding",
+                   "design_systems"],
+      "additionalProperties": false,
+      "properties": {
+        "briefs": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "https://dtalex66.local/schemas/brief-readback.json#/$defs/brief"
+          }
+        },
+        "directions": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "https://dtalex66.local/schemas/design-record-v1.json#/$defs/direction"
+          }
+        },
+        "chosen_direction": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "https://dtalex66.local/schemas/design-record-v1.json#/$defs/direction"
+            }
+          ]
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "https://dtalex66.local/schemas/design-record-v1.json#/$defs/binding"
+          }
+        },
+        "active_binding": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "https://dtalex66.local/schemas/design-record-v1.json#/$defs/binding"
+            }
+          ]
+        },
+        "design_systems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/design_system"
+          }
+        }
+      }
+    },
+    "design_system": {
+      "type": "object",
+      "required": ["name", "title", "version", "evidence_level"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_level": {
+          "type": "string",
+          "pattern": "^E[0-5]$"
+        }
+      }
+    }
+  }
+}

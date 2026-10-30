@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/gate-plan.schema.json",
+  "title": "Workflow Gate Plan Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "source_identity", "changed_paths", "required_gates", "skipped_gates", "risk", "delivery_effect", "platform_scope", "plan_digest", "generated_at"],
+  "properties": {
+    "schema_version": {"const": "workflow/gate-plan/v1"},
+    "plan_id": {"type": "string", "minLength": 1},
+    "source_identity": {"$ref": "#/$defs/sourceIdentity"},
+    "changed_paths": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "unclassified_paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "reason", "needs"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1},
+          "needs": {"type": "string", "minLength": 1}
+        }
+      },
+      "description": "W07 (2026-10-15): paths the profile does not classify. The planner always escalated to every gate when one appeared, but the plan never SAID which paths caused it -- so a reader saw 'required_gates: all' with no way to learn why, and the cheapest fix (name the path in the profile) was not discoverable from the artifact."
+    },
+    "ci_jobs": {
+      "type": "object",
+      "description": "W07 (2026-10-17): gate id -> CI job id for the gates this plan requires. The job id is the one branch protection aggregates; the display name is deliberately not used.",
+      "additionalProperties": {"type": ["string", "null"]}
+    },
+    "required_gates": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "skipped_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate_id", "reason"],
+        "properties": {
+          "gate_id": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "risk": {"enum": ["low", "medium", "high", "critical"]},
+    "delivery_effect": {"enum": ["none", "commit", "push", "pull_request", "merge", "release"]},
+    "platform_scope": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "plan_digest": {"$ref": "#/$defs/digest"},
+    "generated_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {"type": "string", "minLength": 1},
+        "value": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "tree"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "commit": {"$ref": "#/$defs/gitObject"},
+        "tree": {"$ref": "#/$defs/gitObject"}
+      }
+    },
+    "gitObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "object_type", "oid"],
+      "properties": {
+        "algorithm": {"type": "string", "minLength": 1},
+        "object_type": {"enum": ["commit", "tree", "blob"]},
+        "oid": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

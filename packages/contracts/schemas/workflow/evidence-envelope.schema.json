@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/evidence-envelope.schema.json",
+  "title": "Workflow Evidence Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "task_id",
+    "state",
+    "level",
+    "source",
+    "artifacts",
+    "redaction"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/evidence-envelope/v1"
+    },
+    "evidence_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "state": {
+      "enum": [
+        "NOT_RUN",
+        "PASS",
+        "FAIL",
+        "BLOCKED",
+        "UNVERIFIED",
+        "SKIPPED_OPTIONAL"
+      ]
+    },
+    "level": {
+      "enum": [
+        "E0",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "identity"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "static",
+            "isolated",
+            "runtime",
+            "ci",
+            "external"
+          ]
+        },
+        "identity": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "kind"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "secrets_stored"
+      ],
+      "properties": {
+        "policy": {
+          "const": "secrets-never-stored"
+        },
+        "secrets_stored": {
+          "const": false
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "message": {
+      "type": "string"
+    }
+  }
+}

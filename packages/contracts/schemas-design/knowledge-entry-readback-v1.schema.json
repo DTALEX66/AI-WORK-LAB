@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/knowledge-entry-readback-v1.schema.json",
+  "title": "Knowledge Entry Readback V1 (one entry, its revisions, and the two version numbers)",
+  "$comment": "DL-KB-03. `latest_revision` and `recommended_revision` are separate answers on purpose: the newest revision is not automatically the one the library recommends, and a page that showed only one would have to guess which the other is. `recommended` carries the recommended revision's whole document only when it is not the current one -- rendering both when they agree would print the same content twice. `superseded_by` is computed from other entries' `supersedes` links at read time; it is not stored in the entry document, where it would go stale the moment something newer was written.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "knowledge_entry_id", "status", "latest_revision",
+               "recommended_revision", "current", "recommended", "superseded_by",
+               "recommendation_basis", "recommendation_judgement", "source_state", "judgements",
+               "revisions", "unreadable_count", "index", "does_not_say"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/knowledge-entry-readback/v1"},
+    "knowledge_entry_id": {"type": "string", "pattern": "^kentry-[0-9a-f]{32}$"},
+    "status": {"enum": ["ACTIVE", "SUPERSEDED"]},
+    "latest_revision": {"type": "integer", "minimum": 1},
+    "recommended_revision": {"type": ["integer", "null"]},
+    "current": {
+      "oneOf": [{"$ref": "https://design-lab.local/schemas/knowledge-entry-v1.schema.json"},
+                {"type": "null"}]
+    },
+    "recommended": {
+      "oneOf": [{"$ref": "https://design-lab.local/schemas/knowledge-entry-v1.schema.json"},
+                {"type": "null"}]
+    },
+    "superseded_by": {
+      "oneOf": [{"type": "string", "pattern": "^kentry-[0-9a-f]{32}$"}, {"type": "null"}]
+    },
+    "recommendation_basis": {
+      "$comment": "Which owner decided recommended_revision: the flag written with the revision, or a later recorded judgement. null means nobody has recommended anything.",
+      "enum": ["recorded-judgement", "written-flag", null]
+    },
+    "recommendation_judgement": {
+      "oneOf": [{"$ref": "#/$defs/judgement"}, {"type": "null"}]
+    },
+    "source_state": {
+      "$comment": "null is 'never said', not 'the source is fine' -- the same rule the rest of this readback uses for an absence.",
+      "oneOf": [{"$ref": "#/$defs/judgement"}, {"type": "null"}]
+    },
+    "judgements": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/judgement"}
+    },
+    "revisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "content_sha256", "entry_type", "title", "recommended",
+                     "created_at", "created_by", "readable"],
+        "properties": {
+          "revision": {"type": "integer", "minimum": 1},
+          "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "entry_type": {"enum": ["STANDARD", "METHOD", "PROMPT", "MODEL_GUIDE", "RECIPE",
+                                  "CASE"]},
+          "title": {"type": "string"},
+          "recommended": {"type": "boolean"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "created_by": {"type": "string"},
+          "readable": {"type": "boolean"}
+        }
+      }
+    },
+    "unreadable_count": {"type": "integer", "minimum": 0},
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows", "indexed", "rebuilt_at"],
+      "properties": {
+        "rows": {"type": "integer", "minimum": 0},
+        "indexed": {"type": "integer", "minimum": 0},
+        "rebuilt_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "does_not_say": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {
+    "judgement": {
+      "$comment": "DL-KB-05 D5. One recorded human judgement. Append-only: the newest row of a kind is the answer, and the rows beneath it are the history of how the answer moved. `revision` is set for RECOMMENDATION and null for SOURCE_STATE; `replaced_by` is the reverse of that.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["judgement_id", "kind", "revision", "value", "replaced_by", "reason",
+                   "recorded_by", "recorded_at"],
+      "properties": {
+        "judgement_id": {"type": "string", "pattern": "^kjudge-[0-9a-f]{32}$"},
+        "kind": {"enum": ["RECOMMENDATION", "SOURCE_STATE"]},
+        "revision": {"type": ["integer", "null"], "minimum": 1},
+        "value": {"enum": ["RECOMMENDED", "ACTIVE", "INVALID"]},
+        "replaced_by": {"type": ["string", "null"], "pattern": "^kentry-[0-9a-f]{32}$"},
+        "reason": {"type": "string", "minLength": 1},
+        "recorded_by": {"type": "string", "minLength": 1},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

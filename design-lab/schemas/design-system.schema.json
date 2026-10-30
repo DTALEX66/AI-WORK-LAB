@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/design-system.json",
+  "title": "DesignSystem — tokens、type、grid、components、asset contracts",
+  "description": "SUPERSEDED 2026-10-08 for the object-model row design-system, which now names schemas/interop-dtcg-document.schema.json -- the contract the product actually enforces. Nothing in src/, packages/ or apps/ ever loaded this file: design_layer.write_tokens validates a submitted DTCG token document through interop/dtcg.py, and this shape cannot describe it, because `tokens` here allows only string values while a DTCG group holds {$type,$value,$description} objects. The three remaining sections (typography, grid, components) plus assetContracts are written by no code path at all, so leaving this file bound would have kept a declared contract that no producer or validator implements -- a false offer rather than a capability. Kept in the repository, unchanged, as the shape that was declared before the ruling; no object row may point at it again without first giving the product a reader and a writer for it.",
+  "type": "object",
+  "required": [
+    "system_id",
+    "name",
+    "tokens"
+  ],
+  "properties": {
+    "system_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "typography": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "grid": {
+      "type": "object"
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "assetContracts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": false
+}

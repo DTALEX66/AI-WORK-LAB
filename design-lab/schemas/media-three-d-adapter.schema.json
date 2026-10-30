@@ -1,0 +1,414 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/media-three-d-adapter.json",
+  "title": "DESIGN-LAB 3D host adapter report (DL-P1-150)",
+  "description": "Structural report for the Blender host adapter plus the result of the standard-library GLB/glTF validator. The embedded adapter_contract document is a free-form passthrough: it is validated against design-lab/schemas/adapter-contract.schema.json, so it is deliberately not re-specified here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "adapter_id",
+    "task_ids",
+    "evidence_level",
+    "host",
+    "capabilities",
+    "adapter_contract",
+    "handoff",
+    "glb_validation"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/media-three-d-adapter/v1"
+    },
+    "adapter_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^DL-[A-Z0-9-]+$"
+      }
+    },
+    "evidence_level": {
+      "enum": ["E0", "E1", "E2", "E3", "E4", "E5"]
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "status", "mode", "installed", "install_state", "note"],
+      "properties": {
+        "tool": {
+          "const": "blender"
+        },
+        "status": {
+          "enum": ["declared", "structural", "runtime", "missing", "unsupported", "BLOCKED_BY_LICENSE"]
+        },
+        "mode": {
+          "enum": ["process-isolated", "in-process", "external-cli", "external-local-api", "none"]
+        },
+        "installed": {
+          "type": "boolean"
+        },
+        "install_state": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why 'installed' has this value. A structural build reports NOT_PROBED_ON_THIS_HOST."
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "supported", "note"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "supported": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "adapter_contract": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["adapter_id", "tool", "status", "mode", "capabilities", "evidence"],
+      "properties": {
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "evidence": {
+          "type": "object"
+        }
+      }
+    },
+    "handoff": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/handoff"
+        }
+      ]
+    },
+    "glb_validation": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/glbSummary"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handoff_id",
+        "task_ids",
+        "evidence_level",
+        "scene_ref",
+        "script_ref",
+        "output_ref",
+        "blender_ref",
+        "frames",
+        "steps",
+        "requires_live_host",
+        "host_execution",
+        "note"
+      ],
+      "properties": {
+        "handoff_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_level": {
+          "enum": ["E0", "E1", "E2", "E3", "E4", "E5"]
+        },
+        "scene_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "script_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blender_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frames": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step", "action", "status", "requires"],
+            "properties": {
+              "step": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "const": "NOT_EXECUTED"
+              },
+              "requires": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "requires_live_host": {
+          "const": true
+        },
+        "host_execution": {
+          "const": "NOT_EXECUTED"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "glbSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "container",
+        "evidence_level",
+        "byte_length",
+        "asset_version",
+        "counts",
+        "external_assets",
+        "json_chunk",
+        "bin_chunks"
+      ],
+      "properties": {
+        "status": {
+          "const": "VALID"
+        },
+        "container": {
+          "enum": ["glb", "gltf"]
+        },
+        "evidence_level": {
+          "enum": ["E0", "E1", "E2", "E3", "E4", "E5"]
+        },
+        "byte_length": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "asset_version": {
+          "const": "2.0"
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["buffers", "bufferViews", "accessors", "meshes", "nodes", "materials", "scenes"],
+          "properties": {
+            "buffers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "bufferViews": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "accessors": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "meshes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "nodes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "materials": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "scenes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "external_assets": {
+          "description": "Declared external assets. They are never resolved, opened or fetched.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "index", "uri", "byteLength", "resolution", "note"],
+            "properties": {
+              "kind": {
+                "const": "buffer"
+              },
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "uri": {
+                "type": "string",
+                "minLength": 1
+              },
+              "byteLength": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "resolution": {
+                "const": "NOT_PROBED"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "json_chunk": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["index", "header_offset", "data_offset", "length", "padding"],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "header_offset": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "data_offset": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "length": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "padding": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3
+                }
+              }
+            }
+          ]
+        },
+        "bin_chunks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "header_offset",
+              "data_offset",
+              "length",
+              "declared_byte_length",
+              "padding_nonzero"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "header_offset": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "data_offset": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "length": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "declared_byte_length": {
+                "type": ["integer", "null"],
+                "minimum": 0
+              },
+              "padding_nonzero": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

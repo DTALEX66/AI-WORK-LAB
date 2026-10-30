@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/target-profile-write-v1.schema.json",
+  "title": "Target Profile Write V1 (the answer to a draft create)",
+  "$comment": "DL-KB-09. `stored: true` says only that the draft's bytes are in the state database and readable through the detail route. It is not a claim that the entry works, that anything was measured, or that the draft was confirmed by the vendor -- `claims_not_made` carries those denials on the answer itself, because a draft is the one profile a person can write and it must not inherit a seeded profile's documentary standing. The stored `support_state` is pinned to USER_DRAFT by the table's CHECK, so a write path cannot relabel a draft as a documented claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "stored", "profile", "revision", "claims_not_made"],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/target-profile-write/v1"},
+    "status": {"const": "TARGET_PROFILE"},
+    "stored": {"const": true},
+    "profile": {"$ref": "https://design-lab.local/schemas/target-profile-v1.schema.json"},
+    "revision": {"type": "integer", "minimum": 1},
+    "claims_not_made": {"type": "array", "minItems": 1,
+                        "items": {"type": "string", "minLength": 1}}
+  }
+}

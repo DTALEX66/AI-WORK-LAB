@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "worklab/isolated-trial/v1",
+  "title": "isolated-trial (WUI-21 server-side contract)",
+  "description": "One isolated trial of a candidate, and the three results the owner's pack insists stay separate.\n\nThe pack's rule for WUI-10/WUI-21 is that writing, native load-back and target-behaviour confirmation are\nthree different answers, and a success in one must not light up the others. A shape with a single `success`\nboolean cannot express that, so this contract carries `separated_results` with its own status and basis per\nstage, and there is no aggregate verdict field to misread. Where this repository has no producer for a stage,\nthe stage says UNKNOWN with the reason instead of inheriting the previous stage's answer.\n",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "trial_id",
+    "parent_task_id",
+    "child_task_id",
+    "observed_at",
+    "isolation",
+    "separated_results",
+    "producer_gaps"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "worklab/isolated-trial/v1"
+    },
+    "trial_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The trial's own identity, so a lost refresh can re-query the same trial rather than open a new one."
+    },
+    "parent_task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "child_task_id": {
+      "type": ["string", "null"],
+      "description": "The task the trial actually runs. null means no child was attached, which the UI shows as 'no trial exists' rather than as an idle trial."
+    },
+    "observed_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "isolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis", "value"],
+      "description": "What makes this run isolated from the live target. Answered only from an execution row; a trial with no row reports basis NONE.",
+      "properties": {
+        "basis": {
+          "type": "string",
+          "enum": ["WORKTREE_ID", "SESSION_ID", "NONE"]
+        },
+        "value": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "separated_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["write", "native_readback", "target_behaviour"],
+      "properties": {
+        "write": {
+          "$ref": "#/$defs/stageResult",
+          "description": "Result #1: did the candidate get applied to the isolated surface."
+        },
+        "native_readback": {
+          "$ref": "#/$defs/stageResult",
+          "description": "Result #2: did the native tool report the value back. A successful write is not evidence of this; the ledger's REVIEWING state is what carries it."
+        },
+        "target_behaviour": {
+          "$ref": "#/$defs/stageResult",
+          "description": "Result #3: did the target actually behave. Carried only from an external-effect record that was reconciled (EXTERNAL_EFFECT_STATES), because the source succeeding never stands in for the target."
+        }
+      }
+    },
+    "producer_gaps": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["SUBMITTING_STAGE", "TRIAL_ISOLATION", "NATIVE_READBACK", "DURATION",
+                  "TARGET_BEHAVIOUR_CONFIRMATION", "REUSE_OF_SOURCE_RESULT"]
+      },
+      "description": "REUSE_OF_SOURCE_RESULT is listed when the only evidence available came from the source evaluation, which is a gap by definition and never a pass for the target."
+    }
+  },
+  "$defs": {
+    "stageResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "basis"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PASSED", "FAILED", "CANCELLED", "PENDING", "CONFLICT", "ABSENT", "UNKNOWN"]
+        },
+        "basis": {
+          "type": "string",
+          "enum": ["LEDGER_STATE", "EXTERNAL_EFFECT_RECONCILED", "EXECUTION_ROW", "NO_PRODUCER"]
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "Short, and only what the named basis actually observed. A basis of NO_PRODUCER must not carry a reassuring sentence."
+        }
+      }
+    }
+  }
+}

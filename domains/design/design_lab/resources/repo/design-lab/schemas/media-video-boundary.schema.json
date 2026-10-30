@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/media-video-boundary.json",
+  "title": "DESIGN-LAB video ownership boundary (DL-P1-131 / DLDS-F080)",
+  "description": "Machine-readable ownership boundary between DESIGN-LAB and a video host (Premiere Pro, Media Encoder, After Effects class of tool). Every entry names one operation, one owner and the rule that enforces the split. v2 replaces the free-text 'host_classes' field with 'host_capabilities': versioned capability-registry ids of the form 'capability:<domain>/<name>@<integer version>', mirroring the provider style ('provider:<domain>/<name>') frozen in provider-capability.schema.json. A rule that needs a host states 'host_capability_refs' as capability ids; the human-readable 'display_label' is display only and no logic may branch on it. A design-lab owner over rendered or encoded work is legal only with a measured host-live evidence reference, and the module additionally refuses a duplicate capability id, a reference the document does not declare, and a host- or shared-owned entry that declares no capability at all.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "boundary_id",
+    "task_ids",
+    "evidence_level",
+    "host_execution",
+    "owners",
+    "operations",
+    "host_capabilities",
+    "entries",
+    "notes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "design-lab/media-video-boundary/v2"
+    },
+    "boundary_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^DL-[A-Z0-9-]+$"
+      }
+    },
+    "evidence_level": {
+      "enum": ["E0", "E1", "E2", "E3", "E4", "E5"]
+    },
+    "host_execution": {
+      "const": "NOT_EXECUTED"
+    },
+    "owners": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["design-lab", "host", "shared"]
+      }
+    },
+    "operations": {
+      "description": "The closed operation vocabulary. Each one must be declared exactly once by an entry.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "visual-design",
+          "design-ir",
+          "timeline-contract",
+          "handoff-bundle",
+          "delivery-receipt",
+          "render",
+          "encode",
+          "colour-managed-export",
+          "audio-mixdown",
+          "hardware-acceleration",
+          "colour-space-declaration",
+          "frame-accuracy-contract",
+          "media-asset-packaging"
+        ]
+      }
+    },
+    "host_capabilities": {
+      "description": "The capability-registry ids this boundary is allowed to reference. A rule referencing an id outside this list is refused by the module, which fails closed.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/host_capability"
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "subject",
+          "operation",
+          "owner",
+          "host_capability_refs",
+          "rule",
+          "evidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,95}$"
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operation": {
+            "enum": [
+              "visual-design",
+              "design-ir",
+              "timeline-contract",
+              "handoff-bundle",
+              "delivery-receipt",
+              "render",
+              "encode",
+              "colour-managed-export",
+              "audio-mixdown",
+              "hardware-acceleration",
+              "colour-space-declaration",
+              "frame-accuracy-contract",
+              "media-asset-packaging"
+            ]
+          },
+          "owner": {
+            "enum": ["design-lab", "host", "shared"]
+          },
+          "host_capability_refs": {
+            "description": "Versioned capability ids this operation depends on. May be empty only for an operation DESIGN-LAB owns outright; a host- or shared-owned entry must declare at least one (the module refuses an empty list there).",
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/capability_ref"
+            }
+          },
+          "rule": {
+            "type": "string",
+            "minLength": 8
+          },
+          "evidence": {
+            "enum": ["E0", "E1", "E2", "E3", "E4", "E5"]
+          },
+          "host_live_evidence_ref": {
+            "description": "Required when design-lab claims ownership of rendered or encoded work. A measured receipt identifier, not a path and not a URL.",
+            "type": "string",
+            "pattern": "^host-live:[^\\s]+$"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "capability_ref": {
+      "type": "string",
+      "description": "Versioned capability-registry id, 'capability:<domain>/<name>@<integer version>' (for example 'capability:video/render@1'). The version is part of the identity: an unversioned id would silently re-point at a different capability. A free string or a product name is not a capability id.",
+      "pattern": "^capability:[a-z][a-z0-9-]*[/.][a-z][a-z0-9.-]*@(0|[1-9][0-9]*)$"
+    },
+    "host_capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability_ref"],
+      "properties": {
+        "capability_ref": {
+          "$ref": "#/$defs/capability_ref"
+        },
+        "display_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable label for display only. It is prose, not a contract: no rule, validation or boundary decision may branch on it, and the module reads it in exactly one display accessor."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "design-lab/state-vocabularies/v1",
+  "note": "Vocabulary contract. Enums and status words are NOT hand-copied between Python, TypeScript and host JS (LANGUAGE-POLICY §5): this file records the one truth and design-lab/scripts/verify_state_vocabularies.py checks BOTH the Python services and the Workbench UI against it. It exists because a hand copy drifted -- the UI advertised the preflight verdict as 'PASS / BLOCKED' while runtime/task_resources.py only ever emits READY or BLOCKED.",
+  "sources": {
+    "attemptStates": "src/design_lab/runtime/job_store.py (ALLOWED / TERMINAL)",
+    "preflight": "src/design_lab/runtime/task_resources.py (verdict, resource state, registry_state)",
+    "ui": "apps/workbench/shell.ts (FAILED_STATES / HUMAN_STATES / IN_FLIGHT_STATES)",
+    "artifactPreflight": "src/design_lab/assurance/production_preflight.py (VERDICTS + the outcome constants)",
+    "rights": "src/design_lab/rights_review.py (CLEARED / NOT_REVIEWED) and the decision enum loaded from design-lab/schemas/contracts/rights-decision.schema.json by src/design_lab/assurance/rights_ledger.py"
+  },
+  "attemptStates": {
+    "all": [
+      "PENDING",
+      "RUNNING",
+      "OUTCOME_UNKNOWN",
+      "CANCEL_REQUESTED",
+      "RECONCILING",
+      "RECEIPTED",
+      "FAILED",
+      "TIMED_OUT",
+      "CANCELLED"
+    ],
+    "terminal": [
+      "RECEIPTED",
+      "FAILED",
+      "TIMED_OUT",
+      "CANCELLED"
+    ],
+    "failed": [
+      "FAILED",
+      "TIMED_OUT",
+      "CANCELLED"
+    ],
+    "needsHuman": [
+      "OUTCOME_UNKNOWN",
+      "CANCEL_REQUESTED",
+      "RECONCILING"
+    ],
+    "inFlight": [
+      "PENDING",
+      "RUNNING"
+    ],
+    "done": [
+      "RECEIPTED"
+    ]
+  },
+  "taskResourcePreflight": {
+    "verdicts": [
+      "BLOCKED",
+      "READY"
+    ],
+    "resourceStates": [
+      "RESOLVED",
+      "UNAVAILABLE",
+      "UNRESOLVED_INERT",
+      "METADATA_ONLY",
+      "DECLARED_NOT_PROBED"
+    ],
+    "blockingResourceStates": [
+      "UNAVAILABLE",
+      "UNRESOLVED_INERT"
+    ],
+    "registryStates": [
+      "PRESENT",
+      "NOT_AVAILABLE"
+    ],
+    "semantics": "blocked = any resource whose state is in blockingResourceStates. METADATA_ONLY (model recorded, never loaded) and DECLARED_NOT_PROBED (external/host/licence root declared, never traversed) are honest non-findings and do NOT block; a UI that renders them as failures would overstate a rejection the service never made."
+  },
+  "artifactPreflight": {
+    "verdicts": [
+      "PASS",
+      "WARN",
+      "BLOCKED",
+      "INCOMPLETE"
+    ],
+    "outcomes": [
+      "PASS",
+      "WARNING",
+      "FAIL",
+      "NOT_MEASURED",
+      "NOT_APPLICABLE"
+    ],
+    "note": "A delivery artifact is judged by this emitter, so PASS is a real verdict here. It is still not a verdict of the task-resource preflight, which emits only READY or BLOCKED."
+  },
+  "rights": {
+    "clearance": [
+      "CLEARED",
+      "NOT_REVIEWED"
+    ],
+    "decisions": [
+      "APPROVED",
+      "DENIED",
+      "PENDING_REVIEW",
+      "BLOCKED_BY_LICENSE"
+    ],
+    "sources": {
+      "clearance": "src/design_lab/rights_review.py (CLEARED / NOT_REVIEWED, exported as CLEARANCE_STATES)",
+      "decisions": "src/design_lab/assurance/rights_ledger.py (decision_vocabulary(), loaded from design-lab/schemas/contracts/rights-decision.schema.json)"
+    },
+    "semantics": "rights_clearance answers one question about the PROJECT: does every use scope this project has filed a decision for carry a current APPROVED. CLEARED requires at least one filed scope, so 0 of 0 is NOT_REVIEWED rather than a clearance nobody signed. NOT_REVIEWED covers both 'nothing was filed' and 'a filed decision is not an approval'; the read-back publishes filed_scope_count, approved_scope_count and unapproved_scopes beside the word so the two stay distinguishable. PENDING_REVIEW is a decision a HUMAN may file (it is in the contract enum) and is never a word the facade infers: an untouched gate was not asked anything.",
+    "note": "The clearance words are emitted by src/design_lab/rights_review.py; the decision words are the bound contract's own enum, read out of the schema file and never copied into Python. Neither set is admitted into the UI's status-word check in verify_state_vocabularies.py: that check guards the task/attempt/artifact planes, and a Workbench that renders 'APPROVED' as one of those statuses is the exact lie this file exists for. When the rights panel is built, its own emitter has to be wired into that check by name."
+  },
+  "planFeedback": {
+    "emitter": "src/design_lab/plan_feedback.py",
+    "outcomes": [
+      "MATCHES",
+      "PARTIALLY_MATCHES",
+      "DOES_NOT_MATCH"
+    ],
+    "unusedLiteral": "UNUSED",
+    "note": "DL-KB-16. 「符合/部分符合/不符合」的维度结论与整体结果共用同一组词，没有 UNKNOWN：不写一个维度就是说没检查它。「sent/delivered/executed」不是这里的结果词 —— 本服务没有发送通道，也不核验外部结果。",
+    "outcomeLabels": [
+      "符合",
+      "部分符合",
+      "不符合"
+    ],
+    "dimensionVerdicts": [
+      "MATCHES",
+      "PARTIALLY_MATCHES",
+      "DOES_NOT_MATCH"
+    ]
+  }
+}

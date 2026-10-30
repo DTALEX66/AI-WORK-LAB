@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/object-model.schema.json",
+  "title": "DESIGN-LAB Core Object Model",
+  "type": "object",
+  "required": ["objects", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"const": "design-lab/object-model/v1"},
+    "objects": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/coreObject"},
+      "minItems": 13,
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "coreObject": {
+      "type": "object",
+      "required": ["id", "name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "schemaRef": {"type": "string", "minLength": 1},
+        "adapterMappable": {"type": "boolean", "default": true}
+      }
+    }
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/agent-runtime-adapter.schema.json",
+  "title": "Agent-runtime adapter contract (DSH)",
+  "description": "Contract for an agent RUNTIME adapter (e.g. DeepSeek Harness). Distinct from config-layer client adapters: it executes tasks in an isolated worktree and has no config apply authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "adapter_id",
+    "kind",
+    "upstream",
+    "maturity",
+    "install_mode",
+    "entrypoints",
+    "network",
+    "workspace_scope",
+    "secrets",
+    "execution_authority",
+    "external_mutation",
+    "plugin_policy",
+    "upgrade_policy",
+    "rollback"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/agent-runtime-adapter/v1"
+    },
+    "adapter_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,31}$"
+    },
+    "kind": {
+      "const": "agent_runtime"
+    },
+    "upstream": {
+      "type": "string",
+      "minLength": 1
+    },
+    "upstream_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1
+    },
+    "maturity": {
+      "const": "developer_preview"
+    },
+    "install_mode": {
+      "enum": [
+        "isolated_source_checkout",
+        "community_desktop_release"
+      ]
+    },
+    "entrypoints": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "desktop",
+          "web",
+          "headless"
+        ]
+      }
+    },
+    "network": {
+      "const": "loopback_only"
+    },
+    "default_host": {
+      "type": "string"
+    },
+    "default_port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "workspace_scope": {
+      "const": "task_scoped_git_worktree_only"
+    },
+    "secrets": {
+      "const": "runtime_secret_only"
+    },
+    "execution_authority": {
+      "const": "execute_only_no_task_completion_authority"
+    },
+    "external_mutation": {
+      "const": "approval_required"
+    },
+    "plugin_policy": {
+      "const": "builtins_only"
+    },
+    "upgrade_policy": {
+      "enum": [
+        "pinned_commit + explicit_upgrade_task + compatibility_evidence",
+        "verified_release_digest + explicit_upgrade_task + compatibility_evidence"
+      ]
+    },
+    "rollback": {
+      "const": "stop_preserve_quarantine"
+    },
+    "detected_local": {
+      "type": "object",
+      "description": "Factual detected install on this machine (separate from governance target pin).",
+      "required": [
+        "version",
+        "state",
+        "deployment"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "DETECTED_LOCAL",
+            "UNVERIFIED",
+            "COMMUNITY_DESKTOP_VERIFIED"
+          ]
+        },
+        "source_equivalence": {
+          "enum": [
+            "VERIFIED",
+            "UNVERIFIED"
+          ]
+        },
+        "eligibility": {
+          "enum": [
+            "VERIFIED",
+            "UNVERIFIED"
+          ]
+        },
+        "behavioral_verification": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_EXECUTED"
+          ]
+        },
+        "deployment": {
+          "type": "string",
+          "enum": [
+            "isolated-source-checkout",
+            "community-desktop",
+            "none"
+          ]
+        },
+        "package": {
+          "type": "string"
+        },
+        "release_tag": {
+          "type": "string"
+        },
+        "release_track": {
+          "const": "stable"
+        },
+        "upstream_authority": {
+          "const": "deepseek-ai/deepseek-harness"
+        },
+        "upstream_version": {
+          "type": "string"
+        },
+        "binary_signature": {
+          "enum": [
+            "SIGNED",
+            "UNSIGNED",
+            "UNKNOWN"
+          ]
+        },
+        "user_config_access": {
+          "const": "NOT_ACCESSED"
+        },
+        "install": {
+          "type": "string"
+        },
+        "config_root": {
+          "type": "string"
+        },
+        "web_port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "sessions_migrated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "upgrade_evidence": {
+          "type": "string"
+        },
+        "legacy_0_1_x": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "commit": {
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "DETECTED_LOCAL",
+                "UNVERIFIED",
+                "COMMUNITY_DESKTOP_VERIFIED"
+              ]
+            },
+            "source_equivalence": {
+              "enum": [
+                "VERIFIED",
+                "UNVERIFIED"
+              ]
+            },
+            "eligibility": {
+              "enum": [
+                "VERIFIED",
+                "UNVERIFIED"
+              ]
+            },
+            "behavioral_verification": {
+              "enum": [
+                "PASS",
+                "FAIL",
+                "NOT_EXECUTED"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/memory-record/v1",
+  "title": "WORK-LAB Memory Record Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "memory_id", "layer", "kind", "status", "source_digest", "content_digest", "confidence", "promotion", "redaction", "project_id", "ttlSeconds", "authoritative"],
+  "properties": {
+    "schema_version": {"const": "workflow/runtime-context-record/v1"},
+    "ttlSeconds": {"type": "integer", "minimum": 1},
+    "authoritative": {"type": "boolean", "const": false},
+    "memory_id": {"type": "string", "minLength": 1},
+    "layer": {"enum": ["ephemeral", "session", "project", "domain", "global"]},
+    "kind": {"enum": ["fact", "preference", "procedure", "candidate", "event"]},
+    "status": {"enum": ["observed", "proposed", "approved", "blocked", "retired"]},
+    "project_id": {"type": "string", "minLength": 1},
+    "scope": {"enum": ["project", "domain", "global"], "default": "project"},
+    "valid_from": {"type": ["string", "null"]},
+    "valid_to": {"type": ["string", "null"]},
+    "ttl_days": {"type": ["integer", "null"], "minimum": 0},
+    "supersedes": {"type": ["string", "null"]},
+    "conflicts_with": {"type": ["array", "null"], "items": {"type": "string"}, "uniqueItems": true},
+    "last_used_at": {"type": ["string", "null"]},
+    "pinned_context": {"type": "boolean", "default": false},
+    "source_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "content_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "confidence": {"enum": ["low", "medium", "high"]},
+    "promotion": {"enum": ["never", "manual-approval"]},
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_response_bodies", "credentials"],
+      "properties": {
+        "prompt_response_bodies": {"const": "excluded"},
+        "credentials": {"const": "excluded"}
+      }
+    }
+  }
+}

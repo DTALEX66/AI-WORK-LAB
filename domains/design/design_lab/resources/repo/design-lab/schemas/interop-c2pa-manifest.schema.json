@@ -1,0 +1,332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/interop-c2pa-manifest.schema.json",
+  "title": "DESIGN-LAB interop: C2PA 2.4 claim structure projection (DL-P0-160)",
+  "description": "Structural contract for the provenance structure DESIGN-LAB projects from a delivery record. It carries the C2PA 2.4 baseline labels -- claim_version 'c2pa.claim.v2' (the v1 'c2pa.claim' is not used) and the reserved signature assertion label 'c2pa.signature' -- and it is always UNSIGNED_STRUCTURAL_ONLY: the 'signature' member only names the assertion a signing pipeline would produce, it carries no signature material, no 'c2pa.signature' assertion may appear in 'assertions', and nothing is ever embedded into an asset. The internal DESIGN-LAB Asset Graph (the delivery/lineage record) stays the source of truth; this document is a projection of it, recorded in design_lab.projection_of. Semantic rules that this schema cannot express -- the action enum, ingredient relationship coverage (exactly one ingredient per input version), nonzero sha256 digests and the unsigned guard -- are enforced by design_lab.interop.provenance.validate_manifest.",
+  "type": "object",
+  "required": [
+    "claim_generator",
+    "c2pa_spec_version",
+    "claim_version",
+    "signing_status",
+    "signature",
+    "title",
+    "format",
+    "instance_id",
+    "assertions",
+    "design_lab"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "claim_generator": {
+      "type": "string",
+      "minLength": 1
+    },
+    "c2pa_spec_version": {
+      "const": "2.4"
+    },
+    "claim_version": {
+      "const": "c2pa.claim.v2",
+      "description": "The C2PA 2.x claim structure label. It is a label, not a claim: this projection does not produce a claim CBOR/box structure."
+    },
+    "signing_status": {
+      "const": "UNSIGNED_STRUCTURAL_ONLY"
+    },
+    "signature": {
+      "const": "c2pa.signature",
+      "description": "Names the reserved C2PA signature assertion a signing pipeline would produce. The value is the assertion label only; signature material, credentials and any 'c2pa.signature' assertion fail closed in design_lab.interop.provenance.assert_not_a_signed_asset."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "format": {
+      "type": "string",
+      "minLength": 1,
+      "description": "DESIGN-LAB asset kind. Mapping it to a MIME type is a signing-pipeline concern, not a DESIGN-LAB claim."
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "assertions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/assertion"
+      }
+    },
+    "design_lab": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "deliverable_id",
+        "artifact_sha256",
+        "rights_profile",
+        "producer",
+        "input_count",
+        "projection_of"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "task_id": {
+          "const": "DL-P0-160"
+        },
+        "deliverable_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifact_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "rights_profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "producer": {
+          "type": "object",
+          "required": [
+            "operation_id",
+            "provider_id",
+            "model_id"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operation_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "provider_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "input_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "projection_of": {
+          "const": "design-lab-asset-graph",
+          "description": "Records the direction of authority: the DESIGN-LAB Asset Graph (the delivery record) is the source of truth and this C2PA document is a projection of it. C2PA does not replace the Asset Graph."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "action": {
+      "type": "object",
+      "required": [
+        "action",
+        "when",
+        "softwareAgent"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "when": {
+          "type": "string",
+          "minLength": 1
+        },
+        "softwareAgent": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ingredient": {
+      "type": "object",
+      "required": [
+        "relationship",
+        "instanceID",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "relationship": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dc:title": {
+          "type": "string"
+        },
+        "instanceID": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "assertion": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "label",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "const": "c2pa.actions"
+            },
+            "data": {
+              "type": "object",
+              "required": [
+                "actions"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "actions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/action"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "label",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "const": "c2pa.ingredient"
+            },
+            "data": {
+              "$ref": "#/$defs/ingredient"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "label",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "const": "c2pa.creative-work"
+            },
+            "data": {
+              "type": "object",
+              "required": [
+                "@context",
+                "@type",
+                "name",
+                "dateCreated"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "@context": {
+                  "const": "https://schema.org"
+                },
+                "@type": {
+                  "const": "CreativeWork"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "dateCreated": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "copyright": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "author": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "@type",
+                      "name"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "@type": {
+                        "enum": [
+                          "Person",
+                          "Organization"
+                        ]
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "label",
+            "data"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "const": "c2pa.training-mining"
+            },
+            "data": {
+              "type": "object",
+              "required": [
+                "entries"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "entries": {
+                  "type": "object",
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^(?:c2pa\\.ai_training|c2pa\\.ai_generative_training|c2pa\\.ai_inference|c2pa\\.ai_model_training)$": {
+                      "type": "object",
+                      "required": [
+                        "use"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "use": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

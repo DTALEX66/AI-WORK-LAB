@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/readiness-host-matrix.json",
+  "title": "DESIGN-LAB Adobe host capability matrix (DL-P0-070)",
+  "description": "Claimed versus recorded host capability. A declared API is never a verified API; absent hosts carry no verification; editable delivery requires a declared delivery API and an explicit readback method.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_id",
+    "inventory_ref",
+    "inventory_observed_at",
+    "evidence_level",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "design-lab/readiness-host-matrix/v1"},
+    "task_id": {"const": "DL-P0-070"},
+    "inventory_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Repository-relative path of the recorded machine inventory this matrix reads."
+    },
+    "inventory_observed_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Observation date carried by the recorded inventory; not a test timestamp."
+    },
+    "evidence_level": {
+      "enum": ["E0", "E1"],
+      "description": "Whole-document level. This matrix is E1 STRUCTURAL by construction."
+    },
+    "note": {"type": "string"},
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "host_id",
+          "host_version",
+          "install_alias",
+          "presence_basis",
+          "apis",
+          "editable_delivery",
+          "readback_method",
+          "known_limits",
+          "evidence_refs",
+          "verification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "host_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+          "host_version": {"type": "string", "minLength": 1},
+          "inventory_name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact name as recorded in the machine inventory, for cross-checking."
+          },
+          "install_alias": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "Alias key only; never an absolute user path."
+          },
+          "present": {
+            "type": "boolean",
+            "description": "PRESENT in the recorded inventory. Absence means NOT_FOUND_IN_SCOPE, never proof of universal absence."
+          },
+          "presence_basis": {"type": "string", "minLength": 1},
+          "apis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["api_id", "kind", "declared", "verified", "evidence_level", "note"],
+              "additionalProperties": false,
+              "properties": {
+                "api_id": {"type": "string", "minLength": 1},
+                "kind": {"enum": ["UXP", "COM", "CLI", "FILE_FORMAT", "PLUGIN"]},
+                "declared": {
+                  "type": "boolean",
+                  "description": "The project claims this surface exists for this host version."
+                },
+                "verified": {
+                  "type": "boolean",
+                  "description": "True only when live evidence exists in this repository for this exact host version."
+                },
+                "evidence_level": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5"]},
+                "note": {"type": "string"}
+              }
+            }
+          },
+          "editable_delivery": {"type": "boolean"},
+          "readback_method": {
+            "type": ["string", "null"],
+            "description": "How an editable result is read back, or null when no editable delivery is claimed."
+          },
+          "known_limits": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "evidence_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1},
+            "description": "Repository-relative references for the facts asserted in this entry."
+          },
+          "verification": {
+            "type": "object",
+            "required": ["state", "by", "at", "evidence_ref"],
+            "additionalProperties": false,
+            "properties": {
+              "state": {"enum": ["NOT_VERIFIED", "VERIFIED_STRUCTURAL", "VERIFIED_LIVE"]},
+              "by": {
+                "type": "string",
+                "description": "Who verified. Use an explicit 'nobody'/'not-recorded' marker rather than an empty string when the state is not live."
+              },
+              "at": {
+                "type": ["string", "null"],
+                "description": "When. Null when nothing was verified; an observation date is not a verification date."
+              },
+              "evidence_ref": {
+                "type": ["string", "null"],
+                "description": "Required (non-empty) when state is VERIFIED_LIVE."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

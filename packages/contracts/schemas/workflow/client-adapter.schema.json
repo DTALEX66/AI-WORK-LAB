@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/client-adapter.schema.json",
+  "title": "Workflow Client Adapter Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "interface",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "workflow/client-adapter/v1"
+    },
+    "interface": {
+      "type": "array",
+      "const": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ]
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "display_name",
+          "support_level",
+          "operations",
+          "detection"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{2,31}$"
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "support_level": {
+            "enum": [
+              "deep",
+              "manifest-only",
+              "experimental",
+              "blocked"
+            ]
+          },
+          "operations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "detect",
+                "capabilities",
+                "plan",
+                "apply",
+                "invoke",
+                "observe",
+                "rollback"
+              ]
+            }
+          },
+          "detection": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "evidence_state"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "static",
+                  "isolated",
+                  "runtime",
+                  "external"
+                ]
+              },
+              "evidence_state": {
+                "enum": [
+                  "NOT_RUN",
+                  "PASS",
+                  "FAIL",
+                  "BLOCKED",
+                  "UNVERIFIED",
+                  "SKIPPED_OPTIONAL"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

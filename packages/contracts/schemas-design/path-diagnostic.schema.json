@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/path-diagnostic.schema.json",
+  "title": "Path Diagnostic V1 (what GET /api/environment answers)",
+  "$comment": "Written against the payload the product actually emitted on 2026-10-08, captured by driving design_lab.http_service.make_server over a real socket (see design-lab/scripts/verify_route_payload_contracts.py). The emitter is ProjectPaths.describe() at src/design_lab/runtime/paths.py:212. This schema deliberately does not tidy anything up: `status` is the single literal describe() ever writes, the four `roots` keys are the four categories in the source, and `tools.*.path` is allowed to be an empty string because tool_bindings() reports DECLARED_VALUE_INVALID for a declared value that is blank rather than dropping the entry. shared_inputs and tools keys are machine-declared names, so they are pattern-free additionalProperties maps, not enums.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "project_root",
+    "project_local_root",
+    "sources",
+    "roots",
+    "shared_inputs",
+    "tools",
+    "agent_profile",
+    "write_trace",
+    "migration"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "design-lab/path-diagnostic/v1"},
+    "status": {
+      "const": "PATHS_RESOLVED",
+      "description": "The only verdict describe() produces: reaching this payload at all means the policy resolved, because every failure raises PathPolicyError instead."
+    },
+    "project_root": {"type": "string", "minLength": 1},
+    "project_local_root": {"type": "string", "minLength": 1},
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_local_root"],
+      "properties": {
+        "project_local_root": {
+          "enum": ["default", "config:.project/paths.json", "environment:PROJECT_LOCAL_ROOT", "explicit"],
+          "description": "Which input won the resolution of the local root, in the precedence order resolve_paths() implements."
+        }
+      }
+    },
+    "roots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "evidence", "projects", "model_cache"],
+      "properties": {
+        "runtime": {"$ref": "#/$defs/writableRoot"},
+        "evidence": {"$ref": "#/$defs/writableRoot"},
+        "projects": {"$ref": "#/$defs/writableRoot"},
+        "model_cache": {"$ref": "#/$defs/writableRoot"}
+      }
+    },
+    "shared_inputs": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/sharedInput"}
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/toolBinding"}
+    },
+    "agent_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "writable"],
+      "properties": {
+        "status": {"const": "PRIVATE_NOT_INSPECTED"},
+        "writable": {"const": false}
+      }
+    },
+    "write_trace": {"const": "NOT_EXECUTED"},
+    "migration": {"const": "NOT_EXECUTED"}
+  },
+  "$defs": {
+    "writableRoot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "ownership", "writable"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "ownership": {"const": "project"},
+        "writable": {"const": true}
+      }
+    },
+    "sharedInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "writable", "status"],
+      "properties": {
+        "path": {"type": "string"},
+        "writable": {"const": false},
+        "status": {
+          "const": "DECLARED_NOT_PROBED",
+          "description": "The diagnostic never traverses an external root, so a shared input is reported as declared and nothing more."
+        }
+      }
+    },
+    "toolBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "owner", "status"],
+      "properties": {
+        "path": {"type": "string"},
+        "owner": {"type": ["string", "null"]},
+        "status": {
+          "enum": ["BOUND", "DECLARED_OUTSIDE_SHARED_ROOT", "DECLARED_VALUE_INVALID",
+                   "DECLARED_PATH_NOT_A_FILE", "DECLARED_PATH_MISSING"],
+          "description": "The five states tool_bindings() can assign. BOUND is granted only when the path sits inside a declared shared-input root and is an existing file."
+        },
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

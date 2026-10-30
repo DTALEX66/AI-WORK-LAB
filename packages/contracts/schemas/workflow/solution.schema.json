@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/solution.schema.json",
+  "title": "Workflow Solution",
+  "description": "One immutable revision of a reusable maintenance solution. A solution is solidified from a repair record whose verification already answered RESOLVED; solidification is a separate step so 'the repair worked once' and 'this is a reusable recipe' cannot be conflated. VERIFIED means a WORK-LAB re-read closed the source repair; UNVERIFIED is material that has not been through that read and must stay visually and structurally distinct.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "solutionId",
+    "revision",
+    "title",
+    "status",
+    "software",
+    "source",
+    "preconditions",
+    "steps",
+    "expected",
+    "verificationSteps",
+    "invalidWhen",
+    "risks",
+    "limits",
+    "evidenceRefs",
+    "issueRefs",
+    "keywords",
+    "recommended",
+    "supersedes",
+    "changes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "workflow/solution/v1"
+    },
+    "solutionId": {
+      "type": "string",
+      "pattern": "^sol-[a-z0-9-]{3,120}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "VERIFIED",
+        "UNVERIFIED"
+      ],
+      "description": "VERIFIED is minted only by solidify_solution from a SUCCEEDED repair record with a RESOLVED verification; UNVERIFIED is imported material that no WORK-LAB re-read has closed."
+    },
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "softwareId",
+        "softwareVersion",
+        "platform",
+        "versionSource"
+      ],
+      "properties": {
+        "softwareId": {
+          "type": "string"
+        },
+        "softwareVersion": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "versionSource": {
+          "type": "string",
+          "enum": [
+            "MEASURED",
+            "DECLARED",
+            "UNKNOWN"
+          ],
+          "description": "Where the version came from. UNKNOWN is a real answer: the recipe is still usable, but a version-change review cannot be computed from a guess."
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "ref",
+        "updatedAt"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "REPAIR_RECORD",
+            "MANUAL"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "expected": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "verificationSteps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "invalidWhen": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "risk",
+          "recovery"
+        ],
+        "properties": {
+          "risk": {
+            "type": "string",
+            "minLength": 1
+          },
+          "recovery": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "issueRefs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "keywords": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 2
+      }
+    },
+    "recommended": {
+      "type": "boolean"
+    },
+    "supersedes": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "solutionId",
+        "revision"
+      ],
+      "properties": {
+        "solutionId": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "changes": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

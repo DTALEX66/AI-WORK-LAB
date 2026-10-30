@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/experience-record.schema.json",
+  "title": "ExperienceRecord (Design Experience Corpus)",
+  "description": "项目级原始语料（与 memory-record 互补）：memory=规则级经验；corpus=项目级原始数据（方向/变体/评审/决策日志/源文件）。",
+  "type": "object",
+  "required": [
+    "record_id",
+    "schemaVersion",
+    "project_id",
+    "domain",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "record_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schemaVersion": {
+      "const": "design-lab/experience-record/v1"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "brief_ref": {
+      "type": "string"
+    },
+    "directions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "direction_ref"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "direction_ref": {
+            "type": "string"
+          },
+          "artifact_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "score": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "critiques": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "variant_ref",
+          "decision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "variant_ref": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "decision_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "at",
+          "decision"
+        ],
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "kind",
+          "path"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "editable": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "memory_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "从本项目沉淀的 memory-record id（规则级）"
+    },
+    "outcome": {
+      "type": "object",
+      "properties": {
+        "delivered": {
+          "type": "boolean"
+        },
+        "quality_decision": {
+          "type": "string"
+        },
+        "lessons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

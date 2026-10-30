@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/readiness-model-radar.json",
+  "title": "DESIGN-LAB candidate model radar registry (DL-P1-100)",
+  "description": "Watch/qualification states for candidate models. machine_state reuses the model_manifest stage vocabulary. A local presence is a machine fact, not a licence or a readiness verdict.",
+  "type": "object",
+  "required": ["schema_version", "task_id", "observed_at", "hardware", "external_assets_ref", "policy", "entries"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "design-lab/readiness-model-radar/v1"},
+    "task_id": {"const": "DL-P1-100"},
+    "observed_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Observation date carried by the recorded inventory this registry reuses."
+    },
+    "inventory_ref": {"type": "string", "minLength": 1},
+    "external_assets_ref": {
+      "const": "design-lab/config/external-assets-index.json",
+      "description": "The existing external-asset registry; this radar references it and never duplicates it."
+    },
+    "policy": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "hardware": {
+      "type": "object",
+      "required": ["available_vram_mib", "gpu", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "available_vram_mib": {"type": "integer", "minimum": 1},
+        "gpu": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1}
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "model_id",
+          "family",
+          "source",
+          "radar_state",
+          "machine_state",
+          "hardware_fit",
+          "default_enabled",
+          "rights",
+          "notes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "model_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+          "family": {"enum": ["image-generation", "video-generation", "upscaling", "segmentation", "ocr", "asr", "tts", "3d"]},
+          "source": {
+            "type": "object",
+            "required": ["kind", "ref", "license_id"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {"enum": ["huggingface", "modelscope", "vendor", "local"]},
+              "ref": {"type": "string", "minLength": 1},
+              "license_id": {"type": "string", "minLength": 1}
+            }
+          },
+          "radar_state": {"enum": ["WATCH", "EVALUATING", "QUALIFIED_LOCAL", "REJECTED", "BLOCKED_BY_LICENSE"]},
+          "machine_state": {
+            "enum": ["ABSENT", "METADATA_ONLY", "WEIGHTS_COMPLETE", "LOAD_VERIFIED", "INFERENCE_VERIFIED"],
+            "description": "Reused verbatim from design_lab.analysis.model_manifest.STAGES."
+          },
+          "local_path": {
+            "type": ["string", "null"],
+            "description": "Alias-relative or absolute read-only reference. Never a private or E: location."
+          },
+          "asset_index_ids": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "description": "ids in design-lab/config/external-assets-index.json that already register these bytes."
+          },
+          "weights_sha256": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "description": "Only hashes already recorded in this repository. An entry with no recorded hash stays empty rather than inventing one."
+          },
+          "hash_source": {"type": ["string", "null"]},
+          "hardware_fit": {
+            "type": "object",
+            "required": ["vram_gib_required", "verdict"],
+            "additionalProperties": false,
+            "properties": {
+              "vram_gib_required": {"type": ["integer", "null"], "minimum": 1},
+              "verdict": {"enum": ["FITS", "TIGHT", "EXCEEDS", "UNKNOWN"]}
+            }
+          },
+          "default_enabled": {
+            "type": "boolean",
+            "description": "May only be true for radar_state QUALIFIED_LOCAL."
+          },
+          "qualified_by": {"type": ["string", "null"]},
+          "blocking_reason": {"type": ["string", "null"]},
+          "evidence_ref": {"type": ["string", "null"]},
+          "rights": {
+            "type": "object",
+            "required": ["license_id", "territory_limits", "commercial_use"],
+            "additionalProperties": false,
+            "properties": {
+              "license_id": {"type": "string", "minLength": 1},
+              "territory_limits": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "commercial_use": {"enum": ["PERMITTED", "RESTRICTED", "UNKNOWN"]}
+            }
+          },
+          "notes": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

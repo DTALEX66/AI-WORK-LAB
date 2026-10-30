@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-lab/photoshop-patch-job/v1",
+  "title": "Closed Photoshop patch job (host contract)",
+  "description": "A native job plus the one leaf change to apply to a staged checkpoint. The key sets, the canvas bounds and the patch value ranges are all restatements of checks src/design_lab/adapters/photoshop_com.py already ran (directly and through native_patch_plan._photoshop_patch, which execute() calls before dispatch). Which layer the patch targets, the PSD header dimensions, path containment and the canvas-fit rule stay hand checks.",
+  "type": "object",
+  "required": ["schemaVersion", "jobId", "runRoot", "width", "height", "outputName", "previewName", "assets", "layers", "checkpoint", "checkpointSha256", "patch"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/photoshop-patch-job/v1"},
+    "jobId": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"},
+    "runRoot": {"type": "string", "minLength": 1},
+    "width": {"type": "integer", "minimum": 1, "maximum": 16383},
+    "height": {"type": "integer", "minimum": 1, "maximum": 16383},
+    "outputName": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}\\.[pP][sS][dD]$"},
+    "previewName": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}\\.[pP][nN][gG]$"},
+    "assets": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {"type": "object", "required": ["id", "path"], "additionalProperties": false, "properties": {"id": {"type": "string"}, "path": {"type": "string", "minLength": 1}}}
+    },
+    "layers": {"type": "array", "items": {"type": "object"}},
+    "checkpoint": {"type": "string", "minLength": 1},
+    "checkpointSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "patch": {
+      "oneOf": [
+        {"type": "object", "required": ["kind", "id", "text"], "additionalProperties": false, "properties": {"kind": {"const": "text"}, "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"}, "text": {"type": "string", "minLength": 1, "maxLength": 10000}}},
+        {"type": "object", "required": ["kind", "id", "delta"], "additionalProperties": false, "properties": {"kind": {"const": "move"}, "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"}, "delta": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number", "minimum": -16383, "maximum": 16383}}}}
+      ]
+    }
+  }
+}

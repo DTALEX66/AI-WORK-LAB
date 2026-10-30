@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "design-lab/task-resources/v1",
+  "note": "Optional task resource registry (DL-AUDIT-20260914-04). Absence of this file is legal: the preflight then falls back to the standalone .project/paths.json local configuration and reports READY with no declared resources. Entries record provenance only; the preflight never installs, accepts a licence, or traverses an external root.",
+  "resources": {
+    "uv": {"kind": "tool", "name": "uv", "version": ">=0.4", "source": "PATH search scope", "note": "install tool used by CI (uv sync --locked); may be absent on the local machine"},
+    "git": {"kind": "tool", "name": "git", "version": ">=2.40", "source": "PATH search scope"},
+    "ffmpeg": {"kind": "tool", "name": "ffmpeg", "version": ">=6.0", "source": "PATH search scope", "note": "host-scope: audio/video real execution belongs to Codex; declaration only"},
+    "node": {"kind": "tool", "name": "node", "version": ">=20", "source": "PATH search scope"},
+    "python-project-venv": {"kind": "tool", "name": "python", "version": ">=3.11", "source": "project .venv (locked by uv.lock)", "resolution": "project-venv", "note": "interpreter resolution is platform-neutral; no hardcoded Scripts/python.exe"},
+    "model-library": {"kind": "model", "path": "declared in .project/paths.json shared_inputs.model-library", "licence": "UNKNOWN until verified per model", "note": "METADATA_ONLY: never loaded or run by the preflight"},
+    "design-assets": {"kind": "external", "path": "declared in .project/paths.json shared_inputs.design-assets", "note": "DECLARED_NOT_PROBED"},
+    "os-toolchain": {"kind": "external", "path": "declared in .project/paths.json shared_inputs.os-toolchain", "note": "DECLARED_NOT_PROBED"},
+    "design-toolchain": {"kind": "external", "path": "declared in .project/paths.json shared_inputs.design-toolchain", "note": "DECLARED_NOT_PROBED"},
+    "photoshop-host": {"kind": "host", "host_scope": "CODEX_LIVE", "note": "real Photoshop round-trip is Codex work (R5-012); DeepSeek declares only, never launches"},
+    "illustrator-host": {"kind": "host", "host_scope": "CODEX_LIVE", "note": "real Illustrator round-trip is Codex work (R5-011); DeepSeek declares only, never launches"},
+    "comfyui-host": {"kind": "host", "host_scope": "CODEX_LIVE", "note": "GPU inference and model production deferred to Codex; no shared process is ever started here"}
+  },
+  "tasks": {
+    "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-H020": ["python-project-venv", "git", "uv"],
+    "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-H010": ["python-project-venv", "git"],
+    "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-C030": ["python-project-venv", "uv", "git"],
+    "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DL-R5-012": ["photoshop-host", "git"],
+    "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DL-R5-011": ["illustrator-host", "git"],
+    "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DL-R5-008": ["comfyui-host", "python-project-venv"]
+  },
+  "version_contract": {
+    "meaning": "resource identity is bound to the declared version range and source, never to a floating 'latest'",
+    "identity_fields": ["kind", "name or path", "version or licence", "source", "host_scope"]
+  }
+}
