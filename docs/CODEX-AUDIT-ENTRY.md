@@ -782,8 +782,8 @@ build_audit_item_closure        rc=0
 对最终提交态的全量测量（收据 `receipt-archive/CLOSURE-STATE-9f17d2cac59ce62b.json`，
 HEAD `cea5ce515939`、1,265 个候选文件、候选摘要 `9f17d2cac59ce62b…`）：
 **387 passed, 3 subtests passed, 0 failed, 0 errors**（exit 0，644.36s = 10m44s，无 deselect），
-比 §15.4 的 377 多 10 个节点＝本轮新增的 5 条登记面守卫 + 1 条锚点守卫 + 7 条闭环断言中落在
-跟踪套件里的差额；`boot_probe` `verdict: OK`；验收门 `REFUSED / exit 1`、
+比 §15.4 的 377 多 10 个节点，差额可加：`test_v20` 新增 2 条（§15.6 的 AUDIT-STATE 自检守卫）、
+`test_v16` 新增 1 条（§15.7 的锚点守卫）、§15.8 的闭环断言 7 条——2+1+7=10，节点级对得上；`boot_probe` `verdict: OK`；验收门 `REFUSED / exit 1`、
 `blocking_ids=["L10#0"]`、`disclosed_ids=["A00#1","L00#2","L20#0"]`；
 迁移普查 `identical 1116 + EOL_ONLY 2 + MODIFIED 10`、`unmanaged 0`、10/10 返工有声明与回执；
 两来源仓口径摘要不变（WORK 2,638 文件 `f103296769f5ff1f…`、DESIGN 4,049 文件 `c3c1bfe3b37319d8…`）。
