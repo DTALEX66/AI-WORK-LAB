@@ -78,7 +78,48 @@ REM 5) F01 台账重算与登记校验（只读）
 
 REM 6) 受控业务数据迁移（只用合成夹具；对真实用户库与生产路径 fail closed）
 %PY% -B -X utf8 scripts\migrate_business_data.py --describe
+
+REM 7) 登记面自证：七个生成器的 --check（只读比较，绝不写跟踪文件）
+%PY% -B -X utf8 scripts\build_source_coverage.py --check
+%PY% -B -X utf8 scripts\build_task_acceptance_register.py --check
+%PY% -B -X utf8 scripts\build_blocker_register.py --check
+%PY% -B -X utf8 scripts\build_deferral_register.py --check
+%PY% -B -X utf8 scripts\build_audit_item_closure.py --check
+%PY% -B -X utf8 scripts\build_isolated_install_verdict.py --check
+%PY% -B -X utf8 scripts\build_audit_state.py --check
+
+REM 8) 克隆可运行性与引用完整性（复审入口承诺的就是"别人克隆下来跑得动"）
+%PY% -B -m pytest tests\unified\test_v23_clone_repro.py -q
+%PY% -B -m pytest tests\unified\test_v16_traceability.py -q
 ```
+
+**第 7、8 步各自红起来是什么意思**（都是本轮实测过的口径，不是推测）：
+
+* 七个 `--check` 里任何一个 rc≠0：跟踪的登记表与"从来源表现算"的结果不一致——**但在克隆里跑要先看是哪一类**。
+  本轮对 HEAD `4b5af2b609` 现克隆一份实测：`build_task_acceptance_register` / `build_blocker_register` /
+  `build_deferral_register` / `build_audit_item_closure` 四个 rc=0；
+  `build_isolated_install_verdict` rc=2，且给的是具名错误 `NO_ISOLATED_INSTALL_REPORT` 加"先构建再验证"的提示
+  （安装产物按设计不进 Git，这条只能在真跑过安装的那台机器上判定，克隆里红是事实而不是漂移）；
+  `build_audit_state` rc=1，因为 `.git/hooks/pre-push` 不随克隆走、`remote_url` 也是本机值，它折掉自指字段后
+  仍要比这两项；`build_source_coverage` 目前会在克隆里抛 `NotADirectoryError`（它拿仓库根的兄弟目录
+  `WORK-LAB`/`DESIGN-LAB` 当 subprocess 的 cwd，克隆旁边没有那两个仓）——这不是"登记表漂移"，
+  而是该脚本的克隆可用性缺陷，已登记为待修项，本轮不把它算作登记的失败信号。
+* `test_v16_traceability.py` 红了有两种含义，看节点名分得开：
+  `..._no_verified_row_survives_an_unresolvable_claim` 说某行自称 VERIFIED 而锚点/证据解析不上；
+  `test_every_cited_test_node_is_collected_by_pytest_and_every_file_collects_what_it_declares`
+  说登记引用的节点 pytest 收不到，或某个被引用文件"声明的节点集合 ≠ 收到的节点集合"
+  ——这一条是为一次吞掉 `def` 行的编辑而加的：那种错误下文件照样 import、套件照样绿。
+  `test_rebuilding_over_the_published_registers_does_not_relamp_them` 说无内容的重建改写了跟踪字节
+  （会把未变候选的受审摘要推走）。
+* `test_v23_clone_repro.py` 红 = 复审入口的承诺失效：它把仓库重新克隆、在克隆里跑被分类为
+  "克隆可运行"的那部分。本轮它就是在这里抓到合同清单对账用了台账的绝对路径（见 §15.14）。
+* 收据本身（`CLOSURE-STATE-<候选摘要前16位>.json`）落在 gitignored 的
+  `.project-local/audit/20261031-fullclosure/receipt-archive/`：闭环表 20 行的"运行收据"列指名它，
+  但克隆下来看不到那份文件是设计如此（它含本机路径与未发布的门输出）。所以第 7、8 步是给复审者
+  **重跑**用的，不是靠读收据文件接受结论；`migration/audit-item-closure.csv` 里由收据导出的四列
+  （`真实exit_code`、`测量时刻UTC`、`受测候选摘要`、`运行收据`）在 --check 里被声明为豁免列，其余列必须逐字节重现。
+* 登记里凡是引用测试节点的地方都写成 `文件::节点`；`unittest.TestCase` 的方法必须写成
+  `文件::类::方法`——少写类段的 id pytest 回答 `no tests ran`，v16 的守卫会拒绝这种引用。
 
 **危险命令提示（不要照抄旧入口）：** `migrate_sources.py --apply` 会写目标树，需要
 `--confirm REBUILD-MIGRATION`，且遇到候选内已有返工时**拒绝**而非覆盖——**切勿对开发候选执行**。
@@ -976,3 +1017,58 @@ PARTIAL 29→34；`capability-family` 的 IMPLEMENTED_VERIFIED 11→13。**没�
 
 这一回合没有放松任何一行：改后的最终直方图 15 已核实，比第一次接线少一行，
 而那正是审读换来的差额。
+
+### 15.13 对最终提交态的实测（447 项，节点差额可加，收据绑到 4b5af2b609）
+
+全量回归（收据 `receipt-archive/CLOSURE-STATE-5659569475fe1da5.json`，被测 HEAD `4b5af2b609`，
+1265 个候选文件、候选摘要 `5659569475fe1da5…`）：
+
+```
+447 passed, 3 subtests passed in 745.79s (0:12:25)      exit 0，无 deselect，0 failed，0 errors
+```
+
+比 §15.11 那次的 412 多 35 个节点：447 项收集、447 项通过，
+失败/错误/弃选/跳过在收据行里都为 0（类别加总等于收集数，脚本会拒绝任何解释不了的差额）。本轮六个被改文件当前的节点数，按同一份收集结果现数、不抄记忆：
+`test_v02_surface.py` 17 项, `test_v04_design_loop.py` 8 项, `test_v05_rejections.py` 21 项, `test_v09_honesty.py` 10 项, `test_v11_audit_rework.py` 35 项, `test_v16_traceability.py` 24 项。
+
+同一收据里：`boot_probe` exit 0 且 "verdict": "OK"；
+验收门 `REFUSED / exit 1`、`blocking_ids=["L10#0"]`、
+`disclosed_ids=["A00#1", "L00#2", "L20#0"]`；迁移普查 `identical 1116 + EOL_ONLY 2 +
+MODIFIED 10`、`unmanaged 0`、10/10 返工文件有声明与回执；
+两来源仓 git 口径摘要不变（work_unchanged=True、design_unchanged=True）。
+
+登记面在同一份收据里的当前人口：能力族 {"IMPLEMENTED_VERIFIED": 15, "PARTIAL": 12, "IMPLEMENTED_UNVERIFIED": 3}；验收条款 {"CONFIRMED": 41, "PARTIAL": 2, "BLOCKED_BY_BOUNDARY": 2, "DEFERRED_P3": 3}；
+路由面 164 行；阻断登记 {"total": 7, "blocking": 1, "disclosed": 6}。`migration/audit-item-closure.csv` 的 20 行收据列
+改绑这份新收据，`独立复审` 列仍 20 行 `NOT_RUN`——结论口径不变：**QODER 全量闭环自测完成，
+必做条款 `L10#0`（32 行来源判定）待 owner，待 Codex 独立复审**。
+
+### 15.14 测量回合自己抓出来的两处：克隆里的合同清单对账，与一次无内容的重贴时间戳
+
+这一节记的是"跑一遍"这件事本身发现的东西，不是设计阶段想到的东西。
+
+**一、干净克隆里跑不动的一条，红在收据回合而不是本地回合。**
+同一份工作树连跑两次全量都是 `446 passed, 3 subtests passed`（exit 0），
+而收据脚本那一次报 `1 failed, 445 passed`；红点不在主树，在
+`tests/unified/test_v23_clone_repro.py::test_a_clone_can_run_the_machine_independent_part_of_the_suite`
+——它把本仓重新克隆一份、在克隆里跑被判定为"克隆可运行"的那部分。被点名的是本轮新加的
+`tests/unified/test_v05_rejections.py::test_contracts_published_inventory_and_consumed_set_do_not_drift`：
+它拿 `migration/copies.json` 里记录的**绝对**目标做 `Path(...).resolve().relative_to(本仓根)`，
+而副本台账写的是"跑迁移那一份检出"的路径（`D:/All projects/AI-WORK-LAB/...`），克隆的根是另一个目录，
+`relative_to` 当场 ValueError（`tests/unified/test_v05_rejections.py:935`）。
+这就是"本地绿只证明这棵树"那一类：复审入口承诺的是别人克隆下来能重跑，所以这条必须修而不是划成机器绑定。
+
+改法是按能跨越检出的量比：路径尾段 + 台账自己记录的 `sha256_target` 与磁盘字节逐条重算，
+并另加一条"台账只描述一份检出"（所有记录共享同一个绝对前缀）。动手前先量过才敢断言——
+225 条合同记录、登记根唯一、缺文件 0、摘要不符 0。修完在克隆里实测
+`21 passed`（该文件的全部节点），主树 `3 passed -k published_inventory/planted_broken/every_published`。
+登记行 `05#L27|contracts` 的口径同步改成"按路径尾段与登记摘要双向对账"，节点文档串里写清为什么。
+
+**二、一次什么都没改的重建，把候选摘要移动了。**
+`migration/api-contract-check.json` 带 `generated_at` 且被跟踪，而受审候选摘要是跟踪字节的哈希。
+本轮实测到：负载一致的重建把 `2026-10-31T20:00:09` 改写成 `2026-10-31T20:29:44`，
+其余字段一字未变——"什么都没改的复算"因此也要重新改绑一轮收据。
+生成器现在写回前把戳字段遮掉比对，一致就沿用文件自己记着的时刻，真变了才换新的。
+守卫是 `test_rebuilding_over_the_published_registers_does_not_relamp_them`：
+把已发布四张表拷进临时目录重跑一次生成器，字节必须一模一样；再往空目录跑一次，
+允许的唯一差别必须恰好是这个戳字段（否则第一半可以无视戳也过，就成了自我确认）。
+装完之后连续两次重建，`git status` 只剩生成器与守卫本身，登记表一格没动。
