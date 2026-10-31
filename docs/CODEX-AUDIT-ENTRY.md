@@ -1072,3 +1072,33 @@ MODIFIED 10`、`unmanaged 0`、10/10 返工文件有声明与回执；
 把已发布四张表拷进临时目录重跑一次生成器，字节必须一模一样；再往空目录跑一次，
 允许的唯一差别必须恰好是这个戳字段（否则第一半可以无视戳也过，就成了自我确认）。
 装完之后连续两次重建，`git status` 只剩生成器与守卫本身，登记表一格没动。
+
+### 15.15 改绑之后又跑出来的一轮：文档行号把跟踪字节牵动了，另有三台生成器还在重贴时间戳
+
+把 §15.13/§15.14 写进 `docs/CODEX-AUDIT-ENTRY.md` 并改绑闭环表之后，`build_source_coverage.py --check`
+从 rc=0 变成 rc=1，报 `drifted=["design","work"]`、`rows_changed={"work":39,"design":3}`，提示
+`rerun without --check to re-resolve the authority lines`。这不是登记错了，而是它的口径本来就这样：
+`UNREGISTERED_*` 那批行的 `authority` 列写的是"决定这条结论的那句话在第几行"，其中一部分就落在这份
+`CODEX-AUDIT-ENTRY.md` 里（例：`scripts/build_f01_disposition.py:159 → docs/CODEX-AUDIT-ENTRY.md:99`，
+我改了上面的段落后同一行变成 `:140`）。行号是现算的，所以文档一加字，跟踪字节就必须跟着刷新——
+`--check` 的职责正是让这种移动显形，而不是让它带着旧行号发布（旧行号在范围内、指向的却是别的字，
+"这一行存在"那种守卫是查不出来的）。
+
+代价是链式的：候选摘要是跟踪字节的哈希，因此**刚产出的那份收据描述的已经不是当前树**
+（它测的是刷新前的字节）。本轮不假装那张收据仍然有效——按下面的顺序重来一遍：
+刷新两张覆盖登记 → 重跑其余生成器 → 提交 → 重新产收据 → 再改绑闭环表与 AUDIT-STATE。
+
+顺手清掉的第二个口径问题：除已修的追溯生成器外，`build_blocker_register.py`、
+`build_deferral_register.py`、`build_isolated_install_verdict.py` 三台也在无内容变化时重写
+`generated_at`。实测痕迹很直白：那次级联重建后 `git diff` 里它们各只有一行不同，而那一行是时间戳。
+现在四台共用一份 `scripts/published_stamp.py`（遮掉戳字段比对，一致就沿用盘上时刻，
+真变了才换新戳；文件缺失或 JSON 坏了不回落到"保持旧戳"，以免把旧时刻钉在新字节上），
+`test_v14_registers.py` 里两条守卫分别盯住规则本身与"被管辖的登记表人口确实还是那四份"。
+装完之后重跑七台生成器，`git status` 只剩两张覆盖登记（合法的 authority 刷新）与脚本本身。
+
+也把我这一轮自己造的两个错记下来，因为它们都是被检查抓住的而不是靠眼看：
+插入 `sys.path` 引导时放在该文件自己的 `from pathlib import Path` 之前，`NameError` 当场炸；
+删本地重复实现时按"从这个 def 到下一个 def"切片，把夹在中间的 `check_location`/`live_routes`
+等解析层一起删了——生成器随即 `NameError: name 'check_location' is not defined`。
+后者暴露了我为什么在修复脚本里加了一条"顶层名字集合必须只少那一个 helper"的断言：
+从 HEAD 复原、按精确文本删、比对顶层名字集合，三者一起过才写盘。

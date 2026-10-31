@@ -25,6 +25,8 @@ import os
 import re
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from published_stamp import keeping_the_recorded_stamp  # noqa: E402
 
 TARGET_ROOT = Path(__file__).resolve().parents[1]
 OUT = TARGET_ROOT / "config" / "isolated-install-verdict.json"
@@ -117,6 +119,7 @@ def main(argv=None) -> int:
         return 2
     report = Path(candidates[-1])
     document = build(report)
+    document = keeping_the_recorded_stamp(OUT, document)
     rendered = json.dumps(document, ensure_ascii=False, indent=2) + "\n"
     facts = dict(report=str(report.relative_to(TARGET_ROOT)).replace("\\", "/"),
                  verdict=document["overall"], checks=len(document["checks"]),

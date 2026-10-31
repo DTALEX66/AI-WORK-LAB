@@ -501,6 +501,60 @@ def test_every_adobe_host_bridge_is_packaged_and_byte_identical():
     assert photoshop_com is not None
 
 
+STAMPED_REGISTERS = ("config/blocker-register.json", "migration/deferral-register.json",
+                     "config/isolated-install-verdict.json", "migration/api-contract-check.json")
+
+
+def test_the_shared_stamp_rule_keeps_a_stamp_only_when_the_payload_is_unchanged(tmp_path):
+    """`scripts/published_stamp.py` is the single rule behind four tracked registers.
+
+    Three cases, because each is a different way to be wrong: an identical payload must come back
+    with the moment already on disk (otherwise a no-op rebuild moves the audited candidate digest);
+    a payload whose content changed must take the new moment (otherwise a real edit hides behind an
+    old timestamp); and a missing or unparseable file must fall through to a fresh stamp instead of
+    declaring equality -- a rule that "kept" a stamp it could not read would pin a stale moment to
+    changed bytes and look like stability.
+    """
+    import importlib.util as _importlib
+
+    spec = _importlib.spec_from_file_location(
+        "published_stamp_v14", str(TARGET_ROOT / "scripts" / "published_stamp.py"))
+    module = _importlib.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    keep = module.keeping_the_recorded_stamp
+
+    path = tmp_path / "register.json"
+    path.write_text(json.dumps({"generated_at": "T0", "rows": [1, 2]}, ensure_ascii=False),
+                    encoding="utf-8")
+    same = keep(path, {"generated_at": "T1", "rows": [1, 2]})
+    assert same["generated_at"] == "T0", same
+    changed = keep(path, {"generated_at": "T1", "rows": [1, 2, 3]})
+    assert changed["generated_at"] == "T1", changed
+    key_order = keep(path, {"rows": [1, 2], "generated_at": "T1"})
+    assert key_order["generated_at"] == "T0", key_order
+
+    absent = tmp_path / "nowhere.json"
+    assert keep(absent, {"generated_at": "T1", "rows": []})["generated_at"] == "T1"
+    corrupt = tmp_path / "corrupt.json"
+    corrupt.write_text("{not json", encoding="utf-8")
+    assert keep(corrupt, {"generated_at": "T1", "rows": []})["generated_at"] == "T1"
+
+
+def test_every_stamped_register_in_git_carries_a_parseable_stamp_field():
+    """The registers the rule governs are named here, not remembered.
+
+    If one of them stops being JSON with a ``generated_at``, the shared rule silently does nothing
+    for it and that file goes back to moving the digest on every build -- so the population is read
+    from the list and each member is checked for the shape the rule requires.
+    """
+    for relative in STAMPED_REGISTERS:
+        path = TARGET_ROOT / relative
+        assert path.is_file(), relative
+        document = json.loads(path.read_text(encoding="utf-8-sig"))
+        assert isinstance(document, dict) and "generated_at" in document, relative
+        assert document["generated_at"], relative
+
+
 def test_no_register_carries_a_doubled_line_ending():
     """``write_text`` without ``newline=""`` translates every \\n into \\r\\n, so a CSV that
     already ended rows with \\r\\n comes out as \\r\\r\\n: one phantom empty row per record.

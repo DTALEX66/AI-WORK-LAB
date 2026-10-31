@@ -14,6 +14,8 @@ import datetime
 import json
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from published_stamp import keeping_the_recorded_stamp  # noqa: E402
 
 TARGET_ROOT = Path(__file__).resolve().parents[1]
 PACK = TARGET_ROOT / "AI-WORK-LAB_HANDOFF_20261029" / "09_任务分期与验收.json"
@@ -99,6 +101,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv[1:])
     document = build()
+    document = keeping_the_recorded_stamp(OUT, document)
     text = json.dumps(document, ensure_ascii=False, indent=2) + "\n"
     if args.check:
         current = OUT.read_text(encoding="utf-8") if OUT.is_file() else ""

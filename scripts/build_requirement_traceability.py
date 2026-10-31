@@ -56,6 +56,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from published_stamp import keeping_the_recorded_stamp  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HANDOFF = REPO_ROOT / "AI-WORK-LAB_HANDOFF_20261029"
 UI_TABLE = HANDOFF / "04_原界面入口映射.csv"
@@ -167,33 +170,6 @@ CONTRACTS_PUBLISHED_JSON = len(list((REPO_ROOT / "packages" / "contracts").rglob
 
 LOCATION_LINE_RE = re.compile(r"^(?P<path>.+):(?P<line>\d+)$")
 PHASE_TASK_RE = re.compile(r"\bL(\d{2})\b")
-
-
-def _keeping_the_recorded_stamp(path, payload: dict) -> dict:
-    """Reuse the file's own ``generated_at`` when nothing else in the payload changed.
-
-    A tracked register that is rewritten with a new timestamp on every build moves the audited
-    candidate digest without moving any content, which is how a no-op rebuild turns into a re-binding
-    round. Comparison masks the stamp field, so identical bytes keep their recorded moment and a real
-    change still gets stamped.
-    """
-    if not path.is_file():
-        return payload
-    try:
-        existing = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return payload
-
-    def masked(document: dict) -> str:
-        clone = dict(document)
-        clone.pop("generated_at", None)
-        return json.dumps(clone, sort_keys=True, ensure_ascii=False)
-
-    if masked(existing) == masked(payload):
-        stamped = dict(payload)
-        stamped["generated_at"] = existing.get("generated_at", payload["generated_at"])
-        return stamped
-    return payload
 
 
 def now() -> str:
@@ -1327,7 +1303,7 @@ def main(argv=None) -> int:
         "checks": [{key: value for key, value in row.items() if not key.startswith("_")}
                    for row in api_rows],
     }
-    api_payload = _keeping_the_recorded_stamp(
+    api_payload = keeping_the_recorded_stamp(
         args.out_dir / "api-contract-check.json", api_payload)
     (args.out_dir / "api-contract-check.json").write_text(
         json.dumps(api_payload, ensure_ascii=False, indent=2) + "\n",
