@@ -1018,16 +1018,16 @@ PARTIAL 29→34；`capability-family` 的 IMPLEMENTED_VERIFIED 11→13。**没�
 这一回合没有放松任何一行：改后的最终直方图 15 已核实，比第一次接线少一行，
 而那正是审读换来的差额。
 
-### 15.13 对最终提交态的实测（447 项，节点差额可加，收据绑到 4b5af2b609）
+### 15.13 对最终提交态的实测（449 项，节点差额可加，收据绑到 407a216b4e）
 
-全量回归（收据 `receipt-archive/CLOSURE-STATE-5659569475fe1da5.json`，被测 HEAD `4b5af2b609`，
-1265 个候选文件、候选摘要 `5659569475fe1da5…`）：
+全量回归（收据 `receipt-archive/CLOSURE-STATE-9e08c7f026f14e84.json`，被测 HEAD `407a216b4e`，
+1266 个候选文件、候选摘要 `9e08c7f026f14e84…`）：
 
 ```
-447 passed, 3 subtests passed in 745.79s (0:12:25)      exit 0，无 deselect，0 failed，0 errors
+449 passed, 3 subtests passed in 725.80s (0:12:05)      exit 0，无 deselect，0 failed，0 errors
 ```
 
-比 §15.11 那次的 412 多 35 个节点：447 项收集、447 项通过，
+比 §15.11 那次的 412 多 37 个节点：449 项收集、449 项通过，
 失败/错误/弃选/跳过在收据行里都为 0（类别加总等于收集数，脚本会拒绝任何解释不了的差额）。本轮六个被改文件当前的节点数，按同一份收集结果现数、不抄记忆：
 `test_v02_surface.py` 17 项, `test_v04_design_loop.py` 8 项, `test_v05_rejections.py` 21 项, `test_v09_honesty.py` 10 项, `test_v11_audit_rework.py` 35 项, `test_v16_traceability.py` 24 项。
 
@@ -1041,7 +1041,6 @@ MODIFIED 10`、`unmanaged 0`、10/10 返工文件有声明与回执；
 路由面 164 行；阻断登记 {"total": 7, "blocking": 1, "disclosed": 6}。`migration/audit-item-closure.csv` 的 20 行收据列
 改绑这份新收据，`独立复审` 列仍 20 行 `NOT_RUN`——结论口径不变：**QODER 全量闭环自测完成，
 必做条款 `L10#0`（32 行来源判定）待 owner，待 Codex 独立复审**。
-
 ### 15.14 测量回合自己抓出来的两处：克隆里的合同清单对账，与一次无内容的重贴时间戳
 
 这一节记的是"跑一遍"这件事本身发现的东西，不是设计阶段想到的东西。
