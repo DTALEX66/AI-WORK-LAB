@@ -314,9 +314,19 @@ def test_anchors_on_rows_that_admit_being_unverified_still_have_to_point_somewhe
                                           "锚点行没有内容（许可头/括号壳）"))
             evidence = row.get("验证证据", "")
             if evidence and evidence != "NONE":
+                if evidence.startswith("evidence:") or ";evidence:" in evidence:
+                    offenders.append((name, row["来源行标识"], status, evidence,
+                                      "未验证行的证据列引用了未运行记录本身"))
+                    continue
                 ok, note = resolve_evidence_independently(evidence)
                 if not ok:
                     offenders.append((name, row["来源行标识"], status, evidence, note))
+            for pointer in row.get("依据说明", "").split("；"):
+                pointer = pointer.rstrip("）")
+                if pointer.startswith("evidence:"):
+                    ok, note = resolve_evidence_independently("evidence:" + pointer[len("evidence:"):])
+                    if not ok:
+                        offenders.append((name, row["来源行标识"], status, pointer, note))
     assert not offenders, "自称未核实的行仍然挂了无效锚点：%s" % offenders[:12]
 
 def test_excluded_rows_quote_a_decision_that_is_actually_in_their_source_row():

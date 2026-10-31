@@ -740,3 +740,41 @@ build_audit_item_closure        rc=0
 六个 `--check` 全部 rc=0；登记面守卫（`test_v20`+`test_v21`+`test_v25`+`test_v26`）**38 passed**。
 状态直方图没有任何一行因本轮改动被升高或降低——改的都是锚点与措辞，
 `IMPLEMENTED_VERIFIED` 仍只出现在锚点全部解析成功的行上。
+
+### 15.8 两行不再只是"文件自述"，以及未验证行不许拿"未运行记录"当证据
+
+顺着 §15.7 的人口普查往下做，挑了两行"本仓无 pytest 断言"的行**真去补断言**，而不是把状态改掉：
+
+- `capability-family 05#L10 software`——「安装、版本、探测、授权、可执行」五个侧面必须各用自己的键。
+  新增 `tests/unified/test_v18_tools_connections.py::test_software_installation_identity_records_the_five_sides_apart`
+  （真实 HTTP 读 observer 投影 + 磁盘台账逐项对齐；缺值保持 `null` 而不是 `""`/`0`，"没看"记成
+  `NOT_PROBED` 且不进判决词表）、`…::test_software_installation_identity_blank_path_is_not_a_recorded_location`
+  （空串/空白/单反斜杠输入不得冒充一个被记录过的位置）、
+  `…::test_unauthorized_software_installation_probe_records_nothing`（未授权时探测函数一次也不被调用，
+  绊线计数为 0，拒绝码具名）。
+- `capability-family 05#L14 candidate`——「读回不是发送」。新增
+  `tests/unified/test_v04_design_loop.py::test_knowledge_candidate_readback_is_a_read_and_never_a_send`
+  （候选可以本地合同合格、`/export` 可以组装出字节，`outbound` 仍是 `NOT_CONNECTED` /
+  `sent_count=0` / `last_attempt_at=null`；导出之后再读一次列表，发送三项依旧不动）、
+  `…::test_knowledge_candidate_creation_refusals_leave_no_row_and_no_approval`
+  （缺 `redaction_note`、id 含空格/超长、枚举值不对等每种拒绝都按 handler 真实返回码断言，
+  且每次拒绝后计数回到 0——不留半行；没有任何入参能造出 APPROVED，
+  `reviewer_kind="agent"` 走人工门被 `400 KNOWLEDGE_HUMAN_REVIEW_REQUIRED` 拒）。
+
+两行因此由 `IMPLEMENTED_UNVERIFIED` 变 `IMPLEMENTED_VERIFIED`——**不是我改的状态字**：
+生成器的四项机验（位置/证据/分期/排除）自己判定，`downgrade_count` 仍是 0；直方图从
+`IMPLEMENTED_VERIFIED 9 / UNVERIFIED 8` 变成 `11 / 6`。子智能体跑出的 7 个节点我独立复跑
+（`-k` 选择器 7 passed；两文件全量 17 passed），它自报的植入反证也复核过：把 `installRoot`
+填成申报目录、把 `sent_count` 改成 3、把厂商目录当漂移答案，三种都立刻咬住。
+两行仍然**不声称**的事写进了依据：真实安装在本机仍未探测（路径/版本/可执行仍 `NOT_PROBED`）、
+权利判定与真人审阅人是夹具 supplied 的字段。
+
+顺带修掉一个会误导人的列语义：12 行自承未核实的行里，有 7 行把
+`evidence:a01-a10-results.json#results.X` 或 `delivery-summary.json#outstanding`
+这类**未运行记录本身**填进 `验证证据` 列。那一列的意思是"有东西测过这一行"，
+把"我们记下了没跑"写在里面，读起来就像有覆盖。生成器现在把这些指针移到 `依据说明`
+（`evidence_pointers_relocated: 7`），守卫新增同一条规则；信息没丢，位置变对。
+
+实测（本节末另有一条对最终提交态的全量测量）：`test_v16_traceability.py` 20 passed、
+`test_v04_design_loop.py` + `test_v18_tools_connections.py` 合计 17 passed，
+两文件与 v16 三档同跑 **37 passed**；四张表重生成，行数不变（56/30/25/15）。

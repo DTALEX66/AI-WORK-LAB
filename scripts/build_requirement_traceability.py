@@ -577,9 +577,14 @@ def family_claims() -> dict[str, dict]:
                       "status": "IMPLEMENTED_VERIFIED",
                       "basis": "中文检索命中真实 WORK 方案、修订冲突与重启读回都有具名断言（F05 返工项）。"},
         "software": {"location": "domains/work/orchestration/software_installation_identity.py:78",
-                     "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
-                     "basis": "安装身份分类与 config/software-registry.json 已迁入；本仓无 pytest/探测断言"
-                             "「安装、版本、探测、授权、可执行」分别记录，故不标 VERIFIED。"},
+                     "evidence": ("tests/unified/test_v18_tools_connections.py::test_software_installation_identity_records_the_five_sides_apart;"
+                                  "tests/unified/test_v18_tools_connections.py::test_software_installation_identity_blank_path_is_not_a_recorded_location;"
+                                  "tests/unified/test_v18_tools_connections.py::test_unauthorized_software_installation_probe_records_nothing"),
+                     "status": "IMPLEMENTED_VERIFIED",
+                     "basis": "安装身份分类与 config/software-registry.json 已迁入；「安装、版本、探测、授权、"
+                             "可执行」五个侧面各用自己的键、缺值保持 null 并以 NOT_PROBED 记「没看」，"
+                             "未授权时探测一项也不写——由上面三个具名测试断言（含植入反证）。"
+                             "本行不声称任何真实安装在本机被探测过：路径、版本、可执行文件仍是 NOT_PROBED。"},
         "configuration": {"location": "backend/core/capabilities.py:97", "evidence": caps,
                           "status": "PARTIAL",
                           "basis": "受管能力目录由真实派生并诚实标注不可用原因；" + PARTIAL_MARKER
@@ -598,9 +603,14 @@ def family_claims() -> dict[str, dict]:
                             "task 侧真正存在的只有 current_attempt_id。" + PARTIAL_MARKER
                             + "该行运行实现分期「P1保留既有；P2协议接续」的 P2 接续未做，「不复制私人会话」是执行策略约束而非被测行为。"},
         "candidate": {"location": "GET /api/projects/([0-9a-f]{32})/knowledge-candidates",
-                      "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
+                      "evidence": ("tests/unified/test_v04_design_loop.py::test_knowledge_candidate_readback_is_a_read_and_never_a_send;"
+                                   "tests/unified/test_v04_design_loop.py::test_knowledge_candidate_creation_refusals_leave_no_row_and_no_approval"),
+                      "status": "IMPLEMENTED_VERIFIED",
                       "basis": "候选与导出的读写合同保留（RETAIN_CONTRACT），P3 深度 AAOS 明确延期且 AAOS 不是依赖；"
-                              "本仓无 pytest 断言候选导出为「读回不是发送」，故只能标 UNVERIFIED。"},
+                              "「读回不是发送」现由上面两个具名测试断言：导出可以本地合同合格、可以组装出字节，"
+                              "读回的 outbound 仍是 NOT_CONNECTED / sent_count 0 / last_attempt_at null，"
+                              "未批准的候选导出被 409 拒、非法入参不留半行、也没有任何入参能造出 APPROVED。"
+                              "权利判定与真人审阅人是夹具 supplied 的字段，本行不声称它们已被证真。"},
         "cleanup": {"location": "scripts/migrate_sources.py:986",
                     "evidence": "tests/unified/test_v07_migration.py::test_prune_reports_only_paths_this_tool_recorded",
                     "status": "PARTIAL",
@@ -990,6 +1000,38 @@ def histogram(rows: list[dict]) -> dict[str, int]:
     return counts
 
 
+#: ``验证证据`` means "something measured this row". An ``evidence:<file>#<key>`` pointer into
+#: the A01-A10 / F01-F10 result records proves the *opposite* on a row that already admits it is
+#: unverified -- that record is the log of non-execution. Left in the evidence column it reads as
+#: coverage, so on non-VERIFIED rows it moves into 依据说明 where it can only be a statement
+#: about what has not run.
+NON_VERIFIED_STATUSES = ("PARTIAL", "GAP", "DEFERRED_P2", "DEFERRED_P3",
+                         "IMPLEMENTED_UNVERIFIED", "EXCLUDED_BY_OWNER", "NOT_RUN")
+NOT_RUN_POINTER = "（这里引用的不是验证证据，而是未运行记录本身："
+
+
+def relocate_non_evidence_citations(rows: list[dict]) -> int:
+    """Move result-record pointers out of the evidence column on rows that do not verify.
+
+    Returns how many rows changed, so the generator can refuse to pretend the pass ran on an
+    empty population.
+    """
+    changed = 0
+    for row in rows:
+        if row["状态"] not in NON_VERIFIED_STATUSES:
+            continue
+        pieces = [piece.strip() for piece in row["验证证据"].split(";") if piece.strip()]
+        pointers = [piece for piece in pieces if piece.startswith("evidence:")]
+        if not pointers:
+            continue
+        kept = ";".join(piece for piece in pieces if not piece.startswith("evidence:"))
+        row["验证证据"] = kept or NO_EVIDENCE
+        row["依据说明"] = (row["依据说明"] + NOT_RUN_POINTER
+                        + "；".join(sorted(pointers)) + "）")
+        changed += 1
+    return changed
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
@@ -999,6 +1041,10 @@ def main(argv=None) -> int:
     family_rows = build_family_rows()
     requirement_rows = build_requirement_rows()
     api_rows = build_api_checks()
+    relocated = 0
+    for rows in (ui_rows, family_rows, requirement_rows, api_rows):
+        assert rows, "one of the four authored tables came back empty"
+        relocated += relocate_non_evidence_citations(rows)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     write_csv(ui_rows, args.out_dir / "ui-entry-disposition.csv",
@@ -1057,6 +1103,7 @@ def main(argv=None) -> int:
                       for name, rows in registers.items()},
         "downgraded_rows": downgraded,
         "downgrade_count": len(downgraded),
+        "evidence_pointers_relocated": relocated,
         "unverified_claims": {
             "implemented_unverified": [row["来源行标识"]
                                        for rows in registers.values() for row in rows
