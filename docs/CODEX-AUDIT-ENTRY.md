@@ -1140,3 +1140,107 @@ Git 会承认的 1266 个文件、18,225,907 字节；凭证形态命中 0；
 文本里的每个数字都是当次读出来的：48 条子句 / 41 已证实 / 必做 37 = 35 已证实 /
 32 行待 owner（`config/blocker-register.json` 的 `owner_queue_rows`）/ 164 端点 /
 449 项回归 / 门 `REFUSED` 与 `blocking_ids` / 能力族已核实 15 行 / `docs/CODEX-AUDIT-ENTRY.md` 的最大节号。
+### 15.17 把 radar 行从「记下缺陷」改成「修掉缺陷」，以及修它时抓出的两处治理缺陷
+
+上一轮 §15.12 给 `05#L16|radar` 写的是「缺陷如实记录、修复方向已写明」，没有动产品。本轮按目标口径
+（发现项要修，不是只披露）把它做了，做的时候又在登记机器自己身上抓到两处缺陷——两处都是我这一轮的
+编辑造成的或被我的编辑暴露的，都不是前一轮的内容。
+
+**一、被修的产品缺陷**：`domains/design/design_lab/model_catalog.py` 的投影把两种「不知道」塌成同一个
+答复——台账条目里没有 `weights_sha256` 这个键，和这个键登记为空列表，都答 `weights_recorded 0`；
+`_model()` 也不透传 `hash_source` / `qualified_by`，于是「摘要从哪来」「由谁判定合格」在两处可查的字段
+在交付给选择面的文档里消失了。现在权重按三态报告：字段缺席答 `UNSTATED`、登记为空列表答
+`REGISTERED_NONE`、确有摘要答 `RECORDED`，计数新增 `weights_unstated` / `weights_registered_none` 两格，
+`weights_recorded` 保持「确实登记了摘要的条目数」的原义（0 仍然只表示没有摘要被登记，不表示未知）；
+两个出处格原样透传。公开的 `model-catalog-v1.schema.json` 三份副本同步加入这些字段并保持逐字节相同
+（本轮实测摘要 `61e7ca615a33`），`apps/workbench/contracts.ts` 的类型和 `shell.ts` 的渲染跟上，
+空目录的计数显示「0 · 未说明」而不是把两种 0 混成一格。
+
+**二、新增的反例断言**（3 个新节点，另有一批加在既有节点里的断言）：
+`test_radar_weights_state_cannot_be_folded_back_onto_the_count` 先取诚实投影的三态答复，再用
+monkeypatch 把 `_model` 换成「按计数反推状态」的折叠实现，断言折叠后所有条目同态、并且台账里凭空多出
+`weights_state` 键——这条断言的意义是：把三态塌回去不是「读起来差不多」，而是会造出台账里没有的字段。
+`test_radar_catalog_document_satisfies_the_published_schema` 是这张目录文档第一次被它自己的公开合同
+（Draft202012Validator）校验，而不只是被测试里的字段名断言描述。`test_settings_read_set_answers_and_writes_nothing`
+（04 行的路由实测）补了逐行 `weights_state` / `hash_source` / `qualified_by` 与台账的对账，以及
+「三个状态计数相加恰等于条目数」——证明区分走的是真实路由，不只在进程内的投影里成立。
+
+**三、抓出的治理缺陷之一：声明可以贴到错误的文件上。** `scripts/migrate_sources.py` 的
+`_declared_rework_for()` 用「第一个后缀命中的键」来给已改动的迁入文件贴声明。
+`design-lab/schemas/model-catalog-v1.schema.json` 这个键，同时是
+`domains/design/design_lab/resources/repo/design-lab/schemas/model-catalog-v1.schema.json` 的路径后缀，
+于是后者的回执可能被贴上前者的名字，而哪一份赢取决于字典顺序。三份 schema 副本本轮恰好字节相同，
+所以摘要校验本身没报错——这正是它危险的地方：错了也绿。改为最长匹配（`max(matches, key=len)`），
+让查找可注入声明表，并新增 `test_declaration_labels_the_most_specific_key`：植入一份短键在前的映射，
+旧实现答 `schemas/...`、新实现答 `repo/design-lab/schemas/...`，实测两边确实不同，断言才不是空话。
+`test_migrated_file_digests_match_their_sources` 里那份自己重写过的查找也改成调用引擎自己的函数，
+避免一条规则有两个实现。
+
+**四、抓出的治理缺陷之二：位置锚点只要「非空」就会被编辑挤漂移。**
+`check_location()` 原先只要求 `file:line` 指向的行存在且非空。我这一轮在 `model_catalog.py` 上方加了
+11 行，登记里的 `model_catalog.py:97`（原本是 `def catalog()`）就落到 `'hash_source': entry.get(...)`
+这么一行 dict 成员上；同理 `scripts/migrate_sources.py:986`（原本 `def build_plan`）落进我新写的注释；
+而 `backend/v1.py:527` 早就落在 `})` 上——三处都仍然「解析成功」。现在 `.py` 锚点必须命中的是
+定义行（`def` / `class` / 装饰器 / 零缩进的模块级绑定），否则该行降级并在依据说明里点名「不是定义行」。
+按新规则把 5 处重钉回真正的定义处：U10→`backend/v1.py:195`（`V1_ROUTES = _routes()`，那行本来讲的就是路由表）、
+U13/U14→`backend/v1.py:628`（`def _v1_build_pack`，400 拒绝在那里面）、`usage`→`canonical_store.py:1374`
+（`def projection`）、`cleanup`→`migrate_sources.py:1086`（`def prune_report`，那行讲的就是 prune）、
+`radar`→`model_catalog.py:104`（`def catalog`）。`test_fabricated_anchors_are_downgraded_by_the_builder`
+原来把 `backend/v1.py:146` 当「合法位置 + 伪造证据」的夹具用，新规则下它先因锚点被拒——失败换了原因，
+等于这条断言在测别的东西；改用 `:195` 作合法锚点，并另加一条断言专门钉住新的锚点形式规则。
+
+**五、登记里又抓到一处手抄数字，同时如实说明还剩哪一处**：U10 的「V1_ROUTES 现读到 75 条路由
+（含 49 条 WORK 消费面）」改成构建时从两张活动表现读（`route_counts()`，本轮实测 75 条 /
+兼容表 89 条）；「49 条 WORK 消费面」不再复述——那个数由
+`migration/ui-entry-disposition.csv` 逐路由自己持有。contracts 行里那句「键名为 `$ref` 的 462 条引用」
+同批改掉了复述：条数由 `test_contracts_every_published_schema_ref_resolves_to_a_real_repo_file`
+现数，登记不复述一个自己不再检查的数字。这不是「登记里最后一处手抄数字」——本轮按
+`grep '[0-9]+ 条'` 现查，改后仍有的是逐行可推导的行数表述，是否还要逐个换成现算，留作后续。
+
+**六、判定变化**：`05#L16|radar` 由 PARTIAL 改为 IMPLEMENTED_VERIFIED，依据说明里原来那段「缺口：…」
+换成「限制（不是缺口）」并逐条写明仍然成立的边界：本轮实测的产品台账里每一条都把权重列表登记为空，
+`hash_source` 与 `qualified_by` 在全部条目为 null，所以三态在真实人口上目前只走出一格，UNSTATED 与
+RECORDED 是由合成夹具人口证明的；观测时刻只到文档级，条目行没有自己的日期；`source_ref` 是
+github/huggingface 的外部地址，本机不联网也不校验其字节；本行不声称本机任何模型真被装载、探测或授权。
+能力族直方图随之变为 {"IMPLEMENTED_VERIFIED": 16, "PARTIAL": 11, "IMPLEMENTED_UNVERIFIED": 3}（本轮实测，非推算）。
+
+**七、迁移声明的账**：本轮改到的 6 个迁入文件（`model_catalog.py`、三份 `model-catalog-v1.schema.json`、
+`contracts.ts`、`shell.ts`）先以「无人声明的改动」出现在计划里，现按实测的摘要 / 字节数 / 相对只读源的
+行数差补进 `DECLARED_REWORK`。计划现数：identical 1110 / EOL_ONLY 2 / MODIFIED 16，
+其中已声明且摘要相符 16、未声明 0，`unmanaged` 0。
+
+**八、本轮的实测**（收据 `4c373be6ef711ede`，绑定提交 `96e30094a5`——即产品代码与测试最后一次变化那一次提交；
+此后的改动只有登记生成器的文字、登记表本身与本节文字，
+由 `.project-local/audit/20261031-fullclosure/run_closure_evidence.py` 在该提交上跑出来）：
+套件 `452 passed, 3 subtests passed in 728.59s (0:12:08)`（exit 0），逐类别计入 passed 452，与本机 collect-only 的 452 项对得上；
+验收门 REFUSED（exit 1），blocking ["L10#0"]，disclosing ["A00#1", "L00#2", "L20#0"]；
+任务验收登记 {"CONFIRMED": 41, "PARTIAL": 2, "BLOCKED_BY_BOUNDARY": 2, "DEFERRED_P3": 3}；迁移计划如上。
+
+**九、全量套件自己抓出的第三处：公开合同的账只认迁移记录。** 第一次全量跑出来
+`1 failed, 451 passed, 3 subtests passed in 778.29s (0:12:58)` ——`test_contracts_published_inventory_and_consumed_set_do_not_drift`
+把 `packages/contracts` 下每个已发布 JSON 的当前摘要与 `migration/copies.json` 里那次迁移写下的
+`sha256_target` 相比，而本轮按声明改动过的 `schemas-design/model-catalog-v1.schema.json`
+当然不等于旧记录。这不是断言写错了：它缺的是「声明过的后续修复」这一格，
+于是该判定改成两级——要么等于迁移记录，要么等于 `DECLARED_REWORK` 出具摘要与字节数的那份回执，
+两者都对不上才算 stale；同时把「哪一份发布合同不是迁移当时写出的字节」点名出来
+（现数只有一份，就是它），并直接对分类函数植入一份「既不在账上、也不在回执里」的字节断言它仍为
+stale。改完该文件 21 个节点全绿。
+
+**十、TS 侧的真实边界**：`apps/workbench` 的改动由 `tsc --noEmit -p tsconfig.json` 验证（rc=0），
+三个 JS 闸门 `tests/unit.mjs`、`tests/appshell.mjs`、`tests/shape-notice-coverage.mjs` 也都 rc=0——
+但 `vite build` 在这台机器上跑不起来：`node_modules/vite` 的打包依赖 import `picomatch`，
+该包不在 `apps/workbench/node_modules` 里（依赖树不完整，本轮不做网络安装）。
+所以那两个读 `build/main.js` 的闸门校验的是 `2026-10-29` 的 632342 字节旧包，
+不是本轮的 `shell.ts`；bundle 与源之间的关系无法从仓内证明（`build/` 不跟踪）。
+这一条记为待办，不写成已验证。
+
+**十一、给独立复审的最小复跑**：
+`.venv/Scripts/python.exe -m pytest tests/unified/test_v07_migration.py tests/unified/test_v09_honesty.py
+tests/unified/test_v16_traceability.py -q` 覆盖本轮全部新增断言与两处反例植入；
+`.venv/Scripts/python.exe scripts/build_requirement_traceability.py --check` 应报
+`downgrade_count 0`；`.venv/Scripts/python.exe scripts/migrate_sources.py --plan` 应报
+`unmanaged_count 0` 且 MODIFIED 全部 `rework_attested`。
+
+仍然不在本行声称范围内、也不由这些断言覆盖的：真实宿主写入与读回、模型推理、真实私有数据迁移、
+STITCH 前端、真人专业验收签字；`L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的
+真实宿主探测，判定仍由 `config/blocker-register.json` 现数给出。
