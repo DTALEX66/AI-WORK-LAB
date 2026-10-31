@@ -222,9 +222,12 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
                      target="tests/unified/test_v11_audit_rework.py::test_f10_stale_and_foreign_candidate_records_grant_nothing",
                      note="data_origin=test 的探测记录只能给 NOT_VERIFIED；替身不算真实资格"),
     ("L30", 0): dict(status="DEFERRED_P3", kind="doc",
-                     target="backend/core/capabilities.py",
+                     target="migration/deferral-register.json",
                      note="多 Agent/跨机协作按 P3 分期，能力目录以 phase/implementation=DECLARED 标注且"
-                          "不可调用；接缝登记未独立成册（同 L03#1 缺口）"),
+                          "不可调用；接缝已独立成册（deferral-register 的 L30 点名 "
+                          "domains/work/orchestration 与 backend/core/capabilities.py，"
+                          "接缝不存在时生成器直接失败）。原注「接缝登记未独立成册」在同表 L03#1 已确认后"
+                          "就是过期陈述，本轮纠正"),
     ("L31", 0): dict(status="DEFERRED_P3", kind="register",
                      target="migration/source-coverage-work.csv",
                      note="既有实现保留由逐文件去向与 import 图支撑；复杂新增按 P3 延期。同一条款不能既算"
@@ -232,7 +235,9 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
     ("L32", 0): dict(status="DEFERRED_P3", kind="pytest",
                      target="tests/unified/test_v09_honesty.py::test_improvements_answer_contract_only",
                      note="/api/v1/improvements 只回合同与不可用原因，不接执行请求；候选隔离/回滚的接缝"
-                          "未独立登记"),
+                          "已点名登记在 migration/deferral-register.json 的 L32 条目"
+                          "（backend/core/capabilities.py、backend/v1.py），原「未独立登记」是同表 L03#1"
+                          "已确认之后的过期陈述，本轮纠正；真实执行与回滚本身仍按 P3 未做"),
     ("A00", 0): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v11_audit_rework.py::test_f02_design_result_with_wrong_bindings_and_dangerous_refs_is_refused",
                      note="Codex 可原样复跑的 6 组命令写在 docs/CODEX-AUDIT-ENTRY.md §4；旧审计探针因其自身"
