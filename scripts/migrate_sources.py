@@ -595,6 +595,64 @@ sys.path.insert(0, str(ROOT))''',
      "(REPO / 'src/design_lab/knowledge_library.py')",
      "(REPO / 'domains/design/design_lab/knowledge_library.py')",
      "source-scan target moved to migrated design package"),
+    ('domains/design/design_lab/http_service.py',
+     """#: A readback that cannot be produced is not a readback with nothing in it. The status carries
+#: whether the operator can fix it by looking (503: this checkout has no ledger / no git subject)
+#: or whether code and contract have diverged and a person must change something (500).
+EVIDENCE_READBACK_STATUS = {
+    'EVIDENCE_LEDGER_ABSENT': 503,
+    'EVIDENCE_CONTRACT_ABSENT': 503,
+    'EVIDENCE_SUBJECT_UNRESOLVABLE': 503,
+    'EVIDENCE_LEDGER_REJECTED': 500,
+    'EVIDENCE_CONTRACT_UNLOADABLE': 500,
+    'EVIDENCE_CONTRACT_VIOLATION': 500,
+    'EVIDENCE_PROJECTION_OVERFLOW': 500,
+}""",
+     """#: A readback that cannot be produced is not a readback with nothing in it.
+#: The three status classes are different messages to the operator, and conflating them sends
+#: them to the wrong place:
+#:   409 -- the request is fine and the service is healthy; this checkout simply does not carry
+#:           the artifact the readback describes. In the fused candidate that is the normal
+#:           shape: DESIGN-LAB's task ledger ships as packaged source material
+#:           (``domains/design/design_lab/resources/repo/design-lab/config/…``), and reading it
+#:           as *this* checkout's ledger would pair another repository's task state with this
+#:           repository's commit -- exactly the substitution the readback refuses. A 5xx here
+#:           told a reviewer to go look for a broken store; the measured 503 on
+#:           ``GET /api/evidence-projection`` was registered as 缺陷 for that reason.
+#:   503 -- the artifact should be readable here and is not (no contract on disk, no git
+#:           subject): that is an environment the operator can repair.
+#:   500 -- code and contract have diverged, so a person must change something.
+EVIDENCE_READBACK_STATUS = {
+    'EVIDENCE_LEDGER_ABSENT': 409,
+    'EVIDENCE_CONTRACT_ABSENT': 503,
+    'EVIDENCE_SUBJECT_UNRESOLVABLE': 503,
+    'EVIDENCE_LEDGER_REJECTED': 500,
+    'EVIDENCE_CONTRACT_UNLOADABLE': 500,
+    'EVIDENCE_CONTRACT_VIOLATION': 500,
+    'EVIDENCE_PROJECTION_OVERFLOW': 500,
+}
+
+#: Named refusals carry what the refusal means, because the absence of a readback is easily
+#: misread as an absence of problems. The contract for the readback itself
+#: (``evidence-projection.schema.json``) states that an empty ``receipts`` list never means
+#: "the evidence is fine", which is why this branch answers with a refusal and a sentence
+#: instead of a 200 with an empty projection.
+EVIDENCE_REFUSAL_MEANING = {
+    'EVIDENCE_LEDGER_ABSENT':
+        '本检出没有证据账本，所以没有任何证据状态可读；这不是「全部通过」，也不是存储故障。',
+}""",
+     "2026-10-31: the readback's refusal for a checkout without a ledger is a deployment fact, not a server outage; while it answered 503 the route was registered as 缺陷 in migration/route-surface.csv and sent a reviewer to look at a store that is fine"),
+    ('domains/design/design_lab/http_service.py',
+     """                payload = {'error': exc.code}
+                if exc.details:
+                    payload['detail'] = exc.details[:10]""",
+     """                payload = {'error': exc.code}
+                if exc.details:
+                    payload['detail'] = exc.details[:10]
+                meaning = EVIDENCE_REFUSAL_MEANING.get(exc.code)
+                if meaning:
+                    payload['meaning'] = meaning""",
+     "2026-10-31: the readback's refusal for a checkout without a ledger is a deployment fact, not a server outage; while it answered 503 the route was registered as 缺陷 in migration/route-surface.csv and sent a reviewer to look at a store that is fine"),
 ]
 
 

@@ -185,7 +185,7 @@ acceptance 子句**逐条判定（子句原文从任务包转录，不由本文�
 解析不到就自动降级。登记：`migration/task-acceptance.csv`（48 行）+
 `config/blocker-register.json`（由条款登记派生，不手抄）。
 
-| 实测项 | 现读结果 |
+| 实测项 | 读数（§10 时点：那张表测的是当时的候选；后续读数在 §12–§14，勿把本表当当前值） |
 |---|---|
 | 全量回归 | `340 passed, 3 subtests passed`，0 failed / 0 errors，exit 0 |
 | acceptance 条款 | 48 条：39 CONFIRMED / 4 PARTIAL / 2 BLOCKED_BY_BOUNDARY / 3 DEFERRED_P3；必做阶段（P0/P1）无 GAP |
@@ -219,8 +219,10 @@ acceptance 子句**逐条判定（子句原文从任务包转录，不由本文�
    后的目录深度上落到 `<root>/domains`，于是投影永远在错误位置找 `design-lab/config/task-ledger-r3.json`。
    这是 F01 点名的同一类锚点缺陷（`composition_root` 的 `parents[2]`）在另两个模块上的复发；
    `illustrator_com.py` 同样中招。现按标记上溯求根，并在迁移的 `PATCHES` 里声明——否则下一次
-   `--apply` 会把修复抹掉。修复后 `GET /api/evidence-projection` 仍是**具名 503
-   `EVIDENCE_LEDGER_ABSENT`**：融合仓自己没有那份 ledger，按合同拒绝而不是回空清单。
+   `--apply` 会把修复抹掉。修复后 `GET /api/evidence-projection` 仍是**具名拒绝**
+   `EVIDENCE_LEDGER_ABSENT`：融合仓自己没有那份 ledger，按合同拒绝而不是回空清单。
+   （本行写的状态当时是 503；§14 把这一类拒绝按部署事实改判为 409，拒绝本身与不回空清单的
+   要求不变。）
 4. Illustrator 宿主桥接脚本**从未被迁入**（包内路径只有 Photoshop 那一份，迁移规则里也没有它），
    所以 `ILLUSTRATOR_BRIDGE_MISSING` 是「资产缺失」而不是「未授权」。现按适配层实际探测的包内
    路径补入并登记为逐字节相同的复制（24,587 字节）。
@@ -479,3 +481,44 @@ owner）；系统级出站隔离未被证明。结论口径仍是**「QODER 全�
   （14 条，缺接缝时生成器直接失败）。注记改为点名接缝册里的 `L30`/`L32` 条目，
   `L30#0` 的证据目标同时换成 `migration/deferral-register.json`——把声明指回真正
   支持它的文件。延期本身（P3 未做）没有改变，改变的只是描述延期理由的那句话。
+
+## 14. 2026-10-31 再续：全表复测把最后一个 5xx 缺陷关掉了
+
+上一节做登记面普查时发现，164 条端点里唯一被判 `缺陷` 的那条就是这个兼容面路由：
+
+```
+GET /api/evidence-projection  ->  503  EVIDENCE_LEDGER_ABSENT   判定=缺陷
+```
+
+它不是路由坏了，是**状态分类错了**。该路由重算「本检出的证据链状态」，而本检出没有
+DESIGN-LAB 的任务账本（账本作为包内来源材料留在 `domains/design/design_lab/resources/repo/`
+下）。它拒绝作答是对的——投影合同自己写着「`receipts` 为空从不等于「证据没问题」」，
+所以补一个 200 空投影就是造一个假绿；但 503 说的是「服务暂不可用」，会把复审者支去查
+一个好好的存储。按部署事实回答才是诚实的：
+
+- `EVIDENCE_READBACK_STATUS['EVIDENCE_LEDGER_ABSENT']` 503 → **409**，并附 `meaning`
+  一句话说明「没有账本可读，这不是通过，也不是存储故障」；
+- 另外两类拒绝**保持原样**：契约文件不在/取不到提交号仍是 503（操作者可修），
+  代码与契约分歧仍是 500（要人改代码）。`tests/unified/test_v28_evidence_refusal_status.py`
+  把这三类分开钉住，并逐条植入拒绝验证状态没有被一刀切降格；
+- 该修改是迁入文件的返工，因此按锚点声明进 `migrate_sources.PATCHES`：脚本先取引擎
+  本会写出的字节、与树上字节做差异、再把自己产出的片段应用回去要求逐字节相同，
+  最后重新导入断言「引擎打算写的字节 == 树上的字节」——不是把手改的内容抄进表里。
+
+复测（`scripts/probe_full_surface.py --fresh`，从零工作区起，真实启服务逐路由打）：
+
+```
+enumerated=164  success=97  refusal=67  defect=0  fixture=0  unconstructed=0  variants=15
+```
+
+`migration/route-surface.csv` 已按这次实测重写：`缺陷` 归零，
+`GET /api/evidence-projection` 记为 409 / 领域拒绝 / `EVIDENCE_LEDGER_ABSENT`，
+响应键 `detail|error|meaning`。至此 164 个端点里没有一个 5xx。
+
+同一次普查还确认：`migration/requirement-traceability.csv` 里剩下的 3 条 `GAP`（U09/P01/P05）
+全部是 STITCH 前端交付物，按边界保持未运行；`ui-entry-disposition.csv` 的 29 PARTIAL / 7 GAP
+同属前端面。后端侧在这两张表里没有可自主关掉的余项。
+
+对当前树的完整测量（收据 `receipt-archive/CLOSURE-STATE-845082918268d073.json`，
+HEAD `70d5faaa205f`）：**372 passed, 3 subtests passed, 0 failed**（exit 0，10m06s，无 deselect），
+门禁 `REFUSED / exit 1`（阻断项仍是 `L10#0`），两来源仓 git 口径摘要不变。
