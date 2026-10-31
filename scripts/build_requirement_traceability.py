@@ -377,7 +377,10 @@ def ui_claims() -> dict[str, dict]:
                         "basis": "该行分期为「P1档案；P2真实连接」：模型档案面已在兼容路由，模型目录不做锁定、默认 fail-closed；"
                                  + no_ui + "缺口：P2 真实连接与「工具/模型与入口」视图未生成，本仓无 pytest 断言 /api/models 口径。"},
         "work:memory": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "GAP",
-                        "basis": "该行自身约束「不复制原生私有记忆」，因此保留的是接缝而不是实现；统一后端无会话/记忆端点，「知识/上下文与经验」视图也未生成。"},
+                        "basis": "该行自身约束「不复制原生私有记忆」，因此保留的是接缝而不是实现——"
+                                "接缝点名登记在 migration/deferral-register.json 的 "
+                                "work.session_continuity 条目（生成器要求接缝文件真实存在）；"
+                                "统一后端无会话/记忆端点，「知识/上下文与经验」视图也未生成。"},
         "work:tools": {"location": "GET /api/v1/tools", "evidence": NO_EVIDENCE, "status": "PARTIAL",
                        "basis": "工具台账端点真实存在；" + no_ui + "缺口：本仓 pytest 未覆盖 /api/v1/tools，「工具/我的工具」视图未生成。"},
         "work:monitoring": {"location": "GET /api/work/observer/snapshot", "evidence": f09,
@@ -443,7 +446,10 @@ def ui_claims() -> dict[str, dict]:
         return {"location": location or ("apps/workbench/shell.ts:%d" % nav_line),
                 "evidence": evidence, "status": status,
                 "basis": "[判定] 入口已落在 apps/workbench/shell.ts 的导航表内（该行的 view id 与来源表 04 的原入口ID 同名）"
-                         + basis}
+                         + basis
+                         + "（导航表的派生关系有断言存在于 apps/workbench/tests/appshell.mjs——"
+                           "那是 node 门、不由 pytest 运行，所以本行缺的是视图侧的数据断言，"
+                           "不是「这个仓里什么都没有」）"}
 
     plan_test = "tests/legacy/design/test_assistance_plan.py::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart"
     revision_test = "tests/legacy/design/test_assistance_plan.py::test_a_stale_revision_is_refused_with_the_actual_number"
@@ -582,15 +588,20 @@ def family_claims() -> dict[str, dict]:
                      "evidence": "tests/unified/test_v05_rejections.py::test_wrong_pack_and_wrong_project_results_refused;tests/unified/test_v10_gate.py::test_gate_refuses_forged_result_and_verdict",
                      "status": "IMPLEMENTED_VERIFIED",
                      "basis": "验收「拒绝错任务、错版本、重复和假回执」逐条对应到具名反例测试（错项目/错包、stale、重复、伪造回执与伪 PASS）。"},
-        "session": {"location": "backend/core/unified_store.py:393", "evidence": NO_EVIDENCE,
+        "session": {"location": "domains/design/design_lab/creative/session_link.py:51",
+                    "evidence": NO_EVIDENCE,
                     "status": "PARTIAL",
-                    "basis": "Attempt 信封携带 native_session_ref 且与会话引用分离；" + PARTIAL_MARKER
+                    "basis": "会话引用与任务不同表：它落在独立的写一次关联表 worklab_session_link 上，"
+                            "session_ref 必须是不透明 id（路径与载荷被拒），见 session_link.py 的 "
+                            "link_session 与 assert_correlation_only；本树没有任何名为 native_session_ref "
+                            "的字段（backend/ 与 domains/ 全文无该串），原判定文字借用了来源仓的叫法，"
+                            "task 侧真正存在的只有 current_attempt_id。" + PARTIAL_MARKER
                             + "该行运行实现分期「P1保留既有；P2协议接续」的 P2 接续未做，「不复制私人会话」是执行策略约束而非被测行为。"},
         "candidate": {"location": "GET /api/projects/([0-9a-f]{32})/knowledge-candidates",
                       "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
                       "basis": "候选与导出的读写合同保留（RETAIN_CONTRACT），P3 深度 AAOS 明确延期且 AAOS 不是依赖；"
                               "本仓无 pytest 断言候选导出为「读回不是发送」，故只能标 UNVERIFIED。"},
-        "cleanup": {"location": "scripts/build_migration_map.py:1",
+        "cleanup": {"location": "scripts/migrate_sources.py:986",
                     "evidence": "tests/unified/test_v07_migration.py::test_prune_reports_only_paths_this_tool_recorded",
                     "status": "PARTIAL",
                     "basis": "已有的是迁移工具的 prune——只报告本工具登记过的路径、默认不删；" + PARTIAL_MARKER
@@ -618,7 +629,11 @@ def family_claims() -> dict[str, dict]:
                           "basis": "软件×模型×入口档案从受管配置现读且不落第二副本；引用必须指向真实档案——「选择不等于连接和执行」由资格层断言。"},
         "design-domain": {"location": "domains/design/design_lab/domain_packs.py:199",
                           "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
-                          "basis": "领域包构建器在（含逐包 checker 与说明），/api/domains 路由在；"
+                          "basis": "领域包构建器在（它按包尝试加载 checker，见 domain_packs.py 的 _load_checker "
+                                  "与 CHECKER_REL=design-lab/scripts/verify_domain_pack_v2.py；"
+                                  "但本树 13 个包目录下没有任何 .py、也没有 design-lab/ 子目录，"
+                                  "即该路径永不解析，逐包校验一次也没有真正执行过），"
+                                  "/api/domains 路由在；"
                                   "但「13 领域包与资源可加载、资格分别标记」在本仓没有对应断言，数字未经复算。"},
         "design-assets": {"location": "GET /api/projects/([0-9a-f]{32})/assets(?:/(img-[0-9a-f]{64})/content)?", "evidence": NO_EVIDENCE,
                           "status": "IMPLEMENTED_UNVERIFIED",
@@ -641,11 +656,11 @@ def family_claims() -> dict[str, dict]:
                     "basis": "现有 workbench 导航与逐视图读回渲染在（未重画 UI，符合「不默认重画」）；" + PARTIAL_MARKER
                             + "「56 旧入口有去向」这一验收由本次生成的 ui-entry-disposition.csv 满足；"
                             "统一桌面壳与合成首页属 STITCH 前端，本轮实测登记为 NOT_RUN（evidence:delivery-summary.json#outstanding）。"},
-        "contracts": {"location": "packages/contracts/schemas/workflow/action-plan.schema.json:1",
+        "contracts": {"location": "packages/contracts/schemas/workflow/action-plan.schema.json:4",
                       "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
                       "basis": "公共 Schema 目录随包发布并被 store/服务读取；"
                               "「现有消费者与版本兼容、错误输入与资源路径回归」没有针对 packages/contracts 的具名测试，故不标 VERIFIED。"},
-        "research": {"location": "research/candidates/CANDIDATE-TAXONOMY.json:1", "evidence": NO_EVIDENCE,
+        "research": {"location": "research/candidates/CANDIDATE-TAXONOMY.json:2", "evidence": NO_EVIDENCE,
                      "status": "IMPLEMENTED_UNVERIFIED",
                      "basis": "研究资料按「资料不是运行事实」留在 research/ 内且未被任何运行路径导入；"
                              "联网检索延期（09 分期表 L30 属 P3），本行不声称已具备检索能力。"},
@@ -694,7 +709,7 @@ def requirement_claims() -> dict[str, dict]:
         "U06": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "DEFERRED_P3",
                 "basis": "BOT 是交互/消息入口，本行交付原文「渠道后置，不新建重复总控」：统一后端没有第二总控（只有一个 CanonicalStore 与一张路由表），"
                         "BOT 渠道本身按 09 分期表 L30（P3 复杂多Agent/BOT/跨机协作）延期，本行不声称已实现。"},
-        "U07": {"location": "pyproject.toml:1", "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
+        "U07": {"location": "pyproject.toml:27", "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
                 "basis": "「局部机制适配，不默认整仓换底」在技术上成立：产品仍是迁移过来的 Python 标准库后端 + Vanilla TypeScript/Vite 前端，"
                         "未引入参考项目的底座；但这是结构事实而非被测行为，本仓无断言，故不标 VERIFIED。参考资料的登记在 research/candidates 与 vendor/。"},
         "U08": {"location": "GET /api/v1/improvements", "evidence": "tests/unified/test_v09_honesty.py::test_improvements_answer_contract_only",

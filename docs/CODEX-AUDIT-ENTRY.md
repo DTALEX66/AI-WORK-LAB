@@ -677,5 +677,66 @@ HEAD（后者恒真，等于没判）。
 %PY% -B -X utf8 scripts\build_audit_state.py --check
 ```
 
-第一条要求两个只读来源仓在本机存在（machine-bound，克隆里由 `test_v23_clone_repro.py`
-归入 machine-bound 而不是静默跳过）；其余六条在干净克隆里也应 rc=0。本轮七条实测全部 rc=0。
+第一条要求两个只读来源仓在本机存在；`build_isolated_install_verdict.py --check` 与
+`build_audit_state.py --check` 也在克隆里不可满足——前者要求 `.project-local\build\` 里那份
+安装报告（被 `.gitignore` 排除，只能在真跑过安装的那台机器上比），后者要比对
+`upload_facts.prepush_hook` 与 `remote_url`，而克隆里 hook 不存在（`bytes=0`、`present=false`）、
+`origin` 指向本地路径而不是 GitHub URL。这三条由 `test_v23_clone_repro.py` 的 machine-bound
+归类兜住，不静默跳过；其余四条在干净克隆里逐条实测过：
+
+```
+build_task_acceptance_register  rc=0  {"rows": 48, "mandatory_hard_gaps": 0, "listed_blockers": 0}
+build_blocker_register          rc=0  {"matches": true, "items": 7, "blocking": 1}
+build_deferral_register         rc=0  {"matches": true, "entries": 14}
+build_audit_item_closure        rc=0
+```
+
+（这一段是二次补写：初次写下时我顺手写了"其余六条在干净克隆里也应 rc=0"，那是没跑的推测，
+克隆实测把其中两条推翻在上面了。写"应"字的断言同样要先跑。）本机上七条实测全部 rc=0。
+
+### 15.7 把锚点守卫扩到"自承未核实"的行：一次现数就抓到 4 个假锚点和 2 句假话
+
+`test_v16_traceability.py` 原本只对 `IMPLEMENTED_VERIFIED` 行解析 `当前实现位置`/`验证证据`
+（`if row["状态"] != "IMPLEMENTED_VERIFIED": continue`）。这意味着其余 88 行里，锚点怎么写都不会被复核——
+一行只要把状态标低一点，就可以挂着指向别处、甚至指向许可头的锚点长期存活。
+本轮新增
+`test_v16_traceability.py::test_anchors_on_rows_that_admit_being_unverified_still_have_to_point_somewhere`：
+非 VERIFIED 行的位置必须解析、且指向的行必须**带内容**（`.py/.toml` 不以 `#` 开头、
+`.json` 不是单独的括号壳），证据引用必须解析。
+
+第一次跑就红了，抓到 4 条：
+
+| 行 | 原锚点 | 问题 |
+|---|---|---|
+| `capability-family 05#L15 cleanup` | `scripts/build_migration_map.py:1` | 第 1 行是 SPDX 头，**而且 prune 根本不在那个文件里**（实现在 `scripts/migrate_sources.py:986 def prune_report`） |
+| `capability-family 05#L27 contracts` | `packages/contracts/.../action-plan.schema.json:1` | 第 1 行是 `{` |
+| `capability-family 05#L28 research` | `research/candidates/CANDIDATE-TAXONOMY.json:1` | 第 1 行是 `{` |
+| `requirement 11#L8 U07` | `pyproject.toml:1` | 第 1 行是注释 |
+
+另有两处**判定文字本身是假的**，锚点解析抓不到，靠把行文本对着代码读才现形：
+
+- `05#L13 session` 写「Attempt 信封携带 `native_session_ref` 且与会话引用分离」。全树 `backend/`
+  与 `domains/` 里根本没有 `native_session_ref` 这个串（grep 0 命中）；task 侧真实存在的只有
+  `current_attempt_id`。会话引用的真实形状是独立写一次关联表 `worklab_session_link`，
+  `session_ref` 必须是不透明 id（路径/载荷被拒），在
+  `domains/design/design_lab/creative/session_link.py:51`（`link_session`）与同文件
+  `assert_correlation_only`。判定文字按这个改写，锚点也从 `unified_store.py:393`（那行是
+  `if current_attempt_id is not None:`，与会话无关）移到 `session_link.py:51`。
+- `05#L21 design-domain` 写「领域包构建器在（含逐包 checker 与说明）」。构建器确实**会去找**
+  每包的 checker（`domain_packs.py:101 _load_checker`，`CHECKER_REL=design-lab/scripts/verify_domain_pack_v2.py`），
+  但 13 个包目录下没有任何 `.py`、也没有 `design-lab/` 子目录，即该路径永不解析——
+  逐包校验一次也没执行过。文字改成这句，状态仍是不声称已验证。
+
+还有两处相反的错（**低**报而不是虚报）：`ui-entry` 的 workbench/dashboard 等行写"本仓无对应断言"，
+而导航表派生关系其实有断言在 `apps/workbench/tests/appshell.mjs`（`ROUTE_VIEWS`/`B10_NAV`，node 门、
+不由 pytest 运行）。模板句补上这一条，说清缺的是视图侧数据断言、不是"这仓里什么都没有"；
+`work:memory` 那句"保留的是接缝"现在点名 `migration/deferral-register.json` 的
+`work.session_continuity`（生成器本来就要求接缝文件真实存在）。
+
+实测：新守卫第一次跑 rc=1（列出上述 4 条），改完登记表后
+`test_v16_traceability.py` **20 passed**；`build_requirement_traceability.py` 重生成
+`capability-family-register.csv`（10 行变）、`requirement-traceability.csv`（2 行变）、
+`ui-entry-disposition.csv`（50 行变）、`api-contract-check.json`（1 处）；
+六个 `--check` 全部 rc=0；登记面守卫（`test_v20`+`test_v21`+`test_v25`+`test_v26`）**38 passed**。
+状态直方图没有任何一行因本轮改动被升高或降低——改的都是锚点与措辞，
+`IMPLEMENTED_VERIFIED` 仍只出现在锚点全部解析成功的行上。

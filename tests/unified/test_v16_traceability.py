@@ -262,6 +262,63 @@ def test_verified_rows_never_cite_an_absent_location_or_no_evidence():
 # ------------------------------------------------------- exclusion and partial
 
 
+def _carries_content(path: Path, line: str) -> bool:
+    """Whether the cited line actually says something, rather than being a file's shell.
+
+    ``scripts/build_migration_map.py:1`` and ``pyproject.toml:1`` are SPDX header comments;
+    ``research/candidates/CANDIDATE-TAXONOMY.json:1`` is the opening brace. Every one of them
+    is a non-blank line, so the resolver above accepts them -- and an anchor that points at a
+    license header proves nothing about the row that cites it.
+    """
+    text = line.strip()
+    if not text:
+        return False
+    if path.suffix in (".py", ".toml", ".sh", ".cfg") or path.name == ".gitignore":
+        return not text.startswith("#")
+    if path.suffix in (".json",):
+        return text not in ("{", "}", "[", "]", "},", "],", "{}")
+    if path.suffix in (".md",):
+        return text.startswith("#") or len(text) > 3
+    return True
+
+
+def test_anchors_on_rows_that_admit_being_unverified_still_have_to_point_somewhere(live_routes):
+    """PARTIAL / UNVERIFIED / DEFERRED rows cite locations and evidence too -- and until now
+    no check re-read any of them, so an invented anchor could live in the register forever.
+
+    Honest status labels are not enough: a row may correctly say ``IMPLEMENTED_UNVERIFIED`` and
+    still name a file the tree does not have, or point at a license header, and the next reader
+    will treat that pointer as a place to look. The strict definition-site guard stays where it
+    is (it belongs to ``IMPLEMENTED_VERIFIED``); this one covers the rest of the population and
+    refuses unresolvable or content-free anchors and unresolvable evidence citations.
+    """
+    live = live_routes
+    offenders = []
+    for name, path in sorted(REGISTERS.items()):
+        for row in read_register(path):
+            status = row["状态"]
+            if status == "IMPLEMENTED_VERIFIED":
+                continue
+            location = row["当前实现位置"]
+            if location and location not in ("ABSENT", "NONE"):
+                ok, note = resolve_location_independently(location, live)
+                if not ok:
+                    offenders.append((name, row["来源行标识"], status, location, note))
+                    continue
+                if not re.match(r"^(%s) " % "|".join(METHODS), location):
+                    file_part, _, number = location.rpartition(":")
+                    target = TARGET_ROOT / file_part
+                    lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
+                    if not _carries_content(target, lines[int(number) - 1]):
+                        offenders.append((name, row["来源行标识"], status, location,
+                                          "锚点行没有内容（许可头/括号壳）"))
+            evidence = row.get("验证证据", "")
+            if evidence and evidence != "NONE":
+                ok, note = resolve_evidence_independently(evidence)
+                if not ok:
+                    offenders.append((name, row["来源行标识"], status, evidence, note))
+    assert not offenders, "自称未核实的行仍然挂了无效锚点：%s" % offenders[:12]
+
 def test_excluded_rows_quote_a_decision_that_is_actually_in_their_source_row():
     sources = {
         "ui-entry": {(row["来源仓"] + ":" + row["原入口ID"]):
