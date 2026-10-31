@@ -344,11 +344,12 @@ def test_radar_catalog_absent_field_is_null_while_unknown_stays_unknown(monkeypa
     `counts.default_enabled_true` 仍 0。删掉 schema 必填字段（`hardware_fit`）时目录直接拒绝加载，
     不会静默当成 null 或 0 渲染给选择面。
 
-    缺陷（本节点如实记录并要求修复）：`weights_sha256` 被省略时
-    model_catalog.py:91 `'weights_recorded': len(hashes)` 答 0，与"字段在、列表为空"得到同一个
-    0；「没登记任何摘要」与「未知」在这一处塌成一个值，而且 `_model()`（model_catalog.py:73-94）
-    不透传 `hash_source`/`qualified_by`，读的人无法区分二者。本节点把"0 不被当成合格"这条不变量
-    钉住；修复方向是把缺字段答成 null、把 0 留给"确实登记了空列表"，并透传出处字段。
+    已修（本轮之前这里是缺陷，本节点当时钉的是塌成同一个值的行为）：`weights_sha256` 被省略与被
+    登记为空列表曾同时答 `weights_recorded: 0`，`_model()` 也不透传 `hash_source`/`qualified_by`。
+    现在计数继续数它数得到的东西（0 = 确实没有摘要被登记），区别由 `weights_state` 三态承担
+    （UNSTATED / REGISTERED_NONE / RECORDED），出处与判定人格子原样带出；文档级
+    `counts.weights_unstated` / `weights_registered_none` 把两种"不知道"分别计数。
+    「0 不被当成合格」这条不变量原样保留，另两个节点的折叠反证证明它能变红。
 
     没证明：合成夹具里的模型存在过或被探测过；真实台账逐行的缺失情况（这里用的是夹具）。
     """
@@ -374,7 +375,7 @@ def test_radar_catalog_absent_field_is_null_while_unknown_stays_unknown(monkeypa
     assert absent_row['default_enabled'] is False, absent_row
     assert base['counts']['default_enabled_true'] == 0, base['counts']
 
-    # 塌成同一个值的那一处：省略与空列表都给 0（缺陷，见 docstring）
+    # 省略与空列表：计数都是 0（这确实是"没有摘要被登记"），但状态格把两者分开
     omitted_hashes = _entry(model_id='v09-radar-nohash-fixture',
                             source={'kind': 'huggingface', 'ref': 'huggingface/nohash-fixture',
                                     'license_id': 'MIT'})
@@ -392,7 +393,25 @@ def test_radar_catalog_absent_field_is_null_while_unknown_stays_unknown(monkeypa
     assert two_rows['counts']['weights_recorded'] == 0, two_rows['counts']
     assert row_omitted['radar_state'] == 'WATCH', row_omitted
     assert row_empty['radar_state'] == 'WATCH', row_empty
-    assert 'hash_source' not in row_omitted and 'qualified_by' not in row_omitted, row_omitted
+    assert row_omitted['weights_state'] == 'UNSTATED', row_omitted
+    assert row_empty['weights_state'] == 'REGISTERED_NONE', row_empty
+    assert row_omitted['weights_state'] != row_empty['weights_state']
+    assert two_rows['counts']['weights_unstated'] == 1, two_rows['counts']
+    assert two_rows['counts']['weights_registered_none'] == 1, two_rows['counts']
+    # 出处与判定人是台账里写的话：目录既不替它们编内容，也不把它们丢掉
+    recorded = _entry(model_id='v09-radar-recorded-fixture',
+                      source={'kind': 'huggingface', 'ref': 'huggingface/recorded-fixture',
+                              'license_id': 'MIT'},
+                      weights_sha256=['a' * 64],
+                      hash_source='model hub manifest', qualified_by='owner 2026-10-20')
+    one_recorded = _catalog_from(monkeypatch, tmp_path / 'recorded',
+                                 _registry([recorded]), providers)
+    assert one_recorded['models'][0]['weights_state'] == 'RECORDED', one_recorded['models'][0]
+    assert one_recorded['models'][0]['weights_recorded'] == 1, one_recorded['models'][0]
+    assert one_recorded['models'][0]['hash_source'] == 'model hub manifest'
+    assert one_recorded['models'][0]['qualified_by'] == 'owner 2026-10-20'
+    assert one_recorded['counts']['weights_recorded'] == 1, one_recorded['counts']
+    assert one_recorded['counts']['weights_unstated'] == 0, one_recorded['counts']
 
     missing_required = _entry(model_id='v09-radar-nofit-fixture')
     missing_required.pop('hardware_fit')
@@ -535,7 +554,9 @@ def test_radar_catalog_follows_edited_registries_and_changes_nothing_else(monkey
         model_radar.resolve(probed_registry, _SYNTHETIC_MODEL_ID)
 
     answer, moved = re_read(_registry([entry_a]))
-    assert moved == ['$.counts.models', '$.counts.placement.vendor', '$.models[len]'], moved
+    # 少一行台账条目会带动这三个文档级计数与列表长度，其余格子一律不动
+    assert moved == ['$.counts.models', '$.counts.placement.vendor',
+                     '$.counts.weights_registered_none', '$.models[len]'], moved
     assert answer['counts']['models'] == 1, answer['counts']
     assert [row['model_id'] for row in answer['models']] == [_SYNTHETIC_MODEL_ID], answer['models']
 
@@ -559,9 +580,9 @@ def test_radar_qualification_cannot_be_minted_from_documentation_or_probe(monkey
 
     没证明：本机真能加载或推理那个模型（夹具全是合成字符串）；许可被裁定；真实台账里存在合格模型
     （它一条也没有，见前面节点的计数断言）。
-    缺陷（如实记录并要求修复）：合法合格行的 `qualified_by`（是谁给的意见）被 `_model()`
-    （model_catalog.py:73-94）丢掉，选择面拿到的资格结论没有署名出处；修复是透传 `qualified_by`，
-    不是把它折叠进 `radar_state`。
+    已修（本轮 I-a）：合法合格行的 `qualified_by`（是谁给的意见）与 `hash_source`（摘要从哪来）
+    曾被 `_model()` 丢掉，选择面拿到的资格结论没有署名出处。两者现在原样透传，本节点末尾把
+    「台账里的值 == 目录里的值」钉住；把它折叠进 `radar_state` 或不再透传都会让断言变红。
     """
     providers = json.loads(model_catalog.PROVIDERS_PATH.read_text(encoding='utf-8'))
     digest = 'a' * 64
@@ -608,7 +629,79 @@ def test_radar_qualification_cannot_be_minted_from_documentation_or_probe(monkey
     assert answer['counts']['qualified_local'] == 1, answer['counts']
     assert answer['counts']['weights_recorded'] == 1, answer['counts']
     assert answer['counts']['default_enabled_true'] == 1, answer['counts']
-    # 缺陷：资格结论到了选择面，署名出处却没跟上（见 docstring）
-    assert 'qualified_by' not in row, row
+    # 署名与出处由台账带出，目录不替任何人编一个名字出来：格子等于台账说的话
+    assert row['qualified_by'] == complete['entries'][0]['qualified_by'], row
+    assert row['hash_source'] == complete['entries'][0]['hash_source'], row
+    assert row['weights_state'] == 'RECORDED', row
+    # 更强的事实：没有署名的资格结论连台账都进不来，目录因此没有可编名字的机会
+    unsigned = json.loads(json.dumps(complete))
+    unsigned['entries'][0]['qualified_by'] = None
+    with pytest.raises(model_catalog.ModelCatalogError,
+                       match='QUALIFIED_LOCAL requires qualified_by'):
+        _catalog_from(monkeypatch, tmp_path / 'unsigned-sign', unsigned, providers)
     with pytest.raises(ReadinessError, match='hardware_fit is UNKNOWN'):
         model_radar.resolve(complete, 'v09-radar-qualified-ok')
+
+
+def test_radar_weights_state_cannot_be_folded_back_onto_the_count(monkeypatch, tmp_path):
+    """植入反证：把三态折叠回"看计数"，这一行的区分立刻不存在。
+
+    证明的是断言能不能失败，而不是它现在是否为真：把 `_model()` 换成一个只按
+    `weights_recorded` 决定状态的实现（0 就当作 REGISTERED_NONE，也就是把"没人说过"读成
+    "登记了空列表"），同一份夹具下两种事实的状态格塌成同一个值、文档级 UNSTATED 计数归零；
+    撤销补丁后复跑绿。顺带钉住状态格是投影自己算出来的：被读到的台账里没有这个名字的键。
+    """
+    providers = json.loads(model_catalog.PROVIDERS_PATH.read_text(encoding='utf-8'))
+    omitted = _entry(model_id='v09-radar-fold-a')
+    omitted.pop('weights_sha256')
+    empty = _entry(model_id='v09-radar-fold-b', weights_sha256=[])
+    registry = _registry([omitted, empty])
+
+    honest = _catalog_from(monkeypatch, tmp_path / 'fold-honest', registry, providers)
+    assert [row['weights_state'] for row in honest['models']] == ['UNSTATED', 'REGISTERED_NONE']
+
+    original = model_catalog._model
+
+    def fold_by_count(entry):
+        row = original(entry)
+        row['weights_state'] = 'RECORDED' if row['weights_recorded'] else 'REGISTERED_NONE'
+        return row
+
+    monkeypatch.setattr(model_catalog, '_model', fold_by_count)
+    folded = _catalog_from(monkeypatch, tmp_path / 'fold-bad', registry, providers)
+    assert len({row['weights_state'] for row in folded['models']}) == 1, folded['models']
+    assert folded['counts']['weights_unstated'] == 0, folded['counts']
+    monkeypatch.undo()
+    restored = _catalog_from(monkeypatch, tmp_path / 'fold-restored', registry, providers)
+    assert [row['weights_state'] for row in restored['models']] == \
+        ['UNSTATED', 'REGISTERED_NONE'], restored['models']
+    ledger = json.loads(Path(str(model_radar.REGISTRY_PATH)).read_text(encoding='utf-8-sig'))
+    assert all('weights_state' not in row for row in ledger['entries']), \
+        "状态格成了台账字段，投影就不再是自己算的"
+
+
+def test_radar_catalog_document_satisfies_the_published_schema():
+    """发布出去的 model-catalog-v1.schema.json 第一次真的被人拿来校验。
+
+    普查发现的空档：这份 schema 有三份跟踪副本、`additionalProperties: false` 且把每一格都列进
+    required，但仓库里没有任何代码或测试拿它校过目录答复——"公共合同"当时只是"有个文件"。
+    本节点用发布的那份校验 `catalog()` 的真实答复（含本轮新加的 `weights_state`、两个出处格与
+    文档级两个新计数），并要求三份副本逐字节相同：只改一份的话，合同就会以三种口径存在。
+    """
+    from jsonschema import Draft202012Validator
+
+    document = model_catalog.catalog()
+    schema_path = REPO_ROOT / "design-lab" / "schemas" / "model-catalog-v1.schema.json"
+    schema = json.loads(schema_path.read_text(encoding='utf-8'))
+    errors = sorted(Draft202012Validator(schema).iter_errors(document),
+                    key=lambda error: list(error.absolute_path))
+    assert errors == [], [(list(e.absolute_path), e.message) for e in errors][:6]
+
+    copies = [schema_path,
+              REPO_ROOT / "packages" / "contracts" / "schemas-design"
+                       / "model-catalog-v1.schema.json",
+              REPO_ROOT / "domains" / "design" / "design_lab" / "resources" / "repo"
+                       / "design-lab" / "schemas" / "model-catalog-v1.schema.json"]
+    assert all(path.is_file() for path in copies), [str(p) for p in copies if not p.is_file()]
+    digests = {hashlib.sha256(path.read_bytes()).hexdigest() for path in copies}
+    assert len(digests) == 1, digests

@@ -796,6 +796,25 @@ DECLARED_REWORK = {
     "tests/legacy/design/test_assistance_plan.py": (
         "6d854443635f5922d21c11f3526270502dd0aa87256c934e6c24c749e91ba891", 51127, 45,
         "本轮 L17: 按名称暂存 shell.ts 的用例改为不依赖仓库根解析"),
+    "domains/design/design_lab/model_catalog.py": (
+        "bc347097bf415750d93057739cab94597de99b9f2c0d4e4ac60718d4cf4773b9", 8495, 11,
+        "本轮 I-a: 目录把「没有登记权重」和「没有说明权重状态」塌成同一个计数，"
+        "投影补出 weights_state / hash_source / qualified_by 三个可区分字段"),
+    "design-lab/schemas/model-catalog-v1.schema.json": (
+        "61e7ca615a3353bb636a6e14bbde511f8657f2b7cd654340b1783bf6e761d633", 9054, 10,
+        "本轮 I-a: counts 与 $defs/model 随投影加入 weights_state 三态与两个可空来源字段"),
+    "packages/contracts/schemas-design/model-catalog-v1.schema.json": (
+        "61e7ca615a3353bb636a6e14bbde511f8657f2b7cd654340b1783bf6e761d633", 9054, 10,
+        "本轮 I-a: 与 design-lab/schemas 那份逐字节相同的公开合同副本，同步同一改动"),
+    "domains/design/design_lab/resources/repo/design-lab/schemas/model-catalog-v1.schema.json": (
+        "61e7ca615a3353bb636a6e14bbde511f8657f2b7cd654340b1783bf6e761d633", 9054, 10,
+        "本轮 I-a: 与 design-lab/schemas 那份逐字节相同的仓内资源副本，同步同一改动"),
+    "apps/workbench/contracts.ts": (
+        "9ea0f4edd2917a818e8445a2a64d2b303d729371d1de8048db8eaa5ededcf0c8", 24425, 6,
+        "本轮 I-a: 前端契约类型跟上 weights_state 三态、两个可空来源字段与两个新计数"),
+    "apps/workbench/shell.ts": (
+        "5ff7486515cade7ca443247d300b60c48db1b7c2668e8c8438d053d0dcc034d2", 759392, 13,
+        "本轮 I-a: 目录行按三态渲染标签，空目录计数显示「未说明」而不是被抹平"),
 }
 
 
@@ -953,14 +972,21 @@ def _entry(path: Path, target: Path, target_rel: str) -> dict:
     return row
 
 
-def _declared_rework_for(target: Path) -> str | None:
+def _declared_rework_for(target: Path, declarations=None) -> str | None:
     """Repo-relative key for a target path, matched by suffix so a short rehearsal root
-    (Windows MAX_PATH workaround) still resolves the same declaration."""
+    (Windows MAX_PATH workaround) still resolves the same declaration.
+
+    ``declarations`` defaults to the published mapping; a caller can pass another one so
+    the matching rule itself is testable against a planted near-miss key.
+    """
     posix = str(target).replace("\\", "/")
-    for key in DECLARED_REWORK:
-        if posix.endswith("/" + key):
-            return key
-    return None
+    if declarations is None:
+        declarations = DECLARED_REWORK
+    # A short key can be a path suffix of a different, longer destination
+    # ("design-lab/schemas/x.json" also ends the resources/repo copy of the same name),
+    # so first-match made the label depend on dict order. The most specific key wins.
+    matches = [key for key in declarations if posix.endswith("/" + key)]
+    return max(matches, key=len) if matches else None
 
 
 def build_plan(target_root: Path = TARGET_ROOT) -> dict:

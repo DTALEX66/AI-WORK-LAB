@@ -76,6 +76,10 @@ def _model(entry: dict) -> dict:
     fit = entry.get('hardware_fit') if isinstance(entry.get('hardware_fit'), dict) else {}
     weights = entry.get('weights_sha256')
     hashes = weights if isinstance(weights, list) else []
+    # 「一条摘要也没登记」与「这个字段从来没被说过」是两种答复，把它们折叠成同一个 0 就等于
+    # 把未知读成事实；计数保持整数（0 确实表示"没有摘要被登记"），区别由状态格承载。
+    weights_state = ('UNSTATED' if 'weights_sha256' not in entry
+                     else 'REGISTERED_NONE' if not hashes else 'RECORDED')
     return {
         'model_id': entry.get('model_id'),
         'family': entry.get('family'),
@@ -89,6 +93,9 @@ def _model(entry: dict) -> dict:
         'license_id': rights.get('license_id'),
         'default_enabled': entry.get('default_enabled'),
         'weights_recorded': len(hashes),
+        'weights_state': weights_state,
+        'hash_source': entry.get('hash_source'),
+        'qualified_by': entry.get('qualified_by'),
         'blocking_reason': entry.get('blocking_reason'),
         'evidence_ref': entry.get('evidence_ref'),
     }
@@ -134,6 +141,10 @@ def catalog() -> dict:
             'qualified_local': sum(1 for row in models if row['radar_state'] == 'QUALIFIED_LOCAL'),
             'default_enabled_true': sum(1 for row in models if row['default_enabled'] is True),
             'weights_recorded': sum(1 for row in models if row['weights_recorded']),
+            'weights_unstated': sum(1 for row in models
+                                    if row['weights_state'] == 'UNSTATED'),
+            'weights_registered_none': sum(1 for row in models
+                                           if row['weights_state'] == 'REGISTERED_NONE'),
             'placement': {kind: sum(1 for row in models if row['placement'] == kind)
                           for kind in PLACEMENTS},
         },

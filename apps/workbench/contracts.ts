@@ -469,6 +469,10 @@ export interface ModelCatalogModelRow {
   license_id: string | null;
   default_enabled: boolean;
   weights_recorded: number;
+  // 「没登记」与「未说明」不是同一个数：状态格负责区分，计数只负责数数。
+  weights_state: 'UNSTATED' | 'REGISTERED_NONE' | 'RECORDED';
+  hash_source: string | null;
+  qualified_by: string | null;
   blocking_reason: string | null;
   evidence_ref: string | null;
 }
@@ -496,6 +500,8 @@ export interface ModelCatalogResponse {
     qualified_local: number;
     default_enabled_true: number;
     weights_recorded: number;
+    weights_unstated: number;
+    weights_registered_none: number;
     placement: Record<string, number>;
   };
   models: ModelCatalogModelRow[];

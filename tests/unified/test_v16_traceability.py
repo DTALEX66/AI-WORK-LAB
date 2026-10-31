@@ -617,7 +617,17 @@ def test_fabricated_anchors_are_downgraded_by_the_builder(builder, tmp_path):
     blank = builder.reconcile("scratch", "T#L1|y", "要求", "", fake_blank_line)
     assert blank["状态"] in ("GAP",), blank["依据说明"][-160:]
 
-    fake_test = {"location": "backend/v1.py:146",
+    # a line inside a function body is not "the implementation": the row reads as resolved
+    # while pointing at a statement that names nothing. This is how an anchor drifts once
+    # anything above it grows, so the builder refuses it even though the line exists.
+    drifted_anchor = {"location": "backend/v1.py:146",
+                      "evidence": "tests/unified/test_v02_surface.py::test_health_is_real_service_metadata",
+                      "status": "IMPLEMENTED_VERIFIED", "basis": "锚点落在函数体的一行"}
+    slid = builder.reconcile("scratch", "T#L1|s", "要求", "", drifted_anchor)
+    assert slid["状态"] == "GAP", slid["依据说明"][-200:]
+    assert "不是定义行" in slid["依据说明"], slid["依据说明"][-200:]
+
+    fake_test = {"location": "backend/v1.py:195",
                  "evidence": "tests/unified/test_v02_surface.py::test_no_such_test_anywhere",
                  "status": "IMPLEMENTED_VERIFIED", "basis": "伪造测试名"}
     unver = builder.reconcile("scratch", "T#L1|z", "要求", "", fake_test)
@@ -629,7 +639,7 @@ def test_fabricated_anchors_are_downgraded_by_the_builder(builder, tmp_path):
     gone = builder.reconcile("scratch", "T#L1|w", "要求", "", fake_route)
     assert gone["状态"] == "GAP", gone["依据说明"][-160:]
 
-    fake_evidence_file = {"location": "backend/v1.py:146",
+    fake_evidence_file = {"location": "backend/v1.py:195",
                           "evidence": "evidence:a01-a10-results.json#results.NO_SUCH_KEY",
                           "status": "IMPLEMENTED_VERIFIED", "basis": "伪造证据键"}
     ev_gone = builder.reconcile("scratch", "T#L1|v", "要求", "", fake_evidence_file)

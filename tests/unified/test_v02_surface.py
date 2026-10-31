@@ -629,7 +629,9 @@ def test_settings_read_set_answers_and_writes_nothing(server):
     证明：这三处读回都在真实服务上答 200；模型目录的每个数字与每一行都是从两份受管台账现读的
     ——counts.models/endpoints 等于台账行数，model_id / provider_id 集合与台账一致，逐行的
     radar_state / placement / license_id / commercial_use / default_enabled / weights_recorded
-    等于台账里该条自己的值，qualified_local、default_enabled_true、weights_recorded 是从台账
+    等于台账里该条自己的值，权重的三态答复（UNSTATED / REGISTERED_NONE / RECORDED）与两个出处格
+    hash_source、qualified_by 也随路由原样带出（不只在进程内的投影里成立），三个状态计数相加
+    恰等于条目数；qualified_local、default_enabled_true、weights_recorded 是从台账
     重算的（不是写死的 0），两份台账的合并不被冒领（join.key 为 null）；设置屏的索引行绑的是
     真数据——空库时 total 0 / entries []，POST 一条知识条目后 limit=1 的检索答的就是我刚写的
     那条，total 变 1，差集恰这一条；设置面写不进去：POST 到这三个读点是 404 NOT_FOUND，
@@ -667,6 +669,19 @@ def test_settings_read_set_answers_and_writes_nothing(server):
         assert row["commercial_use"] == source["rights"]["commercial_use"], row
         assert row["default_enabled"] == source["default_enabled"], row
         assert row["weights_recorded"] == len(source.get("weights_sha256") or []), row
+        # the two provenance cells and the three-state weight answer must survive the route,
+        # not only the in-process projection the honesty suite drives
+        assert row["hash_source"] == source.get("hash_source"), row
+        assert row["qualified_by"] == source.get("qualified_by"), row
+        assert row["weights_state"] in ("UNSTATED", "REGISTERED_NONE", "RECORDED"), row
+        assert row["weights_state"] == (
+            "RECORDED" if (source.get("weights_sha256") or []) else
+            "UNSTATED" if "weights_sha256" not in source else "REGISTERED_NONE"), row
+    counts = catalog["counts"]
+    assert counts["weights_unstated"] + counts["weights_registered_none"] + counts["weights_recorded"] \
+        == counts["models"], counts
+    assert counts["weights_recorded"] == sum(
+        1 for row in catalog["models"] if row["weights_state"] == "RECORDED"), counts
     assert catalog["counts"]["qualified_local"] == sum(
         1 for row in catalog["models"] if row["radar_state"] == "QUALIFIED_LOCAL"), catalog
     assert catalog["counts"]["default_enabled_true"] == sum(

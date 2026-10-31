@@ -45,13 +45,16 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["models", "endpoints", "qualified_local", "default_enabled_true",
-                   "weights_recorded", "placement"],
+                   "weights_recorded", "weights_unstated", "weights_registered_none",
+                   "placement"],
       "properties": {
         "models": {"type": "integer", "minimum": 0},
         "endpoints": {"type": "integer", "minimum": 0},
         "qualified_local": {"type": "integer", "minimum": 0},
         "default_enabled_true": {"type": "integer", "minimum": 0},
         "weights_recorded": {"type": "integer", "minimum": 0},
+        "weights_unstated": {"type": "integer", "minimum": 0},
+        "weights_registered_none": {"type": "integer", "minimum": 0},
         "placement": {
           "type": "object",
           "additionalProperties": false,
@@ -118,7 +121,7 @@
       "additionalProperties": false,
       "required": ["model_id", "family", "placement", "source_ref", "radar_state", "machine_state",
                    "hardware_fit", "vram_gib_required", "commercial_use", "license_id",
-                   "default_enabled", "weights_recorded", "blocking_reason", "evidence_ref"],
+                   "default_enabled", "weights_recorded", "weights_state", "hash_source", "qualified_by", "blocking_reason", "evidence_ref"],
       "properties": {
         "model_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
         "family": {"enum": ["image-generation", "video-generation", "upscaling", "segmentation",
@@ -135,6 +138,9 @@
         "license_id": {"type": "string", "minLength": 1},
         "default_enabled": {"type": "boolean"},
         "weights_recorded": {"type": "integer", "minimum": 0},
+        "weights_state": {"enum": ["UNSTATED", "REGISTERED_NONE", "RECORDED"]},
+        "hash_source": {"type": ["string", "null"]},
+        "qualified_by": {"type": ["string", "null"]},
         "blocking_reason": {"type": ["string", "null"]},
         "evidence_ref": {"type": ["string", "null"]}
       }

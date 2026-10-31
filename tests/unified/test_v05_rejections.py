@@ -903,6 +903,38 @@ def test_contracts_planted_broken_ref_makes_the_resource_predicate_red(tmp_path)
     assert (staged / "schemas/workflow/evidence-manifest.schema.json").is_file()
 
 
+def _declared_rework_map():
+    """The migration script's own ``DECLARED_REWORK`` table, read from the file on disk."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "migrate_sources_for_contracts", _CONTRACT_ROOT / "scripts" / "migrate_sources.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.DECLARED_REWORK
+
+
+def _published_contract_state(tail: str, current: bytes, recorded_digest: str,
+                              declared: dict) -> str:
+    """identical | declared_rework | stale for one published contract file.
+
+    The copy ledger records the bytes the migration run wrote. A later declared repair changes
+    those bytes on purpose, and the plan (`migrate_sources.py --plan`) attests the new digest;
+    so the chain is ledger-then-declaration, not the ledger alone. Anything matching neither is
+    an unexplained change to a public contract and stays red.
+    """
+    digest_now = _hashlib.sha256(current).hexdigest()
+    if digest_now == recorded_digest:
+        return "identical"
+    attestation = declared.get("%s/%s" % (_CONTRACTS_PREFIX, tail))
+    if attestation and attestation[0] == digest_now and len(current) == attestation[1]:
+        return "declared_rework"
+    return "stale"
+
+
+_CONTRACTS_PREFIX = _CONTRACTS_DIR.relative_to(_CONTRACT_ROOT).as_posix()
+
+
 def test_contracts_published_inventory_and_consumed_set_do_not_drift(server, monkeypatch):
     """Contract drift: what is published, what is registered, and what is actually opened.
 
@@ -912,9 +944,14 @@ def test_contracts_published_inventory_and_consumed_set_do_not_drift(server, mon
          package) — a schema dropped in without a ledger record is red. The comparison is made
          on the path tail plus the digest each record carries, because the ledger spells its
          targets as absolute paths inside the checkout that ran the migration: tail-and-bytes is
-         what survives a clone (measured: 225 records, one recorded root, no missing file, no
-         digest mismatch), while resolving those absolute strings onto a clone raises ValueError
-         and proves nothing about the files;
+         what survives a clone (measured: 225 records, one recorded root, and every registered
+         file explained by one of the two states below), while resolving those absolute strings
+         onto a clone raises ValueError
+         and proves nothing about the files. A file may therefore be either the bytes the
+         migration wrote, or the bytes a *declared* repair is attested at
+         (`migrate_sources.DECLARED_REWORK`) — one of the published contracts is in that second
+         state and the test names it; anything matching neither is an unexplained edit, which is
+         also asserted directly against the classifier;
       2. the contract files *opened at runtime* — discovered by instrumenting
          `pathlib.Path.read_text` while the three real consumers run, not by grepping —
          == the set named here, so a consumer that starts reading a fourth contract (or
@@ -931,13 +968,16 @@ def test_contracts_published_inventory_and_consumed_set_do_not_drift(server, mon
     published = {path.relative_to(_CONTRACT_ROOT).as_posix()
                  for path in _CONTRACTS_DIR.rglob("*.json")}
     ledger = json.loads(_contract("migration/copies.json").read_text(encoding="utf-8"))
+    declared = _declared_rework_map()
     registered: set[str] = set()
     roots: set[str] = set()
     stale: list[str] = []
+    states: dict[str, str] = {}
     # The ledger spells its targets as absolute paths inside the checkout that ran the migration, so
     # resolving them onto a clone is impossible and not the point. What travels between checkouts is
     # the path tail plus the digest recorded for those bytes, and both are re-checked here: the file
-    # set is compared by tail, and every published file is re-hashed against its own record.
+    # set is compared by tail, and every published file is re-hashed against its own record -- or,
+    # where a declared repair later moved the bytes, against the digest that repair is attested at.
     contracts_prefix = _CONTRACTS_DIR.relative_to(_CONTRACT_ROOT).as_posix()
     for group in ledger["copies"]:
         for record in group.get("records") or []:
@@ -950,10 +990,22 @@ def test_contracts_published_inventory_and_consumed_set_do_not_drift(server, mon
             published_path = _CONTRACT_ROOT / contracts_prefix / tail
             if not published_path.is_file():
                 stale.append(tail + " (registered but absent)")
-            elif _hashlib.sha256(published_path.read_bytes()).hexdigest() != record["sha256_target"]:
-                stale.append(tail + " (bytes differ from the recorded digest)")
+                continue
+            current = published_path.read_bytes()
+            states[tail] = _published_contract_state(
+                tail, current, record["sha256_target"], declared)
+            if states[tail] == "stale":
+                stale.append(tail + " (bytes match neither the migration record nor a declared repair)")
     assert len(roots) == 1, sorted(roots)
     assert stale == [], stale[:5]
+    # the declared branch is not a free pass: name exactly which published contracts are NOT the
+    # bytes the migration wrote, and prove that a third kind of change still reads as stale
+    reworked = sorted(tail for tail, state in states.items() if state == "declared_rework")
+    assert reworked == ["schemas-design/model-catalog-v1.schema.json"], reworked
+    assert all(len(_contract("packages/contracts/" + tail).read_bytes())
+               == declared["packages/contracts/" + tail][1] for tail in reworked), reworked
+    assert _published_contract_state(reworked[0], b"planted undeclared bytes",
+                                     "0" * 64, declared) == "stale"
     assert registered <= published, sorted(registered - published)[:5]
     assert published == registered, (
         f"{len(published - registered)} published JSON contract files carry no migration "

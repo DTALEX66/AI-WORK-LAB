@@ -287,7 +287,8 @@ const OFFLINE = {
     schemaVersion: 'design-lab/model-catalog/v1', observed_at: null,
     sources: {}, hardware: {}, policy: {},
     counts: { models: 0, endpoints: 0, qualified_local: 0, default_enabled_true: 0,
-              weights_recorded: 0, placement: {} },
+              weights_recorded: 0, weights_unstated: 0, weights_registered_none: 0,
+              placement: {} },
     models: [], endpoints: [],
     join: { key: null, reason: '' },
     selection: { mode: '', rules: [], transport: '', executed: false },
@@ -13326,11 +13327,19 @@ export async function renderModelSelection(target: HTMLElement): Promise<void> {
           el('td', {}, row.machine_state ? en(row.machine_state) : '未记录'),
           el('td', {}, row.license_id ?? '未记录许可'),
           el('td', {}, String(row.default_enabled)),
-          el('td', {}, String(row.weights_recorded)),
+          el('td', {}, `${String(row.weights_recorded)} · `
+            + `${row.weights_state ? WEIGHTS_STATE_LABELS[row.weights_state] : '未记录'}`),
           el('td', {}, row.blocking_reason ?? '（无记录）'))))));
   };
   familyFilter.onchange = paint;
   paint();
+
+  // 三个状态词各说一件事：0 条摘要可能是"登记了空列表"，也可能是"这一格没人说过"。
+  const WEIGHTS_STATE_LABELS: Record<string, string> = {
+    RECORDED: '已登记摘要',
+    REGISTERED_NONE: '登记为空',
+    UNSTATED: '未说明',
+  };
 
   const endpointColumns = ['提供方', '端点引用', '能力（读回）', 'local_first',
     '许可', '许可风险', '证据级'] as const;

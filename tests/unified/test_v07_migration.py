@@ -14,8 +14,11 @@ switch". The contract now is:
 * ``--apply`` is opt-in, needs ``--confirm REBUILD-MIGRATION``, writes file by file
   with write-then-move, and **never deletes**;
 * a target whose managed files were repaired afterwards is **refused** rather than
-  overwritten — six such files exist in this candidate right now (the F01/F09
-  import and root repairs), so refusing is the first thing this test checks.
+  overwritten — the files listed in ``DECLARED_REWORK`` are exactly those repairs (the
+  F01/F09 import and root repairs, later rounds' test repairs, this round's
+  model-catalog projection fix), so refusing is the first thing this test checks.
+  The count is deliberately not written here: it moves whenever a repair is declared,
+  and a stale number in a docstring is a claim nothing checks.
 
 What the old tests meant is preserved: reruns change no counts, the read-only
 sources stay untouched (verified by digest, not by counting dirty files, as the
@@ -138,9 +141,9 @@ def test_plan_mode_writes_nothing_to_the_candidate():
 def test_plan_reports_declared_rework_and_refuses_unexplained_rework():
     """The F01/F09 import and root repairs are exactly what a rerun used to erase.
 
-    Ten of them are declared with attested bytes now, so the plan no longer has to shout
-    about repairs it can see are intentional — and that is only honest if a NEW, undeclared
-    edit still fails. The second half of this pair plants exactly that.
+    Every one of them is declared with attested bytes now, so the plan no longer has to
+    shout about repairs it can see are intentional — and that is only honest if a NEW,
+    undeclared edit still fails. The second half of this pair plants exactly that.
     """
     report_path = TARGET_ROOT / ".project-local" / "runs" / "v07-plan-report.json"
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -158,10 +161,67 @@ def test_plan_reports_declared_rework_and_refuses_unexplained_rework():
     assert completed.returncode == 0, (completed.returncode, completed.stdout[-800:])
     assert "unmanaged" in report
     # a declaration without a reason is decoration
+    keys = _live_migration_module().DECLARED_REWORK
     for row in report["refusals"]:
         if row["state"] == "MODIFIED":
             assert row.get("rework_attested") is True, row
             assert row.get("rework_reason"), row
+            # the label must be the declaration that names *this* destination, not any
+            # other key that merely happens to be a suffix of it
+            candidates = [name for name in keys if ("/" + row["target"]).endswith("/" + name)]
+            assert candidates, row
+            assert row["declared_rework"] == max(candidates, key=len), \
+                {"row": row["declared_rework"], "candidates": candidates}
+
+
+def _live_migration_module():
+    """The migration script as it is on disk, imported once per process."""
+    global _LIVE_MIGRATE
+    if _LIVE_MIGRATE is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "migrate_sources_under_test", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _LIVE_MIGRATE = module
+    return _LIVE_MIGRATE
+
+
+_LIVE_MIGRATE = None
+
+
+def test_declaration_labels_the_most_specific_key(tmp_path):
+    """A key can be a path suffix of a *different* destination, so first-match mislabels.
+
+    ``design-lab/schemas/model-catalog-v1.schema.json`` is a suffix of
+    ``domains/design/design_lab/resources/repo/design-lab/schemas/model-catalog-v1.schema.json``,
+    and both are declared. The attestation (digest + size) happens to be the same for the
+    three schema copies, so nothing fails when the shorter key wins the race -- the plan
+    just reports a declaration that names another file, and which one wins depended on
+    dict order. The planted mapping below puts the short key first on purpose: an
+    implementation that returns the first suffix match labels the wrong file.
+    """
+    live = _live_migration_module()
+    planted = {
+        "schemas/model-catalog-v1.schema.json": ("x", 1, 1, "short key, listed first"),
+        "repo/design-lab/schemas/model-catalog-v1.schema.json":
+            ("y", 1, 1, "long key, listed second"),
+    }
+    deep = tmp_path / "domains/design/design_lab/resources/repo/design-lab/schemas"
+    deep.mkdir(parents=True)
+    handle = deep / "model-catalog-v1.schema.json"
+    handle.write_bytes(b"")
+    assert live._declared_rework_for(handle, planted) \
+        == "repo/design-lab/schemas/model-catalog-v1.schema.json", \
+        "first-match label: the plan would name the wrong destination"
+    # the same call against the published mapping names the real, specific destination
+    real = TARGET_ROOT / ("domains/design/design_lab/resources/repo/design-lab/schemas/"
+                          "model-catalog-v1.schema.json")
+    assert live._declared_rework_for(real) == \
+        ("domains/design/design_lab/resources/repo/design-lab/schemas/"
+         "model-catalog-v1.schema.json"), live._declared_rework_for(real)
+    shallow = TARGET_ROOT / "design-lab/schemas/model-catalog-v1.schema.json"
+    assert live._declared_rework_for(shallow) == "design-lab/schemas/model-catalog-v1.schema.json"
 
 
 def test_undeclared_rework_still_fails_the_plan(rehearsal):
@@ -295,7 +355,7 @@ def test_migrated_file_digests_match_their_sources():
     for entry in manifest["copies"]:
         for record in entry["records"]:
             relative = str(record["target"]).replace(chr(92), "/")
-            key = next((name for name in declared if relative.endswith("/" + name)), None)
+            key = _live_migration_module()._declared_rework_for(TARGET_ROOT / relative)
             if key is not None:
                 # rework here is declared, so the only acceptable state is "still exactly
                 # the bytes the declaration attests"; anything else is unannounced drift

@@ -135,7 +135,9 @@ V09_RADAR_NODES = _nodes("test_v09_honesty.py",
     "test_radar_catalog_absent_field_is_null_while_unknown_stays_unknown",
     "test_radar_catalog_source_and_date_equal_the_recorded_strings",
     "test_radar_catalog_follows_edited_registries_and_changes_nothing_else",
-    "test_radar_qualification_cannot_be_minted_from_documentation_or_probe")
+    "test_radar_qualification_cannot_be_minted_from_documentation_or_probe",
+    "test_radar_weights_state_cannot_be_folded_back_onto_the_count",
+    "test_radar_catalog_document_satisfies_the_published_schema")
 #: 05#L22 -- asset versions, byte-pinned references, the input/output split, no platform channel.
 V04_ASSET_NODES = _nodes("test_v04_design_loop.py",
     "test_design_asset_versions_are_immutable_history_and_both_revisions_read_back",
@@ -169,6 +171,11 @@ PARTIAL_MARKER = "缺口："   # a PARTIAL row must name what is missing
 CONTRACTS_PUBLISHED_JSON = len(list((REPO_ROOT / "packages" / "contracts").rglob("*.json")))
 
 LOCATION_LINE_RE = re.compile(r"^(?P<path>.+):(?P<line>\d+)$")
+#: A ``file:line`` location must name a binding: a (possibly indented) ``def`` / ``class`` /
+#: decorator, or a module-level assignment or annotated name. Anchors that only have to be
+#: "non-empty" survive drift onto a dict entry, a closing brace or a comment, and the row
+#: then claims a location that is not the implementation it describes.
+ANCHOR_FORM_RE = re.compile(r"^(?:\s*(?:def\s|class\s|@)|[A-Za-z_][A-Za-z0-9_]*\s*[:=])")
 PHASE_TASK_RE = re.compile(r"\bL(\d{2})\b")
 
 
@@ -253,10 +260,19 @@ def check_location(spec: str) -> tuple[bool, str]:
         return (False, "文件不可读：%s（%s）" % (match.group("path"), type(exc).__name__))
     if wanted < 1 or wanted > len(lines):
         return (False, "%s 只有 %d 行，第 %d 行不存在" % (match.group("path"), len(lines), wanted))
-    if not lines[wanted - 1].strip():
+    raw_line = lines[wanted - 1]
+    stripped = raw_line.strip()
+    if not stripped:
         return (False, "%s 第 %d 行为空行，不能作为实现位置" % (match.group("path"), wanted))
+    if match.group("path").endswith(".py") and not ANCHOR_FORM_RE.match(raw_line):
+        # A bare "non-empty line" test let an anchor drift onto a dict entry, a closing brace
+        # or a comment as soon as anything above it grew -- the row then still read as
+        # "位置已解析" while naming something that is not the implementation.
+        return (False, "%s 第 %d 行不是定义行（def / class / 装饰器 / 模块级绑定），"
+                       "锚点已随上方编辑漂移，须重新钉到定义处：%r"
+                      % (match.group("path"), wanted, stripped[:60]))
     return (True, "%s:%d 存在且非空：%s"
-            % (match.group("path"), wanted, lines[wanted - 1].strip()[:80]))
+            % (match.group("path"), wanted, stripped[:80]))
 
 
 def check_evidence(spec: str) -> tuple[bool, str]:
@@ -710,7 +726,7 @@ def family_claims() -> dict[str, dict]:
                       "status": "PARTIAL",
                       "basis": "真实投影走同一 CanonicalStore，且读路径不启动采集器、不开套接字（该测试正是证明这一点）；" + PARTIAL_MARKER
                               + "持续采集/watcher 仍在独立 sidecar，统一内核只提供有界帧（docs/CODEX-AUDIT-ENTRY.md §7）。"},
-        "usage": {"location": "domains/work/workflow_core/canonical_store.py:1380",
+        "usage": {"location": "domains/work/workflow_core/canonical_store.py:1374",
                   "evidence": V18_USAGE_UNKOWN_TEST + ";" + V18_USAGE_SPLIT_TEST,
                   "status": "IMPLEMENTED_VERIFIED",
                   "basis": "「实测与估计分开、未知不填 0」两侧现在都有具名断言，并且投影本身被改成能回答这句话："
@@ -789,29 +805,34 @@ def family_claims() -> dict[str, dict]:
                               "读回的 outbound 仍是 NOT_CONNECTED / sent_count 0 / last_attempt_at null，"
                               "未批准的候选导出被 409 拒、非法入参不留半行、也没有任何入参能造出 APPROVED。"
                               "权利判定与真人审阅人是夹具 supplied 的字段，本行不声称它们已被证真。"},
-        "cleanup": {"location": "scripts/migrate_sources.py:986",
+        "cleanup": {"location": "scripts/migrate_sources.py:1086",
                     "evidence": "tests/unified/test_v07_migration.py::test_prune_reports_only_paths_this_tool_recorded",
                     "status": "PARTIAL",
                     "basis": "已有的是迁移工具的 prune——只报告本工具登记过的路径、默认不删；" + PARTIAL_MARKER
                             + "面向运行产品的「清单范围清理与恢复可读回」未实现，不删除用户作品目前靠不实现删除来保证。"},
         "radar": {
-                  "location": "domains/design/design_lab/model_catalog.py:97",
+                  "location": "domains/design/design_lab/model_catalog.py:104",
                   "evidence": V09_RADAR_NODES,
-                  "status": "PARTIAL",
+                  "status": "IMPLEMENTED_VERIFIED",
                   "basis": "模型与情报目录从 readiness/model-radar.json 及提供方台账现读，"
-                          "「信息来源、日期、探测与资格有区别」按四个轴分别钉住：出处引用、证据引用、本机状态与"
-                          "雷达状态是四个互不相同的字段且各在自己的词表里——在测试生成的那份台账人口里，同一条目的"
-                          "雷达状态不等于本机状态，这不是对产品台账的普适断言；文档级观测时刻只从台账带出，"
-                          "目录不铸造自己的日期，提供方台账里也没有第二份日期；逐条改台账里的出处、日期或本机状态，"
-                          "答复只有被改那一格移动、条目数与其余字段不动；资格词不可由文档措辞或一次探测铸造"
-                          "（默认启用数不超过合格本地数，也不存在「由谁判定合格」这一格）。"
-                          + PARTIAL_MARKER
-                          + "目录现在把两种「不知道」塌成同一个答复：`weights_sha256` 被省略与被登记为空列表都答 "
-                          "weights_recorded 0，且 `_model`（model_catalog.py:73-94）不透传 hash_source 与 qualified_by，"
-                          "读的人分不出「没登记」与「未知」，这是「有区别」没做到的一处真实缺陷（节点把它连同"
-                          "0 不被当成合格一起钉住，修复方向是缺字段答 null、把 0 留给确实登记的空列表并透传出处）；"
-                          "日期只到文档级、条目行没有自己的日期；提供方出处的标签在仓根不解析为文件，"
-                          "真实字节只在被打包的副本里。本行不声称本机任何模型真被装载、探测或授权。"},
+                          "「信息来源、日期、探测与资格有区别」按四个轴分别钉住，且每种「不知道」各自有唯一的答复："
+                          "出处引用 source_ref、证据引用 evidence_ref、本机状态 machine_state 与雷达状态 radar_state"
+                          "是四个互不相同的字段且各在自己的词表里；权重按三态报告——`weights_sha256` 字段缺席答 "
+                          "UNSTATED、登记为空列表答 REGISTERED_NONE、确有摘要答 RECORDED，"
+                          "计数 weights_recorded / weights_unstated / weights_registered_none 三格独立；"
+                          "把三态塌回一个计数会让「没说明」冒充「登记为空」，一个 monkeypatch 植入的折叠实现"
+                          "在本节点里被证明为红（折叠后所有条目同态、台账反而多出 weights_state 键）；"
+                          "`_model` 现原样透传 hash_source 与 qualified_by，「摘要从哪来」「由谁判定合格」不再在投影里消失，"
+                          "而无人署名的 QUALIFIED_LOCAL 由台账装载器拒（readiness/model_radar.py:114）；"
+                          "目录文档本身用已发布的 model-catalog-v1.schema.json 现校验（Draft202012Validator），"
+                          "三份合同副本逐字节相同，所以字段区别不只是测试里的说法，发布合同与产品答复同增同减；"
+                          "逐条改台账里的出处、日期或本机状态，答复只有被改那一格移动、条目数与其余字段不动；"
+                          "资格词不可由文档措辞或一次探测铸造（默认启用数不超过合格本地数）。"
+                          "限制（不是缺口）：本轮实测的产品台账里每一条都把权重列表登记为空，"
+                          "hash_source 与 qualified_by 在全部条目为 null，故三态在真实人口上目前只走出一格，"
+                          "UNSTATED 与 RECORDED 由合成夹具人口证明；文档级观测时刻只从台账带出，条目行没有自己的日期；"
+                          "source_ref 是 github/huggingface 的外部地址，本机不联网也不校验其字节。"
+                          "本行不声称本机任何模型真被装载、探测或授权。"},
         "design-knowledge": {"location": "domains/design/design_lab/knowledge_library.py:531",
                              "evidence": "tests/unified/test_v06_knowledge.py::test_create_search_short_queries_and_no_result;tests/unified/test_v06_knowledge.py::test_revision_conflict_and_index_rebuild",
                              "status": "IMPLEMENTED_VERIFIED",
@@ -958,9 +979,12 @@ def requirement_claims() -> dict[str, dict]:
         "U09": {"location": ABSENT, "evidence": "evidence:a01-a10-results.json#results.FRONTEND_STITCH", "status": "GAP",
                 "basis": "提示词文件只在只读任务包内（01_STITCH_完整前端提示词.txt），其交付物——前端设计稿与实现——本轮未产生，实测登记 FRONTEND_STITCH 为未运行；"
                         "F01-F10 帧与 J1-J9 在本仓没有任何对应实现或断言，本行是缺口而不是延期项（09 分期表把它列为必做波次的交接物）。"},
-        "U10": {"location": "backend/v1.py:132", "evidence": "tests/unified/test_v02_surface.py::test_health_is_real_service_metadata;" + manual,
+        "U10": {"location": "backend/v1.py:195", "evidence": "tests/unified/test_v02_surface.py::test_health_is_real_service_metadata;" + manual,
                 "status": "IMPLEMENTED_VERIFIED",
-                "basis": "后端闭环按 P0/P1 落实：V1_ROUTES 现读到 75 条路由（含 49 条 WORK 消费面），真实 loopback HTTP + 持久化 + 重启读回由具名测试断言。"},
+                "basis": "后端闭环按 P0/P1 落实：路由条数在构建时从两张活动表现读——"
+                        "V1_ROUTES %d 条、兼容表 %d 条，本行不复述手抄数字；"
+                        "真实 loopback HTTP + 持久化 + 重启读回由具名测试断言。"
+                        % route_counts()},
         "U11": {"location": ".git/HEAD:1", "evidence": "evidence:delivery-summary.json#git", "status": "IMPLEMENTED_VERIFIED",
                 "basis": "本仓确在本地工作分支 integration/local-fusion-20261029 上执行（.git/HEAD 第一行就是该 branch ref），"
                         "增量保全由 delivery-summary.json#git 与 snapshot-before/after 逐文件摘要证明；注意 HEAD 仍是 unborn（无提交），"
@@ -969,13 +993,13 @@ def requirement_claims() -> dict[str, dict]:
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "两条都可测：延期面在能力目录里保持 DECLARED/DEFERRED 并带 phase、can_invoke=false（不降级冒充）；"
                         "来源与接缝的保留由逐条去向登记（migration/work-gap-disposition.csv，行数与报告现算对账）+ 逐文件覆盖登记断言，延期不等于删除。"},
-        "U13": {"location": "backend/v1.py:527",
+        "U13": {"location": "backend/v1.py:628",
                 "evidence": "tests/unified/test_v05_rejections.py::test_adapter_dispatch_is_not_allowed_this_batch;" + "tests/unified/test_v09_honesty.py::test_connections_never_claim_connected_without_a_probe",
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "运行面上没有任何可把项目/数据推向远端的入口：外部派发在 pack 处直接 400 拒绝，"
                         "且不存在把连接改成 CONNECTED 的路由（POST /api/v1/connections 实测 404）。"
                         "本行只声称代码层不被绕过；系统级出站隔离未被证明（INTEGRATION_POLICY §2），2026-10-31 的首次上传是 owner 单独放行的例外（§6），不改变本行的禁止面。"},
-        "U14": {"location": "backend/v1.py:527", "evidence": "tests/unified/test_v05_rejections.py::test_adapter_dispatch_is_not_allowed_this_batch;" + "evidence:a01-a10-results.json#results.A08",
+        "U14": {"location": "backend/v1.py:628", "evidence": "tests/unified/test_v05_rejections.py::test_adapter_dispatch_is_not_allowed_this_batch;" + "evidence:a01-a10-results.json#results.A08",
                 "status": "PARTIAL",
                 "basis": "全部构建/测试/安装都在本地：A08 是离线隔离安装实测，工具与模型方式已在 INTEGRATION_POLICY §4 逐条核实；" + PARTIAL_MARKER
                         + "「禁止云构建/远程派发/自动同步」在代码与流程上成立，但系统级出站隔离未被证明，且执行本任务的模型本身是云端会话模型（§2 如实登记）。"},
