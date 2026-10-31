@@ -451,6 +451,13 @@ def _without_receipt_columns(text: str):
     return _csv_text(parsed)
 
 
+def _published_rows() -> list[dict]:
+    if not OUT_CSV.is_file():
+        return []
+    with OUT_CSV.open(encoding="utf-8-sig", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true",
@@ -473,6 +480,22 @@ def main(argv: list[str]) -> int:
         return 2
 
     receipt = _receipt()
+    if args.check and OUT_CSV.is_file():
+        # Verify the binding the register actually declares. Comparing against "whichever
+        # receipt happens to be newest" would make every later measurement run fail its own
+        # guard, because a refresh legitimately moves the live file.
+        named = _published_rows()
+        values = {row.get("运行收据", "") for row in named}
+        if named and len(values) == 1:
+            value = values.pop()
+            if value and not value.startswith("未在本机测量"):
+                archived = (TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure"
+                            / value)
+                if archived.is_file():
+                    document = json.loads(archived.read_text(encoding="utf-8-sig"))
+                    head = document.get("head_commit", "")
+                    if not head or subprocess_ancestor(head):
+                        receipt = document
     archive = UNMEASURED
     if receipt:
         archive = "receipt-archive/CLOSURE-STATE-%s.json" % receipt["candidate_digest"][:16]
