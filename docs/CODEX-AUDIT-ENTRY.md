@@ -864,3 +864,22 @@ PARTIAL 29→34；`capability-family` 的 IMPLEMENTED_VERIFIED 11→13。**没�
 
 实测：`test_v16` + `test_v02` + `test_v03` + `test_v18` 同跑 **66 passed**（21+13+16+16）；
 四张表重生成行数不变（56/30/25/15）。
+
+### 15.11 对最终提交态的实测（412 项，节点差额可加）
+
+全量回归（收据 `receipt-archive/CLOSURE-STATE-29f75c8f9b463be2.json`，HEAD `3496ce48119e`，
+1,265 个候选文件、候选摘要 `29f75c8f9b463be2…`）：
+
+```
+412 passed, 3 subtests passed in 685.11s (0:11:25)      exit 0，无 deselect，0 failed，0 errors
+```
+
+比 §15.8 那次的 387 多 25 个节点，逐项对得上：`test_v02_surface.py` 6→13（+7）、
+`test_v03_work_loop.py` 2→16（+14，7 条入口断言各配一个植入反证）、
+`test_v18_tools_connections.py` 13→16（+3）、`test_v16_traceability.py` 18→19（+1）。
+同一收据里：`boot_probe` exit 0 且 `verdict: OK`；验收门 `REFUSED / exit 1`、
+`blocking_ids=["L10#0"]`（仍是唯一阻断项）、`disclosed_ids=["A00#1","L00#2","L20#0"]`；
+迁移普查 `identical 1116 + EOL_ONLY 2 + MODIFIED 10`、`unmanaged 0`、10/10 返工文件有声明与回执；
+两来源仓 git 口径摘要不变。`migration/audit-item-closure.csv` 的 20 行收据列改绑这份新收据，
+`独立复审` 列仍 20 行 `NOT_RUN`——结论口径不变：**QODER 全量闭环自测完成，必做条款 `L10#0`
+（32 行来源判定）待 owner，待 Codex 独立复审**。
