@@ -778,3 +778,14 @@ build_audit_item_closure        rc=0
 实测（本节末另有一条对最终提交态的全量测量）：`test_v16_traceability.py` 20 passed、
 `test_v04_design_loop.py` + `test_v18_tools_connections.py` 合计 17 passed，
 两文件与 v16 三档同跑 **37 passed**；四张表重生成，行数不变（56/30/25/15）。
+
+对最终提交态的全量测量（收据 `receipt-archive/CLOSURE-STATE-9f17d2cac59ce62b.json`，
+HEAD `cea5ce515939`、1,265 个候选文件、候选摘要 `9f17d2cac59ce62b…`）：
+**387 passed, 3 subtests passed, 0 failed, 0 errors**（exit 0，644.36s = 10m44s，无 deselect），
+比 §15.4 的 377 多 10 个节点＝本轮新增的 5 条登记面守卫 + 1 条锚点守卫 + 7 条闭环断言中落在
+跟踪套件里的差额；`boot_probe` `verdict: OK`；验收门 `REFUSED / exit 1`、
+`blocking_ids=["L10#0"]`、`disclosed_ids=["A00#1","L00#2","L20#0"]`；
+迁移普查 `identical 1116 + EOL_ONLY 2 + MODIFIED 10`、`unmanaged 0`、10/10 返工有声明与回执；
+两来源仓口径摘要不变（WORK 2,638 文件 `f103296769f5ff1f…`、DESIGN 4,049 文件 `c3c1bfe3b37319d8…`）。
+`migration/audit-item-closure.csv` 的 20 行收据列改绑这份新收据后 `--check` 无漂移，
+`独立复审` 列 20 行仍全部 `NOT_RUN`。
