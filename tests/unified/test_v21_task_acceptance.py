@@ -10,9 +10,12 @@ from __future__ import annotations
 import csv
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 TARGET_ROOT = Path(__file__).resolve().parents[2]
 _SPEC = importlib.util.spec_from_file_location(
@@ -142,3 +145,149 @@ def test_deferral_register_names_a_real_seam_for_every_deferred_item():
                            cwd=str(TARGET_ROOT), capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=300)
     assert check.returncode == 0, check.stdout + check.stderr
+
+
+# --------------------------------------------------------------------------- blocker register
+
+BLOCKERS_OUT = TARGET_ROOT / "config" / "blocker-register.json"
+BLOCKERS_BUILDER = TARGET_ROOT / "scripts" / "build_blocker_register.py"
+_SPEC_BLOCKERS = importlib.util.spec_from_file_location(
+    "blocker_register_builder", BLOCKERS_BUILDER)
+BLOCKERS = importlib.util.module_from_spec(_SPEC_BLOCKERS)
+_SPEC_BLOCKERS.loader.exec_module(BLOCKERS)
+
+COVERAGE_FILES = (("work", "migration/source-coverage-work.csv"),
+                  ("design", "migration/source-coverage-design.csv"))
+
+#: Classes that mean the row has still not been decided -- offered as an option, they would
+#: let the owner "close" a row by choosing the word that closes nothing.
+NON_DECISION_CLASSES = frozenset({"", "SOURCE_UNREGISTERED", "COPIED_MISSING_IN_TARGET",
+                                  "OWNER_DECISION_PENDING"})
+
+
+def _pending_by_repo() -> dict:
+    """Read the pending population straight from the registers, without the builder."""
+    out = {}
+    for repo, relative in COVERAGE_FILES:
+        with open(TARGET_ROOT / relative, encoding="utf-8-sig", newline="") as handle:
+            out[repo] = [row for row in csv.DictReader(handle)
+                         if row["class"] == "OWNER_DECISION_PENDING"]
+    return out
+
+
+def _l10_item(document: dict) -> dict:
+    items = [entry for entry in document["items"] if entry["id"] == "L10#0"]
+    assert len(items) == 1, [entry["id"] for entry in document["items"]]
+    return items[0]
+
+
+def test_the_blocking_clause_hands_the_owner_every_pending_row():
+    """L10#0 blocks the batch on rows only a person can decide -- so the blocker itself must
+    carry those rows, byte-for-batch derived from the coverage registers.
+
+    Before this, the register counted them (32) and the owner had to open two CSVs and filter
+    a class to see what was being asked. A count is not a queue: the readiness gate reads this
+    file, so the work the gate is waiting on has to be *in* the file the gate reads.
+    """
+    document = json.loads(BLOCKERS_OUT.read_text(encoding="utf-8"))
+    item = _l10_item(document)
+    pending = _pending_by_repo()
+    expected = sorted((row["repo"], row["path"], row["target"],
+                       row["source_sha256"], row["reason"])
+                      for rows in pending.values() for row in rows)
+    got = sorted((row["repo"], row["path"], row["target"], row["source_sha256"], row["reason"])
+                 for row in item["owner_queue"])
+    assert got == expected, "queue disagrees with the registers it claims to enumerate"
+    assert document["owner_queue_rows"] == len(expected) == len(got)
+    assert len({(row["repo"], row["path"]) for row in item["owner_queue"]}) == len(got)
+    reasons = [row["reason"] for row in item["owner_queue"]]
+    assert len(set(reasons)) == len(reasons), "two rows share one reason"
+    for row in item["owner_queue"]:
+        assert len(row["source_sha256"]) == 64, row
+        assert row["reason"].startswith("待 owner 判定"), row
+
+    mandatory_blocking = [entry["id"] for entry in document["items"]
+                          if entry["mandatory"] and not entry["scope_excluded_by_owner"]]
+    assert mandatory_blocking == ["L10#0"], mandatory_blocking
+    assert document["counts"]["blocking"] == 1, document["counts"]
+
+
+def test_the_owner_queue_offers_only_classes_the_ladder_can_emit():
+    """An option the adjudication ladder cannot emit is a decision that would be written off
+    as a class name no register ever produces.
+
+    ``UNREGISTERED_TARGET_PATH_PRESENT`` has no rows today -- a pending row by definition has
+    no file at that path yet -- so "already used by some row" is the wrong test. The right one
+    is that the class is a return value of ``build_source_coverage.adjudicate_unregistered``,
+    which is what the next rebuild reads the owner's decision into.
+    """
+    document = json.loads(BLOCKERS_OUT.read_text(encoding="utf-8"))
+    item = _l10_item(document)
+    options = item["decision_options"]
+    assert len(set(options)) == len(options) >= 2, options
+
+    ladder = (TARGET_ROOT / "scripts" / "build_source_coverage.py").read_text(encoding="utf-8")
+    emittable = set(re.findall(r'return \("([A-Z][A-Z0-9_]+)",', ladder))
+    assert len(emittable) >= 3, sorted(emittable)
+    invented = [option for option in options if option not in emittable]
+    assert invented == [], ("decision options the ladder cannot produce: " + str(invented))
+    still_open = [option for option in options if option in NON_DECISION_CLASSES]
+    assert still_open == [], ("options that leave the row undecided: " + str(still_open))
+    assert item["decision_how"].startswith("逐行从 decision_options"), item["decision_how"]
+
+
+def test_the_published_blocker_register_is_still_what_the_builder_produces():
+    """The gate decides readiness from these bytes: a stale register is a stale verdict."""
+    check = subprocess.run([sys.executable, str(BLOCKERS_BUILDER), "--check"],
+                           cwd=str(TARGET_ROOT), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=300)
+    assert check.returncode == 0, check.stdout + check.stderr
+
+
+def test_the_queue_guard_can_actually_fail(monkeypatch, tmp_path):
+    """Each refusal must be reachable, or the enumeration is decoration.
+
+    A builder that returns an empty queue when its input register is missing would let the
+    single blocking clause quietly lose its rows -- the same shape of bug as a gate that reads
+    "no blockers" from an unreadable file.
+    """
+    fake_root = tmp_path / "root"
+    (fake_root / "migration").mkdir(parents=True)
+    pending = _pending_by_repo()
+
+    def write(repo: str, rows: list) -> None:
+        with open(TARGET_ROOT / ("migration/source-coverage-" + repo + ".csv"),
+                  encoding="utf-8-sig", newline="") as handle:
+            fieldnames = csv.DictReader(handle).fieldnames
+        destination = fake_root / "migration" / ("source-coverage-" + repo + ".csv")
+        with destination.open("w", encoding="utf-8", newline="") as out:
+            writer = csv.DictWriter(out, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(rows)
+
+    monkeypatch.setattr(BLOCKERS, "TARGET_ROOT", fake_root)
+
+    # 1. a missing register is a refusal, not an empty queue
+    write("design", pending["design"])
+    with pytest.raises(SystemExit, match="coverage register missing"):
+        BLOCKERS.owner_queue()
+
+    # 2. rows that stopped carrying their own reason are refused
+    write("work", pending["work"])
+    rows = [dict(row) for row in pending["work"]]
+    rows[1]["reason"] = rows[0]["reason"]
+    write("work", rows)
+    with pytest.raises(SystemExit, match="share one reason"):
+        BLOCKERS.owner_queue()
+
+    # 3. a duplicated row key is refused (the same file counted twice is not two decisions)
+    rows = [dict(row) for row in pending["work"]]
+    rows.append(dict(rows[0]))
+    write("work", rows)
+    with pytest.raises(SystemExit, match="duplicate row key"):
+        BLOCKERS.owner_queue()
+
+    # and with the real registers in place the queue is non-empty -- the falsifier above
+    # must not be the only thing this function ever proves
+    monkeypatch.undo()
+    assert BLOCKERS.owner_queue(), "no row enumerated from the tracked registers"

@@ -37,6 +37,47 @@ OWNER_EXCLUDED = {
 }
 
 
+#: The three classes an owner decision can move a pending row into. Each requires a
+#: ``file:line`` authority in this tree; the queue below deliberately does not offer a
+#: fourth option that would let a row be "decided" by assertion.
+DECISION_OPTIONS = ("UNREGISTERED_TARGET_PATH_PRESENT", "UNREGISTERED_EXCLUDED_CAPABILITY",
+                    "UNREGISTERED_DEV_TOOLING")
+
+#: Where the rows still awaiting that decision live. Read, never transcribed: the population
+#: is the registers', not this script's.
+COVERAGE_REGISTERS = (("work", "migration/source-coverage-work.csv"),
+                      ("design", "migration/source-coverage-design.csv"))
+
+
+def owner_queue() -> list[dict]:
+    """Enumerate every row the coverage registers still hold for the owner.
+
+    ``L10#0`` is the one mandatory clause that blocks this batch, and it blocks on 32 rows
+    that no machine can decide -- but until now the register only *counted* them, so the
+    owner had to re-derive the list from two CSVs to answer. The queue puts the rows, their
+    bytes and their per-row reason where the blocker already lives.
+    """
+    queue: list[dict] = []
+    for repo, relative in COVERAGE_REGISTERS:
+        path = TARGET_ROOT / relative
+        if not path.is_file():
+            raise SystemExit("coverage register missing, cannot enumerate the owner queue: "
+                             + relative)
+        with open(path, encoding="utf-8-sig", newline="") as handle:
+            for row in csv.DictReader(handle):
+                if row["class"] != "OWNER_DECISION_PENDING":
+                    continue
+                queue.append(dict(repo=repo, path=row["path"], target=row["target"],
+                                  source_sha256=row["source_sha256"], reason=row["reason"]))
+    queue.sort(key=lambda item: (item["repo"], item["path"]))
+    if len({(item["repo"], item["path"]) for item in queue}) != len(queue):
+        raise SystemExit("owner queue has a duplicate row key")
+    reasons = [item["reason"] for item in queue]
+    if len(set(reasons)) != len(reasons):
+        raise SystemExit("owner queue rows share one reason: the per-row adjudication is gone")
+    return queue
+
+
 def build() -> dict:
     pack = json.loads(PACK.read_text(encoding="utf-8-sig"))
     phase_by_task = {task["id"]: task["phase"] for task in pack["tasks"]}
@@ -45,6 +86,7 @@ def build() -> dict:
         clauses = list(csv.DictReader(handle))
 
     items: list[dict] = []
+    queue = owner_queue()
     for row in clauses:
         verdict = row["结论"]
         if verdict == "CONFIRMED":
@@ -53,7 +95,7 @@ def build() -> dict:
             raise SystemExit("unknown clause verdict: " + verdict)
         phase = phase_by_task[row["任务"]]
         excluded = OWNER_EXCLUDED.get((row["任务"], row["条款原文"]))
-        items.append(dict(
+        item = dict(
             id=row["任务"] + "#" + row["条款序号"],
             task=row["任务"], clause=row["条款原文"], status=STATUS_MAP[verdict],
             phase=phase,
@@ -61,13 +103,23 @@ def build() -> dict:
             scope_excluded_by_owner=bool(excluded),
             authority=excluded or ("migration/task-acceptance.csv 结论=" + verdict),
             detail=row["依据与限制"],
-        ))
+        )
+        if item["id"] == "L10#0":
+            item["decision_options"] = list(DECISION_OPTIONS)
+            item["decision_how"] = ("逐行从 decision_options 中任选一个类别，并在 "
+                                   "migration/source-coverage-<repo>.csv 的 authority 列补出处"
+                                   "（file:line）；改完重跑两个 build 脚本与 "
+                                   "tests/unified/test_v14_registers.py。不选 = 本条继续 PARTIAL，"
+                                   "本批继续 REFUSED。")
+            item["owner_queue"] = queue
+        items.append(item)
     return dict(
         generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
         source="migration/task-acceptance.csv",
         rule="必做阶段(P0/P1)的非通过条款一律阻断本批就绪；owner 明确移出义务的条款"
              "登记为 disclosed 并带出处",
         clauses=len(clauses),
+        owner_queue_rows=len(queue),
         items=items,
         counts=dict(
             total=len(items),

@@ -447,19 +447,53 @@ def write_csv(rows: list[dict], path: Path) -> None:
     temporary.replace(path)
 
 
+def _drift(path: Path, rows: list[dict]) -> list[str]:
+    """Which row keys the tracked register no longer agrees on.
+
+    The ``authority`` column stores ``file:line`` for text searched inside docs and scripts at
+    build time. Editing any of those files moves the lines, so a tracked register can cite a
+    number that is in range but points at unrelated prose -- and the guard that checks
+    "the line exists" stays green. ``--check`` is how a test can notice the drift without the
+    suite becoming a writer.
+    """
+    if not path.is_file():
+        return ["<missing register>"]
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        columns = list(reader.fieldnames or [])
+        tracked = [{key: row[key] for key in columns} for row in reader]
+    # compare only the published columns: the in-memory rows carry bookkeeping keys the
+    # writer deliberately drops, and counting those as drift reports every row as changed
+    expected = [{key: str(row.get(key, "")) for key in columns} for row in rows]
+    changed = []
+    for index, (before, after) in enumerate(zip(tracked, expected)):
+        if before != after:
+            keys = sorted(key for key in columns if before.get(key) != after.get(key))
+            changed.append("%s: %s" % (after.get("path", index), ",".join(keys)))
+    if len(tracked) != len(expected):
+        changed.append("<row count %d != %d>" % (len(tracked), len(expected)))
+    return changed
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--json-out", type=Path)
+    parser.add_argument("--check", action="store_true",
+                        help="rebuild and compare with the tracked registers; never write them")
     args = parser.parse_args(argv)
     copied = copied_index()
     registered = registered_keys()
     patches = patch_map()
     graph = f01.build_runtime_import_graph()
     documents = {}
+    drift: dict[str, list[str]] = {}
     for label, repo in (("work", WORK), ("design", DESIGN)):
         document = build(label, repo, copied, registered, patches, graph)
         csv_path = OUT_DIR / ("source-coverage-" + label + ".csv")
-        write_csv(document["rows"], csv_path)
+        if args.check:
+            drift[label] = _drift(csv_path, document["rows"])
+        else:
+            write_csv(document["rows"], csv_path)
         document["csv"] = str(csv_path)
         documents[label] = document
     gap_rows = [(label, row) for label, doc in documents.items() for row in doc["rows"]
@@ -507,6 +541,15 @@ def main(argv=None) -> int:
     if args.json_out is not None:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(payload, encoding="utf-8")
+    if args.check:
+        drifted = {label: sample for label, sample in drift.items() if sample}
+        unreconciled = sorted(label for label, doc in documents.items() if not doc["reconciles"])
+        print(json.dumps(dict(check=True, drifted=sorted(drifted),
+                              rows_changed={label: len(sample) for label, sample in drift.items()},
+                              unreconciled=unreconciled,
+                              hint="rerun without --check to re-resolve the authority lines"),
+                         ensure_ascii=True))
+        return 1 if (drifted or unreconciled) else 0
     print(payload)
     return 0 if all(doc["reconciles"] for doc in documents.values()) else 1
 

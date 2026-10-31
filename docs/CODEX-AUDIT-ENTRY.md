@@ -43,7 +43,7 @@ backend/core/         origins.py 引用与来源格 · binding.py 结果绑定�
                       human_gate.py 真人验收账本 · work_surfaces.py WORK 消费面挂载
 domains/work/orchestration/   F01 迁入的 13 个运行模块 + resources.py + probe.py（默认关闭的授权门）
 config/               software-registry / adapter-registry / project-platform-map 等 5 个注册表（迁入）
-migration/            work-gap-disposition.csv（198 条逐条去向）
+migration/            work-gap-disposition.csv（197 条逐条去向）
 scripts/              build_f01_disposition.py · migrate_work_modules.py · human_approval.py
                       migrate_business_data.py（受控业务数据迁移）· build_offline_install.py
                       verify_isolated_install.py（安装态验收）
@@ -107,8 +107,10 @@ REM 6) 受控业务数据迁移（只用合成夹具；对真实用户库与生�
   `.pytest_cache`，映射按路径排序后取 `json.dumps(mapping, sort_keys=True)` 的 UTF-8 字节再算 SHA-256。
   不要混用「仅 tracked」与「含未跟踪」两种口径。
 - 源码摘要与证据摘要互相独立，不循环绑定。
-- 计数（837 映射行、13 领域包、89 兼容路由、50 设计任务、198 缺口、2638/4049 来源文件）是**线索**，
-  不是功能通过率；通过率只认逐项实测结果。
+- 计数是**线索**，不是功能通过率；通过率只认逐项实测结果。括号里是 Codex 审计时点的读数
+  （837 映射行、13 个断链模块、89 兼容路由、50 设计任务、198 缺口、2638/4049 来源文件）：
+  本轮实测 837 / 89 / 50 / 2,638 / 4,049 仍成立，缺口随真实迁入变成 197、DESIGN 覆盖行变成 4,470，
+  所以按数字的断言一律由生成器与 `tests/unified/test_v14_registers.py` 现算，不引用本文档的数。
 - **Codex 复审本身不构成推送授权**：授权只来自 owner 的明确指令。2026-10-31 owner 已就
   「首次上传 + 更新仓库描述」下令我方执行（`INTEGRATION_POLICY.md` §6），该放行**不含**
   合并 main、PR、Release、云 CI、force-push 与改写历史；pre-push hook 在推送后逐字节复位，
@@ -128,12 +130,14 @@ REM 6) 受控业务数据迁移（只用合成夹具；对真实用户库与生�
 ## 8. 本轮新增的两本账
 
 * `migration/source-coverage-work.csv`（2,638 行 = 2,638 个非忽略文件）与
-  `migration/source-coverage-design.csv`（4,049 个文件 → 4,469 行；同一来源被复制到多个目标时逐目标判定）。
+  `migration/source-coverage-design.csv`（4,049 个文件 → 4,470 行；同一来源被复制到多个目标时逐目标判定）。
   类别之和必须等于行数，由 `tests/unified/test_v14_registers.py` 现算校验，不靠人报数。
 * 非 `.py` 的 7 条登记缺口现在会说明"目标仓同路径是否已有该文件"，并把摘要写进依据：
   两条 WORK 注册表文件其实已在目标 `config/` 下且逐字节相同，其余为治理文档与前端文件。
   "没进复制清单"与"缺失"是两句话，之前的关账把前者说成了后者。
-* `migration/work-gap-disposition.csv` 的 198 条与覆盖登记中的 REGISTERED_GAP 集合必须完全相同（测试断言）。
+* `migration/work-gap-disposition.csv` 的行集与覆盖登记中 `REGISTERED_GAP` 类的 `.py` 子集必须完全相同
+  （`test_v14_registers.py::test_coverage_gap_rows_match_the_f01_register` 断言）。行数不写死在这份文档里：
+  审计时是 198，本轮关掉一条真实缺口后是 197，测试改为要求两个生成器、登记文件与类别之和是同一个 population。
 
 ## 9. 首次上传（2026-10-31 owner 授权）与回读方式
 
@@ -348,12 +352,16 @@ owner）；系统级出站隔离未被证明。结论口径仍是**「QODER 全�
    `design-lab/config/.verify-chain-ok`。后者的全部内容是一行 `ok <DESIGN-LAB 的提交号>`，
    它被复制进了跟踪树——放在本项目里会被读成「某条验证链通过了」，而那条链不是这里跑的。
    已加入 `SOURCE_IGNORED_NAMES` 排除（`--plan` 不再意图它），删除该文件并同步去掉复制清单里
-   的记录：现读 `identical 1115 + EOL_ONLY 2 + MODIFIED 10`、`unmanaged 0`。node_modules 的
+   的记录：§13 时点读数 `identical 1115 + EOL_ONLY 2 + MODIFIED 10`、`unmanaged 0`
+   （§15.4 现读为 `identical 1116`；这 +1 具体是哪一条本轮没有去追，两个数分属两次实测，
+   不合并成一句"现读"）。node_modules 的
    253 条记录按历史事实保留（它们的去向在本机存在、且被本仓 `.gitignore` 排除，克隆里没有）。
 
-覆盖登记的**行键**第一次被钉住（`test_v14_registers.py::test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out`）：`(来源, 去向)` 必须唯一；DESIGN 的 4,469 行 = 4,049 个来源路径 + 420 行一对多扇出，多出来的行数
+覆盖登记的**行键**第一次被钉住（`test_v14_registers.py::test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out`）：`(来源, 去向)` 必须唯一；DESIGN 现为 4,470 行 = 4,049 个来源路径 + 421 行一对多扇出，多出来的行数
 必须等于「每个来源的去向数 − 1」之和；不得出现复制清单里没有的去向。登记注记原先写
-「DESIGN 4,049 每行有类别与依据」，把路径数当成了行数，已改成两个数都写清。
+「DESIGN 4,049 每行有类别与依据」，把路径数当成了行数，已改成两个数都写清。本节写下时 DESIGN 是
+4,469 行 = 4,049 + 420，L21 关账给 `adapter_conformance.py` 多登记了一个去向，现算为 4,470 = 4,049 + 421；
+这类差一行只会让抄数字的人出错，所以 L10#0 注记里的数字已改为生成器现算（§15）。
 
 第三处假绿在我自己新写的守卫里：它用 `str(Path.home())`（反斜杠形式）检查安装判定记录有没有泄漏用户主目录，而报告里的 argv 是**正斜杠**形式的整条命令行，于是 6 处临时目录路径全部漏检、守卫仍然绿。折叠改成对两种写法做子串替换，守卫同时断言两种写法与用户名本身都不在跟踪文件里（`test_v25_...::test_the_isolated_install_record_is_tracked_and_self_describing`）。顺带清理：本机发现两个 20:53 起就没退的 `-m backend` 测试子进程（`--port 0`，指向临时 workspace），已终止并删除其临时根——这是上一轮安装验收留下的孤儿，不是产品进程。
 
@@ -522,3 +530,92 @@ enumerated=164  success=97  refusal=67  defect=0  fixture=0  unconstructed=0  va
 对当前树的完整测量（收据 `receipt-archive/CLOSURE-STATE-845082918268d073.json`，
 HEAD `70d5faaa205f`）：**372 passed, 3 subtests passed, 0 failed**（exit 0，10m06s，无 deselect），
 门禁 `REFUSED / exit 1`（阻断项仍是 `L10#0`），两来源仓 git 口径摘要不变。
+
+## 15. 2026-10-31 再续：登记面自己引用的数字必须现算，阻断条款必须自带待办清单
+
+这一轮没有新增功能，做的是两类"登记面自洽"：**(a) 文档与登记表引用的数字全部改成现算**，
+**(b) 唯一阻断本批的必做条款（`L10#0`）把它等待的行逐行装进就绪门读取的那份文件里**。
+
+### 15.1 第三处也是最后一处手抄数字
+
+`migration/task-acceptance.csv` 的 `L10#0` 注记原先写死
+「WORK 2,638 行 / DESIGN 4,469 行（4,049 个来源路径，200 个文件多去向）」，
+而 §14 的 L21 关账给 `adapter_conformance.py` 多登记了一个去向，登记表现读是
+**4,470 行 / 4,049 个路径 / 201 个文件多去向 / 多出 421 行**。也就是说登记表还在描述上一棵树。
+现在这段文字由 `scripts/build_task_acceptance_register.py::_coverage_shape()` 现读两本登记表生成，
+注记里没有任何可抄死的数字；同一轮把 §8、§13 与本文件计数条目里的
+`4,469 / 420 / 198` 一并改为「现读值 + 审计时读数」双写（历史读数保留并注明是当时读数）。
+`tests/unified/test_v14_registers.py` 里那条同样写死 `4,469 / 200` 的 docstring 也删掉了数字——
+它的断言本来就是推导式的，绿着的同时把错数字留在文档字符串里。
+
+顺带纠正一处会让人误读的汇总字段：`unresolved` 原先把 `kind=none` 的边界条款（它们本就不声称
+任何证据）当成"证据目标解析失败"列出来，输出 `unresolved: [""]`。现在
+`unresolved` 只列真正声称了证据却没解析成功的目标（本轮为空），另用
+`no_evidence_clauses` 点名不声称证据的条款（`L00#2`、`L20#0`）。**这不是把阻断改成通过**，
+是把"没有可读证据"和"证据不成立"分成两句话。
+
+### 15.2 阻断条款现在自带 32 行待办
+
+`L10#0` 等待的是 32 行只有 owner 能判定的来源文件。此前 `config/blocker-register.json` 只说
+"32 行待判定"，owner 要自己去两本 CSV 里筛 `OWNER_DECISION_PENDING` 才知道被问的是什么。
+就绪门读的就是这份 JSON，所以现在它把行本身带在身上：`L10#0.owner_queue` 逐行给
+`repo / path / target / source_sha256 / reason`（32 行，WORK 18 + DESIGN 14），
+`decision_options` 给可落到的类别，`decision_how` 给改完之后要重跑什么。不选就继续
+`PARTIAL`，本批继续 `REFUSED`。类别不是新造的词：`test_the_owner_queue_offers_only_classes_the_ladder_can_emit`
+用正则扫 `build_source_coverage.py` 里 `return ("<类别>",` 的返回形状，核对 offered 的类别确实会被
+裁决梯子产出，并拒绝任何"选了等于没选"的类别（`OWNER_DECISION_PENDING`、`SOURCE_UNREGISTERED`、空串）。
+
+四道新守卫在 `tests/unified/test_v21_task_acceptance.py`，其中
+`test_the_queue_guard_can_actually_fail` 逐个植入拒绝：登记表文件被删 → `SystemExit`，
+两行共用一句理由 → `SystemExit`，同一 `(repo,path)` 出现两次 → `SystemExit`；
+`test_the_published_blocker_register_is_still_what_the_builder_produces` 第一次把
+`config/blocker-register.json` 的"是否过期"变成断言——门读这份文件决定就绪，此前没有任何测试
+看它是不是重新生成过的。
+
+### 15.3 覆盖登记的 `file:line` 权威引用：本轮没坏，但过去靠的是位置巧合
+
+覆盖登记里有 42 行的 `authority` 列指向 `docs/CODEX-AUDIT-ENTRY.md:行号`（`_line_of` 在构建时
+按文本找行）。本轮实测这 42 行全部指向**同一行**（第 99 行，`§5 未关闭项` 的 `NOT_RUN` 那句），
+而本轮所有文档改动要么在它下面，要么是等长改写（第 46 行是一行改一行），所以行号没位移、登记表没有过期——
+`build_source_coverage.py --check` 现读两本登记表逐列比对，实测 `drifted: []`、4,470 + 2,638 行零差异。
+**这是位置巧合，不是机制保证**：只要改动落在第 99 行之上，`authority` 就会指向无关文本，
+而 `test_v14_registers.py` 只断"行号在文件行数范围内且文件存在"，位移后的引用照样绿。
+这与 §12、§13 里那几处我自己写的假绿是同一类问题——检查在跑，但它读的已经不是被改动的那个对象。
+处置办法与它们相同：给生成器加一个不写跟踪文件的 `--check`，再让测试断它必须为 0（新增
+`tests/unified/test_v14_registers.py::test_the_tracked_coverage_registers_are_not_stale`）。
+本轮按该顺序重跑，`audit-item-closure.csv` 的 `--check` 无漂移。
+
+这条新守卫不是"写完就绿"的摆设：在本机把第 99 行上面临时插入一行 `<!-- drift rehearsal -->`，
+该测试立刻 **rc=1 FAILED**（131.48s），随后按原字节还原，前后 SHA-256 同为
+`be9760c14baa2fc2816de40d657b7faf51c2479a836f3e9cef7b78e04d2165bb`、逐字节相同。
+植入的正是它要防的那件事。
+
+### 15.4 本轮实测
+
+- `tests/unified/test_v21_task_acceptance.py` + `test_v14_registers.py`：**26 passed**（0 failed，0 skipped）；
+- `build_task_acceptance_register.py` 重跑：48 条款直方图不变
+  （CONFIRMED 41 / PARTIAL 2 / BLOCKED_BY_BOUNDARY 2 / DEFERRED_P3 3），
+  必做 37 条 = 35 CONFIRMED + `L10#0` PARTIAL + `L00#2` BLOCKED，`mandatory_hard_gaps=0`；
+- `build_blocker_register.py`：7 项 = 1 blocking（`L10#0`）+ 6 disclosed，`owner_queue_rows=32`；
+- 登记表现读：`source-coverage-work.csv` 2,638 行、`source-coverage-design.csv` 4,470 行、
+  `work-gap-disposition.csv` 197 行、`route-surface.csv` 164 行（成功 97 / 领域拒绝 67 / 缺陷 0）、
+  `audit-item-closure.csv` 20 行、`capability-family-register.csv` 30 行、
+  `requirement-traceability.csv` 25 行、`ui-entry-disposition.csv` 56 行、`deferral-register.json` 9+5；
+- 全量回归（收据 `receipt-archive/CLOSURE-STATE-0f3ee5187f919c94.json`，候选摘要
+  `0f3ee5187f919c94…` @ `1f82dd36eb4e`、1,265 个候选文件）：
+  **377 passed, 3 subtests passed, 0 failed, 0 errors**（exit 0，846.09s = 14m06s，无 deselect）；
+  `boot_probe` `verdict: OK` 且输出纯 ASCII；验收门 `REFUSED / exit 1`，
+  `blocking_ids=["L10#0"]`、`disclosed_ids=["A00#1","L00#2","L20#0"]`（门能读带 `owner_queue`
+  的新版 JSON，未被多出的字段噎住）；迁移普查 `identical 1116 + EOL_ONLY 2 + MODIFIED 10`、
+  `unmanaged 0`、10 个返工文件 10/10 有声明与摘要回执、`unattested: []`；
+- `migration/audit-item-closure.csv` 的 20 行收据三列（`真实exit_code / 测量时刻UTC /
+  受测候选摘要`）与 `运行收据` 一起改绑到这份新收据，`--check` 随后
+  `register_drift: false`、`receipt_columns_exempted: []`、`pass_with_unresolved: []`、
+  `results` 仍为 PASS 20 / FAIL 0 / BLOCKED 0 / NOT_RUN 0 / DEFERRED 0，`独立复审 NOT_RUN`；
+  `test_v25_audit_item_closure.py` + `test_v26_local_run_receipts.py` 实测 **12 passed**；
+- 本节新增的 5 个测试节点（`test_v21` 4 个 + `test_v14` 1 个）就是 372 → 377 的差额。
+
+边界没有因为本轮改动而变化：真实宿主写入/读回（`L20#0`）、系统级出站隔离（`L00#2`）、
+模型推理、真实私有数据迁移、STITCH 前端（`U09/P01/P05` 与 `ui-entry` 的 PARTIAL/GAP）、
+真人专业验收签字、Codex 独立复审仍是 `BLOCKED/NOT_RUN`；`audit-item-closure.csv` 的
+`独立复审` 列仍全为 `NOT_RUN`。

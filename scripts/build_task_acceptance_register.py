@@ -31,6 +31,35 @@ OUT_JSON = TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure" / "
 STATUSES = ("CONFIRMED", "PARTIAL", "GAP", "BLOCKED_BY_BOUNDARY", "DEFERRED_P2", "DEFERRED_P3")
 KINDS = ("pytest", "route", "script", "register", "doc", "none")
 
+
+def _coverage_shape() -> str:
+    """State the shape of the two per-file coverage registers, read from disk.
+
+    The L10#0 note used to carry hand-typed row counts. Every re-sweep of the source repos
+    moved those numbers, and the note kept quoting a reading that no longer existed on any
+    machine -- an audit entry that repeats a stale figure is worse than one that says it
+    cannot count. So the figures in that note are now derived here, clause text unchanged.
+    """
+    parts = []
+    pending_total = 0
+    for label, name in (("WORK", "source-coverage-work.csv"),
+                        ("DESIGN", "source-coverage-design.csv")):
+        path = TARGET_ROOT / "migration" / name
+        if not path.is_file():
+            return "逐文件去向：登记表缺失（migration/" + name + "），这一行的数字无法现算"
+        rows = list(csv.DictReader(io.StringIO(path.read_text(encoding="utf-8-sig"), newline="")))
+        destinations: dict[str, set] = {}
+        for row in rows:
+            destinations.setdefault(row["path"], set()).add(row["target"])
+        multi = sum(1 for targets in destinations.values() if len(targets) > 1)
+        surplus = sum(len(targets) - 1 for targets in destinations.values() if len(targets) > 1)
+        pending_total += sum(1 for row in rows if row["class"] == "OWNER_DECISION_PENDING")
+        parts.append("%s %s 行 / %s 个来源路径（%s 个文件有多个去向，多出 %s 行）"
+                     % (label, format(len(rows), ","), format(len(destinations), ","),
+                        format(multi, ","), format(surplus, ",")))
+    return ("逐文件去向：" + "；".join(parts)
+            + "；其中待 owner 判定 %s 行" % format(pending_total, ","))
+
 # 结论 rows, authored per clause. Keyed by (task id, clause index) so the pack stays the
 # source of the clause text. Fields: status, kind, target, note.
 ROWS: dict[tuple[str, int], dict[str, str]] = {
@@ -79,11 +108,13 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
                           "「保留接入位置」从一句承诺变成可检查的指针"),
     ("L10", 0): dict(status="PARTIAL", kind="pytest",
                      target="tests/unified/test_v14_registers.py::test_coverage_register_leaves_no_row_undecided",
-                     note="逐文件去向：WORK 2,638 行 / DESIGN 4,469 行（对应 4,049 个来源路径，"
-                          "200 个文件被复制到多个去向，行键是「来源×去向」，由 test_v14 钉住）；"
-                          "原 226 行同文模板已拆为"
+                     note=_coverage_shape() + "（行键是「来源×去向」，由 test_v14 钉住）。"
+                          "原先共用一句模板的待判定行已拆为"
                           "「已判定（带 file:line 权威）」与「待 owner 判定」两类，后者逐条不同理由并被测试"
-                          "冻结为已点名集合。仍为 PARTIAL：待判定那部分本身就是要交给 owner 的遗漏清单"),
+                          "冻结为已点名集合；逐行清单（repo/路径/去向/来源摘要/本行理由）由 "
+                          "config/blocker-register.json 的 L10#0.owner_queue 现算列出，"
+                          "owner 逐行选定 decision_options 之一并补 file:line 出处即可关账。"
+                          "仍为 PARTIAL：待判定那部分本身就是要交给 owner 的遗漏清单"),
     ("L10", 1): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v14_registers.py::test_f01_register_separates_wired_from_merely_present",
                      note="断言改为对照从 backend 可达模块的 AST import 图，不再断文件存在；"
@@ -396,7 +427,13 @@ def main(argv: list[str]) -> int:
         mandatory_clauses=len(mandatory),
         mandatory_statuses={status: sum(1 for row in mandatory if row["结论"] == status)
                             for status in STATUSES},
-        unresolved=sorted({row["证据目标"] for row in rows if row["机验结果"].startswith("未解析")}),
+        unresolved=sorted({row["证据目标"] for row in rows
+                           if row["机验结果"].startswith("未解析") and row["证据类型"] != "none"}),
+        # a row that claims no evidence at all (kind "none") is not an unresolved citation --
+        # listing its empty target under "unresolved" read as a broken pointer to the
+        # reviewer, while the real reason (a boundary clause with nothing to cite) was lost.
+        no_evidence_clauses=sorted("%s#%d" % (row["任务"], row["条款序号"]) for row in rows
+                                   if row["证据类型"] == "none"),
         sum_check=sum(histogram.values()) == len(rows),
         register_drift=drift,
     )

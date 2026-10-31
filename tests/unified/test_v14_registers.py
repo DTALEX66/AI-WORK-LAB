@@ -522,12 +522,14 @@ def test_no_register_carries_a_doubled_line_ending():
 def test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out():
     """Row count > path count is a property of the register, not a miscount.
 
-    DESIGN emits 4,469 rows for 4,049 source files because 200 files were copied to more
+    DESIGN emits more rows than it has source files because some files were copied to more
     than one destination and each destination is judged on its own. Nothing checked that:
     a reader comparing the register against the source inventory saw two different numbers
     and no reason, and a genuine accidental duplicate would have hidden inside the same
     difference. So the pair is pinned as the row key, the surplus is recomputed from the
-    register's own per-path destination sets, no register row may invent a destination the
+    register's own per-path destination sets (no count is quoted in this docstring -- a
+    remembered number here went stale the moment a real migration added one destination),
+    no register row may invent a destination the
     copy manifest does not record, and every named destination must be a file in this tree.
 
     The last half of this test is the two-reading gap the 2026-10-31 sweep found: the copy
@@ -595,3 +597,20 @@ def test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out():
 
 
 
+def test_the_tracked_coverage_registers_are_not_stale():
+    """The published per-file registers must equal what the builder produces right now.
+
+    Their ``authority`` column stores ``file:line`` for text searched inside this document and
+    inside ``build_f01_disposition.py``. Every 42 rows that cite ``docs/CODEX-AUDIT-ENTRY.md``
+    point at one line today; a single inserted line above it would move all 42 citations onto
+    unrelated prose, and the existing guard -- "the cited line number is in range and the file
+    exists" -- would stay green. ``--check`` closes that by comparing the rebuilt rows with the
+    tracked ones, in memory, so verification is still not a writer.
+    """
+    check = subprocess.run([sys.executable, "-B", "-X", "utf8",
+                            str(TARGET_ROOT / "scripts" / "build_source_coverage.py"), "--check"],
+                           cwd=str(TARGET_ROOT), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=1800)
+    assert check.returncode == 0, (
+        "覆盖登记比它引用的文本旧了；重跑 scripts/build_source_coverage.py 再重跑下游登记表。"
+        + check.stdout[-600:] + check.stderr[-600:])
