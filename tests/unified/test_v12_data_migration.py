@@ -521,7 +521,19 @@ def test_migration_preserves_revisions_digests_and_references(roots: Roots):
         assert integrity["problems"] == [], integrity["problems"]
         assert integrity["counts"] == {"tasks": len(before["unified.tasks"]),
                                        "attempts": len(before["unified.attempts"]),
-                                       "results": len(before["unified.results"])}
+                                       "results": len(before["unified.results"]),
+                                       "attempts_with_pack_plan": 0,
+                                       "pack_plan_check": "NOT_RUN"}
+        # the report above never opened the work store, so it cannot vouch for the migrated
+        # pack bindings; handed the reader, the same store has to resolve every one of them.
+        bound = [row["attempt_id"] for row in unified.conn.execute(
+            "SELECT attempt_id FROM attempts "
+            "WHERE pack_plan_id IS NOT NULL AND pack_plan_id != ''")]
+        checked = unified.integrity_report(plan_reader=work.read_action_plan)
+        assert checked["counts"]["attempts_with_pack_plan"] == len(bound), checked["counts"]
+        assert checked["counts"]["pack_plan_check"] == "RUN", checked["counts"]
+        assert not [p for p in checked["problems"]
+                    if p["kind"] == "ATTEMPT_ORPHAN_PACK_PLAN"], checked["problems"]
     finally:
         unified.close()
 

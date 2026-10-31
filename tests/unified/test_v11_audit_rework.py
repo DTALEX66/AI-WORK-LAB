@@ -1485,13 +1485,14 @@ def test_issue_chain_broken_link_is_misattributed_rather_than_named(server):
     植入方式与下一个节点相同（写侧改 `attempts.pack_plan_id`，跑完还原）：把它改成一个不存在
     的包 id。真实观察到的回答是——技术判定 BLOCKED，`detail` 写「the pack bound no fingerprint
     to re-check」，即把"包存储行读不到"说成"包没绑定任何指纹"，而整条判定里没有任何字段点名那个
-    缺失的包 id；`integrity_report()` 也不看这一环（它从不打开 work 库）。这两条按事实断言，
-    链谓词则必须点名。缺陷位置：backend/v1.py:1065-1069（`read_record` 落空即 `pack = {}`）
-    + domains/work/workflow_core/repair_verification.py:175-176（`not bound` 分支的这句 reason）
-    + backend/core/unified_store.py:739-812（报表不涉及跨库那一跳）。
+    缺失的包 id。链谓词则点名。缺陷位置：backend/v1.py:1065-1069（`read_record` 落空即
+    `pack = {}`）+ domains/work/workflow_core/repair_verification.py:175-176（`not bound` 分支
+    的这句 reason）。第三条缺陷已在本轮修掉：`integrity_report()` 原先从不打开 work 库，
+    现在由路由把 plan 读面交给它，报表会点名 `ATTEMPT_ORPHAN_PACK_PLAN`；不给读面时它自报
+    `pack_plan_check = NOT_RUN`，因为「没查」不能长得像「查过且干净」。
 
     明确没有证明：产品在这条链上有自动修复或补偿动作（没有）；判定为 BLOCKED 是否"足够"——
-    本节点只断言它是否点名断链，答案是否。
+    本节点只断言它是否点名断链，判定侧的答案正还是否。
     """
     material = _work_chain(server, collector="chain-ghost-collector", attempt_key="chain-ghost",
                            declared_result_id="res-chain-ghost", title="链完整性·断链")
@@ -1511,9 +1512,19 @@ def test_issue_chain_broken_link_is_misattributed_rather_than_named(server):
         assert verdict["checks"]["fingerprints_absent"] == 0, verdict["checks"]
         assert json.dumps(verdict, ensure_ascii=False).count(ghost) == 0, \
             "判定已点名缺失的包，缺陷断言需按现读重写"
-        assert ghost not in json.dumps(server.unified.integrity_report(), ensure_ascii=False), \
-            "integrity_report 已覆盖这一跳，缺陷断言需按现读重写"
-        assert server.unified.integrity_report()["problems"] == [], server.unified.integrity_report()
+        # 已修（本轮 I-b）：报表拿到 plan 读面以后覆盖这一跳，且点名的是断掉的那一环
+        status, report = server.client.get("/api/v1/integrity")
+        assert status == 200, report
+        assert report["counts"]["pack_plan_check"] == "RUN", report["counts"]
+        named_hops = [p for p in report["problems"] if p["kind"] == "ATTEMPT_ORPHAN_PACK_PLAN"]
+        assert [p["id"] for p in named_hops] == [material["attempt_id"]], named_hops
+        assert ghost in json.dumps(named_hops, ensure_ascii=False), named_hops
+        assert report["counts"]["attempts_with_pack_plan"] >= 1, report["counts"]
+        # 同一个方法不被交出读面时，它必须自报「这一跳没查」：空的 problems 不等于链是干净的
+        silent = server.unified.integrity_report()
+        assert silent["counts"]["pack_plan_check"] == "NOT_RUN", silent["counts"]
+        assert not [p for p in silent["problems"]
+                    if p["kind"] == "ATTEMPT_ORPHAN_PACK_PLAN"], silent["problems"]
 
         # 同一状态下本块的链谓词点名它断在哪一环
         chain = _chain_state(server, material)
@@ -1701,8 +1712,13 @@ def test_issue_chain_one_tampered_identifier_is_named_and_the_row_restores(serve
         assert project_b["issue"]["fingerprint"] in [
             row["fingerprint"] for row in issue_projection.load_issues(server.work.store)[0]], \
             "B 自己的问题已经不在了，本节点的反证形状需按现读重写"
-        assert server.unified.integrity_report()["problems"] == [], \
-            "这一跳已被报表覆盖，②的沉默断言需按现读重写"
+        # 现读：这一跳被报表检查了（RUN），而 B 指向的是 A 家真实存在的包——那是一个跨项目的
+        # 误读，不是一条断链，报表不能把它报成 ATTEMPT_ORPHAN_PACK_PLAN。
+        status, hop_report = server.client.get("/api/v1/integrity")
+        assert status == 200, hop_report
+        assert hop_report["counts"]["pack_plan_check"] == "RUN", hop_report["counts"]
+        assert not [p for p in hop_report["problems"]
+                    if p["kind"] == "ATTEMPT_ORPHAN_PACK_PLAN"], hop_report["problems"]
     finally:
         server.unified.conn.execute("UPDATE attempts SET pack_plan_id=? WHERE attempt_id=?",
                                     (attempt_b_before["pack_plan_id"], project_b["attempt_id"]))

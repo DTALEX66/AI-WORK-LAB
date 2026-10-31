@@ -186,7 +186,8 @@ def test_integrity_reports_the_store_it_actually_reads(server):
     assert status == 200, body
     assert set(body) == {"problems", "counts"}, sorted(body)
     assert isinstance(body["problems"], list)
-    assert body["counts"] == {"tasks": 0, "attempts": 0, "results": 0}, body
+    assert body["counts"] == {"tasks": 0, "attempts": 0, "results": 0,
+                              "attempts_with_pack_plan": 0, "pack_plan_check": "RUN"}, body
 
     # one real chain written through the API moves the counts it names
     status, project = server.client.post("/api/v1/projects",
@@ -202,7 +203,11 @@ def test_integrity_reports_the_store_it_actually_reads(server):
 
     status, after = server.client.get("/api/v1/integrity")
     assert status == 200, after
-    assert after["counts"] == {"tasks": 1, "attempts": 1, "results": 0}, after
+    assert after["counts"] == {"tasks": 1, "attempts": 1, "results": 0,
+                               # this attempt was created without a pack binding, so there is no
+                               # hop to resolve -- an empty problems list must not be read as
+                               # "the pack hop was checked and passed"
+                               "attempts_with_pack_plan": 0, "pack_plan_check": "RUN"}, after
     # a chain built through the contract has nothing to name…
     assert after["problems"] == [], after
     for problem in after["problems"]:

@@ -528,7 +528,10 @@ class V1API:
 
     def _v1_integrity(self, handler, match):
         handler.guard()
-        report = self.unified.integrity_report()
+        # the attempt -> pack_plan_id hop lives across two stores; this process is the only
+        # place that holds both readers, so it hands the plan reader to the report rather than
+        # letting an unchecked link be reported as a clean one.
+        report = self.unified.integrity_report(plan_reader=self.work.read_record)
         return handler.send_json(200, report)
 
     # -- tasks -----------------------------------------------------------------

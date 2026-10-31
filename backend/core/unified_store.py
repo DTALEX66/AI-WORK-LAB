@@ -736,15 +736,24 @@ class UnifiedStore:
         return {"supported": not problems, "problems": problems, "chain": chain,
                 "historical_fact": historical}
 
-    def integrity_report(self) -> dict:
+    def integrity_report(self, plan_reader=None) -> dict:
         """Every relation this store cannot vouch for, including pre-existing rows.
 
         New writes are refused by the checks above; this answers the other half of
         the audit's F04 — the database that already contains forged or orphaned
         rows written before the constraints landed. Nothing is deleted or repaired
         here; it names them.
+
+        ``pack_plan_id`` points into another store (the work packs live in
+        ``CanonicalStore.action_plans``), so this store cannot resolve that hop on
+        its own and does not pretend to: the caller that has the plan store passes a
+        ``plan_reader(plan_id) -> row | None``. Without one the report says so in
+        ``counts.pack_plan_check`` — an unchecked hop must never read as a clean one.
+        A NULL/empty ``pack_plan_id`` is not a broken link; an attempt simply may not
+        be bound to a pack yet.
         """
         problems: list[dict] = []
+        plan_hops = 0
         tasks = {row["task_id"]: row for row in self.conn.execute("SELECT * FROM tasks")}
         attempts = {row["attempt_id"]: row for row in self.conn.execute("SELECT * FROM attempts")}
         results = {row["result_id"]: dict(row)
@@ -764,6 +773,13 @@ class UnifiedStore:
             if attempt["task_id"] not in tasks:
                 problems.append(dict(kind="ATTEMPT_ORPHAN_TASK", id=attempt_id,
                                      detail="task " + repr(attempt["task_id"]) + " does not exist"))
+            plan_id = attempt["pack_plan_id"]
+            if plan_reader is not None and plan_id:
+                plan_hops += 1
+                if plan_reader(str(plan_id)) is None:
+                    problems.append(dict(kind="ATTEMPT_ORPHAN_PACK_PLAN", id=attempt_id,
+                                         detail="names pack_plan_id " + repr(str(plan_id))
+                                                + " that no action plan carries"))
         for result_id, result in results.items():
             if result["attempt_id"] not in attempts:
                 problems.append(dict(kind="RESULT_ORPHAN_ATTEMPT", id=result_id,
@@ -809,4 +825,7 @@ class UnifiedStore:
                                      id=verification["verification_id"],
                                      detail="certifies a digest the stored result does not carry"))
         return {"problems": problems, "counts": {"tasks": len(tasks), "attempts": len(attempts),
-                                                 "results": len(results)}}
+                                                 "results": len(results),
+                                                 "attempts_with_pack_plan": plan_hops,
+                                                 "pack_plan_check": "RUN" if plan_reader is not None
+                                                 else "NOT_RUN"}}

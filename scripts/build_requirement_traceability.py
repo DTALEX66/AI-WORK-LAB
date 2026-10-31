@@ -754,7 +754,7 @@ def family_claims() -> dict[str, dict]:
         "issues": {
                    "location": find_definition("load_issues", "domains/work/workflow_core/issue_projection.py"),
                    "evidence": f09 + ";" + V11_CHAIN_NODES,
-                   "status": "PARTIAL",
+                   "status": "IMPLEMENTED_VERIFIED",
                    "basis": "问题投影与修复包读面真实存在并被读回（F09 那条断言的是这一面的读通与 Control 写入门被拒，"
                            "链的完整性由后面六条负责）；「问题、修复、尝试和证据链可追溯」这一句现在按链本身"
                            "现读断言：问题行的出处引用解析回采集器健康、遥测事件、执行实例与任务四种真实行，"
@@ -762,11 +762,17 @@ def family_claims() -> dict[str, dict]:
                            "包快照与存储行的绑定集合、尝试与包的互相引用、结果与任务及尝试的归属都各有具名缺陷码，"
                            "三处标识篡改分别被点名并在整行逐字段相等后复绿；固定时钟下两次投影除显式点名的耗时字段外"
                            "逐字节相同，重试不铸第二行也不前进版本。"
-                           + PARTIAL_MARKER
-                           + "断裂检测住在测试的谓词里而不是产品自己的一致性报告：一致性报告对 attempts 那一圈只问 "
-                           "task_id 存不存在，pack_plan_id 从不与计划行对照，而计划行住在另一座库"
-                           "（unified_store 里 action_plans 一次也不出现），植入改包引用后它仍报完成、对被改那一跳一字不提，"
-                           "所以本行不记 VERIFIED；真实宿主产生的证据与真人专业验收也不在本行声称范围内。"},
+                           "断裂检测已从测试谓词搬进产品自己的一致性报告（本轮 I-b）："
+                           "`integrity_report()` 现在接受一个 plan 读面并逐条把 "
+                           "`attempts.pack_plan_id` 与 `action_plans` 的行对照，断链以 "
+                           "ATTEMPT_ORPHAN_PACK_PLAN 点名尝试与那个包 id；路由把 work 库的读面交给它，"
+                           "而没有读面时报告自报 pack_plan_check=NOT_RUN——「没查」不再长得像「查过且干净」，"
+                           "跨库那一跳也不必被复制进第二座账本。"
+                           "仍然成立的限制：判定侧对「包读不到」给的理由仍是「the pack bound no fingerprint "
+                           "to re-check」（backend/v1.py 的 read_record 落空即 pack={}，"
+                           "加 repair_verification 的 not-bound 分支），它把缺行说成没绑指纹，"
+                           "由 test_issue_chain_broken_link_is_misattributed_rather_than_named 按事实钉住并要求修复；"
+                           "真实宿主产生的证据与真人专业验收不在本行声称范围内。"},
         "solutions": {"location": "GET /api/work/observer/solutions",
                       "evidence": "tests/unified/test_v11_audit_rework.py::test_f05_unified_search_returns_work_solutions;" + "tests/unified/test_v11_audit_rework.py::test_f05_solution_revision_conflict_and_restart_readback",
                       "status": "IMPLEMENTED_VERIFIED",

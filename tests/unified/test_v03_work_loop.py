@@ -512,7 +512,9 @@ def test_entry_work_audit_integrity_names_the_tampered_result(server):
     """04#L21|work:audit — GET /api/v1/integrity 的口径直读 unified store 的行。
 
     三段状态差：
-    ① 空台账：counts 全 0、problems 为空；
+    ① 空台账：counts 全 0、problems 为空；counts 里另有 attempts_with_pack_plan 与
+      pack_plan_check 两格——路由把 work 库的 plan 读面交给报表，所以这里是 RUN，
+      本节点写的 attempt 都没有绑定包，跳数为 0；直接调用而不给读面时同一方法答 NOT_RUN。
     ② 经 HTTP 建项目+任务+attempt，再按存储合同（同一 result_digest 口径）写入
       一条摘要正确的结果：counts.tasks/attempts/results 各 1（与 /api/v1/tasks
       条数交叉核对），problems 仍为空——约束下的合法写入不产生问题；
@@ -530,7 +532,9 @@ def test_entry_work_audit_integrity_names_the_tampered_result(server):
     status, report = server.client.get("/api/v1/integrity")
     assert status == 200, report
     assert _integrity_problems(report, expected_counts={"tasks": 0, "attempts": 0,
-                                                        "results": 0}) == []
+                                                        "results": 0,
+                                                        "attempts_with_pack_plan": 0,
+                                                        "pack_plan_check": "RUN"}) == []
 
     status, project = server.client.post("/api/v1/projects", {
         "name": "审计入口样例", "source": "design", "data_origin": "test"})
@@ -554,7 +558,9 @@ def test_entry_work_audit_integrity_names_the_tampered_result(server):
 
     status, report = server.client.get("/api/v1/integrity")
     assert _integrity_problems(report, expected_counts={"tasks": 1, "attempts": 1,
-                                                         "results": 1}) == []
+                                                         "results": 1,
+                                                         "attempts_with_pack_plan": 0,
+                                                         "pack_plan_check": "RUN"}) == []
     status, listed = server.client.get("/api/v1/tasks")
     assert len(listed["tasks"]) == report["counts"]["tasks"] == 1
 
@@ -564,7 +570,8 @@ def test_entry_work_audit_integrity_names_the_tampered_result(server):
 
     status, report = server.client.get("/api/v1/integrity")
     assert _integrity_problems(
-        report, expected_counts={"tasks": 1, "attempts": 1, "results": 1},
+        report, expected_counts={"tasks": 1, "attempts": 1, "results": 1,
+                                "attempts_with_pack_plan": 0, "pack_plan_check": "RUN"},
         tampered_result_id=stored["result_id"]) == []
 
 
