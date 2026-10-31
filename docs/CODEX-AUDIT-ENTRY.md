@@ -642,3 +642,40 @@ HEAD `70d5faaa205f`）：**372 passed, 3 subtests passed, 0 failed**（exit 0，
 **这不是 Codex 的独立复审**：`migration/audit-item-closure.csv` 的 `独立复审` 列 20 行仍全部
 `NOT_RUN`，本仓的结论口径仍是「QODER 全量闭环自测完成，必做条款 `L10#0` 待 owner 判定并阻断本批，
 待 Codex 独立复审」。子智能体的输出仍然只是线索，上面三处更正落成了文件的实际改动才算数。
+
+### 15.6 最后一份没有守卫的跟踪文件：`docs/AUDIT-STATE.json`
+
+本轮把"跟踪登记表是否有守卫其新鲜度"逐张列出来对，只剩这一份没有：它有 `--check`，但那个
+`--check` 打印 `matches: false` 却 exit 0——因为整文档比较在这里**永远不可能为真**：记录不能
+命名携带它自己的那次提交，`generated_at` 每跑一次就动。一个结论永远是 false 的检查等于没有检查，
+而 exit 0 又让它看起来是绿的。
+
+改法与 §12–§15 里那几处同源：把**只能自指旋转**的字段折掉并**点名折了哪些**
+（`generated_at / head_sha_now / audited_head_sha / audited_head_tree /
+audited_candidate_digest / audited_candidate_files / commit_count_observed /
+upload_facts/remote_ref_observed`），其余——`registers` 逐表行数普查、`source_repos` 两来源仓
+HEAD、`re_review` 结论、`candidate_manifest` 口径——逐字段全比，exit code 跟着这个比较走。
+祖先判断也改成校验**已发布**的那个 `audited_head_sha` 真在本分支历史里，而不是重建文档自己的
+HEAD（后者恒真，等于没判）。
+
+两条新守卫在 `tests/unified/test_v20_inrepo_evidence.py`：
+`test_the_audit_state_record_is_not_staler_than_the_tree_it_describes`（rc=0 且
+`matches/stale/head_is_ancestor` 三者一致，并断言折掉的字段集合**只**能是那批自指字段——
+否则任何字段都能被折成"不算过期"），
+`test_the_audit_state_check_fails_on_a_stale_census`（把普查里任一行数 +1 写进临时副本即 rc=1）。
+实测 `test_v20` 现 **14 passed**（原 12 + 这 2 条）。
+
+登记面新鲜度的完整复跑块（本轮起 Codex 可逐条照抄，全部不写跟踪文件）：
+
+```bat
+%PY% -B -X utf8 scripts\build_source_coverage.py --check
+%PY% -B -X utf8 scripts\build_task_acceptance_register.py --check
+%PY% -B -X utf8 scripts\build_blocker_register.py --check
+%PY% -B -X utf8 scripts\build_deferral_register.py --check
+%PY% -B -X utf8 scripts\build_audit_item_closure.py --check
+%PY% -B -X utf8 scripts\build_isolated_install_verdict.py --check
+%PY% -B -X utf8 scripts\build_audit_state.py --check
+```
+
+第一条要求两个只读来源仓在本机存在（machine-bound，克隆里由 `test_v23_clone_repro.py`
+归入 machine-bound 而不是静默跳过）；其余六条在干净克隆里也应 rc=0。本轮七条实测全部 rc=0。

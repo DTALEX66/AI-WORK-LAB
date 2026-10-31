@@ -138,6 +138,35 @@ def merge(existing: dict, updates: dict) -> dict:
     return merged
 
 
+#: Fields the record cannot pin without lying about itself (self-reference) or restarting
+#: the clock. ``audited_candidate_files`` and ``commit_count_observed`` belong here too: a
+#: commit that carries this document changes both by construction.
+ROTATING_FIELDS = ("generated_at", "head_sha_now", "audited_head_sha", "audited_head_tree",
+                   "audited_candidate_digest", "audited_candidate_files",
+                   "commit_count_observed")
+ROTATING_NESTED = ("remote_ref_observed",)
+
+
+def _without_rotating(document: dict) -> dict:
+    """Drop the fields that must rotate the moment this document is committed.
+
+    The record cannot name the commit that carries it, and ``generated_at`` moves with every
+    run, so a byte comparison of the whole document printed a permanent ``matches: false`` --
+    a check whose verdict cannot come out true tells a reviewer nothing. These fields are
+    folded out and *named* in the output, which is how the closure register treats its
+    receipt-bound columns. Everything else -- the register census, the source-repo digests,
+    the re-review conclusion -- is compared in full.
+    """
+    folded = json.loads(json.dumps(document))
+    for key in ROTATING_FIELDS:
+        folded.pop(key, None)
+    facts = folded.get("upload_facts")
+    if isinstance(facts, dict):
+        for key in ROTATING_NESTED:
+            facts.pop(key, None)
+    return folded
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--audited-commit")
@@ -153,11 +182,21 @@ def main(argv: list[str]) -> int:
                               cwd=str(ROOT), capture_output=True, text=True)
     text = json.dumps(document, ensure_ascii=False, indent=2) + "\n"
     if args.check:
-        print(json.dumps(dict(matches=OUT.is_file() and json.loads(
-            OUT.read_text(encoding="utf-8")) == document,
-            audited=document["audited_head_sha"][:12],
-            head_is_ancestor=ancestry.returncode == 0), ensure_ascii=True))
-        return 0 if ancestry.returncode == 0 else 1
+        tracked = json.loads(OUT.read_text(encoding="utf-8")) if OUT.is_file() else {}
+        stale = _without_rotating(tracked) != _without_rotating(document)
+        # the ancestry claim worth checking is the one already published, not the rebuilt
+        # document's own HEAD (that one is true by construction)
+        published = tracked.get("audited_head_sha") or document["audited_head_sha"]
+        ancestry = subprocess.run(["git", "merge-base", "--is-ancestor", published, "HEAD"],
+                                  cwd=str(ROOT), capture_output=True, text=True)
+        print(json.dumps(dict(matches=not stale, stale=stale,
+                              published_audited=published[:12],
+                              audited=document["audited_head_sha"][:12],
+                              head_is_ancestor=ancestry.returncode == 0,
+                              folded_rotating=sorted(ROTATING_FIELDS)
+                              + ["upload_facts/" + key for key in ROTATING_NESTED]),
+                         ensure_ascii=True))
+        return 1 if (stale or ancestry.returncode != 0) else 0
     OUT.write_text(text, encoding="utf-8", newline="\n")
     print(json.dumps(dict(written=str(OUT), audited_head_sha=document["audited_head_sha"],
                           candidate_files=document["audited_candidate_files"],

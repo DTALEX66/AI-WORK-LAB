@@ -286,3 +286,52 @@ def test_every_recorded_path_in_the_two_evidence_files_exists():
         == facts["gitignore_line_that_hides_it"], (
         "the record claims .gitignore hides the evidence directory; that is the whole reason "
         "these in-repo artefacts exist, so it must stay true")
+
+
+def _audit_state_builder():
+    spec = importlib.util.spec_from_file_location(
+        "build_audit_state_under_test", TARGET_ROOT / "scripts" / "build_audit_state.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_audit_state_record_is_not_staler_than_the_tree_it_describes():
+    """The re-review entry document must answer "still current?" with something interpretable.
+
+    A whole-document comparison can never come out true here: the record cannot name the commit
+    that carries it, and ``generated_at`` moves with every run -- so the check used to print
+    ``matches: false`` while exiting 0, which reads as a broken guard. The self-referential
+    fields are now folded out *and named*; the register census, the source-repo digests and the
+    re-review conclusion are compared in full, and the exit code follows that comparison.
+    """
+    check = subprocess.run([sys.executable, "-B", "-X", "utf8",
+                            str(TARGET_ROOT / "scripts" / "build_audit_state.py"), "--check"],
+                           cwd=str(TARGET_ROOT), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=600)
+    assert check.returncode == 0, check.stdout[-800:] + check.stderr[-800:]
+    report = json.loads(check.stdout.strip().splitlines()[-1])
+    assert report["matches"] is True and report["stale"] is False, report
+    assert report["head_is_ancestor"] is True, report
+    folded = set(report["folded_rotating"])
+    assert {"generated_at", "head_sha_now", "audited_head_sha"} <= folded, folded
+    for compared in ("registers", "source_repos", "re_review", "candidate_manifest"):
+        assert not any(part in folded for part in (compared, "upload_facts/" + compared)), (
+            compared, sorted(folded))
+
+
+def test_the_audit_state_check_fails_on_a_stale_census(tmp_path, monkeypatch):
+    """The folded comparison still has to be able to say "this record is old"."""
+    module = _audit_state_builder()
+    stale = json.loads(module.OUT.read_text(encoding="utf-8"))
+    census = stale["registers"]
+    assert census, "no register census in the record to falsify"
+    first = sorted(census)[0]
+    census[first]["rows"] += 1
+    destination = tmp_path / "AUDIT-STATE.json"
+    destination.write_text(json.dumps(stale, ensure_ascii=False, indent=2) + "\n",
+                           encoding="utf-8", newline="\n")
+    monkeypatch.setattr(module, "OUT", destination)
+    assert module.main([sys.argv[0], "--check"]) == 1, (
+        "a record whose register census no longer matches the tree passed its own check")
