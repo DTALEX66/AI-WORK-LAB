@@ -23,7 +23,7 @@
 
 | 审计发现 | 上一候选的结论 | 本轮处置 | 机器可读证据 |
 |---|---|---|---|
-| F01 P1 来源映射未落实 | 198 条登记为 `MAPPED_P0` 指向不存在的规划目录 | 13 个真实断链模块迁入并接通统一入口；198 条逐条给去向；迁移脚本改为不再删候选树 | `f01-disposition.json`、`migration\work-gap-disposition.csv`、`.project-local\runs\f01-migration\F01-MIGRATION-REGISTER.json` |
+| F01 P1 来源映射未落实 | 198 条登记为 `MAPPED_P0` 指向不存在的规划目录 | 13 个真实断链模块迁入并接通统一入口；去向逐条给全（审计时 198 条，本轮现读 197，见 §15.4）；迁移脚本改为不再删候选树 | `f01-disposition.json`、`migration\work-gap-disposition.csv`、`.project-local\runs\f01-migration\F01-MIGRATION-REGISTER.json` |
 | F02 设计结果导入无绑定校验 | 错项目/错任务/错尝试/旧版/零摘要/`../../…ps1` 均 201 入库 | 两域共用一份版本化绑定合同，入库前拒绝且不留残条 | `tests\unified\test_v11_audit_rework.py`、`a01-a10-results.json` 的 `A04` |
 | F03 技术核验摘要口径不一致仍 PASS | 两支都 PASS，读的是最新修订却宣称修订 1 通过 | 按固定修订自身的存储行读回并比同一口径摘要；新增 `LATEST_AT_PACK` / `IMMUTABLE_PIN` 两种合同 | 同上 `A03` |
 | F04 验收门接受伪 PASS | 伪绑定+空证据+错指纹 → BACKED/exit 0；后写 FAIL 不影响旧 PASS 支撑就绪 | 门重算关系、摘要、证据可读性、时序与当前有效性；COMPLETED 在存储层需要当前支撑；核验按 `rowid` 定序 | `acceptance-gate-evidence.json`、`tests\unified\test_v10_gate.py` |
@@ -559,8 +559,10 @@ HEAD `70d5faaa205f`）：**372 passed, 3 subtests passed, 0 failed**（exit 0，
 `L10#0` 等待的是 32 行只有 owner 能判定的来源文件。此前 `config/blocker-register.json` 只说
 "32 行待判定"，owner 要自己去两本 CSV 里筛 `OWNER_DECISION_PENDING` 才知道被问的是什么。
 就绪门读的就是这份 JSON，所以现在它把行本身带在身上：`L10#0.owner_queue` 逐行给
-`repo / path / target / source_sha256 / reason`（32 行，WORK 18 + DESIGN 14），
-`decision_options` 给可落到的类别，`decision_how` 给改完之后要重跑什么。不选就继续
+`repo / path / source_sha256 / reason`（32 行 = WORK 18 + DESIGN 14），并保留一个空的 `target`——
+这 32 行的 target 全部是空串，
+因为"还没有去向"正是被问的东西；`decision_options` 给可落到的类别，`decision_how` 给改完之后
+要重跑什么。不选就继续
 `PARTIAL`，本批继续 `REFUSED`。类别不是新造的词：`test_the_owner_queue_offers_only_classes_the_ladder_can_emit`
 用正则扫 `build_source_coverage.py` 里 `return ("<类别>",` 的返回形状，核对 offered 的类别确实会被
 裁决梯子产出，并拒绝任何"选了等于没选"的类别（`OWNER_DECISION_PENDING`、`SOURCE_UNREGISTERED`、空串）。
@@ -588,11 +590,14 @@ HEAD `70d5faaa205f`）：**372 passed, 3 subtests passed, 0 failed**（exit 0，
 这条新守卫不是"写完就绿"的摆设：在本机把第 99 行上面临时插入一行 `<!-- drift rehearsal -->`，
 该测试立刻 **rc=1 FAILED**（131.48s），随后按原字节还原，前后 SHA-256 同为
 `be9760c14baa2fc2816de40d657b7faf51c2479a836f3e9cef7b78e04d2165bb`、逐字节相同。
+（这个摘要是那次实验的前后值，不是本文档当前的摘要——文档在它之后还被改过，别拿它当 HEAD 校验。）
 植入的正是它要防的那件事。
 
 ### 15.4 本轮实测
 
-- `tests/unified/test_v21_task_acceptance.py` + `test_v14_registers.py`：**26 passed**（0 failed，0 skipped）；
+- `tests/unified/test_v21_task_acceptance.py` + `test_v14_registers.py`：**27 passed**（0 failed，0 skipped，262.81s）。
+  注意这一行本身就被本轮改动移动过：先测得 26，随后 §15.3 给 `test_v14` 加了第 15 个节点，
+  重跑才是 27——写在这里的是最后一次实测，不是中间那次的；
 - `build_task_acceptance_register.py` 重跑：48 条款直方图不变
   （CONFIRMED 41 / PARTIAL 2 / BLOCKED_BY_BOUNDARY 2 / DEFERRED_P3 3），
   必做 37 条 = 35 CONFIRMED + `L10#0` PARTIAL + `L00#2` BLOCKED，`mandatory_hard_gaps=0`；
@@ -619,3 +624,21 @@ HEAD `70d5faaa205f`）：**372 passed, 3 subtests passed, 0 failed**（exit 0，
 模型推理、真实私有数据迁移、STITCH 前端（`U09/P01/P05` 与 `ui-entry` 的 PARTIAL/GAP）、
 真人专业验收签字、Codex 独立复审仍是 `BLOCKED/NOT_RUN`；`audit-item-closure.csv` 的
 `独立复审` 列仍全为 `NOT_RUN`。
+
+### 15.5 本轮用并行子智能体复核了自己写的 §15
+
+推送前把 §15 的每一条可验证断言交给一个只读子智能体独立复核（它自己跑四个 `--check`、逐表实数、
+比对 f252bac 与 1f82dd3 两版的 blob），11 项判为一致，3 项判为需要修：
+
+- §15.2 说 owner_queue 逐行"给 `target`"——32 行的 `target` 全是空串（这些行本来就没有去向），
+  已改成把空串讲清楚而不是含糊带过；
+- §15.4 那行 `26 passed` 是加了第 15 个节点**之前**的实测，现跑为 **27 passed**（262.81s），
+  已改并写明"写在这里的是最后一次实测"；
+- §2 对应表里 `198 条逐条给去向` 没有限定词（现值 197），已标成"审计时 198 / 本轮现读 197"。
+
+另外把 §15.3 植入实验的 `be9760c1…` 摘要补了一句"是一次实验的前后值，不是本文档当前摘要"——
+否则下一个人会拿它对 HEAD 做校验。
+
+**这不是 Codex 的独立复审**：`migration/audit-item-closure.csv` 的 `独立复审` 列 20 行仍全部
+`NOT_RUN`，本仓的结论口径仍是「QODER 全量闭环自测完成，必做条款 `L10#0` 待 owner 判定并阻断本批，
+待 Codex 独立复审」。子智能体的输出仍然只是线索，上面三处更正落成了文件的实际改动才算数。
