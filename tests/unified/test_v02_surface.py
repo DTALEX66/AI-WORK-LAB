@@ -712,3 +712,774 @@ def test_settings_read_set_answers_and_writes_nothing(server):
     status, index_again = server.client.get("/api/knowledge-entries/search?limit=1")
     assert (environment_again, catalog_again, index_again) == \
         (environment, catalog, index_after), "设置面的读回被一次写尝试改动了"
+
+
+# ===========================================================================
+# 登记行 05#L11|configuration —「局部配置可恢复，不覆盖原生认证和全局环境」
+#
+# 下面四个节点把这句验收钉成真断言。夹具全程只把受管配置目录整份抄进 tmp_path 再改内容，
+# 然后按产品自己的定位（`domains/work/control/composition_root.py:57` 的 `_ROOT`）指过去；
+# 真实 `config/` 与产品代码一个字节都不写，每个节点末尾用逐文件 sha256 快照自证。
+#
+# 读链现读结论（写断言前先读的代码）：
+#   GET /api/work/observer/snapshot → work_surfaces.observer_snapshot:105-120
+#     → composition_root.build_v3_snapshot:746-812 的 `adapter_capabilities=` 入参:804
+#     → composition_root._adapter_capability_rows:815-866 → adapter_capability_projection
+#       .load_inputs:409-414（`<root>/config/adapter-registry.json` 等三份，每次请求现读）
+#     → project_adapter_capabilities:274-363（本机绝对路径经 `versionSource`:341 透传）
+#   GET /api/v1/capabilities → backend/v1.py:398-419 → capabilities.derive_catalog:97-128
+#     ——它只遍历 CATALOG_SPEC 声明 + 资格台账，不打开 adapter-registry.json。
+#   POST /api/work/control/operations → work_surfaces.control_execute:297-325
+#     → control_service.ControlPlane.execute:500-540（合同 → 封闭 OPERATIONS 枚举:185-253
+#       → _scope_failure:570-603 → PermissionGate（forbidden_paths=FORBIDDEN_TARGETS:108,323-327）
+#       → 唯一实现的配置动词 _config_diff:870-920）。
+# ===========================================================================
+
+#: `_adapter_capability_rows` → `load_inputs` 会按 `<root>/config/<name>` 现读的三份受管台账。
+CFG_REGISTRY_FILES = ("adapter-registry.json", "capability-conformance.json",
+                      "capability-matrix.json")
+#: 被局部改写的那一个条目与被整条移除的那一个条目（都是台账里真实存在的 id）。
+CFG_LOCAL_CLIENT = "hermes"
+CFG_DROPPED_CLIENT = "cursor"
+#: 抄进 tmp 的全局环境台账里放的标记：任何答复带上它，就说明存在一条消费该台账的产品读面。
+CFG_GLOBAL_ENV_MARKER = "SYNTHETIC-GLOBAL-ENV-05L11-NOT-A-PRODUCT-READ"
+#: 合成控制请求的公共信封（`control-operation.schema.json:8` 的必填集，payload 随操作换）。
+CFG_CONTRACT_TARGET = "packages/contracts/schemas/workflow/client-adapter.schema.json"
+
+
+def _cfg_digest_tree(root: Path) -> dict:
+    """一棵目录树的逐文件摘要快照：名单与内容一起比，才是「没被写过」。"""
+    import hashlib
+
+    return {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(Path(root).rglob("*")) if path.is_file()}
+
+
+def _cfg_shadow_root(tmp_path: Path) -> Path:
+    """把受管配置面整份抄进 tmp，并补上投影链要点名的合同文件。
+
+    `environment-baseline.json` 同样抄一份，但把全局环境的两处值改成可识别的标记：
+    节点用它反向证明答复面里没有这条台账的消费者（而不是假设它没有）。
+    """
+    from domains.work.orchestration import resources
+
+    shadow = tmp_path / "managed-config"
+    (shadow / "config").mkdir(parents=True, exist_ok=True)
+    for name in CFG_REGISTRY_FILES:
+        (shadow / "config" / name).write_bytes(resources.config_path(name).read_bytes())
+    baseline = json.loads(resources.config_path("environment-baseline.json")
+                          .read_text(encoding="utf-8"))
+    baseline["target_root"] = CFG_GLOBAL_ENV_MARKER
+    baseline["generated_by"] = CFG_GLOBAL_ENV_MARKER
+    (shadow / "config" / "environment-baseline.json").write_text(
+        json.dumps(baseline, ensure_ascii=False, indent=2), encoding="utf-8")
+    schema = CFG_CONTRACT_TARGET
+    target = shadow / schema
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes((resources.repo_root() / schema).read_bytes())
+    return shadow
+
+
+def _cfg_apply_registry_variant(shadow: Path, tmp_path: Path, variant: str) -> dict:
+    """把 tmp 里那份合成台账改成指定形态（只写 tmp），返回改后的文档。
+
+    verbatim/restore 从真实文件逐字节重抄（恢复＝回到那份内容）；其余形态各自只动一处形状，
+    global 是故意越界的反证形态，promote 是把「未探测」顶成「已验证」的反证形态。
+    """
+    from domains.work.orchestration import resources
+
+    registry = shadow / "config" / CFG_REGISTRY_FILES[0]
+    if variant in ("verbatim", "restore"):
+        registry.write_bytes(resources.config_path(CFG_REGISTRY_FILES[0]).read_bytes())
+        return json.loads(registry.read_text(encoding="utf-8"))
+    document = json.loads(resources.config_path(CFG_REGISTRY_FILES[0])
+                          .read_text(encoding="utf-8"))
+    entries = document["entries"]
+    if variant == "local":
+        entry = next(item for item in entries if item.get("id") == CFG_LOCAL_CLIENT)
+        entry["display_name"] = "合成·局部改名（不是本机观测）"
+        entry["provenance"]["version_readback"]["source"] = \
+            (tmp_path / "synthetic-install-stamp.json").as_posix()
+    elif variant == "local-plus-drop":
+        entry = next(item for item in entries if item.get("id") == CFG_LOCAL_CLIENT)
+        entry["display_name"] = "合成·局部改名（不是本机观测）"
+        document["entries"] = [item for item in entries
+                               if item.get("id") != CFG_DROPPED_CLIENT]
+    elif variant == "other-client":
+        entry = next(item for item in entries if item.get("id") == CFG_DROPPED_CLIENT)
+        entry["display_name"] = "合成·另一个客户端改名"
+        entry["support_level"] = "synthetic-experimental"
+    elif variant == "global":
+        for index, item in enumerate(entries):
+            item["display_name"] = f"合成·全局覆盖 {index}"
+    elif variant == "promote":
+        entry = next(item for item in entries if item.get("id") == CFG_LOCAL_CLIENT)
+        entry["detection"]["evidence_state"] = "VERIFIED"
+        entry["detection"]["mode"] = "live-session-readback"
+    else:
+        raise AssertionError("未知形态，夹具自身写错了: " + variant)
+    registry.write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding="utf-8")
+    return document
+
+
+def _cfg_snapshot(client) -> dict:
+    status, snapshot = client.get("/api/work/observer/snapshot")
+    assert status == 200, snapshot
+    assert "adapterCapabilities" in snapshot, sorted(snapshot)
+    return snapshot
+
+
+def _cfg_cards(client) -> list:
+    return _cfg_snapshot(client)["adapterCapabilities"]
+
+
+def _cfg_card(cards: list, client_id: str) -> dict:
+    return next(card for card in cards if card["clientId"] == client_id)
+
+
+def _cfg_stripped(card: dict) -> dict:
+    """去掉读时刻那一格：`observedAt` 每次答复都换，不是配置内容。"""
+    return {key: value for key, value in card.items() if key != "observedAt"}
+
+
+def _cfg_changed_clients(before: list, after: list) -> list:
+    """两份答复之间，除读时刻外逐字段不同的客户端名（只比两边都在的条目）。
+
+    「局部性」在这上面的可执行形式就是：这个列表恰等于我这次动过的那一个客户端。
+    它返回清单而不是直接断言，是因为反证需要一个能变红的判断对象。
+    """
+    previous = {card["clientId"]: _cfg_stripped(card) for card in before}
+    return sorted(card["clientId"] for card in after
+                  if card["clientId"] in previous
+                  and previous[card["clientId"]] != _cfg_stripped(card))
+
+
+def _cfg_machine_path(value) -> bool:
+    """解析后的值（含嵌套）里是否带本机绝对路径：盘符式（C 冒号加反斜杠或斜杠），或 UNC 共享名。
+
+    比较的是 JSON 解析出来的字符串，不是对外卖出的转义文本——序列化会把一个反斜杠写成两个，
+    拿台账里的路径去搜序列化文本会得到"没有"这个假结论（本节点的上一版就是这么错的）。
+    """
+    import re
+
+    drive = re.compile(r"[A-Za-z]:[\\/]")
+    if isinstance(value, str):
+        return bool(drive.search(value)) or value.startswith(chr(92) * 2)
+    if isinstance(value, dict):
+        return any(_cfg_machine_path(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_cfg_machine_path(item) for item in value)
+    return False
+
+
+def _cfg_strings(node, collected: list) -> list:
+    """答复里所有字符串值（含键名对应的嵌套），用于"这条路径有没有被端出去"的字面比对。"""
+    if isinstance(node, str):
+        collected.append(node)
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            collected.append(str(key))
+            _cfg_strings(value, collected)
+    elif isinstance(node, (list, tuple)):
+        for value in node:
+            _cfg_strings(value, collected)
+    return collected
+
+
+def _cfg_registry_machine_paths() -> list:
+    """真实 adapter-registry 里"整格值就是一条本机绝对路径"的那些值。"""
+    from domains.work.orchestration import resources
+
+    import re
+    rooted = re.compile(r"^(?:[A-Za-z]:[\\/]|[\\\\]{2})")
+    document = json.loads(resources.config_path(CFG_REGISTRY_FILES[0])
+                          .read_text(encoding="utf-8"))
+    values = _cfg_strings(document, [])
+    return sorted({text for text in values if rooted.match(text)})
+
+
+def _cfg_path_spread_violations(cards: list) -> list:
+    """带本机绝对路径的卡片，路径旁边必须仍是「未探测/未合格」。空清单才是不变量成立。
+
+    规则来自投影自己的声明（adapter_capability_projection.py:16-19）：登记是声明不是探测，
+    版本读回不是包哈希核验，所以一条路径只能待在路径格里，不能被写成合格/已连接的依据。
+    """
+    violations = []
+    for card in cards:
+        carriers = sorted(key for key, value in card.items() if _cfg_machine_path(value))
+        unexpected = [key for key in carriers if key not in ("versionSource", "entryProbe")]
+        if unexpected:
+            violations.append({"clientId": card["clientId"],
+                               "rule": "PATH_SITS_IN_A_NON_PATH_FIELD", "fields": unexpected})
+        if "versionSource" not in carriers:
+            continue
+        if card["detectionEvidenceState"] not in ("UNVERIFIED", "UNKNOWN"):
+            violations.append({"clientId": card["clientId"],
+                               "rule": "READBACK_PATH_PROMOTED_TO_VERIFIED",
+                               "value": card["detectionEvidenceState"]})
+        if card["nativeStatus"] != "NOT_IMPLEMENTED":
+            violations.append({"clientId": card["clientId"], "rule": "NATIVE_STATUS_PROMOTED",
+                               "value": card["nativeStatus"]})
+        registered = card["layers"][0]
+        if (registered["layer"] != "REGISTERED" or registered["state"] != "MET"
+                or registered["evidenceLevel"] != "SYNTHETIC"):
+            violations.append({"clientId": card["clientId"],
+                               "rule": "DECLARED_LAYER_CREDITED_AS_OBSERVED",
+                               "value": registered})
+        elif "声明" not in registered["reason"] or "探测" not in registered["reason"]:
+            violations.append({"clientId": card["clientId"],
+                               "rule": "DECLARED_LAYER_LOST_ITS_HONEST_REASON",
+                               "value": registered["reason"]})
+    return violations
+
+
+def _cfg_control_request(operation: str, payload: dict | None = None, **overrides) -> dict:
+    """一份满足已发布合同的控制请求（必填集抄 control-operation.schema.json:8）。"""
+    document = {
+        "schema_version": "worklab/control-operation/v1",
+        "operation": operation,
+        "project_id": "05l11-configuration-probe",
+        "task_id": None,
+        "revision": None,
+        "attempt": None,
+        "scope": {"boundaries": ["."], "granted_by": "owner-probe"},
+        "expected_version": None,
+        "idempotency_key": "05l11-" + operation + "-key",
+        "actor": "05l11-probe-actor",
+        "requested_at": "2026-11-01T09:00:00Z",
+        "payload": payload or {},
+    }
+    document.update(overrides)
+    return document
+
+
+def test_local_profile_entry_restore_leaves_native_auth_and_global_environment(server,
+                                                                               tmp_path,
+                                                                               monkeypatch):
+    """登记行 05#L11|configuration 的「局部性」与「不覆盖原生认证和全局环境」。
+
+    证明：把 tmp 里那份合成台账的**一个** adapter profile 条目改掉（显示名 + 它自己的版本读回
+    出处），`GET /api/work/observer/snapshot` 的 `adapterCapabilities` 里变的只有这一个客户端，
+    其余客户端逐字段（除读时刻 `observedAt`）不变；连这同一张卡片上没动的字段也逐字段不变——
+    变的就是 `displayName` 与 `versionSource` 两格。认证侧一格未动：`detectionEvidenceState`
+    仍是 UNVERIFIED、`nativeStatus` 仍是 NOT_IMPLEMENTED、`protocolConformance` 三份协议状态
+    不变、来自 capability-matrix 的原生归属默认值 `configOwnershipDefault` 与台账现读值一致
+    （layer=USER_OVERLAY / mode=MANAGE / preserve_unknown=True，即"未知键保留不动"）。全局环境侧
+    一格未动：`GET /api/environment` 整份答复与改前完全相等，`GET /api/v1/capabilities` 整份
+    相等，`GET /api/work/control/descriptor` 除 `observed_at` 外 `authorization_record`（原生授权
+    记录的可读状态、条数、失效数）与 `operations` 词表逐字段相等，且工作区里那份授权记录文件
+    始终不存在（缺记录＝没有授权）。最后：真实 `config/` 整目录逐文件 sha256 与开始时相同。
+    反证①：把"局部改写"做成"全局覆盖"（每个条目都改显示名），上面那条"只有 hermes 变了"
+    立刻变红（变动清单变成全部客户端）；还原成只改一处，再读又是绿的。
+    没证明：没有任何本机软件被探测、启动或连接；被改的出处路径与合成显示名都是夹具字符串；
+    `config/environment-baseline.json` 那份全局环境台账被抄进 tmp 时已写成标记值，而三处答复里
+    都查不到这个标记——这证明的是"答复不带它"，代码事实是**产品运行期没有任何读面消费这份台账**
+    （现读：`backend/`、`domains/` 内无引用，只有 `tests/unified/test_v20_inrepo_evidence.py`
+    读它做对账），所以登记行把它算进本族"受管配置"时，它的"不覆盖"只能以"没有读面、也没有
+    写面"的形式成立，不是"有写面但被拦住"。
+    """
+    from domains.work.control import composition_root, control_service
+    from domains.work.orchestration import resources
+
+    registry_path = resources.adapter_registry_path()
+    registry_bytes_before = registry_path.read_bytes()
+    managed_config_before = _cfg_digest_tree(resources.config_dir())
+    grants_path = server.local_root / control_service.TRUSTED_GRANTS_PATH
+
+    cards_before = _cfg_cards(server.client)
+    assert len(cards_before) >= 3, [card["clientId"] for card in cards_before]
+    hermes_before = _cfg_card(cards_before, CFG_LOCAL_CLIENT)
+    status, environment_before = server.client.get("/api/environment")
+    assert status == 200, environment_before
+    status, descriptor_before = server.client.get("/api/work/control/descriptor")
+    assert status == 200, descriptor_before
+    status, catalog_before = server.client.get("/api/v1/capabilities")
+    assert status == 200, catalog_before
+    matrix = json.loads(resources.config_path("capability-matrix.json")
+                        .read_text(encoding="utf-8"))
+    matrix_ownership = next(entry["config_ownership_default"] for entry in matrix["clients"]
+                            if entry.get("id") == CFG_LOCAL_CLIENT)
+    assert grants_path.is_file() is False, str(grants_path)
+
+    shadow = _cfg_shadow_root(tmp_path)
+    _cfg_apply_registry_variant(shadow, tmp_path, "local")
+    monkeypatch.setattr(composition_root, "_ROOT", shadow)
+
+    cards_after = _cfg_cards(server.client)
+    # —— 改一处，其余客户端一格没动 ——
+    assert _cfg_changed_clients(cards_before, cards_after) == [CFG_LOCAL_CLIENT], \
+        _cfg_changed_clients(cards_before, cards_after)
+    hermes_after = _cfg_card(cards_after, CFG_LOCAL_CLIENT)
+    changed_fields = sorted(key for key in hermes_after
+                            if key != "observedAt" and hermes_after[key] != hermes_before[key])
+    assert changed_fields == ["displayName", "versionSource"], changed_fields
+    assert hermes_after["displayName"] == "合成·局部改名（不是本机观测）", hermes_after
+    assert CFG_GLOBAL_ENV_MARKER not in hermes_after["versionSource"]
+
+    # —— 原生认证相关字段保持原值（不是"读得通"，是逐字节没动）——
+    for field in ("detectionEvidenceState", "detectionMode", "nativeStatus", "supportLevel",
+                  "registryStatus", "writePolicy", "role", "risk", "declaredVersion",
+                  "versionReadbackMethod", "versionObservedAt", "versionDrift", "entryProbe",
+                  "protocolConformance", "configOwnershipDefault", "declaredOperations",
+                  "matrixOperations", "operationsDrift", "layers"):
+        assert hermes_after[field] == hermes_before[field], field
+    assert hermes_after["detectionEvidenceState"] == "UNVERIFIED", hermes_after
+    assert hermes_after["nativeStatus"] == "NOT_IMPLEMENTED", hermes_after
+    assert hermes_after["configOwnershipDefault"] == matrix_ownership == \
+        hermes_before["configOwnershipDefault"], hermes_after["configOwnershipDefault"]
+    assert hermes_after["configOwnershipDefault"]["preserve_unknown"] is True
+
+    status, descriptor_after = server.client.get("/api/work/control/descriptor")
+    assert status == 200, descriptor_after
+    assert descriptor_after["authorization_record"] == descriptor_before["authorization_record"]
+    assert descriptor_after["operations"] == descriptor_before["operations"]
+    assert descriptor_after["evidence_ceiling"] == descriptor_before["evidence_ceiling"]
+    assert descriptor_after["transport"] == descriptor_before["transport"] == "loopback-only"
+    assert descriptor_after["authorization_record"]["grants"] == 0, descriptor_after
+    assert descriptor_after["authorization_record"]["path"] == control_service.TRUSTED_GRANTS_PATH
+
+    # —— 全局环境字段保持原值 ——
+    status, environment_after = server.client.get("/api/environment")
+    assert status == 200, environment_after
+    assert environment_after == environment_before, \
+        (sorted(environment_after), sorted(environment_before))
+    assert environment_after["agent_profile"]["writable"] is False, environment_after
+    assert environment_after["write_trace"] == "NOT_EXECUTED"
+    status, catalog_after = server.client.get("/api/v1/capabilities")
+    assert status == 200, catalog_after
+    assert catalog_after == catalog_before, "局部配置改写改到了能力目录答复上"
+
+    # —— 全局环境台账：标记没有出现在任何答复里（这条读面不存在）——
+    snapshot_after = _cfg_snapshot(server.client)
+    for name, body in (("environment", environment_after), ("catalog", catalog_after),
+                       ("snapshot", snapshot_after), ("descriptor", descriptor_after)):
+        assert CFG_GLOBAL_ENV_MARKER not in json.dumps(body, ensure_ascii=False), name
+
+    # —— 反证①：局部性做成全局覆盖 → 上面那条判断必须红；还原 → 复绿 ——
+    _cfg_apply_registry_variant(shadow, tmp_path, "global")
+    overwritten = _cfg_cards(server.client)
+    globally_changed = _cfg_changed_clients(cards_before, overwritten)
+    assert globally_changed != [CFG_LOCAL_CLIENT], globally_changed
+    assert len(globally_changed) == len(overwritten), (globally_changed, len(overwritten))
+    _cfg_apply_registry_variant(shadow, tmp_path, "local")
+    assert _cfg_changed_clients(cards_before, _cfg_cards(server.client)) == [CFG_LOCAL_CLIENT]
+
+    # —— 真实受管配置面与授权记录没有被写 ——
+    assert registry_path.read_bytes() == registry_bytes_before
+    assert _cfg_digest_tree(resources.config_dir()) == managed_config_before
+    assert grants_path.is_file() is False, str(grants_path)
+
+
+def test_no_write_entry_reaches_managed_config_native_auth_or_global_environment(server,
+                                                                                 monkeypatch):
+    """登记行 05#L11|configuration 的「不覆盖」：写面存在与否，按代码真实形状钉。
+
+    结论是"存在计划面、不存在写面"，三层都要断言，缺一层就会把这句话读成它没有的意思：
+    (1) 操作枚举封闭：`packages/contracts/schemas/workflow/control-operation.schema.json` 的
+        enum 与 `control_service.OPERATIONS` 的键集现读相等；其中 `config.discover` /
+        `config.apply` / `config.readback` / `config.rollback` 四条 `implemented=False`，逐条答
+        `NOT_IMPLEMENTED` + 各自的具名 code（READ_LANDED_ELSEWHERE / TARGET_NOT_AUTHORISED /
+        NO_WRITE_TO_READ_BACK / NO_RECOVERY_HANDLE），`receipt=None`、`readback=None`、
+        `evidence_level=NO_EVIDENCE`。所有 EXTERNAL_MUTATION / DESTRUCTIVE 类操作都未实现，
+        实现集恰为 {work-unit.create, work-unit.materialize, config.diff}。
+    (2) 唯一实现的配置动词 `config.diff` 是计划面：合法目标（合同 JSON）答 `PLANNED` +
+        `readback.plan_only=True` + `written=False`，值不外泄（`before` 写
+        "<read-only: value not projected>"），只回一个"这个键路径存在吗"的判断；对 `.py`
+        这种非映射文档它回 `present_before=None` + `presenceBasis=DOCUMENT_UNPARSEABLE`，
+        不降级成子串搜索。目标拦截四层：`config/adapter-registry.json` → `REFUSED`
+        `GATE_DENIED`（"target is on the forbidden list"，来自 `FORBIDDEN_TARGETS`:108 里的
+        `config/` 前缀，经 `PermissionGate(Policy(forbidden_paths=...))`:323-327）；原生认证类
+        名字 `.env` / `credentials.json` / `auth_store.json` → `NEEDS_HUMAN` `GATE_NEEDS_HUMAN`
+        （risk CRITICAL ≥ 策略阈值 HIGH）；`docs/` 下的副本 → `REFUSED` `TARGET_SENSITIVE`；
+        仓库外与缺输入 → `TARGET_OUT_OF_PROJECT` / `DIFF_INPUT_INCOMPLETE`。
+    (3) HTTP 面到不了写：`POST /api/work/control/operations` 带一份完全合合同的文档仍是
+        `400 INVALID_PROJECT_FIELDS` 且答复体里没有 `reason_code`——`control_execute` 的
+        `handler.body(fields={})` 在 `plane.execute` 之前就把带键的请求体拒了
+        （`backend/core/work_surfaces.py:319`），所以这条被 surface-map 称作
+        `control_write_entry` 的入口在本统一进程里不是可用的配置写入口；Observer 只读面
+        POST/PUT/PATCH/DELETE 一律 `405 OBSERVER_IS_READ_ONLY` 并把拒绝记进工作区台账；
+        整张路由表（`backend.v1.V1_ROUTES`，含 WORK 面）里非 GET 的方法没有任何一条的
+        pattern 提到 config。原生授权记录 `control-trusted-grants.json` 与全局环境台账
+        `<workspace>/.project/paths.json` 全程保持不存在，`/api/environment` 仍答
+        `agent_profile.writable=False`、`sources.project_local_root=default`。
+    反证②：把 `FORBIDDEN_TARGETS` 里的 `config/` 前缀摘掉，另建一个平面（同一个 store，
+    不落回执、不指授权记录）再发同一条 `config.diff`——它立刻从 `GATE_DENIED` 变成 `PLANNED`，
+    证明拦住受管配置的正是那一行声明；同时原平面（策略在构造时绑定）仍答 `GATE_DENIED`，
+    还原声明后新建平面也重新被拦。全程真实 `config/` 逐文件摘要不变。
+    没证明：`config.apply` 被授权后会不会写——本仓没有它的实现分支，所以这一条不是"实现被
+    绕过"而是"实现不存在"；没有真实宿主、真实客户端配置或真实凭证被读过；合同要求的
+    `requested_at` 是夹具常量；`UNKNOWN_OPERATION`（:511）在合同文档面前不可达（封闭枚举
+    先拒），节点把这件事如实钉成 `INVALID_REQUEST` 而不是假装能走到那条 code。
+    """
+    from domains.work.control import control_service
+    from backend.core import work_surfaces
+    from domains.work.orchestration import resources
+
+    plane = work_surfaces.control_plane(server.api)
+    grants_path = server.local_root / control_service.TRUSTED_GRANTS_PATH
+    receipt_path = server.local_root / control_service.RECEIPTS_PATH
+    paths_ledger = server.workspace / ".project" / "paths.json"
+    managed_config_before = _cfg_digest_tree(resources.config_dir())
+
+    # (1) 枚举封闭 + 未实现的配置写/读回/回滚动词
+    contract = json.loads(control_service.REQUEST_CONTRACT.read_text(encoding="utf-8"))
+    assert sorted(contract["properties"]["operation"]["enum"]) == \
+        sorted(control_service.OPERATIONS), (contract["properties"]["operation"]["enum"],
+                                             sorted(control_service.OPERATIONS))
+    implemented = sorted(name for name, spec in control_service.OPERATIONS.items()
+                         if spec.implemented)
+    assert implemented == ["config.diff", "work-unit.create", "work-unit.materialize"], \
+        implemented
+    for name, code in (("config.discover", "READ_LANDED_ELSEWHERE"),
+                       ("config.apply", "TARGET_NOT_AUTHORISED"),
+                       ("config.readback", "NO_WRITE_TO_READ_BACK"),
+                       ("config.rollback", "NO_RECOVERY_HANDLE")):
+        answer = plane.execute(_cfg_control_request(
+            name, {"target_file": CFG_CONTRACT_TARGET, "field": "properties"}))
+        assert answer["status"] == "NOT_IMPLEMENTED", answer
+        assert answer["reason_code"] == code, answer
+        assert answer["receipt"] is None and answer["readback"] is None, answer
+        assert answer["evidence_level"] == "NO_EVIDENCE", answer
+        assert answer["next_action"], answer
+    assert not [spec for spec in control_service.OPERATIONS.values()
+                if spec.implemented and spec.action.value in ("EXTERNAL_MUTATION", "DESTRUCTIVE")], \
+        [(spec.operation, spec.action.value) for spec in control_service.OPERATIONS.values()]
+
+    # (2) 唯一的实现体是计划面，且它被拦在受管配置、原生认证与仓库之外
+    planned = plane.execute(_cfg_control_request(
+        "config.diff", {"target_file": CFG_CONTRACT_TARGET, "field": "properties.entries",
+                        "value": "synthetic"}))
+    assert planned["status"] == "PLANNED", planned
+    assert planned["reason_code"] == "PLAN_COMPUTED", planned
+    assert planned["readback"]["plan_only"] is True and planned["readback"]["written"] is False
+    assert planned["readback"]["target"] == CFG_CONTRACT_TARGET, planned["readback"]
+    assert planned["readback"]["changes"] == [{
+        "field": "properties.entries", "before": "<read-only: value not projected>",
+        "after_declared": True, "present_before": True, "presenceBasis": "KEY_PATH_RESOLVES"}], \
+        planned["readback"]["changes"]
+    assert planned["receipt"] is None and planned["evidence_level"] == "SYNTHETIC", planned
+
+    non_mapping = plane.execute(_cfg_control_request(
+        "config.diff", {"target_file": "domains/work/control/control_service.py",
+                        "field": "OPERATIONS"}))
+    assert non_mapping["status"] == "PLANNED", non_mapping
+    assert non_mapping["readback"]["changes"][0]["presenceBasis"] == "DOCUMENT_UNPARSEABLE", \
+        non_mapping["readback"]
+    assert non_mapping["readback"]["changes"][0]["present_before"] is None
+
+    def refusal(operation: str, payload: dict):
+        answer = plane.execute(_cfg_control_request(operation, payload))
+        return answer["status"], answer["reason_code"]
+
+    assert refusal("config.diff", {"target_file": "config/adapter-registry.json",
+                                   "field": "entries"}) == ("REFUSED", "GATE_DENIED")
+    for auth_named in (".env", "credentials.json", "auth_store.json"):
+        assert refusal("config.diff", {"target_file": auth_named, "field": "a"}) == \
+            ("NEEDS_HUMAN", "GATE_NEEDS_HUMAN"), auth_named
+    critical = plane.execute(_cfg_control_request("config.diff", {"target_file": ".env",
+                                                                 "field": "a"}))
+    assert "CRITICAL" in critical["reason"], critical["reason"]
+    assert refusal("config.diff", {"target_file": "docs/x.json", "field": "a"}) == \
+        ("REFUSED", "TARGET_SENSITIVE")
+    assert refusal("config.diff", {"target_file": "../outside/thing.json", "field": "a"}) == \
+        ("REFUSED", "TARGET_OUT_OF_PROJECT")
+    assert refusal("config.diff", {"target_file": CFG_CONTRACT_TARGET}) == \
+        ("REFUSED", "DIFF_INPUT_INCOMPLETE")
+    invented = plane.execute(_cfg_control_request("credentials.rotate", {}))
+    assert invented["reason_code"] == "INVALID_REQUEST", invented
+    assert "is not one of" in invented["reason"], invented["reason"]
+
+    # (3) HTTP 面：声明的写入口不可用；Observer 写方法只有拒绝处理器；路由表无 config 写面
+    status, body = server.client.post("/api/work/control/operations",
+                                      _cfg_control_request("config.apply",
+                                                           {"target_file": "config/"
+                                                                            "adapter-registry.json"}))
+    assert status == 400 and body.get("error") == "INVALID_PROJECT_FIELDS", (status, body)
+    assert "reason_code" not in body, body
+    for method in ("POST", "PUT", "PATCH", "DELETE"):
+        status, refused = server.client.request(method, "/api/work/observer/snapshot")
+        assert status == 405, (method, status, refused)
+        assert refused["reason_code"] == "OBSERVER_IS_READ_ONLY", (method, refused)
+        assert refused["method"] == method and refused["path"] == "/api/work/observer/snapshot"
+    status, recorded = server.client.get("/api/work/observer/refusals")
+    assert status == 200 and recorded["count"] == 4, recorded
+    assert recorded["path"] == str(server.local_root / "observer-write-refusals.jsonl")
+
+    from backend.v1 import V1_ROUTES
+
+    writes = sorted({(route.method, route.pattern) for route in V1_ROUTES if route.method != "GET"})
+    assert any(pattern == "/api/work/control/operations" for _, pattern in writes), writes
+    assert [pair for pair in writes if "config" in pair[1].lower()] == [], writes
+    status, surface_map = server.client.get("/api/work/surface-map")
+    assert status == 200, surface_map
+    assert surface_map["control_write_entry"] == "POST /api/work/control/operations"
+    assert "refused" in surface_map["observer_writes"], surface_map["observer_writes"]
+
+    # 原生认证记录与全局环境台账：没有任何入口把它们写出来
+    assert grants_path.is_file() is False, str(grants_path)
+    assert paths_ledger.is_file() is False, str(paths_ledger)
+    status, environment = server.client.get("/api/environment")
+    assert status == 200, environment
+    assert environment["agent_profile"]["writable"] is False, environment["agent_profile"]
+    assert environment["agent_profile"]["status"] == "PRIVATE_NOT_INSPECTED"
+    assert environment["write_trace"] == "NOT_EXECUTED"
+    assert environment["sources"] == {"project_local_root": "default"}, environment["sources"]
+    assert _cfg_digest_tree(resources.config_dir()) == managed_config_before
+
+    # —— 反证②：拦住的只是 FORBIDDEN_TARGETS 那一行声明 ——
+    assert "config/" in control_service.FORBIDDEN_TARGETS, control_service.FORBIDDEN_TARGETS
+    monkeypatch.setattr(control_service, "FORBIDDEN_TARGETS",
+                        tuple(item for item in control_service.FORBIDDEN_TARGETS
+                              if item != "config/"))
+    unguarded = control_service.ControlPlane(server.work.store,
+                                             project_root=plane.project_root,
+                                             evidence_ceiling=plane.evidence_ceiling,
+                                             receipts_path=None, grants_path=None)
+    naked = unguarded.execute(_cfg_control_request(
+        "config.diff", {"target_file": "config/adapter-registry.json", "field": "entries"}))
+    assert naked["status"] == "PLANNED" and naked["reason_code"] == "PLAN_COMPUTED", naked
+    assert naked["readback"]["written"] is False, naked["readback"]
+    still_gated = plane.execute(_cfg_control_request(
+        "config.diff", {"target_file": "config/adapter-registry.json", "field": "entries"}))
+    assert (still_gated["status"], still_gated["reason_code"]) == ("REFUSED", "GATE_DENIED")
+    monkeypatch.undo()
+    regated = control_service.ControlPlane(server.work.store, project_root=plane.project_root,
+                                          evidence_ceiling=plane.evidence_ceiling,
+                                          receipts_path=None, grants_path=None)
+    answer = regated.execute(_cfg_control_request(
+        "config.diff", {"target_file": "config/adapter-registry.json", "field": "entries"}))
+    assert (answer["status"], answer["reason_code"]) == ("REFUSED", "GATE_DENIED"), answer
+    assert _cfg_digest_tree(resources.config_dir()) == managed_config_before
+    assert grants_path.is_file() is False and receipt_path.is_file() is False
+
+
+def test_managed_config_restore_follows_the_file_and_lands_no_new_persistent_write(server,
+                                                                                   tmp_path,
+                                                                                   monkeypatch):
+    """登记行 05#L11|configuration 的「可恢复」：答复随受管文件变，且恢复不落新的持久写入。
+
+    证明：`adapterCapabilities` 每次请求都现读 `<root>/config/adapter-registry.json`
+    （`_adapter_capability_rows`:840 → `load_inputs`:409-414），没有第二副本。四轮同进程读：
+    逐字节照抄的合成副本 → 与真实台账同样的卡片集（10 条、除读时刻外逐字段相同，说明这一致
+    是文件内容带来的，不是缓存带来的）；换成"改一个 profile + 删一个条目"的合法内容 → 卡片
+    少一条、只有 hermes 变；把原文件重新抄回去 → 答复回到基线（这才叫可恢复）；第四轮换成了
+    只动 cursor 的另一份合法内容 → 条目数回到基线、跟着变的只有 cursor。恢复过程中工作区
+    （含 `.project-local` 的台账与 canonical store 文件）逐文件 sha256 与名单集合完全不变，
+    真实 `config/` 整目录也不变，即"恢复"没有产生任何新的持久写入。
+    同时钉住登记行"当前实现位置"的实情：`GET /api/v1/capabilities` 的四轮答复**逐字节相同**
+    ——`capabilities.derive_catalog`:97-128 只遍历 `CATALOG_SPEC` 声明加资格台账，从不打开
+    adapter-registry.json，那一格 `source_refs` 里的 `work:config/adapter-registry.json` 只是
+    引用字符串。所以"从受管配置现读出的目录、答复随文件改变"这条验收在代码里成立的face是
+    WORK 快照的 `adapterCapabilities`，不是能力目录；登记把位置写在 capabilities.py:97 与代码
+    不符，节点按代码真实行为断言，不为绿而改产品。
+    反证③：在 `load_inputs` 上装一个"第一次读就记住"的缓存（模拟第二副本），换文件后答复不再
+    跟着变（变动清单变空、条目数回到 10）——上面那条"随文件变"的判断当场变红；卸掉缓存复绿。
+    没证明：卡片里出现的版本串、出处路径都是台账里的既有声明或夹具字符串，没有本机软件被探测；
+    `observedAt` 每次答复都换，已从比较里排除；没有真实宿主/真人/E3/E4 证据；恢复只测读侧
+    一致性，写入与回滚本身在本仓没有实现分支（见上一节点）。
+    """
+    from domains.work.control import composition_root
+    from domains.work.orchestration import adapter_capability_projection as acp
+    from domains.work.orchestration import resources
+
+    cards_before = _cfg_cards(server.client)
+    assert len(cards_before) >= 3, [card["clientId"] for card in cards_before]
+    baseline_ids = [card["clientId"] for card in cards_before]
+    assert CFG_LOCAL_CLIENT in baseline_ids and CFG_DROPPED_CLIENT in baseline_ids, baseline_ids
+    managed_config_before = _cfg_digest_tree(resources.config_dir())
+    workspace_before = _cfg_digest_tree(server.workspace)
+
+    shadow = _cfg_shadow_root(tmp_path)
+    monkeypatch.setattr(composition_root, "_ROOT", shadow)
+    verbatim = _cfg_cards(server.client)
+    assert [card["clientId"] for card in verbatim] == baseline_ids, verbatim
+    assert _cfg_changed_clients(cards_before, verbatim) == [], _cfg_changed_clients(cards_before,
+                                                                                    verbatim)
+
+    _cfg_apply_registry_variant(shadow, tmp_path, "local-plus-drop")
+    edited = _cfg_cards(server.client)
+    assert [card["clientId"] for card in edited] == \
+        [cid for cid in baseline_ids if cid != CFG_DROPPED_CLIENT], edited
+    assert _cfg_changed_clients(cards_before, edited) == [CFG_LOCAL_CLIENT]
+
+    _cfg_apply_registry_variant(shadow, tmp_path, "restore")
+    restored = _cfg_cards(server.client)
+    assert [card["clientId"] for card in restored] == baseline_ids, restored
+    assert _cfg_changed_clients(cards_before, restored) == [], _cfg_changed_clients(cards_before,
+                                                                                    restored)
+
+    # —— 反证③：装一个"第二副本"，答复就不再跟着文件走 ——
+    real_load_inputs = acp.load_inputs
+    memo: dict = {}
+
+    def caching_load_inputs(root):
+        if "triple" not in memo:
+            memo["triple"] = real_load_inputs(root)
+        return memo["triple"]
+
+    acp.load_inputs = caching_load_inputs
+    try:
+        # 先用当前（已还原的）那份把缓存填满，再换文件：缓存版才会露出"第二副本"的形状
+        warmed = _cfg_cards(server.client)
+        assert _cfg_changed_clients(cards_before, warmed) == [], warmed
+        _cfg_apply_registry_variant(shadow, tmp_path, "local-plus-drop")
+        cached = _cfg_cards(server.client)
+        assert [card["clientId"] for card in cached] == baseline_ids, cached
+        assert _cfg_changed_clients(cards_before, cached) == [], cached
+        assert _cfg_card(cached, CFG_LOCAL_CLIENT)["displayName"] == \
+            _cfg_card(cards_before, CFG_LOCAL_CLIENT)["displayName"]
+    finally:
+        acp.load_inputs = real_load_inputs
+
+    # 卸掉缓存：同一份被换过的文件立刻被现读出来
+    following = _cfg_cards(server.client)
+    assert [card["clientId"] for card in following] == \
+        [cid for cid in baseline_ids if cid != CFG_DROPPED_CLIENT], following
+    assert _cfg_changed_clients(cards_before, following) == [CFG_LOCAL_CLIENT]
+
+    # 再换一份合法内容：这一份只动 cursor，跟着变的也只有它（hermes 回到原值）
+    _cfg_apply_registry_variant(shadow, tmp_path, "other-client")
+    third = _cfg_cards(server.client)
+    assert [card["clientId"] for card in third] == baseline_ids, third
+    assert _cfg_changed_clients(cards_before, third) == [CFG_DROPPED_CLIENT], \
+        _cfg_changed_clients(cards_before, third)
+    assert _cfg_card(third, CFG_DROPPED_CLIENT)["supportLevel"] == "synthetic-experimental"
+    assert _cfg_card(third, CFG_LOCAL_CLIENT)["displayName"] == \
+        _cfg_card(cards_before, CFG_LOCAL_CLIENT)["displayName"]
+
+    # —— 能力目录不是这条读链：台账换了它一个字都不动 ——
+    catalog_rounds = [server.client.get("/api/v1/capabilities")[1] for _ in range(2)]
+    assert catalog_rounds[0] == catalog_rounds[1]
+    executors = _cfg_catalog_row(catalog_rounds[0], "work.executors")
+    assert executors["source_refs"] == ["work:config/adapter-registry.json"], executors
+    assert executors["declared_by"].startswith("backend.core.capabilities.CATALOG_SPEC"), executors
+
+    # —— 恢复没有落新的持久写入 ——
+    assert _cfg_digest_tree(resources.config_dir()) == managed_config_before
+    assert _cfg_digest_tree(server.workspace) == workspace_before, \
+        (sorted(set(_cfg_digest_tree(server.workspace)) ^ set(workspace_before)),
+         {key: value for key, value in _cfg_digest_tree(server.workspace).items()
+          if workspace_before.get(key) != value})
+
+
+def _cfg_catalog_row(body: dict, capability_id: str) -> dict:
+    return next(row for row in body["capabilities"] if row["capability_id"] == capability_id)
+
+
+def test_machine_absolute_paths_travel_as_paths_not_as_verified_evidence(server, tmp_path,
+                                                                        monkeypatch):
+    """登记行 05#L11|configuration 的「本机绝对路径不扩散」。
+
+    事实先摆明：`config/adapter-registry.json` 里确实带本机绝对路径（整格值就是一条路径的那格是
+    hermes 的 `provenance.version_readback.source`，一台机器上的 install-stamp 位置；另有多条
+    note/prose 里写死过测量路径）。节点的断言不是"把路径删掉"，而是它对外答复时的身份：
+    (a) 上面那条台账路径没有出现在 `GET /api/v1/capabilities`、`/api/v1/connections`、
+        `/api/v1/tools`、`/api/work/control/descriptor`、`/api/work/surface-map` 任何一面的
+        字符串值里（逐格比对解析后的值——序列化文本会把一个反斜杠写成两个，拿它比对出来的
+        "没有"是假的，节点第一次就是这么错的）。这五面里确实存在的盘符串只有两类，都不是这份
+        台账的路径：本地读探测记下的工作库位置，和控制面自报的 `project_root`。而能力目录里
+        指向这份台账的那一格 `work.executors` 恰恰 `probe=None` + `can_invoke=False` +
+        `qualification=NOT_PROBED` + `connection_state=NOT_PROBED`，`source_refs` 只有仓内相对
+        引用 `work:config/adapter-registry.json`；带路径的目录行只允许出现在 `probe` 这一格里，
+        且那一格自己写明 `scope=local_read`、`command=backend.core.probes.run_read_probes
+        (read-only)`。连接面的 `work-adapters` 行同样答 `state=NOT_PROBED`、
+        `authorization=NOT_GRANTED`、`evidence=None`、`connection_observed_by_probe=None`。
+    (b) 唯一把这些路径端出去的产品答复是 WORK 快照的 `adapterCapabilities`，而路径只待在
+        路径格里（本轮全量卡片里带盘符的键集合恰为 {"versionSource"}），带路径的那张卡片旁边
+        必须仍是未探测/未合格的词：`detectionEvidenceState=UNVERIFIED`、
+        `nativeStatus=NOT_IMPLEMENTED`、七层里唯一 MET 的是 REGISTERED 且
+        `evidenceLevel=SYNTHETIC`、reason 自己写明"是声明不是探测"；整份快照里出现的
+        `*VERIFIED` 词只有 UNVERIFIED 与 STATIC_UNVERIFIED，没有裸 VERIFIED。
+    反证④：在 tmp 的合成台账里把 hermes 的 `detection.evidence_state` 顶成 VERIFIED、mode 写成
+    live-session-readback——上面的不变量清单立刻非空（具名规则
+    READBACK_PATH_PROMOTED_TO_VERIFIED），且卡片答复确实把 VERIFIED 端了出去（证明这条判断
+    不是空转）；把该条目逐字节还原，清单重新为空。
+    没证明：路径本身对不对、那台机器上装了什么——节点只约束它作为"依据"的资格；`/api/environment`
+    里的 `C:/…` 是本工作区自己的根路径（全局环境答复的本分），不在本节点的禁止清单里，已按面
+    分开断言；没有真实宿主探测、没有真人验收；`entryProbe` 本轮恒为 None（受管探测记录不在仓内），
+    所以"路径可以出现在 entryProbe 的 argv 里"这一格只是把未来的合法形状留着，不是宣称它已发生。
+    """
+    import re
+
+    from domains.work.control import composition_root
+    from domains.work.orchestration import resources
+
+    registry_bytes_before = resources.adapter_registry_path().read_bytes()
+    managed_config_before = _cfg_digest_tree(resources.config_dir())
+
+    # 台账里"整格就是一条本机绝对路径"的值——先证明这个集合非空，下面的比对才不是空转
+    machine_paths = _cfg_registry_machine_paths()
+    assert machine_paths, "adapter-registry 里应至少有一格整值就是本机绝对路径"
+    bodies: dict = {}
+    for path in ("/api/v1/capabilities", "/api/v1/connections", "/api/v1/tools",
+                 "/api/work/control/descriptor", "/api/work/surface-map"):
+        status, body = server.client.get(path)
+        assert status == 200, (path, body)
+        bodies[path] = body
+        values = _cfg_strings(body, [])
+        leaked = sorted(item for item in machine_paths
+                        if any(item in value for value in values))
+        assert leaked == [], (path, leaked)
+
+    status, catalog = server.client.get("/api/v1/capabilities")
+    assert status == 200, catalog
+    carriers = sorted({key for row in catalog["capabilities"] for key, value in row.items()
+                       if _cfg_machine_path(value)})
+    assert carriers == ["probe"], carriers          # 路径只在探测格里，不在判决格里
+    probed = [row for row in catalog["capabilities"] if _cfg_machine_path(row.get("probe"))]
+    assert probed and all(row["probe"]["scope"] == "local_read" for row in probed), \
+        [(row["capability_id"], row["probe"]["scope"]) for row in probed]
+    assert all(row["probe"]["command"] == "backend.core.probes.run_read_probes (read-only)"
+               for row in probed), {row["probe"]["command"] for row in probed}
+    assert all(row["qualification"] in ("VERIFIED", "NOT_VERIFIED", "EXPIRED")
+               for row in probed), [(row["capability_id"], row["qualification"])
+                                    for row in probed]
+    executors = _cfg_catalog_row(catalog, "work.executors")
+    assert executors["source_refs"] == ["work:config/adapter-registry.json"], executors
+    assert executors["qualification"] == "NOT_PROBED" == executors["connection_state"], executors
+    assert executors["can_invoke"] is False and executors["probe"] is None, executors
+    assert any("qualification" in reason for reason in executors["unavailable_reasons"])
+    status, connections = server.client.get("/api/v1/connections")
+    adapters = next(row for row in connections["connections"]
+                    if row["connection_id"] == "work-adapters")
+    assert adapters["tool_ref"] == "config/adapter-registry.json", adapters
+    assert adapters["state"] == "NOT_PROBED" and adapters["authorization"] == "NOT_GRANTED"
+    assert adapters["evidence"] is None and adapters["connection_observed_by_probe"] is None
+
+    snapshot = _cfg_snapshot(server.client)
+    cards = snapshot["adapterCapabilities"]
+    card_carriers = sorted({key for card in cards for key, value in card.items()
+                            if _cfg_machine_path(value)})
+    assert card_carriers == ["versionSource"], card_carriers
+    with_path = [card["clientId"] for card in cards if _cfg_machine_path(card.get("versionSource"))]
+    assert with_path, "本轮台账里应至少有一条带本机路径的读回出处，否则下面的邻接断言是空转"
+    assert _cfg_path_spread_violations(cards) == [], _cfg_path_spread_violations(cards)
+    for card in cards:
+        if card["clientId"] not in with_path:
+            assert card.get("versionSource") in (None, "") or not _cfg_machine_path(
+                card["versionSource"]), card["clientId"]
+    hermes = _cfg_card(cards, CFG_LOCAL_CLIENT)
+    assert hermes["detectionEvidenceState"] == "UNVERIFIED", hermes
+    assert hermes["nativeStatus"] == "NOT_IMPLEMENTED", hermes
+    met = [layer["layer"] for layer in hermes["layers"] if layer["state"] == "MET"]
+    assert met == ["REGISTERED"], met
+    assert hermes["layers"][0]["evidenceLevel"] == "SYNTHETIC", hermes["layers"][0]
+    assert "声明" in hermes["layers"][0]["reason"] and "探测" in hermes["layers"][0]["reason"]
+    assert re.sub(r"UNVERIFIED|STATIC_UNVERIFIED", "", json.dumps(snapshot,
+                                                                  ensure_ascii=False)
+                  ).count("VERIFIED") == 0, "快照里出现了没有被 UN/STATIC_UN 前缀保护的 VERIFIED"
+
+    # —— 反证④：把未探测顶成已验证 ——
+    shadow = _cfg_shadow_root(tmp_path)
+    _cfg_apply_registry_variant(shadow, tmp_path, "promote")
+    monkeypatch.setattr(composition_root, "_ROOT", shadow)
+    promoted = _cfg_cards(server.client)
+    assert _cfg_card(promoted, CFG_LOCAL_CLIENT)["detectionEvidenceState"] == "VERIFIED"
+    violations = _cfg_path_spread_violations(promoted)
+    assert violations and {item["rule"] for item in violations} == \
+        {"READBACK_PATH_PROMOTED_TO_VERIFIED"}, violations
+    _cfg_apply_registry_variant(shadow, tmp_path, "restore")
+    assert _cfg_path_spread_violations(_cfg_cards(server.client)) == []
+
+    assert resources.adapter_registry_path().read_bytes() == registry_bytes_before
+    assert _cfg_digest_tree(resources.config_dir()) == managed_config_before

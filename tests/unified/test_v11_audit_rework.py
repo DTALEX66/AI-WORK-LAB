@@ -957,3 +957,996 @@ def test_f09_observer_events_surface_serves_real_sse_frames(server):
     assert "/api/v1/events" in mapping["compatibility_map"], mapping
     assert "bounded" in mapping["compatibility_map"]["/api/v1/events"], mapping
     assert sse_hub.SNAPSHOT.lower() == "snapshot"
+
+
+# ------------------------------------------------------------------- 05#L8|issues 链完整性
+#
+# 登记行：`migration/capability-family-register.csv` 行 `05#L8|issues`（PARTIAL）。缺口原文：
+# 「『问题、修复、尝试和证据链可追溯』的链完整性无独立断言，现有测试断言的是读通与 control 门」。
+# 下列节点断言链本身，不断言"读得通"。链按代码里真实存在的环节取，六道标识、五个跳转：
+#
+#   ① 问题行  domains/work/workflow_core/issue_projection.py:567 `load_issues`
+#              行形状在同文件 :177-206 `_issue`：只有 fingerprint / evidenceRef / origin，
+#              没有任何指向修复包/尝试/结果的字段（这一点在下面按缺陷断言，不代为补齐）。
+#   ② 修复包  domains/work/workflow_core/repair_pack_projection.py:231-272
+#              `binds.issueFingerprints` / `binds.evidenceRefs`；packId 内容寻址于 :91-96。
+#   ③ 存储行  domains/work/workflow_core/canonical_store.py:1122-1176 表 `action_plans`
+#              快照 payload 由 domains/work/workflow_core/repair_state.py:77-90 写入。
+#   ④ 尝试    backend/v1.py:659-683 → backend/core/unified_store.py:448-492
+#              `pack_plan_id` / `pack_ref.issue_fingerprints` / `binding_sha256`。
+#   ⑤ 结果    backend/v1.py:910-934 → backend/core/unified_store.py:506-544
+#              `task_id` / `attempt_id` / `pack_id` / `binding` / `subject_fingerprint`。
+#   ⑥ 判定    backend/v1.py:978-984 → backend/core/unified_store.py:580-617
+#              `result_id` / `subject_fingerprint` / `origin_chain`。
+#   反向闭合  backend/v1.py:987-995 → repair_state.py:308-311
+#              修复记录的 `outcome.evidenceRefs` = `"unified-verification:<判定 id>"`。
+#
+# 产品自己的完整性面只有两处，且都不覆盖 ②→③→④ 这几跳：
+# `backend/core/unified_store.py:739-812 integrity_report`（只在统一库内查存在性与摘要，
+# 从不打开 work 库，也不复查 result.attempt_id 与 result.task_id 是否同属一个任务）与
+# `backend/core/unified_store.py:661-737 completion_support`。所以这里的谓词是新增断言面，
+# 不是把已有读面换个说法再读一遍。
+
+#: 每次都变的字段只有一个，且是被设计成会变（耗时），点名它而不是整段忽略。
+CHAIN_VOLATILE_FIELDS = ("summary.cost.elapsedMs",)
+#: 稳定性比较里用来替换易变字段的哨兵值；它不出现在任何存储行里。
+CHAIN_STABILITY_SENTINEL = "__VOLATILE_NORMALIZED__"
+#: 钉死的投影时刻：投影把它原样写进 summary.generatedAt（issue_projection.py:490）。
+CHAIN_PINNED_AT = "2026-11-01T00:00:00Z"
+
+#: evidenceRef 的"表 → 取行方法 + 行主键"。方法名和主键都取自 issue_projection 自己的
+#: 生产者（:214-263 collector_health、:302-338 telemetry、:341-379 executions、:382-401 tasks），
+#: 前缀映射直接读该模块导出的 EVIDENCE_REF_SOURCES（:41-46），不在测试里另立一套名字。
+CHAIN_EVIDENCE_TABLES = {
+    "collector_health": ("list_collector_health", "name"),
+    "telemetry_events": ("list_telemetry_events", "event_id"),
+    "execution_instances": ("list_executions", "execution_id"),
+    "tasks": ("list_tasks", "task_id"),
+}
+
+
+def _chain_evidence_rows(store):
+    """把每条 evidenceRef 解析回它自己声明的那张表里的真实行：ref -> row。"""
+    from domains.work.workflow_core import issue_projection
+    prefix_for_source = {source: prefix
+                         for prefix, source in issue_projection.EVIDENCE_REF_SOURCES.items()}
+    assert set(prefix_for_source) == set(CHAIN_EVIDENCE_TABLES), \
+        "issue_projection 的来源映射与本节点的解析表已漂移：%r vs %r" % (
+            sorted(prefix_for_source), sorted(CHAIN_EVIDENCE_TABLES))
+    rows = {}
+    for source, (method, key) in CHAIN_EVIDENCE_TABLES.items():
+        call = getattr(store, method)
+        listed = call(limit=5000) if method == "list_telemetry_events" else call()
+        prefix = prefix_for_source[source]
+        for row in listed:
+            ident = str(row.get(key) or "")
+            if ident:
+                rows["%s:%s" % (prefix, ident)] = row
+    return rows
+
+
+def _repair_target_root(server):
+    """本节点自建的目标根：只放 repair_pack_projection._verification（:164-169）要数的那一个
+    入口文件。该函数只判断文件在不在，永不执行它；文件内容因此是空壳说明，不是可跑的门。"""
+    from pathlib import Path
+
+    root = Path(server.workspace) / "repair-target-fixture"
+    gate = root / "services" / "orchestration" / "run_quality_gate.py"
+    gate.parent.mkdir(parents=True, exist_ok=True)
+    if not gate.is_file():
+        gate.write_text("# 夹具目标根：只用于 repair_pack_projection._verification 的存在性检查，"
+                        "本仓与产品代码都不会执行它\n", encoding="utf-8", newline="")
+    return root
+
+
+def _issue_row_for(store, evidence_ref):
+    """按 evidenceRef 从真实投影里取那一行问题（不是构造出来的行）。"""
+    from domains.work.workflow_core import issue_projection
+
+    issues, _summary, absent = issue_projection.load_issues(store, generated_at=CHAIN_PINNED_AT)
+    assert issues is not None, "问题投影没读起来：" + repr(absent)
+    matches = [row for row in issues if row["evidenceRef"] == evidence_ref]
+    assert len(matches) == 1, (evidence_ref, [row["evidenceRef"] for row in issues])
+    return matches[0]
+
+
+def _work_chain(server, *, collector, attempt_key, declared_result_id, title):
+    """在真实服务上跑出一条链的前五环：问题 → 包 → 存储行 → 尝试 → 已导入结果。
+
+    返回的 dict 里 `attempt`/`result` 只带 id：断言用的一切都由 `_chain_state` 之后按 id
+    从两份存储重读，不拿响应体当证据。
+    """
+    seed_issue(server.work.store, name=collector, failures=3)
+    issue = _issue_row_for(server.work.store, "collector_health:" + collector)
+    status, project = server.client.post("/api/v1/projects", {
+        "name": title, "source": "work", "root_path": str(_repair_target_root(server))})
+    assert status == 201, project
+    status, task = server.client.post("/api/v1/tasks", {
+        "project_id": project["project_id"], "kind": "work", "title": title,
+        "input_refs": [{"kind": "work_project", "project_id": project["project_id"]}],
+        "acceptance": {"professional_required": False}})
+    assert status == 201, task
+    status, attempt = server.client.post(f"/api/v1/tasks/{task['task_id']}/attempts",
+                                         {"idempotency_key": attempt_key})
+    assert status == 201, attempt
+    status, packed = server.client.post(f"/api/v1/attempts/{attempt['attempt_id']}/pack", {})
+    assert status == 201, packed
+    pack = packed["pack"]
+    write_grants(server)
+    status, approval = server.client.post(f"/api/v1/attempts/{attempt['attempt_id']}/approval",
+                                          {"authorization_ref": "g-test-1", "expected_version": 1})
+    assert status == 200, (approval, pack["status"], pack["readiness"])
+    status, handoff = server.client.post(
+        f"/api/v1/attempts/{attempt['attempt_id']}/handoff-declarations",
+        {"claim": "copiedByUser", "target_version": "work-store-v1",
+         "channel": "manual-copy", "actor": "user"})
+    assert status == 200, handoff
+    document = _result_document(pack["packId"], project["project_id"],
+                                result_id=declared_result_id, produced_at=produced_after(handoff))
+    document["evidenceRefs"] = ["collector_health:" + collector]
+    status, imported = server.client.post(f"/api/v1/attempts/{attempt['attempt_id']}/results",
+                                          {"result": document, "data_origin": "test"})
+    assert status == 201, imported
+    return {"collector": collector, "issue": issue, "pack": pack, "handoff": handoff,
+            "project_id": project["project_id"], "task_id": task["task_id"],
+            "attempt_id": attempt["attempt_id"], "pack_id": pack["packId"],
+            "result_id": imported["result"]["result_id"], "verdict_ids": []}
+
+
+def _chain_state(server, material):
+    """按 id 从两份存储重读整条链，交给谓词。缺环在这里成为 None，由谓词点名。
+
+    `record` 按"本节点在验的那把包 id"取行；`record_for_attempt` 按"尝试行自己写的名字"取行。
+    两个槽都必须存在：反向可追溯走的是尝试行写下的那个名字，把两者混成一个槽就会让
+    `attempts.pack_plan_id` 指向不存在之物这一跳永远报不出红。
+    """
+    record = server.work.read_record(material["pack_id"])
+    attempt = server.unified.get_attempt(material["attempt_id"])
+    attempt_pack_id = str(attempt.get("pack_plan_id") or "") if attempt else ""
+    record_for_attempt = server.work.read_record(attempt_pack_id) if attempt_pack_id else None
+    result = server.unified.get_result(material["result_id"])
+    verdicts = list((result or {}).get("verifications") or [])
+    return {
+        "issue": material["issue"],
+        "pack": material["pack"],
+        "record": record,
+        "record_for_attempt": record_for_attempt,
+        "attempt": attempt,
+        "task": server.unified.get_task(material["task_id"]),
+        "project": server.unified.get_project(material["project_id"]),
+        "result": result,
+        "verdicts": verdicts,
+        "verifications_by_id": {str(row["verification_id"]): row for row in verdicts},
+        "evidence_rows": _chain_evidence_rows(server.work.store),
+        "attempt_id": material["attempt_id"],
+        "result_id": material["result_id"],
+        "bound_fingerprint": material["issue"]["fingerprint"],
+    }
+
+
+def _chain_link_problems(chain):
+    """正向链完整性：每一项引用都必须解析到同一份存储里的真实行，同一标识在所有出现处逐字相同。
+
+    每条问题串都带上断掉的那一环的 id——谓词的职责就是点名，不是给一个布尔。
+    """
+    problems = []
+    issue = chain.get("issue") or {}
+    pack = chain.get("pack") or {}
+    record = chain.get("record")
+    attempt = chain.get("attempt")
+    task = chain.get("task")
+    project = chain.get("project")
+    result = chain.get("result")
+    verdicts = chain.get("verdicts") or []
+    evidence_rows = chain.get("evidence_rows") or {}
+    verifications_by_id = chain.get("verifications_by_id") or {}
+    binds = pack.get("binds") or {}
+    pack_id = str(pack.get("packId") or "")
+    fingerprint = str(issue.get("fingerprint") or "")
+    ref = str(issue.get("evidenceRef") or "")
+
+    # 环①→存储：问题行自带的 evidence 标识必须落在一张真实行上
+    if not ref:
+        problems.append("ISSUE_REF_MISSING:" + fingerprint)
+    elif evidence_rows.get(ref) is None:
+        problems.append("ISSUE_REF_UNRESOLVED:" + ref + " (fingerprint " + fingerprint + ")")
+
+    # 环①→②：包要绑定这一行问题，并带上它的 evidence 标识
+    bound = [str(item) for item in binds.get("issueFingerprints") or []]
+    if fingerprint and fingerprint not in bound:
+        problems.append("PACK_OMITS_ISSUE:" + fingerprint + " (pack " + pack_id + ")")
+    bound_refs = [str(item) for item in binds.get("evidenceRefs") or []]
+    if ref and ref not in bound_refs:
+        problems.append("PACK_OMITS_EVIDENCE_REF:" + ref + " (pack " + pack_id + ")")
+    for item in bound_refs:
+        if evidence_rows.get(item) is None:
+            problems.append("PACK_BIND_REF_UNRESOLVED:" + item + " (pack " + pack_id + ")")
+
+    # 环②→③：包必须真的落成一存储行，且行里的快照与包说的是同一件事
+    if record is None:
+        problems.append("PACK_RECORD_ABSENT:" + pack_id)
+    else:
+        snapshot = (record.get("payload") or {}).get("pack") or {}
+        if str(record.get("planId") or "") != pack_id:
+            problems.append("PACK_RECORD_KEY_SPLIT:%r!=%r" % (record.get("planId"), pack_id))
+        if str(snapshot.get("packId") or "") != pack_id:
+            problems.append("PACK_RECORD_SNAPSHOT_ID_SPLIT:%s stores %r"
+                            % (pack_id, snapshot.get("packId")))
+        snap_binds = [str(item) for item in (snapshot.get("binds") or {}).get("issueFingerprints") or []]
+        if snap_binds != bound:
+            problems.append("PACK_RECORD_BINDS_SPLIT:%s stores %r projects %r"
+                            % (pack_id, snap_binds, bound))
+        if project is not None and str(record.get("projectId") or "") != str(
+                project.get("project_id") or ""):
+            problems.append("PACK_RECORD_PROJECT_SPLIT:%s names %r, task project is %r"
+                            % (pack_id, record.get("projectId"), project.get("project_id")))
+
+    # 环③→④：尝试行的 pack_plan_id / pack_ref 必须指回同一包、同一组指纹
+    if attempt is None:
+        problems.append("ATTEMPT_ABSENT:" + str(chain.get("attempt_id") or ""))
+    else:
+        attempt_id = str(attempt.get("attempt_id") or "")
+        if str(attempt.get("pack_plan_id") or "") != pack_id:
+            problems.append("ATTEMPT_PACK_LINK_SPLIT:%s names %r, the pack under test is %r"
+                            % (attempt_id, attempt.get("pack_plan_id"), pack_id))
+        pack_ref = attempt.get("pack_ref") or {}
+        if str(pack_ref.get("pack_id") or "") != pack_id:
+            problems.append("ATTEMPT_PACK_REF_ID_SPLIT:%s names %r" % (attempt_id, pack_ref.get("pack_id")))
+        if sorted(str(item) for item in pack_ref.get("issue_fingerprints") or []) != sorted(bound):
+            problems.append("ATTEMPT_PACK_REF_FINGERPRINTS_SPLIT:%s has %r, pack binds %r"
+                            % (attempt_id, pack_ref.get("issue_fingerprints"), bound))
+        if sorted(str(item) for item in pack_ref.get("evidence_refs") or []) != sorted(bound_refs):
+            problems.append("ATTEMPT_PACK_REF_EVIDENCE_SPLIT:%s has %r, pack binds %r"
+                            % (attempt_id, pack_ref.get("evidence_refs"), bound_refs))
+        if task is not None and str(attempt.get("task_id") or "") != str(task.get("task_id") or ""):
+            problems.append("ATTEMPT_TASK_SPLIT:%s belongs to %r, task row is %r"
+                            % (attempt_id, attempt.get("task_id"), task.get("task_id")))
+        if task is not None and str(task.get("current_attempt_id") or "") != attempt_id:
+            problems.append("TASK_CURRENT_ATTEMPT_SPLIT:%s names %r"
+                            % (task.get("task_id"), task.get("current_attempt_id")))
+
+    # 环④→⑤：结果行的三个标识与绑定块必须彼此一致
+    if result is None:
+        problems.append("RESULT_ABSENT:" + str(chain.get("result_id") or ""))
+    else:
+        result_id = str(result.get("result_id") or "")
+        if attempt is not None:
+            if str(result.get("attempt_id") or "") != str(attempt.get("attempt_id") or ""):
+                problems.append("RESULT_ATTEMPT_SPLIT:%s names attempt %r, the attempt under test is %r"
+                                % (result_id, result.get("attempt_id"), attempt.get("attempt_id")))
+            if str(result.get("task_id") or "") != str((attempt or {}).get("task_id") or ""):
+                problems.append("RESULT_TASK_ATTEMPT_SPLIT:%s names task %r, its attempt belongs to %r"
+                                % (result_id, result.get("task_id"), attempt.get("task_id")))
+            if str(result.get("subject_fingerprint") or "") != str(attempt.get("binding_sha256") or ""):
+                problems.append("RESULT_SUBJECT_NOT_ATTEMPT_BINDING:%s certifies %r, attempt pins %r"
+                                % (result_id, result.get("subject_fingerprint"),
+                                   attempt.get("binding_sha256")))
+            if str(result.get("pack_id") or "") != str(attempt.get("pack_plan_id") or ""):
+                problems.append("RESULT_PACK_LINK_SPLIT:%s answers pack %r, its attempt names %r"
+                                % (result_id, result.get("pack_id"), attempt.get("pack_plan_id")))
+        binding = result.get("binding") or {}
+        for field, row_field in (("task_id", "task_id"), ("attempt_id", "attempt_id"),
+                                 ("pack_id", "pack_id")):
+            if str(binding.get(field) or "") != str(result.get(row_field) or ""):
+                problems.append("RESULT_BINDING_SPLIT:%s binding.%s=%r row.%s=%r"
+                                % (result_id, field, binding.get(field), row_field,
+                                   result.get(row_field)))
+        for item in result.get("artifact_refs") or []:
+            if evidence_rows.get(str(item)) is None:
+                problems.append("RESULT_ARTIFACT_REF_UNRESOLVED:%s (result %s)"
+                                % (item, result_id))
+
+    # 环⑤→⑥：判定必须挂在真实结果行上，认证的是那一行自己的字节摘要
+    for row in verdicts:
+        verdict_id = str(row.get("verification_id") or "")
+        if result is not None and str(row.get("result_id") or "") != str(
+                result.get("result_id") or ""):
+            problems.append("VERDICT_RESULT_SPLIT:%s names result %r" % (verdict_id, row.get("result_id")))
+        if result is not None and str(row.get("subject_fingerprint") or "") != str(
+                result.get("content_sha256") or ""):
+            problems.append("VERDICT_SUBJECT_NOT_RESULT_DIGEST:%s certifies %r, result digest is %r"
+                            % (verdict_id, row.get("subject_fingerprint"), result.get("content_sha256")))
+
+    # 反向闭合：修复记录写回的判定 id 必须能在统一库里解析到行
+    outcome = ((record or {}).get("payload") or {}).get("outcome") or {}
+    for item in outcome.get("evidenceRefs") or []:
+        text = str(item)
+        if text.startswith("unified-verification:"):
+            if text.split(":", 1)[1] not in verifications_by_id:
+                problems.append("CLOSURE_EVIDENCE_UNRESOLVED:" + text + " (pack " + pack_id + ")")
+    return problems
+
+
+def _reverse_trace_problems(chain):
+    """反向可追溯：从一条判定出发找回它的结果、尝试、包存储行和那一条问题，标识逐字相同。"""
+    problems = []
+    verdicts = chain.get("verdicts") or []
+    if not verdicts:
+        return ["REVERSE_NO_VERDICT_TO_TRACE_BACK"]
+    result = chain.get("result")
+    attempt = chain.get("attempt")
+    task = chain.get("task")
+    # 反向那一跳要按尝试行自己写下的名字去找存储行，不是按测试带来的包 id
+    record = chain["record_for_attempt"] if "record_for_attempt" in chain else chain.get("record")
+    fingerprint = str(chain.get("bound_fingerprint") or "")
+    for row in verdicts:
+        verdict_id = str(row.get("verification_id") or "")
+        result_id = str(row.get("result_id") or "")
+        if result is None:
+            problems.append("REVERSE_RESULT_ABSENT:%s (from verdict %s)" % (result_id, verdict_id))
+            continue
+        if str(result.get("result_id") or "") != result_id:
+            problems.append("REVERSE_RESULT_ID_SPLIT:verdict %s names %r, loaded row is %r"
+                            % (verdict_id, result_id, result.get("result_id")))
+        attempt_id = str(result.get("attempt_id") or "")
+        if attempt is None:
+            problems.append("REVERSE_ATTEMPT_ABSENT:%s (from result %s)" % (attempt_id, result_id))
+            continue
+        if str(attempt.get("attempt_id") or "") != attempt_id:
+            problems.append("REVERSE_ATTEMPT_ID_SPLIT:result %s names %r, loaded row is %r"
+                            % (result_id, attempt_id, attempt.get("attempt_id")))
+        task_id = str(attempt.get("task_id") or "")
+        if task is None:
+            problems.append("REVERSE_TASK_ABSENT:%s (from attempt %s)" % (task_id, attempt_id))
+            continue
+        if str(task.get("task_id") or "") != task_id:
+            problems.append("REVERSE_TASK_ID_SPLIT:attempt %s names %r, loaded row is %r"
+                            % (attempt_id, task_id, task.get("task_id")))
+        pack_id = str(attempt.get("pack_plan_id") or "")
+        if record is None:
+            problems.append("REVERSE_PACK_RECORD_ABSENT:%s (named by attempt %s)" % (pack_id, attempt_id))
+            continue
+        if str(record.get("planId") or "") != pack_id:
+            problems.append("REVERSE_PACK_RECORD_ID_SPLIT:attempt %s names %r, row key is %r"
+                            % (attempt_id, pack_id, record.get("planId")))
+        snapshot = (record.get("payload") or {}).get("pack") or {}
+        snap_binds = [str(item) for item in (snapshot.get("binds") or {}).get("issueFingerprints") or []]
+        if fingerprint and fingerprint not in snap_binds:
+            problems.append("REVERSE_PACK_OMITS_ISSUE:%s not in %r (record %s)"
+                            % (fingerprint, snap_binds, pack_id))
+    return problems
+
+
+def _chain_text(document, volatile_paths=()):
+    """逐字节序列化；只对 CHAIN_VOLATILE_FIELDS 点名的字段套上哨兵，其余一个字节都不放。"""
+    mutated = json.loads(json.dumps(document, ensure_ascii=False))
+    for path in volatile_paths:
+        node = mutated
+        parts = path.split(".")
+        for part in parts[:-1]:
+            node = node[part] if not part.isdigit() else node[int(part)]
+        if parts[-1] not in node:
+            raise AssertionError("声明的易变字段不在投影输出里：" + path)
+        node[parts[-1]] = CHAIN_STABILITY_SENTINEL
+    return json.dumps(mutated, ensure_ascii=False)
+
+
+def _synthetic_chain():
+    """一份与真实存储行同形状的干净链（供纯谓词反证用；id 全为 32 hex，包 id 按 :91-96 形状）。"""
+    pack_id = "rp-" + "a" * 32 + "-manual-copy-" + "b" * 16
+    fingerprint = "243173877b8a0bf4"
+    ref = "collector_health:chain-collector"
+    attempt_id, task_id, result_id = "c" * 32, "d" * 32, "e" * 32
+    verdict_id = "f" * 32
+    binding = "1" * 64
+    digest = "2" * 64
+    document = {
+        "issue": {"fingerprint": fingerprint, "evidenceRef": ref, "origin": "collector_health",
+                  "class": "SOURCE_FAILURE", "projectId": None, "subject": "chain-collector"},
+        "pack": {"packId": pack_id,
+                 "binds": {"issueFingerprints": [fingerprint], "evidenceRefs": [ref],
+                           "issueCount": 1}},
+        "record": {"planId": pack_id, "projectId": "project-1",
+                   "payload": {"pack": {"packId": pack_id,
+                                        "binds": {"issueFingerprints": [fingerprint]}},
+                               "outcome": {"evidenceRefs": ["unified-verification:" + verdict_id]}}},
+        "attempt": {"attempt_id": attempt_id, "task_id": task_id, "pack_plan_id": pack_id,
+                    "binding_sha256": binding,
+                    "pack_ref": {"pack_id": pack_id, "issue_fingerprints": [fingerprint],
+                                 "evidence_refs": [ref]}},
+        "task": {"task_id": task_id, "current_attempt_id": attempt_id, "project_id": "project-1"},
+        "project": {"project_id": "project-1"},
+        "result": {"result_id": result_id, "task_id": task_id, "attempt_id": attempt_id,
+                   "pack_id": pack_id, "subject_fingerprint": binding, "content_sha256": digest,
+                   "artifact_refs": [ref],
+                   "binding": {"task_id": task_id, "attempt_id": attempt_id, "pack_id": pack_id}},
+        "verdicts": [{"verification_id": verdict_id, "result_id": result_id,
+                      "subject_fingerprint": digest}],
+        "verifications_by_id": {verdict_id: {"verification_id": verdict_id, "result_id": result_id}},
+        "evidence_rows": {ref: {"name": "chain-collector"}},
+        "attempt_id": attempt_id,
+        "result_id": result_id,
+        "bound_fingerprint": fingerprint,
+    }
+    document["record_for_attempt"] = document["record"]
+    return document
+
+
+def test_issue_chain_forward_references_resolve_to_real_rows_in_the_same_store(server):
+    """链完整性·正向：一条问题的每一项引用都按 id 解析到同一份存储里的真实行。
+
+    四个来源同时在场（collector_health / telemetry_events / execution_instances / 迁移过来的
+    canonical tasks），所以修复包一次就绑定跨来源的多条 evidenceRef；本节点逐条解析回真实行，
+    并要求 `_chain_link_problems` 为空——空的意思是"每一环都指得到东西，且同一个 id 在各处逐字
+    相同"，不是"字段非空"。
+
+    验证过的真实链路（不是测试自己拼的关系）：
+      issue_projection.py:567→:177 出问题行；repair_pack_projection.py:231-272 绑定；
+      repair_state.py:77-90 + canonical_store.py:1122-1176 落 action_plans 行；
+      backend/v1.py:659-683 写 attempts.pack_plan_id/pack_ref/binding_sha256；
+      backend/v1.py:910-934 写 results；backend/v1.py:978-984 写 verifications。
+
+    明确没有证明：真宿主修好了什么（结果文档 data_origin=test，是夹具导入）；判定所依据的门能跑
+    （目标根里那个 run_quality_gate.py 只被存在性检查数到，从未执行）；真人验收；release。
+    另有两条已核实的形状事实留在下面的断言里，不代为补齐：问题行本身不带任何指向修复/尝试/结果的
+    引用（issue_projection.py:177-206），以及现有逐行校验器 `validate_issue`
+    （issue_projection.py:540-564）只看形状、不看引用指不指得到东西。
+    """
+    from backend.core import refs as ref_rules
+    from domains.work.workflow_core import issue_projection
+
+    store = server.work.store
+    collector = "chain-collector"
+    # 其余三个来源各来一条，让包一次绑定跨来源的引用
+    event_id = store.append_telemetry({
+        "project_id": "chain-project", "producer": collector, "metric": "coverage", "value": 1,
+        "unit": "rows", "occurred_at": "2026-10-30T08:00:00Z", "freshness": "STALE",
+        "coverage": "PARTIAL", "source": "chain-fixture", "category": "chain"})
+    store.upsert_execution_instance({
+        "executionId": "chain-execution-1", "anchorProjectId": "chain-project",
+        "agent": collector, "state": "RUNNING", "transportState": "STALE",
+        "startedAt": "2026-10-30T08:00:00Z"})
+    store.upsert_task({"task_id": "chain-work-task", "project_id": "chain-project",
+                       "status": "BLOCKED", "created_at": "2026-10-30T08:00:00Z",
+                       "updated_at": "2026-10-30T08:00:00Z"})
+
+    material = _work_chain(server, collector=collector, attempt_key="chain-a",
+                           declared_result_id="res-chain-a", title="链完整性·正向")
+    # 判定也跑一次，链上六道标识才齐全
+    status, verdict = server.client.post(
+        "/api/v1/results/%s/verifications" % material["result_id"], {"axis": "technical"})
+    assert status == 201, verdict
+    material["verdict_ids"].append(verdict["verification_id"])
+
+    chain = _chain_state(server, material)
+    issue = chain["issue"]
+    pack = chain["pack"]
+
+    # 环①：问题行的 evidence 标识解析到真实行，且投影自己把那个来源报成 read
+    rows, summary, _absent = issue_projection.load_issues(store, generated_at=CHAIN_PINNED_AT)
+    states = {str(item["source"]): str(item["state"]) for item in summary["sources"]}
+    assert states["collector_health"] == "read" and states["telemetry_events"] == "read" \
+        and states["execution_instances"] == "read" and states["tasks"] == "read", summary["sources"]
+    resolved = _chain_evidence_rows(store)
+    unresolved = [row["evidenceRef"] for row in rows if row["evidenceRef"] not in resolved]
+    assert unresolved == [], "这些 evidenceRef 指不到任何真实行：" + repr(unresolved)
+    assert resolved[issue["evidenceRef"]]["name"] == collector
+    # 另外三个来源的标识各自解析回我写入的那一行（前缀与来源名的映射来自 :41-46，不在这里另立）
+    assert resolved["telemetry:" + event_id]["event_id"] == event_id
+    assert resolved["execution_instances:chain-execution-1"]["anchor_project_id"] == "chain-project"
+    assert resolved["tasks:chain-work-task"]["status"] == "BLOCKED"
+
+    # 环②：包绑定的每一条引用都能解析；绑定数与包内 issueCount 对得上
+    bound_refs = [str(item) for item in pack["binds"]["evidenceRefs"]]
+    assert bound_refs and all(item in resolved for item in bound_refs), bound_refs
+    assert len(bound_refs) == pack["binds"]["issueCount"] == len(pack["binds"]["issueFingerprints"])
+    assert issue["fingerprint"] in pack["binds"]["issueFingerprints"], pack["binds"]
+
+    # 环③：包真的落成了存储行，快照与包同一条 packId、同一组指纹
+    record = server.work.read_record(material["pack_id"])
+    assert record is not None, "包没有落成 action_plans 行：" + material["pack_id"]
+    assert record["planId"] == material["pack_id"] == record["payload"]["pack"]["packId"]
+    assert (record["payload"]["pack"]["binds"]["issueFingerprints"]
+            == pack["binds"]["issueFingerprints"])
+
+    # 环④：尝试行的 pack_plan_id 就是那把存储行主键；绑定指纹与包一致
+    attempt = server.unified.get_attempt(material["attempt_id"])
+    assert attempt["pack_plan_id"] == material["pack_id"] == attempt["pack_ref"]["pack_id"]
+    assert sorted(attempt["pack_ref"]["issue_fingerprints"]) == sorted(pack["binds"]["issueFingerprints"])
+    assert sorted(attempt["pack_ref"]["evidence_refs"]) == sorted(bound_refs)
+
+    # 环⑤：结果行的三个标识 + 绑定块 + subject_fingerprint 彼此一致（subject 是尝试钉的绑定摘要）
+    result = server.unified.get_result(material["result_id"])
+    assert (result["task_id"], result["attempt_id"], result["pack_id"]) == (
+        material["task_id"], material["attempt_id"], material["pack_id"])
+    assert result["subject_fingerprint"] == attempt["binding_sha256"]
+    assert result["artifact_refs"] == ["collector_health:" + collector]
+    assert all(result["binding"][field] == result[field]
+               for field in ("task_id", "attempt_id", "pack_id")), result["binding"]
+
+    # 环⑥：判定认证的就是那一行结果的字节摘要
+    verdict_row = [row for row in result["verifications"]
+                   if row["verification_id"] == verdict["verification_id"]]
+    assert len(verdict_row) == 1, result["verifications"]
+    assert verdict_row[0]["subject_fingerprint"] == result["content_sha256"]
+
+    # 整条链的完整性谓词为空 = 每一环都指得到、每一个标识都逐字相同
+    assert _chain_link_problems(chain) == [], _chain_link_problems(chain)
+
+    # 两条现读到的形状事实（缺陷，不代为补齐）：
+    # (a) 问题行里没有任何指向修复/尝试/结果的字段——正向"这条问题有没有修复链"只能反过来扫
+    #     action_plans 才知道（见下面的反向节点）。
+    assert {"packId", "planId", "attemptId", "resultId", "repairRef", "repairPackId"}.isdisjoint(
+        issue.keys()), sorted(issue)
+    # (b) 现有逐行校验器只筛形状，引用指不指得到它看不见：把标识换成不存在的行，它照样说干净。
+    dangling = json.loads(json.dumps(issue))
+    dangling["evidenceRef"] = "collector_health:never-seen-collector"
+    assert issue_projection.validate_issue(dangling) == [], \
+        "validate_issue 已经会检查引用可达性——本节点的缺陷断言需按现读重写"
+    # 同一件事在写侧：`scheme:opaque` 标识只过形状筛（backend/core/refs.py:62-74），
+    # 存在性检查 `for_read` 只作用于相对路径分支。
+    assert ref_rules.validate("collector_health:never-seen-collector", allowed_roots=[]) \
+        == "collector_health:never-seen-collector"
+
+
+def test_issue_chain_broken_link_is_misattributed_rather_than_named(server):
+    """链完整性·断链点名：一环指不到东西时，产品现在报的是别的环。
+
+    植入方式与下一个节点相同（写侧改 `attempts.pack_plan_id`，跑完还原）：把它改成一个不存在
+    的包 id。真实观察到的回答是——技术判定 BLOCKED，`detail` 写「the pack bound no fingerprint
+    to re-check」，即把"包存储行读不到"说成"包没绑定任何指纹"，而整条判定里没有任何字段点名那个
+    缺失的包 id；`integrity_report()` 也不看这一环（它从不打开 work 库）。这两条按事实断言，
+    链谓词则必须点名。缺陷位置：backend/v1.py:1065-1069（`read_record` 落空即 `pack = {}`）
+    + domains/work/workflow_core/repair_verification.py:175-176（`not bound` 分支的这句 reason）
+    + backend/core/unified_store.py:739-812（报表不涉及跨库那一跳）。
+
+    明确没有证明：产品在这条链上有自动修复或补偿动作（没有）；判定为 BLOCKED 是否"足够"——
+    本节点只断言它是否点名断链，答案是否。
+    """
+    material = _work_chain(server, collector="chain-ghost-collector", attempt_key="chain-ghost",
+                           declared_result_id="res-chain-ghost", title="链完整性·断链")
+    ghost = "rp-ghost-pack-does-not-exist-manual-copy-0000000000000000"
+    attempt_before = server.unified.get_attempt(material["attempt_id"])
+    try:
+        server.unified.conn.execute("UPDATE attempts SET pack_plan_id=? WHERE attempt_id=?",
+                                    (ghost, material["attempt_id"]))
+        server.unified.conn.commit()
+        assert server.work.read_record(ghost) is None, "幽灵包竟然存在，本节点需按现读重写"
+        status, verdict = server.client.post(
+            "/api/v1/results/%s/verifications" % material["result_id"], {"axis": "technical"})
+        assert status == 201, verdict
+        assert verdict["outcome"] == "BLOCKED", verdict
+        # 它说的原因不是断链处：绑定数被降成 0，缺失的包 id 一次都没出现
+        assert verdict["detail"] == "the pack bound no fingerprint to re-check", verdict["detail"]
+        assert verdict["checks"]["fingerprints_absent"] == 0, verdict["checks"]
+        assert json.dumps(verdict, ensure_ascii=False).count(ghost) == 0, \
+            "判定已点名缺失的包，缺陷断言需按现读重写"
+        assert ghost not in json.dumps(server.unified.integrity_report(), ensure_ascii=False), \
+            "integrity_report 已覆盖这一跳，缺陷断言需按现读重写"
+        assert server.unified.integrity_report()["problems"] == [], server.unified.integrity_report()
+
+        # 同一状态下本块的链谓词点名它断在哪一环
+        chain = _chain_state(server, material)
+        named = [problem for problem in _chain_link_problems(chain)
+                 if problem.startswith("ATTEMPT_PACK_LINK_SPLIT")]
+        assert len(named) == 1 and ghost in named[0] and material["pack_id"] in named[0], named
+        assert _reverse_trace_problems(chain) == [
+            "REVERSE_PACK_RECORD_ABSENT:%s (named by attempt %s)"
+            % (ghost, material["attempt_id"])], _reverse_trace_problems(chain)
+    finally:
+        server.unified.conn.execute("UPDATE attempts SET pack_plan_id=? WHERE attempt_id=?",
+                                    (attempt_before["pack_plan_id"], material["attempt_id"]))
+        server.unified.conn.commit()
+    restored = server.unified.get_attempt(material["attempt_id"])
+    assert restored == attempt_before, "还原后尝试行与植入前不一致，本节点的还原证据不成立"
+    assert _chain_link_problems(_chain_state(server, material)) == []
+
+
+def test_issue_chain_reverse_trace_from_a_verdict_names_the_same_ids(server):
+    """链完整性·反向：从一条判定出发，结果→尝试→包存储行→问题，每跳都是同一个 id 字符串。
+
+    与"都非空"的区别在这里被钉成可检查的东西：判定带的 result_id 必须等于结果行主键；结果带的
+    attempt_id 必须等于尝试行主键，且该尝试的 task_id 必须等于结果行的 task_id；尝试带的
+    pack_plan_id 必须等于 action_plans 的主键，而那一行的快照 packs 里必须仍然绑定本节点那条问题
+    的指纹。指纹本身按 issue_projection.py:95 的同一函数从「class|projectId|subject」重算，
+    所以包→问题这一跳是内容寻址、可由行内容复算，不是一个无人维护的指针。
+
+    再加一条真正的跨库反向链：修复记录闭合时写回的
+    `outcome.evidenceRefs = ["unified-verification:<判定 id>"]`（backend/v1.py:987-995 →
+    repair_state.py:308-311）必须能在统一库里解析到那一行判定，且那行判定的 result_id 回到本链
+    的结果行。缺任何一环，`_reverse_trace_problems` 点名。
+
+    明确没有证明：修复本身（问题是被本节点把 consecutive_failures 归零"治好"的，属夹具动作）；
+    宿主/真人验收；跨机可复现的存储内容。
+    """
+    from domains.work.workflow_core import issue_projection
+
+    collector = "chain-reverse-collector"
+    material = _work_chain(server, collector=collector, attempt_key="chain-reverse",
+                           declared_result_id="res-chain-reverse", title="链完整性·反向")
+    status, failing = server.client.post(
+        "/api/v1/results/%s/verifications" % material["result_id"], {"axis": "technical"})
+    assert status == 201 and failing["outcome"] == "FAIL", failing
+    # 让问题真的离开投影（store 自己说没问题了），再验一次才拿得到 PASS 与闭合写回
+    seed_issue(server.work.store, name=collector, failures=0)
+    status, passing = server.client.post(
+        "/api/v1/results/%s/verifications" % material["result_id"], {"axis": "technical"})
+    assert status == 201 and passing["outcome"] == "PASS", passing
+    material["verdict_ids"] = [failing["verification_id"], passing["verification_id"]]
+
+    chain = _chain_state(server, material)
+    assert _reverse_trace_problems(chain) == [], _reverse_trace_problems(chain)
+    assert _chain_link_problems(chain) == [], _chain_link_problems(chain)
+
+    # 逐字相同的标识（不是"都非空"）
+    result = chain["result"]
+    attempt = chain["attempt"]
+    task = chain["task"]
+    record = chain["record"]
+    verdict_rows = {str(row["verification_id"]): row for row in result["verifications"]}
+    closed = verdict_rows[passing["verification_id"]]
+    assert closed["result_id"] == result["result_id"]
+    assert result["attempt_id"] == attempt["attempt_id"]
+    assert attempt["task_id"] == task["task_id"] == result["task_id"]
+    assert attempt["pack_plan_id"] == record["planId"] == record["payload"]["pack"]["packId"]
+    assert chain["issue"]["fingerprint"] in record["payload"]["pack"]["binds"]["issueFingerprints"]
+
+    # 跨库反向闭合：记录写回的判定 id 就是这一行判定
+    closure = record["payload"]["outcome"]["evidenceRefs"]
+    assert closure == ["unified-verification:" + passing["verification_id"]], closure
+    resolved = server.unified.get_verification(passing["verification_id"])
+    assert resolved is not None and resolved["result_id"] == result["result_id"]
+    assert resolved["axis"] == "technical" and resolved["outcome"] == "PASS"
+    assert record["status"] == "SUCCEEDED", record["status"]
+
+    # 指纹由问题行的身份三元组复算——包→问题这一跳不靠指针维持
+    recomputed = issue_projection._fingerprint(chain["issue"]["class"],
+                                               chain["issue"]["projectId"],
+                                               chain["issue"]["subject"])
+    assert recomputed == chain["issue"]["fingerprint"], (recomputed, chain["issue"])
+
+    # 两条判定都是链上的真实行；旧的 FAIL 不被新的 PASS 抹掉
+    assert len(result["verifications"]) == 2, result["verifications"]
+    assert [row["outcome"] for row in result["verifications"]] == ["FAIL", "PASS"]
+    assert server.unified.completion_support(task["task_id"])["supported"] is True
+    assert task["lifecycle"] == "COMPLETED", task["lifecycle"]
+
+
+def test_issue_chain_one_tampered_identifier_is_named_and_the_row_restores(server):
+    """链完整性·篡改：改一个标识指向另一个项目/另一个尝试/另一个包，谓词点名那一条，跑完还原。
+
+    三次植入都只改一个标识列（raw SQL，绕过合同——合同在写侧的拒绝已由 test_v03/v11 其他节点覆盖，
+    这里要的是"落地之后的行被改了"这一形状，也正是 integrity_report 存在的理由），每次都 try/finally
+    还原，并断言还原后整行与植入前逐字段相同（`==` 比较整行 dict，不比"看起来差不多"）。
+
+    产品自己的报表在这三件事上能力不同，按观察到的结果分别断言，不做统一美化：
+      ① `results.attempt_id` 改成另一项目另一尝试的 id：`integrity_report` 点名
+         COMPLETION_UNSUPPORTED，但 id 给的是**任务**，detail 给的是**尝试**，被篡改的结果行 id
+         一次都不出现（unified_store.py:767-773 只查 attempt/task 存在与否，不复查两者是否同属
+         一个任务——写侧规则在 unified_store.py:523-525）。链谓词点名结果行。
+      ② `attempts.pack_plan_id` 改成另一个包的 id：`integrity_report` **完全沉默**，技术判定拿去
+         回答另一个包的指纹集合并给出 PASS，任务据此 COMPLETED，而本链自己绑定的指纹仍在被产出；
+         还原标识后那条误判 PASS 与 COMPLETED 状态都还在（无补偿动作）。
+      ③ `verifications.result_id` 改成另一条结果：`integrity_report` 点名
+         VERIFICATION_SUBJECT_MISMATCH，id 就是被篡改的判定行本身——这是产品当前唯一会点名被篡改
+         行的那一跳。
+
+    明确没有证明：篡改能被自动发现并回滚（②证明它发现不了）；判定为 PASS 等于外部真修好了。
+    """
+    from domains.work.workflow_core import issue_projection
+
+    project_a = _work_chain(server, collector="chain-tamper-a", attempt_key="tamper-a",
+                            declared_result_id="res-tamper-a", title="链完整性·篡改A")
+    status, first = server.client.post(
+        "/api/v1/results/%s/verifications" % project_a["result_id"], {"axis": "technical"})
+    assert status == 201 and first["outcome"] == "FAIL", first
+    # A 绑定的问题从投影里消失（consecutive_failures 归零），A 才可能闭合
+    seed_issue(server.work.store, name="chain-tamper-a", failures=0)
+    status, closed_a = server.client.post(
+        "/api/v1/results/%s/verifications" % project_a["result_id"], {"axis": "technical"})
+    assert status == 201 and closed_a["outcome"] == "PASS", closed_a
+    project_a["verdict_ids"] = [first["verification_id"], closed_a["verification_id"]]
+    clean_report = server.unified.integrity_report()
+    assert clean_report["problems"] == [], clean_report
+    assert _chain_link_problems(_chain_state(server, project_a)) == []
+
+    # B 在另一个项目、另一个尝试上：此时 A 的指纹已离开投影，所以 B 的包只绑 B 自己的指纹
+    project_b = _work_chain(server, collector="chain-tamper-b", attempt_key="tamper-b",
+                            declared_result_id="res-tamper-b", title="链完整性·篡改B")
+    assert project_b["pack"]["binds"]["issueFingerprints"] == [project_b["issue"]["fingerprint"]]
+    assert project_b["project_id"] != project_a["project_id"]
+    assert _chain_link_problems(_chain_state(server, project_b)) == []
+
+    # ---- ① 结果标识指向另一项目的另一尝试 -------------------------------------
+    result_before = server.unified.get_result(project_a["result_id"])
+    try:
+        server.unified.conn.execute("UPDATE results SET attempt_id=? WHERE result_id=?",
+                                    (project_b["attempt_id"], project_a["result_id"]))
+        server.unified.conn.commit()
+        problems = _chain_link_problems(_chain_state(server, project_a))
+        named = [item for item in problems if item.startswith("RESULT_ATTEMPT_SPLIT")]
+        assert len(named) == 1 and project_a["result_id"] in named[0] \
+            and project_b["attempt_id"] in named[0], problems
+        # 结果行自带的绑定块当场与行自身说法不一致——它是行内自证，不依赖任何跨库读
+        assert any(item.startswith("RESULT_BINDING_SPLIT") and "attempt_id" in item
+                   for item in problems), problems
+        reversed_problems = _reverse_trace_problems(_chain_state(server, project_a))
+        expected_split = ("REVERSE_ATTEMPT_ID_SPLIT:result %s names %r, loaded row is %r"
+                          % (project_a["result_id"], project_b["attempt_id"],
+                             project_a["attempt_id"]))
+        # 两条判定都挂在这行结果上，于是同一处断裂被逐条点出两次：一次都没有漏，也没有别的
+        assert reversed_problems and set(reversed_problems) == {expected_split}, reversed_problems
+        report = server.unified.integrity_report()["problems"]
+        kinds = {str(item["kind"]) for item in report}
+        assert "COMPLETION_UNSUPPORTED" in kinds, report
+        ids = {str(item["id"]) for item in report}
+        assert project_a["task_id"] in ids, report
+        assert project_a["result_id"] not in json.dumps(report, ensure_ascii=False), \
+            "报表已点名被篡改的结果行——本节点的缺陷断言需按现读重写"
+    finally:
+        server.unified.conn.execute("UPDATE results SET attempt_id=? WHERE result_id=?",
+                                    (result_before["attempt_id"], project_a["result_id"]))
+        server.unified.conn.commit()
+    assert server.unified.get_result(project_a["result_id"]) == result_before, "①未逐字段还原"
+    assert _chain_link_problems(_chain_state(server, project_a)) == []
+    assert server.unified.integrity_report()["problems"] == [], server.unified.integrity_report()
+
+    # ---- ② 尝试标识指向另一个包 ---------------------------------------------
+    attempt_b_before = server.unified.get_attempt(project_b["attempt_id"])
+    try:
+        server.unified.conn.execute("UPDATE attempts SET pack_plan_id=? WHERE attempt_id=?",
+                                    (project_a["pack_id"], project_b["attempt_id"]))
+        server.unified.conn.commit()
+        problems = _chain_link_problems(_chain_state(server, project_b))
+        named = [item for item in problems if item.startswith("ATTEMPT_PACK_LINK_SPLIT")]
+        assert len(named) == 1 and project_b["attempt_id"] in named[0] \
+            and project_a["pack_id"] in named[0], problems
+        assert any(item.startswith("RESULT_PACK_LINK_SPLIT") for item in problems), problems
+        status, misread = server.client.post(
+            "/api/v1/results/%s/verifications" % project_b["result_id"], {"axis": "technical"})
+        assert status == 201, misread
+        # 判定回答的是别人家的指纹集合：A 的指纹已消失 → PASS；B 自己绑的那条仍在被产出
+        assert misread["outcome"] == "PASS", misread
+        assert misread["checks"]["fingerprints_absent"] == 1, misread["checks"]
+        assert project_b["issue"]["fingerprint"] in [
+            row["fingerprint"] for row in issue_projection.load_issues(server.work.store)[0]], \
+            "B 自己的问题已经不在了，本节点的反证形状需按现读重写"
+        assert server.unified.integrity_report()["problems"] == [], \
+            "这一跳已被报表覆盖，②的沉默断言需按现读重写"
+    finally:
+        server.unified.conn.execute("UPDATE attempts SET pack_plan_id=? WHERE attempt_id=?",
+                                    (attempt_b_before["pack_plan_id"], project_b["attempt_id"]))
+        server.unified.conn.commit()
+    assert server.unified.get_attempt(project_b["attempt_id"]) == attempt_b_before, "②未逐字段还原"
+    assert _chain_link_problems(_chain_state(server, project_b)) == []
+    # 还原标识不撤销后果：误判的 PASS 与据此 COMPLETED 的任务仍留在存储里（没有补偿动作）
+    task_b_after = server.unified.get_task(project_b["task_id"])
+    assert task_b_after["lifecycle"] == "COMPLETED", task_b_after["lifecycle"]
+    assert server.work.read_record(project_b["pack_id"])["status"] == "APPROVED", \
+        "B 的修复记录被谁改了？本节点未再验过一次，它应停在 APPROVED"
+
+    # ---- ③ 判定标识指向另一条结果 -------------------------------------------
+    verdict_before = server.unified.get_verification(closed_a["verification_id"])
+    try:
+        server.unified.conn.execute("UPDATE verifications SET result_id=? WHERE verification_id=?",
+                                    (project_b["result_id"], closed_a["verification_id"]))
+        server.unified.conn.commit()
+        report = server.unified.integrity_report()["problems"]
+        named = [item for item in report
+                 if item["kind"] == "VERIFICATION_SUBJECT_MISMATCH"
+                 and item["id"] == closed_a["verification_id"]]
+        assert len(named) == 1, report
+        chain = _chain_state(server, project_a)
+        problems = _chain_link_problems(chain)
+        # 被改走的判定从结果 A 的子表里消失，而 A 的修复记录仍写回那个判定 id：
+        # 跨库反向那一跳的引用因此解析不到行，谓词点名的是判定 id 本身
+        assert any(item.startswith("CLOSURE_EVIDENCE_UNRESOLVED:")
+                   and closed_a["verification_id"] in item for item in problems), problems
+        assert server.unified.get_verification(
+            closed_a["verification_id"])["result_id"] == project_b["result_id"]
+    finally:
+        server.unified.conn.execute("UPDATE verifications SET result_id=? WHERE verification_id=?",
+                                    (verdict_before["result_id"], closed_a["verification_id"]))
+        server.unified.conn.commit()
+    assert server.unified.get_verification(closed_a["verification_id"]) == verdict_before, "③未逐字段还原"
+    assert server.unified.integrity_report()["problems"] == [], server.unified.integrity_report()
+    assert _chain_link_problems(_chain_state(server, project_a)) == []
+
+
+def test_issue_chain_double_projection_is_byte_identical_except_one_named_field(server):
+    """链完整性·幂等：同一状态连续投影两次，除一个点名的耗时字段外逐字节相同。
+
+    被点名并从比较里显式拿掉的只有一个：`summary.cost.elapsedMs`（issue_projection.py:453/482/530
+    测的是本次投影耗时，设计上每次都变）。其余一个字节都不许动，包括所有 issue 行、所有分母、
+    键序与出现顺序——比较用整段 JSON 原文，不是逐字段挑几个"重要的"。另外单独断言：
+      * 被拿掉的那个字段两次都存在、都是非负数（不是把它删了来凑相等）；
+      * 传入 generated_at 时 `summary.generatedAt` 原样回显该值（:490），不传时它是墙上时钟
+        （:535 `_now_iso`），两次调用都必须是可解析的即时；
+      * 包投影 `build_repair_pack` 两次逐字节相同且 packId 相同（:91-96 内容寻址）；
+      * 交接正文 `render_handoff_text` 两次逐字节相同；
+      * 重试同一条链走产品自己的路径（backend/core/workpacks.py:69-77）：不铸第二行、不前进版本；
+        而 `repair_state.record_pack` 拒绝把已推进的行倒回草稿状态（canonical_store.py:1151-1158）；
+      * `integrity_report()` / `completion_support()` 两次逐字节相同（它们不带时钟字段）。
+
+    明确没有证明：跨进程/跨机器的字节一致（本节点在同一进程内连续投影两次）；投影内容正确性由
+    上面两个节点负责，这里只管稳定。
+    """
+    from domains.work.workflow_core import issue_projection, repair_pack_projection
+
+    collector = "chain-stable-collector"
+    seed_issue(server.work.store, name=collector, failures=3)
+    material = _work_chain(server, collector=collector, attempt_key="chain-stable",
+                           declared_result_id="res-chain-stable", title="链完整性·幂等")
+
+    def snapshot():
+        rows, summary, absent = issue_projection.load_issues(
+            server.work.store, generated_at=CHAIN_PINNED_AT)
+        return {"issues": rows, "summary": summary, "absentReason": absent}
+
+    first = snapshot()
+    second = snapshot()
+    raw_first = json.dumps(first, ensure_ascii=False)
+    raw_second = json.dumps(second, ensure_ascii=False)
+    # 未归一化前，两次原文的差异只允许落在被点名的那一个字段上——先把这件事本身断言出来
+    assert raw_first != raw_second or \
+        first["summary"]["cost"]["elapsedMs"] == second["summary"]["cost"]["elapsedMs"], \
+        "elapsedMs 不再变化，易变字段的登记需按现读复核"
+    assert _chain_text(first, CHAIN_VOLATILE_FIELDS) == _chain_text(second, CHAIN_VOLATILE_FIELDS), \
+        "除 %s 外还有字段在变" % (CHAIN_VOLATILE_FIELDS,)
+    for summary in (first["summary"], second["summary"]):
+        elapsed = summary["cost"]["elapsedMs"]
+        assert isinstance(elapsed, (int, float)) and not isinstance(elapsed, bool) and elapsed >= 0, \
+            summary["cost"]
+        assert summary["generatedAt"] == CHAIN_PINNED_AT, summary["generatedAt"]
+    unpinned = issue_projection.load_issues(server.work.store)[1]["generatedAt"]
+    assert unpinned != CHAIN_PINNED_AT and issue_projection._epoch(unpinned) > 0, unpinned
+    # 链上标识在两次投影之间也稳定（指纹是内容寻址，不是每次铸造）
+    assert [row["fingerprint"] for row in first["issues"]] == \
+        [row["fingerprint"] for row in second["issues"]]
+    assert [row["evidenceRef"] for row in first["issues"]] == [material["issue"]["evidenceRef"]]
+
+    projects = [{"projectId": material["project_id"],
+                 "root_path": str(_repair_target_root(server))}]
+    pack_first, reason_first = repair_pack_projection.build_repair_pack(
+        adapter=None, project_id=material["project_id"], bound_rows=list(first["issues"]),
+        projects=projects, registry=None, generated_at=CHAIN_PINNED_AT, manual=True)
+    pack_second, reason_second = repair_pack_projection.build_repair_pack(
+        adapter=None, project_id=material["project_id"], bound_rows=list(first["issues"]),
+        projects=projects, registry=None, generated_at=CHAIN_PINNED_AT, manual=True)
+    assert (reason_first, reason_second) == ("", ""), (reason_first, reason_second)
+    assert json.dumps(pack_first, ensure_ascii=False) == json.dumps(pack_second, ensure_ascii=False)
+    assert repair_pack_projection.render_handoff_text(pack_first) \
+        == repair_pack_projection.render_handoff_text(pack_second)
+    assert repair_pack_projection.validate_repair_pack(pack_first) == []
+
+    # packId 只由（项目、执行者标签、绑定指纹）决定：存储时的包带的 generatedAt 是本节点重算
+    # 时钉死的那个值之外的墙上时刻，两者时间戳不同、包 id 必须相同（:91-96 的内容寻址）
+    stored = server.work.read_record(material["pack_id"])
+    assert pack_first["packId"] == pack_second["packId"] == material["pack_id"]
+    assert stored["payload"]["pack"]["generatedAt"] != CHAIN_PINNED_AT
+    assert stored["payload"]["pack"]["binds"] == pack_first["binds"]
+
+    # 重试同一个链走的是产品自己的重试路径（backend/core/workpacks.py:69-77）：内容寻址的 packId
+    # 撞到已有行 → 读回那一行，既不新建行也不前进版本。存储行的 status 已被审批/交接推进，
+    # 所以这里断言的是"没有新副本"，不是"载荷逐字节相同"。
+    from domains.work.workflow_core import repair_state
+
+    before = server.work.read_record(material["pack_id"])
+    retry = server.work.build_and_record_pack(project_id=material["project_id"],
+                                              project_root=str(_repair_target_root(server)))
+    after = server.work.read_record(material["pack_id"])
+    assert retry["pack"]["packId"] == material["pack_id"] == before["planId"]
+    assert after["version"] == before["version"], (before["version"], after["version"])
+    assert after["payloadDigest"] == before["payloadDigest"]
+    assert after["status"] == before["status"] == "APPROVED"
+    assert server.work.store.list_action_plans(material["project_id"]).__len__() == 1, \
+        "重试为同一个包铸出了第二行"
+    # 记录面拒绝把生命周期倒回去：草稿快照不能覆盖已审批的行（repair_state.py:117-126 +
+    # canonical_store.py:1151-1158 的 compare-and-swap）
+    try:
+        repair_state.record_pack(server.work.store, before["payload"]["pack"])
+        raise AssertionError("用已过期状态重记同一包竟然成功了")
+    except ValueError as conflict:
+        assert "ACTION_PLAN_VERSION_CONFLICT" in str(conflict), str(conflict)
+
+    # 两个完整性面自身也是确定的（无时钟字段）
+    report_a = json.dumps(server.unified.integrity_report(), ensure_ascii=False, sort_keys=True)
+    report_b = json.dumps(server.unified.integrity_report(), ensure_ascii=False, sort_keys=True)
+    assert report_a == report_b, (report_a, report_b)
+    support = server.unified.completion_support
+    task_id = material["task_id"]
+    assert json.dumps(support(task_id), ensure_ascii=False, sort_keys=True) \
+        == json.dumps(support(task_id), ensure_ascii=False, sort_keys=True)
+
+
+def test_issue_chain_link_predicates_falsification():
+    """植入反证（链谓词）：把链上任一标识换成另一个对象，谓词必须报红并点名断掉的那一环。
+
+    与真实存储节点共用同一份谓词实现；这里逐跳植入，保证报红的是"那一跳"，而不是碰巧整体不同。
+    每处植入都只改一个字段，改完立刻与另两处的期望问题分开断言，防止串台。
+    """
+    clean = _synthetic_chain()
+    assert _chain_link_problems(clean) == [], _chain_link_problems(clean)
+    assert _reverse_trace_problems(clean) == [], _reverse_trace_problems(clean)
+
+    def plant(mutate):
+        document = json.loads(json.dumps(clean))
+        mutate(document)
+        return document
+
+    # ①→②：包不再绑定这条问题
+    moved = plant(lambda d: d["pack"]["binds"].__setitem__("issueFingerprints", ["deadbeefcafe0000"]))
+    moved_problems = _chain_link_problems(moved)
+    assert moved_problems, "包丢掉绑定的问题却全绿"
+    assert any(item.startswith("PACK_OMITS_ISSUE:") and clean["issue"]["fingerprint"] in item
+               for item in moved_problems), moved_problems
+    assert any(item.startswith("PACK_RECORD_BINDS_SPLIT") for item in moved_problems), \
+        "包快照与本节点重算的绑定集合不一致，却没报在 ②→③ 那一跳：" + str(moved_problems)
+
+    # ①→存储：evidence 标识指向一个不存在的行（形状仍完全合法）
+    dangling = plant(lambda d: d["issue"].__setitem__("evidenceRef", "collector_health:ghost"))
+    dangling_problems = _chain_link_problems(dangling)
+    assert "ISSUE_REF_UNRESOLVED:collector_health:ghost (fingerprint %s)" % clean["issue"][
+        "fingerprint"] in dangling_problems, dangling_problems
+
+    # ②→③：包没有对应的存储行（今天的投影不会为此说任何东西）
+    absent = plant(lambda d: [d.__setitem__("record", None), d.__setitem__("record_for_attempt", None)])
+    absent_problems = _chain_link_problems(absent)
+    assert "PACK_RECORD_ABSENT:" + clean["pack"]["packId"] in absent_problems, absent_problems
+    assert _reverse_trace_problems(absent) == [
+        "REVERSE_PACK_RECORD_ABSENT:%s (named by attempt %s)"
+        % (clean["attempt"]["pack_plan_id"], clean["attempt_id"])], _reverse_trace_problems(absent)
+
+    # ③→④：尝试指向另一个包
+    other_pack = "rp-" + "9" * 32 + "-manual-copy-" + "9" * 16
+    rewired = plant(lambda d: d["attempt"].__setitem__("pack_plan_id", other_pack))
+    rewired_problems = _chain_link_problems(rewired)
+    assert any(item.startswith("ATTEMPT_PACK_LINK_SPLIT") and other_pack in item
+               and clean["pack"]["packId"] in item for item in rewired_problems), rewired_problems
+    # 结果行仍回答本节点那个包，而尝试已经改口——同一链上两个标识当场分家
+    assert any(item.startswith("RESULT_PACK_LINK_SPLIT") and other_pack in item
+               for item in rewired_problems), rewired_problems
+    assert _reverse_trace_problems(rewired) == [
+        "REVERSE_PACK_RECORD_ID_SPLIT:attempt %s names %r, row key is %r"
+        % (clean["attempt_id"], other_pack, clean["pack"]["packId"])], _reverse_trace_problems(rewired)
+
+    # ④→⑤：结果挂到另一个尝试上（绑定块立刻与行自身说法不一致）
+    other_attempt = "7" * 32
+    wrong_attempt = plant(lambda d: d["result"].__setitem__("attempt_id", other_attempt))
+    wrong_attempt_problems = _chain_link_problems(wrong_attempt)
+    assert any(item.startswith("RESULT_ATTEMPT_SPLIT") and wrong_attempt["result"]["result_id"]
+               in item and other_attempt in item for item in wrong_attempt_problems), \
+        wrong_attempt_problems
+    assert any(item.startswith("RESULT_BINDING_SPLIT") and "attempt_id" in item
+               for item in wrong_attempt_problems), wrong_attempt_problems
+
+    # ④→⑤：结果改挂到另一个项目的任务上——写侧规则（unified_store.py:523-525）在落地后被绕过
+    other_task = "6" * 32
+    wrong_task = plant(lambda d: d["result"].__setitem__("task_id", other_task))
+    wrong_task_problems = _chain_link_problems(wrong_task)
+    assert any(item.startswith("RESULT_TASK_ATTEMPT_SPLIT") and other_task in item
+               and wrong_task["attempt"]["task_id"] in item
+               for item in wrong_task_problems), wrong_task_problems
+    assert any(item.startswith("RESULT_BINDING_SPLIT") and "task_id" in item
+               for item in wrong_task_problems), wrong_task_problems
+
+    # ⑤：结果认证的不是尝试钉的那份绑定摘要
+    fake_subject = plant(lambda d: d["result"].__setitem__("subject_fingerprint", "3" * 64))
+    assert any(item.startswith("RESULT_SUBJECT_NOT_ATTEMPT_BINDING")
+               for item in _chain_link_problems(fake_subject)), _chain_link_problems(fake_subject)
+
+    # ⑤→⑥：判定认证了另一行字节
+    other_digest = plant(lambda d: d["verdicts"][0].__setitem__("subject_fingerprint", "4" * 64))
+    assert any(item.startswith("VERDICT_SUBJECT_NOT_RESULT_DIGEST")
+               for item in _chain_link_problems(other_digest)), _chain_link_problems(other_digest)
+
+    # ⑥ 的 result_id 被改指到别的结果：正向与反向都要点名
+    other_result = "8" * 32
+    verdict_moved = plant(lambda d: d["verdicts"][0].__setitem__("result_id", other_result))
+    forward = _chain_link_problems(verdict_moved)
+    assert any(item.startswith("VERDICT_RESULT_SPLIT") and other_result in item for item in forward), forward
+    assert any(item.startswith("REVERSE_RESULT_ID_SPLIT") and clean["verdicts"][0]["result_id"] in item
+               for item in _reverse_trace_problems(verdict_moved)), _reverse_trace_problems(verdict_moved)
+
+    # 反向：结果行整个读不到，判定就成了无人认领的结论
+    no_result = plant(lambda d: d.__setitem__("result", None))
+    assert _reverse_trace_problems(no_result) == [
+        "REVERSE_RESULT_ABSENT:%s (from verdict %s)"
+        % (clean["verdicts"][0]["result_id"], clean["verdicts"][0]["verification_id"])], \
+        _reverse_trace_problems(no_result)
+
+    # 闭合写回的判定 id 解析不到行：跨库那一跳也算断链
+    ghost_closure = plant(lambda d: d["record"]["payload"]["outcome"].__setitem__(
+        "evidenceRefs", ["unified-verification:" + "0" * 32]))
+    assert any(item.startswith("CLOSURE_EVIDENCE_UNRESOLVED:") and "0" * 32 in item
+               for item in _chain_link_problems(ghost_closure)), _chain_link_problems(ghost_closure)

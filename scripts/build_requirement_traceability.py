@@ -100,12 +100,70 @@ V18_USAGE_SPLIT_TEST = ("tests/unified/test_v18_tools_connections.py::"
                         "test_usage_measured_and_estimated_costs_use_separate_keys")
 V18_UNCLASSIFIED_TEST = ("tests/unified/test_v18_tools_connections.py::"
                          "test_unclassified_review_recomputes_from_the_mapping_population_not_from_its_own_words")
+
+
+def _nodes(module: str, *names: str) -> str:
+    """Semicolon-joined pytest node ids for one batch of tests, spelled out once.
+
+    A row that cites six nodes would otherwise repeat the file path six times; test_v16 resolves
+    every pointer in the published register, so a renamed test still lands here as a build error
+    rather than a register that cites something no longer present.
+    """
+    return ";".join("tests/unified/%s::%s" % (module, name) for name in names)
+
+
+#: 05#L8 -- the issue chain's own forward/backward link predicates and their falsifiers.
+V11_CHAIN_NODES = _nodes("test_v11_audit_rework.py",
+    "test_issue_chain_forward_references_resolve_to_real_rows_in_the_same_store",
+    "test_issue_chain_broken_link_is_misattributed_rather_than_named",
+    "test_issue_chain_reverse_trace_from_a_verdict_names_the_same_ids",
+    "test_issue_chain_one_tampered_identifier_is_named_and_the_row_restores",
+    "test_issue_chain_double_projection_is_byte_identical_except_one_named_field",
+    "test_issue_chain_link_predicates_falsification")
+#: 05#L11 -- the managed-adapter-registry read chain: follows the file, restores, writes nothing.
+V02_CONFIG_NODES = _nodes("test_v02_surface.py",
+    "test_local_profile_entry_restore_leaves_native_auth_and_global_environment",
+    "test_no_write_entry_reaches_managed_config_native_auth_or_global_environment",
+    "test_managed_config_restore_follows_the_file_and_lands_no_new_persistent_write",
+    "test_machine_absolute_paths_travel_as_paths_not_as_verified_evidence")
+#: 05#L16 -- source / date / probe / qualification as four separate axes of the model radar surface.
+V09_RADAR_NODES = _nodes("test_v09_honesty.py",
+    "test_radar_catalog_source_date_probe_qualification_are_four_separate_axes",
+    "test_radar_catalog_absent_field_is_null_while_unknown_stays_unknown",
+    "test_radar_catalog_source_and_date_equal_the_recorded_strings",
+    "test_radar_catalog_follows_edited_registries_and_changes_nothing_else",
+    "test_radar_qualification_cannot_be_minted_from_documentation_or_probe")
+#: 05#L22 -- asset versions, byte-pinned references, the input/output split, no platform channel.
+V04_ASSET_NODES = _nodes("test_v04_design_loop.py",
+    "test_design_asset_versions_are_immutable_history_and_both_revisions_read_back",
+    "test_design_asset_reference_pins_its_bytes_and_other_projects_are_refused",
+    "test_design_input_material_and_output_artifact_stay_two_different_kinds",
+    "test_design_asset_surface_offers_no_external_platform_channel")
+#: 05#L27 -- consumers, version compatibility, refused inputs and resource-path regressions.
+V05_CONTRACT_NODES = _nodes("test_v05_rejections.py",
+    "test_contracts_control_plane_reads_the_published_request_contract",
+    "test_contracts_control_request_documents_accepted_and_refused_with_named_code",
+    "test_contracts_control_result_envelope_matches_published_result_contract",
+    "test_contracts_action_plan_product_generated_pack_satisfies_published_schema",
+    "test_contracts_action_plan_published_examples_are_the_contract_test_docs",
+    "test_contracts_action_plan_store_row_version_compat_and_solution_consumer_refusal",
+    "test_contracts_solution_schema_consumer_accepts_and_refuses_with_named_code",
+    "test_contracts_client_adapter_verb_vocabulary_agrees_across_schema_matrix_and_snapshot_consumer",
+    "test_contracts_snapshot_v3_version_is_compared_not_rederived",
+    "test_the_excerpt_bound_and_the_schema_max_length_are_the_same_number",
+    "test_contracts_every_published_schema_ref_resolves_to_a_real_repo_file",
+    "test_contracts_planted_broken_ref_makes_the_resource_predicate_red",
+    "test_contracts_published_inventory_and_consumed_set_do_not_drift")
+
 #: The sentence every software-projection row still owes: nothing was probed on this machine.
 NOT_PROBED_SENTENCE = ("不声称任何真实软件在本机被探测、安装、授权或执行——那仍是 "
                        "DECLARED_NOT_PROBED / NOT_PROBED")
 
 NO_EVIDENCE = "NONE"       # nothing measures this row
 PARTIAL_MARKER = "缺口："   # a PARTIAL row must name what is missing
+# Derived at build time, never hand-copied: the contracts row cites it, so a reader can
+# see whether the published surface grew since the sentence was written.
+CONTRACTS_PUBLISHED_JSON = len(list((REPO_ROOT / "packages" / "contracts").rglob("*.json")))
 
 LOCATION_LINE_RE = re.compile(r"^(?P<path>.+):(?P<line>\d+)$")
 PHASE_TASK_RE = re.compile(r"\bL(\d{2})\b")
@@ -235,19 +293,43 @@ def _check_one_evidence(part: str) -> tuple[bool, str]:
                 % (file_name, dotted, json.dumps(cursor, ensure_ascii=True)[:60]))
     if "::" not in part:
         return (False, "证据写法既不是 tests/…py::test_* 也不是 evidence:…#key：" + part)
-    file_part, _, test_name = part.partition("::")
+    file_part, _, remainder = part.partition("::")
     path = REPO_ROOT / file_part
     if not path.is_file():
         return (False, "测试文件不存在：" + file_part)
-    text = path.read_text(encoding="utf-8", errors="replace")
-    if not re.search(r"^\s*def\s+%s\b" % re.escape(test_name), text, re.M):
-        return (False, "%s 中没有名为 %s 的测试" % (file_part, test_name))
-    return (True, "%s::%s 已声明" % (file_part, test_name))
+    collectible = collectible_node_ids(path)
+    if remainder not in collectible:
+        return (False, "%s::%s 不是 pytest 能收集的节点（该文件收集得到：%s）"
+                % (file_part, remainder, ", ".join(sorted(collectible)[:6]) or "空"))
+    return (True, "%s::%s 可被 pytest 收集" % (file_part, remainder))
 
 
 # --------------------------------------------------------------------------
 # the reconciliation itself
 # --------------------------------------------------------------------------
+
+def collectible_node_ids(path: Path) -> set[str]:
+    """Every node id pytest could collect from one test file, spelled the way pytest spells it.
+
+    Read off the file's own syntax tree, not off a grep for a ``def`` line: module-level ``test_*``
+    functions are bare names, while methods of a ``unittest.TestCase`` class collect as
+    ``Class::method``. A citation that leaves the class out matches nothing — measured, a legacy
+    row's ``file.py::test_method`` answered "no tests ran" — so resolving a citation means
+    matching the whole part after the file, and the four registers now carry the qualified spelling.
+    """
+    import ast as _ast
+
+    tree = _ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    found: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, _ast.FunctionDef) and node.name.startswith("test_"):
+            found.add(node.name)
+        elif isinstance(node, _ast.ClassDef):
+            for item in node.body:
+                if isinstance(item, _ast.FunctionDef) and item.name.startswith("test_"):
+                    found.add("%s::%s" % (node.name, item.name))
+    return found
+
 
 def phasing_tasks() -> dict[str, str]:
     """task id -> declared phase, read from 09_任务分期与验收.json."""
@@ -489,10 +571,10 @@ def ui_claims() -> dict[str, dict]:
                            "那是 node 门、不由 pytest 运行，所以本行缺的是视图侧的数据断言，"
                            "不是「这个仓里什么都没有」）"}
 
-    plan_test = "tests/legacy/design/test_assistance_plan.py::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart"
-    revision_test = "tests/legacy/design/test_assistance_plan.py::test_a_stale_revision_is_refused_with_the_actual_number"
-    knowledge_test = "tests/legacy/design/test_knowledge_library.py::test_every_minimum_field_is_stored_and_a_silent_field_is_unknown"
-    target_test = "tests/legacy/design/test_target_profile.py::test_seeded_profiles_are_served_from_the_tracked_config_with_no_database_copy"
+    plan_test = "tests/legacy/design/test_assistance_plan.py::AssistancePlanTests::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart"
+    revision_test = "tests/legacy/design/test_assistance_plan.py::AssistancePlanTests::test_a_stale_revision_is_refused_with_the_actual_number"
+    knowledge_test = "tests/legacy/design/test_knowledge_library.py::KnowledgeLibraryTests::test_every_minimum_field_is_stored_and_a_silent_field_is_unknown"
+    target_test = "tests/legacy/design/test_target_profile.py::TargetProfileTests::test_seeded_profiles_are_served_from_the_tracked_config_with_no_database_copy"
     design_read = "tests/unified/test_v02_surface.py::test_design_domain_read_routes_answer_real_data"
     design_loop = "tests/unified/test_v04_design_loop.py::test_design_loop_keeps_professional_acceptance_pending"
 
@@ -620,7 +702,7 @@ def family_claims() -> dict[str, dict]:
                         "evidence": "tests/unified/test_v02_surface.py::test_write_boundary_unknown_project_and_kind;" + f09,
                         "status": "PARTIAL",
                         "basis": "Observer 只读（写请求 405 并落拒绝记录）与 Control 写入门控有断言；" + PARTIAL_MARKER
-                                + "验收的「写入校验范围与状态」只覆盖已挂载的操作面，独立授权账本未建。"},
+                                + "验收的「写入校验范围与状态」只覆盖已挂载的操作面；独立授权账本在本仓不存在——新建一层授权账本是 owner 的产品范围决定，不由本批顺手补一个看起来像账本的文件。"},
         "telemetry": {"location": "backend/core/work_surfaces.py:82", "evidence": read_path,
                       "status": "PARTIAL",
                       "basis": "真实投影走同一 CanonicalStore，且读路径不启动采集器、不开套接字（该测试正是证明这一点）；" + PARTIAL_MARKER
@@ -632,10 +714,22 @@ def family_claims() -> dict[str, dict]:
                           "每组带 quality_samples / tokens_by_quality / cost_coverage，token 与钱各按精度词分档，"
                           "未知保持 null、词表外的精度词进 OTHER 而不消失（两种植入反证都会变红：把 UNKNOWN 补成 0、"
                           "把估计钱并进实测钱）。" + NOT_PROBED_SENTENCE},
-        "issues": {"location": "domains/work/workflow_core/issue_projection.py:567", "evidence": f09,
+        "issues": {
+                   "location": "domains/work/workflow_core/issue_projection.py:567",
+                   "evidence": f09 + ";" + V11_CHAIN_NODES,
                    "status": "PARTIAL",
-                   "basis": "问题投影与 repair-packs 读面真实存在并被读回；" + PARTIAL_MARKER
-                           + "「问题、修复、尝试和证据链可追溯」的链完整性无独立断言，现有测试断言的是读通与 control 门。"},
+                   "basis": "问题投影与修复包读面真实存在并被读回（F09 那条断言的是这一面的读通与 Control 写入门被拒，"
+                           "链的完整性由后面六条负责）；「问题、修复、尝试和证据链可追溯」这一句现在按链本身"
+                           "现读断言：问题行的出处引用解析回采集器健康、遥测事件、执行实例与任务四种真实行，"
+                           "包到尝试、尝试到结果、结果到验收判定每一跳正向可达，再从判定反向追回同一组 id；"
+                           "包快照与存储行的绑定集合、尝试与包的互相引用、结果与任务及尝试的归属都各有具名缺陷码，"
+                           "三处标识篡改分别被点名并在整行逐字段相等后复绿；固定时钟下两次投影除显式点名的耗时字段外"
+                           "逐字节相同，重试不铸第二行也不前进版本。"
+                           + PARTIAL_MARKER
+                           + "断裂检测住在测试的谓词里而不是产品自己的一致性报告：一致性报告对 attempts 那一圈只问 "
+                           "task_id 存不存在，pack_plan_id 从不与计划行对照，而计划行住在另一座库"
+                           "（unified_store 里 action_plans 一次也不出现），植入改包引用后它仍报完成、对被改那一跳一字不提，"
+                           "所以本行不记 VERIFIED；真实宿主产生的证据与真人专业验收也不在本行声称范围内。"},
         "solutions": {"location": "GET /api/work/observer/solutions",
                       "evidence": "tests/unified/test_v11_audit_rework.py::test_f05_unified_search_returns_work_solutions;" + "tests/unified/test_v11_audit_rework.py::test_f05_solution_revision_conflict_and_restart_readback",
                       "status": "IMPLEMENTED_VERIFIED",
@@ -649,10 +743,27 @@ def family_claims() -> dict[str, dict]:
                              "可执行」五个侧面各用自己的键、缺值保持 null 并以 NOT_PROBED 记「没看」，"
                              "未授权时探测一项也不写——由上面三个具名测试断言（含植入反证）。"
                              "本行不声称任何真实安装在本机被探测过：路径、版本、可执行文件仍是 NOT_PROBED。"},
-        "configuration": {"location": "backend/core/capabilities.py:97", "evidence": caps,
+        "configuration": {
+                          "location": "domains/work/orchestration/adapter_capability_projection.py:409",
+                          "evidence": caps + ";" + V02_CONFIG_NODES,
                           "status": "PARTIAL",
-                          "basis": "受管能力目录由真实派生并诚实标注不可用原因；" + PARTIAL_MARKER
-                                  + "「局部配置可恢复，不覆盖原生认证和全局环境」未测；config/adapter-registry.json 内含本机绝对路径，恢复语义无回归断言。"},
+                          "basis": "「局部配置可恢复」的读侧按台账真正的读链断言：同一进程内四轮换掉受管台账"
+                                  "（逐字节照抄、改一个条目并删一个、原样抄回、只动另一个条目），答复随文件变、"
+                                  "换回原文件即回到基线，卡片里除被改那格外其余逐字段不变；恢复过程对工作区"
+                                  "（含台账与规范存储文件）和真实配置目录做逐文件摘要对照，一个字都不动，"
+                                  "即恢复不落新的持久写入；装一个「第一次读就记住」的第二副本会让"
+                                  "「跟着文件变」当场变红。「不覆盖原生认证和全局环境」按现状成立：写面上"
+                                  "配置的 apply、readback、rollback 三项 implemented=False 且各带具名拒绝码"
+                                  "（TARGET_NOT_AUTHORISED / NO_WRITE_TO_READ_BACK / NO_RECOVERY_HANDLE，"
+                                  "domains/work/control/control_service.py:238-249），唯一实现的 diff 只出计划、"
+                                  "written 为 false，且配置前缀被门拒、认证名需要人工门、越界目标被拒；"
+                                  "认证描述符与环境答复各被读两次比对——描述符比的是授权记录、操作集、证据上限与"
+                                  "传输四个子字段（观测时刻除外），环境答复是整份相等，两者都不是四轮的那条断言。"
+                                  + PARTIAL_MARKER
+                                  + "恢复只测了读侧一致性——写入与回滚在产品里没有实现分支，谈不上回滚验收；"
+                                  "登记原先写的 backend/core/capabilities.py:97 并不打开这份台账，能力目录换台账后"
+                                  "一个字不动（该事实现由节点钉成断言，卡片集来自快照面）；"
+                                  "环境基线文件没有产品运行时读者，只有测试读它。"},
         "evidence": {"location": "POST /api/v1/results/([0-9a-f]{32})/verifications",
                      "evidence": "tests/unified/test_v05_rejections.py::test_wrong_pack_and_wrong_project_results_refused;tests/unified/test_v10_gate.py::test_gate_refuses_forged_result_and_verdict",
                      "status": "IMPLEMENTED_VERIFIED",
@@ -680,10 +791,24 @@ def family_claims() -> dict[str, dict]:
                     "status": "PARTIAL",
                     "basis": "已有的是迁移工具的 prune——只报告本工具登记过的路径、默认不删；" + PARTIAL_MARKER
                             + "面向运行产品的「清单范围清理与恢复可读回」未实现，不删除用户作品目前靠不实现删除来保证。"},
-        "radar": {"location": "domains/design/design_lab/model_catalog.py:97", "evidence": NO_EVIDENCE,
-                  "status": "IMPLEMENTED_UNVERIFIED",
-                  "basis": "模型/情报目录从 readiness/model-radar.json 等本机文档现读；"
-                          "「信息来源、日期、探测与资格有区别」在本仓无断言，故不标 VERIFIED。"},
+        "radar": {
+                  "location": "domains/design/design_lab/model_catalog.py:97",
+                  "evidence": V09_RADAR_NODES,
+                  "status": "PARTIAL",
+                  "basis": "模型与情报目录从 readiness/model-radar.json 及提供方台账现读，"
+                          "「信息来源、日期、探测与资格有区别」按四个轴分别钉住：出处引用、证据引用、本机状态与"
+                          "雷达状态是四个互不相同的字段且各在自己的词表里——在测试生成的那份台账人口里，同一条目的"
+                          "雷达状态不等于本机状态，这不是对产品台账的普适断言；文档级观测时刻只从台账带出，"
+                          "目录不铸造自己的日期，提供方台账里也没有第二份日期；逐条改台账里的出处、日期或本机状态，"
+                          "答复只有被改那一格移动、条目数与其余字段不动；资格词不可由文档措辞或一次探测铸造"
+                          "（默认启用数不超过合格本地数，也不存在「由谁判定合格」这一格）。"
+                          + PARTIAL_MARKER
+                          + "目录现在把两种「不知道」塌成同一个答复：`weights_sha256` 被省略与被登记为空列表都答 "
+                          "weights_recorded 0，且 `_model`（model_catalog.py:73-94）不透传 hash_source 与 qualified_by，"
+                          "读的人分不出「没登记」与「未知」，这是「有区别」没做到的一处真实缺陷（节点把它连同"
+                          "0 不被当成合格一起钉住，修复方向是缺字段答 null、把 0 留给确实登记的空列表并透传出处）；"
+                          "日期只到文档级、条目行没有自己的日期；提供方出处的标签在仓根不解析为文件，"
+                          "真实字节只在被打包的副本里。本行不声称本机任何模型真被装载、探测或授权。"},
         "design-knowledge": {"location": "domains/design/design_lab/knowledge_library.py:531",
                              "evidence": "tests/unified/test_v06_knowledge.py::test_create_search_short_queries_and_no_result;tests/unified/test_v06_knowledge.py::test_revision_conflict_and_index_rebuild",
                              "status": "IMPLEMENTED_VERIFIED",
@@ -694,11 +819,11 @@ def family_claims() -> dict[str, dict]:
                                   + "「P3新增模型执行」未做（09 分期表 L32），且本仓无 pytest 覆盖提示词路由，"
                                   "「提示词导出不算作品生成」只有约定而没有断言。"},
         "design-plan": {"location": "domains/design/design_lab/assistance_plan.py:121",
-                        "evidence": "tests/legacy/design/test_assistance_plan.py::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart;tests/unified/test_v04_design_loop.py::test_design_loop_keeps_professional_acceptance_pending",
+                        "evidence": "tests/legacy/design/test_assistance_plan.py::AssistancePlanTests::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart;tests/unified/test_v04_design_loop.py::test_design_loop_keeps_professional_acceptance_pending",
                         "status": "IMPLEMENTED_VERIFIED",
                         "basis": "方案修订不可变、旧修订按自身读回、与任务信封关联后专业验收保持 pending，均由具名测试断言；旧只读合同兼容。"},
         "design-target": {"location": "domains/design/design_lab/target_profile.py:326",
-                          "evidence": "tests/legacy/design/test_target_profile.py::test_seeded_profiles_are_served_from_the_tracked_config_with_no_database_copy;tests/unified/test_v04_design_loop.py::test_target_profile_reference_must_address_a_real_profile",
+                          "evidence": "tests/legacy/design/test_target_profile.py::TargetProfileTests::test_seeded_profiles_are_served_from_the_tracked_config_with_no_database_copy;tests/unified/test_v04_design_loop.py::test_target_profile_reference_must_address_a_real_profile",
                           "status": "IMPLEMENTED_VERIFIED",
                           "basis": "软件×模型×入口档案从受管配置现读且不落第二副本；引用必须指向真实档案——「选择不等于连接和执行」由资格层断言。"},
         "design-domain": {"location": "domains/design/design_lab/domain_packs.py:199",
@@ -709,9 +834,26 @@ def family_claims() -> dict[str, dict]:
                                   "即该路径永不解析，逐包校验一次也没有真正执行过），"
                                   "/api/domains 路由在；"
                                   "但「13 领域包与资源可加载、资格分别标记」在本仓没有对应断言，数字未经复算。"},
-        "design-assets": {"location": "GET /api/projects/([0-9a-f]{32})/assets(?:/(img-[0-9a-f]{64})/content)?", "evidence": NO_EVIDENCE,
-                          "status": "IMPLEMENTED_UNVERIFIED",
-                          "basis": "输入/输出/版本/引用的读写路由在兼容面存在；本仓无断言「可恢复」，也未声明素材平台扩张。"},
+        "design-assets": {
+                          "location": "GET /api/projects/([0-9a-f]{32})/assets(?:/(img-[0-9a-f]{64})/content)?",
+                          "evidence": V04_ASSET_NODES,
+                          "status": "IMPLEMENTED_VERIFIED",
+                          "basis": "「输入、输出、版本、引用可恢复，不扩素材平台」四件事各有具名断言："
+                                  "版本是只增历史——同一素材第二次登记得到新的版本 id，当前版按路由读回"
+                                  "（列表里同一资产只出现一行，内容读出来的字节等于当初登记的字节），"
+                                  "历史版由素材层自己的校验读取与磁盘摘要确认（旧记录的摘要与大小不被顶替，"
+                                  "两版字节不同；兼容面的路由本身按构造只回当前版，本行不把它说成历史版可经路由读回）；"
+                                  "引用按摘要钉住，内容被换后取回返回摘要不符，同一 id 跨项目寻址返回不存在、改写归属直接被拒；"
+                                  "输入面只列 img- 前缀的栅格、输出面只列 native- 前缀并另带类别、版本号与核验字段，"
+                                  "两套字段集合互不相等、彼此寻不到，把两侧折成一条不分类别的大列表的植入立刻变红；"
+                                  "路由面两个人口分别钉住：pattern 含 /assets 的条目与测试里登记的那一组构成集合等式"
+                                  "（方法限于 GET/POST，模式与动作里不含平台词根），整张路由表按 upload/sync/remote/"
+                                  "fetch/pull/push/download/platform/cdn/proxy/webhook 这份清单搜索结果为空——它是载荷侧"
+                                  "那份更长的词表的一个子集，两端各自为政；入参递一个 remote_url、sync_target 或 "
+                                  "upload_to 都停在 400 具名错误，两处权利位保持 NOT_REVIEWED。"
+                                  "读回的「换一次」是同一进程里换一个服务实例（新数据库连接、新 HTTP 端口）从磁盘重读，"
+                                  "不是操作系统进程重启，也不主张断电语义；本行也不声称宿主真能打开产物——"
+                                  "输出字节是合成的，这一面只哈希不解析，真实宿主产生输出的链路仍按人工门逐次进行。"},
         "design-reconstruction": {"location": "packages/capabilities/reconstruction/contracts.py:117",
                                   "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
                                   "basis": "RIR 校验与规范化摘要在包内实现并被 native_plan 使用；"
@@ -730,10 +872,26 @@ def family_claims() -> dict[str, dict]:
                     "basis": "现有 workbench 导航与逐视图读回渲染在（未重画 UI，符合「不默认重画」）；" + PARTIAL_MARKER
                             + "「56 旧入口有去向」这一验收由本次生成的 ui-entry-disposition.csv 满足；"
                             "统一桌面壳与合成首页属 STITCH 前端，本轮实测登记为 NOT_RUN（evidence:delivery-summary.json#outstanding）。"},
-        "contracts": {"location": "packages/contracts/schemas/workflow/action-plan.schema.json:4",
-                      "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
-                      "basis": "公共 Schema 目录随包发布并被 store/服务读取；"
-                              "「现有消费者与版本兼容、错误输入与资源路径回归」没有针对 packages/contracts 的具名测试，故不标 VERIFIED。"},
+        "contracts": {
+                      "location": "packages/contracts/schemas/workflow/action-plan.schema.json:4",
+                      "evidence": V05_CONTRACT_NODES, "status": "IMPLEMENTED_VERIFIED",
+                      "basis": "「现有消费者与版本兼容、错误输入与资源路径回归」三件事各有具名断言："
+                              "控制面按发布出去的请求合同校验（枚举双向相等、拒绝项带具名 code、结果信封字段集合"
+                              "与发布合同对齐）；方案消费者按发布合同接受合法文档并以具名 code 拒绝非法文档；"
+                              "动作计划的存储行钉的是修订冲突（CAS）与重复投递不铸第二版、且不把计划喂给方案消费者，"
+                              "本行不把它说成「旧 schema 版本行按自身版本读回」；快照版本号是比对不是重导，"
+                              "投影截断上限与同一字段的长度上限钉成同一个数；资源路径面把目录里每个 JSON 文件里"
+                              "键名为 $ref 的 462 条引用的三种写法全部解析到真实文件（$dynamicRef 等其它关键字不在其内），"
+                              "标识符唯一性一并钉住，三份植入的断引用（文档内指针、跨文件引用、相对路径）分别被点名，"
+                              "且发布清单与登记副本表双向对账、能力台账声明的输入逐个存在且可解析。"
+                              "真实范围说清楚：运行期被产品代码打开的只有控制面请求合同、方案合同与适配器接口合同这三个"
+                              "具名文件，这一集合由「装读句柄、跑三个真实消费者、再比集合」的双向等式钉住，"
+                              "多一个或少一个都变红；动作计划与修复包的合同是由本节点把发布文件注入产品校验分支的，"
+                              "产品调用方 repair_state.py:115 自己调用时不注入 schema——这正是「其余目录随包发布而无运行期读者」"
+                              "的样子。发布目录整体纳入打包由 pyproject.toml:65/:136/:213 的声明钉住（合同节点不构建 wheel，"
+                              "安装态是否真带上是 A08/F06 隔离安装那条实测的范围，不算在本行）。"
+                              "本节现算而非抄旧数：packages/contracts 目录下 JSON 文件 %d 份。"
+                              % CONTRACTS_PUBLISHED_JSON},
         "research": {"location": "research/candidates/CANDIDATE-TAXONOMY.json:2", "evidence": NO_EVIDENCE,
                      "status": "IMPLEMENTED_UNVERIFIED",
                      "basis": "研究资料按「资料不是运行事实」留在 research/ 内且未被任何运行路径导入；"
@@ -831,7 +989,7 @@ def requirement_claims() -> dict[str, dict]:
                 "basis": "本行引用 STITCH 帧 F01/F02 与 SCREEN_12 画板，属前端交付；本轮前端 NOT_RUN，"
                         "且 SCREEN_12 未进入本仓（只读任务包内亦无位图证据），紧凑层级无从对照，故记缺口不记完成。"},
         "P02": {"location": "GET /api/v1/design/plans",
-                "evidence": "tests/legacy/design/test_assistance_plan.py::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart;" + "tests/unified/test_v04_design_loop.py::test_design_loop_keeps_professional_acceptance_pending",
+                "evidence": "tests/legacy/design/test_assistance_plan.py::AssistancePlanTests::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart;" + "tests/unified/test_v04_design_loop.py::test_design_loop_keeps_professional_acceptance_pending",
                 "status": "PARTIAL",
                 "basis": "后端连续状态可测：方案存/读回/修订、目标组合引用、专业验收 pending 均有断言，D01/D02/D04 所需的数据合同在；" + PARTIAL_MARKER
                         + "「自由切换、修订与目标组合」的画面按 F04 属前端，未交付。"},
@@ -857,8 +1015,8 @@ def requirement_claims() -> dict[str, dict]:
                 "basis": "「当前独立可运行」是可机验的：统一后端在没有 AAOS 的情况下跑通闭环（WORK 人工闭环测试全程不引用任何外部知识系统），"
                         "两张实测路由表中也不存在 AAOS 端点，保留的接缝是版本化的 KnowledgeCandidate 读面；真实用户数据迁移按 A06_real_user_data"
                         "登记为未运行，没有把未来接缝写成本轮依赖。" + PARTIAL_MARKER
-                        + "「未来接缝」目前只有路由与合同：候选出口在本仓无具名断言（同 05 candidate 行），故不能标 VERIFIED。"},
-        "E01": {"location": "AI-WORK-LAB_HANDOFF_20261029/12_来源基线.json:1",
+                        + "「未来接缝」目前只有路由与合同：候选出口的读回与拒绝已由 05 candidate 行点名的两条具名断言覆盖，"                        "但真实用户数据迁移（A06_real_user_data）与 AAOS 侧合同联调仍未运行，故不能标 VERIFIED。"},
+        "E01": {"location": "AI-WORK-LAB_HANDOFF_20261029/12_来源基线.json:6",
                 "evidence": "evidence:a01-a10-results.json#results.F01",
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "本机增量已按 INTEGRATION_POLICY §4 重新核实（来源多于云端锚点 → 以本地现状为迁移来源，锚点仅作研究参照，不回退），"

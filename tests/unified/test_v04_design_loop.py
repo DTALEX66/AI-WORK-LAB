@@ -560,3 +560,720 @@ def test_knowledge_candidate_creation_refusals_leave_no_row_and_no_approval(serv
     assert unchanged["candidates"][0]["reviewer_id"] is None, unchanged["candidates"][0]
     _assert_never_sent(unchanged, where="after an agent review attempt")
 
+
+# ============================================= design asset readback (05#L22|design-assets)
+# 登记行 05#L22|design-assets 的核心验收：「输入/输出/版本/引用可恢复，不扩素材平台」。
+# 登记位置是兼容面路由
+# `GET /api/projects/([0-9a-f]{32})/assets(?:/(img-[0-9a-f]{64})/content)?`、handler
+# `design_lab.http_service._list_or_read_assets`；该行状态为 IMPLEMENTED_UNVERIFIED、
+# 验证证据 NONE——本仓此前没有任何断言说这句话成立或不成立。下面四个节点把它拆成四条
+# 可跑的检查，全走真实 HTTP（`server` fixture 起的是真服务），素材一律是测试自己合成的
+# 字节，不读任何真实用户素材目录，也不联网。
+#
+# 断言按读到的真实形状写，先记下三件与直觉不同、必须写进证据的事：
+# * `_list_or_read_assets` 只有两个动作：`ImageAssets.list`（集合）与 `ImageAssets.content`
+#   （单份字节，base64 内联）。`ImageAssets._read` 的 SQL 写死了 `asset_kind='raster'` 和
+#   `v.version_no=MAX(...)`（源码注释说明这是刻意的「当前版本」规则），所以这条路由按构造
+#   只回栅格输入、只回当前版本：「历史版本可读」不可能靠这条路由多出一行去证明。真正的
+#   不可变历史在台账里——`asset_store._record_version` 只 INSERT、从不改写旧行，每一版的
+#   字节各自落在 `projects/<pid>/assets/versions/<publication_id>/` 互不重叠的位置，由同一
+#   个类的 `_verified`（路由每次读回都走它）现算摘要比对。所以下面的历史读回走 `_verified`：
+#   产品自己的校验器，不是测试把校验逻辑重写一遍再自证。
+# * `POST /assets` 用 `sha256(project_id + ':' + idempotency_key)` 铸造 `asset_id`，换一把
+#   幂等键得到的是**另一个资产**，不是同一资产的第二版。同一资产的第二版只能走
+#   `import_image` 自己调用的那组 store 写入 API（`register_asset` → `acquire_writer` →
+#   `writer_token` → `publish_version` → `release_writer`，外加 attempt 状态机）；下面的
+#   `_publish_next_version` 逐字镜像这段调用序。
+# * 「不扩素材平台」在这一面上是可以机验的缺席：路由表里该家族只有 4 条、方法只有 GET/POST，
+#   读回载荷的键集合闭合在 8 个本地字段，没有任何「已同步/已上传/远程地址」的说法。
+# 本节的「可恢复」边界（没证明的部分，写在节点里）：同一台机器、同一进程内的服务实例重开
+# （对同一 workspace 目录再 build 一个真服务、另开数据库连接）读回是证了；**操作系统进程
+# 重启、机器重启、断电后 rename 的可见性、`recover_publications` 的崩溃恢复语义都没有在这里
+# 验证**——那是 store 的另一个面，也不该被这一行验收顺手宣称掉。
+
+import base64
+import hashlib
+import io
+import re
+import secrets
+import sqlite3
+import threading
+import time
+from contextlib import closing, contextmanager
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+#: 登记行「当前实现位置」那一列的原样，节点直接拿它对照路由表，不另抄一份说法。
+ASSETS_ROUTE = r"/api/projects/([0-9a-f]{32})/assets(?:/(img-[0-9a-f]{64})/content)?"
+RASTER_ID_PATTERN = re.compile(r"img-[0-9a-f]{64}")
+VERSION_ID_PATTERN = re.compile(r"v-[0-9a-f]{32}")
+DIGEST_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
+#: 一次栅格读回的全部键——真实形状，不多不少（第四条断言把它当闭合集合校验）。
+RASTER_RECORD_KEYS = frozenset({"id", "version_id", "sha256", "byte_size", "rights",
+                                "width", "height", "media_type"})
+#: 输出侧的键集合与输入侧不同：没有 media_type/width/height，多了 kind/version_no/verification。
+NATIVE_RECORD_KEYS = frozenset({"id", "kind", "version_id", "version_no", "byte_size",
+                                "sha256", "rights", "verification"})
+#: 素材平台的说法必须整体缺席：路由表的 pattern/action 与载荷的每个键名都不许出现这些词根。
+PLATFORM_WORDS = ("upload", "sync", "remote", "fetch", "pull", "push", "download",
+                  "platform", "cdn", "provider", "url", "link", "href", "location",
+                  "etag", "proxy", "webhook", "external")
+#: 该家族在 `ROUTES` 里的全部四条：一条集合读、一份字节读、两条本地派生写。没有第五条。
+ASSET_SURFACE_ROUTES = (
+    ("GET", ASSETS_ROUTE, "_list_or_read_assets"),
+    ("POST", r"/api/projects/([0-9a-f]{32})/assets", "_import_asset"),
+    ("POST", r"/api/projects/([0-9a-f]{32})/assets/(img-[0-9a-f]{64})/analysis",
+     "_derive_asset_analysis"),
+    ("POST", r"/api/projects/([0-9a-f]{32})/assets/(img-[0-9a-f]{64})/prompt-reversal",
+     "_reverse_asset_prompt"),
+)
+
+
+def _synthetic_png(width: int, height: int, rgb: tuple) -> bytes:
+    """测试自己生成的 PNG：本项目没有任何一处读取真实用户素材目录。"""
+    from PIL import Image
+    stream = io.BytesIO()
+    Image.new("RGB", (width, height), rgb).save(stream, format="PNG")
+    return stream.getvalue()
+
+
+def _design_project(server, name: str) -> str:
+    """统一登记一个 design 项目；`root_path` 就是兼容面路由用的 32 位十六进制项目 id。"""
+    status, project = server.client.post("/api/v1/projects", {
+        "name": name, "source": "design", "data_origin": "test"})
+    assert status == 201, project
+    design_project_id = project["root_path"]
+    assert re.fullmatch(r"[0-9a-f]{32}", design_project_id), design_project_id
+    return design_project_id
+
+
+def _assets_url(project_id: str) -> str:
+    return f"/api/projects/{project_id}/assets"
+
+
+def _content_url(project_id: str, asset_id: str) -> str:
+    return f"{_assets_url(project_id)}/{asset_id}/content"
+
+
+def _record_url(project_id: str, asset_id: str, kind: str) -> str:
+    """按 kind 选这一面的读回面：栅格走登记行那条兼容路由，宿主产物走 native-assets 的校验面。
+
+    两个侧面本来就是两条路由（见断言三），所以「发布后读回当前记录」这句话也必须分头说。
+    """
+    if kind == "raster":
+        return _content_url(project_id, asset_id)
+    return f"/api/projects/{project_id}/native-assets/{asset_id}/verify"
+
+
+def _import_asset(server, project_id: str, data: bytes, idempotency_key: str) -> dict:
+    """真实 HTTP 登记一份输入素材，返回服务给出的那份资产记录（当前版本的引用标识）。"""
+    status, created = server.client.post(_assets_url(project_id), {
+        "content_base64": base64.b64encode(data).decode("ascii"),
+        "idempotency_key": idempotency_key})
+    assert status == 201, created
+    return created
+
+
+def _version_rows(service, asset_id: str) -> list:
+    """台账里的全部版本行（按 version_no 升序）：这一句就是「历史是不是追加式」的读数。"""
+    with closing(sqlite3.connect(service.database.as_uri() + "?mode=ro", uri=True)) as conn:
+        return [dict(zip(("version_id", "version_no", "content_sha256", "state"), row))
+                for row in conn.execute(
+                    "SELECT version_id, version_no, content_sha256, state FROM asset_version "
+                    "WHERE asset_id=? ORDER BY version_no", (asset_id,)).fetchall()]
+
+
+def _artifact_row(service, asset_id: str, version_id: str):
+    """`ImageAssets._verified` 期望的那一行五元组，与 `_read` 的 SELECT 同形同序。"""
+    with closing(sqlite3.connect(service.database.as_uri() + "?mode=ro", uri=True)) as conn:
+        row = conn.execute(
+            "SELECT a.asset_id,v.version_id,f.path,f.sha256,f.byte_size FROM asset a "
+            "JOIN asset_version v ON a.asset_id=v.asset_id "
+            "JOIN artifact f ON f.version_id=v.version_id "
+            "WHERE a.asset_id=? AND v.version_id=?", (asset_id, version_id)).fetchone()
+    assert row is not None, (asset_id, version_id)
+    return row
+
+
+def _artifact_paths(service, asset_id: str) -> list:
+    with closing(sqlite3.connect(service.database.as_uri() + "?mode=ro", uri=True)) as conn:
+        return [row[0] for row in conn.execute(
+            "SELECT f.path FROM asset_version v JOIN artifact f ON f.version_id=v.version_id "
+            "WHERE v.asset_id=? ORDER BY v.version_no", (asset_id,)).fetchall()]
+
+
+def _asset_kind(service, asset_id: str):
+    with closing(sqlite3.connect(service.database.as_uri() + "?mode=ro", uri=True)) as conn:
+        row = conn.execute("SELECT asset_kind FROM asset WHERE asset_id=?", (asset_id,)).fetchone()
+    return row[0] if row else None
+
+
+def _publish_next_version(server, project_id: str, asset_id: str, *, kind: str, data: bytes,
+                          idempotency_key: str, artifact_name: str, scope: str) -> dict:
+    """把同一 `asset_id` 的第二版字节发进去，调用序逐字镜像 `image_assets.import_image`。
+
+    换幂等键只会铸出新资产，所以「同一资产改版」只能走 store 的写入 API；这里不写 SQL、
+    不绕过 writer 锁：真实 attempt 作为租约持有者、真实 `publish_version` 落盘并登记摘要、
+    真实 `release_writer` 释放。发布后从兼容面路由读回，返回服务认定的当前版本记录。
+    """
+    from design_lab.runtime import asset_store as assets, job_store as jobs
+    from design_lab.runtime.attempt_contract import request_hash
+
+    digest = "sha256:" + hashlib.sha256(data).hexdigest()
+    identity = hashlib.sha256((project_id + ":" + idempotency_key).encode()).hexdigest()
+    operation, job = "revision-" + identity, "job-" + identity
+    service, owner = server.design_service, server.design_service.paths.project_root
+    with closing(jobs.connect(service.database, project_root=owner)) as conn:
+        attempt = jobs.begin_attempt(
+            conn, job, operation_id=operation, idempotency_scope=scope + ":" + project_id,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash({"project": project_id, "sha256": digest}))
+        attempt = jobs.transition(conn, attempt["attempt_id"], "RUNNING")
+        attempt_id = attempt["attempt_id"]
+        source = service.paths.category_dir("runtime", "asset-revisions", attempt_id) / "input"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_bytes(data)
+        with closing(assets.connect(service.database, project_root=owner)) as asset_conn:
+            assets.register_asset(asset_conn, project_id, asset_id, kind)
+            resource = "asset:" + asset_id
+            assert assets.acquire_writer(asset_conn, resource, attempt_id), "writer lease held"
+            generation = assets.writer_token(asset_conn, resource, attempt_id)
+            try:
+                version_id = assets.publish_version(
+                    asset_conn, asset_id, source,
+                    store_root=service.paths.category_dir("projects", project_id, "assets"),
+                    artifact_name=artifact_name, expected_sha256=digest,
+                    holder_attempt_id=attempt_id, generation=generation, project_root=owner)
+            finally:
+                assets.release_writer(asset_conn, resource, attempt_id, generation=generation)
+        jobs.transition(conn, attempt_id, "RECEIPTED", evidence={
+            "operation_id": operation, "attempt_id": attempt_id, "artifact_sha256": digest,
+            "readback_sha256": digest, "kind": "local-asset-revision", "rights": "NOT_REVIEWED"})
+    # 新版确实进了台账，并且是台账自己认定的最新一版；随后从它所属的那一面读回同一版。
+    versions = _version_rows(service, asset_id)
+    assert versions[-1]["version_id"] == version_id, versions
+    status, body = server.client.get(_record_url(project_id, asset_id, kind))
+    assert status == 200, body
+    assert body["asset"]["version_id"] == version_id, (version_id, body["asset"])
+    return body["asset"]
+
+
+def _register_output_asset(server, project_id: str, label: str, data: bytes) -> dict:
+    """在**同一套台账**里登记一个「输出产物」：`native-` 前缀 + `asset_kind='psd'`。
+
+    字节是合成的（一个带标签的假文档）：这一面只哈希、不解析宿主格式，所以合成字节足以
+    证明输入/输出在 kind、id 前缀与读回字段上的区分，不证明任何宿主文件的可打开性。
+    """
+    asset_id = "native-" + hashlib.sha256(label.encode("utf-8")).hexdigest()
+    assert _asset_kind(server.design_service, asset_id) is None, asset_id
+    record = _publish_next_version(server, project_id, asset_id, kind="psd", data=data,
+                                   idempotency_key="out-" + label, artifact_name="native.psd",
+                                   scope="synthetic-output")
+    assert record["id"] == asset_id, record
+    return record
+
+
+def _key_names(value, prefix: str = "") -> set:
+    """递归收集载荷里出现的每一个键名（含嵌套），平台词扫描按名字集合而不是按字符串碰运气。"""
+    if isinstance(value, dict):
+        found = set()
+        for key, child in value.items():
+            found.add(prefix + str(key))
+            found |= _key_names(child, prefix + str(key) + ".")
+        return found
+    if isinstance(value, list):
+        return set().union(*(_key_names(item, prefix) for item in value)) if value else set()
+    return set()
+
+
+def _assert_no_platform_claim(value, *, where: str) -> None:
+    """任何声称「已同步/已上传/远程可取」的字段都必须整体缺席：键名不含平台词根，值里没有 URL。
+
+    值侧只扫 URL 形状（`://`、`www.`），不扫裸 `http` 四个字母——base64 正文里理论上可能碰巧
+    出现这个子串，拿它当「有远程地址」的证据会把测试写成随机红。
+    """
+    names = _key_names(value)
+    offenders = sorted(name for name in names
+                       if any(word in name.lower() for word in PLATFORM_WORDS))
+    assert not offenders, (where, offenders)
+    text = json.dumps(value, ensure_ascii=False).lower()
+    assert "://" not in text, (where, "载荷里出现了 URL scheme")
+    assert not re.search(r"(https?|s3|gs|ftp|file)://", text), where
+    assert "www." not in text, where
+
+
+# ------------------------------------------------------------------ 四条检查（各自可复跑，配合植入反证）
+def _check_version_recovery(server, project_id: str, asset_id: str, *, first: dict,
+                            first_bytes: bytes, second: dict, second_bytes: bytes) -> None:
+    """版本可恢复：当前版与历史版是两份不同字节，且旧版的摘要/大小没跟着新版变。"""
+    from design_lab.image_assets import ImageAssets
+
+    # (1) 路由侧的真实形状：兼容面按构造只回当前版本，同一资产也不会被列两遍。
+    status, listed = server.client.get(_assets_url(project_id))
+    assert status == 200, listed
+    mine = [item for item in listed["assets"] if item["id"] == asset_id]
+    assert len(mine) == 1, mine
+    assert mine[0]["version_id"] == second["version_id"], mine[0]
+    status, current = server.client.get(_content_url(project_id, asset_id))
+    assert status == 200, current
+    assert base64.b64decode(current["content_base64"]) == second_bytes, current["asset"]
+
+    # (2) 台账侧：两版并存、都还是 ACTIVE、摘要互不相同、旧行的摘要与大小一个字节都没动。
+    versions = _version_rows(server.design_service, asset_id)
+    assert [row["version_no"] for row in versions] == [1, 2], versions
+    assert {row["version_id"] for row in versions} == {first["version_id"],
+                                                      second["version_id"]}, versions
+    assert all(row["state"] == "ACTIVE" for row in versions), versions
+    assert versions[0]["content_sha256"] == first["sha256"], versions
+    assert versions[1]["content_sha256"] == second["sha256"], versions
+    assert versions[0]["content_sha256"] != versions[1]["content_sha256"], versions
+
+    # (3) 字节侧：两版各自的可变位置互不重叠，旧位置不是被覆盖的；产品自己的 `_verified`
+    #     现算摘要后仍能把两版都认下来。
+    images = ImageAssets(server.design_service)
+    old_record, old_bytes = images._verified(
+        project_id, _artifact_row(server.design_service, asset_id, first["version_id"]))
+    new_record, new_bytes = images._verified(
+        project_id, _artifact_row(server.design_service, asset_id, second["version_id"]))
+    assert old_bytes != new_bytes, "两版折叠成了同一份字节：历史已被覆盖"
+    assert old_bytes == first_bytes and new_bytes == second_bytes
+    assert DIGEST_PATTERN.fullmatch(old_record["sha256"]), old_record
+    assert old_record["version_id"] == first["version_id"], old_record
+    assert old_record["sha256"] == first["sha256"], old_record
+    assert old_record["byte_size"] == len(first_bytes), old_record
+    assert new_record["sha256"] == second["sha256"], new_record
+
+    paths = _artifact_paths(server.design_service, asset_id)
+    assert len(set(paths)) == 2, paths
+    for path, expected in zip(paths, (first["sha256"], second["sha256"])):
+        on_disk = "sha256:" + hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        assert on_disk == expected, (path, on_disk, expected)
+
+
+def _check_asset_reference(server, project_id: str, other_project_id: str, asset_id: str,
+                           *, record: dict, data: bytes) -> None:
+    """引用可恢复：读回自带引用标识且与字节互相咬合，同一引用两次读回字节一致，越权被拒。"""
+    assert RASTER_ID_PATTERN.fullmatch(asset_id), asset_id
+    assert VERSION_ID_PATTERN.fullmatch(record["version_id"]), record
+    assert DIGEST_PATTERN.fullmatch(record["sha256"]), record
+
+    first_status, first = server.client.get(_content_url(project_id, asset_id))
+    second_status, second = server.client.get(_content_url(project_id, asset_id))
+    assert (first_status, second_status) == (200, 200), (first, second)
+    # 引用标识先要真的是标识：读回来的每一条都必须还能按同一形状寻址回来。
+    assert RASTER_ID_PATTERN.fullmatch(first["asset"]["id"]), first["asset"]
+    assert VERSION_ID_PATTERN.fullmatch(first["asset"]["version_id"]), first["asset"]
+    assert DIGEST_PATTERN.fullmatch(str(first["asset"]["sha256"])), first["asset"]
+    assert first == second, "同一引用两次读回不是同一份字节"
+    payload = base64.b64decode(first["content_base64"])
+    assert payload == data
+    assert first["asset"]["sha256"] == "sha256:" + hashlib.sha256(payload).hexdigest(), first
+    assert first["asset"]["byte_size"] == len(payload), first["asset"]
+
+    listed = server.client.get(_assets_url(project_id))[1]["assets"]
+    by_id = {item["id"]: item for item in listed}
+    assert by_id[asset_id] == first["asset"], (by_id.get(asset_id), first["asset"])
+
+    # 越权与畸形：具名拒绝，不是空列表糊过去（真实错误码按 handler/`require_project` 读来）。
+    assert server.client.get(_content_url(other_project_id, asset_id)) == (
+        404, {"error": "ASSET_NOT_FOUND"})
+    assert server.client.get(_assets_url(other_project_id)) == (200, {"assets": []})
+    stranger = "0" * 32
+    assert server.client.get(_assets_url(stranger))[:2] == (404, {"error": "PROJECT_NOT_FOUND"})
+    assert server.client.get(_content_url(stranger, asset_id))[:2] == (
+        404, {"error": "PROJECT_NOT_FOUND"})
+    assert server.client.get(_assets_url(project_id) + "/not-an-asset-id/content") == (
+        404, {"error": "NOT_FOUND"})
+    assert server.client.get(_content_url(project_id, "img-" + "b" * 64)) == (
+        404, {"error": "ASSET_NOT_FOUND"})
+
+
+def _check_input_output_split(server, project_id: str, raster_id: str, native_id: str,
+                              *, raster_bytes: bytes, native_bytes: bytes) -> None:
+    """输入/输出可区分：两个侧面各走自己的路由与字段，读回不要求任何外部素材平台在线。"""
+    status, listed = server.client.get(_assets_url(project_id))
+    assert status == 200, listed
+    raster_ids = [item["id"] for item in listed["assets"]]
+    assert raster_ids == [raster_id], raster_ids          # 栅格面只有输入素材
+    assert native_id not in raster_ids, raster_ids       # 输出产物不会被折进同一个大列表
+    raster = listed["assets"][0]
+    assert set(raster) == RASTER_RECORD_KEYS, sorted(raster)
+    assert "kind" not in raster, raster                   # 输入侧没有 kind，靠 kind 区分就不成立
+
+    status, native = server.client.get(f"/api/projects/{project_id}/native-assets")
+    assert status == 200, native
+    assert [item["id"] for item in native["assets"]] == [native_id], native["assets"]
+    output = native["assets"][0]
+    assert set(output) == NATIVE_RECORD_KEYS, sorted(output)
+    assert output["kind"] == "psd", output
+    assert output["verification"] == "METADATA_ONLY", output
+    assert set(raster) - set(output) and set(output) - set(raster), (raster, output)
+
+    assert _asset_kind(server.design_service, raster_id) == "raster"
+    assert _asset_kind(server.design_service, native_id) == "psd"
+
+    # 输入面连寻址都寻不到输出：路由的 id 段只认 `img-`，与 kind 过滤是同一件事的两半。
+    assert server.client.get(_content_url(project_id, native_id)) == (404, {"error": "NOT_FOUND"})
+
+    # 输出侧的字节由本机文件现算哈希确认，两侧都不问任何外部平台在线与否。
+    status, verified = server.client.get(
+        f"/api/projects/{project_id}/native-assets/{native_id}/verify")
+    assert status == 200, verified
+    assert verified["asset"]["verification"] == "HASH_VERIFIED", verified["asset"]
+    assert verified["asset"]["sha256"] == (
+        "sha256:" + hashlib.sha256(native_bytes).hexdigest()), verified["asset"]
+    assert output["byte_size"] == len(native_bytes), output
+    assert (raster["sha256"], raster["byte_size"]) == (
+        "sha256:" + hashlib.sha256(raster_bytes).hexdigest(), len(raster_bytes)), raster
+
+
+def _check_no_platform_channel(server, project_id: str, asset_id: str) -> None:
+    """不扩素材平台：这一面的路由与载荷里，没有上传/同步/远程拉取的任何通道或声称。"""
+    from design_lab import http_service
+
+    family = [(route.method, route.pattern, route.action)
+              for route in http_service.ROUTES if "/assets" in route.pattern]
+    assert family == list(ASSET_SURFACE_ROUTES), family
+    assert {item[0] for item in family} <= {"GET", "POST"}, family
+    offenders = [item for item in family
+                 if any(word in (item[1] + item[2]).lower() for word in PLATFORM_WORDS)]
+    assert not offenders, offenders
+    whole_table = [(route.method, route.pattern) for route in http_service.ROUTES
+                   if any(word in (route.pattern + route.action).lower()
+                          for word in ("upload", "sync", "remote", "fetch", "pull", "push",
+                                        "download", "platform", "cdn", "proxy", "webhook"))]
+    assert whole_table == [], whole_table
+
+    status, listed = server.client.get(_assets_url(project_id))
+    assert status == 200, listed
+    assert set(listed) == {"assets"}, sorted(listed)
+    status, content = server.client.get(_content_url(project_id, asset_id))
+    assert status == 200, content
+    assert set(content) == {"asset", "content_base64"}, sorted(content)
+    assert set(content["asset"]) == RASTER_RECORD_KEYS, sorted(content["asset"])
+    # 字节是内联回读的，不是一个「去哪儿取」的指针；权利位仍明说没审。
+    assert content["asset"]["rights"] == "NOT_REVIEWED", content["asset"]
+    assert listed["assets"][0]["rights"] == "NOT_REVIEWED", listed["assets"][0]
+    _assert_no_platform_claim(listed, where="GET /assets")
+    _assert_no_platform_claim(content, where="GET /assets/<id>/content")
+
+    # 入参面同样关着：想交一个远程地址连门都进不来（handler.body 的键集合是闭合的）。
+    for smuggled in ({"remote_url": "https://assets.example.invalid/reference.png"},
+                     {"sync_target": "example-platform"},
+                     {"upload_to": "example-platform"}):
+        body = {"content_base64": base64.b64encode(b"not-an-image").decode("ascii"),
+                "idempotency_key": "no-platform-1", **smuggled}
+        refused = server.client.post(_assets_url(project_id), body)
+        assert refused == (400, {"error": "INVALID_PROJECT_FIELDS"}), (smuggled, refused)
+
+
+@contextmanager
+def _reopen_service_readback(server):
+    """对同一 workspace 目录再 build 一个真服务：新 `ProjectService`、新数据库连接、新 HTTP 端口。
+
+    这只证明「换一个服务实例，一切从磁盘重读」，**不**是操作系统进程重启，也不主张断电语义。
+    """
+    from backend.app import build_server
+    from tests.conftest import Client
+
+    token = secrets.token_hex(32)
+    httpd, context = build_server(server.workspace, token, 0)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.2)
+    reopened = Client()
+    reopened.port = httpd.server_port
+    reopened.token = token
+    try:
+        yield SimpleNamespace(client=reopened, service=context["service"])
+    finally:
+        httpd.shutdown()
+        context["unified"].close()
+        context["work"].close()
+
+
+# ---------------------------------------------------------------------- 05#L22 断言一：版本可恢复
+def test_design_asset_versions_are_immutable_history_and_both_revisions_read_back(
+        server, monkeypatch):
+    """05#L22 的「版本可恢复」：改版得到第二版，当前版与历史版是两份不同字节，旧版不被改写。
+
+    证明（全走真实 HTTP + 真实 store 写入序）：
+    * 同一 `asset_id` 发第二版后，`asset_version` 是两行 `[1, 2]`、都还是 `ACTIVE`、摘要互不
+      相同，第一行登记的 `content_sha256` 仍是当初 `POST /assets` 服务自己给出的那个值——历史
+      是追加的，不是覆盖；
+    * 两版各自的字节落在 `versions/<publication_id>/` 两个不重叠的位置，磁盘上现算的 sha256
+      与登记值逐版相等；`ImageAssets._verified`（路由每次读回都走的产品校验器）能把两版都认下来，
+      且 `old_bytes != new_bytes`、旧版 `byte_size` 没变；
+    * 兼容面按构造只回当前版本（集合里同一资产只出现一次，内容读回给的是第二版字节）——这条
+      真实形状一并写下，避免后人以为「列不出第二行」是缺陷或被当成历史已可读；
+    * 对同一 workspace 再 build 一个真服务（新 `ProjectService`、新数据库连接）后，当前版仍从
+      路由读回，历史版仍被 `_verified` 认下：可恢复不依赖第一次那个内存对象。
+
+    植入反证两次，各自证明对应断言会红：①把 `_verified` 折成「无论问哪一版都回最新一版的字节」
+    （版本历史被折叠成覆盖）；②让 `_verified` 给出的记录把旧版摘要写成最新版的摘要（旧版本摘要
+    跟着变）。两次都 `pytest.raises(AssertionError)`，撤销补丁后复跑绿。
+
+    没证明：操作系统进程/机器重启后的持久性、断电时 rename 的可见性、`recover_publications`
+    的崩溃恢复语义、真实宿主产生的素材、任何真人验收（rights 仍是 NOT_REVIEWED）。
+    """
+    from design_lab.image_assets import ImageAssets
+
+    project_id = _design_project(server, "素材版本历史")
+    first_bytes = _synthetic_png(4, 4, (200, 10, 10))
+    created = _import_asset(server, project_id, first_bytes, "rev-one")
+    first, asset_id = created["asset"], created["asset"]["id"]
+    assert set(first) == RASTER_RECORD_KEYS, sorted(first)
+
+    second_bytes = _synthetic_png(6, 5, (10, 180, 40))
+    second = _publish_next_version(server, project_id, asset_id, kind="raster",
+                                   data=second_bytes, idempotency_key="rev-two",
+                                   artifact_name="reference.png", scope="image-import")
+    assert second["version_id"] != first["version_id"], (first, second)
+
+    _check_version_recovery(server, project_id, asset_id, first=first, first_bytes=first_bytes,
+                            second=second, second_bytes=second_bytes)
+
+    original_verified = ImageAssets._verified
+
+    # 反证①：历史折叠成覆盖——问哪一版都只回最新一版的字节。
+    def _fold_history(self, project_id_, row):
+        newest = _version_rows(self.service, row[0])[-1]
+        return original_verified(self, project_id_,
+                                 _artifact_row(self.service, row[0], newest["version_id"]))
+
+    monkeypatch.setattr(ImageAssets, "_verified", _fold_history)
+    with pytest.raises(AssertionError):
+        _check_version_recovery(server, project_id, asset_id, first=first,
+                                first_bytes=first_bytes, second=second, second_bytes=second_bytes)
+    monkeypatch.undo()
+
+    # 反证②：旧版本摘要跟着新版变——字节还是旧的，登记口径已经指到新版。
+    def _drift_digest(self, project_id_, row):
+        record, data = original_verified(self, project_id_, row)
+        newest = _version_rows(self.service, row[0])[-1]
+        return dict(record, sha256=newest["content_sha256"]), data
+
+    monkeypatch.setattr(ImageAssets, "_verified", _drift_digest)
+    with pytest.raises(AssertionError):
+        _check_version_recovery(server, project_id, asset_id, first=first,
+                                first_bytes=first_bytes, second=second, second_bytes=second_bytes)
+    monkeypatch.undo()
+
+    # 还原后复跑：两条反证都只活在打补丁的这几行里，产品代码与台账一个字节都没被改。
+    _check_version_recovery(server, project_id, asset_id, first=first, first_bytes=first_bytes,
+                            second=second, second_bytes=second_bytes)
+
+    with _reopen_service_readback(server) as reopened:
+        status, again = reopened.client.get(_content_url(project_id, asset_id))
+        assert status == 200, again
+        assert again["asset"] == second, again["asset"]
+        assert base64.b64decode(again["content_base64"]) == second_bytes
+        # 历史版也由这个新服务实例从磁盘重新认下来，不是第一个实例留下的内存
+        old_record, old_data = ImageAssets(reopened.service)._verified(
+            project_id, _artifact_row(reopened.service, asset_id, first["version_id"]))
+        assert old_record["sha256"] == first["sha256"], old_record
+        assert old_data == first_bytes
+
+
+# ---------------------------------------------------------------------- 05#L22 断言二：引用可恢复
+def test_design_asset_reference_pins_its_bytes_and_other_projects_are_refused(
+        server, monkeypatch):
+    """05#L22 的「引用可恢复」：读回自带可寻址引用且与字节互相咬合，别人的资产读不到。
+
+    证明：
+    * 引用标识真实存在且形状可寻址：`img-`+64 位十六进制、`v-`+32 位、`sha256:`+64 位；
+      给出的摘要等于返回字节的现算值，`byte_size` 等于返回字节长度——引用钉住了内容；
+    * 同一引用两次独立 HTTP 读回，整个载荷逐字段相等（不是「大概一样」）；集合读回与内容读回
+      给出同一条资产记录，两处引用标识不会各说各话；
+    * 跨项目与畸形寻址都是具名拒绝，按 handler 真实错误码断言：别人的项目要这份内容 →
+      404 `ASSET_NOT_FOUND`（别人的集合读回是 200 空列表，不冒充可见）；不存在的项目 →
+      404 `PROJECT_NOT_FOUND`；不合 `img-` 模式的 id → 404 `NOT_FOUND`；模式合但没登记过的
+      id → 404 `ASSET_NOT_FOUND`；
+    * store 层同一身份不能被别的项目重铸：拿 A 的 `asset_id` 去 B 登记 →
+      `AssetError('asset identity is already bound to another project/kind')`；
+    * 引用不是装饰：把落盘字节改成同样长度、不同内容的字节，路由立刻 409
+      `ARTIFACT_HASH_MISMATCH`（集合读回同样拒绝），把原字节放回后读回重新为绿——登记的摘要
+      每次读都重新算过，不是读一次就信了。
+
+    植入反证三次：①让 `content` 每次多吐一个字节（同一引用两次读回不再一致）；②让 `_verified`
+    把摘要写成 `None`（读回不再带引用标识）；③直接在落盘文件上换字节（引用与内容脱钩）。
+    前两次撤销补丁后复跑绿，第三次把原字节放回后复跑绿。
+
+    没证明：真实用户素材、任何外部素材平台的引用（本面就没有这个通道，见断言四）。
+    """
+    from design_lab.image_assets import ImageAssets
+    from design_lab.runtime import asset_store as assets
+
+    project_a = _design_project(server, "引用甲项目")
+    project_b = _design_project(server, "引用乙项目")
+    data = _synthetic_png(8, 3, (12, 34, 250))
+    record = _import_asset(server, project_a, data, "ref-one")["asset"]
+    asset_id = record["id"]
+
+    _check_asset_reference(server, project_a, project_b, asset_id, record=record, data=data)
+
+    # store 层的身份绑定：引用不能被第二个项目接走。
+    with closing(assets.connect(server.design_service.database,
+                                 project_root=server.design_service.paths.project_root)) as conn:
+        with pytest.raises(assets.AssetError) as rebound:
+            assets.register_asset(conn, project_b, asset_id, "raster")
+        assert "already bound to another project" in str(rebound.value), str(rebound.value)
+    assert server.client.get(_content_url(project_b, asset_id)) == (
+        404, {"error": "ASSET_NOT_FOUND"})
+
+    original_content = ImageAssets.content
+    original_verified = ImageAssets._verified
+    reads = {"n": 0}
+
+    # 反证①：同一引用两次读回不再是同一份字节（每次多吐一个递增字节）。
+    def _drifting_read(self, project_id_, asset_id_):
+        payload = original_content(self, project_id_, asset_id_)
+        reads["n"] += 1
+        raw = base64.b64decode(payload["content_base64"]) + bytes([reads["n"] % 251])
+        payload["content_base64"] = base64.b64encode(raw).decode("ascii")
+        return payload
+
+    monkeypatch.setattr(ImageAssets, "content", _drifting_read)
+    with pytest.raises(AssertionError):
+        _check_asset_reference(server, project_a, project_b, asset_id, record=record, data=data)
+    monkeypatch.undo()
+
+    # 反证②：读回不再带引用标识（摘要位被写成 None，形状检查当场红）。
+    def _drop_digest(self, project_id_, row):
+        rec, rec_data = original_verified(self, project_id_, row)
+        return dict(rec, sha256=None), rec_data
+
+    monkeypatch.setattr(ImageAssets, "_verified", _drop_digest)
+    with pytest.raises(AssertionError):
+        _check_asset_reference(server, project_a, project_b, asset_id, record=record, data=data)
+    monkeypatch.undo()
+    _check_asset_reference(server, project_a, project_b, asset_id, record=record, data=data)
+
+    # 数据侧的植入反证：落盘字节被换掉，摘要必须当场拒绝；还原后引用重新可读。
+    path = Path(_artifact_paths(server.design_service, asset_id)[0])
+    pristine = path.read_bytes()
+    try:
+        path.write_bytes(b"X" * len(pristine))
+        assert server.client.get(_content_url(project_a, asset_id)) == (
+            409, {"error": "ARTIFACT_HASH_MISMATCH"})
+        assert server.client.get(_assets_url(project_a))[1]["error"] == "ARTIFACT_HASH_MISMATCH"
+    finally:
+        path.write_bytes(pristine)
+    _check_asset_reference(server, project_a, project_b, asset_id, record=record, data=data)
+
+
+# ------------------------------------------------------------ 05#L22 断言三：输入与输出是两个侧面
+def test_design_input_material_and_output_artifact_stay_two_different_kinds(server,
+                                                                           monkeypatch):
+    """05#L22 的「输入/输出…可恢复」：输入素材与输出产物在同一台账里可区分，且读回不问外部平台。
+
+    证明（两侧都是测试自己生成的合成字节）：
+    * 同一个设计项目、同一套 `asset/asset_version/artifact` 台账里登记两份东西：输入素材是
+      `img-` 前缀 + `asset_kind='raster'`（走真实 `POST /assets`），输出产物是 `native-` 前缀 +
+      `asset_kind='psd'`（走 store 自己的写入序，宿主产物在台账里就是这个形状）；
+    * 两个侧面各有路由、各有字段：`GET /assets` 只列输入，键集合是那 8 个栅格字段，里面
+      **没有** `kind`；`GET /assets` 里绝不出现输出 id。`GET /native-assets` 只列输出，键集合
+      含 `kind/version_no/verification` 而无 `media_type/width/height`；两个键集合互不相等，
+      `kind='psd'` 与栅格的 `media_type='image/png'` 各说各话；
+    * 输入面连寻址都寻不到输出：`GET /assets/<native-id>/content` → 404 `NOT_FOUND`（id 段只认
+      `img-`），与 kind 过滤是同一道构造的两半；
+    * 两侧读回都不要求任何外部素材平台在线：输入的摘要/大小由本机字节现算，输出的
+      `verification` 从 `METADATA_ONLY` 到 `/verify` 的 `HASH_VERIFIED`——后者是产品自己打开
+      本地文件重算哈希的结果，等于测试对该文件现算的值。
+
+    植入反证：把 `ImageAssets.list` 改成「两种 kind 合成一条大列表」（正是素材平台化的折叠动作），
+    上述区分立刻红；撤销后复跑绿。
+
+    没证明：`native.psd` 是 Photoshop 真能打开的文件（字节是合成的，这一面只哈希不解析）；
+    真实宿主产生输出的链路（宿主自动化仍按项目边界逐次走人工门）。
+    """
+    from design_lab.image_assets import ImageAssets
+    from design_lab.native_assets import NativeAssets
+
+    project_id = _design_project(server, "输入与输出")
+    raster_bytes = _synthetic_png(5, 5, (7, 7, 200))
+    raster = _import_asset(server, project_id, raster_bytes, "in-one")["asset"]
+    native_bytes = b"SYNTHETIC-NATIVE-OUTPUT-FOR-TESTS\n" * 4
+    output = _register_output_asset(server, project_id, "synthetic-output-1", native_bytes)
+
+    _check_input_output_split(server, project_id, raster["id"], output["id"],
+                              raster_bytes=raster_bytes, native_bytes=native_bytes)
+
+    original_list = ImageAssets.list
+
+    # 反证：两侧折成一条不分 kind 的大列表，就是「素材平台」那一侧的样子。
+    def _merged_feed(self, project_id_):
+        merged = list(original_list(self, project_id_))
+        merged.extend(NativeAssets(self.service).list(project_id_)["assets"])
+        return merged
+
+    monkeypatch.setattr(ImageAssets, "list", _merged_feed)
+    with pytest.raises(AssertionError):
+        _check_input_output_split(server, project_id, raster["id"], output["id"],
+                                  raster_bytes=raster_bytes, native_bytes=native_bytes)
+    monkeypatch.undo()
+    _check_input_output_split(server, project_id, raster["id"], output["id"],
+                              raster_bytes=raster_bytes, native_bytes=native_bytes)
+
+
+# -------------------------------------------------------------- 05#L22 断言四：不扩素材平台
+def test_design_asset_surface_offers_no_external_platform_channel(server, monkeypatch):
+    """05#L22 的「不扩素材平台」：这一面没有上传/同步/远程拉取的通道，也没有声称做过。
+
+    证明（路由表与载荷两侧一起看，不靠注释）：
+    * `ROUTES` 里带 `/assets` 的条目恰好是已登记的 4 条——一条集合读、一份字节读、两条本地
+      派生写（analysis / prompt-reversal），方法集合 ⊆ {GET, POST}，pattern 与 action 里不含
+      任何平台词根；整张路由表也搜不到 upload/sync/remote/fetch/pull/push/download/platform/
+      cdn/proxy/webhook 这样的路由；
+    * 读回载荷的键集合是闭合的：集合读只有 `assets`，内容读只有 `asset` + `content_base64`，
+      资产记录只有那 8 个本地字段；递归扫过每一个键名（含嵌套）都不含平台词根，序列化文本里
+      没有任何 URL（`://`、scheme、`www.` 都搜不到）——字节是内联回读的，不是「去哪儿取」的指针；
+    * 权利位明说没审：两处 `rights` 都是 `NOT_REVIEWED`，服务没有替任何人声称三方素材可用；
+    * 入参面同样关着：`POST /assets` 的键集合是闭合的 `{content_base64, idempotency_key}`，
+      想递一个 `remote_url`／`sync_target`／`upload_to` 都得到 400 `INVALID_PROJECT_FIELDS`，
+      连门都进不来（因此也不存在「交个地址让服务去外部拉」这条隐式通道）。
+
+    植入反证：给 `content` 的载荷加一个 `remote_url` 和一个 `synced=True`，再给路由表加一条
+    `POST /assets/upload`——两种「平台化」都被当场判红；撤销后复跑绿。
+
+    没证明：别的表面（宿主 Adapter、bundle 交付）永不接触外部系统——本行验收只登记这一条路由，
+    本节点也只断言这一条路由加整张路由表的名称面，不去宣称全局。
+    """
+    from design_lab import http_service
+    from design_lab.image_assets import ImageAssets
+
+    project_id = _design_project(server, "平台边界")
+    data = _synthetic_png(3, 3, (99, 99, 99))
+    record = _import_asset(server, project_id, data, "edge-one")["asset"]
+
+    _check_no_platform_channel(server, project_id, record["id"])
+
+    original_content = ImageAssets.content
+
+    # 反证①：载荷开始声称「已经同步到某平台/可以去那儿取」。
+    def _claims_a_platform(self, project_id_, asset_id_):
+        payload = original_content(self, project_id_, asset_id_)
+        payload["asset"]["synced"] = True
+        payload["remote_url"] = "https://assets.example.invalid/reference.png"
+        return payload
+
+    monkeypatch.setattr(ImageAssets, "content", _claims_a_platform)
+    with pytest.raises(AssertionError):
+        _check_no_platform_channel(server, project_id, record["id"])
+    monkeypatch.undo()
+
+    # 反证②：路由表多出一条上传通道。
+    monkeypatch.setattr(http_service, "ROUTES", tuple(http_service.ROUTES) + (
+        http_service.Route("POST", r"/api/projects/([0-9a-f]{32})/assets/upload",
+                           "_upload_asset"),))
+    with pytest.raises(AssertionError):
+        _check_no_platform_channel(server, project_id, record["id"])
+    monkeypatch.undo()
+
+    # 还原后复跑绿，并确认路由表回到登记值：反证只活在补丁里，没有在产品上留下任何东西。
+    _check_no_platform_channel(server, project_id, record["id"])
+    assert [(route.method, route.pattern, route.action) for route in http_service.ROUTES
+            if "/assets" in route.pattern] == list(ASSET_SURFACE_ROUTES)
+

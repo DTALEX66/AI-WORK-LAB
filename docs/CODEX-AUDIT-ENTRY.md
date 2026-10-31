@@ -883,3 +883,70 @@ PARTIAL 29→34；`capability-family` 的 IMPLEMENTED_VERIFIED 11→13。**没�
 两来源仓 git 口径摘要不变。`migration/audit-item-closure.csv` 的 20 行收据列改绑这份新收据，
 `独立复审` 列仍 20 行 `NOT_RUN`——结论口径不变：**QODER 全量闭环自测完成，必做条款 `L10#0`
 （32 行来源判定）待 owner，待 Codex 独立复审**。
+
+### 15.12 批次二证据接线，以及两处只有真跑一遍才露出来的引用缺陷
+
+登记行的状态只能由生成器给。这一节把五条能力族行接上本轮新写的具名断言，
+`migration/capability-family-register.csv` 的直方图从 `IMPLEMENTED_VERIFIED 13 / PARTIAL 11 / IMPLEMENTED_UNVERIFIED 6`
+变成 `16 / 11 / 3`，`downgrade_count 0`——没有一行是我手改状态得来的。
+
+| 来源行 | 现在引的断言 | 机验给的状态 | 依据列里写死的限制 |
+|---|---|---|---|
+| `05#L8\|issues` | `test_v11_audit_rework.py` 的 6 条链节点 + 原有 F09 | 仍 PARTIAL | F09 断的是这一面读通与 Control 写入门被拒；链的每一跳正向可达、从判定反向追回同一组 id、三处标识篡改各自点名并整行逐字段还原，这些都在测试里；但产品自己的一致性报告对 attempts 只问 task_id 存不存在，pack_plan_id 从不与计划行对照（计划行住在另一座库），把尝试指向另一个包后它仍报完成、对被改那一跳一字不提——所以不记 VERIFIED |
+| `05#L11\|configuration` | `test_v02_surface.py` 的 4 条恢复节点 + 原能力目录节点 | 仍 PARTIAL | 四轮换台账（照抄/改一条并删一条/抄回/只动另一条）答复随文件变且还原即回基线，工作区与真实 config 目录逐文件摘要不变；认证描述符与环境答复各读两次比对（描述符比授权记录、操作集、证据上限、传输四个子字段，观测时刻除外），不是四轮那条断言；缺口写明白：写入与回滚在产品里没有实现分支（apply/readback/rollback 三项 implemented=False，TARGET_NOT_AUTHORISED / NO_WRITE_TO_READ_BACK / NO_RECOVERY_HANDLE），恢复只测了读侧一致性 |
+| `05#L16\|radar` | `test_v09_honesty.py` 的 5 条四轴节点 | 审读后降回 PARTIAL | 出处、证据、本机状态、雷达状态四个字段各在自己的词表且互不相等（人口是测试生成的台账，不是产品台账的普适断言）；文档级日期只从台账带出、条目行没有自己的日期；资格不可由文档或一次探测铸造。审读抓到两处：我原先写的「把 UNKNOWN 补成 0 的植入会变红」并不存在（这句已删）；而 `weights_sha256` 被省略与被登记为空列表确实塌成同一个 0，`_model` 也不透传 hash_source 与 qualified_by——「有区别」在这一处没做到，缺陷按机验留在 PARTIAL 而不是藏在叙述里 |
+| `05#L22\|design-assets` | `test_v04_design_loop.py` 的 4 条素材节点 | IMPLEMENTED_VERIFIED | 版本只增：当前版走路由读回，历史版走素材层校验与磁盘摘要（兼容面路由按构造只回当前版，不冒充历史版可从路由读）；引用按摘要钉住，跨项目 404、改内容 409；输入面与输出面字段集合互不相等且彼此寻不到，折成一条大列表的植入变红；路由面两个人口（含 /assets 的条目集合等式、整表平台词根搜索为空且那份词表是载荷侧长清单的子集）各自钉住；换一次读回是同进程换一个服务实例，不是进程重启。不声称宿主能打开产物（字节是合成的，只哈希不解析） |
+| `05#L27\|contracts` | `test_v05_rejections.py` 的 13 条合同节点 | IMPLEMENTED_VERIFIED | 见下面第三段：VERIFIED 只覆盖验收原文那三件事，不等于目录里每个 Schema 都在被消费。补三条口径——打包是 pyproject 的静态声明、合同节点不构建 wheel（安装态实测归 A08/F06）；动作计划的 schema 由本节点注入产品校验分支，产品调用方 repair_state.py:115 自己调用时不注入；资源路径面的人口是每个 JSON 里键名为 $ref 的 462 条引用 |
+
+`05#L11` 那行的「当前实现位置」也从登记原文改到了代码真实的样子：原写 `backend/core/capabilities.py:97`
+（`derive_catalog`），而它从不打开 `config/adapter-registry.json`——能力目录换了台账一个字都不动，这一点现在被
+节点钉成断言；台账真正的现读面是 WORK 快照的 `adapterCapabilities`，位置因此改为
+`domains/work/orchestration/adapter_capability_projection.py:409`（`def load_inputs`）。
+
+**缺陷①：一次锚定插入吞掉一行 `def`，两个测试悄悄合成一个。**
+为补 `domains/work/control/open_task_register_projection.py:53-55` 那句「由
+`test_the_excerpt_bound_and_the_schema_max_length_are_the_same_number` 钉住」的空引用，我在
+`tests/unified/test_v05_rejections.py:799` 加了那个节点。插入脚本用了 `text.partition(ANCHOR)`——
+`partition` 把锚点本身放进分隔符，`before + node + after` 重写时就少了
+`def test_contracts_every_published_schema_ref_resolves_to_a_real_repo_file():` 这一行，
+它的函数体按缩进并进了上一个节点。后果是三重伪装：文件照样 import、`pytest` 照样全绿、
+`git diff --numstat` 仍是纯增（787/0）。唯一露出它的是登记构建时报的那条「该节点不存在 → 降级」。
+修复后两个节点分别带 2 与 9 条断言、文件节点数 20→21。
+教训落成守卫：`tests/unified/test_v16_traceability.py::test_every_cited_test_node_is_collected_by_pytest_and_every_file_collects_what_it_declares`
+从四张登记表抽出全部 96 条 `tests/…::…` 引用，对 15 个被引用文件跑一次 `--collect-only`
+（实测收到 259 个节点），既要求每条引用收得到，也要求每个文件「AST 声明的节点集合」与
+「pytest 收到的节点集合」以及 `def test_` 行数三者一致。植入假名后它当场点名
+`test_design_asset_surface_offers_no_external_platform_channel_PLANTED_BOGUS`，
+`test_no_verified_row_survives_an_unresolvable_claim[capability-family]` 同时变红；
+用生成器重算还原后该 CSV 与植入前 31 行逐行相同（0 差）。
+
+**缺陷②：七条登记引用少一段类名，粘到终端上跑不起来。**
+`tests/legacy/design/*` 是 `unittest.TestCase`，真实节点 id 是 `文件::类::方法`；登记写的是 `文件::方法`，
+旧解析器只 grep `def 方法` 所以照单放行——实测 `pytest 文件::方法` 回答 `no match in any of
+[<Module …>] / no tests ran`。证据指针必须能被别人复核，这条不满足就是伪证据。受影响的七行：
+`04#L34|design:assistant`、`04#L37|design:analysis`、`04#L44|design:knowledge`、
+`05#L19|design-plan`、`04#L53|design:target-profiles`、`05#L20|design-target`、`11#L19|P02`。
+现在类名按各自文件的 AST 现算后写进登记，两侧解析器（生成器的 `check_evidence` 与 `test_v16` 的
+独立重算）都改成匹配整个 `::` 之后的剩余部分是否在可收集集合里。顺带量化过手改的危险：只改登记
+不改解析器时，6 行从 VERIFIED 掉到 UNVERIFIED——那是机验在起作用，不是噪声。
+
+**contracts 面把「公共 Schema 目录随包发布并被 store/服务读取」这句话量开了。**
+`packages/contracts` 下 JSON 实测 225 份（`schemas/` 49、`schemas-design/` 176——此前流传说的是 198，
+现算否掉了它）。「随包发布」为真，`pyproject.toml:65 include-package-data = true`、`:136` 把
+`packages` 纳入包、`:213` 声明 `"packages" = ["contracts/**/*"]`。「被 store/服务读取」只对三份成立：
+`domains/work/control/control_service.py:76`（control-operation）、
+`domains/work/control/solution_library.py:165-169`（solution）、
+`domains/work/orchestration/adapter_capability_projection.py:59`（client-adapter）；
+`snapshot_validator.py` 不加载 snapshot-v3，它把版本号拿来比对而不是重导。这一集合不是靠 grep 断言的：
+`tests/unified/test_v05_rejections.py::test_contracts_published_inventory_and_consumed_set_do_not_drift`
+装上 `Path.read_text` 的读句柄、跑这三个真实消费者、再和写死的集合做双向等式，多一个少一个都变红；
+同一节点还对账「发布目录 == `migration/copies.json` 登记的 225 条目标」，并把
+`config/capability-matrix.json` 声明却无人打开的 `adapter-registry.schema.json` 写成显式例外而不是沉默。
+登记行 `05#L27|contracts` 的 VERIFIED 因此是真的，但依据列同时记下 225 与 3 的差：其余目录随包发布而无运行期读者。
+
+七份 `--check` 在这一轮末尾的实测：`build_source_coverage`、`build_task_acceptance_register`、
+`build_blocker_register`、`build_deferral_register`、`build_audit_item_closure`、
+`build_isolated_install_verdict`、`build_audit_state` 全部 `rc=0`（登记表与工作树一致，
+`AUDIT-STATE.json` 仍绑定当前 HEAD）。验收登记不受本次接线影响：48 条里 41 条 CONFIRMED，
+未确认的 7 条仍是 `A00#1`（不继承 ZCODE 结论）、`L10#0`（32 行来源判定待 owner）、
+`L00#2`（egress 隔离）、`L20#0`（真实宿主）、`L30/L31/L32`（P3 分期）。

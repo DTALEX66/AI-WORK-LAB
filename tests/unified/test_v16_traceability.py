@@ -28,6 +28,7 @@ What is guarded here, and deliberately **not** by reusing the builder's own reso
 """
 from __future__ import annotations
 
+import ast as _ast
 import csv
 import importlib.util
 import json
@@ -141,13 +142,25 @@ def resolve_evidence_independently(spec: str) -> tuple[bool, str]:
                     return (False, "键路径不存在 " + dotted)
                 cursor = cursor[step]
         elif "::" in part:
-            file_part, _, test_name = part.partition("::")
+            file_part, _, remainder = part.partition("::")
             path = TARGET_ROOT / file_part
             if not path.is_file():
                 return (False, "测试文件缺失 " + file_part)
-            if not re.search(r"^\s*def\s+%s\b" % re.escape(test_name),
-                             path.read_text(encoding="utf-8", errors="replace"), re.M):
-                return (False, "测试未声明 " + part)
+            # re-derived here rather than borrowed from the builder: a citation is only evidence if
+            # pytest could collect it, and pytest spells a TestCase method as ``Class::method``.
+            # Grepping for a ``def`` line anywhere accepted ``file.py::test_method`` for the four
+            # legacy design files, where that id answers "no tests ran".
+            tree = _ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+            collectible = {node.name for node in tree.body
+                           if isinstance(node, _ast.FunctionDef)
+                           and node.name.startswith("test_")}
+            for node in tree.body:
+                if isinstance(node, _ast.ClassDef):
+                    collectible.update("%s::%s" % (node.name, item.name) for item in node.body
+                                       if isinstance(item, _ast.FunctionDef)
+                                       and item.name.startswith("test_"))
+            if remainder not in collectible:
+                return (False, "pytest 收不到 " + part)
         else:
             return (False, "证据写法不可解析 " + part)
     return (True, "resolved")
@@ -297,8 +310,6 @@ def test_anchors_on_rows_that_admit_being_unverified_still_have_to_point_somewhe
     for name, path in sorted(REGISTERS.items()):
         for row in read_register(path):
             status = row["状态"]
-            if status == "IMPLEMENTED_VERIFIED":
-                continue
             location = row["当前实现位置"]
             if location and location not in ("ABSENT", "NONE"):
                 ok, note = resolve_location_independently(location, live)
@@ -313,6 +324,11 @@ def test_anchors_on_rows_that_admit_being_unverified_still_have_to_point_somewhe
                         offenders.append((name, row["来源行标识"], status, location,
                                           "锚点行没有内容（许可头/括号壳）"))
             evidence = row.get("验证证据", "")
+            if status == "IMPLEMENTED_VERIFIED":
+                # the strict guard above already resolves a VERIFIED row's evidence; the
+                # content-of-the-anchor rule is shared, because that is what let a `{` line
+                # pass as the location of a row claiming verification
+                continue
             if evidence and evidence != "NONE":
                 if evidence.startswith("evidence:") or ";evidence:" in evidence:
                     offenders.append((name, row["来源行标识"], status, evidence,
@@ -328,6 +344,116 @@ def test_anchors_on_rows_that_admit_being_unverified_still_have_to_point_somewhe
                     if not ok:
                         offenders.append((name, row["来源行标识"], status, pointer, note))
     assert not offenders, "自称未核实的行仍然挂了无效锚点：%s" % offenders[:12]
+
+def _declared_test_names(text: str) -> list[str]:
+    """Collectible node names an author wrote down, spelled the way pytest spells them.
+
+    Module-level functions are bare names; a ``TestCase`` method collects as ``Class::method``,
+    which is the only citation form that resolves for the four legacy design files.
+    """
+    tree = _ast.parse(text)
+    names = [n.name for n in tree.body if isinstance(n, _ast.FunctionDef)
+             and n.name.startswith("test_")]
+    for node in tree.body:
+        if isinstance(node, _ast.ClassDef):
+            names.extend("%s::%s" % (node.name, item.name) for item in node.body
+                         if isinstance(item, _ast.FunctionDef) and item.name.startswith("test_"))
+    return names
+
+
+def _def_line_count(text: str) -> int:
+    """How many lines *look* like a test definition, whether or not they define anything."""
+    return len([line for line in text.splitlines() if line.strip().startswith("def test_")])
+
+
+def test_every_cited_test_node_is_collected_by_pytest_and_every_file_collects_what_it_declares():
+    """The registers cite nodes; this checks pytest can actually see them.
+
+    Resolving a citation by grepping ``def <name>`` proves the words are in the file, not that a
+    test exists there. When an anchored insert ate one ``def`` line, the orphaned body silently
+    joined the preceding test: the file still imported, the suite still passed, and only the
+    register build noticed the missing name. So the population here is enumerated from pytest's
+    own collection report over the cited files, and two things must hold -- every cited node id is
+    collected, and each cited file collects exactly as many items as it declares functions.
+    """
+    cited: dict[str, set[str]] = {}
+    for path in sorted(REGISTERS.values()) + [API_REGISTER]:
+        rows = (read_register(path) if path.suffix == ".csv"
+                else json.loads(path.read_text(encoding="utf-8"))["checks"])
+        for row in rows:
+            for part in [piece.strip() for piece in row.get("验证证据", "").split(";") if piece.strip()]:
+                if "::" in part and part.startswith("tests/"):
+                    file_part, _, name = part.partition("::")
+                    cited.setdefault(file_part, set()).add(name)
+    assert cited, "no register cites a test node at all, so this guard would be vacuous"
+
+    files = sorted(cited)
+    collected = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", *files],
+        cwd=str(TARGET_ROOT), capture_output=True, text=True, encoding="utf-8",
+        errors="replace", timeout=900)
+    assert collected.returncode == 0, collected.stdout[-3000:] + collected.stderr[-3000:]
+    seen: dict[str, set[str]] = {}
+    for line in collected.stdout.splitlines():
+        marker = "::"
+        if marker in line and line.startswith("tests/"):
+            file_part, _, name = line.partition("::")
+            seen.setdefault(file_part.strip(), set()).add(name.strip())
+
+    missing = [(file_part, name) for file_part, names in sorted(cited.items())
+               for name in sorted(names) if name not in seen.get(file_part, set())]
+    assert missing == [], "登记表引用的节点 pytest 收不到：%s" % missing[:10]
+
+    drift = []
+    for file_part in files:
+        text = (TARGET_ROOT / file_part).read_text(encoding="utf-8", errors="replace")
+        declared, collected_names = _declared_test_names(text), seen.get(file_part, set())
+        # A parametrised node collects as test_x[case]; the register cites the bare name, and a
+        # file may declare one function that pytest hands back as several ids.
+        if len(declared) != len(set(declared)):
+            drift.append((file_part, "duplicate declarations",
+                          sorted([n for n in declared if declared.count(n) > 1])))
+        if not set(declared) <= collected_names:
+            drift.append((file_part, "declared but not collected",
+                          sorted(set(declared) - collected_names)[:5]))
+        if {name.split("[")[0] for name in collected_names} != set(declared):
+            drift.append((file_part, "collected but not declared",
+                          sorted({name.split("[")[0] for name in collected_names}
+                                 - set(declared))[:5]))
+        if _def_line_count(text) != len(declared):
+            drift.append((file_part, "def-lines", _def_line_count(text),
+                          "declared", len(declared)))
+    assert drift == [], "某个被引用的测试文件收进来的与声明的对不上（吞掉的 def 行就在这一列露出来）：%s" % drift
+
+
+def test_the_collect_predicate_names_an_absorbed_def_line(tmp_path):
+    """The guard above can see the fault it exists for: a planted file whose body has no ``def``.
+
+    Without this, ``_declared_test_names`` would be trusted because it agrees with pytest on the
+    healthy tree -- which is also what it does on a broken one. Here the second test's ``def`` line
+    is deleted, leaving an indented body that attaches to the first test: the module still imports,
+    so the syntax-tree count drops to one while the ``def test_`` line count drops with it. The
+    pair the real guard compares is the collected set against the declared names, and the
+    collected-vs-def-line mismatch is what a reviewer needs to see.
+    """
+    healthy = ("def test_one():\n    assert 1 == 1\n\n"
+               "def test_two():\n    assert 2 == 2\n")
+    assert _declared_test_names(healthy) == ["test_one", "test_two"]
+    assert _def_line_count(healthy) == 2
+
+    absorbed = "def test_one():\n    assert 1 == 1\n\n    assert 2 == 2\n"
+    tree_names = _declared_test_names(absorbed)
+    assert tree_names == ["test_one"], tree_names
+    assert _def_line_count(absorbed) == 1
+
+    written = tmp_path / "test_planted_absorption.py"
+    written.write_text(absorbed, encoding="utf-8")
+    collected = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", str(written)],
+        cwd=str(tmp_path.parent), capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=300)
+    assert "test_one" in collected.stdout and "test_two" not in collected.stdout, collected.stdout
+
 
 def test_excluded_rows_quote_a_decision_that_is_actually_in_their_source_row():
     sources = {
