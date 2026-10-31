@@ -579,6 +579,80 @@ sys.path.insert(0, str(ROOT))''',
      "    import project_temp",
      "    from . import project_temp",
      "lazy sibling import -> relative"),
+    ("domains/work/workflow_core/canonical_store.py",
+     """                "SUM(total_tokens) AS tokens, MAX(observed_at) AS observed_at "
+                "FROM usage_samples GROUP BY provider, model"
+            ).fetchall()
+            # `SUM` ignores NULLs, so a group of three samples where two are unknown used to arrive as
+            # one bare number with nothing to say it covered a third of the rows -- the same
+            # unknown-as-exact defect one level above the row, just aggregated. The coverage words are
+            # the collector's existing FULL/PARTIAL/NONE; the number of contributing rows travels with
+            # the sum so a reader never has to infer it.
+            usage_summary = []
+            for row in usage:
+                item = dict(row)
+                samples, with_tokens = item["samples"], item["samples_with_tokens"]
+                item["token_coverage"] = (
+                    "NONE" if not with_tokens else "FULL" if with_tokens == samples else "PARTIAL"
+                )
+                usage_summary.append(item)
+""",
+     """                "SUM(total_tokens) AS tokens, MAX(observed_at) AS observed_at, "
+                "SUM(quality = 'EXACT_SOURCE') AS exact_source_samples, "
+                "SUM(quality = 'UNKNOWN') AS unknown_quality_samples, "
+                "SUM(CASE WHEN quality = 'EXACT_SOURCE' THEN total_tokens END) AS measured_tokens, "
+                "SUM(CASE WHEN quality = 'UNKNOWN' THEN total_tokens END) AS unattributed_tokens, "
+                "SUM(CASE WHEN quality IS NULL OR quality NOT IN ('EXACT_SOURCE','UNKNOWN') "
+                "THEN total_tokens END) AS other_quality_tokens, "
+                "SUM(cost_reconciled IS NOT NULL) AS samples_with_reconciled_cost, "
+                "SUM(cost_estimate IS NOT NULL) AS samples_with_estimated_cost, "
+                "SUM(cost_reconciled) AS cost_reconciled_total, "
+                "SUM(cost_estimate) AS cost_estimate_total "
+                "FROM usage_samples GROUP BY provider, model"
+            ).fetchall()
+            # `SUM` ignores NULLs, so a group of three samples where two are unknown used to arrive as
+            # one bare number with nothing to say it covered a third of the rows -- the same
+            # unknown-as-exact defect one level above the row, just aggregated. The coverage words are
+            # the collector's existing FULL/PARTIAL/NONE; the number of contributing rows travels with
+            # the sum so a reader never has to infer it.
+            usage_summary = []
+            for row in usage:
+                item = dict(row)
+                samples, with_tokens = item["samples"], item["samples_with_tokens"]
+                item["token_coverage"] = (
+                    "NONE" if not with_tokens else "FULL" if with_tokens == samples else "PARTIAL"
+                )
+                # Measured and estimated never share a number. The row's own `quality` word says
+                # which it is -- the in-repo collector writes EXACT_SOURCE for a value read from
+                # a source with a head and UNKNOWN otherwise (`orchestration/collectors.py:243`,
+                # `:393`), and the money side separates `cost_estimate` (an estimate) from
+                # `cost_reconciled` (a reconciled figure). An aggregate that dropped all three
+                # could not answer 「实测与估计分开」 at all: a group of estimated cost and a
+                # group of reconciled cost projected identically. Unknown stays null rather than
+                # 0, and any quality word the projection does not know is counted in `OTHER`
+                # rather than vanishing from the split.
+                item["quality_samples"] = {
+                    "EXACT_SOURCE": item["exact_source_samples"],
+                    "UNKNOWN": item["unknown_quality_samples"],
+                    "OTHER": (samples - item["exact_source_samples"]
+                              - item["unknown_quality_samples"]),
+                }
+                item["tokens_by_quality"] = {
+                    "EXACT_SOURCE": item["measured_tokens"],
+                    "UNKNOWN": item["unattributed_tokens"],
+                    "OTHER": item["other_quality_tokens"],
+                }
+                reconciled = item["samples_with_reconciled_cost"]
+                estimated_cost = item["samples_with_estimated_cost"]
+                item["cost_coverage"] = {
+                    "reconciled": ("NONE" if not reconciled
+                                   else "FULL" if reconciled == samples else "PARTIAL"),
+                    "estimated": ("NONE" if not estimated_cost
+                                  else "FULL" if estimated_cost == samples else "PARTIAL"),
+                }
+                usage_summary.append(item)
+""",
+     "usage projection: quality (EXACT_SOURCE / UNKNOWN, the collector's own words) and the two cost columns now travel through the aggregate, so a measured token or a reconciled cost cannot be read as an estimate; unknown stays null instead of 0, and a quality word the projection does not know is counted in OTHER instead of vanishing"),
     ("tests/legacy/work/test_repair_pack_projection.py",
      '_load("issue_projection", "packages/client-neutral-core/scripts/issue_projection.py")',
      '_load("issue_projection", "domains/work/workflow_core/issue_projection.py")',

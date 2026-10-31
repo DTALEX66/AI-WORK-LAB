@@ -511,3 +511,47 @@ def test_the_four_registers_are_the_only_migration_artefacts_this_builder_writes
         for line in builder_source.splitlines():
             if token in line:
                 assert "write_text" not in line and 'open("w"' not in line, (token, line)
+
+
+#: source paths may contain Chinese directory names, so the class allows them; the
+#: extension alternation is longest-first or ".tsx" parses as ".ts" plus a stray letter
+_CITATION_RE = re.compile(r"([A-Za-z0-9_./一-鿿-]+\.(?:tsx|jsx|py|json|md|ts))"
+                         r"(?::(\d+))?")
+_SEAM_ID_RE = re.compile(r"(?<![A-Za-z0-9_])[a-z][a-z0-9]*\.[a-z][a-z0-9_]*(?![A-Za-z0-9_])")
+
+
+def test_absent_rows_cite_evidence_for_saying_the_surface_never_existed():
+    """A GAP row with no implementation location must name the concrete evidence behind that.
+
+    "本仓没有这个端点" is checkable, but the sentence explaining *why* the entry is missing --
+    "来源侧也从来没有后端面，不是融合时丢的", or "保留的是接缝" -- needs a pointer somebody can
+    go read. Until now several of these rows asserted that with no citation at all, so a
+    reviewer could not tell "verified absent" from "guessed absent".
+    """
+    deferral_ids = {entry["id"] for entry in
+                    json.loads((TARGET_ROOT / "migration/deferral-register.json")
+                               .read_text(encoding="utf-8-sig"))["entries"]}
+    work_source = TARGET_ROOT.parent / "WORK-LAB"
+    rows = read_register(REGISTERS["ui-entry"])
+    resolved = 0
+    for row in rows:
+        if row["状态"] != "GAP" or row["当前实现位置"] != "ABSENT":
+            continue
+        basis = row["依据说明"]
+        citations = _CITATION_RE.findall(basis)
+        assert citations, (row["来源行标识"], "没有可去读的出处，无法区分「已核实为不存在」与「猜的不存在」")
+        for path_text, number in citations:
+            target = TARGET_ROOT / path_text
+            if not target.is_file() and work_source.is_dir():
+                target = work_source / path_text
+            assert target.is_file(), (row["来源行标识"], path_text)
+            if number:
+                lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
+                assert 0 < int(number) <= len(lines), (row["来源行标识"], path_text, number)
+            if path_text.endswith("deferral-register.json"):
+                named = [token for token in _SEAM_ID_RE.findall(basis) if token in deferral_ids]
+                assert named, (row["来源行标识"], "点了登记文件却没有真实的条目 id：%s" % sorted(deferral_ids))
+            resolved += 1
+    assert resolved >= 7, (
+        "只有 %d 条出处被复核——7 行 GAP 各自都该点名来源侧的端点清单、前端路由或接缝条目，"
+        "少于此说明出处又退回了无指向的叙述" % resolved)

@@ -79,6 +79,31 @@ STATUSES = (
 
 #: Sentinels used inside the claim tables below.
 ABSENT = "ABSENT"          # no implementation location exists for this promise
+#: The nodes that replaced "本仓无 pytest 断言" in the rows below. Names live here once so a
+#: renamed test has to be fixed in one place, and test_v16 resolves every one of them.
+V03_TOOLS_TEST = "tests/unified/test_v03_work_loop.py::test_entry_work_tools_state_is_read_from_the_qualification_ledger"
+V03_AUDIT_TEST = "tests/unified/test_v03_work_loop.py::test_entry_work_audit_integrity_names_the_tampered_result"
+V03_EXECUTION_TEST = "tests/unified/test_v03_work_loop.py::test_entry_work_execution_detail_attempt_is_the_stored_row"
+V03_RECORDS_TEST = "tests/unified/test_v03_work_loop.py::test_entry_design_records_plan_list_reads_back_created_plan"
+V03_DELIVERABLES_TEST = "tests/unified/test_v03_work_loop.py::test_entry_design_deliverables_bundle_list_reads_back_registered_bundle"
+V03_EVIDENCE_TEST = "tests/unified/test_v03_work_loop.py::test_entry_design_evidence_projection_refusal_names_the_absent_ledger"
+V02_PROJECT_DETAIL_TEST = "tests/unified/test_v02_surface.py::test_project_detail_route_returns_the_one_project_written"
+V02_ENVIRONMENT_TEST = "tests/unified/test_v02_surface.py::test_environment_projection_reads_the_paths_ledger_at_boot"
+V02_USAGE_TEST = "tests/unified/test_v02_surface.py::test_observer_projection_usage_reports_what_the_store_holds"
+V02_SOFTWARE_TEST = "tests/unified/test_v02_surface.py::test_software_projection_is_the_registry_read_now_not_a_copy"
+V02_INTAKE_TEST = "tests/unified/test_v02_surface.py::test_intake_brief_goals_and_revisions_read_back"
+V02_RESEARCH_TEST = "tests/unified/test_v02_surface.py::test_research_findings_read_back_only_what_was_filed"
+V02_SETTINGS_TEST = "tests/unified/test_v02_surface.py::test_settings_read_set_answers_and_writes_nothing"
+V18_USAGE_UNKOWN_TEST = ("tests/unified/test_v18_tools_connections.py::"
+                         "test_usage_projection_never_renders_unknown_as_a_measured_zero")
+V18_USAGE_SPLIT_TEST = ("tests/unified/test_v18_tools_connections.py::"
+                        "test_usage_measured_and_estimated_costs_use_separate_keys")
+V18_UNCLASSIFIED_TEST = ("tests/unified/test_v18_tools_connections.py::"
+                         "test_unclassified_review_recomputes_from_the_mapping_population_not_from_its_own_words")
+#: The sentence every software-projection row still owes: nothing was probed on this machine.
+NOT_PROBED_SENTENCE = ("不声称任何真实软件在本机被探测、安装、授权或执行——那仍是 "
+                       "DECLARED_NOT_PROBED / NOT_PROBED")
+
 NO_EVIDENCE = "NONE"       # nothing measures this row
 PARTIAL_MARKER = "缺口："   # a PARTIAL row must name what is missing
 
@@ -352,24 +377,28 @@ def ui_claims() -> dict[str, dict]:
                           "status": "PARTIAL",
                           "basis": "两域项目在同一端点注册并读回（work/design 同表）。" + no_ui + "缺口：「项目/列表」视图未生成。"},
         "work:project-detail": {"location": "GET /api/projects/([0-9a-f]{32})",
-                                "evidence": NO_EVIDENCE, "status": "PARTIAL",
-                                "basis": "DESIGN 兼容面已有单项目读取路由；" + no_ui
-                                         + "缺口：本仓 pytest 未断言该兼容路由的读回，且 WORK 项目详情视图未生成。"},
-        "work:environment": {"location": "GET /api/environment", "evidence": NO_EVIDENCE,
-                             "status": "PARTIAL",
-                             "basis": "本机环境读面在兼容路由中；" + no_ui + "缺口：无 pytest/探测断言其内容口径，视图未生成。"},
+                                "evidence": V02_PROJECT_DETAIL_TEST, "status": "PARTIAL",
+                                "basis": "DESIGN 兼容面已有单项目读取路由，且详情逐字段等于存储里的那一行、"
+                                         "两个项目不互顶、未写入时 404（具名断言 + 植入反证）；" + no_ui
+                                         + "缺口：WORK 项目详情视图未生成。"},
+        "work:environment": {"location": "GET /api/environment",
+                             "evidence": V02_ENVIRONMENT_TEST, "status": "PARTIAL",
+                             "basis": "本机环境读面在兼容路由中，且条目来自启动前那份 .project/paths.json 台账、"
+                                      "改一条路径只影响 shared_inputs/tools 两处（具名断言 + 植入反证）；" + no_ui
+                                      + "缺口：任何软件是否真的存在仍未探测（一律 DECLARED_NOT_PROBED），视图未生成。"},
         "work:capabilities": {"location": "GET /api/v1/capabilities", "evidence": caps + ";" + f10,
                               "status": "PARTIAL",
                               "basis": "能力目录由实现/资格/依赖/连接/授权/策略派生，不可用带原因，资格只认绑定当前候选版本的探测记录；"
                                        + no_ui + "缺口：「工具/能力目录」视图未生成。"},
-        "work:usage": {"location": "GET /api/work/observer/projection", "evidence": projection,
-                       "status": "PARTIAL",
-                       "basis": "投影响应内含 usage_summary 字段并由该测试读回；" + no_ui
-                                + "缺口：「实测与估计分开、未知不填 0」这一验收口径无专门断言（见 05 usage 行同一缺口）。"},
+        "work:usage": {"location": "GET /api/work/observer/projection",
+                       "evidence": projection + ";" + V02_USAGE_TEST, "status": "PARTIAL",
+                       "basis": "投影响应内含 usage_summary 字段并由该测试读回；分组、数字与覆盖词都等于存储里"
+                                "现写的样本，未知组保持 null 而非 0（具名断言 + 植入反证）；" + no_ui
+                                + "缺口：「项目/用量」视图未生成，真实计费链路未跑过。"},
         "work:rules-adaptation": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "GAP",
-                                  "basis": "两张实测路由表中不存在任何规则适配端点，backend/ 与 domains/ 下亦无对应读写面；本行不声称已具备。"},
+                                  "basis": "两张实测路由表中不存在任何规则适配端点，backend/ 与 domains/ 下亦无对应读写面；来源侧的两个 HTTP 服务逐一列举过自己的端点（WORK-LAB 的 services/control/control_service.py:1148 = /api/control/descriptor、/api/control/operations、/health；与 services/orchestration/sidecar.py:714 = /api/projection、/api/v1/snapshot、/repair-packs、/solutions、/evidence-range、/events），里面都没有这一项：所以这是「从未有后端面」而不是「融合时丢了后端面」。这一层要不要新建，属 owner 的产品范围决定，不由本批擅自补端点。"},
         "work:privacy": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "GAP",
-                         "basis": "「隐私与采集」在产品边界上成立（私有正文限制、原始任务内容与遥测分离写在 08 的 invariants 与 INTEGRATION_POLICY §5），但没有实现该设置的读写面与开关，故是缺口而不是半成品。"},
+                         "basis": "「隐私与采集」在产品边界上成立（私有正文限制、原始任务内容与遥测分离写在 08 的 invariants 与 INTEGRATION_POLICY §5），但没有实现该设置的读写面与开关，故是缺口而不是半成品。来源侧的两个 HTTP 服务逐一列举过自己的端点（WORK-LAB 的 services/control/control_service.py:1148 = /api/control/descriptor、/api/control/operations、/health；与 services/orchestration/sidecar.py:714 = /api/projection、/api/v1/snapshot、/repair-packs、/solutions、/evidence-range、/events），里面都没有这一项：所以这是「从未有后端面」而不是「融合时丢了后端面」。来源侧它只作为设置区的一部分出现（WORK-LAB apps/observer/frontend/src/lib/legacyRoutes.ts:184 的 evidence 指向 apps/observer/frontend/src/views/settingsPrivacy.contract.test.tsx），属前端交付面。"},
         "work:executions": {"location": "GET /api/v1/tasks/([0-9a-f]{32})", "evidence": manual,
                             "status": "PARTIAL",
                             "basis": "执行记录以 Attempt 形式随任务读回；" + no_ui + "缺口：「任务/执行记录」视图未生成。"},
@@ -381,28 +410,35 @@ def ui_claims() -> dict[str, dict]:
                                 "接缝点名登记在 migration/deferral-register.json 的 "
                                 "work.session_continuity 条目（生成器要求接缝文件真实存在）；"
                                 "统一后端无会话/记忆端点，「知识/上下文与经验」视图也未生成。"},
-        "work:tools": {"location": "GET /api/v1/tools", "evidence": NO_EVIDENCE, "status": "PARTIAL",
-                       "basis": "工具台账端点真实存在；" + no_ui + "缺口：本仓 pytest 未覆盖 /api/v1/tools，「工具/我的工具」视图未生成。"},
+        "work:tools": {"location": "GET /api/v1/tools",
+                       "evidence": V03_TOOLS_TEST, "status": "PARTIAL",
+                       "basis": "工具台账端点真实存在，且每项 state 从资格台账现读、无记录时是 NOT_PROBED 而非已连接"
+                                "（具名断言 + 植入反证）；" + no_ui + "缺口：「工具/我的工具」视图未生成。"},
         "work:monitoring": {"location": "GET /api/work/observer/snapshot", "evidence": f09,
                             "status": "PARTIAL",
-                            "basis": "运行观察快照经同一内核读同一 CanonicalStore；" + no_ui
+                            "basis": "运行观察快照经同一内核读同一 CanonicalStore，采集器健康行写一条读一条"
+                                     "（具名断言 + 植入反证）；" + no_ui
                                      + "缺口：持续 watcher/SSE 推送仍在独立 sidecar（docs/CODEX-AUDIT-ENTRY.md §7），「项目/运行状态」视图未生成。"},
         "work:delivery": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "GAP",
-                          "basis": "WORK 侧「任务/交付」没有端点：交付面（bundles/receipt）只存在于 DESIGN 兼容路由，未与统一任务信封接通，也没有 WORK 交付台账。"},
+                          "basis": "WORK 侧「任务/交付」没有端点：交付面（bundles/receipt）只存在于 DESIGN 兼容路由，未与统一任务信封接通，也没有 WORK 交付台账。来源侧的两个 HTTP 服务逐一列举过自己的端点（WORK-LAB 的 services/control/control_service.py:1148 = /api/control/descriptor、/api/control/operations、/health；与 services/orchestration/sidecar.py:714 = /api/projection、/api/v1/snapshot、/repair-packs、/solutions、/evidence-range、/events），里面都没有这一项：所以这是「从未有后端面」而不是「融合时丢了后端面」。来源前端路由表里也没有独立的 /delivery 项。"},
         "work:trust": {"location": "GET /api/v1/tasks/([0-9a-f]{32})/completion", "evidence": stale_guard,
                        "status": "PARTIAL",
                        "basis": "核验与可信详情由 completion 计算 + 结果时效（stale 拒绝）支撑；" + no_ui + "缺口：「任务/核验与可信详情」视图未生成。"},
         "work:software": {"location": "domains/work/orchestration/software_installation_identity.py:78",
-                          "evidence": NO_EVIDENCE, "status": "PARTIAL",
-                          "basis": "安装身份分类逻辑已迁入（classify_installation）；" + no_ui
-                                   + "缺口：本仓无 pytest 断言「安装、版本、探测、授权、可执行」分别记录，视图未生成。"},
+                          "evidence": V02_SOFTWARE_TEST, "status": "PARTIAL",
+                          "basis": "安装身份分类逻辑已迁入（classify_installation），software[] 由台账现读、"
+                                   "不落第二副本：改台账即改读回、缺值保持 null、台账读不到时该键整个缺席"
+                                   "（缺失不等于空数组；具名断言 + 植入反证）；" + no_ui
+                                   + "缺口：任何软件被安装/探测/授权/可执行均未证明，视图未生成。"},
         "work:settings": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "GAP",
-                          "basis": "「设置」作为总入口没有对应的统一读写面：/api/v1/health 与 /api/environment 只回答服务与本机构环境，规则/隐私/审批策略的持久化设置在两表中均无端点。"},
+                          "basis": "「设置」作为总入口没有对应的统一读写面：/api/v1/health 与 /api/environment 只回答服务与本机构环境，规则/隐私/审批策略的持久化设置在两表中均无端点。来源侧的两个 HTTP 服务逐一列举过自己的端点（WORK-LAB 的 services/control/control_service.py:1148 = /api/control/descriptor、/api/control/operations、/health；与 services/orchestration/sidecar.py:714 = /api/projection、/api/v1/snapshot、/repair-packs、/solutions、/evidence-range、/events），里面都没有这一项：所以这是「从未有后端面」而不是「融合时丢了后端面」。来源侧它是前端路由（WORK-LAB .ui-reference/WORK-LAB/07_B07_前端开发规范_L7/routes/routes.ts:13 path=/settings）。"},
         "work:rules-policy": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "GAP",
-                              "basis": "同 work:rules-adaptation：实测路由表中无规则策略端点，domains/ 下无策略账本读写实现。"},
-        "work:audit": {"location": "GET /api/v1/integrity", "evidence": NO_EVIDENCE, "status": "PARTIAL",
-                       "basis": "完整性/诊断读面存在（integrity）；" + no_ui
-                                + "缺口：本仓无 pytest 断言 integrity 口径，「设置/诊断与审计」视图未生成。"},
+                              "basis": "同 work:rules-adaptation：实测路由表中无规则策略端点，domains/ 下无策略账本读写实现。来源侧的两个 HTTP 服务逐一列举过自己的端点（WORK-LAB 的 services/control/control_service.py:1148 = /api/control/descriptor、/api/control/operations、/health；与 services/orchestration/sidecar.py:714 = /api/projection、/api/v1/snapshot、/repair-packs、/solutions、/evidence-range、/events），里面都没有这一项：所以这是「从未有后端面」而不是「融合时丢了后端面」。来源侧同样是前端路由（.ui-reference/WORK-LAB/07_B07_前端开发规范_L7/routes/routes.ts:8 path=/policies, id=rules-policy）。"},
+        "work:audit": {"location": "GET /api/v1/integrity",
+                       "evidence": V03_AUDIT_TEST, "status": "PARTIAL",
+                       "basis": "完整性/诊断读面存在（integrity），且篡改一条结果摘要会被点名为 "
+                                "RESULT_DIGEST_MISMATCH 并带上被改的那条 result_id（具名断言 + 植入反证）；" + no_ui
+                                + "缺口：「设置/诊断与审计」视图未生成。"},
         "work:approvals": {"location": "POST /api/v1/attempts/([0-9a-f]{32})/approval",
                            "evidence": "tests/unified/test_v10_gate.py::test_gate_accepts_backed_completions;" + f09w,
                            "status": "PARTIAL",
@@ -416,7 +452,7 @@ def ui_claims() -> dict[str, dict]:
                             "basis": "人工任务包生成/声明/导入/核验全链路有测试；生成本身不声明交接。" + no_ui
                                      + "缺口：「任务/人工任务包」视图未生成。"},
         "work:workflows": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "GAP",
-                           "basis": "该行写「P1保留既有」，但本仓没有任何工作流模板/流程端点：workflow_core 只有 repair pack 状态机与投影，模板与流程的读写面缺失。"},
+                           "basis": "该行写「P1保留既有」，但本仓没有任何工作流模板/流程端点：workflow_core 只有 repair pack 状态机与投影。来源侧的两个 HTTP 服务逐一列举过自己的端点（WORK-LAB 的 services/control/control_service.py:1148 = /api/control/descriptor、/api/control/operations、/health；与 services/orchestration/sidecar.py:714 = /api/projection、/api/v1/snapshot、/repair-packs、/solutions、/evidence-range、/events），里面都没有这一项：所以这是「从未有后端面」而不是「融合时丢了后端面」。来源侧 workflows 是前端路由与视图（.ui-reference/WORK-LAB/07_B07_前端开发规范_L7/routes/routes.ts:3 的 /workflows 与 :4 的 /workflows/:id；apps/observer/frontend/src/lib/legacyRoutes.ts:163 的 seedId=workflows 是 compat-lane），没有可「保留」的后端读写面——「P1保留既有」对这行指的是入口，不是端点。"},
         "work:workflow-editor": {"location": ABSENT, "evidence": NO_EVIDENCE, "status": "DEFERRED_P3",
                                  "basis": "该行分期「P1保留既有；P3复杂新增」：高级流程编辑器属复杂新增，按 09 分期表 L30/L31（P3）延期，来源与接缝保留，本行不声称已实现。"},
         "work:observer": {"location": "GET /api/work/observer/snapshot", "evidence": f09,
@@ -424,8 +460,10 @@ def ui_claims() -> dict[str, dict]:
                           "basis": "该行要求 P1 只读：Observer 读面只读、写请求被拒并落拒绝记录（GET /api/work/observer/refusals）；" + no_ui
                                    + "缺口：「项目/运行观察详情」视图未生成。"},
         "work:execution-detail": {"location": "GET /api/v1/attempts/([0-9a-f]{32})",
-                                  "evidence": NO_EVIDENCE, "status": "PARTIAL",
-                                  "basis": "单 Attempt 读取路由存在；" + no_ui + "缺口：本仓 pytest 未单独断言该读路由，「任务/执行详情」视图未生成。"},
+                                  "evidence": V03_EXECUTION_TEST, "status": "PARTIAL",
+                                  "basis": "单 Attempt 读取路由存在，且回读的就是存储里那一行（两个并发 Attempt "
+                                           "各回各自的指纹、导入的结果 id 与重算摘要逐一对上；具名断言 + 植入反证）；"
+                                   + no_ui + "缺口：「任务/执行详情」视图未生成。"},
         "work:evidence": {"location": "GET /api/work/observer/evidence-range", "evidence": f09,
                           "status": "PARTIAL",
                           "basis": "证据区间读面存在且经同一内核；" + no_ui + "缺口：「任务/证据抽屉」视图未生成。"},
@@ -465,8 +503,11 @@ def ui_claims() -> dict[str, dict]:
                                        "；其后端合同（辅助方案存/读回/修订）由具名测试断言。", plan_test),
         "design:dashboard": design_row(350, "IMPLEMENTED_UNVERIFIED",
                                        "；「总览/设计摘要」无专门聚合端点，本仓无对应断言。"),
-        "design:intake": design_row(351, "IMPLEMENTED_UNVERIFIED",
-                                    "；briefs 读写路由在兼容面存在，但本仓无 pytest 覆盖输入与目标的连续状态。"),
+        "design:intake": design_row(351, "PARTIAL",
+                                    "；briefs 读写路由在兼容面存在，且写入/回读/修订三份一致、旧版被标记 "
+                                    "superseded_by、另一项目仍为空（具名断言 + 植入反证）" + PARTIAL_MARKER
+                                    + "「#/intake」渲染与专业质量/rights 判定未证明。",
+                                    V02_INTAKE_TEST),
         "design:analysis": design_row(352, "IMPLEMENTED_VERIFIED",
                                       "；分析与方案的修订冲突按真实数字拒绝，由具名测试断言。", revision_test),
         "design:prompt-intelligence": design_row(353, "PARTIAL",
@@ -475,8 +516,11 @@ def ui_claims() -> dict[str, dict]:
                                                  NO_EVIDENCE),
         "design:research": design_row(354, "PARTIAL",
                                       "；该行分期「P1保留；外部检索本批不调用」，" + PARTIAL_MARKER
-                                      + "外部检索按 INTEGRATION_POLICY §1 与 00 §四 的本地执行边界不调用，research 读写路由无本仓断言。",
-                                      NO_EVIDENCE),
+                                      + "外部检索按 INTEGRATION_POLICY §1 与 00 §四 的本地执行边界不调用；"
+                                        "读写路由有本仓断言：只回读我提交的那条、提交者不替人署名、"
+                                        "supersedes 链与逐字节一致性都现算（植入反证已咬住），"
+                                        "但 research_verdict 恒为 null 是有意的（不据本地台账下判断）。",
+                                      V02_RESEARCH_TEST),
         "design:capabilities": design_row(355, "IMPLEMENTED_VERIFIED",
                                           "；「工具/能力目录/设计筛选」读的是已实测的能力目录端点，诚实性与派生由具名测试断言。",
                                           caps),
@@ -496,18 +540,35 @@ def ui_claims() -> dict[str, dict]:
         "design:plan": design_row(363, "IMPLEMENTED_VERIFIED",
                                   "；「设计/目标生成包与任务关联」走统一设计闭环，专业验收在真人门前保持 pending 由具名测试断言。",
                                   design_loop + ";" + design_read),
-        "design:records": design_row(365, "IMPLEMENTED_UNVERIFIED",
-                                     "；「设计/我的方案与任务记录」入口在，聚合读面复用方案列表路由，本仓无针对记录视图的断言。"),
-        "design:deliverables": design_row(366, "IMPLEMENTED_UNVERIFIED",
-                                         "；交付路由（bundles/receipt/preflight）在兼容面存在，本仓无 pytest 覆盖「任务/交付/设计筛选」。"),
-        "design:evidence": design_row(367, "IMPLEMENTED_UNVERIFIED",
-                                      "；证据投影路由在，本仓无针对该视图读回的断言（结果/核验链由统一侧测试覆盖，不是同一件事）。"),
+        "design:records": design_row(365, "PARTIAL",
+                                     "；「设计/我的方案与任务记录」入口在，聚合读面复用方案列表路由，"
+                                     "该路由现已被断言：空表 total=0，创建后 total=1 且 plan_id/objective/"
+                                     "revision 就是我创建的那条，统一聚合面读到同一 id（具名断言 + 植入反证）"
+                                     + PARTIAL_MARKER + "记录视图本身的渲染与筛选未证明。",
+                                     V03_RECORDS_TEST),
+        "design:deliverables": design_row(366, "PARTIAL",
+                                         "；交付路由（bundles/receipt/preflight）在兼容面存在，bundle 列表已被断言："
+                                         "空表到登记一条后 id/version_id/sha256/byte_size 全等于写入值，"
+                                         "同 kind 的非 bundle 前缀被正确排除（具名断言 + 植入反证）"
+                                         + PARTIAL_MARKER + "宿主真实导出（Human Gate 与冻结范围）未证明。",
+                                         V03_DELIVERABLES_TEST),
+        "design:evidence": design_row(367, "PARTIAL",
+                                      "；证据投影路由在，其缺席拒绝已被断言为点名缺失账本路径的 409 "
+                                      "EVIDENCE_LEDGER_ABSENT 且不携带 receipts（具名断言 + 植入反证）"
+                                      + PARTIAL_MARKER + "有账本时的 receipts 读回无法经此路由证明——"
+                                      "融合检出有意不带该账本，属 owner 的打包决定；视图渲染同样未证明。",
+                                      V03_EVIDENCE_TEST),
         "design:preflight-qa": design_row(368, "PARTIAL",
                                           "；该行分期「P1保留既有；P2宿主；P3复杂新增」，" + PARTIAL_MARKER
                                           + "宿主 preflight 的真调用属 P2（09 分期表 L20），复杂 Jury 属 P3（L31）；预检路由无本仓断言。",
                                           NO_EVIDENCE),
-        "design:settings": design_row(370, "IMPLEMENTED_UNVERIFIED",
-                                      "；设置视图入口在，本仓无覆盖设置读写面的 pytest。"),
+        "design:settings": design_row(370, "PARTIAL",
+                                      "；设置视图入口在，其实际读取的三个端点已被断言：模型 counts 与逐行字段"
+                                       "等于按产品路径重读的两份台账、知识索引 0→1 就是我写的那条、"
+                                       "POST→404 与 PUT/PATCH/DELETE→405 之后三份读回逐字段不变（写面确实不写；"
+                                       "具名断言 + 植入反证）" + PARTIAL_MARKER
+                                      + "模型被加载/运行/许可裁定未证明，#/settings 渲染未证明。",
+                                      V02_SETTINGS_TEST),
         "design:model-selection": design_row(374, "PARTIAL",
                                              "；该行分期「P1档案；P2真实连接」：模型选择档案与 choose 记录在（选择不等于连接和执行），"
                                              + PARTIAL_MARKER + "P2 真实连接未接线；用户显式选择只记录动作、不改合格状态。",
@@ -564,10 +625,13 @@ def family_claims() -> dict[str, dict]:
                       "status": "PARTIAL",
                       "basis": "真实投影走同一 CanonicalStore，且读路径不启动采集器、不开套接字（该测试正是证明这一点）；" + PARTIAL_MARKER
                               + "持续采集/watcher 仍在独立 sidecar，统一内核只提供有界帧（docs/CODEX-AUDIT-ENTRY.md §7）。"},
-        "usage": {"location": "GET /api/work/observer/projection", "evidence": projection,
-                  "status": "PARTIAL",
-                  "basis": "usage_summary 随投影读回；" + PARTIAL_MARKER
-                          + "验收口径「实测与估计分开，未知不填0」没有专门断言，本仓无法证明未知值没有被写成 0。"},
+        "usage": {"location": "domains/work/workflow_core/canonical_store.py:1380",
+                  "evidence": V18_USAGE_UNKOWN_TEST + ";" + V18_USAGE_SPLIT_TEST,
+                  "status": "IMPLEMENTED_VERIFIED",
+                  "basis": "「实测与估计分开、未知不填 0」两侧现在都有具名断言，并且投影本身被改成能回答这句话："
+                          "每组带 quality_samples / tokens_by_quality / cost_coverage，token 与钱各按精度词分档，"
+                          "未知保持 null、词表外的精度词进 OTHER 而不消失（两种植入反证都会变红：把 UNKNOWN 补成 0、"
+                          "把估计钱并进实测钱）。" + NOT_PROBED_SENTENCE},
         "issues": {"location": "domains/work/workflow_core/issue_projection.py:567", "evidence": f09,
                    "status": "PARTIAL",
                    "basis": "问题投影与 repair-packs 读面真实存在并被读回；" + PARTIAL_MARKER
@@ -682,10 +746,12 @@ def family_claims() -> dict[str, dict]:
                        "evidence": "evidence:a01-a10-results.json#results.A08;tests/unified/test_v14_registers.py::test_coverage_register_accounts_for_every_source_file",
                        "status": "IMPLEMENTED_VERIFIED",
                        "basis": "wheel 离线构建并安装到隔离目录、安装态 __file__ 全部指向安装树（A08 实测记录），真实 loopback HTTP 与持久化由本仓回归覆盖；未继承旧 CI 绿。"},
-        "unclassified": {"location": "migration/review/unclassified-review.json:4", "evidence": NO_EVIDENCE,
-                         "status": "PARTIAL",
-                         "basis": "复核登记自述 8/8 已复核并逐条给出归属与处置；" + PARTIAL_MARKER
-                                 + "该「已复核」目前只是文件自述，没有测试重算条数与处置一致性，故按未机器核实处理，不标 VERIFIED。"},
+        "unclassified": {"location": "migration/review/unclassified-review.json:4",
+                         "evidence": V18_UNCLASSIFIED_TEST, "status": "IMPLEMENTED_VERIFIED",
+                         "basis": "复核登记的 8/8 不再靠它自己的话：条数、族名词表、理由唯一性与处置一致性全部"
+                                 "从 migration/mapping.csv 与能力族登记表现算，人口双向对齐（既不会漏第 9 条，"
+                                 "也不会多出无主复核）；四组文件内植入加一次人口植入都会把断言变红。"
+                                 "归属判断在语义上是否恰当仍是人的判断，本行不声称已被证明。"},
     }
 
 

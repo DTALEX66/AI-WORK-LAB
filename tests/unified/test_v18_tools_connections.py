@@ -800,3 +800,492 @@ def test_unauthorized_software_installation_probe_records_nothing():
     assert not [key for key in record
                 if any(mark in key.lower() for mark in
                        ("root", "path", "version", "executable", "authoriz", "grant"))], record
+
+
+# ------------------------------------------- GET /api/work/observer/projection -> usage
+# Two register rows that said "没有专门断言" about their own acceptance wording:
+#
+# * `05#L7|usage` — 核心验收「实测与估计分开，未知不填0」. The producer was read, not
+#   assumed. `usage_summary` is built in
+#   `domains/work/workflow_core/canonical_store.py:1380-1409` (a GROUP BY over
+#   `usage_samples`) and surfaced verbatim as the `usage` key of
+#   `GET /api/work/observer/projection` by `backend/core/work_surfaces.py:98`
+#   (route registered at `backend/core/work_surfaces.py:376`). Row writes are
+#   `canonical_store.py:677-753`: `input_tokens` / `output_tokens` / `total_tokens`
+#   are measured counters, `cost_estimate` is the estimate and `cost_reconciled`
+#   the reconciled (measured) cost; an absent counter is stored as NULL, and a row
+#   nobody looked at carries `quality = "UNKNOWN"` — the only precision word the
+#   in-repo usage collector writes for something it did measure is `EXACT_SOURCE`
+#   (`domains/work/orchestration/collectors.py:365`).
+# * `05#L31|unclassified` — 依据说明 said the 8/8 review is 文件自述 (NONE as
+#   verification evidence). Recomputed below against `migration/mapping.csv`, which
+#   is where a `source_key` is actually registered; the family vocabulary comes from
+#   `migration/capability-family-register.csv`.
+
+#: The key set `canonical_store.projection()` emits per provider/model group. Asserted
+#: rather than assumed, because the acceptance wording is about WHICH key carries WHICH
+#: kind of number — a shape this node can only check if the shape is pinned first.
+#: The three `*_by_quality` / `*_coverage` maps are the answer to 「实测与估计分开」:
+#: a token sum and a cost sum each travel with the precision word of the rows behind them.
+USAGE_ITEM_KEYS = frozenset({"provider", "model", "samples", "samples_with_tokens",
+                             "input_tokens", "output_tokens", "tokens", "observed_at",
+                             "token_coverage",
+                             "exact_source_samples", "unknown_quality_samples",
+                             "measured_tokens", "unattributed_tokens",
+                             "other_quality_tokens",
+                             "samples_with_reconciled_cost", "samples_with_estimated_cost",
+                             "cost_reconciled_total", "cost_estimate_total",
+                             "quality_samples", "tokens_by_quality", "cost_coverage"})
+#: "did not look" — the row's own declaration, not an inferred absence.
+USAGE_UNSEEN_QUALITY = "UNKNOWN"
+#: store column -> projected key, the three numbers the acceptance wording is about.
+USAGE_NUMBER_COLUMNS = (("input_tokens", "input_tokens"), ("output_tokens", "output_tokens"),
+                        ("total_tokens", "tokens"))
+
+
+def _usage_groups_from_store(server) -> dict:
+    """Group the store's own usage rows exactly the way the projection SQL groups them."""
+    groups: dict[tuple, list] = {}
+    for row in server.work.store.list_usage_samples():
+        groups.setdefault((str(row["provider"]), str(row["model"])), []).append(row)
+    return groups
+
+
+def _usage_projection_items(server) -> dict:
+    status, body = server.client.get("/api/work/observer/projection")
+    assert status == 200, body
+    assert isinstance(body["usage"], list), body
+    index: dict[tuple, dict] = {}
+    for item in body["usage"]:
+        assert set(item) == USAGE_ITEM_KEYS, item
+        pair = (str(item["provider"]), str(item["model"]))
+        assert pair not in index, "投影把同一个 provider/model 投成了两行：" + repr(pair)
+        index[pair] = item
+    return index
+
+
+def _known_sum(values: list) -> int | None:
+    known = [value for value in values if isinstance(value, int) and not isinstance(value, bool)]
+    return sum(known) if known else None
+
+
+def _expect_red(action, message: str) -> str:
+    """Run a checker that must fail, and hand back WHY it failed."""
+    try:
+        action()
+    except AssertionError as failure:
+        return str(failure)
+    raise AssertionError(message)
+
+
+def _assert_usage_unknown_is_never_a_zero(server, label: str) -> dict:
+    """The live predicate for 「未知不填0」: recomputed from the store's own rows.
+
+    Every projected number is re-added here from the raw `usage_samples` rows, and a
+    group whose rows *all* declare `quality = "UNKNOWN"` must still answer null plus
+    `token_coverage = "NONE"` — never 0, never an empty string. A measured 0 is still
+    allowed to be 0, which is what keeps the two readings distinguishable.
+    """
+    groups = _usage_groups_from_store(server)
+    index = _usage_projection_items(server)
+    assert set(index) == set(groups), (label, sorted(index), sorted(groups))
+    for pair, rows in groups.items():
+        item = index[pair]
+        assert item["samples"] == len(rows), (label, pair, item, rows)
+        contributing = sum(1 for row in rows if row["total_tokens"] is not None)
+        assert item["samples_with_tokens"] == contributing, (label, pair, item, rows)
+        for column, key in USAGE_NUMBER_COLUMNS:
+            assert item[key] == _known_sum([row[column] for row in rows]), (label, key, item, rows)
+        for key in ("input_tokens", "output_tokens", "tokens"):
+            assert item[key] is None or isinstance(item[key], int), (label, key, item)
+            assert item[key] != "", (label, key, item)
+        expected_coverage = ("NONE" if contributing == 0
+                             else "FULL" if contributing == len(rows) else "PARTIAL")
+        assert item["token_coverage"] == expected_coverage, (label, pair, item, rows)
+        unseen = [row for row in rows if str(row["quality"]) == USAGE_UNSEEN_QUALITY]
+        if len(unseen) == len(rows):
+            for key in ("input_tokens", "output_tokens", "tokens"):
+                assert item[key] is None, (
+                    f"{label}：整组 {len(rows)} 行都声明 {USAGE_UNSEEN_QUALITY}（没看），"
+                    f"{key} 却被投成了 {item[key]!r} —— 未知被填成了实测数字")
+    return index
+
+
+def test_usage_projection_never_renders_unknown_as_a_measured_zero(server):
+    """register row `05#L7|usage` — 验收「未知不填0」这一半，现在是断言而不是推测。
+
+    证明了什么：
+    * 空库时 `GET /api/work/observer/projection` 的 `usage` 是 `[]` —— 一个用量都没有
+      的时候，投影不替系统编出一行 0；
+    * 三组合成分行（全 UNKNOWN / 实测为 0 / 只有 output 是实测、input 没看）逐组现算：
+      投影里的 `input_tokens`、`output_tokens`、`tokens` 等于按 store 原始行重新加总的
+      结果，`samples` 与 `samples_with_tokens` 等于现数行数，`token_coverage` 的词是从
+      贡献行数推导的，不是抄来的；
+    * 全部声明 `UNKNOWN` 的那一组，三个数字键都是 JSON null（不是 0、不是空串），
+      `token_coverage` 是 `"NONE"`；而实测确实为 0 的那一组 `tokens == 0` 且
+      `token_coverage == "FULL"` —— 「没看」和「看了、是 0」在同一个表面上是两种读数，
+      这正是「未知不填0」要的东西；
+    * 一行只有 output 实测、input 没看时，`input` 列保持 NULL，没有被补成 0；该行的
+      派生 `total_tokens` 按已知加数求和（`canonical_store.py:686-692` 的
+      `(inp or 0) + (out or 0)`），本节点只断言「未知列本身没有被填 0」，不背书这个
+      派生和的语义。
+    * 植入反证：把 UNKNOWN 行的三个 token 列按 0 写回（精度词仍是 UNKNOWN，只有数字
+      变了），同一个谓词必须变红；还原后复跑必须变绿。
+
+    没证明什么：不证明任何真实 provider 的真实用量；不证明这些数字来自真实采集
+    （这里全部是合成 sample_id / provider）；不证明成本口径正确 —— 成本那一半见下一个
+    节点；也不证明真实采集器不会写出「未知填 0」（采集器在这里一次都没被调用）。
+    """
+    store = server.work.store
+    base = {"project_id": "v18-usage-project", "observed_at": "2026-01-01T00:00:00Z",
+            "source_ref": "fixture:v18-usage"}
+    unseen = {"sample_id": "v18-usage-unseen", "provider": "v18-usage-unseen",
+              "model": "v18-model", "quality": USAGE_UNSEEN_QUALITY}
+    measured_zero = {"sample_id": "v18-usage-measured-zero", "provider": "v18-usage-zero",
+                     "model": "v18-model", "quality": "EXACT_SOURCE",
+                     "input_tokens": 0, "output_tokens": 0}
+    half_seen = {"sample_id": "v18-usage-half-seen", "provider": "v18-usage-half",
+                 "model": "v18-model", "quality": "EXACT_SOURCE",
+                 "input_tokens": None, "output_tokens": 7}
+
+    # nothing recorded yet: the surface must not invent a zero-filled row
+    assert _usage_projection_items(server) == {}
+
+    for sample in (unseen, measured_zero, half_seen):
+        store.record_usage_sample({**base, **sample})
+
+    index = _assert_usage_unknown_is_never_a_zero(server, "基线")
+    unseen_item = index[("v18-usage-unseen", "v18-model")]
+    zero_item = index[("v18-usage-zero", "v18-model")]
+    assert [unseen_item[key] for key in ("input_tokens", "output_tokens", "tokens")] == [None] * 3
+    assert unseen_item["token_coverage"] == "NONE" and unseen_item["samples_with_tokens"] == 0
+    assert zero_item["tokens"] == 0 and zero_item["token_coverage"] == "FULL"
+    # 「没看」与「看了是 0」必须仍是两种可区分的读数
+    assert unseen_item["tokens"] != zero_item["tokens"], (unseen_item, zero_item)
+    assert unseen_item["token_coverage"] != zero_item["token_coverage"]
+    half_row = next(row for row in store.list_usage_samples()
+                    if row["sample_id"] == "v18-usage-half-seen")
+    assert half_row["input_tokens"] is None and half_row["output_tokens"] == 7, half_row
+
+    # 反证：同一个「没看」的行，只是把数字补成 0，精度词一个字没改
+    store.record_usage_sample({**base, **unseen,
+                               "input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+    try:
+        red = _expect_red(
+            lambda: _assert_usage_unknown_is_never_a_zero(server, "植入·未知被补成 0"),
+            "植入反证失败：把 UNKNOWN 行的 token 全写成 0 之后，谓词仍然是绿的")
+    finally:
+        store.record_usage_sample({**base, **unseen})
+    assert "没看" in red and "input_tokens" in red, red
+    _assert_usage_unknown_is_never_a_zero(server, "还原")
+
+
+def _assert_measured_and_estimated_costs_stay_on_separate_keys(server, label: str) -> dict:
+    """The live predicate for 「实测与估计分开」: two keys, and no numeric collision.
+
+    `cost_reconciled` is the reconciled (measured) money figure and `cost_estimate` is
+    the estimate; the store keeps them in two columns and must keep them there. The
+    check also requires that on the projected surface each figure shows up ONLY on its
+    own cost key -- a money number on a token counter, a precision count or a coverage
+    word would mean the two kinds of number were merged again.
+    """
+    rows = {str(row["sample_id"]): row for row in server.work.store.list_usage_samples()}
+    exact, estimated = rows["v18-cost-exact"], rows["v18-cost-estimated"]
+    assert exact["cost_reconciled"] == 1.5 and exact["cost_estimate"] is None, (label, exact)
+    assert estimated["cost_estimate"] == 0.9 and estimated["cost_reconciled"] is None, (
+        f"{label}：估计值 0.9 落到了实测键 cost_reconciled 上（现为 "
+        f"{estimated['cost_reconciled']!r}）—— 实测与估计混成了同一个键")
+    for row in (exact, estimated):
+        for cost_key in ("cost_estimate", "cost_reconciled"):
+            figure = row[cost_key]
+            if figure is None:
+                continue
+            counters = (row["input_tokens"], row["output_tokens"], row["total_tokens"])
+            assert figure not in counters, (label, cost_key, row)
+    for item in _usage_projection_items(server).values():
+        # 钱可以出现在投影里了 —— 但只许出现在自己那两把成本键上。token 计数器、
+        # 精度计数与覆盖词里出现任何一个钱数，就说明两件事又被并成一个数。
+        money_keys = frozenset({"cost_estimate_total", "cost_reconciled_total"})
+        for key, value in item.items():
+            if key in money_keys:
+                continue
+            assert value not in (0.9, 1.5), (label, key, value, item)
+        for key, value in item.items():
+            if value not in (0.9, 1.5):
+                continue
+            expected = "cost_estimate_total" if value == 0.9 else "cost_reconciled_total"
+            assert key == expected, (label, key, value, item, expected)
+    return rows
+
+
+def test_usage_measured_and_estimated_costs_use_separate_keys(server):
+    """register row `05#L7|usage` — 验收「实测与估计分开」那一半，分两段写。
+
+    证明了什么（第一段，是真的证明）：
+    * 写入层把「实测的钱」和「估计的钱」放在两把不同的键上：`cost_reconciled` 与
+      `cost_estimate` 各自独立读写，一个缺席时另一把不会被顺带填上值，也没有任何 money
+      数字等于同一行的 token 计数器（不会混进同一个数）；
+    * 投影表面（`GET /api/work/observer/projection` 的 `usage`）里 0.9 与 1.5 都不出现
+      —— 估计值没有从成本键渗到实测计数器上；
+    * 反证：把估计值 0.9 并进实测键 `cost_reconciled` 之后，同一个谓词必须变红；还原后
+      复跑必须变绿。
+
+    第二段曾经钉的是缺陷：`canonical_store.projection()` 的 SELECT 里没有 `quality`、
+    `cost_estimate`、`cost_reconciled` 三列（`domains/work/workflow_core/canonical_store.py`
+    的 usage 查询），`backend/core/work_surfaces.py:98` 原样透出，所以投影只有
+    `token_coverage` 一个词，而它描述的是「这组里有几行不是 NULL」，不是「这个数是量出来的
+    还是估出来的」。现在那三列进了投影：每组带 `quality_samples`（EXACT_SOURCE / UNKNOWN /
+    OTHER 三个计数）、`tokens_by_quality`（三档各自的 token 和）与 `cost_coverage`
+    （实测钱与估计钱各自的覆盖词），混合组因此可复原，未识别的精度词进 `OTHER` 而不是消失。
+    这一段现在钉的是这套拆分，并且按数据植入证明「 unrecognized 精度不会掉数」。
+
+    节点性质不变：这一段本来就是「因修复而变红、届时改期望」的那一段——期望改了，断言没有
+    放宽，反而多了（三档 token 之和必须等于 `tokens`，`OTHER` 必须由一条未识别精度的行实测出来）。
+
+    没证明什么：不证明真实采集链路会写入 ESTIMATED/其它精度词（本仓 usage 采集器只写
+    EXACT_SOURCE 与 UNKNOWN，见 collectors.py:243、:393；ESTIMATED 与 MEASURED_BY_HAND 都是
+    这里的合成夹具）；不证明 v3 snapshot 的 `tokenSummary`（另一个表面，另有断言）。
+    """
+    store = server.work.store
+    base = {"project_id": "v18-usage-project", "observed_at": "2026-01-01T00:00:00Z",
+            "source_ref": "fixture:v18-usage"}
+    exact = {"sample_id": "v18-cost-exact", "provider": "v18-cost-exact", "model": "v18-model",
+             "quality": "EXACT_SOURCE", "input_tokens": 40, "output_tokens": 10,
+             "cost_reconciled": 1.5, "cost_estimate": None}
+    estimated = {"sample_id": "v18-cost-estimated", "provider": "v18-cost-estimated",
+                 "model": "v18-model", "quality": "ESTIMATED", "input_tokens": 3,
+                 "output_tokens": 2, "cost_estimate": 0.9}
+    # 同一组的两个精度：一个量出来的 50，一个估出来的 7
+    mixed = ({"sample_id": "v18-mixed-exact", "provider": "v18-usage-mixed", "model": "v18-model",
+              "quality": "EXACT_SOURCE", "input_tokens": 20, "output_tokens": 30},
+             {"sample_id": "v18-mixed-estimated", "provider": "v18-usage-mixed",
+              "model": "v18-model", "quality": "ESTIMATED", "input_tokens": 5,
+              "output_tokens": 2})
+    estimated_only = {"sample_id": "v18-estimated-only", "provider": "v18-usage-estimated-only",
+                      "model": "v18-model", "quality": "ESTIMATED", "input_tokens": 11,
+                      "output_tokens": 4}
+
+    for sample in (exact, estimated, estimated_only, *mixed):
+        store.record_usage_sample({**base, **sample})
+
+    # ---- 第一段：两把键，实测与估计互不冒充（真证明）
+    _assert_measured_and_estimated_costs_stay_on_separate_keys(server, "基线")
+
+    # 反证：把估计项并进实测键（0.9 同时写到 cost_reconciled 上）
+    store.record_usage_sample({**base, **estimated, "cost_reconciled": 0.9})
+    try:
+        red = _expect_red(
+            lambda: _assert_measured_and_estimated_costs_stay_on_separate_keys(
+                server, "植入·估计并进实测键"),
+            "植入反证失败：估计值 0.9 已经落在实测键 cost_reconciled 上，谓词仍然是绿的")
+    finally:
+        store.record_usage_sample({**base, **estimated, "cost_reconciled": None})
+    assert "实测与估计混成了同一个键" in red, red
+    _assert_measured_and_estimated_costs_stay_on_separate_keys(server, "还原")
+
+    # ---- 第二段：投影把精度与成本拆开（这一段从"钉缺陷"改成"钉拆分"，断言只增不减）
+    index = _usage_projection_items(server)
+    assert {"quality_samples", "tokens_by_quality", "cost_coverage"} <= USAGE_ITEM_KEYS
+    merged = index[("v18-usage-mixed", "v18-model")]
+    assert (merged["input_tokens"], merged["output_tokens"], merged["tokens"]) == (25, 32, 57), merged
+    # 50 是量出来的、7 是一行带着未识别精度词的行——现在分在两处，且三档之和就是那个和
+    assert merged["quality_samples"] == {"EXACT_SOURCE": 1, "UNKNOWN": 0, "OTHER": 1}, merged
+    assert merged["tokens_by_quality"] == {"EXACT_SOURCE": 50, "UNKNOWN": None, "OTHER": 7}, merged
+    assert merged["measured_tokens"] == 50 and merged["other_quality_tokens"] == 7, merged
+    assert merged["token_coverage"] == "FULL", merged
+    estimated_group = index[("v18-usage-estimated-only", "v18-model")]
+    assert estimated_group["tokens"] == 15 and estimated_group["token_coverage"] == "FULL"
+    assert estimated_group["samples_with_tokens"] == 1 == estimated_group["samples"]
+    # 全是未识别精度的组：一个实测数也拿不到，`token_coverage = FULL` 不再等于"量出来的"
+    assert estimated_group["tokens_by_quality"] == {"EXACT_SOURCE": None, "UNKNOWN": None,
+                                                   "OTHER": 15}, estimated_group
+    assert estimated_group["quality_samples"]["EXACT_SOURCE"] == 0
+    assert estimated_group["quality_samples"]["OTHER"] == 1, estimated_group
+
+    # 钱的两侧：实测钱与估计钱各自带覆盖词，且不会因为另一侧有值就被顺带填上
+    exact_group = index[("v18-cost-exact", "v18-model")]
+    assert exact_group["cost_reconciled_total"] == 1.5, exact_group
+    assert exact_group["cost_estimate_total"] is None, exact_group
+    assert exact_group["cost_coverage"] == {"reconciled": "FULL", "estimated": "NONE"}, exact_group
+    estimate_group = index[("v18-cost-estimated", "v18-model")]
+    assert estimate_group["cost_estimate_total"] == 0.9, estimate_group
+    assert estimate_group["cost_reconciled_total"] is None, estimate_group
+    assert estimate_group["cost_coverage"] == {"reconciled": "NONE", "estimated": "FULL"}
+
+    # 植入：一行带着投影不认识的精度词，也必须进 OTHER 而不是掉出表面
+    store.record_usage_sample({**base, "sample_id": "v18-odd-quality",
+                               "provider": "v18-usage-odd", "model": "v18-model",
+                               "quality": "MEASURED_BY_HAND", "input_tokens": 4})
+    odd = _usage_projection_items(server)[("v18-usage-odd", "v18-model")]
+    assert odd["quality_samples"] == {"EXACT_SOURCE": 0, "UNKNOWN": 0, "OTHER": 1}, odd
+    assert odd["tokens_by_quality"]["OTHER"] == 4, odd
+    assert (sum(value for value in odd["tokens_by_quality"].values() if value is not None)
+            == odd["tokens"]), odd
+    # 每一组都要满足这个恒等式，否则拆档就是在偷数
+    for pair, item in _usage_projection_items(server).items():
+        parts = [value for value in item["tokens_by_quality"].values() if value is not None]
+        assert (sum(parts) == item["tokens"]) if item["tokens"] is not None else not parts, (
+            pair, item)
+        assert sum(item["quality_samples"].values()) == item["samples"], (pair, item)
+
+
+# ------------------------------------------------ migration/review/unclassified-review.json
+#: `05#L31|unclassified` 的复核文件自述 8/8 已复核；`count_required` 在生成器里是字面量
+#: （`scripts/build_migration_map.py:304-308`），`count_reviewed` 才是 `len(entries)`。
+#: 真正的人口在 `migration/mapping.csv` 的 `初分能力族 == "unclassified"` 里，
+#: `source_key` 也是在那里登记（`来源键`）；能力族词表来自
+#: `migration/capability-family-register.csv` 的 `能力族ID` 列。全部现数，不抄 8。
+UNCLASSIFIED_REVIEW_KEYS = frozenset({"reviewed_at", "count_required", "count_reviewed", "entries"})
+UNCLASSIFIED_ENTRY_KEYS = frozenset({"source_key", "reviewed_family", "reason",
+                                     "disposition", "target"})
+UNCLASSIFIED_FAMILY = "unclassified"
+
+
+def _read_register_csv(path):
+    import csv
+
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def _assert_unclassified_review_is_recomputable(review, mapping_rows, vocabulary, label: str) -> int:
+    """Recompute the review from the registers instead of trusting its own words.
+
+    Returns the live population size, which is the only place the "8" may come from.
+    """
+    assert set(review) == UNCLASSIFIED_REVIEW_KEYS, (label, sorted(review))
+    entries = review["entries"]
+    assert isinstance(entries, list), (label, type(entries))
+    assert vocabulary, label + "：能力族词表是空的，任何 reviewed_family 都无从判定"
+
+    by_key: dict[str, dict] = {}
+    for row in mapping_rows:
+        key = str(row["来源键"])
+        assert key not in by_key, f"{label}：migration/mapping.csv 的来源键 {key} 重复，重算没有唯一锚点"
+        by_key[key] = row
+    population = {key for key, row in by_key.items() if row["初分能力族"] == UNCLASSIFIED_FAMILY}
+
+    seen_keys: set[str] = set()
+    seen_reasons: set[str] = set()
+    for entry in entries:
+        assert set(entry) == UNCLASSIFIED_ENTRY_KEYS, (label, sorted(entry))
+        key = str(entry["source_key"])
+        assert key in by_key, f"{label}：source_key {key!r} 在 migration/mapping.csv 里没有登记对象"
+        assert key not in seen_keys, f"{label}：{key} 被复核了两遍"
+        seen_keys.add(key)
+        assert by_key[key]["初分能力族"] == UNCLASSIFIED_FAMILY, (
+            f"{label}：{key} 的登记初分族是 {by_key[key]['初分能力族']!r}，不是未分类，"
+            "这条复核不属于待复核人口")
+        family = str(entry["reviewed_family"])
+        assert family in vocabulary, (
+            f"{label}：{key} 的 reviewed_family {family!r} 不在 capability-family-register.csv "
+            "实际使用的能力族词表里")
+        assert family != UNCLASSIFIED_FAMILY, f"{label}：{key} 复核后又回到了未分类"
+        reason = entry["reason"]
+        assert isinstance(reason, str) and reason.strip(), f"{label}：{key} 的 reason 是空的"
+        assert reason not in seen_reasons, f"{label}：{key} 的 reason 与另一条逐字重复，不是逐条判断"
+        seen_reasons.add(reason)
+        assert entry["disposition"] == by_key[key]["处理方式"], (
+            f"{label}：{key} 的处置 {entry['disposition']!r} 与映射登记 "
+            f"{by_key[key]['处理方式']!r} 不一致")
+        assert entry["target"] == by_key[key]["目标模块"], (
+            f"{label}：{key} 的去向 {entry['target']!r} 与映射登记 "
+            f"{by_key[key]['目标模块']!r} 不一致")
+
+    unreviewed = sorted(population - seen_keys)
+    assert not unreviewed, (
+        f"{label}：{len(unreviewed)} 条未分类项没有第 {len(entries) + 1} 条复核，仍然悬着：{unreviewed}")
+    assert not sorted(seen_keys - population), f"{label}：复核里有没有登记人口的 source_key"
+    assert review["count_reviewed"] == len(entries), (
+        f"{label}：count_reviewed 自述 {review['count_reviewed']}，entries 实际 {len(entries)} 条")
+    assert review["count_required"] == len(population), (
+        f"{label}：count_required 自述 {review['count_required']}，"
+        f"mapping.csv 现数人口 {len(population)}")
+    assert review["count_reviewed"] == review["count_required"], (
+        f"{label}：已复核 {review['count_reviewed']} 条对不上待复核 {review['count_required']} 条")
+    moment = datetime.fromisoformat(str(review["reviewed_at"]).replace("Z", "+00:00"))
+    assert moment.tzinfo is not None, f"{label}：reviewed_at 没有时区：{review['reviewed_at']!r}"
+    return len(population)
+
+
+def test_unclassified_review_recomputes_from_the_mapping_population_not_from_its_own_words():
+    """register row `05#L31|unclassified` — 把「已复核」从文件自述变成可复算的事实。
+
+    证明了什么（全部现读现算，人口不是抄来的 8）：
+    * 每一条 `source_key` 都在 `migration/mapping.csv` 的 `来源键` 里有唯一登记对象，
+      并且该登记的 `初分能力族` 确实就是 `unclassified`（复核覆盖的是真人口，不是随手一行）；
+    * 每一条 `reviewed_family` 都是 `migration/capability-family-register.csv`
+      `能力族ID` 列里实际在用的词表值，且不等于 `unclassified`（复核不能把东西退回原地）；
+    * 每一条 `reason` 去空白后非空，并且逐条互不相同（复制粘贴的判断不算复核）；
+    * 每一条 `disposition` / `target` 与该 key 在 mapping.csv 里的 `处理方式` /
+      `目标模块` 逐字一致 —— 依据说明点名的「重算条数与处置一致性」；
+    * `count_reviewed == len(entries) == count_required == 现数人口`，而且集合相等两个
+      方向都查：`{entry.source_key} == {初分能力族为 unclassified 的来源键}`，所以既没有
+      第 9 条没被复核的未分类项，也没有一条不属于该人口的复核；
+    * 顶层键集合固定，`reviewed_at` 带时区。
+    * 植入四组反证（词表外族名 / 复制一条 reason / 处置漂移 / count_reviewed 自增）加
+      一组人口反证（往 mapping 的副本里加第 9 条未分类项），每一次谓词都必须变红；
+      最后一次用原始结构复跑必须变绿。
+
+    没证明什么：不证明这些复核的**语义**是对的 —— 「这个模块该归 contracts 还是 project」
+    是人的判断，本节点只能证明登记自洽、可复算、没有漏项；也不证明被复核对象在新仓真的
+    存在（那是 05 表其它行的事）；反证只改内存副本，`migration/` 下的一个字节都没有落盘。
+    """
+    import copy
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    register_rows = _read_register_csv(root / "migration" / "capability-family-register.csv")
+    mapping_rows = _read_register_csv(root / "migration" / "mapping.csv")
+    assert register_rows and mapping_rows, "登记表读空了，重算没有意义"
+    vocabulary = {str(row["能力族ID"]) for row in register_rows}
+    assert UNCLASSIFIED_FAMILY in vocabulary, "capability-family-register.csv 里没有未分类族行"
+    review_path = root / "migration" / "review" / "unclassified-review.json"
+    review = json.loads(review_path.read_text(encoding="utf-8"))
+
+    population = _assert_unclassified_review_is_recomputable(
+        review, mapping_rows, vocabulary, "基线")
+    assert population >= 1, "现数人口为 0，等式两边都成立只是因为根本没有人口"
+    assert review["count_reviewed"] == population
+
+    # 反证 1-4：改复核文件本身（内存副本，不写盘）
+    def mutate_family(document):
+        document["entries"][0]["reviewed_family"] = "contract"
+
+    def mutate_reason(document):
+        document["entries"][1]["reason"] = document["entries"][0]["reason"]
+
+    def mutate_disposition(document):
+        entry = document["entries"][2]
+        entry["disposition"] = "MERGE" if entry["disposition"] != "MERGE" else "RETAIN"
+
+    def mutate_count(document):
+        document["count_reviewed"] = document["count_reviewed"] + 1
+
+    plants = (("把一条 reviewed_family 改成词表外的 contract", mutate_family, "词表"),
+              ("把第一条 reason 逐字复制到第二条", mutate_reason, "逐字重复"),
+              ("把一条处置改成与映射登记不一致", mutate_disposition, "不一致"),
+              ("把 count_reviewed 自增一条，制造与 entries 数不符", mutate_count, "自述"))
+    for description, mutate, expected_clause in plants:
+        mutated = copy.deepcopy(review)
+        mutate(mutated)
+        red = _expect_red(
+            lambda mutated=mutated, description=description: _assert_unclassified_review_is_recomputable(
+                mutated, mapping_rows, vocabulary, "植入·" + description),
+            "植入反证失败（" + description + "）：谓词仍然是绿的")
+        assert expected_clause in red, (description, red)
+
+    # 反证 5：人口里凭空多出第 9 条未分类项，复核一个字没改
+    nine = copy.deepcopy(mapping_rows)
+    ninth = dict(nine[0])
+    ninth.update({"来源键": "synthetic:9th-unclassified#module", "初分能力族": UNCLASSIFIED_FAMILY,
+                  "处理方式": "MERGE", "目标模块": "synthetic/never-landed"})
+    nine.append(ninth)
+    red = _expect_red(
+        lambda: _assert_unclassified_review_is_recomputable(
+            review, nine, vocabulary, "植入·多出第 9 条未复核的未分类项"),
+        "植入反证失败：人口里加了一条没人复核的未分类项，谓词仍然是绿的")
+    assert "没有第" in red and "synthetic:9th-unclassified#module" in red, red
+
+    # 还原：原始结构复跑，仍然绿
+    _assert_unclassified_review_is_recomputable(review, mapping_rows, vocabulary, "还原")

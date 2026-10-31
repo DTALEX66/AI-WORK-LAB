@@ -789,3 +789,70 @@ HEAD `cea5ce515939`、1,265 个候选文件、候选摘要 `9f17d2cac59ce62b…`
 两来源仓口径摘要不变（WORK 2,638 文件 `f103296769f5ff1f…`、DESIGN 4,049 文件 `c3c1bfe3b37319d8…`）。
 `migration/audit-item-closure.csv` 的 20 行收据列改绑这份新收据后 `--check` 无漂移，
 `独立复审` 列 20 行仍全部 `NOT_RUN`。
+
+### 15.9 端点面在最终提交态重测：判定列零差异，只有合成地址在动
+
+`scripts/probe_full_surface.py --fresh` 指向临时 CSV（不写跟踪登记）重跑一遍：
+
+```
+enumerated=164  success=97  refusal=67  defect=0  fixture=0  unconstructed=0  variants=15
+```
+
+与跟踪的 `migration/route-surface.csv` 逐行比对，164 行对 164 行，**只有三列不同**：
+`具体探测路径`（81 行）、`构造方式`（26 行）、`可选分支变体`（13 行）。
+把里面每次运行新铸造的 32/64 位摘要与候选名归一后，`构造方式` 与 `可选分支变体` 的差异
+26/26、13/13 全部被解释掉；`具体探测路径` 剩下的差异也是同一件事（候选地址里的 12 位短名
+不在归一模式内）。**`HTTP状态`、`判定`、`错误码`、`响应顶层键`、`缺陷` 五列零处差异**——
+`defect=0` 在 §14 之后第一次在干净终态上复现。
+
+这条比对口径要写清，否则会被误读成"登记表和实测对不上"：那三列记录的是**这一次探测用的合成对象地址**，
+本来每次都不同；判定列才是这张表的主张。跟踪表保留原样（它就是那一次实测的逐字记录），
+临时副本留在 `.project-local\audit\20261031-fullclosure\route-surface-tip.csv`。
+
+### 15.10 GAP 行的"从来没有后端面"要有出处；usage 投影的缺陷被真修掉了
+
+`build_source_coverage` 之外的另一类假话在登记表自己身上。7 行 `ui-entry` 的 GAP 只写着
+"本仓没有这个端点"，没说清这是**融合时丢了**还是**来源侧从来没有**——两者的处置完全不同，
+前者要迁回来，后者是 owner 要不要新建一层的决定。本轮去来源仓现数：WORK-LAB 的两个 HTTP 服务
+各自列举过端点（`services/control/control_service.py:1148` = descriptor / operations / health；
+`services/orchestration/sidecar.py:714` 起 = projection / v1/snapshot / repair-packs / solutions /
+evidence-range / events），里面没有 settings、privacy、delivery、rules-policy、rules-adaptation、
+workflows 任何一项；来源侧它们只作为前端路由与视图存在（`.ui-reference/.../routes.ts:3/8/13`、
+`apps/observer/frontend/src/lib/legacyRoutes.ts:163`）。7 行的依据说明现在都带上这些出处，
+并注明"要不要新建这一层属 owner 的产品范围决定，不由本批擅自补端点"。新增守卫
+`test_v16_traceability.py::test_absent_rows_cite_evidence_for_saying_the_surface_never_existed`
+要求 GAP+ABSENT 行的依据必须点名一个可解析的 `path:line`（指向本仓或来源仓的文件），
+接缝类说法必须点名 `deferral-register.json` 里真实存在的条目 id。
+
+**这条守卫先抓到我自己的 4 处新写坏的引用**：我为了写出处把路径前缀拼成
+`WORK-LAB/services/...`（相对来源仓根又叠一层，解析不到），另有 3 处引用被正则截断
+（`settingsPrivacy.contract.test.tsx` 写成裸文件名、`.tsx` 被 `.ts` 抢先匹配）。修法是补齐
+全路径、把扩展名交替改成最长优先，并把来源仓前缀去掉——**不是放宽正则**。
+
+`05#L7|usage` 的验收口径「实测与估计分开，未知不填 0」此前只能登记成"无专门断言"，
+原因是投影本身答不上来：`canonical_store.projection()` 的 usage 查询不带 `quality`、
+`cost_estimate`、`cost_reconciled` 三列（行级数据明明有，`usage_samples` schema 里就是三列），
+于是一组全是估出来的样本与一组全是量出来的样本投成同一个形状。本轮真去修了实现：每组现在带
+`quality_samples`（EXACT_SOURCE / UNKNOWN / OTHER 三个计数）、`tokens_by_quality`（三档各自的
+token 和，未知保持 null 而不是 0）与 `cost_coverage`（实测钱与估计钱各自的覆盖词），
+词表外的精度词进 `OTHER` 而不是从划分里消失。该文件是 `COPIED_PATCHED`，因此改动**按锚点声明**
+进 `migrate_sources.PATCHES`，并出现一次失误值得记下：第一次生成锚点的脚本忘了把块代入模板，
+把两个 `%s` 字面写进了 `migrate_sources.py`，于是 `--plan` 立刻
+`PATCH_ANCHOR_ABSENT / rc=1`；重生成后 `--plan` 回到
+`identical 1116 + EOL_ONLY 2 + MODIFIED 10`、`unmanaged 0`——即引擎自己算出的字节 == 树上的字节。
+两个 usage 测试的期望按修复后的行为改写（这一段本来就是"因修复而变红、届时改期望"的那一段）：
+断言只增不减——混合组现在必须 `EXACT_SOURCE=50 / OTHER=7` 且三档之和等于 `tokens`，
+钱只许出现在自己那两把键上，再补一条"词表外精度不掉数"的植入。
+
+并行三个智能体补的 17 个节点（`test_v02_surface` 7、`test_v03_work_loop` 7、
+`test_v18_tools_connections` 3）各自带文件内或数据植入反证；16 行登记的"本仓无 pytest 断言"
+句子被替换成点名断言，状态直方图随之变化：`ui-entry` 的 IMPLEMENTED_UNVERIFIED 11→6、
+PARTIAL 29→34；`capability-family` 的 IMPLEMENTED_VERIFIED 11→13。**没有一行是手改状态字**——
+生成器的四项机验重算，`downgrade_count` 为 0，新点名的测试节点由 `test_v16` 逐条解析。
+
+一处边界照实保留：`design:evidence` 行原先说"视图未生成"是一半对——有账本时的 `receipts`
+读回**无法**经该路由证明，因为融合检出有意不带 `task-ledger-r3.json`（路由没有注入口），
+那是 owner 的打包决定而不是缺测试；这句话现在写进行里。
+
+实测：`test_v16` + `test_v02` + `test_v03` + `test_v18` 同跑 **66 passed**（21+13+16+16）；
+四张表重生成行数不变（56/30/25/15）。
