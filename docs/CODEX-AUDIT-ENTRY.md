@@ -1246,3 +1246,69 @@ tests/unified/test_v16_traceability.py -q` 覆盖本轮全部新增断言与两�
 仍然不在本行声称范围内、也不由这些断言覆盖的：真实宿主写入与读回、模型推理、真实私有数据迁移、
 STITCH 前端、真人专业验收签字；`L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的
 真实宿主探测，判定仍由 `config/blocker-register.json` 现数给出。
+### 15.18 克隆里的具名结论、公开合同里的本机账号名，以及「不改写观测」这条界线
+
+本轮把 §15.17 之后仍然挂着的两项做完（I-c、I-e），并按同一口径把它们做实：不是披露，是修，
+并且每一条修复都带一个能失败的反例。产品侧的 I-b（一致性报告缺 `attempts.pack_plan_id →
+action_plans.plan_id` 这一跳）本轮没有动，原因写在最后一小节，不写成已完成。
+
+**一、I-c：登记生成器在没有来源仓的检出里必须说话，而不是抛栈。** 症状是在克隆里跑
+`scripts/build_source_coverage.py --check`：它枚举 `REPO_ROOT.parent` 下的 WORK-LAB 与 DESIGN-LAB
+两个只读工作树，目录不存在时 `subprocess` 直接 `NotADirectoryError`。对一个闸门来说，
+traceback 是最坏的答复——审阅者分不清它是「登记坏了」还是「这里没法算」，而把「无输出」当成
+「没跑」的调用方会静默丢掉这项检查。现在 `main()` 在动任何输入之前先检查两棵树，
+缺任何一棵就写出 `{"error":"SOURCE_REPO_ABSENT","verdict":"NOT_RECOMPUTABLE_HERE",...}`
+并返回退出码 3，`--check` 与写模式同样拒绝（写模式若继续，会把「枚举到 0 个文件」当成事实
+发布进跟踪登记）。退出码 3 是新名字而不是改写 1：0 与 1 的语义已有消费者，3 专指「本机无法计算」。
+
+守卫是 `test_v14_registers.py::test_the_coverage_builder_names_the_absent_source_repo_instead_of_crashing`：
+把模块自己的两个根指向空目录，断言返回 3、结论点名两个 label、一份缺失时只点名缺的那一份，
+并把 `OUT_DIR` 改到临时目录后证明写模式也拒绝、跟踪的两份登记一个字节都没动。
+同一文件里那条 staleness 守卫仍用真实的树跑 `--check`，所以「有来源仓时照常工作」也是实测的，
+不是靠推断。
+
+**二、I-e：公开合同里带账号名的家目录，与「不许改写观测」这条界线。** 逐个读跟踪文件的文本、
+按守卫用的同一个谓词扫描（占位符 `<...>`、`%...%`、`$...` 不算命中），改动前本机家目录出现在
+3 个文件共 6 处，改动后剩 1 个文件共 4 处，
+分布在 `config/adapter-registry.json`（4 处）。只改了一处：
+`packages/contracts/schemas/workflow/software-update-postflight.schema.json`
+的描述里那句「进程回落到 `C:\Users\<账号>\.dsh`」换成同义的 `%USERPROFILE%\.dsh`——
+合同讲的规则是「不得静默回落到 C 盘默认根」，账号名对这条规则没有任何贡献，而这份文件是随包发布的。
+**没有改** `config/adapter-registry.json` 的那 4 处：那些字节是探测记录本身
+（FileVersion、卸载键 DisplayVersion、实测数据根），把观测值改成占位符等于伪造观测，
+这正是本项目一直拒绝的行为；仓库描述与 §15.16 继续如实写明它含本机路径，推送授权按
+`INTEGRATION_POLICY.md` §6 逐次判断，不靠事后抹掉证据来「解决」。
+
+守卫是两条：`test_published_contracts_do_not_name_a_machine_account`（对
+`packages/contracts` 全目录扫「盘符:\Users\账号名」形态，占位符 `<...>`、`%...%`、`$...` 不算命中）
+与 `test_the_home_path_predicate_names_a_planted_account_path`（同一谓词必须抓到植入的账号名路径、
+并且不把两份占位符当误报）。谓词的范围在测试文字里划清：它只承诺公开合同目录，
+明确不覆盖探测台账——否则这条绿会被读成全仓保证。
+
+**三、合同副本对账补上的那一格**（§15.17 第九条的后续）：已发布 JSON 的当前字节要么等于
+`migration/copies.json` 里那次迁移写下的摘要，要么等于 `DECLARED_REWORK` 出具摘要与字节数的回执，
+两者都对不上才算未解释的改动；走第二态的文件由节点逐名列出（本轮实测为
+["schemas-design/model-catalog-v1.schema.json", "schemas/workflow/software-update-postflight.schema.json"]），并直接对分类函数植入「既不在账上也不在回执里」的字节断言它仍判 stale。
+这条规则不是为了让本轮变绿：它在上一轮是被套件自己撞出来的，改法是把缺失的那一格补进判定。
+
+**四、迁移声明的账**：本轮新改的迁入文件补进声明后，计划现数
+identical 1109 / EOL_ONLY 2 / MODIFIED 17，其中已声明且摘要相符 17、
+未声明 0、`unmanaged` 0；`migrate_sources.py` 里那份按后缀查找声明的函数仍取最长匹配，
+所以三份同名 schema 副本各自贴各自的回执。
+
+**五、本轮实测**（收据 `ca70392894f9b9a0`，绑定提交 `429a5334a9`；此后变化的只有本节文字与登记表本身）：
+套件 `456 passed, 3 subtests passed in 725.50s (0:12:05)`（exit 0），逐类别 passed 456，与本机 collect-only 的 456 项一致，
+新增节点按文件计为 {"tests/unified/test_v05_rejections.py": 2, "tests/unified/test_v14_registers.py": 1, "tests/unified/test_v16_traceability.py": 1}；验收门 REFUSED（exit 1），
+blocking ["L10#0"]，disclosed ["A00#1", "L00#2", "L20#0"]；能力族直方图 {"IMPLEMENTED_VERIFIED": 16, "PARTIAL": 11, "IMPLEMENTED_UNVERIFIED": 3}；
+任务验收登记 {"CONFIRMED": 41, "PARTIAL": 2, "BLOCKED_BY_BOUNDARY": 2, "DEFERRED_P3": 3}。
+
+**六、仍然没做的，如实列**：
+I-b（`integrity_report` 补 `attempts.pack_plan_id → action_plans.plan_id` 这一跳）需要先重写两条
+自己标注「缺陷断言需按现读重写」的断言，接线点已经勘查清楚但本轮未动产品；
+I-d（覆盖登记的 `docs/CODEX-AUDIT-ENTRY.md:行号` 锚点换成可 grep 的小节锚）仍-open，
+本轮只把 `.py` 锚点收紧成必须命中定义行；
+J-a（workbench 的 `build/main.js` 无法重建：`vite` 的传递依赖 `picomatch` 不在
+`apps/workbench/node_modules`，本轮不做网络安装）意味着那两个读 bundle 的 JS 闸门仍在旧字节上；
+真实宿主写入与读回、模型推理、真实私有数据迁移、STITCH 前端、真人专业验收签字，
+以及 `L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的真实宿主探测，
+判定都由 `config/blocker-register.json` 现数给出，不由本仓自证。
