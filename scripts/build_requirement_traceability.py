@@ -231,6 +231,24 @@ def find_definition(name: str, relative: str) -> str | None:
     return None
 
 
+def find_binding(name: str, relative: str) -> str | None:
+    """``relative`` -> ``file:line`` of the zero-indent ``name = ...`` / ``name: T = ...`` line.
+
+    ``find_definition`` only walks ``def``/``class`` headers. A table that lives at module level
+    (the route list is one) has no definition to name, and typing its line number reproduces the
+    same drift this derives away for everything else.
+    """
+    path = REPO_ROOT / relative
+    if not path.is_file():
+        return None
+    pattern = re.compile(r"^%s\s*[:=]" % re.escape(name))
+    for index, text in enumerate(path.read_text(encoding="utf-8", errors="replace")
+                                 .splitlines(), start=1):
+        if pattern.match(text):
+            return "%s:%d" % (relative, index)
+    return None
+
+
 # --------------------------------------------------------------------------
 # verification primitives
 # --------------------------------------------------------------------------
@@ -525,7 +543,7 @@ def ui_claims() -> dict[str, dict]:
         "work:trust": {"location": "GET /api/v1/tasks/([0-9a-f]{32})/completion", "evidence": stale_guard,
                        "status": "PARTIAL",
                        "basis": "核验与可信详情由 completion 计算 + 结果时效（stale 拒绝）支撑；" + no_ui + "缺口：「任务/核验与可信详情」视图未生成。"},
-        "work:software": {"location": "domains/work/orchestration/software_installation_identity.py:78",
+        "work:software": {"location": find_definition("classify_installation", "domains/work/orchestration/software_installation_identity.py"),
                           "evidence": V02_SOFTWARE_TEST, "status": "PARTIAL",
                           "basis": "安装身份分类逻辑已迁入（classify_installation），software[] 由台账现读、"
                                    "不落第二副本：改台账即改读回、缺值保持 null、台账读不到时该键整个缺席"
@@ -568,14 +586,14 @@ def ui_claims() -> dict[str, dict]:
         "work:evidence": {"location": "GET /api/work/observer/evidence-range", "evidence": f09,
                           "status": "PARTIAL",
                           "basis": "证据区间读面存在且经同一内核；" + no_ui + "缺口：「任务/证据抽屉」视图未生成。"},
-        "work:trial-plan": {"location": "backend/core/probes.py:43",
+        "work:trial-plan": {"location": find_definition("run_read_probes", "backend/core/probes.py"),
                             "evidence": f10 + ";" + conn, "status": "PARTIAL",
                             "basis": "受控探测试（run_read_probes）与资格派生分离实现，探测与执行分开写在 08 的 invariants；" + no_ui
                                      + "缺口：「工具/受控试用/方案」视图未生成，试用方案的编排面未接入自动路径。"},
-        "work:trial-failure": {"location": "backend/core/qualifications.py:169", "evidence": f10,
+        "work:trial-failure": {"location": find_definition("derive", "backend/core/qualifications.py"), "evidence": f10,
                                "status": "PARTIAL",
                                "basis": "失败/过期/外来候选记录不授予资格由 derive() 判定并有断言；" + no_ui + "缺口：「工具/受控试用/失败」视图未生成。"},
-        "work:trial-readback": {"location": "backend/core/qualifications.py:283", "evidence": f10,
+        "work:trial-readback": {"location": find_definition("loopback_http_probe", "backend/core/qualifications.py"), "evidence": f10,
                                 "status": "PARTIAL",
                                 "basis": "loopback 读回探测存在且只绑定当前候选版本；" + no_ui + "缺口：「工具/受控试用/读回」视图未生成。"},
     }
@@ -717,16 +735,16 @@ def family_claims() -> dict[str, dict]:
                       "status": "PARTIAL",
                       "basis": PARTIAL_MARKER + "P2 单个真实执行器连接、P3 多 Agent 未接线（09 分期表 L21/L30）；本轮只有 P1 人工闭环，"
                               "且一个会话一个拥有者、取消与结果不伪造只到「声明与拒绝」层，没有真实执行器可对账。"},
-        "permissions": {"location": "domains/work/control/permission_gate.py:107",
+        "permissions": {"location": find_definition("PermissionGate", "domains/work/control/permission_gate.py"),
                         "evidence": "tests/unified/test_v02_surface.py::test_write_boundary_unknown_project_and_kind;" + f09,
                         "status": "PARTIAL",
                         "basis": "Observer 只读（写请求 405 并落拒绝记录）与 Control 写入门控有断言；" + PARTIAL_MARKER
                                 + "验收的「写入校验范围与状态」只覆盖已挂载的操作面；独立授权账本在本仓不存在——新建一层授权账本是 owner 的产品范围决定，不由本批顺手补一个看起来像账本的文件。"},
-        "telemetry": {"location": "backend/core/work_surfaces.py:82", "evidence": read_path,
+        "telemetry": {"location": find_definition("observer_projection", "backend/core/work_surfaces.py"), "evidence": read_path,
                       "status": "PARTIAL",
                       "basis": "真实投影走同一 CanonicalStore，且读路径不启动采集器、不开套接字（该测试正是证明这一点）；" + PARTIAL_MARKER
                               + "持续采集/watcher 仍在独立 sidecar，统一内核只提供有界帧（docs/CODEX-AUDIT-ENTRY.md §7）。"},
-        "usage": {"location": "domains/work/workflow_core/canonical_store.py:1374",
+        "usage": {"location": find_definition("projection", "domains/work/workflow_core/canonical_store.py"),
                   "evidence": V18_USAGE_UNKOWN_TEST + ";" + V18_USAGE_SPLIT_TEST,
                   "status": "IMPLEMENTED_VERIFIED",
                   "basis": "「实测与估计分开、未知不填 0」两侧现在都有具名断言，并且投影本身被改成能回答这句话："
@@ -734,7 +752,7 @@ def family_claims() -> dict[str, dict]:
                           "未知保持 null、词表外的精度词进 OTHER 而不消失（两种植入反证都会变红：把 UNKNOWN 补成 0、"
                           "把估计钱并进实测钱）。" + NOT_PROBED_SENTENCE},
         "issues": {
-                   "location": "domains/work/workflow_core/issue_projection.py:567",
+                   "location": find_definition("load_issues", "domains/work/workflow_core/issue_projection.py"),
                    "evidence": f09 + ";" + V11_CHAIN_NODES,
                    "status": "PARTIAL",
                    "basis": "问题投影与修复包读面真实存在并被读回（F09 那条断言的是这一面的读通与 Control 写入门被拒，"
@@ -753,7 +771,7 @@ def family_claims() -> dict[str, dict]:
                       "evidence": "tests/unified/test_v11_audit_rework.py::test_f05_unified_search_returns_work_solutions;" + "tests/unified/test_v11_audit_rework.py::test_f05_solution_revision_conflict_and_restart_readback",
                       "status": "IMPLEMENTED_VERIFIED",
                       "basis": "中文检索命中真实 WORK 方案、修订冲突与重启读回都有具名断言（F05 返工项）。"},
-        "software": {"location": "domains/work/orchestration/software_installation_identity.py:78",
+        "software": {"location": find_definition("classify_installation", "domains/work/orchestration/software_installation_identity.py"),
                      "evidence": ("tests/unified/test_v18_tools_connections.py::test_software_installation_identity_records_the_five_sides_apart;"
                                   "tests/unified/test_v18_tools_connections.py::test_software_installation_identity_blank_path_is_not_a_recorded_location;"
                                   "tests/unified/test_v18_tools_connections.py::test_unauthorized_software_installation_probe_records_nothing"),
@@ -763,7 +781,7 @@ def family_claims() -> dict[str, dict]:
                              "未授权时探测一项也不写——由上面三个具名测试断言（含植入反证）。"
                              "本行不声称任何真实安装在本机被探测过：路径、版本、可执行文件仍是 NOT_PROBED。"},
         "configuration": {
-                          "location": "domains/work/orchestration/adapter_capability_projection.py:409",
+                          "location": find_definition("load_inputs", "domains/work/orchestration/adapter_capability_projection.py"),
                           "evidence": caps + ";" + V02_CONFIG_NODES,
                           "status": "PARTIAL",
                           "basis": "「局部配置可恢复」的读侧按台账真正的读链断言：同一进程内四轮换掉受管台账"
@@ -787,7 +805,7 @@ def family_claims() -> dict[str, dict]:
                      "evidence": "tests/unified/test_v05_rejections.py::test_wrong_pack_and_wrong_project_results_refused;tests/unified/test_v10_gate.py::test_gate_refuses_forged_result_and_verdict",
                      "status": "IMPLEMENTED_VERIFIED",
                      "basis": "验收「拒绝错任务、错版本、重复和假回执」逐条对应到具名反例测试（错项目/错包、stale、重复、伪造回执与伪 PASS）。"},
-        "session": {"location": "domains/design/design_lab/creative/session_link.py:51",
+        "session": {"location": find_definition("link_session", "domains/design/design_lab/creative/session_link.py"),
                     "evidence": NO_EVIDENCE,
                     "status": "PARTIAL",
                     "basis": "会话引用与任务不同表：它落在独立的写一次关联表 worklab_session_link 上，"
@@ -805,13 +823,13 @@ def family_claims() -> dict[str, dict]:
                               "读回的 outbound 仍是 NOT_CONNECTED / sent_count 0 / last_attempt_at null，"
                               "未批准的候选导出被 409 拒、非法入参不留半行、也没有任何入参能造出 APPROVED。"
                               "权利判定与真人审阅人是夹具 supplied 的字段，本行不声称它们已被证真。"},
-        "cleanup": {"location": "scripts/migrate_sources.py:1086",
+        "cleanup": {"location": find_definition("prune_report", "scripts/migrate_sources.py"),
                     "evidence": "tests/unified/test_v07_migration.py::test_prune_reports_only_paths_this_tool_recorded",
                     "status": "PARTIAL",
                     "basis": "已有的是迁移工具的 prune——只报告本工具登记过的路径、默认不删；" + PARTIAL_MARKER
                             + "面向运行产品的「清单范围清理与恢复可读回」未实现，不删除用户作品目前靠不实现删除来保证。"},
         "radar": {
-                  "location": "domains/design/design_lab/model_catalog.py:104",
+                  "location": find_definition("catalog", "domains/design/design_lab/model_catalog.py"),
                   "evidence": V09_RADAR_NODES,
                   "status": "IMPLEMENTED_VERIFIED",
                   "basis": "模型与情报目录从 readiness/model-radar.json 及提供方台账现读，"
@@ -833,24 +851,24 @@ def family_claims() -> dict[str, dict]:
                           "UNSTATED 与 RECORDED 由合成夹具人口证明；文档级观测时刻只从台账带出，条目行没有自己的日期；"
                           "source_ref 是 github/huggingface 的外部地址，本机不联网也不校验其字节。"
                           "本行不声称本机任何模型真被装载、探测或授权。"},
-        "design-knowledge": {"location": "domains/design/design_lab/knowledge_library.py:531",
+        "design-knowledge": {"location": find_definition("KnowledgeLibrary", "domains/design/design_lab/knowledge_library.py"),
                              "evidence": "tests/unified/test_v06_knowledge.py::test_create_search_short_queries_and_no_result;tests/unified/test_v06_knowledge.py::test_revision_conflict_and_index_rebuild",
                              "status": "IMPLEMENTED_VERIFIED",
                              "basis": "内容/来源/修订、中文短词与无结果、索引重建与重启读回都有具名断言。"},
-        "design-prompt": {"location": "domains/design/design_lab/prompt_intelligence.py:129",
+        "design-prompt": {"location": find_definition("PromptIntelligence", "domains/design/design_lab/prompt_intelligence.py"),
                           "evidence": NO_EVIDENCE, "status": "PARTIAL",
                           "basis": "生成与反推的既有实现按「P1迁既有」迁入；" + PARTIAL_MARKER
                                   + "「P3新增模型执行」未做（09 分期表 L32），且本仓无 pytest 覆盖提示词路由，"
                                   "「提示词导出不算作品生成」只有约定而没有断言。"},
-        "design-plan": {"location": "domains/design/design_lab/assistance_plan.py:121",
+        "design-plan": {"location": find_definition("AssistancePlanError", "domains/design/design_lab/assistance_plan.py"),
                         "evidence": "tests/legacy/design/test_assistance_plan.py::AssistancePlanTests::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart;tests/unified/test_v04_design_loop.py::test_design_loop_keeps_professional_acceptance_pending",
                         "status": "IMPLEMENTED_VERIFIED",
                         "basis": "方案修订不可变、旧修订按自身读回、与任务信封关联后专业验收保持 pending，均由具名测试断言；旧只读合同兼容。"},
-        "design-target": {"location": "domains/design/design_lab/target_profile.py:326",
+        "design-target": {"location": find_definition("TargetProfiles", "domains/design/design_lab/target_profile.py"),
                           "evidence": "tests/legacy/design/test_target_profile.py::TargetProfileTests::test_seeded_profiles_are_served_from_the_tracked_config_with_no_database_copy;tests/unified/test_v04_design_loop.py::test_target_profile_reference_must_address_a_real_profile",
                           "status": "IMPLEMENTED_VERIFIED",
                           "basis": "软件×模型×入口档案从受管配置现读且不落第二副本；引用必须指向真实档案——「选择不等于连接和执行」由资格层断言。"},
-        "design-domain": {"location": "domains/design/design_lab/domain_packs.py:199",
+        "design-domain": {"location": find_definition("build", "domains/design/design_lab/domain_packs.py"),
                           "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
                           "basis": "领域包构建器在（它按包尝试加载 checker，见 domain_packs.py 的 _load_checker "
                                   "与 CHECKER_REL=design-lab/scripts/verify_domain_pack_v2.py；"
@@ -878,15 +896,15 @@ def family_claims() -> dict[str, dict]:
                                   "读回的「换一次」是同一进程里换一个服务实例（新数据库连接、新 HTTP 端口）从磁盘重读，"
                                   "不是操作系统进程重启，也不主张断电语义；本行也不声称宿主真能打开产物——"
                                   "输出字节是合成的，这一面只哈希不解析，真实宿主产生输出的链路仍按人工门逐次进行。"},
-        "design-reconstruction": {"location": "packages/capabilities/reconstruction/contracts.py:117",
+        "design-reconstruction": {"location": find_definition("validate_rir", "packages/capabilities/reconstruction/contracts.py"),
                                   "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
                                   "basis": "RIR 校验与规范化摘要在包内实现并被 native_plan 使用；"
                                           "「结构与视觉规格分开验收」需人审，本仓无 pytest 断言，故不标 VERIFIED。"},
-        "design-quality": {"location": "domains/design/design_lab/assurance/human_jury.py:251",
+        "design-quality": {"location": find_definition("assert_not_agent_signed", "domains/design/design_lab/assurance/human_jury.py"),
                            "evidence": "tests/unified/test_v11_audit_rework.py::test_f08_agent_and_unresolved_verifiers_cannot_satisfy_professional",
                            "status": "IMPLEMENTED_VERIFIED",
                            "basis": "验收「技术核验与专业人工验收分开」有直接反例断言：Agent 引用与未解析 verifier 不能充当真人验收。"},
-        "design-tools": {"location": "domains/design/design_lab/adapters/photoshop_com.py:79",
+        "design-tools": {"location": find_definition("quiesce", "domains/design/design_lab/adapters/photoshop_com.py"),
                          "evidence": "tests/unified/test_v14_registers.py::test_host_bridge_script_is_reachable_where_the_adapter_probes",
                          "status": "PARTIAL",
                          "basis": "桥接脚本在适配层实际探测的包内路径且与真值逐字节一致（漂移由守卫拦截）；" + PARTIAL_MARKER
@@ -911,7 +929,8 @@ def family_claims() -> dict[str, dict]:
                               "且发布清单与登记副本表按路径尾段与字节双向对账"
                               "（台账把目标写成跑迁移那一份检出的绝对路径，克隆里只能按尾段与字节比，"
                               "这一口径在节点里写明）：每个已发布合同要么等于迁移记录写下的摘要，"
-                              "要么等于声明修复出具回执的那份摘要（本轮实测只有一份走第二条），两者都对不上才算未解释的改动；"
+                              "要么等于声明修复出具回执的那份摘要（走这一格的是哪几份由该节点逐名列出），"
+                              "两者都对不上才算未解释的改动；"
                               "能力台账声明的输入逐个存在且可解析。"
                               "真实范围说清楚：运行期被产品代码打开的只有控制面请求合同、方案合同与适配器接口合同这三个"
                               "具名文件，这一集合由「装读句柄、跑三个真实消费者、再比集合」的双向等式钉住，"
@@ -929,7 +948,7 @@ def family_claims() -> dict[str, dict]:
                       "status": "PARTIAL",
                       "basis": "改进面诚实回答 CONTRACT_ONLY / activation_state=UNAVAILABLE，能力目录把 core.evolution 标为 DECLARED 且 can_invoke=false；" + PARTIAL_MARKER
                               + "「P3 完整执行链」——技能/插件/前后端修改分开、独立验收与回退——未实现（09 分期表 L32）。"},
-        "build-test": {"location": "scripts/verify_isolated_install.py:185",
+        "build-test": {"location": find_definition("record", "scripts/verify_isolated_install.py"),
                        "evidence": "evidence:a01-a10-results.json#results.A08;tests/unified/test_v14_registers.py::test_coverage_register_accounts_for_every_source_file",
                        "status": "IMPLEMENTED_VERIFIED",
                        "basis": "wheel 离线构建并安装到隔离目录、安装态 __file__ 全部指向安装树（A08 实测记录），真实 loopback HTTP 与持久化由本仓回归覆盖；未继承旧 CI 绿。"},
@@ -982,7 +1001,7 @@ def requirement_claims() -> dict[str, dict]:
         "U09": {"location": ABSENT, "evidence": "evidence:a01-a10-results.json#results.FRONTEND_STITCH", "status": "GAP",
                 "basis": "提示词文件只在只读任务包内（01_STITCH_完整前端提示词.txt），其交付物——前端设计稿与实现——本轮未产生，实测登记 FRONTEND_STITCH 为未运行；"
                         "F01-F10 帧与 J1-J9 在本仓没有任何对应实现或断言，本行是缺口而不是延期项（09 分期表把它列为必做波次的交接物）。"},
-        "U10": {"location": "backend/v1.py:195", "evidence": "tests/unified/test_v02_surface.py::test_health_is_real_service_metadata;" + manual,
+        "U10": {"location": find_binding("V1_ROUTES", "backend/v1.py"), "evidence": "tests/unified/test_v02_surface.py::test_health_is_real_service_metadata;" + manual,
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "后端闭环按 P0/P1 落实：路由条数在构建时从两张活动表现读——"
                         "V1_ROUTES %d 条、兼容表 %d 条，本行不复述手抄数字；"
@@ -992,17 +1011,17 @@ def requirement_claims() -> dict[str, dict]:
                 "basis": "本仓确在本地工作分支 integration/local-fusion-20261029 上执行（.git/HEAD 第一行就是该 branch ref），"
                         "增量保全由 delivery-summary.json#git 与 snapshot-before/after 逐文件摘要证明；注意 HEAD 仍是 unborn（无提交），"
                         "本行不据此声称已提交或已同步。"},
-        "U12": {"location": "backend/core/capabilities.py:97", "evidence": caps + ";" + "tests/unified/test_v11_audit_rework.py::test_f01_registered_gap_paths_all_have_a_real_disposition",
+        "U12": {"location": find_definition("derive_catalog", "backend/core/capabilities.py"), "evidence": caps + ";" + "tests/unified/test_v11_audit_rework.py::test_f01_registered_gap_paths_all_have_a_real_disposition",
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "两条都可测：延期面在能力目录里保持 DECLARED/DEFERRED 并带 phase、can_invoke=false（不降级冒充）；"
                         "来源与接缝的保留由逐条去向登记（migration/work-gap-disposition.csv，行数与报告现算对账）+ 逐文件覆盖登记断言，延期不等于删除。"},
-        "U13": {"location": "backend/v1.py:628",
+        "U13": {"location": find_definition("_v1_build_pack", "backend/v1.py"),
                 "evidence": "tests/unified/test_v05_rejections.py::test_adapter_dispatch_is_not_allowed_this_batch;" + "tests/unified/test_v09_honesty.py::test_connections_never_claim_connected_without_a_probe",
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "运行面上没有任何可把项目/数据推向远端的入口：外部派发在 pack 处直接 400 拒绝，"
                         "且不存在把连接改成 CONNECTED 的路由（POST /api/v1/connections 实测 404）。"
                         "本行只声称代码层不被绕过；系统级出站隔离未被证明（INTEGRATION_POLICY §2），2026-10-31 的首次上传是 owner 单独放行的例外（§6），不改变本行的禁止面。"},
-        "U14": {"location": "backend/v1.py:628", "evidence": "tests/unified/test_v05_rejections.py::test_adapter_dispatch_is_not_allowed_this_batch;" + "evidence:a01-a10-results.json#results.A08",
+        "U14": {"location": find_definition("_v1_build_pack", "backend/v1.py"), "evidence": "tests/unified/test_v05_rejections.py::test_adapter_dispatch_is_not_allowed_this_batch;" + "evidence:a01-a10-results.json#results.A08",
                 "status": "PARTIAL",
                 "basis": "全部构建/测试/安装都在本地：A08 是离线隔离安装实测，工具与模型方式已在 INTEGRATION_POLICY §4 逐条核实；" + PARTIAL_MARKER
                         + "「禁止云构建/远程派发/自动同步」在代码与流程上成立，但系统级出站隔离未被证明，且执行本任务的模型本身是云端会话模型（§2 如实登记）。"},

@@ -815,6 +815,10 @@ DECLARED_REWORK = {
     "apps/workbench/shell.ts": (
         "5ff7486515cade7ca443247d300b60c48db1b7c2668e8c8438d053d0dcc034d2", 759392, 13,
         "本轮 I-a: 目录行按三态渲染标签，空目录计数显示「未说明」而不是被抹平"),
+    "packages/contracts/schemas/workflow/software-update-postflight.schema.json": (
+        "af1b0a548d97fbd90ebdb36af225c88c31ec517ceb69a5c321baa5c4c13b0a86", 3399, 2,
+        "本轮 I-e: 公开合同描述里「回落到每用户默认根」的举例带出本机用户名，改为同义的 "
+        "%USERPROFILE% 写法；规则语义与来源仓一致，只是不再写出这台机器的账号名"),
 }
 
 

@@ -223,6 +223,7 @@ def test_body_size_and_json_guards(server):
 
 import copy as _copy
 import hashlib as _hashlib
+import re as _re
 import shutil as _shutil
 from pathlib import Path as _Path
 
@@ -934,6 +935,47 @@ def _published_contract_state(tail: str, current: bytes, recorded_digest: str,
 
 _CONTRACTS_PREFIX = _CONTRACTS_DIR.relative_to(_CONTRACT_ROOT).as_posix()
 
+#: A Windows home directory written out with a literal account name. Placeholders (`<HOME>`,
+#: `%USERPROFILE%`, `$HOME`) are how a contract may describe the same root without publishing
+#: which machine it was written on.
+_HOME_PATH_RE = _re.compile(r"[A-Za-z]:[\\/]{1,2}Users[\\/]{1,2}([^\"'\\/<>%$]+)")
+
+
+def _home_path_findings(root: _Path) -> list[str]:
+    hits = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        text = path.read_bytes().decode("utf-8", "replace")
+        for match in _HOME_PATH_RE.finditer(text):
+            hits.append("%s: %s" % (path.relative_to(root).as_posix(), match.group(0)))
+    return hits
+
+
+def test_published_contracts_do_not_name_a_machine_account():
+    """Public contracts travel to other people's checkouts; they must not carry this machine's path.
+
+    Scope is stated precisely, because a green here is not a repository-wide promise:
+    ``packages/contracts`` -- the directory the packaging declaration ships -- holds no literal
+    ``C:\\Users\\<account>`` at all. ``config/adapter-registry.json`` is deliberately NOT covered:
+    its rows are probe records whose evidence *is* the real install path, and replacing those bytes
+    would turn an observation into a fabrication. The planted file below shows the predicate bites,
+    so the passing assertion over the real directory is a measurement rather than a blind scan.
+    """
+    assert _home_path_findings(_CONTRACTS_DIR) == [], _home_path_findings(_CONTRACTS_DIR)
+
+
+def test_the_home_path_predicate_names_a_planted_account_path(tmp_path):
+    staged = tmp_path / "contracts" / "schemas"
+    staged.mkdir(parents=True)
+    (staged / "clean.schema.json").write_text(
+        '{"description": "falls back to %USERPROFILE%\\\\.dsh or <HOME>\\\\.dsh"}', encoding="utf-8")
+    assert _home_path_findings(tmp_path / "contracts") == [], "placeholders must not be flagged"
+    (staged / "planted.schema.json").write_text(
+        '{"description": "falls back to C:\\\\Users\\\\someone\\\\.dsh"}', encoding="utf-8")
+    found = _home_path_findings(tmp_path / "contracts")
+    assert len(found) == 1 and "someone" in found[0], found
+
 
 def test_contracts_published_inventory_and_consumed_set_do_not_drift(server, monkeypatch):
     """Contract drift: what is published, what is registered, and what is actually opened.
@@ -1001,7 +1043,8 @@ def test_contracts_published_inventory_and_consumed_set_do_not_drift(server, mon
     # the declared branch is not a free pass: name exactly which published contracts are NOT the
     # bytes the migration wrote, and prove that a third kind of change still reads as stale
     reworked = sorted(tail for tail, state in states.items() if state == "declared_rework")
-    assert reworked == ["schemas-design/model-catalog-v1.schema.json"], reworked
+    assert reworked == ["schemas-design/model-catalog-v1.schema.json",
+                        "schemas/workflow/software-update-postflight.schema.json"], reworked
     assert all(len(_contract("packages/contracts/" + tail).read_bytes())
                == declared["packages/contracts/" + tail][1] for tail in reworked), reworked
     assert _published_contract_state(reworked[0], b"planted undeclared bytes",

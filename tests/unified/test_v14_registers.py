@@ -655,8 +655,8 @@ def test_the_tracked_coverage_registers_are_not_stale():
     """The published per-file registers must equal what the builder produces right now.
 
     Their ``authority`` column stores ``file:line`` for text searched inside this document and
-    inside ``build_f01_disposition.py``. Every 42 rows that cite ``docs/CODEX-AUDIT-ENTRY.md``
-    point at one line today; a single inserted line above it would move all 42 citations onto
+    inside ``build_f01_disposition.py``. Every row that cites ``docs/CODEX-AUDIT-ENTRY.md`` points
+    at one line today; a single inserted line above it would move all of those citations onto
     unrelated prose, and the existing guard -- "the cited line number is in range and the file
     exists" -- would stay green. ``--check`` closes that by comparing the rebuilt rows with the
     tracked ones, in memory, so verification is still not a writer.
@@ -668,3 +668,49 @@ def test_the_tracked_coverage_registers_are_not_stale():
     assert check.returncode == 0, (
         "覆盖登记比它引用的文本旧了；重跑 scripts/build_source_coverage.py 再重跑下游登记表。"
         + check.stdout[-600:] + check.stderr[-600:])
+
+
+def test_the_coverage_builder_names_the_absent_source_repo_instead_of_crashing(tmp_path, capsys):
+    """In a clone the two read-only source trees are simply not there; that must be a verdict.
+
+    ``--check`` used to die inside ``subprocess`` with ``NotADirectoryError`` because the builder
+    walked ``REPO_ROOT.parent/WORK-LAB`` without looking. A traceback is the worst possible answer
+    for a gate: a reviewer cannot tell it apart from a broken register, and a caller that treats
+    "no output" as "not run" silently loses the check. The refusal is asserted against the real
+    entry point with the module's own roots redirected at an empty directory -- the same call with
+    the real roots present must still do its work (the test right above proves that).
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "coverage_builder_for_absent_roots",
+        TARGET_ROOT / "scripts" / "build_source_coverage.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    module.WORK = tmp_path / "WORK-LAB"
+    module.DESIGN = tmp_path / "DESIGN-LAB"
+    before = {name: (TARGET_ROOT / "migration" / name).read_bytes()
+              for name in ("source-coverage-work.csv", "source-coverage-design.csv")}
+    out = tmp_path / "verdict.json"
+    assert module.main(["--check", "--json-out", str(out)]) == 3, "a missing source root must not be 0"
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["error"] == "SOURCE_REPO_ABSENT", payload
+    assert sorted(entry["label"] for entry in payload["absent"]) == ["design", "work"], payload
+    assert payload["verdict"] == "NOT_RECOMPUTABLE_HERE", payload
+
+    # one present, one absent: the verdict names only the one that is missing, and a present
+    # directory that is merely not a repository is still refused (the builder enumerates a tree)
+    (tmp_path / "WORK-LAB").mkdir()
+    module.WORK = tmp_path / "WORK-LAB"
+    assert module.main(["--check"]) == 3, "only one root present is still not enough"
+    single = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert [entry["label"] for entry in single["absent"]] == ["design"], single
+    # the write path is the dangerous one: in a clone it would publish "0 enumerated files" as a
+    # fact about a repository the run could not read. OUT_DIR is redirected at a scratch directory
+    # so the assertion can prove the refusal without being able to damage a tracked register.
+    module.OUT_DIR = tmp_path / "out"
+    assert module.main([]) == 3, "a refused run must refuse in write mode too"
+    assert not (tmp_path / "out").exists() or not list((tmp_path / "out").glob("*.csv"))
+    after = {name: (TARGET_ROOT / "migration" / name).read_bytes() for name in before}
+    assert after == before, "a refused run must not rewrite a tracked register"

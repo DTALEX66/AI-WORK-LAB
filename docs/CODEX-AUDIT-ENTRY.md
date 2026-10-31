@@ -1131,9 +1131,11 @@ Git 会承认的 1266 个文件、18,225,907 字节；凭证形态命中 0；
 个人标识扫描：distinct 邮箱 1 个且是通用的 `git@github.com`；distinct 家目录 1 个，
 命中的两处是 `config/adapter-registry.json`（台账里的本机路径，登记行已把它写成"随卡片出现的出处"）
 与 `packages/contracts/schemas/workflow/software-update-postflight.schema.json:5` 的场景描述
-（`C:\Users\ALEX\.dsh` 作为"回落默认根"的反例叙述）——两处都不是本轮引入、也不含凭证，
-但公开仓里描述性文字带用户名仍不合适，已登记为待修项（把场景改成 `<HOME>` 占位并加一条
-"除白名单外跟踪文件不得出现本机家目录"的守卫），本轮不偷偷改掉就算完。
+（一处"回落到每用户默认根"的反例叙述，当时把那个根写成了带本机账号名的绝对路径）——两处都不是本轮引入、也不含凭证，
+但公开仓里描述性文字带用户名仍不合适，已登记为待修项；该待修项在 §15.17 落地：合同里改用同义的
+`%USERPROFILE%` 写法并按声明返工程序登记回执，探测台账 `config/adapter-registry.json` 不改写
+（那些字节就是观测本身，改掉等于伪造记录），守卫范围因此只覆盖 `packages/contracts`，
+并在测试里写明它不覆盖探测台账。
 
 **仓库描述**：由 `receipt + 登记表` 现算组合，315/350 字符（GitHub 上限 350，超了直接拒绝出文），
 `gh repo edit` 之后 `gh repo view --json description` 回读与提交值逐字节相等。

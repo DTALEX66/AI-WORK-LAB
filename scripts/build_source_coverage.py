@@ -481,6 +481,23 @@ def main(argv=None) -> int:
     parser.add_argument("--check", action="store_true",
                         help="rebuild and compare with the tracked registers; never write them")
     args = parser.parse_args(argv)
+    absent = [{"label": label, "root": str(repo)}
+              for label, repo in (("work", WORK), ("design", DESIGN)) if not repo.is_dir()]
+    if absent:
+        # These registers are enumerations of the two read-only source working trees. With a tree
+        # missing there is nothing to enumerate: reporting "matches" would be a green that measured
+        # nothing, and writing a register over an empty population would publish "0 files" as a fact
+        # about a repository this run could not read. So name the condition and stop.
+        payload = {"error": "SOURCE_REPO_ABSENT", "absent": absent,
+                   "verdict": "NOT_RECOMPUTABLE_HERE", "check": bool(args.check),
+                   "note": ("run this builder where WORK-LAB and DESIGN-LAB are present; the tracked "
+                            "registers remain the record of the run that could read them")}
+        text = json.dumps(payload, ensure_ascii=False)
+        if args.json_out:
+            args.json_out.parent.mkdir(parents=True, exist_ok=True)
+            args.json_out.write_text(text + "\n", encoding="utf-8")
+        print(text)
+        return 3
     copied = copied_index()
     registered = registered_keys()
     patches = patch_map()

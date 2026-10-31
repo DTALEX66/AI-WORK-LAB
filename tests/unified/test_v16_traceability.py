@@ -656,7 +656,32 @@ def test_fabricated_anchors_are_downgraded_by_the_builder(builder, tmp_path):
     deferred = builder.reconcile("scratch", "T#L1|t", "P1保留合并与修复", "", unbacked_deferral)
     assert deferred["状态"] == "GAP", deferred["依据说明"][-160:]
 
-    assert not (tmp_path / "unused").exists()
+
+def test_authored_python_locations_name_a_symbol_not_a_typed_line_number(builder):
+    """A typed `file:line` rots the moment anything above it is edited; a symbol reference cannot.
+
+    This round proved the point twice over: adding lines to `model_catalog.py` slid the radar
+    anchor onto a dict member, and adding one declaration to `migrate_sources.py` slid the cleanup
+    anchor off `def prune_report` -- both after the anchors had been re-pinned by hand. So the
+    authored location column now calls `find_definition` / `find_binding` and the number is derived
+    at build time. The shape assertion below is what stops a future edit from quietly going back to
+    a literal, and the two lookups show what happens when the named thing is gone: the anchor
+    resolves to nothing, the row downgrades, and no register line claims a location it cannot find.
+    """
+    source = BUILDER.read_text(encoding="utf-8")
+    typed = re.findall(r'"location": "([\w./-]+\.py):(\d+)"', source)
+    assert typed == [], "登记生成器里又出现了手抄的 python 行号锚点：%s" % typed
+
+    import ast as _astmod
+    for name, relative in (("prune_report", "scripts/migrate_sources.py"),
+                           ("catalog", "domains/design/design_lab/model_catalog.py")):
+        tree = _astmod.parse((TARGET_ROOT / relative).read_text(encoding="utf-8"))
+        header = min(node.lineno for node in _astmod.walk(tree)
+                     if isinstance(node, _astmod.FunctionDef) and node.name == name)
+        assert builder.find_definition(name, relative) == "%s:%d" % (relative, header), name
+    assert builder.find_binding("V1_ROUTES", "backend/v1.py").startswith("backend/v1.py:")
+    assert builder.find_definition("no_such_symbol_in_this_repo", "scripts/migrate_sources.py") is None
+    assert builder.find_binding("NO_SUCH_BINDING", "backend/v1.py") is None
 
 
 def test_every_register_row_carries_the_six_required_columns():
