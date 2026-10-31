@@ -779,6 +779,14 @@ build_audit_item_closure        rc=0
 `test_v04_design_loop.py` + `test_v18_tools_connections.py` 合计 17 passed，
 两文件与 v16 三档同跑 **37 passed**；四张表重生成，行数不变（56/30/25/15）。
 
+另记一次我自己的工具失误，因为它改的是**字节而不是逻辑**：声明锚点的脚本用
+`read_text()` + `write_text(newline="")` 处理 `scripts/migrate_sources.py`，把该文件 1089 行
+CRLF 全折成 LF（`.gitattributes` 里 `* -text` 关掉了 Git 的转换，所以树上字节就是提交字节，
+这是整文件级的改动而不是空白噪音）。`git show --numstat` 一下从"1163 增/47 删"变成
+"1163 增/1089 删"才发现。已按字节还原为 CRLF，并把那次提交的净差重新压回"只有新增的锚点"。
+教训：动这些文件必须走 `read_bytes()/write_bytes()`；改完要用 numstat 看变更规模是否符合预期，
+不能只看功能测试是否通过——测试对行尾是盲目的。
+
 对最终提交态的全量测量（收据 `receipt-archive/CLOSURE-STATE-9f17d2cac59ce62b.json`，
 HEAD `cea5ce515939`、1,265 个候选文件、候选摘要 `9f17d2cac59ce62b…`）：
 **387 passed, 3 subtests passed, 0 failed, 0 errors**（exit 0，644.36s = 10m44s，无 deselect），
