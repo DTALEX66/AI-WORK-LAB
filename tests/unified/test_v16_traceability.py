@@ -455,6 +455,54 @@ def test_the_collect_predicate_names_an_absorbed_def_line(tmp_path):
     assert "test_one" in collected.stdout and "test_two" not in collected.stdout, collected.stdout
 
 
+def _run_builder(out_dir) -> int:
+    """Build the four registers into ``out_dir`` the way the tracked copies were built."""
+    completed = subprocess.run(
+        [sys.executable, str(BUILDER), "--out-dir", str(out_dir)],
+        cwd=str(TARGET_ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=900)
+    assert completed.returncode == 0, completed.stdout[-2000:] + completed.stderr[-2000:]
+    return completed.returncode
+
+
+def test_rebuilding_over_the_published_registers_does_not_relamp_them(tmp_path):
+    """A no-content rebuild must leave the tracked bytes alone, including the recorded moment.
+
+    ``migration/api-contract-check.json`` carries a ``generated_at`` and is tracked, while the
+    audited candidate digest is a hash over tracked bytes: a builder that rewrites the stamp on an
+    unchanged payload moves the digest of a candidate that did not move. So the register is rebuilt
+    here over a copy of the published files and must come back byte-identical -- and the claim is
+    then falsified by rebuilding into an empty directory, where the only permitted difference is
+    exactly that stamp field. A build that always restamps fails the first half; a comparison that
+    ignored the stamp would pass both halves and guard nothing.
+    """
+    registers = ["ui-entry-disposition.csv", "capability-family-register.csv",
+                 "requirement-traceability.csv", "api-contract-check.json"]
+    published = {}
+    for name in registers:
+        raw = (MIGRATION / name).read_bytes()
+        (tmp_path / name).write_bytes(raw)
+        published[name] = raw
+
+    _run_builder(tmp_path)
+    relamped = [name for name in registers if (tmp_path / name).read_bytes() != published[name]]
+    assert relamped == [], "内容未变的登记表被改写：%s" % relamped
+
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    _run_builder(fresh)
+    fresh_document = json.loads((fresh / "api-contract-check.json").read_text(encoding="utf-8"))
+    published_document = json.loads((MIGRATION / "api-contract-check.json")
+                                    .read_text(encoding="utf-8"))
+    assert fresh_document["generated_at"] != published_document["generated_at"], (
+        "两份不同检出写下同一个时刻，本节的第一条断言就没有可比的东西")
+    fresh_document.pop("generated_at")
+    published_document.pop("generated_at")
+    assert json.dumps(fresh_document, sort_keys=True) == json.dumps(published_document,
+                                                                    sort_keys=True), (
+        "跟踪的登记表与现算结果在内容上就不一致了，本节第一条的字节相等只是因为两边一起过时")
+
+
 def test_excluded_rows_quote_a_decision_that_is_actually_in_their_source_row():
     sources = {
         "ui-entry": {(row["来源仓"] + ":" + row["原入口ID"]):
