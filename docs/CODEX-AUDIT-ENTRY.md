@@ -391,7 +391,7 @@ owner）；系统级出站隔离未被证明。结论口径仍是**「QODER 全�
 本机运行收据与安装报告的现读值，并由 `test_v23_clone_repro.py` 点名归为 machine-bound，
 而不是被静默跳过。
 
-### 本轮最终实测（提交态，非计划）
+### §12 时点的实测（提交态，非计划；被 §13 末尾的读数取代）
 
 - 全量回归：`360 passed, 3 subtests passed, 0 failed`（exit 0，8m20s，
   `--basetemp .project-local/runs/final-32c3d22`，解释器 `.venv/Scripts/python.exe` = CPython 3.13）。
@@ -451,3 +451,16 @@ owner）；系统级出站隔离未被证明。结论口径仍是**「QODER 全�
 （`adapter_conformance.py`）后是 `197`；`test_v11`/`test_v14` 现在断言的是
 「报告、登记文件、类别之和三者是同一个 population」加一个下限（190≤N≤198），
 而不是要求关掉缺口的人先改四个数字。文档散文里留下的 `198` 也一并改为不带行数的表述。
+
+### §13 的最终实测（提交态）
+
+- 全量回归：**368 passed, 3 subtests passed, 0 failed**（exit 0，8m19s，无 deselect）。
+  这一条包含 `test_v27`（三方对账与两条反例）、`test_v23_clone_repro`（克隆复跑）与
+  `test_v26`（登记对命名收据的复算）。
+- 闭环表绑定的测量收据：`receipt-archive/CLOSURE-STATE-cad6c549ca9371bb.json`
+  （`head_commit` = `2f37901c0d04…`，即承载 L21 关闭的那一次提交；`suite.deselected = 0`）。
+- 任务包 48 条子句：**CONFIRMED 41** / PARTIAL 2 / BLOCKED_BY_BOUNDARY 2 / DEFERRED_P3 3；
+  必做阶段（P0+P1）37 条中 35 条 CONFIRMED，非通过 2 条为 `L00#2`（owner 移出义务，披露）
+  与 `L10#0`（32 行待 owner 判定，唯一阻断项）。
+- 门禁：`REFUSED / exit 1`，`blocking = [L10#0]`，`disclosed` 6 条。
+- 结论口径不变：**QODER 全量闭环自测完成，仍有一条必做条款阻断（待 owner 判定），待 Codex 独立复审**。
