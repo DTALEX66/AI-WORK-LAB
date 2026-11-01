@@ -1479,20 +1479,22 @@ def test_issue_chain_forward_references_resolve_to_real_rows_in_the_same_store(s
         == "collector_health:never-seen-collector"
 
 
-def test_issue_chain_broken_link_is_misattributed_rather_than_named(server):
-    """链完整性·断链点名：一环指不到东西时，产品现在报的是别的环。
+def test_issue_chain_broken_link_is_named_by_the_verdict(server):
+    """链完整性·断链点名：一环指不到东西时，判定与报表说的都是那一环本身。
 
     植入方式与下一个节点相同（写侧改 `attempts.pack_plan_id`，跑完还原）：把它改成一个不存在
-    的包 id。真实观察到的回答是——技术判定 BLOCKED，`detail` 写「the pack bound no fingerprint
-    to re-check」，即把"包存储行读不到"说成"包没绑定任何指纹"，而整条判定里没有任何字段点名那个
-    缺失的包 id。链谓词则点名。缺陷位置：backend/v1.py:1065-1069（`read_record` 落空即
-    `pack = {}`）+ domains/work/workflow_core/repair_verification.py:175-176（`not bound` 分支
-    的这句 reason）。第三条缺陷已在本轮修掉：`integrity_report()` 原先从不打开 work 库，
-    现在由路由把 plan 读面交给它，报表会点名 `ATTEMPT_ORPHAN_PACK_PLAN`；不给读面时它自报
-    `pack_plan_check = NOT_RUN`，因为「没查」不能长得像「查过且干净」。
+    的包 id。本轮（K）之前这里钉住的是缺陷而不是结论——判定 BLOCKED，`detail` 却写「the pack
+    bound no fingerprint to re-check」，把"包存储行读不到"说成"包没绑定任何指纹"，整条判定里
+    没有任何字段点名那个缺失的包 id。修法是让唯一同时看过两座库的调用方说实话：`detail` 含那个
+    包 id、`checks.pack_record_absent` 为真、`issue_projection_reread` 为假、evidence 为空
+    （一次都没发生的读回不能挂成凭据）。旧文本现在出现即红，所以这不是把断言放宽，而是把它换成
+    更强的方向：从"它现在会撒谎"变成"它不许再撒谎"。
 
-    明确没有证明：产品在这条链上有自动修复或补偿动作（没有）；判定为 BLOCKED 是否"足够"——
-    本节点只断言它是否点名断链，判定侧的答案正还是否。
+    另有两条同类的点名：本块链谓词断言断在哪一环（下面），路由级一致性报表断言这一跳（再下面），
+    不给读面时同一方法必须自报 NOT_RUN。
+
+    明确没有证明：产品在这条链上有自动修复或补偿动作（没有）；BLOCKED 是否"足够好"的结论——
+    本节点只断言它是否点名断链，现在的答案是会点名。
     """
     material = _work_chain(server, collector="chain-ghost-collector", attempt_key="chain-ghost",
                            declared_result_id="res-chain-ghost", title="链完整性·断链")
@@ -1507,11 +1509,13 @@ def test_issue_chain_broken_link_is_misattributed_rather_than_named(server):
             "/api/v1/results/%s/verifications" % material["result_id"], {"axis": "technical"})
         assert status == 201, verdict
         assert verdict["outcome"] == "BLOCKED", verdict
-        # 它说的原因不是断链处：绑定数被降成 0，缺失的包 id 一次都没出现
-        assert verdict["detail"] == "the pack bound no fingerprint to re-check", verdict["detail"]
-        assert verdict["checks"]["fingerprints_absent"] == 0, verdict["checks"]
-        assert json.dumps(verdict, ensure_ascii=False).count(ghost) == 0, \
-            "判定已点名缺失的包，缺陷断言需按现读重写"
+        # 判定说的就是那一环：包 id 出现在文本里，且没有冒充成"没绑指纹"
+        assert ghost in json.dumps(verdict, ensure_ascii=False), verdict
+        assert verdict["detail"] != "the pack bound no fingerprint to re-check", verdict["detail"]
+        assert "no action plan row" in verdict["detail"], verdict["detail"]
+        assert verdict["checks"]["pack_record_absent"] is True, verdict["checks"]
+        assert verdict["checks"]["issue_projection_reread"] is False, verdict["checks"]
+        assert verdict["evidence_refs"] == [], verdict
         # 已修（本轮 I-b）：报表拿到 plan 读面以后覆盖这一跳，且点名的是断掉的那一环
         status, report = server.client.get("/api/v1/integrity")
         assert status == 200, report
@@ -1712,19 +1716,31 @@ def test_issue_chain_one_tampered_identifier_is_named_and_the_row_restores(serve
         assert project_b["issue"]["fingerprint"] in [
             row["fingerprint"] for row in issue_projection.load_issues(server.work.store)[0]], \
             "B 自己的问题已经不在了，本节点的反证形状需按现读重写"
-        # 现读：这一跳被报表检查了（RUN），而 B 指向的是 A 家真实存在的包——那是一个跨项目的
-        # 误读，不是一条断链，报表不能把它报成 ATTEMPT_ORPHAN_PACK_PLAN。
+        # 现读：这一跳被报表检查了（RUN）。B 指向的是 A 家真实存在的包——它解析得到，但那不是
+        # B 的包，所以「存在」不等于「对」：本轮（K）把归属也交给报表，它必须点名这一环。
         status, hop_report = server.client.get("/api/v1/integrity")
         assert status == 200, hop_report
         assert hop_report["counts"]["pack_plan_check"] == "RUN", hop_report["counts"]
         assert not [p for p in hop_report["problems"]
                     if p["kind"] == "ATTEMPT_ORPHAN_PACK_PLAN"], hop_report["problems"]
+        misplaced = [p for p in hop_report["problems"]
+                     if p["kind"] == "ATTEMPT_PACK_PROJECT_SPLIT"]
+        assert [p["id"] for p in misplaced] == [project_b["attempt_id"]], misplaced
+        assert project_a["project_id"] in json.dumps(misplaced, ensure_ascii=False), misplaced
+        assert project_b["project_id"] in json.dumps(misplaced, ensure_ascii=False), misplaced
     finally:
         server.unified.conn.execute("UPDATE attempts SET pack_plan_id=? WHERE attempt_id=?",
                                     (attempt_b_before["pack_plan_id"], project_b["attempt_id"]))
         server.unified.conn.commit()
     assert server.unified.get_attempt(project_b["attempt_id"]) == attempt_b_before, "②未逐字段还原"
     assert _chain_link_problems(_chain_state(server, project_b)) == []
+    # 还原标识也要把报表带回干净：这一环的结论必须由现读得出，不是粘在报告上的历史
+    status, cleaned = server.client.get("/api/v1/integrity")
+    assert status == 200, cleaned
+    assert cleaned["counts"]["pack_plan_check"] == "RUN", cleaned["counts"]
+    assert not [p for p in cleaned["problems"]
+                if p["kind"] in ("ATTEMPT_PACK_PROJECT_SPLIT",
+                                 "ATTEMPT_ORPHAN_PACK_PLAN")], cleaned["problems"]
     # 还原标识不撤销后果：误判的 PASS 与据此 COMPLETED 的任务仍留在存储里（没有补偿动作）
     task_b_after = server.unified.get_task(project_b["task_id"])
     assert task_b_after["lifecycle"] == "COMPLETED", task_b_after["lifecycle"]

@@ -118,7 +118,7 @@ def _nodes(module: str, *names: str) -> str:
 #: 05#L8 -- the issue chain's own forward/backward link predicates and their falsifiers.
 V11_CHAIN_NODES = _nodes("test_v11_audit_rework.py",
     "test_issue_chain_forward_references_resolve_to_real_rows_in_the_same_store",
-    "test_issue_chain_broken_link_is_misattributed_rather_than_named",
+    "test_issue_chain_broken_link_is_named_by_the_verdict",
     "test_issue_chain_reverse_trace_from_a_verdict_names_the_same_ids",
     "test_issue_chain_one_tampered_identifier_is_named_and_the_row_restores",
     "test_issue_chain_double_projection_is_byte_identical_except_one_named_field",
@@ -764,14 +764,20 @@ def family_claims() -> dict[str, dict]:
                            "逐字节相同，重试不铸第二行也不前进版本。"
                            "断裂检测已从测试谓词搬进产品自己的一致性报告（本轮 I-b）："
                            "`integrity_report()` 现在接受一个 plan 读面并逐条把 "
-                           "`attempts.pack_plan_id` 与 `action_plans` 的行对照，断链以 "
-                           "ATTEMPT_ORPHAN_PACK_PLAN 点名尝试与那个包 id；路由把 work 库的读面交给它，"
-                           "而没有读面时报告自报 pack_plan_check=NOT_RUN——「没查」不再长得像「查过且干净」，"
-                           "跨库那一跳也不必被复制进第二座账本。"
-                           "仍然成立的限制：判定侧对「包读不到」给的理由仍是「the pack bound no fingerprint "
-                           "to re-check」（backend/v1.py 的 read_record 落空即 pack={}，"
-                           "加 repair_verification 的 not-bound 分支），它把缺行说成没绑指纹，"
-                           "由 test_issue_chain_broken_link_is_misattributed_rather_than_named 按事实钉住并要求修复；"
+                           "`attempts.pack_plan_id` 与 `action_plans` 的行对照：包行不存在报 "
+                           "ATTEMPT_ORPHAN_PACK_PLAN，包行存在但属于别的项目报 ATTEMPT_PACK_PROJECT_SPLIT"
+                           "（「解析得到」不等于「是对的哪一条」），两种都带上尝试 id 与那个包 id；"
+                           "路由把 work 库的读面交给它，而没有读面时报告自报 pack_plan_check=NOT_RUN——"
+                           "「没查」不再长得像「查过且干净」，跨库那一跳也不必被复制进第二座账本。"
+                           "判定侧同类的错位归因也已在本轮修掉：先前 `read_record` 落空时调用方把空 pack "
+                           "交给投影，于是 BLOCKED 的理由写成「the pack bound no fingerprint to re-check」，"
+                           "把「包行读不到」说成「没绑指纹」且不出现那个包 id；现在调用方直接说它看到的"
+                           "事实——detail 点名那个包 id、checks.pack_record_absent 为真、"
+                           "issue_projection_reread 为假、evidence 为空（没发生过的读回不能挂成凭据），"
+                           "由 test_issue_chain_broken_link_is_named_by_the_verdict 钉住"
+                           "（旧文本出现即红）。"
+                           "仍然成立的限制：判定一旦写下就没有补偿动作——跨项目误读产生的那条 PASS 与"
+                           "据此 COMPLETED 的任务会留在存储里，报表点名它而不撤销它；"
                            "真实宿主产生的证据与真人专业验收不在本行声称范围内。"},
         "solutions": {"location": "GET /api/work/observer/solutions",
                       "evidence": "tests/unified/test_v11_audit_rework.py::test_f05_unified_search_returns_work_solutions;" + "tests/unified/test_v11_audit_rework.py::test_f05_solution_revision_conflict_and_restart_readback",

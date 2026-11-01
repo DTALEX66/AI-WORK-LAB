@@ -776,10 +776,23 @@ class UnifiedStore:
             plan_id = attempt["pack_plan_id"]
             if plan_reader is not None and plan_id:
                 plan_hops += 1
-                if plan_reader(str(plan_id)) is None:
+                record = plan_reader(str(plan_id))
+                if record is None:
                     problems.append(dict(kind="ATTEMPT_ORPHAN_PACK_PLAN", id=attempt_id,
                                          detail="names pack_plan_id " + repr(str(plan_id))
                                                 + " that no action plan carries"))
+                    continue
+                # an existing row is not yet the RIGHT row: a pack that belongs to another
+                # project resolves fine and still lets the wrong fingerprints be re-checked
+                task = tasks.get(attempt["task_id"])
+                record_project = str((record or {}).get("projectId") or "")
+                if task is not None and record_project and \
+                        record_project != str(task["project_id"] or ""):
+                    problems.append(dict(kind="ATTEMPT_PACK_PROJECT_SPLIT", id=attempt_id,
+                                         detail="pack_plan_id " + repr(str(plan_id))
+                                                + " belongs to project " + repr(record_project)
+                                                + " while its task is in "
+                                                + repr(str(task["project_id"] or ""))))
         for result_id, result in results.items():
             if result["attempt_id"] not in attempts:
                 problems.append(dict(kind="RESULT_ORPHAN_ATTEMPT", id=result_id,

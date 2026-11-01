@@ -1067,7 +1067,22 @@ class V1API:
         """
         if attempt["pack_plan_id"]:
             pack_row = self.work.read_record(attempt["pack_plan_id"])
-            pack_payload = (pack_row or {}).get("payload") or {}
+            if pack_row is None:
+                # The pack row itself is gone. Handing an empty pack to the projection would
+                # answer "the pack bound no fingerprint to re-check" -- a different fact, one that
+                # hides which identifier dangled and reads as if a re-check had taken place. This
+                # call site holds both stores, so it reports what it actually observed: no record.
+                dangling = str(attempt["pack_plan_id"])
+                return ("BLOCKED",
+                        "pack_plan_id %s resolves to no action plan row; the bound fingerprints "
+                        "were not re-read because there is no record to read them from" % dangling,
+                        [],
+                        {"pack_record_absent": True, "pack_plan_id": dangling,
+                         "issue_projection_reread": False, "evidence_level": "none",
+                         "fingerprints_present": 0, "fingerprints_absent": 0,
+                         "sources_unanswered": []},
+                        "UNVERIFIABLE")
+            pack_payload = pack_row.get("payload") or {}
             pack = pack_payload.get("pack") or {}
             verdict = self.work.verify(pack)
             mapping = {"RESOLVED": "PASS", "UNRESOLVED": "FAIL", "UNVERIFIABLE": "BLOCKED"}

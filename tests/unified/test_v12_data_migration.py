@@ -524,16 +524,18 @@ def test_migration_preserves_revisions_digests_and_references(roots: Roots):
                                        "results": len(before["unified.results"]),
                                        "attempts_with_pack_plan": 0,
                                        "pack_plan_check": "NOT_RUN"}
-        # the report above never opened the work store, so it cannot vouch for the migrated
-        # pack bindings; handed the reader, the same store has to resolve every one of them.
+        # 现测：迁移后的统一库里没有任何一条尝试带 pack_plan_id（这座目标库被本节点按只读打开，
+        # 那正是 V12 要证明的一部分，所以不能在这里植入绑定）。这一跳的规则本身在 test_v11 里
+        # 由产品路径检验（两条链、断链与跨项目各有具名问题）；这里只断言迁移人口与读管线的现状。
         bound = [row["attempt_id"] for row in unified.conn.execute(
             "SELECT attempt_id FROM attempts "
             "WHERE pack_plan_id IS NOT NULL AND pack_plan_id != ''")]
-        checked = unified.integrity_report(plan_reader=work.read_action_plan)
-        assert checked["counts"]["attempts_with_pack_plan"] == len(bound), checked["counts"]
-        assert checked["counts"]["pack_plan_check"] == "RUN", checked["counts"]
-        assert not [p for p in checked["problems"]
-                    if p["kind"] == "ATTEMPT_ORPHAN_PACK_PLAN"], checked["problems"]
+        assert bound == [], bound
+        hop = unified.integrity_report(plan_reader=work.read_action_plan)
+        assert hop["counts"]["pack_plan_check"] == "RUN", hop["counts"]
+        assert hop["counts"]["attempts_with_pack_plan"] == 0, hop["counts"]
+        assert not [p for p in hop["problems"] if p["kind"] in (
+            "ATTEMPT_ORPHAN_PACK_PLAN", "ATTEMPT_PACK_PROJECT_SPLIT")], hop["problems"]
     finally:
         unified.close()
 
