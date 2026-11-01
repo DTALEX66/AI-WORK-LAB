@@ -1576,3 +1576,29 @@ schema，不是宿主跑过、不是设计质量判定、不是被接受的领�
 本轮按 owner 指示「确保都在仓库」做了一次**本地提交**：三个入口文件、`scripts/check_project_current.py`、
 `tests/unified/test_v29_top_level_entry.py`、重发布的寄存器与归档对账表都进
 `e87773b`；**未推送**——远程仓是 PUBLIC，推送需要 owner 单独点头。本节自身在它之后的提交里。
+
+**更正（2026-11-02，本轮追加，原文一字未改）。** 上面这节有四处读数已经不再是当前事实，
+按「历史记录不被回写、更正另附日期」的既有口径逐条列出，避免下一会话把它们当成现状：
+
+1. 「共 `23` 个键」——检查器的现算键已从 23 长到本轮实测的 `figures_derived`（见
+   `PROJECT_CURRENT.md` 的 `<!-- entry-figures:start -->` 段与 §15.24 的读数）；新增的键包括
+   `crlf_tracked_files`、`spdx_claimed_files`、`suite_test_nodes`、`archive_in_repo_*`
+   与 LICENSE/SECURITY/CONTRIBUTING 纳入守卫后的 4 个。
+2. 「重取收据要求干净跟踪树，也就是要求一次提交，本节不假装这一步已经完成」——这句在本节写下之后
+   已经做完：收据在同一棵干净树上重取过，`test_v26` 的绑定守卫也随之转绿。当前绑定见
+   `migration/audit-item-closure.csv` 的 `运行收据` 与 `受测候选摘要` 两列，本节不再抄它们的值。
+3. 「生产器 `run_closure_evidence.py` 只把汇总行写进收据，不记 FAILED 节点名」——已修：收据现在带
+   `suite.failed_nodes` / `suite.error_nodes` / `suite.deselected_nodes`（`-rfE` 解析），
+   「2 failed」不再是一个需要重跑 13 分钟才能追问的计数。
+4. 「判定分布 `{'ARCHIVE_ONLY': 1131, ...}`」——`ARCHIVE_ONLY` 这个值已经不存在了。处置词表按
+   owner 新规则重写后是 `ARCHIVED_IN_REPO 694 / REGISTERED_NOT_MIGRATED 80 /
+   EXCLUDED_BY_OWNER_RULE 344 / RECORDED_NOT_COPIED 93 / UNCLASSIFIED_RESIDUE 1`，
+   `ARCHIVE_ONLY` 归零；检查器还守着"词表里声明了但没有任何行使用"也算失效枚举项。
+   逐行现算的当前分布写在 §15.24，不在本节抄。
+5. 「结论落在 `.project-local/runs/independence-simulation-20261101.json`，写到这里之前不引用」——
+   文件名与实际产物不一致：那份受控对照落在 `independence-20261101.json`（head `2477d7b`，
+   delta 15 个节点）。本节之后确实引用了它，并在 §15.24 里用同法重测了一次；引用的是产物读数，
+   不是本节当时的承诺。
+6. 「数字段由 `scripts/check_project_current.py --print-block` 现算并写回文档」——`--print-block`
+   只打印，"写回"当时仍是人工粘贴。本轮新增 `--write-block`：只替换两个标记之间的内容、读数没变时
+   报 `UNCHANGED` 且零字节写入、标记缺失时报 `REFUSED` 且不写。现在这句话才真正成立。
