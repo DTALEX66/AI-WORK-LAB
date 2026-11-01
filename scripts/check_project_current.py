@@ -1,0 +1,267 @@
+# SPDX-License-Identifier: MIT
+"""Top-level entry anti-drift check for the fused repository.
+
+Why this exists: the merge of WORK-LAB and DESIGN-LAB is a decision about the *project*, and a
+decision is not a migration report. The three root entries (``PROJECT_CURRENT.md``, ``README.md``,
+``AGENTS.md``) are the first thing a new agent reads, so a stale figure or a leftover
+"two separate products" framing there is worse than stale prose deeper in the repo -- it becomes
+the premise the next session reasons from. This script re-derives every figure the entry quotes
+from the registers on disk, resolves every repository path the entries cite, and refuses on
+mismatch instead of printing advice.
+
+Modes (exit codes are part of the contract, consumers depend on them):
+  --check        0 clean, 1 findings, 3 a required input could not be read
+  --print-block  0 and prints the figures block --check expects; the document is refreshed from
+                 this output, never by typing numbers
+  --json         the machine-readable report (default on --check)
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import io
+import json
+import re
+import subprocess
+import sys
+from collections import Counter
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+ENTRY = "PROJECT_CURRENT.md"
+REQUIRED_ENTRIES = ("PROJECT_CURRENT.md", "README.md", "AGENTS.md")
+FIGURES_START = "<!-- entry-figures:start -->"
+FIGURES_END = "<!-- entry-figures:end -->"
+#: root directories a citation may start with; anything else is prose, not a path claim
+KNOWN_ROOTS = ("apps", "backend", "config", "design-lab", "docs", "domains", "integrations",
+               "migration", "packages", "research", "scripts", "tests", "vendor", "workspace")
+ROOT_FILES = ("INTEGRATION_POLICY.md", "pyproject.toml", "README.md", "AGENTS.md",
+              "PROJECT_CURRENT.md", ".gitattributes", ".gitignore")
+#: wording that would re-assert the pre-merge identity as the current one
+STALE = ("两个独立项目", "两个产品分别", "各自独立的产品", "仍是两个", "分别维护两套")
+#: a line that names one of these is *talking about* the old framing, not using it
+NEGATION = ("不", "未", "历史", "旧", "取代", "已替代", "排除", "不再是")
+AUTHORITY_MARK = "唯一顶层入口"
+BLOCKING_QUEUE = "L10#0"
+ARCHIVE_REGISTER = "migration/archive-object-reconciliation-20261101.csv"
+
+
+def rows(rel: str) -> list[dict]:
+    raw = (ROOT / rel).read_bytes().decode("utf-8-sig")
+    return list(csv.DictReader(io.StringIO(raw, newline="")))
+
+
+def derive_figures() -> dict:
+    """Every figure the entry quotes, computed from the registers as they are right now."""
+    work = rows("migration/source-coverage-work.csv")
+    design = rows("migration/source-coverage-design.csv")
+    work_paths = {row["path"] for row in work}
+    design_paths = {row["path"] for row in design}
+    copied = [row for row in work + design if row["class"].startswith("COPIED_")]
+    acceptance = rows("migration/task-acceptance.csv")
+    families = rows("migration/capability-family-register.csv")
+    routes = rows("migration/route-surface.csv")
+    unsettled = json.loads((ROOT / "migration" / "source-unsettled-detail-20261101.json")
+                           .read_text(encoding="utf-8"))
+    blockers = json.loads((ROOT / "config" / "blocker-register.json").read_text(encoding="utf-8"))
+    accepted = Counter(row["结论"] for row in acceptance)
+    verified = Counter(row["状态"] for row in families)
+    archive = rows(ARCHIVE_REGISTER)
+    disposition = Counter(row["disposition"] for row in archive)
+    hints = {row["source_hint"] for row in archive if row["source_hint"]}
+    return {
+        "archive_objects": len(archive),
+        "archive_only_objects": disposition["ARCHIVE_ONLY"],
+        "archive_registered_not_migrated": disposition["REGISTERED_NOT_MIGRATED"],
+        "archive_unclassified_residue": disposition["UNCLASSIFIED_RESIDUE"],
+        "archive_source_hints": len(hints),
+        "source_rows_work": len(work),
+        "source_rows_design": len(design),
+        "source_rows_total": len(work) + len(design),
+        "distinct_paths_work": len(work_paths),
+        "distinct_paths_design": len(design_paths),
+        "distinct_paths_union": len(work_paths | design_paths),
+        "byte_copy_rows": len(copied),
+        "task_acceptance_clauses": len(acceptance),
+        "acceptance_confirmed": accepted["CONFIRMED"],
+        "acceptance_partial": accepted["PARTIAL"],
+        "acceptance_blocked_by_boundary": accepted["BLOCKED_BY_BOUNDARY"],
+        "acceptance_deferred_p3": accepted["DEFERRED_P3"],
+        "capability_families": len(families),
+        "capability_implemented_verified": verified["IMPLEMENTED_VERIFIED"],
+        "capability_partial": verified["PARTIAL"],
+        "route_endpoints": len(routes),
+        "unsettled_files": len(unsettled["rows"]),
+        "blocker_items": len(blockers["items"]),
+    }
+
+
+def parse_figures(text: str) -> dict:
+    """The block the document carries, as {key: int}; a key without an integer is a finding."""
+    if FIGURES_START not in text or FIGURES_END not in text:
+        raise ValueError("MISSING_FIGURES_BLOCK")
+    body = text.split(FIGURES_START, 1)[1].split(FIGURES_END, 1)[0]
+    figures = {}
+    for line in body.splitlines():
+        match = re.fullmatch(r"([a-z][a-z0-9_]+)\s*=\s*(\d+)", line.strip())
+        if match:
+            figures[match.group(1)] = int(match.group(2))
+        elif line.strip():
+            raise ValueError("UNPARSEABLE_FIGURE_LINE " + repr(line[:60]))
+    return figures
+
+
+def cited_paths(text: str) -> list[str]:
+    """Path-shaped tokens that claim to point into this repository.
+
+    Only tokens whose first segment is a known root directory, or that name a root file outright,
+    are treated as citations: a bare basename is not a path claim, and counting one would make the
+    gate red on ordinary Chinese prose.
+    """
+    tokens = set()
+    for match in re.finditer(r"[A-Za-z0-9_.\-/]+", text):
+        token = match.group(0).strip("./")
+        if not token or "." not in token and "/" not in token:
+            continue
+        head = token.split("/", 1)[0]
+        # a token ending in -/_/* is shorthand for a family ("source-coverage-{work,design}",
+        # "build_*.py"), not a claim that one path exists; the entry names the real files anyway
+        if token.endswith(("-", "_", "*", ".")):
+            continue
+        if head in KNOWN_ROOTS or token in ROOT_FILES:
+            tokens.add(token.split("#")[0])
+    return sorted(tokens)
+
+
+def tracked(path: str) -> bool:
+    return bool(subprocess.run(["git", "ls-files", "--", path], cwd=str(ROOT),
+                               capture_output=True, text=True,
+                               encoding="utf-8", errors="replace").stdout.strip())
+
+
+def check_entries(entry_path: Path) -> tuple[list, list]:
+    """Returns (findings, machine_only_paths). Findings are strings that make the check red."""
+    findings, machine_only = [], []
+    for name in REQUIRED_ENTRIES:
+        path = ROOT / name
+        if not path.is_file():
+            findings.append("ENTRY_MISSING " + name)
+            continue
+        if not tracked(name):
+            findings.append("ENTRY_NOT_IN_GIT %s（一份克隆不会带上它，新 Agent 只能在这台机器上读到）" % name)
+
+    entry_text = entry_path.read_text(encoding="utf-8") if entry_path.is_file() else ""
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8") if (ROOT / "README.md").is_file() else ""
+    agents_text = (ROOT / "AGENTS.md").read_text(encoding="utf-8") if (ROOT / "AGENTS.md").is_file() else ""
+
+    # identity must be in the first screenful, not somewhere the reader has to scroll to
+    head_lines = [line for line in entry_text.splitlines()[:12] if line.strip()]
+    joined = " ".join(head_lines)
+    if "WORK-LAB" not in joined or "DESIGN-LAB" not in joined or "合并" not in joined:
+        findings.append("IDENTITY_NOT_IN_FIRST_12_LINES " + joined[:80])
+
+    # exactly one file may call itself the top-level entry
+    claimants = [name for name in sorted(p.name for p in ROOT.glob("*.md"))
+                 if AUTHORITY_MARK in (ROOT / name).read_text(encoding="utf-8", errors="replace")]
+    if claimants != [ENTRY]:
+        findings.append("SECOND_AUTHORITY %s（只允许 %s 自称%s）" % (claimants, ENTRY, AUTHORITY_MARK))
+
+    if "PROJECT_CURRENT.md" not in "\n".join(readme_text.splitlines()[:10]):
+        findings.append("README_DOES_NOT_LINK_ENTRY_IN_FIRST_10_LINES")
+    for marker in ("必读顺序", "PROJECT_CURRENT.md", "更新责任"):
+        if marker not in agents_text:
+            findings.append("AGENTS_MISSING " + marker)
+
+    for name in REQUIRED_ENTRIES:
+        path = ROOT / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for line_no, line in enumerate(text.splitlines(), 1):
+            for phrase in STALE:
+                if phrase in line and not any(mark in line for mark in NEGATION):
+                    findings.append("STALE_IDENTITY_WORDING %s:%d %s" % (name, line_no, phrase))
+
+    for name in REQUIRED_ENTRIES:
+        path = ROOT / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        # a citation into .project-local names a run artefact Git does not carry: honest in the
+        # entry, but it only resolves on the machine that ran the measurement, so record rather
+        # than require it.
+        machine_only += ["%s:%s" % (name, token) for token in
+                         sorted(set(re.findall(r"[\w./\\-]*\.project-local[\w./\\-]*", text)))]
+        for token in cited_paths(text):
+            if not (ROOT / token).exists():
+                findings.append("CITED_PATH_MISSING %s -> %s" % (name, token))
+    return findings, machine_only
+
+
+def check_figures(entry_path: Path) -> list:
+    if not entry_path.is_file():
+        return ["ENTRY_MISSING " + str(entry_path)]
+    try:
+        stated = parse_figures(entry_path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        return [str(exc)]
+    derived = derive_figures()
+    findings = []
+    for key in sorted(set(derived) | set(stated)):
+        if key not in stated:
+            findings.append("FIGURE_NOT_STATED " + key)
+        elif key not in derived:
+            findings.append("FIGURE_NOT_DERIVABLE " + key)
+        elif stated[key] != derived[key]:
+            findings.append("FIGURE_STALE %s 文档=%d 寄存器=%d" % (key, stated[key], derived[key]))
+    blockers = json.loads((ROOT / "config" / "blocker-register.json").read_text(encoding="utf-8"))
+    ids = [item.get("id") for item in blockers["items"]]
+    if BLOCKING_QUEUE not in ids:
+        findings.append("BLOCKING_QUEUE_MISSING " + BLOCKING_QUEUE)
+    elif BLOCKING_QUEUE not in entry_path.read_text(encoding="utf-8"):
+        findings.append("BLOCKING_QUEUE_NOT_DISCLOSED " + BLOCKING_QUEUE)
+    return findings
+
+
+def figures_block() -> str:
+    derived = derive_figures()
+    return "\n".join("%s = %d" % (key, derived[key]) for key in sorted(derived))
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--check", action="store_true", help="compare the entries with the registers")
+    mode.add_argument("--print-block", action="store_true",
+                      help="print the figures block --check expects, derived live")
+    parser.add_argument("--entry", type=Path, default=ROOT / ENTRY,
+                       help="audit this copy of the entry document instead of the tracked one "
+                            "(registers stay real; this is how the falsification test drives it)")
+    args = parser.parse_args(argv)
+    # the findings are Chinese; a cp936 console would raise instead of printing them
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if args.print_block:
+        print(FIGURES_START)
+        print(figures_block())
+        print(FIGURES_END)
+        return 0
+    try:
+        findings, machine_only = check_entries(args.entry)
+        findings += check_figures(args.entry)
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        print(json.dumps({"verdict": "REFUSED", "error": "%s: %s" % (type(exc).__name__, exc),
+                          "root": str(ROOT)}, ensure_ascii=False))
+        return 3
+    print(json.dumps({"verdict": "PASS" if not findings else "FAIL",
+                      "root": str(ROOT),
+                      "findings": findings,
+                      "finding_count": len(findings),
+                      "machine_bound_citations_not_required_in_a_clone": machine_only,
+                      "figures_derived": len(derive_figures())},
+                     ensure_ascii=False, indent=2))
+    return 0 if not findings else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
