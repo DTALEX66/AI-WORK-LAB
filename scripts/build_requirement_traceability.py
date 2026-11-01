@@ -152,6 +152,13 @@ V04_ASSET_NODES = _nodes("test_v04_design_loop.py",
     "test_design_asset_reference_pins_its_bytes_and_other_projects_are_refused",
     "test_design_input_material_and_output_artifact_stay_two_different_kinds",
     "test_design_asset_surface_offers_no_external_platform_channel")
+#: 05#L18 -- the three prompt routes behind real HTTP: compose, list, review, plus the store guard.
+V04_PROMPT_NODES = _nodes("test_v04_design_loop.py",
+    "test_design_prompt_composition_is_not_an_artwork_row",
+    "test_design_prompt_composition_refusals_are_named_and_store_nothing",
+    "test_design_prompt_results_list_parses_its_own_query",
+    "test_design_prompt_result_review_requires_a_named_human",
+    "test_design_prompt_store_guard_answers_instead_of_a_quiet_201")
 #: 05#L27 -- consumers, version compatibility, refused inputs and resource-path regressions.
 V05_CONTRACT_NODES = _nodes("test_v05_rejections.py",
     "test_contracts_control_plane_reads_the_published_request_contract",
@@ -224,6 +231,47 @@ def live_routes() -> dict[tuple[str, str], dict]:
 def route_counts() -> tuple[int, int]:
     entry = live_routes()[("__counts__", "__counts__")]
     return int(entry["v1_routes"]), int(entry["compat_routes"])
+
+
+_PACK_CACHE: dict | None = None
+
+
+def domain_pack_readback() -> dict:
+    """The domain-pack qualification, read from the projection this route serves.
+
+    This row used to assert that no pack had ever been checked. That sentence goes stale
+    the moment the repository's own checker is present, and a stale "not done yet" reads
+    as honest caution while it is actually false -- so every figure below is taken from
+    ``domain_packs.build()`` at build time instead of being typed here.
+    """
+    global _PACK_CACHE
+    if _PACK_CACHE is None:
+        for entry in (str(REPO_ROOT), str(REPO_ROOT / "domains" / "design")):
+            if entry not in sys.path:
+                sys.path.insert(0, entry)
+        from design_lab import domain_packs
+
+        document = domain_packs.build()
+        by = document["counts"]["byValidation"]
+        refused = sorted((entry for entry in document["packs"]
+                          if entry["validation"] == domain_packs.INVALID),
+                         key=lambda entry: str(entry["packId"]))
+        _PACK_CACHE = {
+            "checker": document["checker"]["state"],
+            "packs": document["counts"]["packs"],
+            "listed": len(document["packs"]),
+            "validates": by.get(domain_packs.VALIDATES, 0),
+            "invalid": by.get(domain_packs.INVALID, 0),
+            "unreadable": by.get(domain_packs.UNREADABLE, 0),
+            "not_checked": by.get(domain_packs.NOT_CHECKED, 0),
+            "refused": "、".join(
+                "%s（清单 %s，%s 条理由，首条「%s」）" % (
+                    entry["packId"], entry["manifestSchemaVersion"],
+                    entry["validationErrorCount"],
+                    str((entry["validationErrors"] or [""])[0])[:64])
+                for entry in refused) or "无",
+        }
+    return _PACK_CACHE
 
 
 def find_definition(name: str, relative: str) -> str | None:
@@ -876,10 +924,23 @@ def family_claims() -> dict[str, dict]:
                              "status": "IMPLEMENTED_VERIFIED",
                              "basis": "内容/来源/修订、中文短词与无结果、索引重建与重启读回都有具名断言。"},
         "design-prompt": {"location": find_definition("PromptIntelligence", "domains/design/design_lab/prompt_intelligence.py"),
-                          "evidence": NO_EVIDENCE, "status": "PARTIAL",
-                          "basis": "生成与反推的既有实现按「P1迁既有」迁入；" + PARTIAL_MARKER
-                                  + "「P3新增模型执行」未做（09 分期表 L32），且本仓无 pytest 覆盖提示词路由，"
-                                  "「提示词导出不算作品生成」只有约定而没有断言。"},
+                          "evidence": V04_PROMPT_NODES + ";" +
+                                  "tests/legacy/design/test_assistance_plan.py::AssistancePlanTests::"
+                                  "test_a_linked_asset_is_reported_linked_only_until_a_reversal_exists",
+                          "status": "PARTIAL",
+                          "basis": "生成与反推的既有实现按「P1迁既有」迁入。四条提示词路由现在都有走真实 HTTP 的"
+                                  "具名断言：生成只多一行 prompt_result——两个素材面（`/assets` 与 "
+                                  "`/native-assets`）的 id 集合在生成前后逐字相同，读回的 `executed` 恒为 "
+                                  "False，同一请求重打得到同一行，这就是「提示词导出不算作品生成」从约定变成"
+                                  "断言；列表面自己解析 query，畸形数字得到具名 400 而不是 404，计数在切片"
+                                  "之前；签收要具名真人，`reviewer_kind` 非 human 被具名拒绝，真人签名后"
+                                  "`content_sha256` 等于台账里那份文档的摘要；存储守卫被注入打穿时路由答具名"
+                                  "拒绝而不是闷声 201。反推路由的覆盖在旧只读套件里（上面那个具名节点）。"
+                                  + PARTIAL_MARKER + "「P3新增模型执行」未做（09 分期表 L32）：本机没有合格模型，"
+                                  "真实推理按边界停在 NOT_RUN，本节不拿文档生成冒充推理；并发窗口里的两个 409"
+                                  "（`PROMPT_RESULT_CONCURRENT_UPDATE` / "
+                                  "`PROMPT_REVIEW_CONCURRENT_UPDATE`）在单连接串行的 HTTP 面上构造不出，"
+                                  "归 store 层，未由本节证明。"},
         "design-plan": {"location": find_definition("AssistancePlanError", "domains/design/design_lab/assistance_plan.py"),
                         "evidence": "tests/legacy/design/test_assistance_plan.py::AssistancePlanTests::test_a_plan_is_saved_with_its_basis_and_reads_back_after_a_restart;tests/unified/test_v04_design_loop.py::test_design_loop_keeps_professional_acceptance_pending",
                         "status": "IMPLEMENTED_VERIFIED",
@@ -890,16 +951,24 @@ def family_claims() -> dict[str, dict]:
                           "basis": "软件×模型×入口档案从受管配置现读且不落第二副本；引用必须指向真实档案——「选择不等于连接和执行」由资格层断言。"},
         "design-domain": {"location": find_definition("build", "domains/design/design_lab/domain_packs.py"),
                           "evidence": V24_DOMAIN_NODES, "status": "PARTIAL",
-                          "basis": "领域包投影的目录数、身份字段与资格合计都由这一次调用现算，并被两个具名"
-                                  "节点钉住：列出的条目与盘面上的包目录逐一对齐（既不漏也不凭空多），"
-                                  "`counts.packs` 与 `byValidation` 各类相加等于该长度，manifest 里没有的字段"
-                                  "答 null 而不是被默认成字符串（v1 包不许冒充 v2 身份）。" + PARTIAL_MARKER
-                                  + "本树没有仓库自带的那个校验脚本（checker.state=UNAVAILABLE，路径 "
-                                  "design-lab/scripts/verify_domain_pack_v2.py 在打包资源根下不存在），"
-                                  "所以这些包的资格实际全部停在 NOT_CHECKED——「资格分别标记」这一格只有词表"
-                                  "与机制被测到，VALIDATES/INVALID/UNREADABLE 三格由植入的校验器证明"
-                                  "（那个节点同时证明投影没有把结论写死）。把校验脚本随包发布是未做的一步，"
-                                  "本行不声称逐包校验真跑过。"},
+                          "basis": ("领域包投影的目录数、身份字段与资格合计都由这一次调用现算，并被两个具名"
+                                    "节点钉住：列出的 {listed} 条与盘面上的包目录逐一对齐（既不漏也不凭空多），"
+                                    "`counts.packs`={packs} 与 `byValidation` 各类相加等于该长度，manifest 里"
+                                    "没有的字段答 null 而不是被默认成字符串（v1 包不许冒充 v2 身份）。"
+                                    "仓库自带的那个校验脚本本轮按逐字节复制迁入打包资源根：来源覆盖登记里这一行"
+                                    "由 TOOL_OR_SCRIPT 转为 COPIED_VERIFIED，`migration/copies.json` 记下复制时的"
+                                    "摘要，`checker.state` 从 UNAVAILABLE 变成 {checker}。于是「资格分别标记」第一次"
+                                    "真的有分别——{validates} 个 VALIDATES、{invalid} 个 INVALID、{unreadable} 个 "
+                                    "UNREADABLE，NOT_CHECKED 归 {not_checked}；词表里那一格仍然被声明，因为词表是"
+                                    "能力而不是本次读数。被拒的那些点名到这里："
+                                    "{refused}。").format(**domain_pack_readback())
+                                  + PARTIAL_MARKER
+                                  + "VALIDATES 只是 E1 结构陈述：它说的是这个仓里的文件是否齐到能过 schema，"
+                                    "不是宿主跑过、不是设计质量判定、不是被接受的领域能力，更不是真人 E4 验收；"
+                                    "被拒的包一个字节都没由我改动——让它在读回里保持 INVALID 是校验器在尽责，"
+                                    "补它的清单是 owner 的设计工作，不是登记可以替它做的事。UNREADABLE 那一格"
+                                    "由植入校验器的节点证明：读不到清单的包不被丢弃，而是带着名字出现，"
+                                    "投影也没有把任何一种结论写死。"},
         "design-assets": {
                           "location": "GET /api/projects/([0-9a-f]{32})/assets(?:/(img-[0-9a-f]{64})/content)?",
                           "evidence": V04_ASSET_NODES,

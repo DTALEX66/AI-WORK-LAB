@@ -1277,3 +1277,584 @@ def test_design_asset_surface_offers_no_external_platform_channel(server, monkey
     assert [(route.method, route.pattern, route.action) for route in http_service.ROUTES
             if "/assets" in route.pattern] == list(ASSET_SURFACE_ROUTES)
 
+
+# =============================================================================
+# 05#L18|design-prompt：三条提示词路由的真实覆盖（生成 / 列表 / 签收）
+#
+# 登记行原文写的是「缺口：…本仓无 pytest 覆盖提示词路由，『提示词导出不算作品生成』只有约定而
+# 没有断言」（migration/capability-family-register.csv:18）。本节把 `migration/route-surface.csv`
+# 里那三条零覆盖的路由按真实 HTTP 逐一打：`POST …/prompts`（`_compose_prompt`）、
+# `GET …/prompt-results`（`_list_prompt_results`）、`POST …/prompt-results/<id>/review`
+# （`_review_prompt_result`）。种子记录一律用它们自己的路由现造（briefs/directions/assets），
+# 不预热数据库，也不联网、不起模型。
+#
+# 三条事实是本节的全部要点：
+# * 一条提示词只多一行提示词：`asset/asset_version/artifact` 两面（`GET /assets` 与
+#   `GET /native-assets`）的 id 集合在生成前后逐字相同，多出来的只有 `prompt_result` 那一行，
+#   且它的 `executed` 读回是 `False`（表里那条 `CHECK (executed = 0)` 让 1 存不进去）；
+# * 列表自己解析 query：`?limit=abc` 得到的是 400 `PROMPT_RESULT_FILTER_MALFORMED`，不是 404
+#   ——这条路由声明 `path_only=True`（http_service.py:330）存在的唯一理由就是这个；
+# * 签收要具名真人：`reviewer_kind` 不是 `human` 被 400 `PROMPT_REVIEW_HUMAN_REQUIRED` 拒，
+#   真人签名进账后再读回才是 `ACCEPTED`。
+#
+# 路由上够不到的拒绝码（本节不假造，逐条说明留在这里）：
+# * `prompt_intelligence.py:233` 那条 409 `STALE_REVISION`（「已选的方向被取代而请求没点名」）：
+#   `design_layer.revise_direction` 把 `chosen` 连同签名一起搬到新版本行、并把父行的 `chosen`
+#   置 0（design_layer.py:807-817），所以「同一 brief 下 chosen=1 且 superseded_by 非空」这一
+#   读取前提在路由面上构造不出来；点名旧方向 id 的那条同码拒绝（:246-250）已覆盖。
+# * 409 `PROMPT_RESULT_CONCURRENT_UPDATE`（prompt_results.py:290）与
+#   409 `PROMPT_REVIEW_CONCURRENT_UPDATE`（:360）：两者都只在两个写入者抢到同一个
+#   `MAX(revision)+1` 时才由 SQLite 的约束抛 `IntegrityError`；本节的 HTTP 是单连接串行的，
+#   并发窗口归 store 那一层的测试，不在这里用假状态冒充。
+# =============================================================================
+
+#: 两条生成路由与一条签收路由的 URL 前缀（pattern 见 http_service.py:320/329/332）。
+PROMPT_COMPOSE_PATH = "/prompts"
+PROMPT_RESULTS_PATH = "/prompt-results"
+#: `PromptIntelligence.readback`（prompt_intelligence.py:324）的顶层键——只有这三个。
+PROMPT_READBACK_KEYS = frozenset({"status", "document", "document_sha256"})
+#: prompt-composition-v1 的键集合是闭合的（`additionalProperties: false`），实测多一键就 500。
+COMPOSITION_DOCUMENT_KEYS = frozenset({
+    "schemaVersion", "composition_id", "project_id", "target", "prompt_text", "sections",
+    "observed", "framing", "unknown", "model", "claims_not_made"})
+#: 列表信封的 19 个键，取自 `migration/route-surface.csv:141` 那一行的实测形状。
+PROMPT_RESULT_ENVELOPE_KEYS = frozenset({
+    "schemaVersion", "project_id", "state", "result_count", "unreadable_count", "accepted_count",
+    "newest", "total_readable", "offset", "limit", "returned", "truncated", "next_offset",
+    "results", "reviews", "review_state_vocabulary", "decision_vocabulary", "claims_not_made",
+    "does_not_say"})
+#: 一行存储结果的键集合（含 `columns_match_document`：列与文档自己说的必须一致）。
+PROMPT_RESULT_ROW_KEYS = frozenset({
+    "revision", "result_id", "kind", "document_version", "content_sha256", "executed",
+    "created_at", "document", "review_state", "review", "columns_match_document"})
+#: prompt-result-review-v1 的闭合键集合。
+PROMPT_REVIEW_KEYS = frozenset({
+    "schemaVersion", "project_id", "review_revision", "result_id", "content_sha256", "decision",
+    "reviewer", "reviewer_kind", "reviewed_at", "note", "claims_not_made"})
+#: 三个都在模型雷达登记表里的视觉族（`visual_families()` 现读注册表；换族才会得到另一个
+#: result_id，同族重打只会重放同一行）。
+PROMPT_TARGETS = ("image-generation", "video-generation", "3d")
+#: 签收人 identity 是夹具署名，只证明「机制要求具名真人」，不等于一次真实专业验收（同 §_fixture_approval）。
+FIXTURE_REVIEWER = "具名评审人（夹具，非真人签字）"
+
+
+def _prompts_url(project_id: str) -> str:
+    return f"/api/projects/{project_id}{PROMPT_COMPOSE_PATH}"
+
+
+def _prompt_results_url(project_id: str, query: str = "") -> str:
+    return f"/api/projects/{project_id}{PROMPT_RESULTS_PATH}{query}"
+
+
+def _prompt_review_url(project_id: str, result_id: str) -> str:
+    return f"{_prompt_results_url(project_id)}/{result_id}/review"
+
+
+def _brief(server, project_id: str, title: str, goals: list, idempotency_key: str) -> dict:
+    """真实路由造一份简报（`POST /api/projects/<id>/briefs`，键集合见 http_service.py:1491）。"""
+    status, body = server.client.post(f"/api/projects/{project_id}/briefs", {
+        "title": title, "goals": goals, "constraints": "测试约束：不用渐变",
+        "reference_asset_ids": [], "idempotency_key": idempotency_key})
+    assert status == 201, body
+    return body["brief"]
+
+
+def _direction(server, project_id: str, brief_id: str, title: str,
+               idempotency_key: str) -> dict:
+    """真实路由造一份方向（键集合见 http_service.py:1496）；返回的记录自带 `brief_id`。"""
+    status, body = server.client.post(f"/api/projects/{project_id}/directions", {
+        "brief_id": brief_id, "title": title, "style_notes": ["测试风格：粗黑体标题"],
+        "color_mood": "冷灰", "typography_mood": "紧排", "idempotency_key": idempotency_key})
+    assert status == 201, body
+    return body["direction"]
+
+
+def _compose(server, project_id: str, brief_id: str, *, direction_id=None,
+             target: str = PROMPT_TARGETS[0]):
+    """一次生成请求：请求键集合必须正好是 `{brief_id, direction_id, target}`。"""
+    return server.client.post(_prompts_url(project_id), {
+        "brief_id": brief_id, "direction_id": direction_id, "target": target})
+
+
+def _envelope(server, project_id: str, query: str = "") -> dict:
+    """列表面的一次读回；不是 200 就当场红（拒绝面另有节点按具名码断言）。"""
+    status, body = server.client.get(_prompt_results_url(project_id, query))
+    assert status == 200, body
+    return body
+
+
+def _review(server, project_id: str, result_id: str, **overrides):
+    """一次签收请求：默认是「具名真人 + RFC3339 + note 在场」的合法形状，节点只改要拒的那一栏。"""
+    value = {"decision": "ACCEPTED", "reviewer": FIXTURE_REVIEWER, "reviewer_kind": "human",
+             "reviewed_at": "2026-11-01T09:00:00Z", "note": None}
+    return server.client.post(_prompt_review_url(project_id, result_id),
+                              dict(value, **overrides))
+
+
+def _material_ids_on_both_surfaces(server, project_id: str) -> tuple:
+    """输入素材面与宿主产物面各自的 id 集合——「提示词不是作品」就是这两个集合的相等。"""
+    status, inputs = server.client.get(_assets_url(project_id))
+    assert status == 200, inputs
+    status, outputs = server.client.get(f"/api/projects/{project_id}/native-assets")
+    assert status == 200, outputs
+    return ({item["id"] for item in inputs["assets"]},
+            {item["id"] for item in outputs["assets"]})
+
+
+# ------------------------------------------------------ 05#L18 断言一：一条提示词不多一件作品
+def test_design_prompt_composition_is_not_an_artwork_row(server):
+    """05#L18|design-prompt 的「提示词导出不算作品生成」：生成一次只多一行提示词，作品面纹丝不动。
+
+    证明（全走真实 HTTP，种子记录由被测试自己的路由现造）：
+    * 成功面是 201 + 顶层三键 `{status, document, document_sha256}`（`PromptIntelligence.readback`
+      的形状），文档键集合闭合在 prompt-composition-v1 的那 11 个，`composition_id` 是
+      `prompt-` + 32 位十六进制；
+    * 读回自带的那句摘要是**可复算的**：按 `sort_keys` 规范化后现算 sha256 与之相等，所以它是
+      「这份文档之后一个字节都没被改」的凭证，不是服务随口给的字符串；
+    * 提示词里的每一句都来自存过的记录：简报标题、目标与方向标题逐字出现在 `prompt_text`，
+      没建模的字段（受众/品牌素材/文案）在 `unknown` 里被点名而不是被静默省略；
+    * **不是作品**：两个素材面各有一件真实登记的种子（栅格走 `POST /assets`，宿主产物走
+      native 台账），生成前后两面的 id 集合逐字相同；`prompt-results` 的 `result_count` 从 0
+      变 1，列表里每一项 `executed` 都是 `False`、`kind='COMPOSITION'`、
+      `columns_match_document=True`，签收状态是 `UNREVIEWED`、`reviews` 为空；
+    * 同一请求再打一次得到**同一行**：`composition_id` 是输入的摘要，所以第二次是重放
+      （`result_count` 仍是 1，摘要也仍是那一份），不是第二件作品也不是第二条记录。
+
+    没证明：没有模型跑过（`model.executed=false` 与 `claims_not_made` 是这一节点的断言对象，
+    不是外部事实）；没有联网、没有云端调用、没有宿主被要求做任何事；没有验收——生成提示词
+    从来不代表有人同意用它，签收是另一条路由上的另一个动作；`prompt_result` 表里
+    `CHECK (executed = 0)` 那条数据库约束本身不在这里重证（本节点读回的是路由侧的 `False`）。
+    """
+    project_id = _design_project(server, "提示词不是作品")
+    brief = _brief(server, project_id, "测试简报：货架封面", ["让标题在三米外可读"], "pk-brief")
+    direction = _direction(server, project_id, brief["brief_id"], "测试方向：高对比单色", "pk-dir")
+    _import_asset(server, project_id, _synthetic_png(4, 4, (10, 20, 30)), "pk-input")
+    _register_output_asset(server, project_id, "prompt-seed-output",
+                           b"SYNTHETIC-NATIVE-FOR-PROMPT-TEST\n" * 2)
+
+    before = _material_ids_on_both_surfaces(server, project_id)
+    assert before[0] and before[1], ("种子素材没进两面，等式就可能是空集等于空集", before)
+    empty = _envelope(server, project_id)
+    assert empty["result_count"] == 0 and empty["state"] == "NONE", empty
+
+    status, composed = _compose(server, project_id, brief["brief_id"],
+                                direction_id=direction["direction_id"])
+    assert status == 201, composed
+    assert set(composed) == PROMPT_READBACK_KEYS, composed
+    assert composed["status"] == "PROMPT_READBACK", composed
+    document = composed["document"]
+    assert set(document) == COMPOSITION_DOCUMENT_KEYS, sorted(document)
+    assert document["schemaVersion"] == "design-lab/prompt-composition/v1", document
+    assert re.fullmatch(r"prompt-[0-9a-f]{32}", document["composition_id"]), document
+    assert document["project_id"] == project_id and document["target"] == PROMPT_TARGETS[0]
+    for fragment in (brief["title"], brief["goals"][0], brief["constraints"],
+                     direction["title"], direction["color_mood"]):
+        assert fragment in document["prompt_text"], (fragment, document["prompt_text"])
+    assert composed["document_sha256"] == "sha256:" + hashlib.sha256(
+        json.dumps(document, sort_keys=True,
+                   ensure_ascii=False).encode("utf-8")).hexdigest(), composed
+    assert document["model"]["executed"] is False, document["model"]
+    unknown_fields = {entry["field"] for entry in document["unknown"]}
+    assert {"audience", "brand_assets", "copy_text"} <= unknown_fields, document["unknown"]
+    assert all(entry["reason"].strip() for entry in document["unknown"]), document["unknown"]
+
+    after = _material_ids_on_both_surfaces(server, project_id)
+    assert after == before, ("一次提示词生成在素材面添了行——提示词被当成作品存了", before, after)
+
+    listed = _envelope(server, project_id)
+    assert (listed["result_count"], listed["total_readable"], listed["returned"]) == (
+        1, 1, 1), listed
+    assert listed["state"] == "UNREVIEWED", listed["state"]
+    assert listed["accepted_count"] == 0 and listed["reviews"] == [], listed
+    assert all(row["executed"] is False for row in listed["results"]), listed["results"]
+    row = listed["results"][0]
+    assert set(row) == PROMPT_RESULT_ROW_KEYS, sorted(row)
+    assert row["result_id"] == document["composition_id"], row
+    assert row["kind"] == "COMPOSITION" and row["executed"] is False, row
+    assert row["review_state"] == "UNREVIEWED" and row["review"] is None, row
+    assert row["columns_match_document"] is True, row
+
+    status, replay = _compose(server, project_id, brief["brief_id"],
+                              direction_id=direction["direction_id"])
+    assert status == 201, replay
+    assert replay["document"]["composition_id"] == document["composition_id"], replay
+    assert replay["document_sha256"] == composed["document_sha256"], replay
+    assert _material_ids_on_both_surfaces(server, project_id) == before, "重放写出了第二件作品"
+    assert _envelope(server, project_id)["result_count"] == 1, "重放写出了第二行提示词"
+
+
+# ------------------------------------------------------ 05#L18 断言二：生成面的拒绝各自有名
+def test_design_prompt_composition_refusals_are_named_and_store_nothing(server):
+    """05#L18|design-prompt 的生成面：每一条拒绝都报出自己名字，而且一根头发都没存下。
+
+    证明（逐条对 http_service.py:1099 这条路由打，每次都先读列表面再读它）：
+    * 400 `UNKNOWN_TARGET`：`target` 不在雷达的视觉族里（这里用 `audio-generation`）；
+    * 404 `BRIEF_NOT_FOUND`：简报 id 是合法形状但这个服务里没有；
+    * 404 `PROJECT_NOT_FOUND`：32 位十六进制的项目 id 形状对但没登记；
+    * 400 `INVALID_PROJECT_FIELDS`：请求键集合是闭合的 `{brief_id, direction_id, target}`——
+      多一个键、少一个键都进不来（这一条来自 `body()` 的守卫，载荷只有 `error`，没有
+      `status/detail`，所以只断言状态与错误码，不假设错误体的形状）；
+    * 409 `DIRECTION_NOT_UNDER_BRIEF`：点名一份属于**另一个**简报的方向，两栏各自都合法，
+      合起来会把别处的立场写进这条提示词；
+    * 409 `STALE_REVISION`（被取代的简报）：先按真实路由给简报追加一版（父行被
+      `superseded_by` 指走），再拿父行 id 去生成；
+    * 409 `STALE_REVISION`（点名被取代的方向）：方向改版后旧 id 仍寻得到行，但那一行已经
+      被指走——`prompt_intelligence.py:246-250`。
+    每次拒绝后 `prompt-results` 的 `result_count` 都不变，最后一条成功请求才让它 0→1；
+    两个素材面的 id 集合全程不变（拒绝更不会写出作品）。
+
+    没证明：`:233` 那条 409 `STALE_REVISION`（请求没点名方向、而**已选**方向被取代）在路由上
+    够不到——`revise_direction` 会把 `chosen` 与署名一起搬到新版本行、把父行的 `chosen` 置 0
+    （design_layer.py:807-817），「chosen=1 且 superseded_by 非空」这一读取前提构造不出来，
+    本节不拿别的码冒充它；也不证明并发写入的 409（见本节开头）。404 `DIRECTION_NOT_FOUND`
+    （点名根本不存在的方向）不在登记行列出的码里，本节不去扩。
+    """
+    project_id = _design_project(server, "提示词拒绝面")
+    brief_a = _brief(server, project_id, "简报甲", ["甲的目标"], "pf-brief-a")
+    brief_b = _brief(server, project_id, "简报乙", ["乙的目标"], "pf-brief-b")
+    direction_a = _direction(server, project_id, brief_a["brief_id"], "甲的方向", "pf-dir-a")
+    direction_b = _direction(server, project_id, brief_b["brief_id"], "乙的方向", "pf-dir-b")
+    stranger = "0" * 32
+    surfaces = _material_ids_on_both_surfaces(server, project_id)
+
+    def _refused(url: str, payload: dict, *, status: int, code: str, where: str) -> None:
+        before = _envelope(server, project_id)["result_count"]
+        got_status, got = server.client.post(url, payload)
+        assert (got_status, got.get("error")) == (status, code), (where, got)
+        assert _envelope(server, project_id)["result_count"] == before, (where, "拒绝也存了行")
+
+    _refused(_prompts_url(project_id),
+             {"brief_id": brief_a["brief_id"], "direction_id": None,
+              "target": "audio-generation"},
+             status=400, code="UNKNOWN_TARGET", where="非视觉族")
+    _refused(_prompts_url(project_id),
+             {"brief_id": "brief-" + "f" * 32, "direction_id": None, "target": PROMPT_TARGETS[0]},
+             status=404, code="BRIEF_NOT_FOUND", where="陌生简报")
+    _refused(_prompts_url(stranger),
+             {"brief_id": brief_a["brief_id"], "direction_id": None, "target": PROMPT_TARGETS[0]},
+             status=404, code="PROJECT_NOT_FOUND", where="陌生项目")
+    _refused(_prompts_url(project_id),
+             {"brief_id": brief_a["brief_id"], "direction_id": None,
+              "target": PROMPT_TARGETS[0], "model_id": "顺手想指定模型"},
+             status=400, code="INVALID_PROJECT_FIELDS", where="多一个键")
+    _refused(_prompts_url(project_id),
+             {"brief_id": brief_a["brief_id"], "target": PROMPT_TARGETS[0]},
+             status=400, code="INVALID_PROJECT_FIELDS", where="少一个键")
+    _refused(_prompts_url(project_id),
+             {"brief_id": brief_a["brief_id"], "direction_id": direction_b["direction_id"],
+              "target": PROMPT_TARGETS[0]},
+             status=409, code="DIRECTION_NOT_UNDER_BRIEF", where="方向不属于这份简报")
+
+    # 真实改版：简报甲追加第二版，父行被 superseded_by 指走（父行内容字节不动）。
+    status, revised = server.client.post(
+        f"/api/projects/{project_id}/briefs/{brief_a['brief_id']}/revisions", {
+            "title": "简报甲第二版", "goals": ["甲的目标改了"], "constraints": None,
+            "reference_asset_ids": [], "idempotency_key": "pf-brief-a-v2"})
+    assert status == 201, revised
+    _refused(_prompts_url(project_id),
+             {"brief_id": brief_a["brief_id"], "direction_id": None, "target": PROMPT_TARGETS[0]},
+             status=409, code="STALE_REVISION", where="拿被取代的简报版本生成")
+
+    status, direction_v2 = server.client.post(
+        f"/api/projects/{project_id}/directions/{direction_b['direction_id']}/revisions", {
+            "title": "乙的方向第二版", "style_notes": [], "color_mood": None,
+            "typography_mood": None, "idempotency_key": "pf-dir-b-v2"})
+    assert status == 201, direction_v2
+    _refused(_prompts_url(project_id),
+             {"brief_id": brief_b["brief_id"], "direction_id": direction_b["direction_id"],
+              "target": PROMPT_TARGETS[0]},
+             status=409, code="STALE_REVISION", where="点名被取代的方向")
+    assert _envelope(server, project_id)["result_count"] == 0, "全程一条都没存下"
+
+    # 同一份请求把 `direction_id` 换成活着的新版本就通：证明上面那些拒绝不是路由坏了。
+    status, composed = _compose(server, project_id, brief_b["brief_id"],
+                                direction_id=direction_v2["direction"]["direction_id"])
+    assert status == 201, composed
+    listed = _envelope(server, project_id)
+    assert listed["result_count"] == 1 and listed["state"] == "UNREVIEWED", listed
+    assert _material_ids_on_both_surfaces(server, project_id) == surfaces, "拒绝或成功在素材面添了行"
+
+
+# ------------------------------------------------------ 05#L18 断言三：列表自己解析自己的 query
+def test_design_prompt_results_list_parses_its_own_query(server):
+    """05#L18|design-prompt 的列表面：信封形状闭合、翻页先算全量再切片、畸形数字按名字拒。
+
+    证明：
+    * 200 信封的键集合**正好**是 `migration/route-surface.csv:141` 登记的那 19 个，词汇表
+      `review_state_vocabulary=[UNREVIEWED, ACCEPTED, DECLINED, NOT_CURRENT]`、
+      `decision_vocabulary=[ACCEPTED, DECLINED]`，`does_not_say` 四条中文说明在场；
+    * 计数在切片之前：同一项目两份不同 target 得两行；`?limit=1` 回 `returned=1`、
+      `truncated=True`、`next_offset=1`，而 `result_count/total_readable` 仍是 2——翻页不会把
+      「产过 400 条」读成「产过 100 条」；`?offset=1` 拿到第二行且 `truncated=False`；
+    * `state` 说的是行，不是这一页：`?offset=99` 这一页空了，`returned=0`、`next_offset=None`，
+      但 `state` 仍是 `UNREVIEWED`、`newest` 仍指向最后一行，不是 `NONE`；
+    * 空值走默认（`?limit=&offset=` 回 `limit=100` 的全页），默认上限是 100；
+    * 畸形数字得到的是**具名 400，不是 404**——这条路由声明 `path_only=True` 的全部理由：
+      `?limit=abc`、`?offset=abc`、`?limit=1.5` 都 400 `PROMPT_RESULT_FILTER_MALFORMED`；
+      `?limit=0`、`?limit=201`（超过 `MAX_PROMPT_RESULT_LIMIT=200`）400
+      `PROMPT_RESULT_LIMIT_INVALID`；`?offset=-1` 400 `PROMPT_RESULT_OFFSET_INVALID`；
+    * 解析发生在存在性检查之前：陌生项目 + `?limit=abc` 仍答畸形；干净请求下的陌生项目才答
+      404 `PROJECT_NOT_FOUND`；
+    * 列表里每一项 `executed` 都是 `False`（数据库那列 `CHECK (executed = 0)` 的读回形状），
+      `reviews` 与签收前一样是空的。
+
+    没证明：`unreadable_count` 变红的样子——那需要台账里存进一条解析不了的 `document_json`，
+    写入路径（`store`）在存之前就把文档解析过一次，路由面上构造不出这种行；也不证明真实
+    吞吐或大列表性能（两行是够验证分页语义的最小量）。
+    """
+    project_id = _design_project(server, "提示词列表面")
+    brief = _brief(server, project_id, "列表用简报", ["让列表有得读"], "pl-brief")
+    for target in PROMPT_TARGETS[:2]:
+        status, composed = _compose(server, project_id, brief["brief_id"], target=target)
+        assert status == 201, (target, composed)
+    stranger = "0" * 32
+
+    envelope = _envelope(server, project_id)
+    assert set(envelope) == PROMPT_RESULT_ENVELOPE_KEYS, sorted(envelope)
+    assert envelope["project_id"] == project_id, envelope
+    assert (envelope["result_count"], envelope["total_readable"], envelope["returned"]) == (2, 2, 2)
+    assert (envelope["offset"], envelope["limit"]) == (0, 100), envelope
+    assert (envelope["truncated"], envelope["next_offset"]) == (False, None), envelope
+    assert envelope["unreadable_count"] == 0 and envelope["reviews"] == []
+    assert envelope["accepted_count"] == 0 and envelope["state"] == "UNREVIEWED"
+    assert envelope["review_state_vocabulary"] == ["UNREVIEWED", "ACCEPTED", "DECLINED",
+                                                   "NOT_CURRENT"], envelope
+    assert envelope["decision_vocabulary"] == ["ACCEPTED", "DECLINED"], envelope
+    assert len(envelope["does_not_say"]) == 4, envelope["does_not_say"]
+    assert [row["revision"] for row in envelope["results"]] == [1, 2], envelope["results"]
+    assert envelope["newest"]["result_id"] == envelope["results"][-1]["result_id"], envelope
+    assert all(row["executed"] is False for row in envelope["results"]), envelope["results"]
+
+    first_page = _envelope(server, project_id, "?limit=1")
+    assert (first_page["returned"], first_page["truncated"], first_page["next_offset"]) == (
+        1, True, 1), first_page
+    assert (first_page["result_count"], first_page["total_readable"]) == (2, 2), first_page
+    assert first_page["results"][0]["revision"] == 1, first_page
+    second_page = _envelope(server, project_id, "?limit=1&offset=1")
+    assert (second_page["returned"], second_page["truncated"], second_page["next_offset"]) == (
+        1, False, None), second_page
+    assert second_page["results"][0]["revision"] == 2, second_page
+    beyond = _envelope(server, project_id, "?offset=99")
+    assert (beyond["returned"], beyond["next_offset"]) == (0, None), beyond
+    assert beyond["state"] == "UNREVIEWED" and beyond["newest"] is not None, beyond
+    blank = _envelope(server, project_id, "?limit=&offset=")
+    assert (blank["limit"], blank["returned"]) == (100, 2), blank
+
+    for query, code in (("?limit=abc", "PROMPT_RESULT_FILTER_MALFORMED"),
+                        ("?offset=abc", "PROMPT_RESULT_FILTER_MALFORMED"),
+                        ("?limit=1.5", "PROMPT_RESULT_FILTER_MALFORMED"),
+                        ("?limit=0", "PROMPT_RESULT_LIMIT_INVALID"),
+                        ("?limit=201", "PROMPT_RESULT_LIMIT_INVALID"),
+                        ("?offset=-1", "PROMPT_RESULT_OFFSET_INVALID")):
+        status, body = server.client.get(_prompt_results_url(project_id, query))
+        assert status != 404, (query, "畸形过滤器被当成不存在的地址报了 404")
+        assert (status, body.get("error")) == (400, code), (query, body)
+    status, body = server.client.get(_prompt_results_url(stranger, "?limit=abc"))
+    assert (status, body.get("error")) == (400, "PROMPT_RESULT_FILTER_MALFORMED"), body
+    status, body = server.client.get(_prompt_results_url(stranger))
+    assert (status, body.get("error")) == (404, "PROJECT_NOT_FOUND"), body
+
+
+# ------------------------------------------------------ 05#L18 断言四：签收要具名真人
+def test_design_prompt_result_review_requires_a_named_human(server):
+    """05#L18|design-prompt 的签收面：没有具名真人就没有签收，签了也只是本地一条追加记录。
+
+    证明：
+    * 五条字段拒绝各自有名，且都发生在真正的写入之前：400 `INVALID_DECISION`（决定不在
+      `[ACCEPTED, DECLINED]` 里）、400 `PROMPT_REVIEW_HUMAN_REQUIRED`（`reviewer_kind='agent'`：
+      本仓连本地验收都只收真人，owner 2026-10-21）、400 `REVIEWER_REQUIRED`（签名人只有空格）、
+      400 `INVALID_REVIEWED_AT`（没有 `T` / 没有 UTC 偏移两种都算畸形）、
+      400 `INVALID_PROJECT_FIELDS`（少一个 `note` 键就进不来）；
+    * 404 `PROMPT_RESULT_NOT_STORED`：形状合法的 `prompt-` + 32 位十六进制但这个项目的台账里
+      没有——签收只能关于这份服务真产过并存下过的文档；404 `PROJECT_NOT_FOUND`：陌生项目
+      先撞到项目存在性检查；
+    * 以上每一条之后列表面都还是 `state=UNREVIEWED`、`accepted_count=0`、`reviews=[]`，
+      素材两面依旧纹丝不动（签收不是作品，也不是导出）；
+    * 真人签名 201，响应键集合正好 `{status, review, revision, claims_not_made}`；`review` 的
+      键集合是 prompt-result-review-v1 那 11 个，`reviewer_kind='human'`，
+      `content_sha256` **等于台账里那一行的文档摘要**（签的是这份字节，不是别份）；
+    * 读回是真的：`state`/`review_state` 变 `ACCEPTED`、`accepted_count` 1、`reviews` 一行、
+      `results[0].review` 带回了同一条签名；
+    * 追加式：再签一条 `DECLINED` 得到 `review_revision=2`，`reviews` 两行都在（旧签名不删不改），
+      当前描述这份文档的状态是 `DECLINED`，`accepted_count` 只数「仍描述这份字节且是 ACCEPTED」的
+      行，所以归 0；`result_count` 仍是 1——签收不会多产一件作品。
+
+    没证明：签名人是真人。`reviewer` 用的是夹具署名（同本文件 `_fixture_approval` 的诚实边界）：
+    这一节点证明的是**机制**要求具名真人、且拒掉 `agent`，不是「有一位专业设计师验收过了」；
+    也不证明这份提示词被导出、被发送或被任何模型执行过——`claims_not_made` 里明说了这四件事
+    各自不属于签收；409 `PROMPT_REVIEW_CONCURRENT_UPDATE`（两个写入者抢同一个
+    `MAX(review_revision)+1`）在单连接串行的 HTTP 面上够不到，本节不冒充。
+    """
+    project_id = _design_project(server, "提示词签收面")
+    brief = _brief(server, project_id, "签收用简报", ["让签收有对象"], "pv-brief")
+    status, composed = _compose(server, project_id, brief["brief_id"])
+    assert status == 201, composed
+    result_id = composed["document"]["composition_id"]
+    stored_digest = _envelope(server, project_id)["results"][0]["content_sha256"]
+    stranger = "0" * 32
+    surfaces = _material_ids_on_both_surfaces(server, project_id)
+
+    def _assert_still_unreviewed(where: str) -> None:
+        listed = _envelope(server, project_id)
+        assert listed["state"] == "UNREVIEWED", (where, listed["state"])
+        assert listed["accepted_count"] == 0 and listed["reviews"] == [], (where, listed)
+        assert listed["results"][0]["review"] is None, where
+
+    for overrides, code, where in (
+            ({"decision": "MAYBE"}, "INVALID_DECISION", "决定不在词汇表里"),
+            ({"reviewer_kind": "agent"}, "PROMPT_REVIEW_HUMAN_REQUIRED", "签名不是真人"),
+            ({"reviewer": "   "}, "REVIEWER_REQUIRED", "匿名签收"),
+            ({"reviewed_at": "2026-11-01 09:00"}, "INVALID_REVIEWED_AT", "没有 T 也没有偏移"),
+            ({"reviewed_at": "2026-11-01T09:00:00"}, "INVALID_REVIEWED_AT", "缺 UTC 偏移"),
+            ({"reviewed_at": 20261101}, "INVALID_REVIEWED_AT", "不是字符串")):
+        got_status, got = _review(server, project_id, result_id, **overrides)
+        assert (got_status, got.get("error")) == (400, code), (where, got)
+        _assert_still_unreviewed(where)
+
+    got_status, got = server.client.post(_prompt_review_url(project_id, result_id), {
+        "decision": "ACCEPTED", "reviewer": FIXTURE_REVIEWER, "reviewer_kind": "human",
+        "reviewed_at": "2026-11-01T09:00:00Z"})
+    assert (got_status, got.get("error")) == (400, "INVALID_PROJECT_FIELDS"), got
+    _assert_still_unreviewed("少 note 键")
+
+    got_status, got = _review(server, project_id, "prompt-" + "a" * 32)
+    assert (got_status, got.get("error")) == (404, "PROMPT_RESULT_NOT_STORED"), got
+    _assert_still_unreviewed("签一条不存在的结果")
+    got_status, got = _review(server, stranger, result_id, decision="MAYBE")
+    assert (got_status, got.get("error")) == (404, "PROJECT_NOT_FOUND"), got
+    _assert_still_unreviewed("陌生项目")
+
+    status, record = _review(server, project_id, result_id, note="方向可用（夹具签字）")
+    assert status == 201, record
+    assert set(record) == {"status", "review", "revision", "claims_not_made"}, sorted(record)
+    assert record["status"] == "PROMPT_RESULT_REVIEW" and record["revision"] == 1, record
+    review = record["review"]
+    assert set(review) == PROMPT_REVIEW_KEYS, sorted(review)
+    assert (review["reviewer"], review["reviewer_kind"], review["decision"]) == (
+        FIXTURE_REVIEWER, "human", "ACCEPTED"), review
+    assert review["result_id"] == result_id and review["review_revision"] == 1, review
+    assert review["content_sha256"] == stored_digest, review
+    assert review["claims_not_made"] and record["claims_not_made"] == review["claims_not_made"]
+
+    listed = _envelope(server, project_id)
+    assert (listed["state"], listed["accepted_count"]) == ("ACCEPTED", 1), listed
+    assert len(listed["reviews"]) == 1, listed["reviews"]
+    assert listed["results"][0]["review_state"] == "ACCEPTED", listed["results"][0]
+    assert listed["results"][0]["review"]["reviewer"] == FIXTURE_REVIEWER, listed["results"][0]
+
+    status, second = _review(server, project_id, result_id, decision="DECLINED",
+                             note="改主意：先不落")
+    assert status == 201, second
+    assert second["review"]["review_revision"] == 2, second
+    listed = _envelope(server, project_id)
+    assert [row["decision"] for row in listed["reviews"]] == ["ACCEPTED", "DECLINED"], listed
+    assert listed["state"] == "DECLINED" and listed["results"][0]["review_state"] == "DECLINED"
+    assert listed["accepted_count"] == 0, listed["accepted_count"]
+    assert listed["result_count"] == 1, "签收写出了第二行结果"
+    assert _material_ids_on_both_surfaces(server, project_id) == surfaces, "签收写出了素材行"
+
+
+# ------------------------------------------------------ 05#L18 断言五：存不下就报出来，别闷声 201
+def test_design_prompt_store_guard_answers_instead_of_a_quiet_201(server, monkeypatch):
+    """05#L18|design-prompt 的存储守卫：发射器写坏了，路由答具名拒绝，不答「201 但什么都没存」。
+
+    `_answered_prompt`（http_service.py:1128）把 store 放在响应之前，store 的拒绝**就是**答复。
+    本节点用合成注入把这条映射逐码打出来：`monkeypatch` 换掉 `PromptIntelligence.compose` 的
+    返回值（先让诚实的 compose 真跑一次，再改坏它的输出），于是路由拿到诚实路径产不出的文档。
+    这只证明两件事——`store()` 的守卫在位、路由把守卫的码原样报出——不证明真实提示词会长成
+    这些样子（诚实路径在 `compose` 里就先过了 schema）。
+
+    证明（每条都断「状态码 + 具名码 + 台账里一根头发都没多」）：
+    * 400 `PROMPT_RESULT_EXECUTED_ASSERTED`：`model.executed` 被写成 `true`——这个仓跑不了模型，
+      声称推过的文档连存都没资格存；
+    * 400 `PROMPT_RESULT_SOURCE_UNNAMED`：`observed` 被清空，提示词说不出来源；
+    * 400 `PROMPT_RESULT_ID_MISSING`：`composition_id` 被抹掉，存进去就再也寻不回来；
+    * 400 `PROMPT_RESULT_PROJECT_MISMATCH`：`project_id` 被换成别人的项目；
+    * 400 `PROMPT_RESULT_UNKNOWN_VERSION`：`schemaVersion` 换成陌生版本；
+    * 400 `PROMPT_RESULT_DOCUMENT_MALFORMED`：返回的根本不是一份文档；
+    * 409 `PROMPT_RESULT_ID_COLLISION`：同一个 id 两份不同字节——第一次 201 存下一行，第二次
+      当场拒绝，且**旧行的文档一个字节都没被改写**（列表里读回的还是第一次那份 `prompt_text`）；
+    * 撤销注入后诚实路径照常存下一行（换 target → 新 id），`executed` 仍是 `False`，
+      两个素材面的 id 集合从始至终相同——包括被拒绝的那几次。
+
+    没证明：诚实发射器可能产出上述文档（恰恰相反，本节的前提是它产不出）；
+    `PROMPT_RESULT_CONCURRENT_UPDATE`（409）需要两个写入者抢同一 `MAX(revision)+1`，单进程串行
+    打不出来；也不证明 store 之外的任何持久化面。
+    """
+    from design_lab.prompt_intelligence import PromptIntelligence
+
+    project_id = _design_project(server, "提示词存储守卫")
+    brief = _brief(server, project_id, "守卫用简报", ["让守卫有得拒"], "sg-brief")
+    surfaces = _material_ids_on_both_surfaces(server, project_id)
+    original_compose = PromptIntelligence.compose
+    assert _envelope(server, project_id)["result_count"] == 0
+
+    def _with_mutation(mutate):
+        def _compose(self, pid, *, brief_id, direction_id=None, target=PROMPT_TARGETS[0]):
+            document = original_compose(self, pid, brief_id=brief_id,
+                                       direction_id=direction_id, target=target)
+            mutate(document)
+            return document
+        return _compose
+
+    guards = (
+        ("model.executed 被写成 true", lambda document: document["model"].update({"executed": True}),
+         "PROMPT_RESULT_EXECUTED_ASSERTED"),
+        ("observed 被清空（说不出来源）", lambda document: document.__setitem__("observed", []),
+         "PROMPT_RESULT_SOURCE_UNNAMED"),
+        ("composition_id 被抹掉（寻不回来）",
+         lambda document: document.__setitem__("composition_id", "   "),
+         "PROMPT_RESULT_ID_MISSING"),
+        ("project_id 被换成别人的项目",
+         lambda document: document.__setitem__("project_id", "f" * 32),
+         "PROMPT_RESULT_PROJECT_MISMATCH"),
+        ("schemaVersion 换成陌生版本",
+         lambda document: document.__setitem__("schemaVersion", "design-lab/other/v1"),
+         "PROMPT_RESULT_UNKNOWN_VERSION"),
+    )
+    for where, mutate, code in guards:
+        monkeypatch.setattr(PromptIntelligence, "compose", _with_mutation(mutate))
+        status, body = _compose(server, project_id, brief["brief_id"])
+        assert status != 201, (where, "存不下却照样回了 201")
+        assert (status, body.get("error")) == (400, code), (where, body)
+        assert _envelope(server, project_id)["result_count"] == 0, (where, "拒绝还是落了行")
+
+    monkeypatch.setattr(PromptIntelligence, "compose",
+                        lambda self, pid, *, brief_id, direction_id=None, target=PROMPT_TARGETS[0]:
+                        "一句话，不是文档")
+    status, body = _compose(server, project_id, brief["brief_id"])
+    assert (status, body.get("error")) == (400, "PROMPT_RESULT_DOCUMENT_MALFORMED"), body
+    assert _envelope(server, project_id)["result_count"] == 0
+
+    forged = {"n": 0}
+
+    def _collide(self, pid, *, brief_id, direction_id=None, target=PROMPT_TARGETS[0]):
+        document = original_compose(self, pid, brief_id=brief_id,
+                                    direction_id=direction_id, target=target)
+        forged["n"] += 1
+        document["composition_id"] = "prompt-" + "c" * 32
+        document["prompt_text"] = f"注入第 {forged['n']} 次：同一个 id，不同的字节"
+        return document
+
+    monkeypatch.setattr(PromptIntelligence, "compose", _collide)
+    status, first = _compose(server, project_id, brief["brief_id"])
+    assert status == 201, first
+    assert _envelope(server, project_id)["result_count"] == 1
+    status, second = _compose(server, project_id, brief["brief_id"])
+    assert (status, second.get("error")) == (409, "PROMPT_RESULT_ID_COLLISION"), second
+    listed = _envelope(server, project_id)
+    assert listed["result_count"] == 1, listed["result_count"]
+    assert listed["results"][0]["document"]["prompt_text"] == "注入第 1 次：同一个 id，不同的字节", \
+        listed["results"][0]["document"]["prompt_text"]
+    assert _material_ids_on_both_surfaces(server, project_id) == surfaces
+
+    monkeypatch.undo()
+    assert PromptIntelligence.compose is original_compose, "注入没被撤销干净"
+    status, honest = _compose(server, project_id, brief["brief_id"], target=PROMPT_TARGETS[2])
+    assert status == 201, honest
+    listed = _envelope(server, project_id)
+    assert listed["result_count"] == 2, listed["result_count"]
+    assert listed["results"][-1]["result_id"] == honest["document"]["composition_id"], listed
+    assert all(row["executed"] is False for row in listed["results"]), listed["results"]
+    assert _material_ids_on_both_surfaces(server, project_id) == surfaces
+

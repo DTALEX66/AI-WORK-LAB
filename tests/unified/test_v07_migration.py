@@ -512,3 +512,138 @@ def test_a_killed_migration_lands_the_same_bytes_as_a_clean_one():
                 == sum(entry["files"] for entry in clean_manifest["copies"]))
     finally:
         shutil.rmtree(base, ignore_errors=True)
+
+
+def test_apply_leaves_attested_rework_bytes_untouched(tmp_path):
+    """An attested rework is left alone by ``--apply``; ``--allow-modified`` still overwrites.
+
+    The guard this node replaces refused every ``MODIFIED`` row, including the rows the plan
+    itself labels ``declared_rework`` + ``rework_attested`` — so the remedy the refusal message
+    names ("attest each one in DECLARED_REWORK") could not be satisfied by attesting them: an
+    attested repair was rebuilt from the source exactly like an unexplained one. One hand-built
+    plan is read three ways here: the row the run skips, the counters that report the skip
+    instead of assuming it, and the escape hatch keeping its old meaning.
+
+    Everything lives under ``tmp_path`` and no CLI is invoked, so nothing in this node can put
+    a byte into a real candidate tree.
+
+    没证明：这是对 ``apply_plan`` 单个函数的守卫在合成 plan 上的单元测试。它不证明真实候选树能被
+    正确迁移，不重跑真实迁移，也不证明 ``rework_attested`` 本身判定得对（那是 ``build_plan`` 加
+    ``DECLARED_REWORK`` 的责任，由本文件前面的节点覆盖）；``--allow-modified`` 该不该由人来按，
+    仍归 Human Gate，不在本节点的范围内。
+    """
+    live = _live_migration_module()
+    source_dir = tmp_path / "sources"
+    candidate = tmp_path / "candidate"
+    source_dir.mkdir()
+    (candidate / "synthetic").mkdir(parents=True)
+
+    fresh_source = source_dir / "would-write.txt"
+    fresh_source.write_bytes(b"SOURCE BYTES FOR THE NEW FILE\n")
+    repaired = b"REPAIR ALREADY PRESENT IN THE CANDIDATE\n"
+    attested_target = candidate / "synthetic/attested-rework.txt"
+    attested_target.write_bytes(repaired)
+    would_write_target = candidate / "synthetic/would-write.txt"
+    # The attested row's source stays absent for the first run on purpose: were the engine to
+    # read it, it would raise FileNotFoundError rather than pass, so "the call succeeded" plus
+    # "the bytes did not move" proves the skip happens before any read, not after one. It is
+    # created only for the allow_modified run at the bottom.
+    attested_source = source_dir / "attested-rework.txt"
+    assert not attested_source.is_file(), str(attested_source)
+    assert not would_write_target.is_file(), str(would_write_target)
+
+    plan = {
+        "target_root": str(candidate),
+        "unmanaged": ["synthetic/left-in-place.txt"],
+        "entries": [
+            {"kind": "copy", "source": str(fresh_source),
+             "target": "synthetic/would-write.txt", "state": "would_write"},
+            {"kind": "copy", "source": str(attested_source),
+             "target": "synthetic/attested-rework.txt", "state": "MODIFIED",
+             "declared_rework": "synthetic/attested-rework.txt",
+             "rework_attested": True, "rework_reason": "attested by digest and size"},
+        ],
+    }
+
+    result = live.apply_plan(plan)
+    assert not attested_source.is_file(), ("the attested source was read, so this is not the "
+                                           "skip under test", str(attested_source))
+    assert result == {"written": 1, "modified_overwritten": 0,
+                      "modified_skipped_as_attested": 1,
+                      "unmanaged_left_in_place": 1}, result
+    assert would_write_target.read_bytes() == b"SOURCE BYTES FOR THE NEW FILE\n", \
+        ("a would_write row must still be written", would_write_target.read_bytes())
+    assert attested_target.read_bytes() == repaired, \
+        ("an attested rework was rewritten from the source", attested_target.read_bytes(),
+         repaired)
+    assert not [path for path in candidate.rglob("*.migrating")], \
+        [path.name for path in candidate.rglob("*.migrating")]
+
+    attested_source.write_bytes(b"THE SOURCE GENUINELY IS THE NEWER TRUTH\n")
+    forced = live.apply_plan(plan, allow_modified=True)
+    assert forced == {"written": 2, "modified_overwritten": 1,
+                      "modified_skipped_as_attested": 0,
+                      "unmanaged_left_in_place": 1}, forced
+    assert attested_target.read_bytes() == b"THE SOURCE GENUINELY IS THE NEWER TRUTH\n", \
+        ("--allow-modified lost its old meaning", attested_target.read_bytes())
+
+
+def test_apply_still_refuses_a_modified_file_with_no_attestation(tmp_path):
+    """Fail-closed intact: an unexplained MODIFIED row still refuses, before the first write.
+
+    The row order is the point. The attested row is placed first, so the example the message
+    names can only be the unexplained row if the refusal is keyed on the unexplained list and
+    not on the modified list; and "1 of 2" is a number a message built from a single list could
+    not produce. Nothing may be written because the guard is the whole preflight — a refusal
+    raised after the loop would leave the would_write row's bytes and a stray ``*.migrating``
+    in the tree an auditor hashes.
+
+    没证明：仍然只是 ``apply_plan`` 单个函数在合成 plan 上的单元测试。它不证明真实候选树的迁移，
+    不重跑真实迁移，也不覆盖 CLI 上 ``--modified``/``--allow-modified`` 怎么暴露给操作者；它只钉住
+    "未具名的返工仍被拒绝，且拒绝先于写入"这一条。
+    """
+    live = _live_migration_module()
+    source_dir = tmp_path / "sources"
+    candidate = tmp_path / "candidate"
+    source_dir.mkdir()
+    (candidate / "synthetic").mkdir(parents=True)
+
+    fresh_source = source_dir / "would-write.txt"
+    fresh_source.write_bytes(b"SOURCE BYTES FOR THE NEW FILE\n")
+    attested_rel = "synthetic/attested-rework.txt"
+    unexplained_rel = "synthetic/unexplained-rework.txt"
+    (candidate / attested_rel).write_bytes(b"REPAIR THAT IS FULLY ATTESTED\n")
+    (candidate / unexplained_rel).write_bytes(b"EDIT THAT NOBODY ATTESTED TO\n")
+    would_write_target = candidate / "synthetic/would-write.txt"
+    before = _tree_state(candidate)
+    assert not would_write_target.is_file(), str(would_write_target)
+
+    plan = {
+        "target_root": str(candidate),
+        "unmanaged": [],
+        "entries": [
+            {"kind": "copy", "source": str(fresh_source),
+             "target": "synthetic/would-write.txt", "state": "would_write"},
+            {"kind": "copy", "source": str(source_dir / "never-read.txt"), "target": attested_rel,
+             "state": "MODIFIED", "rework_attested": True, "declared_rework": attested_rel},
+            {"kind": "copy", "source": str(fresh_source), "target": unexplained_rel,
+             "state": "MODIFIED",
+             "reason": "the target holds bytes this tool would not write, and nothing "
+                       "declares why"},
+        ],
+    }
+
+    with pytest.raises(live.MigrationRefused) as caught:
+        live.apply_plan(plan)
+    message = str(caught.value)
+    assert message.startswith("TARGET_MODIFIED "), message
+    assert "1 of 2" in message, ("the refusal must count the unexplained rows against every "
+                                 "modified row", message)
+    assert repr(unexplained_rel) in message, message
+    assert repr(attested_rel) not in message, ("the message named the attested row, so the "
+                                               "refusal is keyed on the modified list rather "
+                                               "than the unexplained one", message)
+    assert _tree_state(candidate) == before, ("a refusal must fire before the write loop",
+                                              sorted(set(before) ^ set(_tree_state(candidate))))
+    assert not would_write_target.is_file(), ("the would_write row landed despite the refusal",
+                                              str(would_write_target))

@@ -10,9 +10,11 @@ Both clauses are machine-checkable, so this file checks them:
 * research material is data only, no runtime path imports it, and the declared dependencies gain
   no online-collection client.
 
-The planted checker in the second node is what makes the first node's `NOT_CHECKED` assertion
-worth anything: a projection that hard-coded "not checked" would pass the real-tree node and fail
-this one.
+The two nodes read each other: the first runs the repository's own checker over the real tree and
+shows that no pack is left `NOT_CHECKED` there any more, the second plants a synthetic checker into
+a temporary root and shows that a `VALIDATES` / `INVALID` / `UNREADABLE` verdict is only ever the
+checker's own. Both directions are therefore closed -- neither "nothing was checked" nor
+"everything passes" can be hard-coded into the projection.
 """
 from __future__ import annotations
 
@@ -39,31 +41,117 @@ def _tracked(prefix: str | None) -> list[str]:
 
 
 def test_domain_pack_projection_reports_the_disk_and_invents_no_verdict():
-    """登记行 05#L21|design-domain：目录数、逐包资格与合计都由这一次调用现算。
+    """登记行 05#L21|design-domain：仓库自带的校验脚本此刻真的在跑，结论由它给、计数由这次调用现算。
 
-    证明：投影列出的条目恰好等于盘面上的包目录（顺序一致，既不漏也不凭空多）；`counts.packs`
-    等于该长度、`byValidation` 各类相加也等于它；本树的仓库自带校验脚本 *不在*（checker.state
-    为 UNAVAILABLE），因此每一包都必须是 NOT_CHECKED 并带上那句"校验器没跑"的 note——
-    没有一个 VALIDATES 是被顺手填上的；每个条目的身份字段逐字来自该包自己的 manifest，
-    manifest 里没有 `domain` 的条目必须答 null，而不是被默认成任何字符串（v1 包不许假装是 v2）。
-    没证明：任何真实宿主/CI 跑过那份校验器；「13 个领域包资格分别标记」里的"标记"在本树只有
-    NOT_CHECKED 这一格被真正走出，其余三格由下一个节点用植入的校验器证明。
+    证明（六面，全部按本树现读，任一不成立即红）：
+    1 校验器在场且被载入：`checker.state` 为 LOADED、`checker.note` 为 None，而它点名的那个相对
+      路径按模块自己的方式（打包资源根 + `CHECKER_REL`）解析出来确实是一个位于该根之下的真实文件，
+      所以"我用了仓库自带的校验器"不是报表的自我声明。
+    2 已经没有包停在 NOT_CHECKED（`byValidation.get(NOT_CHECKED, 0) == 0`）；与此同时
+      `validationVocabulary` 仍然把 NOT_CHECKED 列在词表里。词表是"这个发射器会说哪四种话"的声明，
+      不是这一次的读数：某一格这次没出现，不等于可以把它从词表里抹掉。
+    3 数目对得上：`counts.packs` == 条目数 == 盘面上的包目录数，`byValidation` 各类相加仍是它。
+    4 结论从不裸奔：每一条 VALIDATES 的 `validationErrorCount` 都是 0，每一条 INVALID/UNREADABLE 的
+      `validationErrorCount` 都 > 0 且 `validationErrors` 非空——没有理由就没有结论，反之亦然。
+    5 一条具名的真实发现：`minigame-design` 是 INVALID，`validationErrorCount` 为 11，第一条点名
+      缺少的 `domain` 属性，其余每条都是 `files.*` 声明缺失（按形状核对，不逐字抄那 11 条串）。
+    6 防漂移：这份随包发布的校验脚本的当前摘要，必须等于 `migration/copies.json`（迁移工具自己写的
+      台账）为它记下的 `sha256_target`。将来有人悄悄改过 shipped 校验器，这里会红，而不是继续报绿。
+    没证明：`VALIDATES` 只是"本仓这些文件的结构对不对"的 E1 结构陈述——不是任何真实宿主跑过一次，
+    不是设计质量判定，不是被接受的领域能力，也不是真人（E4）验收；13 个包里 12 个通过这件事，
+    对这 12 个包设计得好不好没有任何说法。本节点也没有修任何东西：`minigame-design` 的 manifest
+    内容我没动过一个字节，让它继续 INVALID 正是校验器在尽责，把它改好是 owner 的设计工作，
+    不在这里用断言抹平，也不在这里替它补 `domain`。词表里 UNREADABLE 那一格由下一个节点用植入的
+    假包证明——本树现在没有读不到的包，所以这一格在本节点是空的，不是被跳过的。
     """
+    import hashlib
+
     document = dp.build()
     root = dp.packaged_root()
     on_disk = sorted(path.name for path in (root / dp.PACK_ROOT_REL).iterdir() if path.is_dir())
     assert on_disk, "盘面上没有领域包目录，本节点的断言需要按现读重写"
 
     entries = document["packs"]
+    by_validation = document["counts"]["byValidation"]
     assert [entry["directory"] for entry in entries] == on_disk, on_disk
-    assert document["counts"]["packs"] == len(on_disk), document["counts"]
-    assert sum(document["counts"]["byValidation"].values()) == len(on_disk)
-    assert document["checker"]["state"] == "UNAVAILABLE", document["checker"]
-    assert document["counts"]["byValidation"][dp.VALIDATES] == 0, document["counts"]
-    assert all(entry["validation"] == dp.NOT_CHECKED for entry in entries), entries[:2]
-    assert all("checker" in (entry["note"] or "") for entry in entries), entries[:2]
-    assert document["validationVocabulary"] == ["VALIDATES", "INVALID", "UNREADABLE",
-                                                "NOT_CHECKED"]
+
+    # (1) the checker the report says it used is a real file under the root it resolved
+    checker = document["checker"]
+    assert checker["path"] == dp.CHECKER_REL.as_posix(), checker
+    assert checker["state"] == "LOADED", checker
+    assert checker["note"] is None, checker
+    shipped_checker = root / dp.CHECKER_REL
+    assert shipped_checker.is_file(), \
+        f"{dp.CHECKER_REL.as_posix()} 并不在打包资源根下，checker.state=LOADED 是空话：{root}"
+    assert shipped_checker.resolve().is_relative_to(root.resolve()), shipped_checker
+
+    # (2) an empty result cell vs a still-declared vocabulary word -- two different things
+    assert by_validation.get(dp.NOT_CHECKED, 0) == 0, \
+        ("校验器已载入（state=LOADED），却仍有包停在 NOT_CHECKED：那条结论不是校验器给的，"
+         "而是投影自己写的", by_validation, checker)
+    assert dp.NOT_CHECKED in document["validationVocabulary"], \
+        ("本树已不再产生 NOT_CHECKED，但发射器仍然必须能说出这一格：词表是能力声明，不是本次读数",
+         document["validationVocabulary"])
+    assert document["validationVocabulary"] == ["VALIDATES", "INVALID", "UNREADABLE", "NOT_CHECKED"]
+
+    # (3) every number in the report is this call's count of the disk
+    assert document["counts"]["packs"] == len(entries) == len(on_disk), \
+        (document["counts"], len(entries), len(on_disk))
+    assert sorted(by_validation) == sorted(dp.VALIDATION_STATES), by_validation
+    assert sum(by_validation.values()) == len(on_disk), (by_validation, len(on_disk))
+
+    # (4) a verdict is never delivered without its reason, and never with an invented one
+    assert all(entry["validation"] in dp.VALIDATION_STATES for entry in entries), \
+        [(entry["directory"], entry["validation"]) for entry in entries]
+    passed_with_errors = [entry["directory"] for entry in entries
+                          if entry["validation"] == dp.VALIDATES
+                          and entry["validationErrorCount"] != 0]
+    assert passed_with_errors == [], ("报成 VALIDATES 却带着非零错误计数", passed_with_errors)
+    verdict_without_reason = [entry["directory"] for entry in entries
+                              if entry["validation"] in (dp.INVALID, dp.UNREADABLE)
+                              and not (entry["validationErrorCount"] > 0
+                                       and entry["validationErrors"])]
+    assert verdict_without_reason == [], ("给了否定结论却没有校验器自己那句理由的包", verdict_without_reason)
+
+    # (5) the one real finding on this tree, named, with the checker's own reasons
+    rejected = [entry for entry in entries if entry["validation"] == dp.INVALID]
+    assert [entry["directory"] for entry in rejected] == ["minigame-design"], \
+        ("本树应当只有 minigame-design 被仓库自带的校验脚本拒掉",
+         [entry["directory"] for entry in rejected])
+    pack = rejected[0]
+    assert pack["packId"] == "minigame-design", pack
+    assert pack["manifestSchemaVersion"] == "workflow/domain-pack/v1", pack
+    assert pack["validationErrorCount"] == 11, \
+        ("校验器给 minigame-design 的错误条数变了：本条按现读改写，别把它凑回 11",
+         pack["validationErrorCount"], pack["validationErrors"][:1])
+    assert pack["validationErrorCount"] <= dp.MAX_ERRORS, \
+        ("条数已超出投影的列举上限，下面的完整性判断不再成立，需按现读改写",
+         pack["validationErrorCount"], dp.MAX_ERRORS)
+    assert len(pack["validationErrors"]) == pack["validationErrorCount"], \
+        ("列出的就该是全部理由，而不是被截断的前段", pack["validationErrors"])
+    assert pack["note"] is None, ("条数未超上限却带上了截断说明", pack["note"])
+    first, rest = pack["validationErrors"][0], pack["validationErrors"][1:]
+    assert "'domain'" in first and "required" in first.lower(), \
+        ("第一条应当点名 v1 清单缺少的那个 domain 属性", first)
+    pattern = r"manifest missing files\.[a-z0-9_]+ declaration"
+    undeclared_files = [error for error in rest if not re.fullmatch(pattern, error)]
+    assert undeclared_files == [], ("其余每条都该是缺一个 files.* 声明", undeclared_files[:3])
+    assert len(rest) == pack["validationErrorCount"] - 1, len(rest)
+
+    # (6) the shipped validator is still the bytes the migration ledger recorded for it
+    ledger = json.loads((TARGET_ROOT / "migration" / "copies.json").read_text(encoding="utf-8"))
+    checker_tail = dp.CHECKER_REL.as_posix()
+    records = [record for group in ledger["copies"] for record in (group.get("records") or [])
+               if record["target"].replace("\\", "/").endswith(checker_tail)]
+    assert len(records) == 1, ("迁移台账里这条校验脚本的记录必须唯一",
+                               [record["target"] for record in records])
+    record = records[0]
+    assert record["sha256_source"] == record["sha256_target"], \
+        ("台账自己就没记下逐字节复制，之后的摘要比较就不再证明任何东西", record)
+    current_digest = hashlib.sha256(shipped_checker.read_bytes()).hexdigest()
+    assert current_digest == record["sha256_target"], \
+        ("随包发布的校验器已被改动：上面每一条 VALIDATES 都是按这份新字节说的，"
+         "而台账记录的仍是迁移时那一份", checker_tail, current_digest, record["sha256_target"])
 
     for entry in entries:
         manifest_path = root / dp.PACK_ROOT_REL / entry["directory"] / "manifest.json"
@@ -75,10 +163,9 @@ def test_domain_pack_projection_reports_the_disk_and_invents_no_verdict():
             declared = manifest.get(field)
             assert entry[key] == (declared if isinstance(declared, str) and declared else None), \
                 (entry["directory"], field, declared, entry[key])
-    defaulted = [entry["directory"] for entry in entries
-                 if not (root / dp.PACK_ROOT_REL / entry["directory"] / "manifest.json").is_file()]
-    assert all((entry["packId"], entry["domain"]) == (None, None)
-               for entry in entries if entry["directory"] in defaulted), defaulted
+    undeclared_domain = [entry["directory"] for entry in entries if entry["domain"] is None]
+    assert undeclared_domain == ["minigame-design"], \
+        ("清单没声明 domain 的包必须答 null，不许被默认成任何字符串（v1 不许假装是 v2）", undeclared_domain)
 
 
 def test_the_pack_verdict_is_the_checkers_and_an_unreadable_pack_is_never_dropped(tmp_path):

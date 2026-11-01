@@ -184,6 +184,17 @@ FILE_COPIES = [
     (DESIGN_SOURCE_ROOT, "vendor/sources.revisions.json", "vendor/sources.revisions.json"),
     (DESIGN_SOURCE_ROOT, "research/candidates/CANDIDATE-TAXONOMY.json",
      "research/candidates/CANDIDATE-TAXONOMY.json"),
+
+    # The domain-pack read path declares its checker and then reports every pack as
+    # NOT_CHECKED, because the checker it names is not in this tree. That is the shape
+    # of a claim with no producer behind it: `checker.state=UNAVAILABLE` makes
+    # NOT_CHECKED permanent, so no pack can ever disagree with the projection. The
+    # source repo has the script (110 lines, MIT, imports only stdlib + jsonschema,
+    # which pyproject already declares a hard dependency); copying it byte-for-byte
+    # onto the path `_load_checker` probes makes the verdict real without this repo
+    # writing its own second copy of the rules.
+    (DESIGN_SOURCE_ROOT, "design-lab/scripts/verify_domain_pack_v2.py",
+     "domains/design/design_lab/resources/repo/design-lab/scripts/verify_domain_pack_v2.py"),
 ]
 
 # (target file, old fragment, new fragment, reason) -- exact-substring patches.
@@ -1041,16 +1052,33 @@ def apply_plan(plan: dict, *, allow_modified: bool = False,
     if refused:
         raise MigrationRefused(refused[0]["reason"])
     modified = [row for row in plan["entries"] if row["state"] == "MODIFIED"]
-    if modified and not allow_modified:
+    #: A declared rework whose bytes still match its attestation is a repair this
+    # run must not redo: the plan already proved the on-disk digest equals the
+    # recorded one, so writing "source + declared patch" over it would put an
+    # older truth back into the candidate. --allow-modified keeps its old meaning
+    # (the source really is newer, overwrite everything). Refusing attested files
+    # made --apply unsatisfiable through the very remedy its own message names.
+    unexplained = [row for row in modified if not row.get("rework_attested")]
+    if unexplained and not allow_modified:
         raise MigrationRefused(
-            "TARGET_MODIFIED " + repr(len(modified)) + " managed file(s) hold bytes this tool would "
-            "not write, for example " + repr(modified[0]["target"]) + ". Re-running the copy would "
-            "undo repairs already present in the candidate; name them first, or pass "
-            "--allow-modified when the source really is the newer truth.")
+            "TARGET_MODIFIED " + repr(len(unexplained)) + " of " + repr(len(modified))
+            + " modified file(s) hold bytes this tool would overwrite with nothing "
+            + "attesting why, for example " + repr(unexplained[0]["target"])
+            + ". Re-running the copy would undo repairs already present in the "
+            + "candidate; attest each one in DECLARED_REWORK (digest, size, diff "
+            + "lines, reason), or pass --allow-modified when the source really is "
+            + "the newer truth.")
     root = Path(plan["target_root"])
     written = []
+    skipped_attested = 0
     for row in plan["entries"]:
         if row["state"] not in ("would_write", "MODIFIED"):
+            continue
+        if (row["state"] == "MODIFIED" and row.get("rework_attested")
+                and not allow_modified):
+            # the attestation is the evidence that these bytes are intended, so
+            # this run leaves them alone rather than rebuilding them from the source
+            skipped_attested += 1
             continue
         payload = expected_bytes(Path(row["source"]), row["target"])
         target = root / PurePosixPath(row["target"]).as_posix()
@@ -1083,7 +1111,11 @@ def apply_plan(plan: dict, *, allow_modified: bool = False,
                 pass
             raise
         written.append({"target": row["target"], "sha256_target": sha256_bytes(payload)})
-    return {"written": len(written), "modified_overwritten": len(modified),
+    #: counted, not assumed: the caller's receipt asks how many managed files this run
+    # actually replaced, and after an attested skip that is not len(modified).
+    return {"written": len(written),
+            "modified_overwritten": len(modified) - skipped_attested,
+            "modified_skipped_as_attested": skipped_attested,
             "unmanaged_left_in_place": len(plan["unmanaged"])}
 
 
