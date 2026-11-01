@@ -1312,3 +1312,52 @@ J-a（workbench 的 `build/main.js` 无法重建：`vite` 的传递依赖 `picom
 真实宿主写入与读回、模型推理、真实私有数据迁移、STITCH 前端、真人专业验收签字，
 以及 `L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的真实宿主探测，
 判定都由 `config/blocker-register.json` 现数给出，不由本仓自证。
+### 15.19 把跨库那一跳搬进产品自己的一致性报告（I-b）
+
+§15.17 之前，`05#L8|issues` 的缺口句写的是事实：断裂检测只住在测试谓词里，产品的
+`integrity_report()` 对 attempts 那一圈只问 `task_id` 存不存在，`pack_plan_id` 从不与计划行对照，
+而计划行住在另一座库里。本轮把这一格搬进产品，并按「不加第二座账本、不复制数据」的做法接线。
+
+**一、产品侧**：`backend/core/unified_store.py` 的 `integrity_report()` 增加一个可选的
+`plan_reader`（`plan_id -> 行 | None`）。给了读面就逐条把 `attempts.pack_plan_id` 与
+`action_plans` 对照，落空即报 `ATTEMPT_ORPHAN_PACK_PLAN`，detail 里带上那条尝试 id 与那个包 id；
+没绑定包的尝试（`pack_plan_id` 为空）不算断链——「还没有包」与「包不见了」是两件事。
+`backend/v1.py` 的 `_v1_integrity` 把 `self.work.read_record` 交给它：这条链跨两座库，
+而一个进程本来就同时持有两个读面，所以由它注入，而不是把计划行复制进统一账本，
+也不是让统一账本去开别人的库。
+
+**二、"没查"不能长得像"查过且干净"**：报表新增两格 `counts.attempts_with_pack_plan`（这一轮真的
+比对了多少跳）与 `counts.pack_plan_check`（`RUN` / `NOT_RUN`）。不带读面直接调用同一个方法时它答
+`NOT_RUN`，于是"problems 为空"再也不能被读成链是好的。这条是本轮最容易自欺的地方，所以断言写成了
+两侧：给读面 → 点名；不给读面 → 自报未查。
+
+**三、测试侧改了什么，以及为什么不算降标准**：两条本来就自己标注「需按现读重写」的缺陷断言按新事实
+改写——`test_issue_chain_broken_link_is_misattributed_rather_than_named` 现在断言路由级报表点名那
+个幽灵包（`pack_plan_check` 为 RUN、只有一跳被点名、且 detail 含包 id），并断言同一方法不给读面时
+自报 NOT_RUN；②那个「B 的尝试指向 A 家真实存在的包」的分支，仍然不是断链，报表也不许把它报成断链，
+所以那里的沉默断言换成了「这一跳查了且没有孤儿」。另有三处把 `counts` 按精确键集合钉住的旧断言
+（`test_v03_work_loop.py` 的审计入口、`test_v12_data_migration.py` 的迁移保全、
+`test_v18_tools_connections.py` 的两处）补上了新增的两格：补的是真出现实字段，不是把断言放宽。
+迁移那条还顺带变强了——它以前只断言「报表没有意见」，现在必须把 work 库读面交进去，
+逐条证明迁移过来的每一条包绑定都真的能解析。
+
+**四、判定变化**：`05#L8|issues` 由 PARTIAL 改为 IMPLEMENTED_VERIFIED，缺口句换成限制句，
+点名仍然没修的那两处：`backend/v1.py` 的 `read_record` 落空即 `pack = {}`，
+加 `domains/work/workflow_core/repair_verification.py` 的 not-bound 分支，使判定把「包行读不到」
+说成「the pack bound no fingerprint to re-check」——那是把缺行说成没绑指纹，仍是一个会误导人的
+理由，由上面那个节点按事实钉住并要求修复。能力族直方图随之变为 {"IMPLEMENTED_VERIFIED": 17, "PARTIAL": 10, "IMPLEMENTED_UNVERIFIED": 3}（现数）。
+
+**五、本轮实测**（收据 `4d91af7ab710eafa`，绑定提交 `bcc877c035`；此后变化的只有本节文字与登记表本身）：
+套件 `456 passed, 3 subtests passed in 724.99s (0:12:04)`（exit 0），逐类别 passed 456，与本机 collect-only 的 456 项一致；
+与上一个实测提交相比新增测试节点 0 个、删除 0 个——本轮没有新节点，
+所有断言都加在既有节点内部，这一句是用两个独立算法对出来的，不是自述。
+验收门 REFUSED（exit 1），blocking ["L10#0"]，disclosed ["A00#1", "L00#2", "L20#0"]；
+任务验收登记 {"CONFIRMED": 41, "PARTIAL": 2, "BLOCKED_BY_BOUNDARY": 2, "DEFERRED_P3": 3}；迁移计划 identical 1109 / EOL_ONLY 2 /
+MODIFIED 17（17 份有声明与回执、unmanaged 0）。
+
+**六、仍然没做的**：`I-d` 的另一半（覆盖登记里 `docs/CODEX-AUDIT-ENTRY.md:行号` 这类文档锚点换成
+可 grep 的小节锚——本轮已经把 python 锚点全部改成按符号现推，文档锚点仍是行号）；
+`J-a`（`apps/workbench` 的 bundle 无法重建，`picomatch` 缺失，两个读 bundle 的 JS 闸门仍在旧字节上）；
+以及判定理由那两处的修复。真实宿主写入与读回、模型推理、真实私有数据迁移、STITCH 前端、
+真人专业验收签字、`L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的真实宿主探测
+仍按边界记 NOT_RUN/BLOCKED/DEFERRED，不由本仓自证。
