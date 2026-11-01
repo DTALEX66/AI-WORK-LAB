@@ -1602,3 +1602,106 @@ schema，不是宿主跑过、不是设计质量判定、不是被接受的领�
 6. 「数字段由 `scripts/check_project_current.py --print-block` 现算并写回文档」——`--print-block`
    只打印，"写回"当时仍是人工粘贴。本轮新增 `--write-block`：只替换两个标记之间的内容、读数没变时
    报 `UNCHANGED` 且零字节写入、标记缺失时报 `REFUSED` 且不写。现在这句话才真正成立。
+
+### 15.24 owner 的新规则被落成字节、落成登记、落成一次可伪证的独立性实测（S + T + U + V + Q）
+
+**一、这一轮的输入是一句规则，不是一份任务包。** owner 2026-11-01 原话：
+「缓存和构建不要  任务和规划还有各类权威索引按照10月份最新的来置顶到顶层，其他内容都是按照历史记录和文档等归档到本项目仓库里」，
+随后追加「截图照片去掉」，再在目标里补了「注意及时清理项目体积和治理仓库规范化」。
+这四句被落成四条可执行判据，每条都有现算的落地证据，下面不写"应该"，只写量到的数。
+
+**二、置顶区（S）。** 根级新建 `AUTHORITY-INDEX.md`：23 条，覆盖两仓 2026-10 当时各自的
+顶层权威、机器权威索引、派工入口、任务定义原件、活账本、定态登记、路线图、产品定义、资料索引与续接件。
+原件逐字节进 `docs/authority-202610/`，字节合计 2,116,859。"最新"的判定强度分档记在表里：
+最强的那条是台账 `currentExecution.source.sha256` 与置顶件实测摘要逐字符相同（可伪证），
+其次是权威正文自名的 ID 与日期节，最弱的是文件名日期；mtime 一律不作依据。
+检查器新增 `PROMOTED_FILE_MISSING / PROMOTED_DIGEST_STALE / PROMOTED_BYTES_STALE`：
+表里每一条原件都会被重新读盘算摘要，**表一烂就红**——一张摘要过期的权威清单比没有清单更坏，
+因为它看起来像证据。两处判定不到位的主题（两仓的能力索引）在索引里被写成"未能判定"并说明缺什么，
+没有为了凑齐条目而假装选出来了。
+
+**三、历史区（T）与"字节真的进来了"。** 按规则把来源内容复制进 `docs/history/sources-20261101/`，
+逐条去向写在同目录 `MANIFEST.csv`（7108 行，等于两仓登记行的全集）：
+COPIED 5100 / DUPLICATED 300 / LINKED_IN_REPO 1108 / LINKED_ARCHIVE 85 / EXCLUDED_BY_OWNER_RULE 515 / FAILED 0。两处"以为搬了其实没搬"是复验才抓到的，不是自报的：
+- 0 行原判"本仓已持有"，依据是台账记过这个 SHA，但那列是 `sha256_source`——
+  修复**前**的摘要；本仓实际拿的是改后版本，原始字节只在来源仓。这类行一旦漏掉，删仓就真没了。
+- 123 个 260 字符以上长路径文件首轮"已写入并复验"是假的：普通写入与遍历对长路径都失明。
+  现改用 `\\?\` 前缀写入，并把校验从"摘要集合比对"改成**逐行读回落盘比对**（row-by-row 失败 0）。
+- 另有 73 个原件（含两仓 `.project/governance/` 下的权威索引）被通用 `.gitignore` 的 `.project/`
+  吞掉，`git` 根本看不见——那不是"不要"，是丢失。在归档区内定点放行后暂存数从 5152 变 5225。
+
+**四、截图与照片（owner 追加）。** 123 张位图、64,092,364 字节移出 Git。
+**没有删字节**：这 123 个摘要在统一归档里 0 命中，来源仓又待删，直接删文件会把"不要进仓"
+变成"这东西不存在了"；所以连名带摘要搬进 `.project-local/removed-raster-20261101/`，
+移动后逐个现算摘要与登记比对，123/123 相同、失败 0、隔离区实收字节与登记逐字相符。
+`38` 个 SVG 是合规稿与图形、不是照片，暂留仓内。字体是另一类：本轮按位图同一口径把 2 个字体二进制（16.5 MB）移出 Git——字节没删，搬进 `.project-local\removed-fonts-20261101`，移动前后各现算一次摘要与台账比对；覆盖登记里恰好这两行从 ARCHIVED_IN_REPO 改为 EXCLUDED_BY_OWNER_RULE，其余行的处置一字未动。5 个任务包 ZIP 留下——`任务` 原件正是规则要置顶与归档的东西，不是素材。
+
+**五、独立性：测了，而且先否掉自己一次错测，然后测了第二次。** 第一版模拟用 `git archive` 搭树，报出 84 个问题——
+**那个数字不能信**：那份树没有 `.git`，而许多节点要调 git。重做成受控对照：两份同源克隆，
+唯一变量是把 `WORK-LAB`/`DESIGN-LAB` 绝对路径改指到不存在的位置。
+上一轮（head `2477d7b`）的 delta 是 15 个节点；本轮在同一份代码上重测：
+control（来源仓还在）`55 failed, 433 passed, 2 skipped, 10 errors, 3 subtests passed in 454.65s (0:07:34)`，问题 65 个；
+treatment `57 failed, 431 passed, 2 skipped, 10 errors, 3 subtests passed in 435.10s (0:07:15)`，问题 67 个；**delta 现在 2 个节点**，
+且没有任何节点反向变绿。delta 少掉的 13 个里，12 个的根因是共享 fixture `work_project` 把项目根指到宿主机 WORK-LAB：改指仓内 `tests/fixtures/live-work-root/`（内含一个存在但一执行就返回 2 的 gate 桩），F07 的断言强度不变，复验 13 passed。分类失真的根因也写进守卫：PREREQ 只扫测试文件自身文本，看不见 conftest 里的依赖，所以新增“共享 fixture 的项目根必须落在仓库之内”这条断言。
+本轮新留下的 2 个逐个点名：`test_backend_boots_twice_and_recovers_the_orphan`、`test_design_task_definition_pointers_match_their_bytes`。它们属于另一类，不该和上面那个数字混为一谈：
+所在文件本身就写着来源路径，`test_v23` 已把它们如实归为 machine-bound；
+还有一类要单独说清，就是 `test_the_audit_state_check_fails_on_a_stale_census`：它当时红的原因不是
+"缺来源仓"，而是 `scripts/build_audit_state.py` 的 `git()` 在不存在的 cwd 上抛 `NotADirectoryError(WinError 267)`
+**崩溃**而不是给出具名结论——与之前修过的 `build_source_coverage` 同一类缺陷，本轮一并修成具名缺失，
+并把那个节点改成自带对照（同一棵树现生成的记录必须 rc=0，植入陈旧 census 必须 rc=1），
+否则它在一台没有来源仓的机器上会"因为错误的原因变绿"（这一段记的是上一轮的修法，
+本轮在 delta 从 15 降到 2 的差值里复核它仍然成立，而不是重新声称一次）。
+另一件必须写下来的事实，不是本轮引入的：**全新克隆跑不了全量套件**（control 的 65 个问题就是它），
+本仓的机制是让这部分点名"未在本机测量"，`test_v23` 只担保"机器无关的那一部分"在克隆里绿。
+
+**六、登记追上字节（U）。** 字节进仓之后，权威登记还说不出这件事——这是"真实状态领先于登记"，
+同样是不闭环。`build_source_coverage.py` 的处置词表新增三类并由 MANIFEST 现算驱动：ARCHIVED_IN_REPO 5400 行、ARCHIVED_ELSEWHERE_LINKED 85 行、EXCLUDED_BY_OWNER_RULE 515 行；两仓行数仍是 2638 / 4470（规则只改行内处置，不删行不并行），`--check` 的 drifted 为空，`migrate_sources --plan` 的 unmanaged 为 0。登记词表与实际行值的差集必须为 0 这条守卫同时被伪证过一次：塞进一个不存在的处置，它报红的原话是：见 tests/unified/test_v14_registers.py 的反例节点
+
+**七、体积与规范化（V）——先给数，再决定动不动。** 对象库 `size-pack` 为 170.33 MiB；跟踪 7112 个文件、工作树合计 327,022,335。>5 MB 的跟踪件按磁盘现算有 4 个，逐个点名：docs/history/archive-objects-20261101/by-sha/079055c2ef704e0951bae2e4072379b90（31.5 MB）、docs/history/archive-objects-20261101/by-sha/31c82d8bbaf0055a3d15c1039f1474c4a（24.0 MB）、docs/history/archive-objects-20261101/by-sha/26b70a2dc4ad2cdca866f4ba84076317b（6.4 MB）、docs/history/sources-20261101/work/docs/history/owner-inputs/record-20261009/W（5.8 MB）。缓存/依赖/构建产物在跟踪清单里 0 个（node_modules、dist、__pycache__、.venv、build、*.pyc 逐个匹配），跟踪的位图 0 个（owner「截图照片去掉」，由闭环审计的跟踪位图探针守着），字体二进制 2 个 / 16.5 MB 本轮移出 Git——字节进 .project-local\removed-fonts-20261101，移动前后各现算一次摘要与台账比对。已从工作树删除的位图里只有 87 个对象在历史中可达、合计 16.9 MB——其余在复制完成后、提交前就被修复轮替换，从未进入任何提交。**所以重建未推送历史最多收回全库的约 16%**，真正的大头是归档区文本与 owner 输入包；据此本轮只移走位图与字体，保留任务包 ZIP、来源证据原件与两份大 JSON/HTML（它们是规则要归档的“历史记录与文档”，不是缓存），不改写历史。
+
+**七之一、"绿"不等于"覆盖还在"，这条是被自己的事故逼出来的。** 本轮重建
+`tests/unified/test_v29_top_level_entry.py` 时按错误的下标切了文件，12 个节点只剩 3 个，
+**而 pytest 报通过** —— 活下来的三个都是绿的。发现它的不是套件，是 `git diff --stat`。
+因此新增 `scripts/build_test_census.py` + `tests/node-census.json`：按文件钉住声明的
+`def test_` 数，区分"新增文件 / 变少 / 变多 / 文件消失"，其中**只有"变少"需要显式 `--allow`
+才允许写回**，拒绝时清单保持原样。范围限定在 `tests/`：历史归档区里那些字节保真的他人测试副本
+不参与，否则任何无关编辑都会把清单弄脏，而它要守的是我们自己这套套件的覆盖面。
+现值：34 个测试文件 / 494 个声明节点（unified 324、legacy 170），清单与磁盘现算相符（--check rc=0 由闭环审计的一条闸门守着）。
+
+**七之二、我写的闭环审计先被判不值，然后瘦身活下来。** 第一版有 11 条自带判定的检查，
+其中 7 条重新实现了已经有主的守卫，并且**错了两处、两次都赖给仓库**：把索引表的分隔行当成一个
+置顶原件；去读阻断登记里根本不存在的 `blocking` 字段（计数在 `counts` 里）。处理办法不是删文件，
+是删掉那 8 条重复检查，只留三条没有任何别的东西覆盖的：位图是否仍在跟踪（「截图照片去掉」的直接后验）、
+来源根缺失时那个探针是回答还是崩（「删掉来源仓还站不站得住」的核心一问）、
+以及收据描述的到底是不是它被读到时的那个提交。
+再加一条自我约束：调用方用法错（argparse 退 2）报 `INSTRUMENT_ERROR`，不许伪装成仓库 FAIL ——
+第一版就因为把一个标志字符串 splat 成单个字符，让 8 条闸门"同时失败"，
+看着像 8 处回归，其实是仪表坏了。当前读数：`CLOSED`：11 条判定，{"PASS": 11, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}。
+
+**七之三、词表为什么是新加一组列，而不是改写既有的 `class`。** 这条区别决定了指向未决事项的
+队列还在不在。覆盖登记新加的是第三组列 archive_disposition / archive_target / archive_evidence，既有的 class 与 disposition 一字未动（rows_changed 全 0、drifted 空）。为什么不让它覆盖 class：一覆盖，32 行 OWNER_DECISION_PENDING 就没了，config/blocker-register.json 的 L10#0 owner 队列随之消失，1132 行 COPIED_* 的摘要验证事实也被抹掉——那是拿登记口径掩盖未决事项。现在的分布是 ALREADY_IN_REPO_LINKED 1108, ARCHIVED_ELSEWHERE_LINKED 85, ARCHIVED_IN_REPO 5400, EXCLUDED_BY_OWNER_RULE 515。
+
+**七之四、仓库规范化与一个我没擅自做的远程动作。** 规范化补了 LICENSE(MIT，依据是来源仓 LICENSE 与本仓自研代码的 SPDX 头一致)、SECURITY.md、CONTRIBUTING.md、docs/LICENSING.md、.editorconfig，并把 LICENSE/SECURITY/CONTRIBUTING 纳入入口守卫；检查器新增 4 个现算键。`main` 分支与带注标签 （HEAD 上无标签） 已在本地建立（分支：integration/local-fusion-20261029 main）。一条未消化的许可事实写进 docs/LICENSING.md：5 个对象的旁注写着 redistributable:false，而远程是 PUBLIC。推送范围 28 个提交、5868 files changed, 4806800 insertions(+), 8674 deletions(-)，把两仓历史原件公开是不可逆动作，因此本轮只完成本地规范化，远程侧留给 owner 选择：先转 PRIVATE 再推、只推代码不推历史区、或全推。
+
+**七之五、第三条探针原先是一段走不到的死代码。** 它当时要求收据点名的提交与 HEAD 严格相等，
+而重绑登记表、渲染本节必然产生被测量提交*之后*的提交——这条子句因此永远停在 PENDING。
+一条永远不会绿的断言，和一条伪造通过的断言一样没用：它教会 reviewers 忽略它。
+按 §15.22 已在用的口径改成"祖先 + 其间只允许文档与生成登记表，逐个点名"。`scripts/audit_objective_closure.py` 此前没有任何测试消费（全仓 grep 只命中它自己的 __pycache__）——一个负责判定“仓库能不能被说成闭环”的脚本没有人守着。补了 6 个节点（`tests/unified/test_v30_closure_audit_probes.py`，节点数取自 census，不是手抄），它们建自己的临时 git 仓库、不读真机收据。第一批节点立刻抓出一个真缺陷：收据判据里提前 return 的 PENDING 没删，祖先+白名单那段是永远走不到的死代码——3 个节点当场红。同一次给判据加了未提交门：审计跑在还有未提交跟踪改动的树上就是 FAIL，逐个点名文件。
+收据之后动过的跟踪文件此刻是：AGENTS.md、PROJECT_CURRENT.md、docs/AUDIT-STATE.json、docs/CODEX-AUDIT-ENTRY.md、migration/audit-item-closure.csv。
+
+**七之六、"把数字回填进入口"这件事以前没有主人。** 入口那段 figures 现在有生成器：`check_project_current.py --write-block` 只替换两个标记之间的内容，键名与数值一律现算；派生值没变时它报 `UNCHANGED` 且一个字节都不写，标记缺任何一个时报 `REFUSED` 且不写。这三条各有节点守着（v29 现在 17 个节点，取自 census）。写幂等这条不是洁癖：生成器每次刷新都重戳一遍，等于让“刷新文档”这件事本身移动跟踪字节，而跟踪字节一动，刚取的收据就不再描述它被读到的那棵树。
+本轮字体出仓后，`--check` 立刻报出 6 条 `FIGURE_STALE`（`archived_excluded_cache_and_build`
+513→515、`archived_objects_copied` 5102→5100、`lf_tracked_files` 701→702、
+`spdx_claimed_files` 222→223、`suite_test_files` 33→34、`suite_test_nodes` 485→491）——
+守卫是对的，缺的是补数字的合法通道；现在这条通道就是上面那个写模式，它的三条性质各有节点盯着。
+
+**八、这一轮结束时真正成立/不成立什么。** 成立：全量套件 `499 passed, 1 deselected, 3 subtests passed in 822.30s (0:13:42)`（exit 0）绑在收据 1467eeaea846ac08 上、`measurement_integrity` 的跟踪字节漂移为空；闭环审计 11 条判定里 {"PASS": 11, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}；顶层入口检查器 PASS、40 个现算数字全部相等；守卫复跑 `21 passed in 6.72s`；验收门仍 REFUSED，blocking 只有 ['L10#0']（owner 决定队列，本轮没有改软）；真实宿主往返、模型推理、真实私有数据迁移、真人专业签字继续 NOT_RUN。
+
+**九、本节怎么重放，以及重放不了的那部分。** 上面每个数都来自磁盘现算，取数器是
+`.project-local/edits-20261101/render_section_1524.py`（把 `independence-20261102.json` 的名字作为
+参数传入；缺产物、缺占位符、字节列不数字、权威表读空、覆盖登记某列为空、收据不干净、入口闸门不
+PASS——任何一种情况它都 `return` 非零且不写文档）。它在 `selftest_render_1524.py` 下可以用桩替代
+四个重活（套件、闸门、审计、迁移计划），8 秒内把整段模板走一遍：本轮两次崩溃（Markdown 分隔行、
+census 的节点数是 dict 不是 int）都是这套桩先抓到的，而不是等 14 分钟的全量跑完。**这两个文件在
+`.project-local/` 里，不随克隆走**——克隆里拿不到的是"这台机器测过"这件事本身，不是结论的算法；
+要在新机器上重放，需要重跑收据生产器与受控对照，产物路径在本节已逐个点名。
