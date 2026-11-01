@@ -389,20 +389,21 @@ def test_a_migrated_rir_sample_passes_the_contract_with_a_raster_node():
     from pathlib import PurePosixPath
 
     ledger = json.loads((TARGET_ROOT / "migration" / "copies.json").read_text(encoding="utf-8"))
-
-    def repo_relative(target: str) -> str:
-        normalized = target.replace("\\", "/")
-        root = TARGET_ROOT.as_posix().rstrip("/") + "/"
-        return normalized[len(root):] if normalized.startswith(root) else normalized
-
-    recorded = {repo_relative(record["target"]): record
-                for group in ledger["copies"] for record in (group.get("records") or [])}
     for relative in (RIR_SAMPLE, FLAT_PNG):
-        assert relative in recorded, (relative, sorted(recorded)[:3])
+        # 台账记的是复制那台机器上的绝对目标路径，一份克隆的根不一样，所以按结尾取这一条，
+        # 并要求它唯一——同一个夹具留下两条记录时，「逐字节迁入」就重新变成了含糊话。
+        records = [record for group in ledger["copies"]
+                   for record in (group.get("records") or [])
+                   if record["target"].replace("\\", "/").endswith("/" + relative)]
+        assert len(records) == 1, ("迁移台账里这份夹具的记录必须唯一",
+                                   relative, [record["target"] for record in records])
+        record = records[0]
+        assert record["sha256_source"] == record["sha256_target"], \
+            ("台账自己就没记下逐字节复制，之后的摘要比较就不再证明任何东西", relative, record)
         on_disk = hashlib.sha256((TARGET_ROOT / relative).read_bytes()).hexdigest()
-        assert on_disk == recorded[relative]["sha256_target"], (
+        assert on_disk == record["sha256_target"], (
             "迁入字节已被改动，之后每条按它下的结论都要重算", relative, on_disk,
-            recorded[relative]["sha256_target"])
+            record["sha256_target"])
 
     document = _sample()
     contracts.validate_rir(document, project_root=TARGET_ROOT)
