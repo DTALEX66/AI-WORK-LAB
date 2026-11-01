@@ -26,8 +26,10 @@ therefore says something a clone can actually check:
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import importlib.util
+import io
 import json
 import re
 import sqlite3
@@ -321,17 +323,61 @@ def test_the_audit_state_record_is_not_staler_than_the_tree_it_describes():
             compared, sorted(folded))
 
 
-def test_the_audit_state_check_fails_on_a_stale_census(tmp_path, monkeypatch):
-    """The folded comparison still has to be able to say "this record is old"."""
+def test_the_audit_state_check_fails_on_a_stale_census(tmp_path):
+    """The folded comparison still has to be able to say "this record is old".
+
+    Machine-independent by construction: the record under test is *generated here*, on this
+    machine, from this tree, so the two sides of the first assertion differ only by what the
+    test plants. Reading the published ``docs/AUDIT-STATE.json`` as the baseline did not do
+    that -- on a machine that no longer has the two read-only source repositories the check
+    fails because of the absent source roots, and the "stale census" node then passed (or
+    failed) for a reason it never tested. Measured that way: this node was one of the 15 in
+    ``.project-local/runs/independence-20261101.json`` whose verdict moved when only the
+    source paths were redirected.
+
+    Both halves are required: rc=0 on the freshly generated record pins the control, and rc=1
+    after the plant pins the sensitivity. Without the control, rc=1 proves nothing.
+
+    This file stays machine-bound for a different, honest reason: the record it re-derives
+    includes `upload_facts`, whose pre-push hook is not in Git. A bare clone therefore fails
+    the *control* half with ``stale_sections: ["upload_facts"]`` -- a named cause, not a green
+    run -- and the node is excluded from the clone suite by ``test_v23`` rather than softened.
+    """
     module = _audit_state_builder()
-    stale = json.loads(module.OUT.read_text(encoding="utf-8"))
-    census = stale["registers"]
+    fresh = module.merge(json.loads(module.OUT.read_text(encoding="utf-8")),
+                         module.live_fields(None))
+    census = fresh["registers"]
     assert census, "no register census in the record to falsify"
-    first = sorted(census)[0]
-    census[first]["rows"] += 1
-    destination = tmp_path / "AUDIT-STATE.json"
-    destination.write_text(json.dumps(stale, ensure_ascii=False, indent=2) + "\n",
-                           encoding="utf-8", newline="\n")
-    monkeypatch.setattr(module, "OUT", destination)
-    assert module.main([sys.argv[0], "--check"]) == 1, (
+    plantable = [name for name, record in sorted(census.items())
+                 if isinstance(record.get("rows"), int)]
+    assert plantable, (
+        "the census holds no integer row count, so a stale census cannot be planted here: "
+        "this node would silently lose its ability to fail -- %s" % census)
+
+    def run_check(report_path: Path) -> tuple[int, dict]:
+        module.OUT = report_path
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            rc = module.main([sys.argv[0], "--check"])
+        return rc, json.loads(buffer.getvalue().strip().splitlines()[-1])
+
+    control = tmp_path / "AUDIT-STATE-fresh.json"
+    control.write_text(json.dumps(fresh, ensure_ascii=False, indent=2) + "\n",
+                       encoding="utf-8", newline="\n")
+    rc, report = run_check(control)
+    assert rc == 0 and report["matches"] is True and report["stale_sections"] == [], (
+        "the check does not accept a record generated from this very tree; its rc=1 below "
+        "would be caused by the machine, not by the planted staleness: %s" % report)
+
+    stale = json.loads(control.read_text(encoding="utf-8"))
+    stale["registers"][plantable[0]]["rows"] += 1
+    mutated = tmp_path / "AUDIT-STATE-stale.json"
+    mutated.write_text(json.dumps(stale, ensure_ascii=False, indent=2) + "\n",
+                       encoding="utf-8", newline="\n")
+    rc, report = run_check(mutated)
+    assert rc == 1, (
         "a record whose register census no longer matches the tree passed its own check")
+    assert report["stale"] is True and report["matches"] is False, report
+    assert report["stale_sections"] == ["registers"], (
+        "the check failed, but not for the census this test planted: %s" % report)
+
