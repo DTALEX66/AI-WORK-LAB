@@ -1398,3 +1398,42 @@ not-bound 分支把缺行说成没绑指纹）本轮未动，仍由 §15.19 点�
 真实宿主写入与读回、模型推理、真实私有数据迁移、STITCH 前端、真人专业验收签字、
 `L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的真实宿主探测继续按边界
 记 NOT_RUN/BLOCKED/DEFERRED。
+### 15.21 判定不再把「包行读不到」说成「没绑指纹」；另有一处我自己的话要收回（K）
+
+**一、产品侧修掉的错位归因**：`backend/v1.py` 的技术判定在 `read_record` 落空时把空 pack 交给投影，
+于是 BLOCKED 的理由写成「the pack bound no fingerprint to re-check」——说的是"这个包没绑定任何指纹"，
+实际发生的是"这个包行不存在"，而且整条判定里那个缺失的包 id 一次都不出现。修法是让唯一同时看过
+两座库的调用方说实话：detail 点名那个包 id，`checks.pack_record_absent` 为真、
+`issue_projection_reread` 为假、`evidence_refs` 为空（一次都没发生的读回不能挂成凭据）。
+投影自己的 not-bound 分支保留原义——那里说的确实是"绑定了空集合"。
+
+**二、跨库那一跳补上归属**：包行存在不等于包行是对的。一致性报表现在除了
+`ATTEMPT_ORPHAN_PACK_PLAN`，还会在该计划行的项目与这条尝试所属任务的项目不一致时报
+`ATTEMPT_PACK_PROJECT_SPLIT`，两边 id 都写进 detail。这正是 §15.19 里 ② 那种形状：
+B 的尝试指向 A 家真实存在的包，旧报表一字不提，因为"解析得到"被当成了"没有问题"。
+还原标识之后同一份报表回到干净，说明结论来自现读而不是历史。
+
+**三、测试侧的形状**：那个先前钉住错误说法的节点改名为
+`test_issue_chain_broken_link_is_named_by_the_verdict`（改名不是修饰：它断言的方向反了——
+从"它现在会撒谎"变成"它不许再撒谎"，旧文本出现即红），登记里对它的引用同步改名并由
+pytest 收集结果复核（`True` 表示旧名字在本树已经搜不到）。
+
+**四、我上一轮写错的一句，这里收回**：§15.19 说迁移保全那条断言"变强了——交出读面后每条迁移包绑定
+都必须解析"。本轮去量的时候发现事实不是那样：迁移夹具的统一库里 **0 条**尝试带 `pack_plan_id`，
+所以那句"变强"描述的是一条永远不会被触发的路径，是空断言穿了强断言的外衣。现在的写法是先把这个
+0 钉住（`attempts_with_pack_plan == 0`、`pack_plan_check == RUN`、两类问题都不许出现），
+并明说规则本身在 `test_v11` 由产品路径检验。真实私有数据迁移仍是 NOT_RUN，
+所以"迁移后的真实数据上这一跳如何"这个问题目前没有答案，也不假装有。
+
+**五、本轮实测**（收据 `5a111778b0b01d70` 绑提交 `6444307d60`；此后变化的只有本节文字与登记表）：
+套件 `457 passed, 3 subtests passed in 756.26s (0:12:36)`（exit 0），逐类别 passed 457，与 collect-only 的 457 项一致，
+节点增减 1/1；验收门 REFUSED（exit 1），blocking ["L10#0"]，
+disclosed ["A00#1", "L00#2", "L20#0"]；能力族直方图 {"IMPLEMENTED_VERIFIED": 17, "PARTIAL": 10, "IMPLEMENTED_UNVERIFIED": 3}；任务验收登记 {"CONFIRMED": 41, "PARTIAL": 2, "BLOCKED_BY_BOUNDARY": 2, "DEFERRED_P3": 3}；
+迁移计划 identical 1109 / EOL_ONLY 2 / MODIFIED 17
+（17 份有声明与回执、unmanaged 0）。
+
+**六、还欠着的**：`J-a`（`vite build` 缺 `picomatch`，bundle 无法重建，两个读 bundle 的 JS 闸门
+仍在 10-29 的旧字节上）；判定写下之后没有补偿动作（跨项目误读产生的 PASS 与据此 COMPLETED 的
+任务留在存储里，报表点名它而不撤销它）；真实宿主写入与读回、模型推理、真实私有数据迁移、
+STITCH 前端、真人专业验收签字、`L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、
+`L20#0` 的真实宿主探测按边界记 NOT_RUN/BLOCKED/DEFERRED。
