@@ -1486,12 +1486,7 @@ schema，不是宿主跑过、不是设计质量判定、不是被接受的领�
 
 **五、隔离安装的证据**：本轮重跑了离线隔离安装与验收：报告 `.project-local/build/offline-20261101T110113Z/verify-report.json`（99018 字节、16 项检查、overall=PASS、blocked=0、failed_required=0，wheel 摘要 7b5a30815d58228a）；在装出来的环境里直接调 `domain_packs.build()` 探一次，checker=LOADED、packs=13、validates=12、invalid=['minigame-design']、NOT_CHECKED=0（探针脚本 .project-local/edits-20261101/probe_installed_packs.py，不是那 16 项已发布检查之一）。
 
-**六、本轮实测**：收据 `ca1d7acb1112a992` 绑提交 `2dfbd09e04`；本节写入时工作树相对那一次提交多出的跟踪改动只有 4 份，全部是文档或生成登记表：`config/isolated-install-verdict.json`、`docs/AUDIT-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md`、`migration/audit-item-closure.csv`。（HEAD 已到 `8645f646ce`。）
-套件 `468 passed, 3 subtests passed in 777.06s (0:12:57)`（exit 0），逐类别 passed 468，与 collect-only 的 468 项一致，
-节点增减 7/0；验收门 REFUSED（exit 1），blocking ["L10#0"]，
-disclosed ["A00#1", "L00#2", "L20#0"]；能力族直方图 {"IMPLEMENTED_VERIFIED": 18, "PARTIAL": 12}；任务验收登记 {"CONFIRMED": 41, "PARTIAL": 2, "BLOCKED_BY_BOUNDARY": 2, "DEFERRED_P3": 3}；
-迁移计划 identical 1110 / EOL_ONLY 2 / MODIFIED 17
-（17 份有声明与回执、unmanaged 0）。
+**六、本轮实测**：收据 `7918805a28de3803` 绑提交 `81ba79e379`；本节写完时工作树相对那一次提交多出的跟踪改动只有 3 份，全部是文档或生成登记表：`docs/AUDIT-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md`、`migration/audit-item-closure.csv`。套件 `468 passed, 3 subtests passed in 761.71s (0:12:41)`（exit 0），逐类别 passed 468，与 collect-only 的 468 项一致，节点增减 7/0；验收门 REFUSED（exit 1），blocking ["L10#0"]，disclosed ["A00#1", "L00#2", "L20#0"]；能力族直方图 {"IMPLEMENTED_VERIFIED": 18, "PARTIAL": 12}；任务验收登记 {"CONFIRMED": 41, "PARTIAL": 2, "BLOCKED_BY_BOUNDARY": 2, "DEFERRED_P3": 3}；迁移计划 identical 1110 / EOL_ONLY 2 / MODIFIED 17（17 份有声明与回执、unmanaged 0）。
 
 **七、还欠着的**：`J-a`（`vite build` 缺 `picomatch`，bundle 无法重建，两个读 bundle 的 JS 闸门仍在
 10-29 的旧字节上）；`minigame-design` 的清单仍是 v1，补齐它是设计工作而不是登记可以替它做的事；判定写下
