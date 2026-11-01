@@ -45,6 +45,8 @@ route_endpoints = 164
 source_rows_design = 4470
 source_rows_total = 7108
 source_rows_work = 2638
+suite_test_files = 33
+suite_test_nodes = 482
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->

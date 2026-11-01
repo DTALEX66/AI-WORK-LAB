@@ -16,7 +16,9 @@ These nodes do two things a "the file exists" test cannot:
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import re
 import subprocess
@@ -224,3 +226,58 @@ def test_an_unexplained_top_level_directory_is_refused(tmp_path):
     assert any(entry.endswith("mystery") for entry in undocumented), findings
     assert not any("apps" in entry for entry in undocumented), (
         "被说明过的目录也被报未说明，这条规则测的就不是它声称的东西", undocumented)
+
+
+def test_a_silently_shrinking_test_file_is_refused(tmp_path, monkeypatch):
+    """The guard my own truncation proved was missing: "green" must not survive lost test functions.
+
+    A rebuild of this very file cut it at the wrong index and dropped it from 12 nodes to 3, and the
+    suite stayed green because the three survivors all passed. So this drives the census at a tree
+    where a file lost declared tests and requires it to name the file and the from/to counts. The
+    write path is covered too: shrinking is refused unless the loss is declared with --allow.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_test_census as census_tool
+
+    published = {"schema": "ai-work-lab/test-node-census/v1", "files": 2, "tests": 15,
+                 "nodes": {"tests/unified/test_a.py": {"tests": 12, "bytes": 100, "sha256": "x"},
+                           "tests/unified/test_b.py": {"tests": 3, "bytes": 50, "sha256": "y"}}}
+    census_path = tmp_path / "node-census.json"
+    census_path.write_text(json.dumps(published), encoding="utf-8", newline="\n")
+    monkeypatch.setattr(census_tool, "OUT", census_path)
+    truncated = dict(published, tests=6,
+                     nodes={"tests/unified/test_a.py": {"tests": 3, "bytes": 30, "sha256": "z"},
+                            "tests/unified/test_b.py": published["nodes"]["tests/unified/test_b.py"]})
+    monkeypatch.setattr(census_tool, "census", lambda: truncated)
+
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        rc = census_tool.main(["--check"])
+    report = json.loads(buffer.getvalue())
+    assert rc == 1, "少了一半节点还报匹配，这个闸门就是装饰"
+    assert report["drift"]["files_that_lost_tests"] == [["tests/unified/test_a.py", 12, 3]], report
+    assert (report["tests_published"], report["tests_now"]) == (15, 6), report
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        write_rc = census_tool.main([])
+    assert write_rc == 3, "删测试应当被拒，而不是顺手把清单改小来迎合它"
+    assert json.loads(census_path.read_text(encoding="utf-8"))["tests"] == 15, (
+        "被拒之后清单必须还是原来那份")
+
+
+def test_the_declared_test_census_still_matches_this_checkout():
+    """The census is a tracked artefact, so it has to be re-derivable from the tree it describes.
+
+    This is the positive control for the guard above, run against the real repository: if somebody
+    edits a suite file without regenerating the census, or regenerates it after losing nodes, this
+    is where it surfaces -- not as a silently smaller suite.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_test_census as census_tool
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        rc = census_tool.main(["--check"])
+    report = json.loads(buffer.getvalue())
+    assert rc == 0, report.get("drift") or report
+    assert report["matches"] is True, report
+    assert report["tests_now"] > 400, "套件读数不可能这么小：扫描范围错了"

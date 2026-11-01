@@ -53,6 +53,7 @@ BLOCKING_QUEUE = "L10#0"
 ARCHIVE_REGISTER = "migration/archive-object-reconciliation-20261101.csv"
 ARCHIVE_AREA = "docs/history/sources-20261101/MANIFEST.json"
 ARCHIVE_IMPORT = "docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv"
+TEST_CENSUS = "tests/node-census.json"
 #: every disposition the reconciliation register is allowed to carry -- "we have not
 #: decided yet" is deliberately absent, that is the state this check exists to forbid
 ADMITTED_DISPOSITIONS = frozenset({
@@ -105,6 +106,8 @@ def derive_figures() -> dict:
                                      if row["disposition"] == "ARCHIVED_IN_REPO"),
         "archive_import_verified": len(imported_rows()),
         "archive_source_hints": len(hints),
+        "suite_test_files": json.loads((ROOT / TEST_CENSUS).read_text(encoding="utf-8"))["files"],
+        "suite_test_nodes": json.loads((ROOT / TEST_CENSUS).read_text(encoding="utf-8"))["tests"],
         "source_rows_work": len(work),
         "source_rows_design": len(design),
         "source_rows_total": len(work) + len(design),

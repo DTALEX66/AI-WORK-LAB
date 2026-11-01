@@ -77,6 +77,11 @@ git status --porcelain=v1       # 保护已有改动；发现别人的未提交�
 | 后端路由或内核 | 受影响的 `tests/unified/` 对应 `test_v*` 文件 + `scripts/boot_probe.py` |
 | 迁移脚本与台账 | `tests/unified/test_v07_migration.py` + `scripts/migrate_sources.py --plan`（`unmanaged` 必须为 0） |
 | 交付级结论（新证据、改绑收据） | 全量 `tests/unified tests/legacy`，然后重新取收据并改绑登记表 |
+| **任何一次删改测试** | `scripts/build_test_census.py --check` 必须 rc=0；确属有意减少才 `--allow` 重生成清单 |
+
+> 这条是被一次真实事故逼出来的：本轮重建 `test_v29` 时按错误的下标切了文件，12 个节点只剩 3 个，
+> **而 pytest 照样报通过**（活下来的三个都是绿的）。"套件绿"不等于"覆盖还在"，所以测试文件的
+> 声明节点数被钉在 `tests/node-census.json`，少一个就红，删测试换绿会被写成拒绝。
 
 红了就修根因。**不删测试、不降低断言、不用 skip 换绿**；绕不过去的限制写进
 `config/blocker-register.json`，让验收门如实挡住，而不是把结论改软。
