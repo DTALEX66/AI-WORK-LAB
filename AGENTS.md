@@ -67,7 +67,8 @@ git status --porcelain=v1       # 保护已有改动；发现别人的未提交�
 - **不许用 mock、合成回执或模型自报补成"全通过"**；真实宿主往返、模型推理、真人专业签字
   按 `NOT_RUN/BLOCKED/DEFERRED` 如实记录。
 - **顶层入口改动后要过防漂移检查**：`scripts/check_project_current.py --check` 必须 rc=0。
-  它的数字来自 `--print-block` 现算，不靠人肉维护。
+  数字段由同一支脚本的 `--write-block` 现算写回（读数没变时报 `UNCHANGED` 且不动字节），不靠人肉维护。
+  这段标记之间的内容不要手写：手写数字正是下一轮要重新发现一遍的成本来源。
 
 ## 4. 验证要求（按改动面选，不无限全量）
 
@@ -77,6 +78,7 @@ git status --porcelain=v1       # 保护已有改动；发现别人的未提交�
 | 后端路由或内核 | 受影响的 `tests/unified/` 对应 `test_v*` 文件 + `scripts/boot_probe.py` |
 | 迁移脚本与台账 | `tests/unified/test_v07_migration.py` + `scripts/migrate_sources.py --plan`（`unmanaged` 必须为 0） |
 | 交付级结论（新证据、改绑收据） | 全量 `tests/unified tests/legacy`，然后重新取收据并改绑登记表 |
+| 收据判据 / 闭环审计的探针 | `tests/unified/test_v30_closure_audit_probes.py`（三个探针都要跑出自建仓库上的"能红"那一侧），再 `scripts/audit_objective_closure.py` 复跑；改这段判据时注意它上面那个提前 return 会不会让新分支变成走不到的死代码 |
 | **任何一次删改测试** | `scripts/build_test_census.py --check` 必须 rc=0；确属有意减少才 `--allow` 重生成清单 |
 
 > 这条是被一次真实事故逼出来的：本轮重建 `test_v29` 时按错误的下标切了文件，12 个节点只剩 3 个，

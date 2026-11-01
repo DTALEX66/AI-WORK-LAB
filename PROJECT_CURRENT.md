@@ -55,8 +55,9 @@ task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
 
-上面这段不是手抄的：它由 `.venv/Scripts/python.exe -B -X utf8 scripts/check_project_current.py --print-block`
-从寄存器现算生成，`--check` 逐条比对；对不上就是红，不做"大致没错"。
+上面这段不是手抄的：它由 `.venv/Scripts/python.exe -B -X utf8 scripts/check_project_current.py --write-block`
+从寄存器现算并写回（派生值没变时报 `UNCHANGED` 且零字节写入），`--check` 逐条比对；
+对不上就是红，不做"大致没错"。
 
 ## 一、现在成立什么
 
@@ -69,10 +70,12 @@ unsettled_files = 237
   现在的定性与替代关系。检查器会**重算每个原件的摘要**并与表里记的比对，摘要一旧就红。
 - 历史区已迁入：按 owner 规则（缓存与构建不要、其他按历史/文档归档进本仓）把来源内容复制进
   `docs/history/sources-20261101/`，逐条去向在 `MANIFEST.csv`（`7108` 行全覆盖）：
-  `5102` 行逐字节复制、`300` 行同字节去重指向已复制件、`1108` 行本仓已按字节持有、
+  `5100` 行逐字节复制、`300` 行同字节去重指向已复制件、`1108` 行本仓已按字节持有、
   `123` 张截图与照片（64,092,364 字节）按 owner 2026-11-01「截图照片去掉」移出 Git —— 但字节没被删，连名带摘要搬进 `.project-local/removed-raster-20261101/`（两个来源仓待删，直接删文件会把「不要进仓」变成「这东西不存在了」）；`38` 个 SVG 是图形不是照片，暂留，要一起走说一声。
   
-  `85` 行与统一归档逐摘要相同（不搬第二份）、`390` 行为缓存/构建按规则不要。
+  `85` 行与统一归档逐摘要相同（不搬第二份）、`390` 行为缓存/构建按规则不要、`2` 个字体二进制
+  （17,313,940 字节）按「及时清理项目体积」同一口径搬进 `.project-local/removed-fonts-20261101/`
+  ——这三类合起来正是 `MANIFEST.csv` 里 `EXCLUDED_BY_OWNER_RULE` 的 `515` 行，移动前后各现算一次摘要。
   两处缺陷是复验时抓到并修好的：`37` 行原判"本仓已持有"只凭台账 `sha256_source`，而改后文件让
   本仓实际持有的是修复版本、原始字节无处可寻（已补采并逐行复验摘要）；`1` 个 260 字符以上的
   长路径文件首轮静默丢失（已用 `\\?\` 前缀重写，并按行复验，不再用集合式抽查）。
@@ -105,7 +108,7 @@ unsettled_files = 237
 | 真实宿主写入 / 模型推理 / 真实私有数据迁移 / 真人专业验收 | `NOT_RUN`，按边界如实记录 | `docs/CODEX-AUDIT-ENTRY.md` §5、`migration/deferral-register.json` |
 | 系统级出站隔离 | 未证明（无防火墙/沙箱配置；云端会话模型上下文可离开本机这一限制仍成立） | `INTEGRATION_POLICY.md` §2 |
 | workbench bundle | 无法重建（缺 `picomatch`，需网络安装，未授权），两个读 bundle 的 JS 闸门仍校验旧字节 | `docs/CODEX-AUDIT-ENTRY.md` §15.22 |
-| 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。**收据仍记 `2 failed`**：重取需要干净跟踪树，也就是需要一次提交授权 | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
+| 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。收据已在这两个修复之后重取：现记 `499 passed / 0 failed / 0 errors`，绑在 `94dd47c`（摘要 `1467eeaea846ac08…`），改绑之后只有 `docs/` 与 `migration/` 的字节的动过 | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
 | 归档原件的唯一副本 | `1131` 个对象（约 `1.06 GB`）目前只在统一归档里有；归档自己的 `完整性校验报告.json` 仍写 `source_file_set_unchanged: true`，而它点名的 `2031` 条来源路径现在**一个都不存在**（`D:\All projects\Record` 已消失，`xiangmuguidang` 是空目录）——那句话对今天的磁盘已不成立，归档不可再被当作可清理的副本 | `migration/archive-object-reconciliation-20261101.csv`、`_归档管理\完整性校验报告.json` |
 | 删掉两个来源仓之后本仓还能不能独立跑 | **已实测**（受控对照，head `2477d7b`）：control 63、treatment 78，delta 恰 **15** 个节点、无反向。12 个已修（共享 fixture 不再指向宿主机目录）、1 个已修（来源根缺失时 `build_audit_state` 给具名结论而不是崩溃 + 节点改为自带对照）；剩 **2** 个按其语义就是本机前提（`test_v17` 重启、`test_v22` 指向来源仓字节），已如实归入 machine-bound 而不是删断言。另一件与本轮无关但必须知道：**全新克隆跑不了全量套件**（control 那 63 个就是它），由 `未在本机测量` 的点名机制承担 | `.project-local/runs/independence-20261101.json` |
 
@@ -138,11 +141,13 @@ unsettled_files = 237
 
 ## 五、下一步
 
-1. ~~定位并修掉 `2312963` 上那 `2` 个失败~~ 已修；~~重取全量收据并改绑登记表~~ 已做：
-   收据 `578f25c5add5ffa8`（480 passed / 0 failed），登记表已改绑，`migration/audit-item-closure.csv`
-   与 `docs/AUDIT-STATE.json` 七台生成器 `--check` 全 rc=0。**这条绑定已经过期**：那张收据描述的是
-   `cc4155f` 的树，而本轮之后又有提交（截图移出、归档件导入、守卫新增）。闭环审计因此把它报成
-   `PENDING` 而不是 `PASS`——收据必须重取到当前提交才算绑上，不能拿旧收据继续声称"全量绿"。
+1. ~~定位并修掉 `2312963` 上那 `2` 个失败~~ 已修；~~重取全量收据并改绑登记表~~ 已做并于本轮重取：
+   收据 `1467eeaea846ac08…`（`499 passed / 0 failed / 0 errors`，绑 `94dd47c`，跟踪树开始时干净且
+   全程 `tracked_bytes_moved_during_run` 为空），`migration/audit-item-closure.csv` 的四个收据列
+   与 `docs/AUDIT-STATE.json` 一起改绑，七台生成器 `--check` 全 rc=0。判据口径也在本轮改掉：
+   原先要求收据点名 HEAD 本身，而改绑与渲染小节必然产生其后的提交，于是它永远停在 `PENDING`；
+   现在是"收据的提交是 HEAD 的祖先，且其间每个动过的跟踪文件都是文档或生成登记表，逐个点名"，
+   代码或测试出现在那个区间就是 `FAIL`——这条收紧本身有一段死代码，被新加的 6 个反例节点抓出来。
 2. owner 对 `237` 条待裁决来源做批量判定（含 32 条阻断 `L10#0` 的）。
 3. ~~统一归档 `1212` 个对象与融合仓的逐摘要对账~~ 已建成 `1212` 行逐条登记；
    ~~那 `1131` 个只在归档里的对象要不要按摘要迁入本仓~~ owner 已定（「确保内容全部归档到仓库」）：
