@@ -1,0 +1,93 @@
+# WORK-LAB 云端增量审计（2026-08-11）
+
+## 审计基准
+
+- WORK-LAB `main`: `23baa6fd0c09b0784934140f544a7e785d8150b1`
+- OPEN-DESIGN-Assistance `main`: `97a29b8d7a5cc7176774f73377ce41bd0ae896c3`
+- Cognitive-Loop-OS `main`: `8e4f1cf69f3b84fa2ce7a430557bfabdcca09e2b`
+- 三个精确 SHA 均未取得独立 GitHub workflow run 证据，状态必须保持 `UNVERIFIED_MAIN_CI`。
+- 审计为只读；未 commit、push、PR、merge、release，未修改 live/global 配置。
+
+## 结论
+
+WORK-LAB 的方向仍正确：它是本地优先、客户端中立、可迁移、可审计、可恢复的个人 AI 工作流控制面；当前仍是控制面原型，不是正式可用产品。两个活动模块边界仍应保持：
+
+1. `10-workflow/workflow-assistance`：唯一主动后台与唯一业务写入面。
+2. `30-observer/work-lab-observer`：严格只读投影。
+
+Open Design 继续属于独立仓库 `DTALEX66/OPEN-DESIGN-Assistance`；MINIGAME 不得重新加入 WORK-LAB。
+
+## 新更新中值得保留的改进
+
+- `CURRENT_STATE` 不再声称 tracked HEAD/branch，CI 无精确运行证据时保持 `UNVERIFIED_MAIN_CI`。
+- 用户配置快照已收窄为 `USER_OVERLAY_ONLY` v2，排除密钥、会话、Memory、缓存、内部 Desktop 状态和绝对路径。
+- Observer SQLite 读取入口使用 `mode=ro`，旧 `ObserverStore.append()` 已 fail closed。
+- Token 查询已补充 `input_tokens`、`output_tokens` 和 `observed_at` 字段。
+- 新增更新安全和 exact-SHA CI 知识 Skill；Codex Windows launcher 支持版本化安装目录。
+- Open Design 新仓库已有 UI/UX domain pack、五个 golden slice、设计 Token、无障碍和交付合同，可作为 OS 设计能力来源，但不能成为 WORK-LAB 活动模块。
+
+## 未闭环问题
+
+### P0 — 配置所有权自相矛盾
+
+`workflow-assistance-open-design-integration/SKILL.md` 声明 Open Design 只允许只读协作；但 `config-ownership.json` 又把 `open-design.global_configuration` 标为 `USER_OVERLAY / MANAGE`。同一文件还把 OpenHuman 默认设为 OBSERVE，却把 `openhuman.global_configuration` 标为 MANAGE。
+
+修复标准：Open Design/OpenHuman 默认全部 `OBSERVE_PRESERVE`；只有存在稳定官方写接口、ActionPlan、diff、backup、readback、rollback 和单次明确批准时，才允许临时 APPLY，不能成为长期所有权。
+
+### P0 — ERR-045 暴露未经许可的全局 live 配置修改
+
+错误台账记录曾直接执行 `hermes config set agent.reasoning_effort medium`。这违反“未经批准不得修改全局 live 配置”。即使值等于官方默认，也不能把审计变成应用操作。
+
+修复标准：把该条证据降级为越权变更事件；增加 `AUDIT_ONLY` 与 `APPLY_APPROVED` 两种强制模式，审计路径不得调用任何 set/apply/install/update 命令。
+
+### P0 — Observer Token 汇总仍然错误
+
+虽然 SQL 已分列读取输入/输出 Token，但 Dashboard 仍用总 Token 计算 `inputTokens`，并把 `outputTokens` 再赋成同一个输入值。存在来源行就标 `EXACT_SOURCE` 也不充分，缺少字段完整性和聚合一致性验证。
+
+### P0 — 活跃项目数仍取错事实
+
+`activeProjects` 仍由 running/waiting 任务数量计算，而不是项目表中的 `ACTIVE` 项目数量。项目状态和任务状态被混用。
+
+### P0 — Observer 仍保留第二事件写入语义
+
+`observer_runtime.py` 仍包含 `append_events()`、Observer event history、pricing projection，并声明 `allowedWrites: observer-owned-events/projections/reports`。这与严格只读 Observer 冲突，也保留了重建第二事实库的入口。
+
+### P0 — LIVE 仍由模式赋值，不是连接事实
+
+`set_mode("LIVE")` 即可让投影显示 fresh，没有强制绑定 SSE 建连、心跳、游标推进、最后事件时间和断线降级。LIVE 仍可能是人为标签。
+
+### P1 — 工作区活动检测范围过宽
+
+当前会递归扫描工作区下所有 Git 项目的 `.hermes/.codex/.agents` 元数据；`.agents` 新鲜时还可能绕过“对应 Agent 进程正在运行”的要求。默认扫描 `D:\All projects` 会把外部 Open Design 等项目带入观察范围。
+
+修复标准：显式项目 allowlist；不递归进入 sessions/memory/cache/logs；活动事实由 Workflow worker heartbeat + project/task lease 产生，不通过桌面进程和目录时间猜测。
+
+### P1 — Rust/Tauri 合同不可复现
+
+Cargo 声明 Rust 1.77.2，但当前 Tauri 依赖实测要求 Rust 1.88。应修正最低工具链合同，或选择与声明版本兼容的依赖组合；不得一边宣称 1.77.2 一边依赖 1.88。
+
+### P1 — OS 前端信息架构仍漂移
+
+ArcheAxis Workspace 的权威一级空间应固定为 `Workspace / Library / Evidence / Learning / AI Assets / Settings`。当前页面仍混合“首页、资料与知识、学习、系统”以及大量诗性中文命名，模块层级、用户任务与能力状态不够直观。
+
+## 可增强方向
+
+1. **配置交易引擎**：统一发现 → diff → ActionPlan → approval → backup → apply → readback → rollback；所有 Adapter 共享合同。
+2. **事实置信模型**：每个字段携带 `source_kind / observed_at / freshness / completeness / exactness / provenance_ref`，不再仅给整个页面一个 LIVE 标签。
+3. **真正持续 Worker**：单实例租约、幂等 claim、checkpoint、退避、死信、人工阻塞、重启恢复、任务级 heartbeat。
+4. **采集器 SDK**：Task/Git/CI/Token/Cost/Data Quality 使用统一 envelope、cursor、dedupe 和 backpressure。
+5. **项目注册治理**：用户明确注册/撤销；路径仅保存在本地事实源；外部项目默认不进入观察范围。
+6. **Adapter 能力矩阵**：Hermes/Codex/CC Switch/GitHub 深适配；Cursor/Claude Code/WorkBuddy/Qwen Code 保持探测式渐进支持，不写死版本和路径。
+7. **Memory/Growth 治理**：候选、隔离、污染检测、TTL、遗忘、晋级、回滚、来源和人工批准完整闭环。
+8. **Observer 可解释降级**：LIVE → DELAYED → STALE → OFFLINE 的原因、最后成功时间、丢失字段和恢复动作必须可见。
+9. **离线与干净环境证据**：Windows canary、Tauri 安装/卸载、断网启动、数据库迁移/回滚、精确 SHA CI 分离验证。
+
+## 当前产品判定
+
+- 架构方向：正确。
+- 控制面闭环：部分完成。
+- Observer 严格只读：未完成。
+- 跨项目真实监控：启发式原型。
+- 全局配置治理：存在越权和所有权漂移。
+- 正式产品/商业发布：不具备证据。
+

@@ -1,0 +1,447 @@
+# WORK-LAB 当日执行 TaskPack｜2026-09-04
+
+**TaskPack ID**：`WORK-LAB-DAILY-R3-G0-20260904`  
+**项目**：`DTALEX66/WORK-LAB`  
+**本机预期根目录**：`D:\All projects\WORK-LAB`  
+**云端 main 基线**：`e5231f0f605d1515ed12958267b394c9de1da20c`  
+**PR #123 head**：`c6b7e8f6468281325d26524e3762607c6fa7a4ce`  
+**迁移分支**：`migration/wl-directory-convergence-r1`  
+**当前裁决**：`DO_NOT_MERGE_PR_123 / RECOVERY_REQUIRED`  
+**执行状态**：`READY_FOR_OWNER_AUTHORIZATION / REPOSITORY_CHANGES_NOT_STARTED`  
+**今日目标**：完成 R3 的 G0 事实冻结、止血、可复现修复、真值门禁和交接证据；不在今天抢跑完整 Rust 重写或正式发布。
+
+---
+
+## 0. 给执行器的唯一指令
+
+以本 TaskPack 和《WORK-LAB 完整修复、仓库规范与语言迁移 TaskPack（R3）》为本轮唯一候选前向方案。先冻结 `main` 与 PR #123 的 exact SHA/tree，PR #123 不得合并；在项目根 `.project-local/worktrees/` 内创建独立 recovery worktree，按 `D00 → D10 → D20 → D30 → D40 → D50 → D60 → D70 → D80 → D90` 执行。任何失败必须保留为 `FAILED/BLOCKED/UNVERIFIED`，不得用旧报告、文件存在、编译成功、`|| true`、stub 或默认值提升为完成。
+
+今日只修复迁移分支的事实、依赖、路径、CI、Observer 与仓库声明。Rust 控制内核仍是 R3 建议，不是已批准历史决定；今天只形成 ADR 与 PoC 输入，不做全仓重写。未经 Owner 明确授权，不得修改、提交、push、创建/关闭 PR、merge、release、安装系统组件、读取用户会话目录、删除历史数据或重写 Git 历史。
+
+---
+
+## 1. 今日对话与历史整理结论
+
+### 1.1 已闭环来源
+
+| 来源 | 当前作用 | 固定证据 |
+|---|---|---|
+| 完整 WORK-LAB 对话导出 | 2026-07-24 至 2026-08-24 的 18 个归属会话及原始记录 | 432,344 行；15,558,839 bytes；SHA-256 `a3bf2a60c38d6457ba94279d7f7b4323543361e406822992556461109d41916c` |
+| WORK-LAB 总结与历史 TaskPack | Hermes/Codex/DSH、治理、Observer、阶段任务和废止方向 | `WORK-LAB-SUMMARY.md` 及 Git 历史 |
+| 2026-09-03 新对话交接 | 8 月底至 9 月 3 日的产品边界、问题与执行顺序 | 137 行；11,876 bytes；SHA-256 `dff24bed285700d2b2c873d39e1356340f4599268449bbd6ab1e74ead525afce` |
+| 2026-09-04 R3 总修复方案 | 最新云端审计、56 项问题体系、29 项长期任务、语言与仓库方案 | SHA-256 `b2568bec363cd90a3c794d33e79bfefa990f80f173c043499c0bf1d5b70b2bbe` |
+| Git main | 当前稳定分支事实 | commit `e5231f0f605d1515ed12958267b394c9de1da20c`；tree `0e25ce2bc0b7a031fce608897212bf4649d1047f` |
+| Git PR #123 | 当前目录迁移增量 | commit `c6b7e8f6468281325d26524e3762607c6fa7a4ce`；tree `f29c63ee81009c790911d56f63eb9e87ef995004`；相对 main 前进 42 commits |
+| Git 全历史文档路径 | 当前树之外的删除、改名和历史记录 | 所有 refs 共 1,893 个 Markdown 路径；PR 树保留 512 个；另有 1,381 个删除/改名路径可由 Git 恢复 |
+| 2026-09-04 当前对话 | 修正项目用途与许可证含义；生成本日 TaskPack | 当前会话 |
+
+**历史完整性的正确表述**：所有当前可访问、可归属到 WORK-LAB 的工程记录已建立固定入口和去重台账。以后新增安全导出只能登记为新的 source revision，不得再用“只扫描当前目录”推翻已有历史。凭据库、认证存储、浏览器数据、未导出的私有客户端会话目录和 prompt/response 正文不属于仓库审计输入。
+
+### 1.2 今日新增的明确纠偏
+
+- “本项目是个人研究、非商业使用”描述的是 **Owner 使用 WORK-LAB 的目的**。
+- 它不等于向第三方授予“非商业许可证”，不采用 PolyForm，也不自动变成 MIT/开源项目。
+- 原创 WORK-LAB 内容当前保持默认版权、`All rights reserved / no license granted`；是否未来开放复用是单独决策。
+- 第三方代码、模型、数据集、工具和素材继续受各自许可证约束；非商业研究不能替代逐项合规审计。
+- 个人研究阶段的 Release 默认是 Owner 本地可复现实验构建，不是 GitHub 公共发布、registry publish 或第三方交付。
+
+### 1.3 不得再混淆的三项目边界
+
+| 项目 | 唯一职责 | WORK-LAB 交互方式 | 禁止事项 |
+|---|---|---|---|
+| WORK-LAB | Action Authority、WorkUnit、策略、预算、审批、调度、审计回执与观测 | 发令、授权、编排、收 Receipt | 不吸收知识真相、设计真相或 Agent Runtime |
+| ArcheAxis-Knowledge-OS | Knowledge Authority、来源、知识治理、经验沉淀 | 接收最小 Context Capsule；返回知识/学习回执 | WORK 不复制 Vault、原件、附件、私有路径或数据库 |
+| DESIGN-LAB | 设计 Brief、DesignIR、Rubric、软件自动化、视觉审核与交付资产 | 接收 ExecutionEnvelope；返回去敏 Receipt | WORK 不定义设计质量，不存客户素材，不直接代替设计 Jury |
+
+跨项目只允许版本化合同与最小引用：`WORK 发令/审批 → 目标项目在自身边界执行 → 返回 Receipt → WORK 治理与只读观测`。禁止共享数据库、事实源、运行目录或隐式 sibling import。
+
+---
+
+## 2. 今日锁定决策
+
+1. WORK-LAB 是本地优先、协议驱动、可审计的 **Action Authority + Workflow Control Plane**。
+2. 正式产品是一个 `WORK-LAB Command Center`，包含可写 Control Surface 与绝对只读 Observer；两者必须在路由、Tauri capability、凭据和代码目录上隔离。
+3. Observer 只能读 `GET/SSE` 投影；不得拥有 shell、filesystem write、process、控制 IPC、DB write handle 或 mutation token。
+4. `UNKNOWN/STALE/OFFLINE/BLOCKED/FAILED` 是一等状态；未知成本、任务数或连接状态不得显示为 0、绿色或成功。
+5. Tauri 2 + React 继续作为 WORK-LAB 桌面/UI 路线；不引入 C#/Avalonia。C#/Avalonia 属于 ArcheAxis 的项目讨论，不能跨项目继承。
+6. 小型 Rust 可信控制内核是 R3 建议：承担 policy/budget/approval、单写者、SQLite、路径/进程边界、receipt 与 projection；必须先做 ADR、合同和 parity PoC，Owner 批准后才能实施。
+7. Python 保留 Adapter、迁移器和当前编排兼容层；不把全部 Python 一次性重写。
+8. Hermes、Codex、DSH、Claude Code、OpenCode、Dagu、LiteLLM、设计软件和模型都是可替换 Adapter/外部运行时，不进入领域 schema。
+9. 每个 Authority 任一时刻只有一个 writer；迁移只允许 shadow-read/single-write，禁止 dual-write。
+10. 运行状态、worktree、cache、logs、receipts、downloads 与 artifacts 全部位于项目根 `.project-local/`；默认不扫描 Home、其他项目或其他盘符。
+
+---
+
+## 3. 今日范围与完成口径
+
+### 3.1 今天必须完成
+
+- 冻结并记录 exact SHA/tree；PR #123 继续保持不可合并。
+- 把历史来源、current/superseded 状态和唯一候选 TaskPack 固定为机器可检验台账。
+- 修复 Python 全树语法、严格 hash lock、Git linked-worktree 根识别和五个失败 gate 的直接原因。
+- 移除 required CI 中的吞错、stub 与 PENDING-as-PASS。
+- 关闭 Observer 的假 `LIVE`、固定 SHA、假 0、Home/session 扫描和错误入口。
+- 让 React 生产前端进入 required CI，并保证连续两次构建后工作树干净。
+- 固化个人研究/非商业用途与“不对外授权”的真实边界；禁止包意外公开发布。
+- 生成可复现证据包、剩余 blocker 和下一日 handoff。
+
+### 3.2 今天可以完成但不得阻塞 P0
+
+- 完成 AuthorityIndex/v2 和核心合同的文件级设计稿。
+- 写 Rust 控制内核 ADR 和 parity PoC 计划，不写生产 Rust core。
+- 写跨项目 `ExecutionEnvelope / ContextCapsule / RuntimeReceipt` v0.1 schema 草案。
+- 给 Dagu、LiteLLM、OTel、沙箱候选建立 qualification 清单，不安装、不接入生产路径。
+
+### 3.3 今天明确不做
+
+- 不合并 PR #123，不直接向 `main` push。
+- 不重写 Git 历史，不 force-push，不删除 409.80 MiB 历史中的大 blob。
+- 不安装或升级 Dagu、LiteLLM、OpenSandbox、系统服务或驱动。
+- 不读取 Hermes/Codex/DSH/浏览器等私有会话数据库、prompt、response、cookie 或凭据。
+- 不迁移或删除 `.HERMES/.hermes` 真实数据；今天只做清单、路径修复和 dry-run。
+- 不实现完整 Rust 重写，不增加 C#/Avalonia，不创建第四套 UI。
+- 不公开发布安装包、npm/PyPI/crates 包、容器、模型或数据集。
+- 不向 ArcheAxis 或 DESIGN-LAB 仓库写入任何内容。
+
+---
+
+## 4. 授权门与工作区规则
+
+### 4.1 当前授权状态
+
+本 TaskPack 的生成、只读审计和规划已获当前请求覆盖；**仓库写入、提交、push、PR、merge、Release 和系统安装均未因本请求自动获权**。
+
+### 4.2 获得仓库修改授权后的安全起点
+
+执行器必须从现有项目根运行，只在 `.project-local/worktrees/` 创建 recovery worktree：
+
+```powershell
+git fetch origin --prune
+git rev-parse origin/main
+git rev-parse c6b7e8f6468281325d26524e3762607c6fa7a4ce^{tree}
+git status --porcelain=v1
+git worktree add ".project-local/worktrees/recovery-r3-20260904" -b "recovery/work-lab-r3-20260904" "c6b7e8f6468281325d26524e3762607c6fa7a4ce"
+```
+
+若 SHA/tree 与本 TaskPack 不同，立即停止并记录 `SOURCE_DRIFT`；不得把新 head 偷换成本 TaskPack 已审计的 head。若 recovery branch/worktree 已存在，先只读核对归属和 lease，不得覆盖或删除。
+
+### 4.3 单写者与提交规范
+
+- `run_quality_gate.py`、aggregate workflow、Authority Index 和 Observer production entry 各自只能有一个 writer。
+- 每个任务记录 owner、base SHA、路径 allowlist、worktree、lease 和 expiry。
+- 一个提交只处理一个可回滚主题；不得把行尾、依赖锁、Observer 功能和历史归档混成一个提交。
+- 推荐提交序列：`audit` → `bootstrap` → `path-contract` → `ci-truth` → `observer-truth` → `frontend-ci` → `rights-boundary` → `evidence`。
+- 今天结束前不 squash 原始 evidence；是否 squash-merge 由 R3-070 与 Owner 后续决定。
+
+---
+
+## 5. 今日执行看板
+
+| ID | 优先级 | 任务 | 输入 | 主要输出 | 状态 |
+|---|---:|---|---|---|---|
+| D00 | P0 | 冻结云端与工作树事实 | main/PR exact refs | `source-freeze.json`、diff/stat、DO_NOT_MERGE 标记 | `READY_READ_ONLY` |
+| D10 | P0 | 历史闭环与 current authority | 对话导出、handoff、Git 全历史、R3 | `history-source-ledger.json`、唯一 current 指针、supersedes 图 | `READY` |
+| D20 | P0 | Bootstrap 与 Python 可复现性 | lock、全 tracked Python、quality runner | 干净 venv install、compile、942-test 修复、五 gate 结果 | `BLOCKED_WRITE_AUTH` |
+| D30 | P0 | 路径图与迁移语义 | active tree、旧路径、`.hermes`、行尾 | `migration-path-map.json`、root contract、renormalize 计划 | `BLOCKED_WRITE_AUTH` |
+| D40 | P0 | CI 真值与 negative controls | workflows、verifiers、aggregate | 无吞错/无 stub、exact-SHA aggregate、故障注入 | `BLOCKED_WRITE_AUTH` |
+| D50 | P0 | Observer 紧急止血 | live server、静态 web、React、Tauri | 只读入口、真实 OFFLINE/UNKNOWN、无 Home 扫描 | `BLOCKED_WRITE_AUTH` |
+| D60 | P0 | React required CI 与干净构建 | frontend/package manager/buildinfo | frozen install、typecheck、unit、build、clean/spill 证据 | `BLOCKED_WRITE_AUTH` |
+| D70 | P0 | 个人研究与第三方许可边界 | README、NOTICE、package manifests、SBOM | rights statement、publish guards、license inventory | `BLOCKED_WRITE_AUTH` |
+| D80 | P1 | 架构 ADR 与跨项目合同输入 | R3、历史决策、三项目边界 | Rust proposal ADR、contracts v0.1 草案 | `READY_AFTER_P0` |
+| D90 | P0 | 全门复验与当日交接 | D00-D80 outputs | exact-SHA evidence index、blockers、rollback、next handoff | `WAITING_DEPENDENCIES` |
+
+---
+
+## 6. 任务详细说明
+
+### D00｜冻结事实与禁止合并
+
+**动作**
+
+1. 只读刷新 `origin/main`、PR #123 head、merge-base、ahead/behind、commit time、tree、tracked file count 和工作树状态。
+2. 对比 R3 固定的 main/PR SHA；任何变化都记录为 `SOURCE_DRIFT`，重新审计增量后再继续。
+3. 记录 PR #123 当前 42 commits 的主题、重复修复和目录迁移范围；不得新增第 43 个“继续修路径”噪声提交到原分支。
+4. 在 evidence 中写入 `DO_NOT_MERGE_PR_123`，原因至少覆盖：测试失败、lock 不可消费、SyntaxError、五 gate 失败、CI 吞错、Observer 假真值和旧路径未收口。
+
+**验收**
+
+- `source-freeze.json` 同时包含 commit、tree、merge-base、observedAt 和命令输出 digest。
+- 本地与云端事实不一致时任务停止，不以本地旧 clone 继续。
+- 无远程写入，无分支删除，无 tag/release 变化。
+
+### D10｜历史闭环与唯一 current
+
+**动作**
+
+1. 创建机器可读 source ledger，登记第 1.1 节全部来源、hash、覆盖日期、authority、用途和 supersedes 关系。
+2. 枚举 Git 全 refs 的 1,893 个 Markdown 路径，将当前、改名、删除、重复、历史-only、候选 authority 分类；不恢复到 active tree。
+3. R3 设为唯一候选 current；旧 `FROZEN/DONE/全部完成` 在 SHA 或时效不符时降级为 `HISTORICAL/SUPERSEDED/STALE`。
+4. `CURRENT.json` 必须指向唯一 current，并包含 exact SHA/tree、生成器版本、expiry 和 evidence floor。
+5. 对 8 月 25 日至 9 月 4 日的 Git/TaskPack/handoff 连续区间生成 coverage map；后续不得再声称“没有找到旧记录”而忽略 ledger。
+
+**验收**
+
+- current 指针只有一个；不存在多个 CURRENT/FROZEN 真相。
+- 所有 ledger 引用可从 Git 或已登记原档取回。
+- 私有会话目录、凭据和 prompt/response 正文没有被扫描。
+
+### D20｜Bootstrap、Python 与门禁可复现性
+
+**动作**
+
+1. 修复 `requirements.lock` 缺少 `typing-extensions` 严格 pin/hash 的问题；从空 venv 使用 CI exact command 验证。
+2. 修复 `integrations/executors/codex/codex_config_sync.py:19` 未终止字符串。
+3. compile gate 改为覆盖 `git ls-files '*.py'` 的全部 tracked Python，不允许漏掉 `integrations/`。
+4. 修复 `run_quality_gate.py verify` 错误拒绝标准 linked worktree 的根识别逻辑；主 checkout 与 linked worktree 都要测试。
+5. 逐项修复或诚实阻断 `context-control-plane`、`external-libraries-index`、`github-delivery`、`tauri-readonly-shell`、`work-lab-os-canary`。
+6. 重新运行 942 项治理测试；6 个 skip 必须分别给出 `NOT_APPLICABLE_WITH_PROOF` 或转为可运行测试，不能静默忽略。
+
+**验收**
+
+- 空环境 strict hash install 成功，lock 无隐式解析。
+- 全 tracked Python compile 为 0 error。
+- 主 checkout 与 linked worktree root detection 均通过。
+- 测试输出只有真实 PASS/FAIL/N/A-with-proof；不能仅打印 `QUALITY_GATE_PASS`。
+
+### D30｜目录、路径与运行边界
+
+**动作**
+
+1. 生成 `old_path → new_path → owner → consumers → migration status` 映射，不再手工逐文件追路径。
+2. 修 active `AGENTS.md`、README、TaskPack、CI、imports 和 scripts 中已删除的 `00-governance`、`10-workflow`、`30-observer`、`50-taskpacks` 等旧权威路径。
+3. `.HERMES/.hermes` 只允许出现在历史迁移来源或明确 allowlist；所有新运行状态写入项目根 `.project-local/`。
+4. 清除产品逻辑中的机器绝对路径、默认 Home 扫描和硬编码产品版本；路径来自 project profile + explicit grant。
+5. 修两个 checkout 即漂移的 CRLF/LF 文件；renormalize 必须是独立提交。
+6. spill detector 覆盖 Python、npm/pnpm、Cargo、下载、temp、logs 和 worktree。
+
+**验收**
+
+- active 非历史旧路径为 0，allowlist 有 owner/expiry。
+- Linux/Windows clean checkout 均保持干净。
+- 构建与测试不向用户目录、其他项目或其他盘符写入。
+- 不移动或删除真实 `.HERMES/.hermes` 数据。
+
+### D40｜CI 真值、聚合门与故障注入
+
+**动作**
+
+1. 冻结/合并重复的 WLR-060 workflow；删除 required path 中 `|| true`、`echo 'STUB pending'` 和 PENDING-as-PASS。
+2. aggregate 只接受同一 exact SHA/tree 的 `PASS`、`FAIL`、`NOT_APPLICABLE_WITH_PROOF`。
+3. job `fail/cancel/skip/missing/pending` 均使 required aggregate 失败。
+4. Action 引用固定完整 commit SHA；工具版本由单一 registry/manifest 驱动。
+5. 增加 negative controls：删 verifier、漏依赖 hash、Python 语法错、YAML duplicate key、Observer POST、UNKNOWN→0、Action SHA→tag、idempotency 重放、receipt 篡改、build 生成 tracked 文件、cache 外溢。
+
+**验收**
+
+- 每个 negative control 都能把 aggregate 置红。
+- 不存在 required job 通过 shell 吞错后继续绿。
+- CI 报告 exact source SHA/tree，不接受旧 run 冒充当前证据。
+
+### D50｜Observer 假真值与安全止血
+
+**动作**
+
+1. 冻结或移除会在干净克隆触发 `ModuleNotFoundError: backend` 的隐式 sibling import。
+2. 删除固定 SHA `221083e`、假 `LIVE`、假任务数/完成数/成本 0 和 `eventStreamConnected=true`。
+3. 删除默认用户 Home/session 扫描、硬编码版本和静态 Mission Control 生产入口。
+4. `/api/v1/events` 实现真实 SSE：`text/event-stream`、event id、heartbeat、Last-Event-ID、重连和 revision fence；完成前只能标 `UNAVAILABLE`，不能返回 JSON stub 冒充 SSE。
+5. 正式 Observer production path 只注册 loopback `GET /healthz`、`GET /snapshot`、`GET /events`；无 POST/PUT/PATCH/DELETE。
+6. Tauri Observer window 无 filesystem、shell、process、dialog-write、control IPC capability；没有控制 token 和 DB write handle。
+
+**验收**
+
+- 干净克隆无需 sibling repo 即可启动正式只读入口，或诚实返回 `BLOCKED_DEPENDENCY`。
+- 数据源断开时 UI/API 同时为 `UNKNOWN/STALE/OFFLINE`。
+- 路由和 capability 静态扫描、运行探测与 XSS 威胁测试都找不到写能力。
+
+### D60｜React 产品线进入 required CI
+
+**动作**
+
+1. 明确 React 为唯一生产 UI；旧 vanilla `web/` 和静态 demo 先标 archive/unsupported，不在未验证依赖图前删除。
+2. 使用单一 package manager 与 frozen lock；项目级 `packageManager`、`.npmrc` 和 CI env 固定 store/cache/temp 到 `.project-local/runs/cache/`。
+3. required CI 加入 install、lint、typecheck、unit、production build、Observer 权限测试、离线/error/UNKNOWN 状态测试。
+4. 删除 tracked `tsconfig.tsbuildinfo`，加入 `*.tsbuildinfo` 和真实生成目录 ignore。
+5. 连续执行两次 clean build，确认第二次仍无 tracked diff 和项目外 spill。
+6. 记录当前主 chunk 608.54 kB 为优化基线，但今天不以 bundle size 优化阻塞真值修复。
+
+**验收**
+
+- React 不是“能 build 但不受 required CI 管理”的旁路产品。
+- 两次 build 后 `git status --porcelain` 为空。
+- 旧静态 UI 不再被启动脚本或 CI 当成正式 Observer。
+
+### D70｜个人研究用途、原创权利与第三方许可
+
+**动作**
+
+1. README/版权文件明确：`Copyright 2026 DTALEX66. All rights reserved.`；WORK-LAB 用于 Owner 的个人研究和非商业自用，不向第三方授予原创代码复用权。
+2. 不采用 PolyForm，不创建临时“个人研究许可证”，清除无依据的 MIT/开源/source-available license 声明。
+3. Node 设置 `"private": true` 与 `"license": "UNLICENSED"`；Rust workspace/member 设置 `publish = false`；Python 和 Release pipeline 禁止公共 registry 上传。
+4. 建立第三方 inventory：名称、来源、version/commit、digest、许可证、使用方式、是否修改/链接/打包/分发/联网服务、NOTICE/源码义务、结论和退出方案。
+5. 无许可证、来源不明、权利不明或不兼容内容进入 quarantine，不进 active tree/安装包/本地 Release。
+6. 今日不改变仓库 public/private 可见性；这是单独 Owner 决策。
+
+**验收**
+
+- 原创状态与第三方许可证不会被一份根声明互相覆盖。
+- npm/Cargo/Python 的意外 publish 测试失败即 CI 红。
+- SBOM/NOTICE 能区分 first-party、third-party、未知和 blocked。
+
+### D80｜架构 ADR 与合同草案（P1，不抢跑）
+
+**动作**
+
+1. 写 ADR：`Tauri 2 + React` 保留；C#/Avalonia 不进入 WORK-LAB；Rust kernel 为 proposed；Python 为 Adapter/迁移兼容层。
+2. ADR 必须列出替代项、迁移增量、回滚、PoC 指标和 Owner approval gate，不得写成“Rust 已批准”。
+3. 定义 `WorkUnit`、`PolicyDecision`、`Budget`、`Approval`、`AdapterManifest`、`RuntimeReceipt`、`Observed<T>`、`ExecutionEnvelope`、`ContextCapsule` v0.1 schema。
+4. 明确每个字段的 owner、writer、sensitivity、TTL、idempotency、source revision 和未知语义。
+5. 只生成跨项目接口草案，不修改 ArcheAxis/DESIGN-LAB，不共享数据库或绝对路径。
+
+**验收**
+
+- Rust/Python/TypeScript 可用同一 fixtures 验证 schema。
+- Observer contract 中不存在 mutation。
+- 三项目的领域真相 owner 不重叠。
+
+### D90｜复验、证据包与当日交接
+
+**动作**
+
+1. 在 recovery exact SHA 上重跑：strict lock install、全 Python compile、942 tests、五命名 gate、React frozen install/typecheck/unit/build、Observer 39 Python + 76 JS tests、negative controls 和 clean/spill checks。
+2. 生成 `reports/current/DAILY-2026-09-04.md`，只从机器证据投影，不手填动态数字。
+3. 每个失败保留命令、exit code、输出 digest、owner、next action 和 evidence level。
+4. 生成 diff inventory、提交序列、rollback plan、remaining blockers 和 2026-09-05 handoff。
+5. 不把 Linux/源码证据提升为 Windows E4/E5；Windows 安装、重启、休眠、便携盘、无黑窗和卸载继续为 `UNVERIFIED/BLOCKED_RUNTIME`。
+
+**验收**
+
+- 报告和 CI 都引用同一 exact SHA/tree。
+- 工作树干净；没有未登记生成物或项目外 spill。
+- 未完成项保持 blocker，不出现聚合 `DONE/FROZEN`。
+- PR #123 仍未合并；是否 push recovery branch/开新 PR 由 Owner 另行批准。
+
+---
+
+## 7. 每个任务的证据包
+
+每个 `Dxx` 在 `.project-local/receipts/WORK-LAB-DAILY-R3-G0-20260904/<task-id>/` 生成：
+
+1. `task.json`：task ID、owner、base SHA/tree、worktree lease、依赖、授权范围；
+2. `changes.json`：文件、before/after digest、变更原因、影响域；
+3. `commands.jsonl`：去敏命令、时间、exit code、stdout/stderr digest；
+4. `tests.json`：positive、negative、fault injection、platform、evidence level；
+5. `readback.json`：实际状态、source、observedAt、TTL；
+6. `rollback.json`：触发条件、步骤、结果和恢复 digest；
+7. `supply-chain.json`：upstream、commit、license、artifact digest、SBOM、退出策略；
+8. `receipt.intoto.json`：subject、materials、products、actor、policy/approval refs；
+9. `summary.md`：只引用机器事实，不重新声明动态真相。
+
+证据等级：
+
+| 等级 | 含义 | 今天允许的结论 |
+|---|---|---|
+| E0 | 文档/静态声明 | 只能说明意图，不能说明可运行 |
+| E1 | 静态/单元测试 | 可说明局部约束，不可说明全链 |
+| E2 | 干净环境构建与集成测试 | 可说明仓库级可复现，不可说明 Windows 产品可用 |
+| E3 | 本地端到端 + 故障注入 | 可说明本机链路，不可冒充发布 |
+| E4 | 目标 Windows 安装运行与恢复 | 后续 0.1 usable 必需，今天通常仍未验证 |
+| E5 | 签名 Release、安装/升级/卸载/灾难恢复 | 今天明确不发布 |
+
+---
+
+## 8. 今日最终验收清单
+
+以下全部满足，今日任务才能标记 `DAILY_G0_COMPLETE`：
+
+- [ ] main/PR exact SHA/tree 已读回，未发生未审计漂移。
+- [ ] PR #123 保持未合并，并有机器可读 `DO_NOT_MERGE` 原因。
+- [ ] 历史 source ledger、coverage map、唯一 current/superseded 图可复现。
+- [ ] strict hash lock 可在空环境安装。
+- [ ] 全 tracked Python compile 无错误。
+- [ ] linked worktree 与主 checkout root detection 均正确。
+- [ ] 942 项测试结果已重跑；skip 有逐项证明。
+- [ ] 五个命名 gate 真通过或诚实阻断。
+- [ ] required CI 无 `|| true`、stub、PENDING-as-PASS。
+- [ ] negative controls 能让 aggregate 失败。
+- [ ] Observer 无假 LIVE/假 SHA/假 0/Home 扫描/写 route/写 capability。
+- [ ] React 已进入 required CI；连续两次 build 后 Git clean。
+- [ ] 所有运行数据、cache、logs、worktree 留在 `.project-local/`。
+- [ ] 个人研究/非商业是用途声明，不是对外许可；无虚假 MIT/PolyForm/开源声明。
+- [ ] 包禁止公共 publish，第三方 license/SBOM/NOTICE 可区分归属。
+- [ ] 证据报告引用同一 exact SHA/tree，未把 E0-E3 冒充 E4/E5。
+- [ ] 未修改其他项目，未读取私有会话/凭据，未安装系统组件，未公开 Release。
+
+任何一项未满足时，今日最终状态只能是 `PARTIAL_WITH_BLOCKERS`，并列出具体 blocker；不得为了“今天完成”而降级门禁。
+
+---
+
+## 9. 今日之后仍保留的完整路线
+
+本 TaskPack 不取代 R3 长期总案。今日 G0 完成后继续：
+
+| 后续 Gate | 任务范围 | 前置条件 |
+|---|---|---|
+| G1 | AuthorityIndex/v2、`.project-local` schema、核心合同、pnpm/uv/Cargo workspace | 今日 G0 全绿 |
+| G2 | Rust domain/store/projection/CLI 影子骨架、policy/budget/approval、SQLite 单写者、Python Adapter SDK v2、数据迁移 | ADR + Owner 批准 + G1 合同稳定 |
+| G3 | 可写 Control Surface、只读 Observer 重建、first-party Adapter 黄金 fixture、OTel、Sandbox Provider | G2 真值与单写者通过 |
+| G4 | 成功/失败黄金链、Windows 正式入口、无黑窗、portable/安装/卸载、旧代码清理、可选历史减重 | E3 后进入目标 Windows E4；历史重写另批 |
+
+成熟组件仍遵循：first-party baseline 不依赖 Dagu/LiteLLM/沙箱 sidecar；外部组件只有在版本、许可证、SBOM、真实运行、失败语义、回滚和退出条件齐全后才可资格化。
+
+---
+
+## 10. 当日交接模板
+
+```text
+TaskPack: WORK-LAB-DAILY-R3-G0-20260904
+Observed main: <commit>/<tree>
+Observed PR #123: <commit>/<tree>
+Recovery branch/worktree: <name/path>
+Authorization scope: <read-only|local-write|commit|push|PR>
+
+Completed with evidence:
+- <task-id>: <evidence path/digest/level>
+
+Blocked or failed:
+- <task-id>: <exact failure, owner, next action>
+
+Tests:
+- strict lock install: <PASS/FAIL>
+- tracked Python compile: <PASS/FAIL>
+- governance tests: <count/pass/fail/skip>
+- named gates: <results>
+- React required CI: <results>
+- Observer read-only/UNKNOWN: <results>
+- negative controls: <results>
+- clean worktree/spill: <results>
+
+Safety:
+- PR #123 merged: NO
+- remote writes performed: <NO or approved list>
+- private session/credential access: NO
+- cross-project writes: NO
+- system installs: NO
+- public release/publish: NO
+
+Next gate:
+- <G1 task or blocker>
+```
+
+---
+
+## 11. 执行终止条件
+
+出现任一条件立即停止，不自行绕过：
+
+- main/PR SHA 或 tree 与冻结值不同且增量未审计；
+- 需要覆盖已有 worktree/branch、删除未归属文件或处理用户未提交修改；
+- 需要读取 Home、浏览器、私有软件数据库、credential、prompt/response；
+- 需要安装系统组件、修改 GitHub ruleset/secret/Actions 权限；
+- 需要 push、merge、release、force-push 或历史重写但没有对应授权；
+- 第三方来源/许可证/权利不明；
+- 任何门禁只能通过吞错、跳过、伪造数据或降低断言；
+- 需要跨写 ArcheAxis/DESIGN-LAB 或共享其数据库/运行目录。
+
+停止后输出 `BLOCKED`、现有证据、最小所需授权或决定，不得把阻断包装成“基本完成”。
+

@@ -1,0 +1,208 @@
+# Workflow-assistance 仓库执行包
+
+## 目标
+
+把当前 Hermes-first 治理仓库收敛为客户端中立的工作流控制、规则、任务、边界、交付和可观测层，同时保留 Hermes/Codex/GitHub 已有能力。
+
+## 已确认基线风险
+
+- 核心 Manifest 直接依赖 `hermes-agent==0.19.0`；
+- Hermes 相关代码和文档远多于 Cursor/WorkBuddy；
+- 缺少 Client Adapter 和 Domain Pack 正式合同；
+- TaskPack 只有当前 lineage 的有限循环，不是通用可恢复状态机；
+- Token Monitor 不是完整任务/流量/交付监控；
+- CI 未运行 npm build、Cargo test/check 或 Tauri build；
+- npm lockfile 固定到 `registry.npmmirror.com`；
+- 缺少根级 License/Security/贡献和依赖治理；
+- `tests/test_workflow_governance.py` 过大。
+
+## 任务顺序
+
+### WA-001：客户端中立产品定义
+
+主要文件：
+
+- `workflow-manifest.yaml`
+- `README.md`
+- `docs/workflow/project-definition.md`
+
+要求：
+
+- 核心不要求 Hermes 存在；
+- Hermes/Codex/CC Switch/GitHub/Open Design 成为 Adapter；
+- 明确不是 Agent、聊天软件、模型网关；
+- 明确入口可替换；
+- 保留当前 Hermes 为一级支持，但不作为架构前提。
+
+验收：没有 Hermes 的隔离环境仍可解析 Manifest、验证合同和列出可用/不可用 Adapter。
+
+### WA-002：核心 Schema
+
+新增：
+
+```text
+schemas/workflow/client-adapter.schema.json
+schemas/workflow/domain-pack.schema.json
+schemas/workflow/action-plan.schema.json
+schemas/workflow/run-event.schema.json
+schemas/workflow/evidence-envelope.schema.json
+schemas/workflow/error.schema.json
+```
+
+必须有 JSON Schema 实例正负控；禁止只检查字段文字存在。
+
+### WA-003：Adapter 注册表
+
+首批深度支持：
+
+- Hermes；
+- Codex；
+- CC Switch；
+- GitHub；
+- Open Design。
+
+第二批仅 Manifest/只读检测：
+
+- Cursor；
+- Claude Code；
+- WorkBuddy。
+
+统一接口：
+
+```text
+detect
+capabilities
+plan
+apply
+invoke
+observe
+rollback
+```
+
+`detect` 不得读取 auth 文件；`apply` 默认不可用，必须消费用户批准的 ActionPlan。
+
+### WA-004：ActionPlan 与配置治理
+
+重构已有同步/安装脚本：
+
+- 默认 plan；
+- 精确列出目标、before hash、after hash、权限和回滚；
+- 项目外写入单独审批；
+- 配置 apply 后必须 read-back 和验证；
+- 支持部分失败回滚；
+- 不允许 broad root、隐式 live apply 或字符串正则破坏 TOML/YAML。
+
+### WA-005：项目中立 Task Ledger
+
+将通用状态写入：
+
+```text
+<project>/.workflow/
+```
+
+状态至少包括：
+
+```text
+QUEUED | PLANNING | WAITING_APPROVAL | RUNNING | RETRYING
+PAUSED | BLOCKED | REVIEWING | COMPLETED | FAILED | CANCELLED
+```
+
+现有 `.hermes/` 通过 Hermes Adapter 兼容；禁止静默迁移。
+
+必须支持：
+
+- run id；
+- checkpoint；
+- restart/resume；
+- idempotency key；
+- Token/时间/迭代预算；
+- 可重试错误分类；
+- 外部写操作不自动重试；
+- 最多三轮修复。
+
+### WA-006：统一监控事件
+
+监控：
+
+- 任务阶段、状态、重试和阻塞；
+- Token、模型、Provider、缓存和 reasoning；
+- 网络请求结果、耗时和字节数；
+- Git、GitHub、CI 和 artifact。
+
+隐私：
+
+- 默认不读取 Prompt/回复正文；
+- 不读取认证数据库；
+- 不做代理流量内容；
+- 只有真实 usage 才记录 Token；否则 `UNKNOWN`。
+
+### WA-007：Workflow Console
+
+复用 `apps/token-monitor-desktop/`，逐步改为：
+
+- Overview；
+- Clients；
+- Config；
+- Packs；
+- Runs；
+- Usage；
+- Delivery；
+- Evidence。
+
+禁止聊天、Prompt 输入、模型执行、Agent 人格和自动批准。
+
+### WA-008：CI 与供应链
+
+在 exact SHA CI 增加：
+
+- Python unit/contract/security；
+- Agent Skills validation；
+- `npm ci`、`npm run build`；
+- `cargo fmt --check`、`cargo test --locked`、`cargo check --locked`；
+- Windows Tauri build；
+- lockfile 标准 registry；
+- 依赖审查和 SBOM；
+- pinned Actions、最小权限、timeout、concurrency。
+
+### WA-009：仓库治理和维护性
+
+- License 由仓库所有者决定；
+- 根级 `SECURITY.md`；
+- 贡献说明；
+- 将 touched tests 从单一巨型文件拆到 contracts/adapters/runner/security；
+- 历史审计文档归档并建立索引；
+- README 计数和能力表由 Manifest 生成或验证。
+
+## Canonical Gate
+
+保留并增强：
+
+```powershell
+python scripts\workflow\run_quality_gate.py verify
+```
+
+桌面端附加门禁：
+
+```powershell
+Set-Location apps\token-monitor-desktop
+npm ci
+npm run build
+cargo fmt --manifest-path src-tauri\Cargo.toml --check
+cargo test --manifest-path src-tauri\Cargo.toml --locked
+cargo check --manifest-path src-tauri\Cargo.toml --locked
+```
+
+工具不存在必须报告 `BLOCKED/UNVERIFIED`，不得伪装通过。
+
+## 完成条件
+
+- 核心可在无 Hermes 环境验证；
+- 五个一级 Adapter 通过统一合同；
+- Cursor/WorkBuddy 只按真实证据标记；
+- Task 可中断恢复；
+- Token 不估算；
+- Console 无 Agent 功能；
+- Python/Node/Rust 被同一 SHA CI 证明；
+- 所有外部写入默认 plan；
+- exact-tree review 通过。
+

@@ -1,0 +1,476 @@
+# ArcheAxis Workspace / 元枢工作台
+
+## 完整项目介绍与整合蓝图 v1.0
+
+> 日期：2026-08-11（UTC）  
+> 对外产品名：**ArcheAxis Workspace / 元枢工作台**  
+> 品牌：**ArcheAxis**；中文本地化名：**元枢工作台**  
+> 当前仓库技术 ID：`DTALEX66/Cognitive-Loop-OS`（历史/兼容身份，不是产品定位）  
+> 文档性质：完整产品介绍、战略蓝图与防漂移基线；**不代表任何未来能力已经实现，也不授权实施、发布或仓库迁移。**
+
+---
+
+## 1. 这是什么项目
+
+**ArcheAxis Workspace（元枢工作台）**是一套面向个人与其 AI 的、本地优先、证据驱动、开放兼容的学习与知识工作台。
+
+它要解决的不是“怎样再做一个笔记软件”或“怎样再做一个聊天 Agent”，而是一个长期问题：个人的文件、网页、课程材料、论文、表格、图像、音视频、笔记和经验分散在不同软件与格式中；即使能搜索，也常常丢失原件、来源、版本、上下文和可信度。人难以真正学深，AI 也容易基于未经核验、过期或无出处的材料给出看似流畅却不可追溯的结果。
+
+ArcheAxis 将这些资料保留为用户可带走的原件和开放格式，在可解释转换、来源锚定、差异记录与交叉验证的基础上，形成可审阅的知识。相同的可信证据基底同时服务两条链：
+
+- 人：理解、练习、记忆、复习、迁移、Teach Back、教学与项目产出；
+- AI：受控、可审查、可评估、可撤销的 Memory、Rule、Skill、Standard、Context 与 Evaluation 资产。
+
+固定短句：
+
+> **同一份可信知识，人学得更深，AI 用得更准。**
+
+这里的“更深”和“更准”是产品目标，不是尚未取得比较性证据前可以对外宣称的科学效果结论。
+
+---
+
+## 2. 产品名称、长期本质与当前入口
+
+项目有三层彼此不冲突的表达：
+
+| 层次 | 规范表达 | 含义 |
+|---|---|---|
+| 品牌 | `ArcheAxis` | 统一品牌、代码与未来技术命名空间 |
+| 对外产品 | `ArcheAxis Workspace / 元枢工作台` | 用户安装、打开、阅读、学习和管理资料的工作台 |
+| 长期本质 | 本地优先、证据驱动的人机双向学习与知识系统 | 产品的完整机制与远期能力，不要求在当前版本全部实现 |
+
+最早的项目愿景是“一源、双学、双向反馈”的长期学习知识系统；后续收敛为 Workspace，并不是删除这个愿景，而是明确它首先必须成为一个真实可用的日常工作台。
+
+因此：
+
+```text
+Workspace = 用户今天进入系统、处理真实资料的工作面
+System    = 原件、证据、学习、AI 资产、评估与长期演进的整体机制
+```
+
+项目不是 `Cognitive OS`、通用 Agent OS、通用 Agent 平台、Runtime 控制台或 WORK-LAB 的附属模块。Agent 未来可以作为受控执行 Adapter；它不是产品中心、默认首页或知识真相来源。
+
+---
+
+## 3. 使命、愿景与核心问题
+
+### 3.1 产品使命
+
+让个人在不丢失原始资料、不丢失出处、不被单一软件锁定的前提下，把分散在文件、网页、笔记库、课程材料、学术资料和媒体中的信息，转化为长期可使用、可验证、可迁移、可复查的知识，并让人和 AI 在同一证据基底上学习与使用它。
+
+### 3.2 最终愿景
+
+ArcheAxis 将成为个人本地知识资产的统一入口：
+
+- 可接入并逐步高保真互操作现有开放 Vault，而不是要求用户重建资料库；
+- 可处理真实 PDF、Office、图片、网页、音视频和结构化数据，而不是只处理 Markdown；
+- 保留页码、时间点、表格、脚注、来源、批注、版本和转换损失，而不是只输出摘要；
+- 可用本地模型或经许可的云模型，但不会把 AI 放在产品中心；
+- 可开放导出、跨软件读取、迁移、备份和恢复，不制造新的数据锁定；
+- 可将学习成果与 AI 可用资产相互提出转化候选，但不允许自动把候选升级为真相或生效能力。
+
+### 3.3 北极星指标
+
+项目不以测试数量、模型调用次数、Agent 数、Job 数或开源候选数量衡量成功。核心指标是：
+
+```text
+双学习有效闭环率
+= 同时完成“开放资料可用 + 证据形成 + 人类学习结果
+  + AI 可验证使用 + 重启/导出”的主题数
+ / 用户进入学习的主题数
+```
+
+---
+
+## 4. 产品主链：从原件到双向学习
+
+```text
+真实文件 / Vault / 网页 / 文献 / 图像 / 音视频 / 用户经验
+        │
+        ▼
+RawAsset + SourceRecord
+原件、来源、授权、哈希、版本、不可变保存
+        │
+        ▼
+ConversionRun
+原生提取 / OCR / ASR / 网页正文 / 结构解析
+        │
+        ▼
+DerivedDocument + Blocks + LossReport + EvidenceAnchor
+可阅读的派生内容、页/区域/时间锚点、明确的损失与不确定性
+        │
+        ▼
+ExtractedClaim → EvidenceCandidate → CrossValidation → EvidenceBundle
+可核验陈述、支持/反驳/限制、独立性、时效、冲突与范围
+        │
+        ├───────────────────────────────────────┐
+        ▼                                       ▼
+Human Learning                            AI Learning Assets
+目标、解释、练习、复习、迁移、                Memory、Rule、Skill、Standard、
+Teach Back、掌握证据                         Context、Eval、受控调用
+        │                                       │
+        └──────── Change Proposal / Review ─────┘
+                           │
+                           ▼
+      批准新版本 / 替代 / 撤销 / 保持不确定，而不是自动覆盖
+```
+
+这条链包含两个必须分开的判断：
+
+1. **识别转译是否准确**：OCR、ASR、PDF/Office/HTML 提取是否忠于原件，使用 CER/WER、结构保真、锚点稳定性等衡量。
+2. **内容事实是否成立**：文字中关于年份、人名、定义、数字、理论归属、书目、法规或产品规格等公共主张，是否被独立、合适、可追溯的来源支持。
+
+OCR 或 ASR 的置信度永远不能当作事实正确率；全网来源命中也不能覆盖或改写原文识别结果。二者都只形成可审阅记录。
+
+---
+
+## 5. 谁使用它，完成什么真实任务
+
+| 使用者 | ArcheAxis 必须帮助完成的任务 |
+|---|---|
+| 普通个人 | 拖入资料、保留原件、找到出处、形成可靠结论、记住并能应用，让个人 AI 在授权范围内准确复用 |
+| 学生 | 教材 PDF、课件、网页、课堂录音 → 证据 → 理解、练习、复习、掌握、Teach Back，并能回到原页或时间点 |
+| 教师 | 多源备课、对照来源、生成并审核学习活动、观察掌握信号、以开放格式交付课程资料 |
+| 研究者与学者 | 管理论文、表格、网页、书籍和研究笔记；让主张、矛盾、页码、引文和结论可追溯 |
+| 专家与重度知识用户 | 把经验沉淀为带范围、版本、证据和失效条件的规则、规范、技能，供自己和 AI 受控使用 |
+| 个人 AI | 在用户批准范围内检索证据、使用可撤销记忆和已批准技能，交回来源、执行结果和失败记录 |
+| 隐私敏感或低配置用户 | 在无 GPU、无网络或低内存条件下完成核心离线闭环，按需启用 OCR、ASR、富解析或模型 |
+
+---
+
+## 6. 用户看到的工作台
+
+ArcheAxis 的默认体验是内容优先、中央工作面优先，而不是聊天、运行时仪表盘或 Agent 控制台优先。界面采用宽主工作区、左右按需上下文和仅在任务运行/失败时出现的活动条。
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 工作区切换 | 全局搜索 | 导入 | 能力状态 | 设置                  │
+├───────────────┬────────────────────────────────┬────────────────┤
+│ 来源/主题树    │ 中央多标签工作面               │ 上下文面板      │
+│ 文件与 Vault   │ PDF / Markdown / Office         │ 大纲、属性      │
+│ 资料库          │ 表格 / Canvas / Graph           │ 链接、反链      │
+│ 证据            │ 证据对照 / 学习会话             │ 引用、矛盾      │
+│ 学习            │ AI Asset 编辑与评测              │ 批注、损失      │
+│ AI 资产         │                                 │ 学习/评估       │
+├─────────────────────────────────────────────────────────────────┤
+│ 活动条：仅在导入、转换、索引、失败或等待用户决策时出现          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+固定一级空间：
+
+1. **Workspace / 工作区**：继续工作、最近内容、当前主题、课程或项目、待处理事项。
+2. **Library / 资料库**：Files、Vaults、Sources、Collections、Import Center、Reader/Editor。
+3. **Evidence / 证据**：Claim、来源并排、Anchor、引用、冲突、差异、Review。
+4. **Learning / 学习**：目标、路径、练习、复习、掌握、错因、Teach Back、Transfer、项目。
+5. **AI Assets / AI 资产**：Memory、Rule、Skill、Standard、Context、Evaluation 的候选、审阅、评估、替代与撤销。
+6. **Settings / 设置**：Provider、Adapter、权限、存储、备份、同步、无障碍、诊断。
+
+Canvas、Graph、Learning Map 是中央工作面的视图，而不是为了堆功能而膨胀出的新产品。内部 Conversion Runs、Receipt、Runtime、构建信息和诊断信息进入 Advanced/Diagnostics，不占据普通用户首页。
+
+---
+
+## 7. 原件、证据与知识治理
+
+### 7.1 原件优先
+
+用户的原文件、目录与开放格式高于内部数据库和索引。原件与派生物始终分离：转换、索引、摘要、向量、OCR、ASR 或 AI 生成失败，都不得改写或损坏原件。
+
+核心对象包括：
+
+```text
+SourceConnection / SourceRecord
+RawAsset / AssetRevision
+ImportBatch / ImportItem
+ConversionRun
+DerivedDocument / DerivedBlock
+LossReport
+EvidenceAnchor
+Annotation
+Revision / Conflict / IndexRevision
+LearningAsset / AIAssetRevision
+TransformationProposal / ReviewDecision
+```
+
+### 7.2 Evidence 不是“任何资料”
+
+| 状态 | 含义 |
+|---|---|
+| RawAsset / SourceRecord | 证明某个文件或网页在某时以某种形式存在，不自动证明其中主张为真 |
+| ExtractedClaim | 从材料中抽出的、可判断真假的陈述 |
+| EvidenceCandidate | 已绑定来源和位置的待核验材料 |
+| CrossValidationRecord | 对来源独立性、权威性、时效、范围、支持与冲突的验证过程 |
+| CorroboratedEvidence / EvidenceBundle | 达到相应策略要求、可展示支持/反驳/限制的证据集合 |
+| VerifiedKnowledge | 基于 EvidenceBundle 并经授权形成的知识版本；可替代、失效或撤销，不是永久真理 |
+
+所有外部材料、人工输入与 AI 输出默认是 Candidate。人工笔记可证明“用户写下了什么”，模型输出可证明“模型在该输入下输出了什么”，但它们不能单独作为外部世界事实的独立佐证。
+
+### 7.3 交叉验证边界
+
+值得自动或半自动进入候选验证的内容包括：精确或易变的公共事实、概念定义、理论归属、法规/标准、书目字段、产品规格，以及准备晋级为正式知识或 AI Rule/Standard 的主张。
+
+不应自动外发验证的内容包括：私人日记、未公开项目事实、个人体验、原创论证、创作文本、低价值琐碎陈述和明显 OCR/ASR 噪声。医疗、法律、财务与安全等高风险内容必须使用权威来源、独立佐证与人工复核。
+
+首批公共证据连接器方向包括官方/注册机构资料、Crossref、DataCite、OpenAlex、Wikidata、Europe PMC、NCBI 与 Open Library；它们是可替换 Connector，不是单一真相中心。
+
+---
+
+## 8. 多格式资料理解与全网验证
+
+### 8.1 统一处理方式
+
+所有入口——文件导入、URL、Workspace intake、Knowledge Base、Research、Obsidian skills——应复用同一套核心阶段协议：
+
+```text
+Ingress Adapter
+→ Intake Gateway / RawAsset-first
+→ Source Profiler & Policy Router
+→ Conversion Orchestrator
+→ Recognition Quality Gate
+→ DerivedDocument / LossReport / EvidenceAnchor
+→ Claim Triage（异步）
+→ Evidence Connector Registry
+→ CrossValidation / EvidenceBundle
+→ Human ReviewDecision
+```
+
+入口可以很多，识别与验证核心不能复制九套。识别完成不等待互联网；事实验证默认异步，只有用户要求“经核验导入”、高风险发布或正式知识晋级时才成为阻断条件。
+
+### 8.2 格式路线
+
+| 材料 | 默认策略 | 升级与边界 |
+|---|---|---|
+| 文字型 PDF | 原生文本提取、页级锚点、PDF.js 阅读 | 复杂布局或低质量页才进入富解析/局部重试 |
+| 扫描 PDF / 图片 | OCR，保留 bbox、语言、引擎与置信信息 | 低置信、专名/数字/表格冲突进入第二引擎或人工复核 |
+| DOCX / PPTX / XLSX / CSV | 结构化提取，同时保留原件 | 表格、公式、脚注、单元格和值/公式分开，不把结构降成一段文本 |
+| HTML / URL / RSS | 保存 URL、抓取时间、快照或内容哈希，再提取正文 | 动态页、登录态、SSRF、提示注入、robots/条款进入隔离与授权政策 |
+| 音频 / 视频 | 保存原媒体，ASR 产出带时间戳的转写才算内容处理 | FFprobe 元数据不是 ASR；无组件时只声明 preserved/metadata-ready |
+| JSON Canvas | `.canvas` 开放文件是事实源 | 节点、边、位置、颜色和未知字段均需保留；内部画布不可冒充兼容 |
+
+### 8.3 零 Token 默认与质量门
+
+默认优先使用本地/外置引擎：原生解析、MarkItDown、pdfplumber/pypdf、Tesseract/Paddle/Rapid/EasyOCR、Trafilatura、faster-whisper/whisper.cpp 等，按能力和许可证独立选择。LLM 不作为每份文件必经阶段。
+
+有金标准时，可用 CER/WER、关键实体正确率、结构保真与锚点稳定性做 benchmark。无金标准时只能使用内容覆盖、乱码率、阅读顺序、几何一致性、异常重复、时间码完整性、关键 span 差异等风险信号；不得将引擎 confidence 伪装成 CER/WER 或通用准确率。
+
+质量门的可能结果是：`ACCEPT`、`ACCEPT_WITH_WARNINGS`、`TARGETED_RETRY`、`ALTERNATE_ENGINE`、`LLM_ASSIST_CANDIDATE`、`HUMAN_REVIEW`、`UNSUPPORTED`。升级只针对问题页、区域、表格、公式或音频时间段，不能把整份材料无差别送给模型重写。
+
+---
+
+## 9. 人类学习系统
+
+ArcheAxis 的学习系统不是把笔记自动变成大量卡片，而是围绕证据、理解和可观察表现组织学习：
+
+```text
+EvidenceBundle
+→ Learning Objective
+→ Explanation / Example / Concept Relation
+→ Exercise / Retrieval Practice / Transfer Task
+→ Review Schedule
+→ Mastery Signal
+→ Teach Back
+→ Correction and new evidence demand
+```
+
+核心对象包括 LearningObjective、Concept、Explanation、Example、Counterexample、LearningNote、Exercise、RetrievalPrompt、TransferTask、ReviewItem、MasteryAssessment、TeachBackSubmission、Misconception、LearningPath 与 LearningEffectEvaluation。
+
+掌握度必须区分：看过、理解自评、即时回忆、延迟回忆、迁移应用与 Teach Back。模型评分只是一种候选信号；任何学习资产应尽量指回 EvidenceBundle 或明确标记为个人反思。
+
+未来的学习体验与知识表征层（LER）是永久产品层，包含表格、卡片、对比、时间线、Learning Map、Canvas、Graph、课件、动画、交互演示、模拟实验、2D/2.5D 空间记忆和 3D/VR/AR。它们按学习价值、无障碍 fallback、开放导出和效果证据分期，不会因当前尚未实现而从蓝图删除。
+
+---
+
+## 10. AI 学习资产与受控使用
+
+AI 在 ArcheAxis 中不是“自动接管知识库的智能体”，而是受证据、范围、权限、版本和评测约束的资产消费者与辅助者。
+
+```text
+EvidenceBundle
+→ Memory / Rule / Skill / Standard / Context Candidate
+→ provenance + scope + freshness + conflict check
+→ human/policy review
+→ approved revision
+→ controlled invocation + outcome proof
+→ evaluation / correction / supersession / revocation
+```
+
+AI 资产包含：
+
+- **Memory**：带来源、适用范围、时效、冲突和替代关系的记忆；
+- **Rule**：可解释的规则与优先级；
+- **Skill**：有输入、输出、权限、依赖、测试、副作用和回滚合同的可复用流程资产；
+- **Standard**：可版本化、可核验的规范；
+- **Context**：范围明确、可过期的上下文包；
+- **Evaluation**：测试案例、评测结果、已知失败与调用记录。
+
+AI 的总结、题目、链接建议、规则草案、技能草案和调用结果只能提出 Candidate/Proposal。禁止 Human Note 直接变成 active Memory、AI 输出直接变成 VerifiedKnowledge、一次执行成功直接变成已批准 Skill。
+
+v1.0 的最低目标不是通用 Planner，而是证明一个真实主题中：带引用问答、一个低风险/只读或可回滚 Skill、一次可评估的调用与可回读 OutcomeProof。
+
+---
+
+## 11. 开放兼容与生态位置
+
+### 11.1 Obsidian 是第一条高保真纵切
+
+ArcheAxis 的目标不是复刻 Obsidian 的品牌、私有插件运行时或逐像素行为，而是实现开放 Markdown、Properties、链接、附件、JSON Canvas 和日常核心工作流的高保真互操作。
+
+兼容级别：
+
+| 级别 | 含义 |
+|---|---|
+| C0 | 安全发现 Vault、目录、文件和配置边界 |
+| C1 | 读取 Markdown、Properties、Links、附件与 Canvas，保留关键结构 |
+| C2 | 文件树、编辑、搜索、反链、属性、阅读器与 Canvas 可用于日常工作 |
+| C3 | 原子写、expected-hash、备份、版本、冲突与回滚 |
+| C4 | Obsidian 与 ArcheAxis 交替编辑，关键语义与资源可靠往返 |
+| C5 | 公开 URI、命令、导出与其他生态 Adapter 的受控桥接 |
+
+v1.0 的第一完整兼容目标是 C4。它不承诺运行私有插件、复刻 Sync/Publish 或支持每个社区插件的私有缓存。
+
+### 11.2 其他生态
+
+Zotero、BibTeX、CSL JSON、Anki、Joplin、Logseq、SiYuan、Readwise、AppFlowy、AFFiNE 等，是开放格式、导出/API、互操作、UX 或行为研究来源。任何 Adapter 都必须独立记录版本、许可、能力边界、损失、fixture、升级和回滚；“能导入一次”不等于“持续同步兼容”。
+
+---
+
+## 12. 技术与数据主权架构
+
+| 层 | 责任 |
+|---|---|
+| Python / FastAPI | 导入、格式转换、证据、知识、学习、AI 资产、评估和本地 API |
+| SQLite WAL + FTS + 可选向量索引 | 本地对象、版本、事务、任务、全文与可重建的派生索引 |
+| 文件与内容寻址资产存储 | 原件、附件、转换输入输出与哈希引用；原件不依赖索引生存 |
+| Rust / Tauri | 桌面壳、窗口、进程监督、WebView、安装器与生命周期边界 |
+| TypeScript / JavaScript | 阅读器、编辑器、表格、Canvas、Graph、动画与空间化呈现 |
+| PowerShell 7 | Windows 环境发现、工具链、安装器与运行环境编排；复杂规则不从 Python 分散出去 |
+
+基本数据主权规则：
+
+- 默认本地处理，云模型或外部验证必须显式授权；
+- 不扫描个人磁盘、未授权目录或私人 Vault；
+- 实际路径经 realpath/containment 检查，防止 symlink 越界；
+- 初次连接真实 Vault 默认只读；写入使用 expected-hash、原子替换、备份、Revision、Conflict 与 rollback；
+- 原件、派生数据、索引、模型缓存和凭据的保存/删除边界必须可见；
+- 日志不记录正文、凭据和私人绝对路径；
+- 支持无 GPU、低内存、断网和轻量 profile，不让重模型或单一云 Provider 成为核心依赖。
+
+---
+
+## 13. 开源吸收原则
+
+项目允许最大化、合法地吸收开源能力，但“个人非商业”不构成许可证、NOTICE、源码、模型、字体、图标、数据或网络条款的豁免。
+
+复用阶梯：
+
+```text
+开放格式/标准
+→ 许可兼容的成熟依赖
+→ 官方 SDK / API / CLI
+→ 隔离 sidecar
+→ 固定 revision 的许可兼容 fork/vendor
+→ 行为与 fixture 的洁净参考
+→ 自研
+```
+
+每个候选必须有 canonical URL、固定 revision、代码/模型/数据/资产的独立许可判断、集成模式、网络与安全边界、真实 fixture、Windows/安装资格、升级策略、回滚或 kill switch。历史研究池中的 369 项、旧 registry 的 101 行、57 项精选和历史 8 项“implemented”证据都不能相加，更不能被写成“已集成数量”。
+
+当前优先方向是：PDF.js、MarkItDown、pdfplumber/pypdf、Docling/PaddleOCR 等可选富解析、Tesseract、Trafilatura、faster-whisper/whisper.cpp、Markdown/YAML parser、JSON Canvas、SQLite FTS、py-fsrs、开放文献/书目连接器和供应链工具。完整 Agent、RAG、Memory、Workflow 平台主要作为研究或后置参考，不能反向接管核心数据模型与产品定位。
+
+---
+
+## 14. 路线图：当前闭环与长期蓝图
+
+路线的原则是：**deferred 不等于 deleted，未激活不等于没有规划。** 当前 Release Spine 不能被未来 3D/Agent/协作能力阻塞；未来能力也不能因为暂未实现而被从 Capability Atlas 删除。
+
+| Horizon | 目标 | 主要交付与退出方向 |
+|---|---|---|
+| H0 | 产品真相与生存修复 | 真 PDF 安装流程、Windows 构建底座、Truth Reset、能力声明和门禁提速 |
+| H1 | 知识摄入底座 | RawAsset、ConversionRun、DerivedBlock、LossReport、EvidenceAnchor、PDF 阅读/重启读回 |
+| H2 | 多格式学习材料 | DOCX/PPTX/XLSX/CSV、图片 OCR、HTML、批量导入、质量门与局部重试 |
+| H3 | 开放 Vault 工作台 | Markdown、Properties、Links/Backlinks、附件、JSON Canvas、增量、C3/C4 安全往返 |
+| H4 | 引用 AI 与双向学习 | Claim 交叉验证、EvidenceBundle、练习/复习/Teach Back、FSRS/Anki 最小交换、AI Asset 审阅与低风险调用 |
+| H5 | 稳定 v1.0 | 大库性能、无障碍、低配降级、升级/卸载/恢复、开放导出、安装版 exact-SHA 资格 |
+| H6 | 研究、课程与知识生产 | Research/Knowledge Production、生态 Adapter、课程/项目、Visual Teaching、课件与图解 |
+| H7 | 完整学习方法与互动表征 | 诊断、完整学习方法、动画、交互模拟、Simulation & Practice Lab、2.5D Spatial Memory、学习效果评估 |
+| H8 | 受控空间化与多设备 | 3D/VR/AR Memory Palace、加密同步/多设备、一个受控执行 Adapter 的研究 |
+| H9 | 开放扩展与可选协作 | SDK、签名扩展、发布、可选社区能力；不牺牲本地和开放数据边界 |
+| H10 | 仅探索 | 通用 Agent、多 Agent、自治演化等研究，不回流成为产品中心 |
+
+### 14.1 永久保留的 Learning Experience & Representation Layer
+
+| 阶段 | 代表能力 | 进入条件 |
+|---|---|---|
+| H1–H5 | 表格、卡片、对比、时间线、Canvas、Graph、Learning Map、基础课件与 2D 表征 | 必须指回来源并能开放导出 |
+| H6 | Visual Teaching、Courseware、图解、动画脚本与交互内容 | 先证明内容和数据模型，不做纯装饰 |
+| H7 | Simulation & Practice Lab、动态解释、2.5D 空间记忆 | 与学习行为或效果评估关联 |
+| H8 | 3D/VR/AR 记忆宫殿 | 文本/2D/无障碍 fallback、性能预算与学习证据齐备 |
+
+高级视觉或空间能力在没有技术与学习效果证据前只能标为 prototype/experimental，不能用“沉浸感”冒充学习增益。
+
+---
+
+## 15. 当前状态与能力诚实原则
+
+截至 2026-08-11，项目已具备并继续建设的底座包括：Python/FastAPI、SQLite、Tauri、RawAsset 与持久任务治理、PDF.js 原件阅读、MarkItDown 等文字格式基础、部分 OCR 基础、Job/Outbox/Receipt、Evidence/学习对象的早期底座与 Windows/Release 门禁工作。
+
+但必须明确区分：
+
+- 主分支已合入的源码能力；
+- 当前安装包真实可用的能力；
+- 已发布版本实际包含的能力；
+- 已完成互操作资格的能力；
+- 已具备学习效果或 AI 使用效果证据的能力。
+
+例如，图片 OCR 存在不等于扫描 PDF 已成为完整知识转换链；FFprobe 元数据存在不等于音视频已完成 ASR；内部可信度分数不等于全网事实核验；UI 菜单出现不等于用户闭环完成。任何 Released capability 都应至少有真实用户操作、真实 fixture、源码与 bundled/installed 验证、可行动错误、重启读回和 exact-SHA Release 证据。
+
+---
+
+## 16. 质量、发布与成功标准
+
+### 16.1 可靠性标准
+
+- 原件可保留、可定位、可回读；
+- 转换、索引与写入失败不破坏原件；
+- 大文件与后台任务可取消、可重试、可恢复；
+- 外部修改被检测，冲突不静默覆盖；
+- 索引、向量和派生物可重建；
+- 升级、卸载、迁移和备份不丢用户数据；
+- Windows 安装版而非仅源码环境，完成真实用户闭环。
+
+### 16.2 变化感知门禁
+
+- 普通改动运行受影响的 Python 测试与 lint；
+- UI 改动增加浏览器用户流；
+- Windows runtime、桌面壳、安装器、依赖/解析器和兼容接口分别触发对应资格；
+- nightly/RC 运行完整矩阵；
+- 正式 Release 绑定 exact SHA、lock、bundle、installer、产物哈希和下载安装读回。
+
+### 16.3 成功的最终样子
+
+一个真实主题可以从资料导入开始，保留原件与来源，可靠地阅读、编辑、搜索和引用；用户能看清转译损失和证据分歧；完成理解、练习、延迟复习、迁移或 Teach Back；AI 只能在批准范围内使用带来源的记忆、规则或技能；人和 AI 的反馈产生可审阅修订候选；所有结果经重启仍可读，并能以开放格式导出或迁移。
+
+这才是 ArcheAxis 的产品闭环，而不是“多了多少页面、多少模型、多少任务、多少开源项目”。
+
+---
+
+## 17. 明确不做与防漂移边界
+
+- 不把产品重新命名或理解为 Cognitive OS、通用 Agent OS、Runtime 或 Agent 平台；
+- 不把工作台缩窄为单纯 PDF 阅读器、文件管理器或 Obsidian 克隆；
+- 不将 AI 输出、OCR 置信度、搜索摘要或单一来源自动升级为事实；
+- 不以“支持某格式”替代真实安装、阅读、重启、往返和错误恢复证据；
+- 不让云端模型、高端 GPU、单一 Provider 或网络服务成为离线核心闭环的前提；
+- 不扫描未授权个人资料、不静默写入真实 Vault、不把个人资料用作公开测试样本；
+- 不把 WORK-LAB、HERMES、OpenHuman、Obsidian 等外部工具或产品变为 ArcheAxis 的产品名或一级模块；
+- 不让未来 Agent、协作、3D/VR/AR 或 Marketplace 在当前基础闭环未完成前阻塞 Release。
+
+---
+
+## 18. 文档来源与使用方式
+
+本介绍整合了以下材料族：最初的 2026-07-28 双向重型学习知识系统定位、2026-08-06 最小产品面与开放兼容路线、2026-08-09 Future Blueprint 与 Final Master TaskPack v4、2026-08-10 Context Handoff、2026-08-11 项目历史/开源吸收总图谱，以及多格式识别转译与全网验证增强方案。
+
+权威顺序应保持为：最新明确的 Owner 决策与当前仓库事实优先；主任务包用于执行边界；未来蓝图用于长期能力保留；历史任务包用于解释来源而不是覆盖当前状态。任何“下一步”“已完成”“P0”“版本号”都必须重新核验日期、证据层级和实际 Git/安装资格后才能执行或对外声明。
+
+这份文档可作为介绍项目、审查产品边界、向后续执行者交接和防止定位漂移的总说明；具体实现仍应拆成原子 TaskPack、单一责任分支、真实 fixture 与可回滚验收。

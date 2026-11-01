@@ -1,0 +1,201 @@
+# ArcheAxis 全仓审计接续交接｜2026-09-15
+
+本文供新对话或执行器直接接续。它记录已取得证据、历史要求和未完成工作，不冒充已修复、已部署或独立审计通过；不另建替代 R5 的母任务包。实际开发继续核对仓库 AGENTS.md、活动任务、当前工作区和用户已有授权。
+
+## 1．用户当前要求与工作停点
+
+用户要求：完整扫描 ArcheAxis 云端仓库，重新梳理本项目全部可获得的历史对话、文档、记录、蓝图与规划；查清为何反复要求最快闭环仍无法使用，定位产品、CI、规则、技能、插件及开源融合问题，给出能落实的修复路径。用户特别强调仓库规范化、语言迁移、清理瘦身、外溢数据追踪，以及成熟方案实际融入。
+
+用户最新要求是“给我个交接”，因此本次先交接已完成审计与下一步，不再扩展扫描或冒充实施完成。
+
+**关键判断：现有问题不只是 CI。默认桌面导入尚未接上后续处理，空库无法通过学习界面创建第一项学习内容，开发启动默认每次使用新库，DeepTutor 产品界面接入未完成。单纯把 CI 修绿仍不能交付首次可用闭环。**
+
+本轮尚未修改产品源码、提交或推送、创建 PR、合并、更新 Green、访问用户 Windows 磁盘或执行清理。不得在接续时写成这些已完成。
+
+## 2．锁定项目和最新远端
+
+- 仓库：DTALEX66/ArcheAxis-Knowledge-OS。
+- 项目：ArcheAxis；Local-first Evidence & Knowledge OS for Human–AI Bidirectional Learning。
+- 本次读取的 main：`1e9813ea2bd49f47d334ba6717c78d3e9feda6ce`。
+- 本次完整扫描的工作分支：`codex/full-loop-0906`。
+- 精确 HEAD：`0dd8ff37b670ae98fac4be35720194434e82191e`。
+- 工作分支相对 main：领先 66、落后 1；相对上次审计 `38930cfd27c0806845e65386d439468ce31405b0` 新增 14 个提交。
+- 查询时未发现打开的 PR。
+- 当前活动包：`docs/authority/taskpack-0912-r5/`，revision R5。
+- 当前状态：`docs/current/R5-STATE.json`；执行记录：`docs/current/R5-EXECUTION.md`。
+- Q00/Q01 仍 BLOCKED，实施者不能自签独立审计。
+
+以上是审计快照；接续先查询 HEAD 差分，勿把快照冒充永久最新。
+
+## 3．本轮扫描覆盖及限制
+
+完整递归 Git 文件树未截断：2,018 个文件，Git blob 逻辑字节合计 32,572,338。此数字不含 Git 历史、外置资源或本机 ignored/untracked 数据，不能拿来否认用户本地体积问题。
+
+已取得 1,989 个文本文件路径，对应 1,802 个不同文本 blob，读取失败 0。已对其进行文件清单与针对性全文检索，并精读启动、导入、作业、学习、复用、CI、规则、R5 和有关历史文档。**全仓取得文本不等于逐行语义审查全部源码，更不等于全量测试通过。**
+
+其余 29 个二进制文件已列入树清单，包括图片、安装器、模型、测试样本，以及 3 个历史 DOCX、2 个历史 ZIP。尝试读取历史 DOCX/ZIP 时接口拒绝非 UTF-8 内容，正文未取得；不得声称二进制蓝图也已全文读完。
+
+取得全部 31 个分支的 HEAD，并完成相对当前工作 HEAD 的 ahead/behind 对比；未逐个分支审查全部独有提交。独有提交可能已通过另一提交等价吸收，不能只按 ahead 数量决定合并。
+
+历史对话材料：已定位 `history-inputs/ArcheAxis完整项目对话与时间线汇报.md`，包含 2026-07-02 至 2026-08-24 的 24 个日期会话章节；完成章节检索和部分内容核读，未逐条复核全部转录。通过历史上下文检索补充了 8 月 25–26 日融合决策及 9 月相关交接；可见本对话含 R3/R3.1、R5、Environment、Green 与四库新要求。**不能声称已拿到用户账号所有历史对话。**
+
+V14/V15 原 ZIP 在当前 upload 目录。已查看包目录，并读取 V15 总报告、评价模板、阅读限制等关键内容；本轮没有重新审计所有论文。V15 自述的研究数量、效果结论与来源资格应保持原限定。
+
+## 4．首次使用的四个实际断点
+
+### 4.1 桌面导入停在原件保存
+
+文件：`apps/ArcheAxis.Desktop/MainWindow.axaml.cs`、`crates/archeaxis-api/src/lib.rs`、`crates/archeaxis-api/src/runtime/mod.rs`。
+
+桌面导入只 POST `/api/v1/imports` 并累计成功数量。该 API 保存 Source，返回 source_id/hash；它不自动创建和执行转换作业。Core 已分别提供 `/api/v1/jobs`、`/jobs/:id/executions`、状态及输出接口，但当前桌面操作没有继续调用它们。
+
+需补：保留 source_id → 选择已配置解析能力 → 创建 job → 执行并等待 → 显示正文和损失 → 锚点/候选 → 用户接受。界面不能把“原件已保存”显示成整个转换任务已完成。
+
+### 4.2 空库没有第一道题的入口
+
+文件：`crates/archeaxis-domain/src/learning.rs::item_keys_with_latest_review`、`crates/archeaxis-api/src/lib.rs::learning_items`。
+
+队列仅查询 learning_events 中每个 item 的最后一条记录，返回 item_key、next_review。没有已有复习事件就没有项目；默认桌面未接创建学习内容功能。队列也没有按到期时间过滤，却在界面称为待复习项目。
+
+需补：真实学习单元/题目创建、内容与来源版本持久化，未学队列与到期队列分开，展示问题后采集回答。不能向空库预灌“已答对”事件制造闭环。
+
+### 4.3 开发启动每次生成新库
+
+文件：`scripts/launch/desktop_launch.py`、`docs/current/R5-DESKTOP-START.md`。
+
+默认 workspace.sqlite 放在每次新建的启动 artifacts 目录；文档明确它是隔离开发入口。它不等于用户持久 Green 工作区，不足以证明退出重启继续学习。
+
+需补：TEST 与 GREEN 绑定分开；Green 稳定读取用户选定库路径，配置存程序目录之外；同库单写、版本检测、升级备份与恢复。
+
+### 4.4 项目侧 journey 有虚假成功风险
+
+文件：`shared/core_client.py::run_journey`。
+
+当前过程是连通 → 导入 → 搜索 → 写入 correct=True 的学习事件 → 可选关联首条搜索结果。没有解析、候选接受、真实回答。搜索返回 200 且结果为空时，仍可能返回 ok=True，引用为空。
+
+这是源码发现，尚未独立复测该空结果分支。必须把它限定为适配器探针，补真实冷启动旅程；不应以它的 ok 证明用户学习闭环。
+
+## 5．开源融合：哪些真实存在，哪些仍停在接线
+
+| 对象 | 已核实事实 | 接续动作 |
+|---|---|---|
+| DeepTutor | `docs/integrations/DEEPTUTOR_PRODUCT_BASE.md` 固定 v1.5.17/commit `bd80a4d28a2093347ef080f98ae7cf8e3eee488e`；历史记录 8 月 27 日前后端和浏览器启动成功，LLM 未配置、Knowledge/RAG 未配置；未应用上游补丁，路由挂载和注入仍未完成 | 优先完成既定产品底座接入；先检验固定版本真正支持的材料、题目、回答接口，再实现最小桥接；不要再泛泛登记一轮 |
+| FSRS | `shared/learning_scheduler.py` → Python scheduling worker → Rust API/事务/重开已有真实代码和仓库测试记录 | 保留现有算法，补题目生命周期、客户端幂等、实际界面调用，不再自写调度算法 |
+| PyMuPDF / Tesseract | 正式 PDF/OCR workers 存在，统一传输与部分真实样本记录存在 | 接入实际用户导入路径；核对中文 OCR，当前统一传输代码中 OCR 调用固定 eng |
+| Docling | legacy `app/ingestion/multi_format.py` 中有调用路径 | 不把 legacy 调用算成正式 worker 已接通；对已有解析失败的具体复杂样本决定是否接入 |
+| OpenTutor | 历史定位为模块供体；本轮正式目录检索未定位到对应实际移植调用证据 | 不宣称吸收完成；只为明确缺口提取模块，现有 FSRS 无须重复替换 |
+| Studyield | 历史不同版本口径有“局部吸收/研究参考”，后续检索材料有不复制代码限制 | 接续核对固定版本许可证与最新决策；先保留方法参考，不擅自纳入核心依赖 |
+| MCP | SDK stdio server、Core HTTP port、搜索/资格/任务收据接口存在 | 完成真实机器任务执行及独立结果检验；注册工具和存收据不等于机器已会用 |
+
+`scripts/host/journey_panel.py` 当前是只读人机状态/容器成员面板，不是完整学习工作台；`app/integrations/deeptutor_bridge.py` 是 legacy 数据桥，仍调用 legacy event_store，不能直接接入 vNext DB 形成第二写者。
+
+R5 已明确允许先使用本地浏览器和复用 Web/TS，**不必等待把 DeepTutor 全部重写为 XAML**。浏览器路线仍需真实数据与事件接线，不能只打开两个互不关联页面。
+
+## 6．CI：已取得原始失败证据
+
+### 当前工作 HEAD
+
+运行 `34911642212`，HEAD 正是 `0dd8ff…`，CI failure。lint 作业 `104200264784` 在目录权威检查失败：找不到历史测量提交 `b81c789d8d6363f53ddfadf5e9da9e7735bb9338`。Ruff 未执行；其余多数产品作业因本次选择性触发跳过。
+
+**纠正上一轮回答：不是“最新提交没有 CI”。此前提交专用查询范围不完整；这次通过仓库 Actions 集合查到了真实运行。**
+
+### main nightly
+
+运行 `34824835784`，HEAD `1e9813e…`；full-suite 作业 `103914452146`：15 failed、2667 passed、33 skipped、124 subtests passed。
+
+失败归类：10 个 bulk fixture/evidence 测试受到把 Linux 绝对路径当作非法根路径的校验影响；1 个测试调用 Windows tasklist；3 个历史提交测量测试失败；1 个 Chromium 截图失败，原因为 Unix socket path too long。此为 main 运行，不能全部直接算作工作分支仍未修复，需逐项对当前源码和定向复测。
+
+### 前一实施提交 CI
+
+运行 `34880184223`，HEAD `1a0a8028…`。desktop-fast / desktop-build 的原始日志确认 `src-tauri/Cargo.toml` workspace 归属不匹配；Rust 依赖审计已成功。不是本次日志证明缺工具链，也不是停在 cargo audit。
+
+修复方向：历史校验作业取得所需 Git 历史；按平台解析安全路径；平台命令测试正确分派；项目拥有的浏览器短路径；隔离 legacy workspace 和正式构建链。保留必要真实性检查，不靠跳过失败换绿。
+
+日志链接：
+- https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34911642212/job/104200264784
+- https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34824835784/job/103914452146
+- https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34880184223
+
+## 7．前一轮已复现问题仍需承接
+
+`audit-0915/reproductions.json` 保存临时合成样本结果：
+
+- 无元数据的任意 SQLite 直接恢复：现在正确拒绝。
+- 无关 SQLite 先经过项目自己的 backup_database 生成元数据，再 restore_database：仍成功。须验证真正的应用数据库身份和兼容应用 schema，不能仅验自写 app_id 与哈希。
+- 非 Git 目录 preflight：现在正确拒绝。
+- 真实临时 Git 仓库内 tests/fixtures 下未登记缺文件：仍通过；需精确豁免，不按整类目录放行。
+- 发布架构 guard 对当前 release.yml 返回空错误；它主要检查目录和关键词，注释可满足，正式构建产物仍未切至 Avalonia。
+
+另有源码发现：桌面复习每次点击生成新的 client_event_id、exposure_id；响应丢失后重试或连续点击可能重复记入 FSRS。需展示时生成曝光身份、一次回答稳定幂等键、提交中防重复、重试复用相同请求。
+
+本轮没有再次跑以上五个实验，不把旧实验说成新 Windows 产品验收。
+
+## 8．历史约束与新规划须完整保留
+
+1. 人类学习与机器使用两侧都属于近期目标；同源知识、双方独立状态、错误反馈、修订后再检验。
+2. 个人定义/经验/假说可保存和学习，不以联网高证据核查为所有资料准入条件；知识资格和外部事实验证分开。
+3. 正式架构：C#/Avalonia 宿主 → Rust Core 唯一权威 DB writer → 隔离 Python workers；Web/TS 可复用。完成关键链迁移，不再启动全仓语言重写。
+4. 外置共享资源根 `D:\All projects\OS External Configuration\00-registry`；项目通过 `.project/resources.yaml` 绑定资源 ID。不能工具不在 PATH 就说未安装或重新安装。
+5. 环境分派：HOSTED_CODEX 做适合当前能力的代码/便携测试；LOCAL_WINDOWS 做真实桌面与进程；CLEAN_WINDOWS_VM 做安装/卸载/升级；INDEPENDENT_GPT 做 Q00/Q01。不能把当前执行器不可用写成产品失败。
+6. Green 是长期滚动开发/集成运行投影，Git 是源码真值；不能仅改 Green 内 exe/dll/script，也不必每次小修正式发版。
+7. 用户可配四库，中文路径允许，使用稳定 canonical ID；第四库职责仍需从现有产品定义确认，不虚构。绑定存程序目录之外。
+8. TEST/GREEN/STABLE 隔离；外置 Test Source Library 是测试输入副本，不是真实用户四库；同库 single writer + lease。
+9. 完整蓝图保留：学科活动、图表/动画/模拟、知识图谱、2D/3D/VR/AR 大型知识宫殿、开放导出、多端与未来扩展；冻结实现不等于删除需求。
+10. V14/V15 进入 SOURCE→EVIDENCE→CANDIDATE→REVIEW→KNOWLEDGE；优先落实提取练习、讲回、延迟无提示测验、提示程度记录和迁移测试，不把研究目录数量算作教学效果。
+
+## 9．规则、状态和清理的具体问题
+
+- AGENTS.md 首段仍以 Obsidian Vault 为首个高保真纵切，R5 已把 Obsidian 细化后置；应统一当前执行入口。
+- AGENTS.md 把已有 Green v0.6.14 定为恢复参考；用户新规划为滚动 Green。需明确旧二进制保全与新通道替代关系，不能直接覆盖旧库。
+- LESSONS_LEARNED.md 仍写“完整进度只维护 0906 执行台账”，与 R5 的 STATE/EXECUTION 冲突。
+- 外置依赖文档把 Rust 标为仅 legacy 可选，与 Rust Core 必需矛盾；Node 对 DeepTutor Web 也有作用，不能仅按 legacy 标记。
+- PROJECT_CONTRACT 仍含旧 Program、remote grant、scope gates 等机制；应核对实际启用范围和 supersession，不能既宣布 R5 唯一又机械要求每次重新走已替代旧流程。不能私自绕过真实权限或删掉必要安全限制。
+- R5 任务跨度大，很多保持 PARTIAL；进度应落实为用户可执行的切片和缺口，不能只报告大任务数量、测试总数、文件数量。
+- 尚无证据证明 Codex/Hermes 全局技能或插件本身是根因。本轮没读取它们私有配置；项目内错误不应归咎于模型品牌。
+
+清理：最新仓库文档记录可读 regular-file 盘点为 11,523,900,070 字节、110,284 文件，186 ACL 错误、11 reparse 跳过；另有历史 13.6 GiB 缩减等不同范围收据。只可作为本机历史记录，不是本轮远端审计重新测量。后续按来源/用途/生产者归属盘点，区分构建、缓存、模型、证据、用户数据与共享资源；修写入位置、去重与保留预算，再按已有精确授权清理。`.hermes`、未知归属、ACL 拒绝继续保全，不扩大扫描删除范围。
+
+## 10．接续执行顺序：沿 R5 做可使用纵切
+
+这是接续建议，尚未写回活动任务图，不冒充已实施新授权。
+
+| 顺序 | R5 承接 | 具体结果 |
+|---|---|---|
+| 1 | X00/X01 | 核对 HEAD 差分和真实 checkout；收口当前入口与旧规则；修确证 CI 故障，保留必须门禁 |
+| 2 | X03/X05/X11 | 稳定 TEST 工作区绑定和启动入口，退出重启读同一测试库；落实 Green 通道最小边界 |
+| 3 | X05/X06/X07 | 先让文本/Markdown 和一个真实 PDF 从空库导入、执行解析、看正文、建候选、用户接受并回跳来源 |
+| 4 | X03/X08 | 复用既定 DeepTutor 的真实阅读/练习交互；创建首个学习单元；回答、讲回、FSRS、幂等及重启读回 |
+| 5 | X09 | 同一知识执行一个真实机器方法任务，独立判结果；修订后旧知识不能继续当现行方法 |
+| 6 | X10/X11 | 非空旧库 staging 迁移、附件关系回读；刷新可运行 Green；恢复和回滚；提供真实操作证据 |
+| 7 | X12/X13/X14/Q00/Q01 | 完整格式、全仓规范化与清理继续逐项完成，独立审计后再正式发布 |
+
+解释：第 2–5 步先形成受控 TEST/开发可用性，不能冒充 R5 M0 正式完成或 Q00 已通过；X10 等正式前置要求不删除。不要把全格式、全仓清完、签名发行都当成首次 TEST 试用的前提。不要为抢进度关闭关键数据保护。
+
+最小演示必须从空库开始：打开入口 → 导入真实资料 → 看到转换正文与出处 → 接受一项知识 → 出题并由人实际作答 → 写入复习 → 机器调用同一知识完成任务 → 修订一次 → 双方后续正确使用 → 退出重启读回。每步绑定同一次运行、同一数据库、同一源码与构建；禁止用手工 SQL、预灌正确事件、mock 返回拼接成功。
+
+## 11．尚未完成，下一执行者不要漏掉
+
+- 全部历史转录逐项提炼/冲突裁决未完成；29 个二进制正文未读，特别是历史 DOCX/ZIP 蓝图。
+- 31 分支已比较，仍需审查独有提交是否有可吸收修复。重点：`codex/frozen-roadmap-deepseek-v1` 独有149、`codex/recovery-shell-closed-loop` 独有13、`codex/ci-release-optimization` 独有7。不能直接合并，它们与当前也大幅分叉。
+- main 的1个独有提交要核对；prepare integration 分支时保留用户改动，不强推、不整仓覆盖。
+- 冷启动、空搜索“成功”、默认新库、中文 OCR 等发现还需要定向复现和修复。
+- 当前产品未修改，未生成修复补丁，未运行整仓测试，未部署到用户电脑。
+- 未完成一份更新后的全量任务包；本交接不得被当作 R5 的冻结内容已更新。
+
+## 12．证据位置与接续提示
+
+当前临时工作目录：`/workspace/scratch/828bc31f725e/`。
+
+- `full-audit-0915/TREE.json`：完整 Git 树。
+- `full-audit-0915/BLOBS.json`：按 blob SHA 保存全部取得文本。
+- `full-audit-0915/source/`：工作 HEAD 文本快照；**不是完整 Git clone，不含二进制与 Git 历史，不能在这里跑依赖历史完整性的检查然后归因产品。**
+- `full-audit-0915/FETCH-FAILURES.json`：文本读取失败列表，当前为空。
+- `full-audit-0915/BRANCHES.json`、`BRANCH-COMPARISON.json`：31 分支和精确 SHA 对比。
+- `full-audit-0915/CI-104200264784.json`、`CI-103914452146.json`：当前 lint 与 main nightly 日志。
+- `audit-0915/reproductions.json`：前一轮5项独立临时样本结果。
+- `history-inputs/ArcheAxis完整项目对话与时间线汇报.md`：已提供历史转录。
+- `upload/`：V14/V15 原包。
+
+临时文件可能失效；新环境缺失时，按本交接精确 Git SHA 重新获取必要源码和 Actions 日志，不捏造本机文件存在。
+
+给接续执行者：先读本交接与当前 R5，再核对远端变化；不要又开始新一轮泛化调研和候选登记。围绕上面四个首次使用断点产出实际接线与可重复操作证据。成熟模块已有调用就继续复用，未接通就写接线代码；不以新增规范、测试数量、候选目录或解释代替可用软件。

@@ -1,0 +1,427 @@
+# WORK-LAB 云端重新审计报告
+
+审计日期：2026-08-14 UTC  
+仓库：`DTALEX66/WORK-LAB`  
+审计 exact SHA：`6c6ae8a5aefe0aa0e280fbc182c1bd95e088c754`  
+上次基线：`e40c8f9561aca1df2b480f98e83e2ceacf4b43b0`  
+审计方式：云端 main、提交差异、代码/合同/Schema 对照、隔离测试、exact-SHA Actions 查询  
+变更权限：只读；未修改仓库、全局配置或外部项目
+
+---
+
+## 1. 结论
+
+WORK-LAB 没有发生产品定位漂移：当前仍只有 Workflow Assistance 与严格只读 Observer 两个活动模块，CURRENT_STATE 也继续正确地把 main CI 标记为 `UNVERIFIED_MAIN_CI`。
+
+但项目仍属于“治理能力较强的控制面原型”，尚未达到可信的全局实时观测产品标准。2026-08-14 的五个新提交只修复 Hermes 终端守卫及技能经验回流，没有实施 `WLGM-000～WLGM-240` 的主体项目识别、多 Agent execution、非干扰采集、唯一 Snapshot/SSE 和 Observer 收口。
+
+本轮新增确认两个重要问题：
+
+1. 最新终端守卫修复仍会误拦含空格项目内的嵌入绝对路径，并会把普通 `...`、`HEAD..` 识别为路径穿越；
+2. Observer 实际 producer 输出无法通过仓库自己的 dashboard Schema，共有 8 个验证错误，但现有测试全部通过，说明测试覆盖与真实合同发生漂移。
+
+产品成熟度：
+
+```text
+治理/配置安全：中高
+Task Ledger/SQLite 基础：中
+全局项目身份识别：低
+多 Agent 实时执行观测：低
+Observer 数据可信度：低
+Observer UI 骨架：中
+Windows/Tauri 正式验证：未完成
+exact-SHA main CI：未验证
+总体：控制面原型，不是正式可用产品
+```
+
+---
+
+## 2. 云端增量
+
+`main` 从 `e40c8f9` 前进到 `6c6ae8a`，新增五个合并提交：
+
+1. `b89d36a` — Windows development skill backflow；
+2. `6711e28` — pip/uv 与 pydantic-core 漂移经验；
+3. `734cb47` — 终端守卫路径穿越和含空格路径修复；
+4. `d3f060c` — 终端守卫 `scheme://` URL 误判修复；
+5. `6c6ae8a` — 守卫错误归档与 Skill 回填。
+
+增量规模：8 个文件，173 行新增、18 行删除。
+
+没有修改：
+
+- Observer 生产实现；
+- canonical project/execution Schema；
+- active project 检测；
+- Snapshot/SSE 拓扑；
+- Tauri 壳；
+- `WLGM` 任务图。
+
+因此昨天的 Observer 和全局项目检测结论仍然成立。
+
+---
+
+## 3. 正向进展
+
+### 3.1 CURRENT_STATE 保持 fail-closed
+
+当前状态文件继续明确：
+
+```text
+Checkout identity: RUNTIME_REQUIRED
+Tracked projection: NO_HEAD_OR_BRANCH_CLAIM
+CI without exact runtime evidence: UNVERIFIED_MAIN_CI
+```
+
+这部分没有把分支名或历史 PR CI 冒充为当前 main 证据。
+
+### 3.2 活动模块边界仍正确
+
+CURRENT_STATE 只列出：
+
+- `10-workflow/workflow-assistance`
+- `30-observer/work-lab-observer`
+
+没有重新引入 MiniGame 或设计模块。
+
+### 3.3 配置治理与基础门禁较完整
+
+在临时隔离依赖层补齐 `jsonschema==4.26.0` 后，正式质量门禁返回：
+
+```text
+QUALITY_GATE_PASS
+```
+
+其中 canonical store、durable worker、Task Ledger replay、配置 ownership、Adapter conformance、usage ingestion、memory contamination 和 supply-chain 等基础门禁均可运行。
+
+### 3.4 局部测试结果
+
+```text
+Workflow 正式质量门禁：PASS（隔离补齐审计依赖后）
+Observer Python：59 passed，3 skipped
+Observer Web/JS：44 passed
+终端守卫 tracked tests：18 passed
+Observer skeleton：PASS
+```
+
+这些只能证明当前测试定义通过，不能证明下面列出的未覆盖真实合同已经完成。
+
+---
+
+## 4. P0 问题
+
+## P0-1 — 当前 main exact-SHA 没有 Actions 证据
+
+对 `6c6ae8a5aefe0aa0e280fbc182c1bd95e088c754` 查询结果：
+
+```text
+workflow_runs = []
+```
+
+PR-head 或候选分支通过不能替代 main exact-SHA。当前必须保持：
+
+```text
+UNVERIFIED_MAIN_CI
+```
+
+影响：不能宣称 main、安装器、Tauri 或正式交付已通过远端门禁。
+
+## P0-2 — Observer 的严格只读边界仍自相矛盾
+
+当前仓库同时声明：
+
+- Observer 严格只读；
+- Observer 可以写 derived cache/projection/report；
+- README 允许持久化 Observer-owned event log；
+- Schema 允许 `allowedWrites`；
+- `observer_runtime.py` 仍实现 `append_events` 和 Observer-owned 写入面；
+- `migrate_observer_events.py` 仍在生产模块和测试中存在。
+
+这不是单纯文档问题，而是第二事件/投影面仍被生产合同承认。
+
+目标：Observer 正式运行路径的业务写入面必须为空；所有运行事实只写 Workflow-owned canonical SQLite WAL。
+
+## P0-3 — Observer 实际输出违反自己的 Schema
+
+使用真实 `CanonicalStore → CanonicalProjectionReader.to_dashboard()` 输出验证 `dashboard-projection.schema.json`，得到 8 个错误：
+
+```text
+generatedAt: null 不是 string
+projects[0].agentPlatform: null 不是 string
+quality.unknown: null 不是 integer
+quality.malformed: null 不是 integer
+quality.dropped: null 不是 integer
+quality.duplicate: null 不是 integer
+quality 缺少 sourceCoverage
+quality 缺少 evidenceCompleteness
+```
+
+现有 59 个 Observer Python 测试全部通过，说明 producer 与 Schema 没有端到端合同门禁。
+
+影响：正式客户端无法依赖 Schema；未知值、可空字段和质量字段语义不稳定。
+
+## P0-4 — Token 和项目聚合仍产生错误真值
+
+`observer_canonical.py` 仍存在：
+
+- `inputTokens` 累加 total token；
+- `outputTokens` 直接复制 `inputTokens`；
+- series 缺失 token 通过 `or 0` 转为零；
+- 只要存在 usage row 就标记 `EXACT_SOURCE`；
+- `activeProjects` 使用 running + waiting 任务数，而不是 ACTIVE 项目数；
+- `generatedAt` 为 null。
+
+影响：Token、项目数量、数据质量均可能看似准确但实际错误。
+
+## P0-5 — 双投影和旧 Observer 后端仍存在
+
+当前正式拓扑仍是：
+
+```text
+Workflow sidecar:
+  /api/v1/snapshot
+  /api/v1/events
+
+Observer Python dashboard:
+  /api/dashboard
+
+Web/Tauri:
+  依赖 /api/dashboard
+```
+
+Observer 自己做第二次 canonical → dashboard 转换，Web/Tauri 又没有直接消费 Workflow 唯一投影。
+
+影响：两个 Schema、两个服务生命周期、两个模式判断和持续合同漂移。
+
+## P0-6 — SSE 与 LIVE 仍不可信
+
+仍存在：
+
+- SSE ID 是内存 UUID，不是 canonical 持久 revision；
+- 服务重启丢失 cursor；
+- cursor 过期返回空列表，没有 `resync_required`；
+- HTTP 空闲 heartbeat 是注释，浏览器脚本不能监听；
+- 后端发送 `event: observed`，前端只绑定 `source.onmessage`；
+- sidecar 启动轮询线程后立即 `set_mode(LIVE)`；
+- LIVE 不要求 writer heartbeat、SSE connected、cursor progress 和数据 freshness。
+
+影响：客户端可能永远收不到命名 observed 事件，也可能在数据不新鲜时显示 LIVE。
+
+## P0-7 — 生产 UI 仍自动回退旧 Snapshot/Fixture
+
+当前前端顺序：
+
+```text
+/api/dashboard 失败
+→ assets/live-snapshot.json
+→ 内嵌 FIXTURE
+```
+
+fixture 含虚构项目、SHA、Agent、费用和运行状态。即使显示 FIXTURE 标签，生产默认回退仍会把“数据源离线”变成一整套看似完整的项目数据。
+
+目标：正式模式应显示 OFFLINE/UNKNOWN；fixture 只能通过显式开发入口加载。
+
+## P0-8 — 主体项目与多 Agent execution 仍未实现
+
+当前 `project_registry.py`：
+
+- project ID 来自目录名；
+- 扫描到的 Git 仓库直接注册；
+- 没有 approved allowlist；
+- 没有 remote identity、git-common-dir、worktree、submodule 或 ProductProject 模型。
+
+当前 `active_projects.py`：
+
+- 使用 Agent 进程存在；
+- 再结合 `.hermes/.codex/.agents` 文件 120 分钟 freshness；
+- 扫描后自动注册所有项目；
+- 没有 session、execution、anchor project 或 visited repository。
+
+canonical SQLite 也没有 `agent_instances`、`sessions`、`execution_instances`、`worktree_identities`、`execution_evidence` 等表。
+
+因此当前无法可靠回答：
+
+- Hermes/Codex 同时执行了哪些主体项目；
+- 同一主体项目有几个 execution；
+- 子模块与 worktree 是否归属同一项目；
+- 临时访问其他仓库是否应迁移项目身份。
+
+`WLGM-000～WLGM-240` 尚未进入云端仓库，也没有开始执行。
+
+---
+
+## 5. P1 问题
+
+## P1-1 — 最新终端守卫修复仍有误拦
+
+隔离复现：
+
+```text
+项目内嵌绝对路径且项目根含空格
+→ 被截断为 /tmp/work
+→ 错误判断为项目外路径
+
+普通文本 ...
+→ 被判断为 parent traversal
+
+普通文本 HEAD..
+→ 被判断为 parent traversal
+```
+
+`scheme://` URL 误判已经修复，路径中间 `../../` 的绕过也已关闭；但新的修复没有真正解决全部含空格路径，并引入了新的 `..` 误伤。
+
+影响：Hermes 正常 Python、Git 或文字处理命令可能被 guard 阻止，违反“不阻塞执行”的基线。
+
+## P1-2 — PR 测试声明与 tracked tests 不一致
+
+PR #89 声明 26 项测试，PR #90 声明 41 项测试；当前仓库 `test_project_terminal_guard.py` 只有 18 个测试，五个新提交没有新增相应 tracked test。
+
+现有 18 项全部通过，但不覆盖：
+
+- 嵌入代码字符串中的含空格绝对路径；
+- 省略号；
+- Git range/ref 文本；
+- 真实 Windows quoted argument 组合。
+
+影响：本地临时测试证据没有转化为可持续回归门禁。
+
+## P1-3 — Gate 可以在 8/10 runtime convergence 时宣称通过
+
+`verify_gate_runtime_convergence.py` 输出：
+
+```text
+passed: 8
+total: 10
+pending:
+  dual-project-canary
+  tauri-real-sidecar
+environment_limited_pending: true
+gate_claimable: true
+```
+
+顶层仍输出 `QUALITY_GATE_PASS`。
+
+这可以作为结构/环境受限的本地门禁，但不能命名或解释为“全功能完成”。必须在最终报告中拆分：
+
+```text
+STRUCTURAL_LOCAL_PASS
+RUNTIME_CANARY_PENDING
+TAURI_WINDOWS_PENDING
+EXACT_SHA_CI_UNVERIFIED
+```
+
+## P1-4 — DESIGN-LAB 重命名未同步
+
+GitHub 当前实际仓库为：
+
+```text
+DTALEX66/DESIGN-LAB
+```
+
+WORK-LAB 仍在 AGENTS、PROJECT_POSITIONING、cross-module index、migration status、Skills、Observer README 等大量位置引用：
+
+```text
+DTALEX66/OPEN-DESIGN-Assistance
+D:/All projects/OPEN-DESIGN-Assistance
+```
+
+这是配置指针与项目命名漂移。由于 WORK-LAB 只管理非设计全局边界，修复应只更新指针、注册、映射和 ownership 名称，不重新吸收 DESIGN-LAB 设计能力。
+
+## P1-5 — Error Ledger 未收录最新守卫错误
+
+当前 `50-taskpacks/error-ledger.json` 仍为 49 条，最新是 ERR-049。2026-08-14 守卫发现和修复只进入独立归档文档/Skill，没有进入 canonical Error Ledger。
+
+影响：错误统计、重复检测、Observer 错误视图和后续根因查询无法获得统一事实。
+
+## P1-6 — Tauri 合同仍未收口
+
+- `rust-version = 1.77.2`；
+- Error Ledger 已承认 Tauri 2.11.x 实际需要 Rust 1.88；
+- `csp = null`；
+- Tauri 仍只接受 `/api/dashboard`；
+- 当前环境没有 Rust/Cargo，真实桌面验证 pending。
+
+影响：仓库声明与实际 Windows 构建基线冲突，桌面壳安全策略不足。
+
+## P1-7 — Observer 文档/技能继续强化旧架构
+
+`workflow-assistance-observer-delivery` Skill 仍要求：
+
+- 向 canonical store 写 probe；
+- 再检查 `/api/dashboard`；
+- 同时维护 Python server-rendered dashboard 与 web frontend；
+- 观察 `mode=LIVE`。
+
+这与目标“唯一 Workflow Snapshot/SSE + Observer 纯客户端”相冲突，会让后续 Agent 继续修补旧架构而不是收口。
+
+---
+
+## 6. 漂移判定
+
+### 未漂移
+
+- WORK-LAB 仍是个人、本地优先、客户端中立的 AI 工作流控制面；
+- 活动模块仍为两个；
+- Workflow 是唯一权威写入者的顶层定位仍在；
+- Observer 不提供执行/批准/重试等 UI 控制；
+- CURRENT_STATE 没有伪造 main exact-SHA CI。
+
+### 已漂移或未收口
+
+- Observer “严格只读”与 derived/event 写入合同冲突；
+- DESIGN-LAB 重命名未同步；
+- 主体项目身份仍退化为 Git 根/目录名；
+- 项目 activity 仍依赖进程 + mtime heuristic；
+- Snapshot/SSE 与 Web/Tauri 不是一条唯一链；
+- 测试通过与真实 Schema/浏览器合同不一致；
+- Gate PASS 语义没有清楚区分 pending runtime evidence。
+
+---
+
+## 7. 下一执行入口
+
+不重新规划，不重开旧 Gate，不恢复已排除模块。
+
+建议严格按以下顺序继续：
+
+1. 为本轮 guard 回归补独立修复卡：修复嵌入含空格路径和 `..` 误伤，补 tracked 双向测试；
+2. 将 `WLGM-000～WLGM-240` 正式纳入 WORK-LAB 任务入口；
+3. 先执行 `WLGM-000～070`：主体项目模型、registry、resolver、allowlist、evidence、非干扰 scheduler；
+4. 再执行 `WLGM-080～140`：Hermes/Codex/通用 Adapter、Windows/Git 回退、聚合器、SQLite migration；
+5. 然后执行 `WLGM-150～170`：唯一 Snapshot、持久 SSE、证据驱动 LIVE；
+6. 再执行 `WLGM-180～220`：Observer Web/Tauri 和安全收口；
+7. 最后执行真实 WORK-LAB + ArcheAxis Knowledge OS canary；
+8. candidate exact-SHA CI 有独立证据后才能进入最终完成判定。
+
+同时应把 DESIGN-LAB 改名同步作为独立、最小、非设计配置治理任务处理，不混入 Observer 业务实现。
+
+---
+
+## 8. 当前审计状态
+
+```text
+Cloud main: 6c6ae8a5aefe0aa0e280fbc182c1bd95e088c754
+Main exact-SHA CI: UNVERIFIED_MAIN_CI
+Positioning: retained
+Active modules: correct
+Formal local quality gate: PASS with isolated audit dependency
+Runtime convergence: 8/10, dual-project canary + Tauri pending
+Observer producer/schema: FAIL (8 validation errors)
+Observer Python tests: 59 pass / 3 skip
+Observer JS tests: 44 pass
+Guard tracked tests: 18 pass, but new adversarial cases fail
+WLGM implementation: not started in cloud main
+Product readiness: prototype only
+```
+
+---
+
+## 9. 审计限制
+
+- 未读取 Windows 本机 `D:\All projects\WORK-LAB` 的真实工作树；
+- 未读取或修改 live Hermes/Codex 配置；
+- 未运行付费 API smoke；
+- 当前沙箱没有 PowerShell、Rust/Cargo 和 Tauri Windows 环境；
+- 未写 ArcheAxis Knowledge OS 或 DESIGN-LAB；
+- 未 commit、push、PR、merge 或 release。
+

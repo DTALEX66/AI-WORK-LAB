@@ -52,6 +52,12 @@ AUTHORITY_MARK = "唯一顶层入口"
 BLOCKING_QUEUE = "L10#0"
 ARCHIVE_REGISTER = "migration/archive-object-reconciliation-20261101.csv"
 ARCHIVE_AREA = "docs/history/sources-20261101/MANIFEST.json"
+ARCHIVE_IMPORT = "docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv"
+#: every disposition the reconciliation register is allowed to carry -- "we have not
+#: decided yet" is deliberately absent, that is the state this check exists to forbid
+ADMITTED_DISPOSITIONS = frozenset({
+    "ARCHIVED_IN_REPO", "RECORDED_NOT_COPIED", "EXCLUDED_BY_OWNER_RULE",
+    "REGISTERED_NOT_MIGRATED", "UNCLASSIFIED_RESIDUE"})
 
 
 def rows(rel: str) -> list[dict]:
@@ -90,9 +96,14 @@ def derive_figures() -> dict:
     hints = {row["source_hint"] for row in archive if row["source_hint"]}
     return {
         "archive_objects": len(archive),
-        "archive_only_objects": disposition["ARCHIVE_ONLY"],
+        "archive_in_repo_objects": disposition["ARCHIVED_IN_REPO"],
+        "archive_recorded_not_copied": disposition["RECORDED_NOT_COPIED"],
+        "archive_excluded_raster_media": disposition["EXCLUDED_BY_OWNER_RULE"],
         "archive_registered_not_migrated": disposition["REGISTERED_NOT_MIGRATED"],
         "archive_unclassified_residue": disposition["UNCLASSIFIED_RESIDUE"],
+        "archive_in_repo_bytes": sum(int(row["bytes"]) for row in archive
+                                     if row["disposition"] == "ARCHIVED_IN_REPO"),
+        "archive_import_verified": len(imported_rows()),
         "archive_source_hints": len(hints),
         "source_rows_work": len(work),
         "source_rows_design": len(design),
@@ -208,6 +219,14 @@ def check_entries(entry_path: Path) -> tuple[list, list]:
                 if phrase in line and not any(mark in line for mark in NEGATION):
                     findings.append("STALE_IDENTITY_WORDING %s:%d %s" % (name, line_no, phrase))
 
+    # every top-level directory must be described by one of the entry documents: an undocumented
+    # directory is where a future agent guesses, and guessing is how work drifts
+    described = " ".join((ROOT / name).read_text(encoding="utf-8", errors="replace")
+                         for name in CITING_ENTRIES if (ROOT / name).is_file())
+    for entry in sorted(path.name for path in ROOT.iterdir()
+                        if path.is_dir() and not path.name.startswith((".", "AI-WORK-LAB_"))):
+        if entry not in described and not (entry + "/") in described:
+            findings.append("ROOT_DIR_UNDOCUMENTED " + entry)
     for name in CITING_ENTRIES:
         path = ROOT / name
         if not path.is_file():
@@ -258,6 +277,44 @@ def _authority_rows() -> list[list[str]]:
              if line.startswith("|") and line.count("|") >= 9]
     body = [line for line in lines[1:] if not set(line.replace("|", "").strip()) <= {"-", " "}]
     return [[cell.strip() for cell in line.strip().strip("|").split("|")] for line in body]
+
+
+def imported_rows() -> list:
+    """The archive-object import, row by row -- each row must point at bytes this checkout holds."""
+    path = ROOT / ARCHIVE_IMPORT
+    return rows(ARCHIVE_IMPORT) if path.is_file() else []
+
+
+def check_archive_coverage() -> list:
+    """The anti-drift invariant: no archive object may sit in "we have not decided where it goes".
+
+    Owner's instruction is 「确保内容全部归档到仓库 主要是防止任务漂移」. Completeness is what is
+    asserted here, not how many bytes came in: every one of the archive's unique objects must carry a
+    disposition in the admitted set, an object marked ARCHIVED_IN_REPO must really be on disk with the
+    recorded digest, and an object deliberately left out must say why.
+    """
+    findings = []
+    if not (ROOT / ARCHIVE_REGISTER).is_file():
+        return ["ARCHIVE_REGISTER_MISSING"]
+    for row in rows(ARCHIVE_REGISTER):
+        if row["disposition"] not in ADMITTED_DISPOSITIONS:
+            findings.append("UNKNOWN_DISPOSITION %s %s" % (row["sha256"][:12], row["disposition"]))
+        elif row["disposition"] == "ARCHIVE_ONLY":
+            findings.append("DESTINATION_UNDECIDED " + row["sha256"][:12])
+    import_rows = imported_rows()
+    if not import_rows:
+        findings.append("ARCHIVE_IMPORT_MANIFEST_MISSING")
+    for row in import_rows:
+        if row["action"] != "ARCHIVED_IN_REPO":
+            continue
+        target = ROOT / row["target_rel"]
+        if not target.is_file():
+            findings.append("IMPORTED_BYTES_MISSING " + row["target_rel"][:80])
+            continue
+        digest = hashlib.sha256(target.read_bytes()).hexdigest()
+        if digest != row["sha256"]:
+            findings.append("IMPORTED_DIGEST_STALE " + row["target_rel"][:80])
+    return findings
 
 
 def check_authority_index() -> list:
@@ -317,6 +374,7 @@ def main(argv=None) -> int:
         findings, machine_only = check_entries(args.entry)
         findings += check_figures(args.entry)
         findings += check_authority_index()
+        findings += check_archive_coverage()
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(json.dumps({"verdict": "REFUSED", "error": "%s: %s" % (type(exc).__name__, exc),
                           "root": str(ROOT)}, ensure_ascii=False))

@@ -1,0 +1,131 @@
+# Codex 独立执行指令：AAOS
+
+
+你接手的是用户的真实项目，不是新建演示项目。用户已要求：先梳理历史和对话，再按新规划审计云端与本地，完成修复和真实闭环。保留本项目已有 UI 分支和所有本地未提交、未推送内容。禁止推倒重来、重复已修工作或把云端缺失直接等同于项目缺失。
+
+## 总约束
+
+- 当前用户明确约束优先；项目现行 AUTHORITY / AGENTS / supersession ledger 决定实现边界。历史对话用于追溯目标，不得无记录覆盖较新的明确决策。
+- 先探测实际仓库、worktree、分支、HEAD、未提交/未推送/未跟踪/被忽略的有价值文件、安装路径和运行状态。保留可恢复私有快照，不自动上传其内容。
+- 本地 Green 为实际产品验收对象；不新发 release/tag、不抬版本、不迁到默认 C 盘、不创建第二套安装，不覆盖原件/客户素材或本地未上传实现。
+- 禁止 git reset --hard、git clean -fdx、强推、远端删分支、无授权 merge/push、批量资料迁移、无授权安装/接受许可/付费调用。
+- 不触碰受保护的 E 盘；本机外部根只按已批准精确路径读取，不递归扫全盘。不猜测不存在安装软件；先读路径配置。
+- 单一 Canonical DB 写入者和单一可变任务账本不得被新代理破坏。并行只能在独立工作树和明确定义的文件范围内进行；不共享可写数据库。
+- 不删除/跳过失败测试来刷绿，不伪造截图、宿主读回、artifact 哈希、人审或已完成状态。CI skip/conditional success、mock、声明、受控调用、真实工作流和独立人审分开记录。
+- 先复用现有可用模块；需要重构必须有由证据支持的最小方案，不展开新一轮全网搜项目。外部工具仅按已批准预算/权限验证，不因最高模式放开全部动作。
+- 真实外部条件缺失时准确 BLOCKED，继续其他不依赖项；不要为了等待一个人工门只写计划然后停止，也不能替用户批准。
+
+## 继承的审计快照（拆包时未刷新；执行时重新读取 live refs）
+
+AAOS main: `e3875db0ee6d073d37839eb7b95f7ef4ce881bbb`
+AAOS UI: `4525564bc11be0eb6a88ecb780d882810201a57b` / `codex/aaos-p3-ui-convergence-20260922`
+
+本包只包含本项目的审计交接，不是源码备份、安装包或完整历史导出。本次拆包没有重新访问云端或运行产品测试；所有 SHA、CI、路径和缺陷记录均须在执行时重新核对。已列明的未读、未验证和证据冲突不得改成通过。
+
+本会话只审计和修改 DTALEX66/ArcheAxis-Knowledge-OS。另一项目包、另一项目会话、WORK-LAB 或 DESIGN-LAB 运行状态均不是前置条件；跨项目只保留已批准的公开合同和品牌边界，不读写其他仓库或私有数据库。
+
+## 工作方式与必须产出的证据
+
+先读已有当前 TaskPack、机器账本、模块 AGENTS/SKILL 和现行目录权威；把下述交接任务映射到已有 ID。`10_TASKS.json` 是只读交接索引，不是第二套权威账本。
+
+对每一条旧“完成/失败/未实现”声明，建立：来源日期 → 适用 SHA → 当前代码路径 → 测试 → UI/API/宿主入口 → 当前差异 → 待验缺口。代码事实和旧报告冲突时保留双方并说明 superseded / stale / local-only，不删除旧证据。
+
+全仓审计的覆盖清单必须来自实际 Git 文件清单，记录路径、blob SHA、文件类别、读取/检查方式、关联入口、测试和结论；生成文件、第三方源码、二进制和历史文件可采用不同检查策略，但不能无解释跳过。记录 tree 是否 truncated、分页是否读完。不得用目录数、文件数或提交数代替审计覆盖。
+
+逐项覆盖：架构职责；入口到存储的调用链；插件及 worker 生命周期；路径/鉴权/资源与命令边界；schema/版本兼容；依赖锁与许可；UI/API一致性；暂停/取消/失败/幂等/重启；来源和知识读回；测试质量；构建/打包/安装/原位升级/回滚；CI effective required checks；真实视觉、rights 和人工门。供应链/CVE 结论须使用实际版本和官方证据，不写空泛“安全”。
+
+每个修复任务必须给出：复现命令和 exit code、根因、最小 diff、回归测试、修复后完整相关测试、SHA/tree/worktree/依赖版本、artifact hash（确有文件才填）、剩余风险。命令未运行就写 NOT_RUN；源包 hash 不等于原生产产物 hash。
+
+状态保存使用现有路径及生成器。会话检查点可在项目批准的本地输出根保存，内容包含已读文件/待补覆盖/当前 SHA/修改文件/下一条命令/阻塞项；不要建立新的 current 任务事实源。达到验收前不得用手写 CLOSED 覆盖原账本。
+
+代码修复与可运行验证不能被大量新文档取代。最终只汇总新变化、真实证据和待批准边界，不重复旧综述。
+
+## 独立启动顺序：不依赖双项目总控
+
+阅读本包 `00_START_HERE.md`、`01_CLOUD_AUDIT.md`、`05_EVIDENCE_LEDGER.json`、`06_AUDIT_COVERAGE.csv`、`07_LOCAL_RECONCILIATION_CHECKLIST.md`、`10_TASKS.json` 和 `11_SOURCE_INDEX.md`。这些文件均已随本包提供，不需要获取另一项目包。
+
+本项目顺序：`G0 → G1 → A0/A1 → A2/A3 → A4 → G2`。G0/G1/G2 已复制为本项目自己的前置与收尾任务，不等待另一项目。任务编号只是交接索引；执行前映射到本仓现有任务 ID，不新建第二个可变权威账本。
+
+### G0：本项目本地增量保全
+
+按 `07_LOCAL_RECONCILIATION_CHECKLIST.md` 核实仓库根、worktree、HEAD、staged/unstaged、未推送提交与获准范围内有价值的未跟踪/ignored 文件；保护实际安装、运行数据和设计参考。必要私有快照要能恢复；不自动上传，不扩大磁盘访问权限。
+
+### G1：本项目历史、现行权威及证据核对
+
+先读取本仓现行权威和任务账本，再按本包的来源索引核对历史目标与 supersession。补齐实际 Git 文件覆盖清单；以 commit→tree→blob、run→job→checkout→artifact 对齐身份。缺失、本地独有、截断和冲突分别记录。取得与当前修复有关的可靠基线后继续修复，剩余覆盖持续补齐，不用无限文档整理阻塞已可复现的修复。
+
+## AAOS 权威与技术栈
+
+必读：根 AGENTS.md、DECISION_SUPERSESSION_LEDGER.yaml、DIRECTORY_AUTHORITY.yaml、docs/current/R6-EXECUTION.md、docs/current/R6-STATE.json、docs/current/M0-DIRECTION-OVERRIDE-20260920.md，以及 docs/authority/taskpack-0919-r6/ 的 EXECUTOR-START/TASKS/TASKPACK。
+
+当前为 AAK-LOCAL-GREEN-ABSORB-FIRST-20260919-R6，叠加 M0-SHORTEST-COMPLETE-LOOP。正式 UI 是 apps/ArcheAxis.Desktop 的 C#/Avalonia，Canonical 写入是 Rust Core，Python 是隔离 worker。禁止把旧 frontend/src-tauri/desktop 当新正式 UI，禁止 C#、Python 与 Rust 双写 Canonical DB。现有资源根语义/所有权决策若仍 BLOCKED_BY_OWNER_DECISION，保留阻塞，不能自行改权威。
+
+### A0：先处理证据身份冲突，不按不存在的源码路径盲修
+
+run 35669953279 / job 106563962352 报告 head 4525564...，日志为 Ubuntu、cd vnext、archeaxis-domain-learning 中 not_covered_items_do_not_penalize_mastery 失败：InvalidAnswerPayload("item pending: attempt answers must be item-bound")。
+
+但同 SHA 读取的 .github/workflows/vnext-ci.yml 为 Windows cargo-test，命令是仓库根 cargo test --workspace --locked；根 crates tree 未列出该 crate，vnext/crates/archeaxis-domain-learning/src/lib.rs 返回 404。
+
+请重新查询 run/head/attempt/jobs，读 checkout 真 SHA、workflow SHA/ref、运行目录、拷贝/生成步骤和 actual Cargo workspace。先用 git rev-parse HEAD、git rev-parse HEAD^{tree} 与实际 manifest 对齐。该记录在对齐前为 EVIDENCE_IDENTITY_MISMATCH，而非已确认当前源码 bug。不要创建 vnext/ 或调整架构迎合日志；不要把另一分支/另一次 run 的成功当本分支成功。
+
+实际项目的构建命令应从重新核对过的 workflow 和 manifest 推导，不从冲突日志复制。按当前直接读取的工作流，应核对从根运行的 cargo test --workspace --locked、Avalonia build、C# 合同测试及 Supervisor isolation/smoke；若本地/云端已有更新，记录差异再执行对应命令。
+
+### A1：定位并修复 main nightly 的 4 项 Python 失败
+
+参考 run 35705091183 / job 106671984547，head e3875db...；日志报告 4 failed / 3049 passed / 35 skipped / 135 subtests passed。先按真实 checkout 独立复现，不把摘要数字当新的验收。
+
+1. tests/contract/test_bulk_schema_matrix.py::test_schema_matrix_coverage_status_is_explicit
+   核对 tests/contract/schema_coverage_status.json 与所有实际 schema。缺项线索为 derived-projection、machine-growth、closed-loop、model-capability-pool、courseware-artifact、domain-pack、format-execution-receipt、local-green-identity、desktop-routes。按实际生产使用和原任务状态分类，并为 live schema 添加合法/非法 fixture；禁止只将实际使用的 schema 改成 pending。
+2. tests/test_axr060_completion_audit.py::test_tracked_current_surfaces_only_reference_declared_release_delta_or_source_objects
+   追溯 CURRENT-SYSTEM-BASELINE 当前表面引用和 release/delta/source manifest。待核 SHA：fbb630e7ff8561bb11b87577aa88716303ca888d、5d34d98c3d80e31a9174b83d78fd1707496ba279、c0ec75b605b0fc1c9d2d14411e7b4d8b208da07b。区分有效历史引用与过期 current 指针，禁止无条件 allowlist 或新发版本来解测试。
+3. tests/test_p0_python_worker_lifecycle.py::test_real_text_worker_health_execute_failure_disable_and_enable
+   追 app/capability/store.py install_builtin、shared/plugin_manifest.py、module-level 与 lazy import 的 PluginManifest。单独测试、有关联的前序测试和全套分别运行，检查 reload/sys.modules/类身份/规范化序列化。类身份污染只是待验证假设。保留严格 schema、平台、权限和 worker health/execute/failure/disable/enable 行为，不用绕过校验来解决。
+4. tests/test_workspace_api.py::test_workspace_upload_keeps_distinct_raw_assets_when_conversion_text_matches
+   明确 converter_engine_chain 契约：日志实际含 plugin:ax.builtin.converter.media 和 faster-whisper/local-model。先确认契约再改生产代码或过时的期望；必须保留两份不同原始字节的 source_id/source_hash/原始资产、转换结果、完整 provenance，不将同文本误去重成同原件。
+
+先最小测试，再相关包，再与 nightly 相同的完整范围。已读取的 Linux nightly 核心命令为：
+
+```bash
+uv sync --frozen --group ci --group ci-adapters
+env -u PYTHONPATH uv run --frozen --group ci --group ci-adapters pytest -q --tb=short tests/ integration-tests/ knowledge_base/tests/
+```
+
+系统工具、Python 版本、环境变量清理、依赖锁和 fixture 必须按真实 workflow 复现；Windows 不要原样粘贴 env -u，而应在隔离子进程构造对应环境。不能自动改锁文件或升级依赖作为“修复”。
+
+### A2：补状态完整性与有效门禁
+
+新鲜读取的 R6-STATE.json A10 对象有重复 evidence_level 键（值相同）。清理重复键并增加严格 duplicate-key 拒绝测试；不要篡改历史任务 subject_sha 或把 PARTIAL 改成 CLOSED。
+
+main active ruleset 20849492 的 required context 为 a0-gates。检查其真实汇总语义是否包含 Python / 正式桌面必要验证。不得因为 classic protection 的局部返回就宣称无保护，也不得削弱 required checks。修改远端规则需 owner 权限，未授权只交付建议/可审查变更。
+
+### A3：保留 UI 增量，完成真绑定，不重画通用控制台
+
+保留 codex/aaos-p3-ui-convergence-20260922；差异文件列表与数量须在执行时重取；原审计还列有学习契约/fixture、启动和来源存在性判断等检查线索，逐项核实实际路径与归属。逐项语义对账，不能只做截图验收。
+
+确认 B10 最终视觉资产、B09 行为、B07 IA 和当前 DESIGN-SPEC 的适用关系。资源缺失记 UNVERIFIED_REFERENCE，不临时生成替代图宣称一比一。检查真实登录/连接、素材导入、学习计划、课件、答题/评分、掌握度/FSRS、机器纠错复测、设置/插件等页面是否绑定权威服务；数据和状态必须来自真实读回。
+
+特别复核 scripts/runtime/workflow/_start_desktop.py：不能因 API 就绪或旧日志含 running 就误报当前桌面实例可用；pid/启动命令/进程身份/本次握手分开验证。这是需要复现的检查点，不是已证实修复结论。
+
+### A4：推进 M0 最短完整闭环
+
+在隔离工作区，用已有批准 fixture 和至少一个真实授权资料样例，贯通：
+原始输入 → 插件转换 → CanonicalSource/Knowledge → PersonalKnowledge/检索 → LearningPlan → CourseArtifact → 人类作答 → Assessment/Mastery/FSRS → 机器使用同一知识 → Evaluation → 人工纠错 → Retest → 关闭重启读回 → backup/restore → Legacy 副本迁移语义检查 → Local Green 候选。
+
+保护 raw/source/hash/revision、课程与题目绑定、错误和纠正来源；未覆盖题目不应因缺失答案被错误扣掌握度，但真实题目答案仍须 item-bound 严格校验。只有在 A0 完成真实源码绑定后才根据对应实现修复。
+
+每次只推进能形成真实证据的最短链，不先扩展 Neo4j/Qdrant、通用 Agent OS、全模型网关或跨仓共享数据库。真实 provider/资源目录语义未决时明确阻塞对应环节，继续无关测试。
+
+最后在已探测的原 Green 位置规划并验证备份/候选/原位替换/读回/回滚；本轮默认只生成候选和演练证据，不执行覆盖用户可用 Green 或发布。只有满足现行门禁并获得 Owner 要求的批准才可宣称 LOCAL_GREEN_READY_FOR_OWNER_REVIEW，否则 NOT_READY，并给出逐项缺口。
+
+## G2：仅对本项目收尾与 Owner 待审
+
+核对本项目所有交接任务、实际 diff、完整相关回归、证据等级和资料归属；独立出具 READY_FOR_OWNER_REVIEW、NOT_READY 或逐项 BLOCKED。另一项目是否结束不影响本项目交接。只更新本仓获准的现有状态源；不擅自合并、推送、发布或原位覆盖。
+
+## 最终回报格式
+
+请实际执行以上可执行项后再回报，不要只重写一份计划。每个任务返回：
+任务 ID / 既有账本映射 / 实际基线与修改后 SHA / 变更文件 / 根因 / 执行命令 / exit code 与测试数 / 产物路径和哈希 / 证据等级 / 未完成项 / 需 Owner 的动作。
+
+同时提交：历史决策对账表、云端-main/PR/本地三方矩阵、全仓覆盖清单、缺陷与修复差异、UI 参考文件映射、真实工作流读回、运行/迁移/恢复演练记录、未决门禁。报告不得新建第二套 mutable authority。输出必须明确哪些测试在何环境真正运行，哪些只是 GitHub 历史运行报告，哪些是最小独立复现。
+
+最终状态只有证据支持的 READY_FOR_OWNER_REVIEW、NOT_READY 或具体 BLOCKED；本包本身不提供 merge/push/release/原位覆盖/许可接受的授权。不要自动发布、抬版本或覆盖本地 Green。

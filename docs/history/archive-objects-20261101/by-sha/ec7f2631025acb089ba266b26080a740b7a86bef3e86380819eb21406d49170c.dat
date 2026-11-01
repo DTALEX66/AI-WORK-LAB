@@ -1,0 +1,948 @@
+# ArcheAxis Workspace 项目历史、现状与开源吸收总图谱 v1.0
+
+> 文档日期：2026-08-11（UTC）  
+> 产品名称：**ArcheAxis Workspace / 元枢工作台**  
+> 仓库技术 ID：`DTALEX66/Cognitive-Loop-OS`（仅作 Git/历史兼容，不是产品定位）  
+> 当前云端事实点：`main@ebf712474b466f3cd90dc1b32d66eb08492a75f6`  
+> 文档性质：项目历史回收、现状审计、开源候选重新核验与吸收建议；**不授权实施、合并、发布或推进后续 Horizon**。  
+> 权威边界：冻结基线、v4 主任务包和仓库机器事实优先；本文是更新后的研究与决策输入，不覆盖 Owner 已冻结定义。
+
+---
+
+## 0. 一页结论
+
+ArcheAxis Workspace 应继续被定义为：
+
+> **面向个人与 AI 的本地优先、证据驱动学习与知识工作台。**  
+> **同一份可信知识，人学得更深，AI 用得更准。**
+
+它不是 Agent OS、Cognitive OS、通用 Agent 平台、RAG 平台或 Runtime 控制台。历史开源调研中的 Agent、工作流、通用记忆、编码代理和安全实验室项目必须保留来源记录，但不能重新主导产品路线。
+
+本轮独立更新后的核心判断：
+
+1. **现有路线主轴正确**：RawAsset-first、Evidence-bound、Candidate-by-default、人工授权、Windows-first、开放格式和可回滚派生物应保持不变。
+2. **多格式识别与全网验证必须成为一个共享核心能力，而不是复制到九条管线**：入口可多，核心阶段协议只能有一套。
+3. **识别转译与事实核验必须继续解耦**：CER/WER/结构保真衡量“转得准不准”；Claim 级多源证据衡量“内容是否被公共证据支持”。两者不能互相替代。
+4. **默认路径应以零 LLM token 为目标**：原生提取、OCR、ASR、正文抽取、差异定位、标识符查询和大多数质量判断本地完成；LLM 只处理经门控的争议页、区域或时间段。
+5. **历史数量不是进度**：369 是高召回研究池，101 是旧 registry 行，57 是阶段性精选，8 是历史“有代码/依赖证据”；它们高度重叠，不能相加，也不能解释为已集成数量。
+6. **仓库事实已超过旧交接文档**：H1 已合入 `main`；PDF.js 原件阅读、分页、缩放和搜索已在 `#74` 合入。旧状态文档中“H1 未 merge / PDF.js 待实现”的句子已经过时。
+7. **仓库自己的开源账本需要二次正规化**：101 行中存在重复、迁移别名和项目级许可过度概括；应迁为 canonical component ledger，而不是继续维护手工数量。
+8. **本轮最重要的上游变化**：Marker 代码当前为 Apache-2.0、模型权重另受修改版 OpenRAIL-M；Kùzu 已归档；tldraw 当前许可证限制生产使用；H5P PHP library 为 GPL-3.0；Phoenix 为 ELv2；Firecrawl 主体为 AGPL；LiteLLM、Langfuse、AFFiNE、BlockNote、Meilisearch 均需目录/组件级许可判断。
+9. **推荐当前吸收重点**只覆盖资料摄取、证据、阅读/编辑、确定性搜索、学习调度、离线质量和供应链；通用 Agent/RAG/Memory/Workflow 平台继续后置。
+
+---
+
+## 1. 本次整理覆盖了什么
+
+### 1.1 项目内部历史源
+
+本次合并了以下材料族，而不是只依据当前对话：
+
+- 2026-07-17 早期 STAR 候选表：约 103 个去重候选；
+- 2026-07-30 开源与开放项目研究总池：369 个去重候选、15 个能力大类；
+- 2026-07-31 完整对话与决策归档；
+- 2026-08-07 云端全量审计整合任务包；
+- 2026-08-08 Only Product / UI / Naming / Compatibility 审计；
+- 2026-08-09 v4 最终总蓝图与主任务包；
+- 2026-08-09 未来蓝图、Windows/LER/OSS 增量包与多格式恢复包；
+- 57 项、45 能力域的开源能力精选表；
+- 历史 Knowledge-Base 技术清单与深化方案；
+- Google Research / 500 AI 交付包；
+- 2026-08-10 Workspace Context Handoff；
+- 2026-08-11 DeepSeek 的九条管线全景审计；
+- 2026-08-11 多格式识别转译与全网验证增强任务包。
+
+### 1.2 当前机器事实源
+
+- GitHub 仓库元数据、最近提交、`README.md`、`docs/PROJECT_STATUS.md`、`docs/ABSORPTION_EXECUTION_MATRIX.md`、`THIRD_PARTY_NOTICES.md`；
+- `open_source_project_registry.json` 与 `open_source_absorption_ledger.json`；
+- 当前 `main@ebf7124` 的合入事实；
+- 官方上游仓库的当前 archive 状态、根许可证、目录级许可说明、模型/权重说明；
+- Crossref、DataCite、OpenAlex、Wikidata、Europe PMC、NCBI、Open Library 的官方 API 文档。
+
+### 1.3 核验等级
+
+| 等级 | 含义 | 本文如何使用 |
+|---|---|---|
+| `HISTORY` | 历史文档、表格或对话中出现 | 证明“曾被研究”，不证明今天适用 |
+| `REPO-FACT` | 当前产品仓库代码、账本、提交或测试证据 | 判断本项目真实接线状态 |
+| `UPSTREAM-SNAPSHOT` | 2026-08-11 读取到的官方上游默认分支/许可证/说明 | 用于重新分类，但仍不是集成许可裁决 |
+| `RDR-REQUIRED` | 进入代码前尚需 exact tag/commit、许可哈希、依赖、模型、资产、Windows 与回滚记录 | 未完成前不能写“已选定/已吸收” |
+| `QUALIFIED` | 已有 source/installed/release 对应证据 | 只按证据覆盖的层级声明 |
+
+本文不是法律意见。任何进入发行物的项目仍须建立固定 revision 的 `ReuseDecisionRecord`。
+
+---
+
+## 2. 项目演变与反漂移时间线
+
+| 时间 | 发生的事 | 今天的裁决 |
+|---|---|---|
+| 2026-07 中旬 | 以 Cognitive-Loop-OS / ArcheAxis OS 语境广泛收集 Agent、RAG、PKM、工具、安全项目 | 保留研究身份；“OS/Agent 平台”定位作废 |
+| 2026-07-17 | STAR 表形成约 103 个候选，包含大量编码 Agent、RAG 平台与安全工具 | 作为来源快照，不作为产品待办 |
+| 2026-07-30 | 扩展为 369 个去重高召回池，提出 contract-first、clean-room、isolated lab | 方法保留；当时 P0 排序已被产品重定位覆盖 |
+| 2026-07-31 | 全量审计暴露版本、UI、发布与“后端能力很多但产品闭环弱”等问题 | 形成从数量驱动转向闭环与证据驱动的转折点 |
+| 2026-08-07 | 云端全量审计确认 registry/ledger、Adapter、知识治理和 Workspace 事实 | 机器账本保留，但旧阶段顺序和定位需要迁移 |
+| 2026-08-08 | Only Product/UI/Naming 审计把产品收敛为本地优先学习/知识工作台，Obsidian-compatible foundation 前置 | 当前产品边界的关键来源 |
+| 2026-08-09 | v4 总任务包冻结 RawAsset、Evidence、Human/AI 双学习、H0–H10、OSS Atlas | 当前规范主轴；后期能力保留但不抢 H0–H5 |
+| 2026-08-09 | H0 合入：真实 PDF 安装链、RawAsset 最小存储、Windows doctor、门禁修复 | 已完成事实，不重做 |
+| 2026-08-11 | H1 核心合入：RawAsset 完整合同、Conversion/Derived、Evidence、Job/Outbox/Receipt、早期学习对象 | 已进入 `main@fba208f` |
+| 2026-08-11 | PDF.js 原件阅读器合入：内容寻址 PDF、分页、缩放、搜索、打包 NOTICE | 已进入 `main@ebf7124`；证据批注仍需按真实能力另判 |
+| 2026-08-11 | DeepSeek 九管线审计 + 独立多格式方案评审 | 形成共享核心阶段协议和 Claim 级验证建议 |
+
+反漂移规则：任何历史文档中的“下一步”“P0”“已完成”都必须同时通过日期、权威层级和当前 Git 事实复核。旧状态不能因为文件仍存在而继续生效。
+
+---
+
+## 3. 当前产品真相
+
+### 3.1 唯一产品边界
+
+产品围绕同一份可信资料形成四条互相约束的链：
+
+```text
+Source / RawAsset
+  → Conversion / Derived Blocks / LossReport
+  → Claim / Evidence / CrossValidation
+  → Governed Knowledge
+      ├─ Human Learning：Objective → Practice → Teach-back → Transfer → Mastery
+      └─ AI Use：Cited Answer / AI Asset → Review → Scoped Use → Evaluation → Lesson
+```
+
+所有外部材料、人工输入和 AI 输出默认是 Candidate。识别成功、模型高置信、单一来源命中或同一仓库内多页面一致，都不能自动晋级为 verified truth。
+
+### 3.2 当前实现事实点
+
+截至 `main@ebf7124`：
+
+- H0 已合入；真实二进制 PDF 可通过安装依赖路径提取；
+- RawAsset 不可变、内容寻址存储和失败记录已存在；
+- H1 的 ConversionRun、DerivedDocument/Block、LossReport、EvidenceAnchor、IndexRevision 已合入；
+- Import 与 Job/Outbox/Receipt 具备同事务、幂等和崩溃/重试基础；
+- Claim/Evidence 与 CrossValidation Bundle 已合入；
+- LearningObjective、RetrievalPractice、TeachBack、TransferItem 已合入；
+- PDF.js `3.11.174` 已 vendored、NOTICE 已记录，浏览器中已验证分页、缩放和搜索；
+- 图像 OCR 具备 pytesseract/Tesseract 基础与真实图片门禁；
+- ASR、媒体时间锚、完整识别质量门、Claim 级自动证据连接器尚未形成核心闭环；
+- 公共稳定发布仍是 `v0.5.0`；当前 `main` 新能力不自动等于已发布产品能力。
+
+### 3.3 当前文档漂移
+
+以下仓库文档是历史状态而非实时状态：
+
+- `docs/PROJECT_STATUS.md` 仍写“H1 在 PR、PDF.js 前端待实现”；
+- `docs/truth/H0_H1_STATUS_HANDOFF.md` 仍写 PR #72 未 merge；
+- `docs/ABSORPTION_EXECUTION_MATRIX.md` 更新于 2026-07-27，仍以 R0→A0→H→I→J→K→L 的旧阶段语境组织候选；
+- registry/ledger 生成时间为 2026-07-22，名称、重复项、产品目标和许可状态均落后于 v4 与当前上游。
+
+这些文件应在未来获授权的 Truth/ledger 迁移中更正；本文不直接修改仓库。
+
+---
+
+## 4. 九条管线的当前接入真相
+
+| # | 管线 | 识别转译现状 | 内容事实验证现状 | 最新裁决 |
+|---:|---|---|---|---|
+| 1 | `/pipeline` 统一摄取 | 主要是 text/URL/YouTube/RSS；file 仍不是统一二进制 RawAsset 入口 | `score_credibility` 不是权威交叉验证 | 只保留为入口适配器，转入共享核心 |
+| 2 | `/ingest/file`、directory、多格式 | 文本 PDF/Office/HTML 有链；图片 OCR 及媒体 ASR 未形成统一知识转换闭环 | 未接 Claim 级外网验证 | H2 的主要入口，但不拥有独立引擎栈 |
+| 3 | Workspace intake/governance | 已复用多格式与 Job/Outbox/Receipt；受 §2 能力限制 | 人工 review queue，不是公共证据检索 | 作为产品主入口和人工治理面 |
+| 4 | Workspace Worker | 已有持久任务、lease、retry 基础 | 无专用验证 stage | 承载 conversion/verification stage，不复制逻辑 |
+| 5 | Runtime `/run` | 与多格式转换非同一职责 | 不应接管事实真相 | 仅消费 approved/scoped knowledge |
+| 6 | Knowledge Base `/kb/*` | 消费文本和索引；不应自己做 OCR/ASR | 内部质量审计不等于外网验证 | 消费投影与 EvidenceBundle |
+| 7 | Research runtime | 候选研究包与人工核验基础 | 单仓库不构成来源独立性 | 复用 Evidence Connector Registry |
+| 8 | Obsidian skills | 技能侧已有 OCR/ASR/web-crosscheck 能力 | 课程型 crosscheck 已存在 | 下沉协议与 fixture，不把技能实现直接复制进 core |
+| 9 | Release/desktop | 不做内容处理 | 不做事实验证 | 只负责 capability probe、SBOM、NOTICE、安装资格 |
+
+结论：应采用“多入口、一核心、多投影”，而不是九条管线分别集成 OCR、ASR 和 Web 验证。
+
+---
+
+## 5. 推荐的统一内容与证据管线
+
+```text
+Ingress Adapters
+  /pipeline | /ingest | Workspace | KB | Research | Obsidian Skill
+        │
+        ▼
+Intake Gateway
+  原件先落盘 → RawAsset + SourceRecord + Import Job/Receipt
+        │
+        ▼
+Profiler / Policy Router
+  signature/MIME、页型、语言、加密、隐私、预算、可用引擎
+        │
+        ▼
+Conversion Orchestrator（Worker）
+  native extract | OCR | ASR | HTML | Office | special parser
+        │
+        ▼
+Recognition Quality Gate
+  ACCEPT | WARN | TARGETED_RETRY | ALTERNATE_ENGINE
+  | LLM_ASSIST_CANDIDATE | HUMAN_REVIEW | UNSUPPORTED
+        │
+        ▼
+DerivedDocument + Blocks + TextVariants + LossReport + EvidenceAnchor
+        │
+        ├──────────────→ Workspace/Reader/Search/KB projections
+        │
+        ▼
+Claim Triage（异步）
+  public-verifiable | private/subjective | noise | low-value | high-risk
+        │
+        ▼
+Evidence Connector Registry
+  official/registry API → academic/library → encyclopedia → controlled web fallback
+        │
+        ▼
+CrossValidation / EvidenceBundle
+  supports | refutes | qualifies | conflict | stale | insufficient
+        │
+        ▼
+Human ReviewDecision
+  才允许 VerifiedKnowledge / approved AI asset / published output
+```
+
+### 5.1 识别门不能这样做
+
+- 没有人工 truth 时不得计算或展示 CER/WER；
+- 不得把 OCR/ASR confidence 当 CER/WER；
+- 不得把多引擎一致当事实正确；
+- 不得因为 LLM 更贵就假设它更准；
+- 不得整文件顺序经过“本地→LLM 辅助→LLM 完整识别”；大多数原生文本文件一次本地处理即可结束。
+
+### 5.2 无金标准时的运行时门控
+
+使用按格式、引擎、语言和场景校准的多信号：
+
+- 可提取字符密度、空页率、乱码率、替代字符率；
+- 版面块覆盖、阅读顺序、表格/公式/脚注完整性；
+- OCR token confidence 的分布与低置信区域比例；
+- ASR 无语音概率、重复/幻听、时间覆盖和分段异常；
+- 第二引擎差异、关键实体/数字/年份的争议率；
+- 页面图像与文本层匹配、文件元数据与输出一致性；
+- 引擎失败、依赖缺失、内存/时限和预算状态。
+
+这些信号只能决定 ACCEPT/重试/复核，不能发布成“准确率”。
+
+### 5.3 全网验证边界
+
+优先验证：年份、人名、机构、术语定义、定量数据、论文/理论归属、法规版本、产品规格、标准版本、公共事件和高风险结论。
+
+默认跳过：私人记录、非公开信息、主观观点、创作内容、纯格式文本、疑似 OCR/ASR 噪声、低价值重复事实、没有合法出站基础的内容。
+
+识别完成默认不等待互联网；事实验证异步。只有“经核验导入”、正式知识晋级、高风险发布或 Owner 明确 policy 才作为阻断门。
+
+---
+
+## 6. 开源吸收治理模型
+
+### 6.1 状态不再只用“已集成/未集成”
+
+```text
+discovered → normalized → source-resolved → license-pending
+→ evaluated → selected → integrated-unqualified
+→ source-qualified → installed-qualified → release-qualified
+
+旁路：reference-only | optional-sidecar | deferred | isolated-lab
+     | rejected-with-reason | superseded | upstream-archived | unresolved-source
+```
+
+### 6.2 复用顺序
+
+```text
+开放格式/标准
+→ 成熟许可兼容依赖
+→ 官方 SDK/API/CLI
+→ 可替换 Provider
+→ 隔离 Sidecar
+→ 固定 revision 的 fork/vendor
+→ 行为/fixture clean-room 参考
+→ 自研 fallback
+```
+
+### 6.3 每个 active 候选必须有的记录
+
+- canonical URL、别名、迁移和 archive 状态；
+- exact tag/commit、源码归档、LICENSE/NOTICE 哈希；
+- 代码、模型、权重、tokenizer、数据、字体、图标、fixture、二进制各自许可；
+- Windows wheel/可执行文件、CPU/GPU/RAM/VRAM/磁盘画像；
+- 网络、遥测、登录态、外发、robots/ToS 与隐私画像；
+- 被选中的最小组件、集成方式和 API 边界；
+- 成功/失败 fixture、质量 benchmark、capability probe；
+- 升级、替换、kill switch、卸载和回滚路径；
+- SBOM、NOTICE、CVE 和最终发行证据。
+
+### 6.4 本文的处置标签
+
+| 标签 | 含义 |
+|---|---|
+| `CURRENT` | 仓库已有真实代码/依赖证据；仍按资格层级声明 |
+| `ADOPT` | 通过 RDR 与安装资格后，推荐成为基线 |
+| `EVALUATE` | 用固定 fixture 做 bake-off，不能凭名气直接选 |
+| `SIDECAR` | 隔离、可卸载、非默认常驻能力 |
+| `REFERENCE` | 只吸收 UX、合同、算法或测试思想 |
+| `DEFER` | 对长期路线可能有价值，但不进入 H0–H5 当前核心 |
+| `REVIEW/BLOCK` | 许可、模型、上游状态、安全或产品边界未通过，默认关闭 |
+| `REJECT-CORE` | 与当前产品定位无关，不进入产品依赖图；历史记录仍保留 |
+
+---
+
+## 7. 当前仓库已接线项目的真实状态
+
+| 项目 | 当前证据 | 正确状态 | 结论 |
+|---|---|---|---|
+| PDF.js 3.11.174 | `#74` vendored assets、NOTICE、wheel package data、浏览器分页/缩放/搜索 | `source-qualified + browser-qualified on current main`；wheel package data 已声明；非公开 release-qualified | 保留；建立从 3.11.174 到当前 5.x 的兼容/CVE升级评估 |
+| MarkItDown `[pdf]` | 安装依赖、真实 PDF、`multi_format.py` | `installed-qualified` 的 PDF baseline | 保留为轻量 baseline；不启用默认 LLM OCR |
+| pdfplumber/pdfminer/pypdfium2 | MarkItDown PDF 传递链与 NOTICE | 当前 PDF baseline 的组成部分 | 锁版本和传递许可；不因存在而宣称复杂版面准确 |
+| Trafilatura | `multi_format.py`、`web_search.py` | `integrated-unqualified` | 保留静态网页 baseline，补来源快照和安装证据 |
+| Crawl4AI | crawler Adapter + integration test | `integrated-unqualified/optional` | 只用于动态页 sidecar，不常驻，不自动给外部内容 truth 身份 |
+| pytesseract/Tesseract | 图像 OCR adapter、真实图片门禁 | 基础 OCR 路径，未形成完整 H2 转换闭环 | 保留并下沉页/区段 EvidenceAnchor |
+| sqlite-vec | 本地向量代码路径与测试 | `integrated-unqualified/optional derived index` | FTS5 始终可独立降级；向量索引可删可重建 |
+| NetworkX | 图计算路径 | `integrated-unqualified` | 只做派生本地图计算，不作为第二事实库 |
+| LiteLLM | provider Adapter 与 test | `integrated-unqualified` | 核心 MIT、enterprise 目录另许可；只保留薄 Provider，不接管数据模型 |
+| Langfuse | observability Adapter 与 test | `integrated-unqualified/optional` | 核心 MIT、EE 目录另许可；默认本地 fallback 和 payload redaction |
+| Loguru | 真实日志路径 | `integrated-unqualified` | 保留；日志不得含私密正文、凭据和内部绝对路径 |
+| structlog | 直接依赖/日志基础 | `integrated-unqualified` | 与 Loguru 职责应收敛，避免双日志框架重复 |
+
+历史 ledger 的“implemented=8”只说明当时存在可达代码或依赖证据；本表加入 PDF.js、pytesseract 等当前事实，并按资格层重新表达。
+
+---
+
+## 8. 我推荐的最新开源吸收栈
+
+下面是当前产品边界下的推荐栈。它是候选优先序，不是立即安装清单。
+
+### 8.1 文件检测、PDF、Office、OCR
+
+| 能力 | 首选 | 第二选择/Sidecar | 当前裁决 |
+|---|---|---|---|
+| 文件签名/MIME | stdlib/libmagic 现有能力 + [Magika](https://github.com/google/magika) | 无 | `EVALUATE→ADOPT`；只路由，不当安全证明 |
+| PDF 原件阅读 | [PDF.js](https://github.com/mozilla/pdf.js) | 系统默认阅读器 deep-link | `CURRENT`；当前 3.11.174 与上游 5.x 做独立升级 spike |
+| 原生文字 PDF | MarkItDown + pdfplumber/pypdf | [Kreuzberg](https://github.com/thelosttimes/kreuzberg) 或 Docling | `CURRENT`；页面级 LossReport |
+| Office baseline | MarkItDown、python-docx、python-pptx、openpyxl | LibreOffice headless / Tika sidecar | H2 分格式资格，不用一个引擎冒充全部 Office |
+| 富结构文档 | [Docling](https://github.com/docling-project/docling)（代码 MIT） | Unstructured / Tika | `EVALUATE`；模型与下载物独立 RDR |
+| OCR baseline | [Tesseract](https://github.com/tesseract-ocr/tesseract) + tessdata | OCRmyPDF 生成可搜索派生副本 | `CURRENT→ADOPT`；语言包和 Windows binary 单独资格 |
+| 中英复杂 OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) | RapidOCR / EasyOCR | 三者固定 corpus bake-off，最终只保留 primary + fallback |
+| 学术论文结构 | [GROBID](https://github.com/kermitt2/grobid) | Docling | `SIDECAR`；只处理元数据/引用专项 |
+| 罕见广格式 | [Apache Tika](https://github.com/apache/tika) | Unstructured | `SIDECAR`；Java/系统依赖和 CVE 独立显示 |
+| PDF 修复 | qpdf / pikepdf | OCRmyPDF | `SIDECAR`；只产可逆派生副本，不覆盖 RawAsset |
+
+不设默认：MinerU、Marker、PyMuPDF4LLM、Surya、olmOCR、GLM-OCR、Chandra。它们只在固定 corpus、许可和资源画像证明净收益后成为特定 profile。
+
+### 8.2 音视频与 ASR
+
+| 能力 | 首选 | 第二选择 | 当前裁决 |
+|---|---|---|---|
+| 媒体探测/解码 | FFmpeg/ffprobe | 系统 codec | `ADOPT_WITH_BUILD_AUDIT`；构建选项决定 LGPL/GPL |
+| VAD | [Silero VAD](https://github.com/snakers4/silero-vad) | 简单能量门 | `ADOPT`；保留时间线 |
+| 本地批量 ASR | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) | [whisper.cpp](https://github.com/ggml-org/whisper.cpp) | 固定中英 corpus 比较 WER、实时因子、RAM/VRAM；模型另审 |
+| 流式/低功耗 | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | whisper.cpp | `EVALUATE`；每个模型独立登记 |
+| 中文专项 | FunASR/SenseVoice | PaddleSpeech | `REVIEW/BLOCK`；代码与具体模型条款分开，不默认打包 |
+| 场景/说话人 | PySceneDetect / pyannote-audio | 无 | 后置 profile；模型访问条款、个人声音隐私单独门禁 |
+
+### 8.3 Web、RSS 与来源采集
+
+| 能力 | 首选 | 第二选择 | 当前裁决 |
+|---|---|---|---|
+| 静态正文 | [Trafilatura](https://github.com/adbar/trafilatura) 现代 Apache-2.0 版本 | [Mozilla Readability](https://github.com/mozilla/readability) | `CURRENT` + 差异比较 |
+| 动态网页 | Crawl4AI 或 [Crawlee Python](https://github.com/apify/crawlee-python) 二选一 | Playwright 底层 | `SIDECAR`；SSRF、登录态、prompt injection、快照与限网 |
+| 复杂反爬 | Scrapling | Camoufox/Patchright | 默认后置；不得为“全网”绕过站点政策 |
+| RSS | 标准 RSS/Atom parser | RSSHub sidecar | 标准优先；RSSHub 为 AGPL sidecar |
+| 搜索发现 | 官方 API/站内检索 | SearXNG sidecar | 搜索结果只是候选来源，不是证据 |
+| 视频下载/字幕 | 官方字幕/API | yt-dlp opt-in | 用户授权、ToS/版权和来源快照先行 |
+| 文献元数据转换 | Zotero translators/API/export | translation-server sidecar | 格式/API 先行；AGPL 组件单独合规 |
+
+Firecrawl 主体 AGPL，SDK/UI 部分可能为 MIT；不作为默认嵌入式依赖。浏览器 Agent（browser-use、Stagehand）继续后置，不进入自动摄取主链。
+
+### 8.4 识别质量、差异、去重与增量
+
+| 能力 | 推荐项目 | 裁决 |
+|---|---|---|
+| CER/WER | [JiWER](https://github.com/jitsi/jiwer) | `ADOPT`；只有 truth/prediction 才计算 |
+| 文本对齐/差异 | [RapidFuzz](https://github.com/rapidfuzz/RapidFuzz) | `ADOPT`；定位差异，不裁决事实 |
+| 近重去重 | [datasketch](https://github.com/ekzhu/datasketch) | `EVALUATE`；锁 hash scheme/version |
+| 增量文件监测 | [watchfiles](https://github.com/samuelcolvin/watchfiles) | `EVALUATE`；事件后以内容哈希为准 |
+| PII 出站预警 | Presidio | `SIDECAR/ADVISORY`；不能承诺完整脱敏 |
+| Token 估算 | tiktoken / provider tokenizer | 只估算；实际账单以 provider usage 为准 |
+
+### 8.5 事实证据连接器
+
+| 来源 | 推荐用途 | 关键边界 |
+|---|---|---|
+| [Crossref REST](https://crossref.org/documentation/retrieve-metadata/rest-api/) | DOI、作者、题名、期刊、出版信息 | public/polite pool；读 rate/concurrency headers，429 退避 |
+| [DataCite REST](https://support.datacite.org/docs/api) | DataCite DOI 与数据集元数据 | 元数据开放；保存 provenance |
+| [OpenAlex](https://developers.openalex.org/guides/authentication) | 学术实体、引用图、开放获取发现 | API freemium；免费 key 每日预算，记录服务成本与缓存 |
+| [Wikidata](https://www.wikidata.org/wiki/Wikidata:Data_access) | 公共实体、标识符、关系 | 窄查询、User-Agent、429/Retry-After；不做模糊全文验证 |
+| [Europe PMC](https://dev.europepmc.org/RestfulWebService) | 生物医学文献、引用、开放全文 | 领域限定；版本化 REST |
+| [NCBI E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25501/) | PubMed/Entrez 结构化检索 | 遵守 usage guideline；PMC 2026 行为变化纳入测试 |
+| [Open Library](https://openlibrary.org/developers) | 低频图书/作者目录核对 | API 明确定位为低流量；批量用 dump |
+| 官方文档/标准站 | 软件版本、标准、法规、机构事实 | 以具体官方来源为准，不能由百科替代 |
+
+Wikipedia/Wikidata、教材和百科可用于发现与背景，但高风险事实应优先注册机构、标准组织、官方文档或原始论文。来源独立性按组织/数据生成链判断，不按 URL 数量判断。
+
+### 8.6 本地搜索、图与分析
+
+| 能力 | 首选 | 备选 | 当前裁决 |
+|---|---|---|---|
+| 全文搜索 | SQLite FTS5 | Tantivy | `CURRENT/ADOPT`；确定性 baseline |
+| 向量索引 | sqlite-vec | LanceDB | `CURRENT optional`；只有 corpus 证明规模/召回不足才切换 |
+| 图计算 | NetworkX | rustworkx/igraph | `CURRENT`；派生 projection |
+| 表格分析 | SQLite + openpyxl/pandas；必要时 DuckDB/Polars | Arrow | `EVALUATE`；不创建第二事实库 |
+| 外部向量服务 | Qdrant | Chroma/FAISS | H6+ sidecar；个人本地工作台当前无必要 |
+| 图数据库 | 无新增默认 | Graphiti/Neo4j 研究 | Kùzu 已归档，不作为新依赖；图/记忆平台 H7+ |
+
+### 8.7 Workspace、编辑、Canvas 与学习
+
+| 能力 | 推荐 | 当前裁决 |
+|---|---|---|
+| Markdown/Vault | CommonMark/GFM parser + YAML roundtrip + WikiLink 层 | H3；不要继续扩手写 parser 子集 |
+| JSON Canvas | [官方 JSON Canvas 规范](https://github.com/obsidianmd/jsoncanvas) | `ADOPT FORMAT`；未知字段保留 |
+| Markdown 编辑 | CodeMirror 6 package family 优先 spike；Lexical/TipTap 作为对照 | 只选一个主编辑器族；旧 umbrella repo archived 不等于包停止维护 |
+| 富块编辑 | BlockNote / TipTap | `EVALUATE`；BlockNote core MPL-2.0，XL 包 GPL/商业分开 |
+| Canvas/Graph UI | [XYFlow](https://github.com/xyflow/xyflow) | `EVALUATE→ADOPT`；文件真相仍是 JSON Canvas |
+| 自由绘图 | [Excalidraw](https://github.com/excalidraw/excalidraw) | C5+ Adapter；不阻断 H3 |
+| tldraw | 不作默认 | 当前许可证要求生产 license key，归 `REVIEW/BLOCK` |
+| 间隔重复 | [py-fsrs](https://github.com/open-spaced-repetition/py-fsrs) | `ADOPT`；每张卡指回 EvidenceAnchor |
+| Anki 互操作 | CSV/开放交换/API 优先 | AGPL 源码吸收另做组合许可决策 |
+| Zotero 互操作 | BibTeX/CSL JSON/API/export | v1.x 首个研究 Adapter，不复制整个应用 |
+| Joplin/Logseq/SiYuan/AppFlowy | 各自 export/API Adapter | 均为 copyleft 项目；不污染核心模型 |
+| H5P | 后期内容交换/运行 sidecar | PHP library 当前 GPL-3.0，content type 逐项许可；旧“core MIT”结论作废 |
+| marimo/JupyterLite/Pyodide | 后期可执行学习材料 | Apache/BSD/MPL 组合分别审查，不进入 v1.0 前核心 |
+
+### 8.8 本地模型、评测、供应链与恢复
+
+| 能力 | 推荐 | 当前裁决 |
+|---|---|---|
+| 本地 LLM runtime | llama.cpp 或 Ollama sidecar | H4+ bake-off；模型权重永远单独许可 |
+| Provider 统一 | 现有薄 LiteLLM Adapter | 核心 MIT、enterprise 目录另许可；可替换，不接管业务对象 |
+| Embedding/rerank | Qwen 小模型 / FastEmbed / sentence-transformers 候选 | 固定模型、量化、RAM/VRAM、中文 corpus、模型卡与下载哈希 |
+| Trace 语义 | OpenTelemetry + OpenInference | `ADOPT SEMANTICS`；最小数据、默认本地 |
+| 离线 AI 评测 | Promptfoo / Inspect AI；DeepEval/Ragas 对照 | H4+ CI/资格，不成为普通用户 UI |
+| 可视化评测服务 | Langfuse optional | 现有 Adapter；EE 目录另许可 |
+| Phoenix | 只作参考或独立部署评估 | 当前 ELv2，不写作普通 OSS 默认依赖 |
+| SBOM | Syft | 与构建产物绑定 |
+| 漏洞扫描 | pip-audit + Grype 或 Trivy 二选一主扫描器 | 避免三套固定重型门禁 |
+| Secret 扫描 | Gitleaks | CI/发布工具，不打包进产品 |
+| 签名 | Cosign/Sigstore | H5 release qualification；密钥/无密钥策略另决 |
+| 备份 | SQLite 原生备份 + 开放导出 | 首选；restic/rclone 作为用户选择，Litestream 需 Windows 实测 |
+
+---
+
+## 9. 上游更新与历史结论纠错表
+
+| 项目 | 旧记录 | 2026-08-11 更新 | 最新处置 |
+|---|---|---|---|
+| Marker | GPL-3.0、模型另审 | 当前 `datalab-to/marker` 根代码 LICENSE 为 Apache-2.0；README 说明权重为修改版 OpenRAIL-M，免费范围含个人/研究及一定规模以下组织 | 代码和权重拆分；`EVALUATE/WEIGHT-REVIEW`，不再写“代码 GPL” |
+| MinerU | custom license | 2026 许可为 Apache-2.0 + 附加 MAU/收入阈值与在线服务标识义务 | `REVIEW/BLOCK`，不得笼统写 Apache-2.0 |
+| PyMuPDF4LLM | AGPL/商业 | 当前根 LICENSE 为 AGPL-3.0 | 只有明确接受 AGPL 组合义务或商业许可后使用 |
+| tldraw | 候选 SDK/可能开源 | 当前 tldraw license 允许开发环境，生产使用要求 license key | 不是默认 OSS 组件；`REVIEW/BLOCK` |
+| Kùzu | graph DB 候选 | 上游于 2025-10-10 归档、只读 | `upstream-archived`；新实现不得选为 primary |
+| H5P PHP library | “core MIT” | 当前根仓库为 GPL-3.0，README 明示因 HTML purifier 采用 GPL | 更正为 copyleft sidecar/交换候选；content type 另审 |
+| Phoenix | 常被归入开源观测 | 当前 LICENSE 为 Elastic License 2.0 | `source-available/reference`，不作默认 OSS 依赖 |
+| Meilisearch | 常被写 MIT | 当前根许可为 MIT AND BUSL-1.1，EE 路径另许可 | 组件级审查；当前不需要引入 |
+| LiteLLM | MIT | 核心 MIT，`enterprise/` 另许可；默认分支也不是稳定发布的替代品 | 只锁正式 release 的核心组件 |
+| Langfuse | MIT | 核心 MIT，`ee/` 等目录另许可 | 现有 Adapter 保留，禁止整体许可概括 |
+| AFFiNE | 未定/可能 MIT | 主体 MIT，但 backend/native 路径引用独立许可 | UX 参考与 Adapter；禁止整体源码吸收结论 |
+| BlockNote | 统一开源候选 | core MPL-2.0，`xl-*` 为 GPL-3.0/商业 | 精确到包选择 |
+| Firecrawl | API/crawler 候选 | 当前 canonical 为 `firecrawl/firecrawl`；主体 AGPL-3.0，部分 SDK/UI MIT | 远程服务或 AGPL sidecar；不内嵌主服务 |
+| CodeMirror/ProseMirror | 以 umbrella repo 判断 | 旧 umbrella/meta repo 已归档，但实际 package family 独立维护 | bake-off 必须固定具体 npm 包与版本，不能误判整个生态归档 |
+| PDF.js | 3.11.174 已接入 | 当前上游已有 5.x；仓库版本明显落后但已被真实验证 | 不盲升；建立兼容、安全、WebView 和 bundle 体积升级 spike |
+
+---
+
+## 10. 当前不应吸收到产品核心的项目族
+
+### 10.1 通用 Agent、编码 Agent 与 Agent OS
+
+OpenHands、AutoGen、CrewAI、LangGraph、PydanticAI、OpenAI Agents SDK、Google ADK、Semantic Kernel、OpenCode、Aider、Claude Code/SDK、Gemini CLI、Qwen Code、Cline、Roo Code、Continue、Tabby、SWE-agent、Open Interpreter、MetaGPT、TinyAgents/TinyFlows/TinyJuice、Hermes、Quine、VeriOS、AOHP、NOUS OS、Bob's Big Brain Compiler 等：
+
+- 可作为开发工具、typed contract、permission UX、恢复语义或研究参考；
+- 不作为 Workspace 产品能力；
+- 不得绕过现有 Job/Outbox/Receipt、Permission、Evidence 和 Human Review；
+- H10 前不进入默认依赖图。
+
+### 10.2 整体 RAG/知识平台
+
+Dify、RAGFlow、Open WebUI、AnythingLLM、FastGPT、Kotaemon、Khoj、Quivr、private-gpt、LobeChat、MaxKB、Flowise、LangFlow 等只作产品/UX/算法参考。ArcheAxis 的事实层、开放文件、EvidenceAnchor 和学习对象不能交给另一套平台接管。
+
+### 10.3 Agent Memory / Graph RAG
+
+Mem0、Letta、Graphiti、Cognee、LightRAG、GraphRAG、KAG、HippoRAG、LangMem、MemOS、TinyCortex 等继续留在 H7+ 研究池。可吸收 admission、freshness、taint、temporal edge、provenance 等概念，但不得成为第二 truth layer。
+
+### 10.4 云原生工作流与协作基础设施
+
+Temporal、Airflow、Prefect、Celery、Dapr、Dagster、Hatchet、n8n、DBOS、Restate、Inngest、PowerSync、ElectricSQL、Yjs/Automerge 协作栈等：当前本地单用户工作台已有 SQLite Job/Outbox/Receipt；只有真实负载和跨端需求证明缺口后才评估。
+
+### 10.5 安全研究实验室
+
+Ghidra、radare2、Rizin、Frida、pwntools、sqlmap、angr、AFL++、syzkaller、QEMU、x64dbg、Wireshark、ZAP、MobSF、Volatility、YARA 等全部为 `isolated-lab/reference-only`。它们与本项目当前用户路径无关，禁止进入自动执行链。
+
+---
+
+## 11. 推荐的开源增强任务包（只定义，不执行）
+
+### 包 A：Ledger Truth Reset
+
+1. 冻结 369、101、103、57、historical-8 和 later-research 六套来源快照与哈希；
+2. canonicalize URL/name；把 Marker、Firecrawl、OpenHands 等迁移别名记录为 supersession；
+3. 合并 registry 重复行，但保留 tombstone/source provenance；
+4. 把项目级 license 改为 component/model/asset/binary license；
+5. 生成机器 reconciliation report，不再手工维护“总数必须等于 101”。
+
+### 包 B：Current Integration Qualification
+
+对 PDF.js、MarkItDown、Trafilatura、Crawl4AI、Tesseract/pytesseract、sqlite-vec、NetworkX、LiteLLM、Langfuse、Loguru、structlog 建立：
+
+- exact revision/lock；
+- source/installed/release 三层状态；
+- Windows capability probe；
+- NOTICE/SBOM；
+- failure fixture；
+- uninstall/rollback；
+- “未支持能力”诚实投影。
+
+### 包 C：H2 Recognition Provider Bake-off
+
+- PDF/Office：MarkItDown、Docling、专用轻量库；
+- OCR：Tesseract、PaddleOCR、RapidOCR/EasyOCR；
+- ASR：faster-whisper、whisper.cpp、sherpa-onnx；
+- Web：Trafilatura、Readability、Crawl4AI/Crawlee；
+- 统一中文/英文、扫描/原生、表格/公式、长音频、噪声、Windows 路径 fixture；
+- 输出 CER/WER（有 truth）、结构保真、资源、冷启动、磁盘、失败率和增量重跑数据；
+- 每个能力只选 primary + fallback + deferred alternative。
+
+### 包 D：Evidence Connector Registry
+
+先接 Crossref、DataCite、OpenAlex、Wikidata、Europe PMC、NCBI、Open Library 和官方文档模板；统一 rate-limit、cache、provenance、source-independence、staleness、conflict 和 egress policy。普通 Web 搜索只作最后回退。
+
+### 包 E：Workspace/Learning OSS Qualification
+
+- Markdown parser + YAML roundtrip bake-off；
+- CodeMirror 6/Lexical/TipTap/BlockNote 单编辑器决策；
+- JSON Canvas + XYFlow；
+- py-fsrs；
+- Zotero/Anki/Joplin/Logseq/SiYuan 的格式/API Adapter；
+- tldraw、H5P、AGPL 应用只在独立合规包内研究。
+
+### 包 F：Supply Chain Minimum Set
+
+只选 Syft + 一个漏洞扫描主工具 + pip-audit + Gitleaks；H5 再接 Cosign。不要把 Syft/Grype/Trivy/CodeQL/Semgrep 全部变成每次 PR 的重型固定矩阵。
+
+### 停止条件
+
+在 Owner 未明确下达“重新审计/实施”指令前：
+
+- 不修改产品仓库；
+- 不新增依赖；
+- 不创建 PR；
+- 不推进 H2/H3/H4；
+- 不把本文推荐写成已完成状态。
+
+---
+
+## 12. 历史 57 项精选表的最新全量映射
+
+| ID | 项目 | 最新处置 |
+|---|---|---|
+| P001 | Docling | `EVALUATE H2`；富结构 provider，代码/模型分审 |
+| P002 | PaddleOCR-VL / PaddleOCR | `EVALUATE H2`；先传统 OCR/Structure，VLM 不默认 |
+| P003 | GLM-OCR | `BENCHMARK/WEIGHT-REVIEW` |
+| P004 | Crawl4AI | `CURRENT optional web sidecar` |
+| P005 | Repomix | `DEV-TOOL/REFERENCE`，不进产品 |
+| P006 | MinerU | `LICENSE-REVIEW/BENCHMARK` |
+| P007 | Marker | `CODE-EVALUATE/WEIGHT-REVIEW`；历史 GPL 结论已更新 |
+| P008 | Chandra OCR | `BENCHMARK/WEIGHT-REVIEW` |
+| P009 | faster-whisper | `ADOPT-CANDIDATE H2` |
+| P010 | LanceDB | `OPTIONAL INDEX`; sqlite-vec 不足时再评估 |
+| P011 | sqlite-vec | `CURRENT optional derived index` |
+| P012 | SQLite-Vector | `BENCHMARK/NO DEFAULT` |
+| P013 | Qwen3-Embedding-0.6B | `EVALUATE H4`；模型独立 RDR |
+| P014 | Qwen3-Reranker-0.6B | `EVALUATE H4`；模型独立 RDR |
+| P015 | Qwen3-VL-Embedding-2B | `DEFER H7+` |
+| P016 | Qwen3-VL-Reranker-2B | `DEFER H7+` |
+| P017 | Graphiti | `DEFER H7+`；时态图概念参考 |
+| P018 | TinyCortex | `REFERENCE/DEFER H10` |
+| P019 | Mem0 | `DEFER H10` |
+| P020 | Letta | `DEFER H10` |
+| P021 | Cognee | `DEFER H7+` |
+| P022 | LightRAG | `DEFER H7+` |
+| P023 | OpenSPG / KAG | `DEFER H7+` |
+| P024 | RAGFlow | `REFERENCE ONLY` |
+| P025 | Haystack | `REFERENCE/ALGORITHM`; 不接管核心 |
+| P026 | Bob's Big Brain Compiler | `HISTORICAL REFERENCE` |
+| P027 | NOUS OS | `HISTORICAL REFERENCE/REJECT-CORE` |
+| P028 | PydanticAI | `DEFER H10/typed-contract reference` |
+| P029 | LangGraph | `DEFER H10`; 不建第二状态库 |
+| P030 | TinyAgents | `DEFER/COPELEFT REVIEW` |
+| P031 | TinyFlows | `DEFER/COPELEFT REVIEW` |
+| P032 | OpenHuman | `UI BEHAVIOR REFERENCE`; runtime 不吸收 |
+| P033 | CoWork OS | `UNRESOLVED/HISTORICAL REFERENCE` |
+| P034 | llama.cpp | `OPTIONAL LOCAL PROVIDER H4+` |
+| P035 | Qwen3.5-4B | `MODEL-PROVIDER EVALUATE` |
+| P036 | LiteLLM | `CURRENT integrated-unqualified` |
+| P037 | TinyJuice | `DEFER/COPELEFT REVIEW` |
+| P038 | AutoGen | `DEFER H10/REJECT-CORE` |
+| P039 | OpenTelemetry | `ADOPT INTERNAL SEMANTICS` |
+| P040 | OpenInference | `ADOPT AI TRACE SEMANTICS` |
+| P041 | DeepEval | `EVALUATE H4 CI` |
+| P042 | Ragas | `EVALUATE H4 CI` |
+| P043 | Promptfoo | `CURRENT optional/evaluate H4 CI` |
+| P044 | Inspect AI | `EVALUATE H4 CI` |
+| P045 | Self-State Attacks on Self-Hosted AI Agents | `RESEARCH REFERENCE` |
+| P046 | Py-FSRS | `ADOPT H4` |
+| P047 | pyKT | `RESEARCH ONLY` |
+| P048 | marimo | `LATER LEARNING TOOL` |
+| P049 | H5P | `GPL SIDECAR/CONTENT-LICENSE REVIEW` |
+| P050 | React Flow / XYFlow | `EVALUATE→ADOPT H3` |
+| P051 | MCP Apps | `DEFER H10/INTEROP REFERENCE` |
+| P052 | MCP Python SDK | `DEFER H10/INTEROP REFERENCE` |
+| P053 | tldraw | `LICENSE BLOCKED FOR PRODUCTION` |
+| P054 | AOHP | `RESEARCH REFERENCE` |
+| P055 | VeriOS | `RESEARCH REFERENCE` |
+| P056 | Quine | `RESEARCH REFERENCE` |
+| P057 | Hermes Agent | `DEV-TOOL/RESEARCH REFERENCE` |
+
+---
+
+## 13. 历史约 103 项 STAR 清单的最新全量投影
+
+为避免 103 行表再次变成“待集成列表”，这里按最新处置列出所有名字。重复/迁移别名仍保留历史身份。
+
+### 13.1 当前产品直接相关：保留、资格或评估
+
+`microsoft/markitdown`、`adbar/trafilatura`、`docling-project/docling`、`PaddlePaddle/PaddleOCR`、`Unstructured-IO/unstructured`、`apache/tika`、`opendatalab/MinerU`、`datalab-to/marker`、`pymupdf/PyMuPDF4LLM`、`unclecode/crawl4ai`、`apify/crawlee`、`D4Vinci/Scrapling`、`newspaper4k`、`microsoft/playwright`、`asg017/sqlite-vec`、`sqliteai/sqlite-vector`、`lancedb/lancedb`、`facebookresearch/faiss`、`qdrant/qdrant`、`chroma-core/chroma`、`networkx/networkx`、`zotero/zotero`、`Obsidian plugin ecosystem`、`OpenTelemetry ecosystem`、`BerriAI/litellm`、`langfuse/langfuse`、`promptfoo/promptfoo`、`Delgan/loguru`、`hynek/structlog`。
+
+裁决：只按第 8–9 节选 primary/fallback；MinerU、PyMuPDF4LLM、Firecrawl、Zotero 源码等需合规边界；数据库不得替代 RawAsset/SQLite truth。
+
+### 13.2 PKM/Workspace 生态：格式、API、UX 参考
+
+`toeverything/AFFiNE`、`laurent22/joplin`、`logseq/logseq`、`siyuan-note/siyuan`、`Obsidian plugin ecosystem`、`zotero/zotero`。
+
+裁决：开放格式/API Adapter 优先；不整体嵌入，不复制闭源 Obsidian 本体；社区插件逐插件 RDR。
+
+### 13.3 RAG/AI 应用平台：参考，不进核心
+
+`langgenius/dify`、`open-webui/open-webui`、`infiniflow/ragflow`、`lobehub/lobe-chat`、`zylon-ai/private-gpt`、`Mintplex-Labs/anything-llm`、`QuivrHQ/quivr`、`khoj-ai/khoj`、`labring/FastGPT`、`Cinnamon/kotaemon`、`langchain-ai/langchain`、`langchain-ai/langgraph`、`assafelovic/gpt-researcher`、`topoteretes/cognee`、`getzep/graphiti`、`mem0ai/mem0`、`neo4j/neo4j`、`kuzudb/kuzu`。
+
+裁决：产品/算法参考；Kùzu 标归档；Graph/Memory 后置。
+
+### 13.4 Agent、编码与平台工具：开发参考或后置
+
+`anthropics/skills`、`sst/opencode`、`anthropics/claude-code`、`google-gemini/gemini-cli`、`All-Hands-AI/OpenHands`、`cline/cline`、`Aider-AI/aider`、`crewAIInc/crewAI`、`microsoft/autogen`、`continuedev/continue`、`TabbyML/tabby`、`openai/openai-agents-python`、`microsoft/semantic-kernel`、`QwenLM/qwen-code`、`RooCodeInc/Roo-Code`、`pydantic/pydantic-ai`、`vercel/ai`、`stackblitz-labs/bolt.diy`、`browser-use/browser-use`、`browserbase/stagehand`、`xai-org/grok-build`、`anthropics/claude-code-action`、`anthropics/claude-agent-sdk-python`、`anthropics/claude-agent-sdk-typescript`、`CodeGraphContext/CodeGraphContext`、`PrefectHQ/prefect`、`davidrothlis/declarative-schema-migration`。
+
+裁决：不成为 Workspace 功能；只吸收权限、patch、typed contract、恢复或 UX 思想。
+
+### 13.5 其他历史模型/工具
+
+`xai-org/grok-1`、`xai-org/grok-build`、`microsoft/playwright`、`BerriAI/litellm`、`Delgan/loguru`、`hynek/structlog`。
+
+裁决：模型与工具分别审查；Grok 权重/工具不进入当前路线。
+
+### 13.6 安全研究 23 项：全部 isolated-lab
+
+`NationalSecurityAgency/ghidra`、`x64dbg/x64dbg`、`mitmproxy/mitmproxy`、`sqlmapproject/sqlmap`、`radareorg/radare2`、`MobSF/Mobile-Security-Framework-MobSF`、`frida/frida`、`Gallopsled/pwntools`、`zaproxy/zaproxy`、`VirusTotal/yara`、`wireshark/wireshark`、`capstone-engine/capstone`、`unicorn-engine/unicorn`、`angr/angr`、`pwndbg/pwndbg`、`volatilityfoundation/volatility3`、`avast/retdec`、`google/syzkaller`、`keystone-engine/keystone`、`AFLplusplus/AFLplusplus`、`lief-project/LIEF`、`rizinorg/rizin`、`qemu/qemu`。
+
+裁决：保留研究来源，不进产品、不自动执行、不计产品能力。
+
+### 13.7 早期别名与迁移行
+
+`VikParuchuri/marker` → 当前 canonical `datalab-to/marker`；`radare2/radare2` → 当前组织路径 `radareorg/radare2`；早期 registry 的泛名 `scrapling` → `D4Vinci/Scrapling`；`Obsidian 社区插件生态` = `Obsidian plugin ecosystem`；`OpenTelemetry 生态` = `OpenTelemetry ecosystem`。这些旧名字不删除，只通过 alias/supersession 归并。
+
+---
+
+## 14. 369 个高召回研究池的完整保留投影
+
+本节保留 2026-07-30 总池的全部 369 个去重身份。每类前的标签是**今天的默认处置**；个别被第 8 节选中的项目按更具体裁决覆盖。
+
+### 14.1 文档解析、OCR 与结构化（23）— `QUALIFY / BENCHMARK`
+
+`allenai/olmocr`、`apache/tika`、`camelot-dev/camelot`、`datalab-to/marker`、`docling-project/docling`、`facebookresearch/nougat`、`GROBID/grobid`、`HKUDS/RAG-Anything`、`jsvine/pdfplumber`、`Layout-Parser/layout-parser`、`microsoft/markitdown`、`microsoft/table-transformer`、`ocrmypdf/OCRmyPDF`、`opendatalab/MinerU`、`opendatalab/MinerU-Ecosystem`、`opendatalab/PDF-Extract-Kit`、`PaddlePaddle/PaddleOCR`、`py-pdf/pypdf`、`pymupdf/RAG/pymupdf4llm`、`tesseract-ocr/tesseract`、`thelosttimes/kreuzberg`、`Unstructured-IO/unstructured`、`VikParuchuri/surya`。
+
+最新默认：MarkItDown/pdfplumber/pypdf/Tesseract 为 baseline；Docling/PaddleOCR/Kreuzberg 评估；Tika/GROBID/OCRmyPDF sidecar；其余 benchmark 或许可/模型复核。
+
+### 14.2 网页、社交媒体与浏览器采集（24）— `BASELINE / OPT-IN SIDECAR`
+
+`adbar/trafilatura`、`AndyTheFactory/newspaper4k`、`apify/crawlee`、`browser-use/browser-use`、`browserbase/stagehand`、`bytedance/UI-TARS-desktop`、`D4Vinci/Scrapling`、`daijro/camoufox`、`DIYgod/RSSHub`、`Evil0ctal/Douyin_TikTok_Download_API`、`instaloader/instaloader`、`Johnserf-Seed/TikTokDownload`、`Kaliiiiiiiiii-Vinyzu/patchright`、`ltaoo/XHS-Downloader`、`mendableai/firecrawl`、`microsoft/playwright`、`mikf/gallery-dl`、`NanmiCoder/MediaCrawler`、`Nemo2011/bilibili-api`、`scrapy/scrapy`、`SeleniumHQ/selenium`、`unclecode/crawl4ai`、`vladkens/twscrape`、`yt-dlp/yt-dlp`。
+
+最新默认：Trafilatura baseline；Crawl4AI/Crawlee/Playwright 为动态页 sidecar；Firecrawl/RSSHub 为 AGPL 边界；平台下载器和登录态工具必须用户授权、限量、遵守平台政策，不进入“自动全网”默认路径。
+
+### 14.3 RAG、知识库与检索（30）— `REFERENCE / DEFER H7+`
+
+`1Panel-dev/MaxKB`、`Cinnamon/kotaemon`、`deepset-ai/haystack`、`FlowiseAI/Flowise`、`HKUDS/LightRAG`、`HKUDS/MiniRAG`、`HKUDS/RAG-Anything`、`HKUDS/VideoRAG`、`infiniflow/ragflow`、`khoj-ai/khoj`、`labring/FastGPT`、`langchain-ai/langchain`、`langchain-ai/langgraph`、`langflow-ai/langflow`、`langgenius/dify`、`lobehub/lobe-chat`、`microsoft/graphrag`、`Mintplex-Labs/anything-llm`、`netease-youdao/QAnything`、`neuml/txtai`、`open-webui/open-webui`、`OpenSPG/KAG`、`OSU-NLP-Group/HippoRAG`、`pathwaycom/pathway`、`QuivrHQ/quivr`、`run-llama/llama_index`、`SciPhi-AI/R2R`、`stanfordnlp/dspy`、`Tencent/WeKnora`、`zylon-ai/private-gpt`。
+
+最新默认：全部不接管核心数据模型。Haystack/LightRAG/GraphRAG/KAG/DSPy 可作算法与 eval 参考；完整平台只作 UX/行为研究。
+
+### 14.4 图谱、记忆与长期知识（16）— `CURRENT MINIMAL / DEFER`
+
+`getzep/graphiti`、`getzep/zep`、`igraph/igraph`、`kuzudb/kuzu`、`lancedb/lancedb`、`langchain-ai/langmem`、`letta-ai/letta`、`mem0ai/mem0`、`MemTensor/HaluMem`、`MemTensor/MemOS`、`neo4j/neo4j`、`networkx/networkx`、`NirDiamant/Agent_Memory_Techniques`、`OpenSPG/openspg`、`Qiskit/rustworkx`、`topoteretes/cognee`。
+
+最新默认：NetworkX 当前保留；LanceDB 仅作 sqlite-vec 规模替代；Kùzu 归档；其他记忆/图平台 H7/H10 后置，只吸收 provenance/temporal/admission 概念。
+
+### 14.5 个人学习、PKM 与知识工作台（20）— `FORMAT/API ADAPTER / UX REFERENCE`
+
+`ankitects/anki`、`anyproto/anytype-ts`、`AppFlowy-IO/AppFlowy`、`foambubble/foam`、`h5p/h5p-php-library`、`laurent22/joplin`、`learningequality/kolibri`、`logseq/logseq`、`moodle/moodle`、`obsidianmd/obsidian-sample-plugin`、`open-spaced-repetition/fsrs4anki`、`openedx/edx-platform`、`outline/outline`、`silverbulletmd/silverbullet`、`siyuan-note/siyuan`、`streetwriters/notesnook`、`toeverything/AFFiNE`、`TriliumNext/Trilium`、`usememos/memos`、`zotero/zotero`。
+
+最新默认：py-fsrs/开放交换格式优先；Zotero/Anki/Joplin/Logseq/SiYuan 做 API/export Adapter；LMS 和完整 PKM 产品不嵌入；Anytype 的 source-available/组件许可必须重新解析。
+
+### 14.6 Agent、多智能体与编码智能体（34）— `DEV REFERENCE / REJECT-CORE`
+
+`agno-agi/agno`、`Aider-AI/aider`、`block/goose`、`BrainBlend-AI/atomic-agents`、`bytedance/UI-TARS-desktop`、`camel-ai/camel`、`cline/cline`、`continuedev/continue`、`crewAIInc/crewAI`、`evalstate/fast-agent`、`FoundationAgents/OpenManus`、`geekan/MetaGPT`、`google-gemini/gemini-cli`、`google/adk-python`、`huggingface/smolagents`、`i-am-bee/beeai-framework`、`lastmile-ai/mcp-agent`、`mastra-ai/mastra`、`microsoft/autogen`、`microsoft/semantic-kernel`、`openai/codex`、`openai/openai-agents-python`、`openai/swarm`、`OpenHands/OpenHands`、`OpenInterpreter/open-interpreter`、`princeton-nlp/SWE-agent`、`pydantic/pydantic-ai`、`QwenLM/Qwen-Agent`、`QwenLM/qwen-code`、`RooCodeInc/Roo-Code`、`sst/opencode`、`stackblitz-labs/bolt.diy`、`strands-agents/sdk-python`、`TabbyML/tabby`。
+
+最新默认：全部不进入 H0–H5 产品核心；开发工具使用不等于产品吸收。
+
+### 14.7 Agent 协议、MCP 与 Agent UI（15）— `STANDARD/REFERENCE H10`
+
+`a2aproject/A2A`、`a2aproject/a2a-python`、`a2ui-project/a2ui`、`ag-ui-protocol/ag-ui`、`Arize-ai/openinference`、`asyncapi/spec`、`jlowin/fastmcp`、`json-schema-org/json-schema-spec`、`modelcontextprotocol/inspector`、`modelcontextprotocol/servers`、`modelcontextprotocol/specification`、`OAI/OpenAPI-Specification`、`open-rpc/spec`、`open-telemetry/semantic-conventions`、`zed-industries/agent-client-protocol`。
+
+最新默认：JSON Schema/OpenAPI/OpenTelemetry/OpenInference 可服务现有合同；MCP/A2A/A2UI/AG-UI 保留互操作研究，不推动 Agent 平台定位。
+
+### 14.8 工作流、耐久执行与后台任务（22）— `EXISTING CORE FIRST / DEFER`
+
+`activepieces/activepieces`、`agronholm/apscheduler`、`airtai/faststream`、`apache/airflow`、`Bogdanp/dramatiq`、`celery/celery`、`dagster-io/dagster`、`dapr/dapr`、`dbos-inc/dbos-transact-py`、`hatchet-dev/hatchet`、`inngest/inngest`、`kestra-io/kestra`、`n8n-io/n8n`、`node-red/node-red`、`PrefectHQ/prefect`、`python-arq/arq`、`restatedev/restate`、`rq/rq`、`taskiq-python/taskiq`、`temporalio/temporal`、`triggerdotdev/trigger.dev`、`windmill-labs/windmill`。
+
+最新默认：当前 Job/Outbox/Receipt/lease worker 优先；APScheduler 只保留已有明确职责；其他只有负载、跨进程或外部编排需求被证实时才做 Adapter。
+
+### 14.9 观测、评估与 Guardrails（26）— `SELECTIVE INTERNAL / H4+`
+
+`Arize-ai/openinference`、`Arize-ai/phoenix`、`Azure/PyRIT`、`comet-ml/opik`、`confident-ai/deepeval`、`EleutherAI/lm-evaluation-harness`、`evidentlyai/evidently`、`explodinggradients/ragas`、`Giskard-AI/giskard`、`guardrails-ai/guardrails`、`Helicone/helicone`、`huggingface/lighteval`、`langfuse/langfuse`、`microsoft/presidio`、`mlflow/mlflow`、`modelscope/evalscope`、`NVIDIA/garak`、`NVIDIA/NeMo-Guardrails`、`open-telemetry/opentelemetry-python`、`openlit/openlit`、`promptfoo/promptfoo`、`protectai/llm-guard`、`traceloop/openllmetry`、`truera/trulens`、`UKGovernmentBEIS/inspect_ai`、`wandb/weave`。
+
+最新默认：OpenTelemetry/OpenInference 语义 + 现有 Langfuse fallback；Promptfoo/Inspect AI/DeepEval/Ragas 只用于离线资格。Phoenix 是 ELv2，不能继续笼统写 OSS。
+
+### 14.10 本地模型、推理与训练（25）— `THIN PROVIDER / MOSTLY DEFER`
+
+`abetlen/llama-cpp-python`、`bentoml/OpenLLM`、`BerriAI/litellm`、`bitsandbytes-foundation/bitsandbytes`、`ggml-org/llama.cpp`、`hiyouga/LLaMA-Factory`、`huggingface/optimum`、`huggingface/peft`、`huggingface/text-generation-inference`、`huggingface/trl`、`lm-sys/FastChat`、`ml-explore/mlx-lm`、`mlc-ai/mlc-llm`、`mudler/LocalAI`、`NVIDIA/TensorRT-LLM`、`ollama/ollama`、`OpenAccess-AI-Collective/axolotl`、`PygmalionAI/aphrodite-engine`、`pytorch/torchtune`、`sgl-project/sglang`、`triton-inference-server/server`、`turboderp-org/exllamav2`、`unslothai/unsloth`、`vllm-project/vllm`、`xorbitsai/inference`。
+
+最新默认：llama.cpp/Ollama/LocalAI 三选一或零选；LiteLLM 保持薄路由；大规模 serving/training 栈与个人本地工作台当前无关。
+
+### 14.11 音视频、多模态与计算机操作（28）— `ASR SUBSET / COMPUTER-USE REJECT-CORE`
+
+`Breakthrough/PySceneDetect`、`bytedance/UI-TARS`、`bytedance/UI-TARS-desktop`、`facebookresearch/demucs`、`facebookresearch/segment-anything-2`、`FFmpeg/FFmpeg`、`fishaudio/fish-speech`、`FunAudioLLM/CosyVoice`、`FunAudioLLM/SenseVoice`、`ggerganov/whisper.cpp`、`IDEA-Research/GroundingDINO`、`k2-fsa/sherpa-onnx`、`m-bain/whisperX`、`microsoft/OmniParser`、`mlfoundations/open_clip`、`modelscope/FunASR`、`myshell-ai/OpenVoice`、`NVIDIA/NeMo`、`OpenBMB/MiniCPM-V`、`opencv/opencv`、`OpenGVLab/InternVL`、`OS-Copilot/OS-Copilot`、`PaddlePaddle/PaddleSpeech`、`pyannote/pyannote-audio`、`QwenLM/Qwen2.5-VL`、`showlab/ShowUI`、`SYSTRAN/faster-whisper`、`yt-dlp/yt-dlp`。
+
+最新默认：FFmpeg + Silero（后补候选）+ faster-whisper/whisper.cpp/sherpa-onnx 为 ASR 主族；视觉/说话人/场景按专项 profile；computer-use 项目全部后置。
+
+### 14.12 存储、搜索、同步与谱系（34）— `SQLITE FIRST / OPTIONAL DERIVED`
+
+`apache/arrow`、`asg017/sqlite-vec`、`automerge/automerge`、`benbjohnson/litestream`、`chroma-core/chroma`、`dolthub/dolt`、`duckdb/duckdb`、`electric-sql/electric`、`electric-sql/pglite`、`facebookresearch/faiss`、`infiniflow/infinity`、`iterative/dvc`、`lancedb/lancedb`、`MarquezProject/marquez`、`meilisearch/meilisearch`、`milvus-io/milvus`、`OpenLineage/OpenLineage`、`opensearch-project/OpenSearch`、`paradedb/paradedb`、`pgvector/pgvector`、`pola-rs/polars`、`powersync-ja/powersync-js`、`pubkey/rxdb`、`qdrant/qdrant`、`quickwit-oss/tantivy`、`rclone/rclone`、`restic/restic`、`simonw/datasette`、`treeverse/lakeFS`、`typesense/typesense`、`unum-cloud/usearch`、`vespa-engine/vespa`、`weaviate/weaviate`、`yjs/yjs`。
+
+最新默认：SQLite/FTS5/sqlite-vec + 原生备份；DuckDB/Polars 用于分析；restic/rclone 用户可选；同步/CRDT H9；外部搜索/向量服务后置。Meilisearch 混合许可、Typesense GPL，均不是当前默认。
+
+### 14.13 沙箱、权限与供应链安全（30）— `MINIMUM TOOL SET / INFRA DEFER`
+
+`anchore/grype`、`anchore/syft`、`aquasecurity/trivy`、`authzed/spicedb`、`bytecodealliance/wasmtime`、`casbin/casbin`、`cedar-policy/cedar`、`containers/bubblewrap`、`containers/podman`、`daytonaio/daytona`、`e2b-dev/E2B`、`FiloSottile/age`、`firecracker-microvm/firecracker`、`getsops/sops`、`github/codeql`、`gitleaks/gitleaks`、`google/gvisor`、`google/nsjail`、`hashicorp/vault`、`kata-containers/kata-containers`、`keycloak/keycloak`、`moby/moby`、`open-policy-agent/opa`、`openfga/openfga`、`opensandbox-group/OpenSandbox`、`PyCQA/bandit`、`pypa/pip-audit`、`rustsec/rustsec`、`semgrep/semgrep`、`sigstore/cosign`。
+
+最新默认：Syft + pip-audit + Grype/Trivy 二选一 + Gitleaks；Cosign H5。云原生 auth/policy/sandbox 基础设施不为“全面”而引入。
+
+### 14.14 前端、桌面与可视化（29）— `BAKE-OFF / CURRENT TAURI`
+
+`a2ui-project/a2ui`、`ag-ui-protocol/ag-ui`、`apache/echarts`、`automerge/automerge`、`codemirror/dev`、`cytoscape/cytoscape.js`、`excalidraw/excalidraw`、`facebook/lexical`、`facebook/react`、`microsoft/monaco-editor`、`pmndrs/jotai`、`pmndrs/zustand`、`ProseMirror/prosemirror`、`radix-ui/primitives`、`recharts/recharts`、`shadcn-ui/ui`、`tailwindlabs/tailwindcss`、`TanStack/query`、`TanStack/router`、`TanStack/table`、`TanStack/virtual`、`tauri-apps/tauri`、`tldraw/tldraw`、`TypeCellOS/BlockNote`、`ueberdosis/tiptap`、`visjs/vis-network`、`vitejs/vite`、`xyflow/xyflow`、`yjs/yjs`。
+
+最新默认：Tauri/现有 UI 栈保持；编辑器只选一个主族；XYFlow/Excalidraw 分职责；tldraw 生产许可阻断；CRDT 不提前侵入 file-first core。
+
+### 14.15 安全研究实验室（23）— `ISOLATED-LAB ONLY`
+
+`AFLplusplus/AFLplusplus`、`angr/angr`、`avast/retdec`、`capstone-engine/capstone`、`frida/frida`、`Gallopsled/pwntools`、`google/syzkaller`、`keystone-engine/keystone`、`lief-project/LIEF`、`mitmproxy/mitmproxy`、`mobsf/Mobile-Security-Framework-MobSF`、`NationalSecurityAgency/ghidra`、`pwndbg/pwndbg`、`qemu/qemu`、`radareorg/radare2`、`rizinorg/rizin`、`sqlmapproject/sqlmap`、`unicorn-engine/unicorn`、`VirusTotal/yara`、`volatilityfoundation/volatility3`、`wireshark/wireshark`、`x64dbg/x64dbg`、`zaproxy/zaproxy`。
+
+最新默认：全部与产品核心隔离；不安装、不自动执行、不作为当前路线缺口。
+
+以上 15 类按 canonical name 去重后仍为 369 个身份；分类间重复不应再次计数。
+
+---
+
+## 15. 369 池之后新增或重新进入视野的候选
+
+这些项目/服务并非都在 2026-07-30 的 369 池中，但被 v4、57 表、多格式增强包或本轮官方复核补入：
+
+| 新候选/规范 | 能力 | 最新处置 |
+|---|---|---|
+| PDF.js | 原件阅读 | `CURRENT`，升级 spike |
+| JSON Canvas | 开放 Canvas 文件规范 | `ADOPT FORMAT` |
+| Obsidian API types / URI | 插件类型/深链协议 | C5/interop reference |
+| Magika | 文件类型路由 | `EVALUATE→ADOPT` |
+| RapidOCR / EasyOCR | Windows/CPU OCR 备选 | 与 Paddle/Tesseract bake-off |
+| GLM-OCR / Chandra OCR | VLM OCR | benchmark/model-license review |
+| Silero VAD | 语音活动检测 | `ADOPT` |
+| JiWER | CER/WER | `ADOPT` |
+| RapidFuzz | 差异对齐 | `ADOPT` |
+| datasketch | 近重去重 | `EVALUATE` |
+| watchfiles | 增量监测 | `EVALUATE` |
+| qpdf / pikepdf | PDF 诊断/修复 | optional sidecar |
+| ruamel.yaml | frontmatter roundtrip | H3 bake-off |
+| py-fsrs | 学习调度 | `ADOPT H4` |
+| Three.js / React Three Fiber / A-Frame / WebXR | Spatial Memory | H8 retained，非当前 |
+| Vega/Vega-Lite、Observable Plot、D3、Mermaid、markmap | 教学表征 | H6/H7 组件族，逐场景选择 |
+| Manim / Motion Canvas / p5.js / Web Animations / Lottie | 动态教学 | H7，静态降级与证据锚必需 |
+| Crossref / DataCite / OpenAlex / Wikidata / Europe PMC / NCBI / Open Library | 公共事实证据 | 首批 Evidence Connectors |
+| SearXNG | 自托管搜索聚合 | AGPL optional sidecar |
+| Zotero translation-server | 元数据转换 | AGPL optional sidecar |
+| restic / rclone | 用户可选备份 | H5 评估 |
+| Syft / Grype / Trivy / pip-audit / Gitleaks / Cosign | 供应链 | 最小集合，不全量堆叠 |
+| Google Research superrepo / 500-AI 索引 | 研究来源 | 固定 subdir/commit、只读方法参考，永不整仓自动吸收 |
+
+### 15.1 Google Research / 500 AI 包的最新处置
+
+该交付包不是“500 个可直接集成项目”。它包含：
+
+- `google-research/google-research` 研究超级仓库：只能 sparse checkout 到明确 subdir，固定 commit，默认禁止执行；
+- `ashishpatel26/500-AI-Machine-learning-Deep-learning-Computer-vision-NLP-Projects-with-code`：本质是学习链接索引，不是经过许可与质量审查的依赖集合；
+- 首批有参考价值的 subasset：`TimesX/dataset_agent`、`instruction_following_eval`、`active_selective_prediction`、`behavioral_dispositions`、`uq_benchmark_2019`；
+- `saycan` 等 Planner/Agent 研究只作历史方法参考，不进入当前 Workspace 主线。
+
+---
+
+## 16. Registry/Ledger 的具体重构建议
+
+### 16.1 旧账本发现
+
+- 101 行的 execution state：`implemented=8`、`adapter_contract_pending=27`、`deferred_review=38`、`reference_only=28`；
+- 所有 source registry 行仍是 `candidate`，不足以表达 v4 的 Horizon、source nature 和组件级许可；
+- 精确重复/迁移包括 MinerU、Firecrawl、browser-use、Marker、sqlite-vec 等；
+- `recommended_target` 中仍出现 “B线/Cognitive-OS/未来前台/IR安全研究库”，与当前产品命名和边界冲突；
+- `standard_review` 不能代表许可证已核验；
+- `implemented` 没有系统拆成 source/installed/release qualification。
+
+### 16.2 推荐 schema
+
+```text
+candidate_id
+canonical_name / canonical_url / upstream_owner
+aliases[] / source_sets[] / source_ids[]
+source_nature: oss | format_api | source_available | closed_ux | unresolved
+capability_domains[] / alternative_family
+selected_components[]
+code_license / model_license / data_license / asset_license / binary_license
+license_files[] + sha256 + retrieved_at
+upstream_revision_or_release / archived / superseded_by
+windows_profile / offline_profile / network_profile / telemetry_profile
+integration_modes[] / target_horizon / product_user_path
+technical_state / source_state / installed_state / release_state
+fixture_refs[] / benchmark_refs[] / evidence_refs[]
+upgrade_strategy / rollback / kill_switch / removal_plan
+owner_decision / decision_date / history[]
+```
+
+### 16.3 必须新增的机器门禁
+
+1. 原 369/101/103/57/8 每一身份均有 canonical row 或 tombstone mapping；
+2. active 项必须有 exact revision 与 license file hash；
+3. 代码、模型、数据、资产、二进制不能共用一个 license 字段；
+4. archive、rename、owner transfer 和 default branch 变化触发重新评估；
+5. `integrated` 不得推导 `installed`，`installed` 不得推导 `release`；
+6. 重复项目不删除历史行，只用 `duplicate_of/superseded_by`；
+7. Narrative 文档不再手工充当完整项目账本；
+8. 未通过 RDR 的项目不能进入 dependency lock、vendor 目录或发行物。
+
+---
+
+## 17. 官方上游核验索引
+
+以下链接用于本轮更新。真正集成时必须固定 tag/commit，不得仅引用默认分支。
+
+### 17.1 文档、OCR、ASR、Web
+
+- [PDF.js](https://github.com/mozilla/pdf.js) / [Apache-2.0 LICENSE](https://github.com/mozilla/pdf.js/blob/master/LICENSE)
+- [MarkItDown](https://github.com/microsoft/markitdown) / [MIT LICENSE](https://github.com/microsoft/markitdown/blob/main/LICENSE)
+- [Docling](https://github.com/docling-project/docling) / [MIT LICENSE](https://github.com/docling-project/docling/blob/main/LICENSE)
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) / [Apache-2.0 LICENSE](https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE)
+- [Tesseract](https://github.com/tesseract-ocr/tesseract) / [Apache-2.0 LICENSE](https://github.com/tesseract-ocr/tesseract/blob/main/LICENSE)
+- [EasyOCR](https://github.com/JaidedAI/EasyOCR) / [Apache-2.0 LICENSE](https://github.com/JaidedAI/EasyOCR/blob/master/LICENSE)
+- [RapidOCR](https://github.com/RapidAI/RapidOCR) / [Apache-2.0 LICENSE](https://github.com/RapidAI/RapidOCR/blob/main/LICENSE)
+- [OCRmyPDF](https://github.com/ocrmypdf/OCRmyPDF) / [MPL-2.0 LICENSE](https://github.com/ocrmypdf/OCRmyPDF/blob/main/LICENSE)
+- [Apache Tika](https://github.com/apache/tika) / [Apache-2.0 LICENSE](https://github.com/apache/tika/blob/main/LICENSE.txt)
+- [Unstructured](https://github.com/Unstructured-IO/unstructured) / [Apache-2.0 LICENSE](https://github.com/Unstructured-IO/unstructured/blob/main/LICENSE.md)
+- [MinerU custom terms](https://github.com/opendatalab/MinerU/blob/master/LICENSE.md)
+- [Marker current code/model notice](https://github.com/datalab-to/marker/blob/master/README.md) / [code LICENSE](https://github.com/datalab-to/marker/blob/master/LICENSE)
+- [PyMuPDF4LLM AGPL](https://github.com/pymupdf/pymupdf4llm/blob/main/LICENSE)
+- [olmOCR](https://github.com/allenai/olmocr) / [Apache-2.0 LICENSE](https://github.com/allenai/olmocr/blob/main/LICENSE)
+- [Kreuzberg](https://github.com/thelosttimes/kreuzberg)
+- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) / [MIT LICENSE](https://github.com/SYSTRAN/faster-whisper/blob/master/LICENSE)
+- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) / [MIT LICENSE](https://github.com/ggml-org/whisper.cpp/blob/master/LICENSE)
+- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) / [Apache-2.0 LICENSE](https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE)
+- [FunASR](https://github.com/modelscope/FunASR) / [code LICENSE](https://github.com/modelscope/FunASR/blob/main/LICENSE)
+- [Silero VAD](https://github.com/snakers4/silero-vad) / [MIT LICENSE](https://github.com/snakers4/silero-vad/blob/master/LICENSE)
+- [Trafilatura](https://github.com/adbar/trafilatura) / [current LICENSE](https://github.com/adbar/trafilatura/blob/master/LICENSE)
+- [Mozilla Readability](https://github.com/mozilla/readability) / [Apache-2.0 LICENSE](https://github.com/mozilla/readability/blob/main/LICENSE.md)
+- [Crawl4AI](https://github.com/unclecode/crawl4ai) / [Apache-2.0 LICENSE](https://github.com/unclecode/crawl4ai/blob/main/LICENSE)
+- [Crawlee Python](https://github.com/apify/crawlee-python) / [Apache-2.0 LICENSE](https://github.com/apify/crawlee-python/blob/master/LICENSE)
+- [Scrapling](https://github.com/D4Vinci/Scrapling) / [BSD-3-Clause LICENSE](https://github.com/D4Vinci/Scrapling/blob/main/LICENSE)
+- [Firecrawl current repository](https://github.com/firecrawl/firecrawl)
+- [Playwright](https://github.com/microsoft/playwright) / [Apache-2.0 LICENSE](https://github.com/microsoft/playwright/blob/main/LICENSE)
+- [SearXNG](https://github.com/searxng/searxng) / [AGPL LICENSE](https://github.com/searxng/searxng/blob/master/LICENSE)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) / [Unlicense](https://github.com/yt-dlp/yt-dlp/blob/master/LICENSE)
+
+### 17.2 Workspace、学习、检索与 Provider
+
+- [JSON Canvas](https://github.com/obsidianmd/jsoncanvas) / [MIT LICENSE](https://github.com/obsidianmd/jsoncanvas/blob/main/LICENSE)
+- [Obsidian API types](https://github.com/obsidianmd/obsidian-api) / [MIT LICENSE](https://github.com/obsidianmd/obsidian-api/blob/master/LICENSE.md)
+- [py-fsrs](https://github.com/open-spaced-repetition/py-fsrs) / [MIT LICENSE](https://github.com/open-spaced-repetition/py-fsrs/blob/main/LICENSE)
+- [Anki](https://github.com/ankitects/anki) / [AGPL-3-or-later LICENSE](https://github.com/ankitects/anki/blob/main/LICENSE)
+- [Zotero](https://github.com/zotero/zotero) / [AGPL COPYING](https://github.com/zotero/zotero/blob/main/COPYING)
+- [Joplin](https://github.com/laurent22/joplin) / [AGPL default and subdir rule](https://github.com/laurent22/joplin/blob/dev/LICENSE)
+- [Logseq](https://github.com/logseq/logseq) / [AGPL LICENSE](https://github.com/logseq/logseq/blob/master/LICENSE.md)
+- [SiYuan](https://github.com/siyuan-note/siyuan) / [AGPL LICENSE](https://github.com/siyuan-note/siyuan/blob/master/LICENSE)
+- [AFFiNE mixed directory notice](https://github.com/toeverything/AFFiNE/blob/canary/LICENSE)
+- [AppFlowy](https://github.com/AppFlowy-IO/AppFlowy) / [AGPL LICENSE](https://github.com/AppFlowy-IO/AppFlowy/blob/main/LICENSE)
+- [H5P PHP library](https://github.com/h5p/h5p-php-library) / [GPL-3.0 LICENSE](https://github.com/h5p/h5p-php-library/blob/master/LICENSE.txt)
+- [XYFlow](https://github.com/xyflow/xyflow) / [MIT LICENSE](https://github.com/xyflow/xyflow/blob/main/LICENSE)
+- [Excalidraw](https://github.com/excalidraw/excalidraw) / [MIT LICENSE](https://github.com/excalidraw/excalidraw/blob/master/LICENSE)
+- [tldraw production-restricted LICENSE](https://github.com/tldraw/tldraw/blob/main/LICENSE.md)
+- [BlockNote component licensing](https://github.com/TypeCellOS/BlockNote/blob/main/LICENSE.txt)
+- [TipTap](https://github.com/ueberdosis/tiptap) / [MIT LICENSE](https://github.com/ueberdosis/tiptap/blob/main/LICENSE.md)
+- [Automerge](https://github.com/automerge/automerge) / [MIT LICENSE](https://github.com/automerge/automerge/blob/main/LICENSE)
+- [Yjs](https://github.com/yjs/yjs) / [MIT LICENSE](https://github.com/yjs/yjs/blob/main/LICENSE)
+- [sqlite-vec dual license files](https://github.com/asg017/sqlite-vec)
+- [LanceDB](https://github.com/lancedb/lancedb) / [Apache-2.0 LICENSE](https://github.com/lancedb/lancedb/blob/main/LICENSE)
+- [Kùzu archived repository](https://github.com/kuzudb/kuzu)
+- [Qdrant](https://github.com/qdrant/qdrant) / [Apache-2.0 LICENSE](https://github.com/qdrant/qdrant/blob/master/LICENSE)
+- [DuckDB](https://github.com/duckdb/duckdb) / [MIT LICENSE](https://github.com/duckdb/duckdb/blob/main/LICENSE)
+- [LiteLLM core/enterprise notice](https://github.com/BerriAI/litellm/blob/litellm_internal_staging/LICENSE)
+- [Langfuse core/EE notice](https://github.com/langfuse/langfuse/blob/main/LICENSE)
+- [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-specification)
+- [OpenInference](https://github.com/Arize-ai/openinference)
+- [Phoenix ELv2 LICENSE](https://github.com/Arize-ai/phoenix/blob/main/LICENSE)
+- [Promptfoo MIT LICENSE](https://github.com/promptfoo/promptfoo/blob/main/LICENSE)
+- [Inspect AI MIT LICENSE](https://github.com/UKGovernmentBEIS/inspect_ai/blob/main/LICENSE)
+
+### 17.3 供应链、备份与公共证据服务
+
+- [Syft](https://github.com/anchore/syft)、[Grype](https://github.com/anchore/grype)、[Trivy](https://github.com/aquasecurity/trivy)、[pip-audit](https://github.com/pypa/pip-audit)、[Gitleaks](https://github.com/gitleaks/gitleaks)、[Cosign](https://github.com/sigstore/cosign)
+- [Litestream](https://github.com/benbjohnson/litestream)、[rclone](https://github.com/rclone/rclone)、[restic](https://github.com/restic/restic)
+- [Crossref REST access and limits](https://crossref.org/documentation/retrieve-metadata/rest-api/access-and-authentication/)
+- [DataCite REST API](https://support.datacite.org/docs/api)
+- [OpenAlex authentication and pricing](https://developers.openalex.org/guides/authentication)
+- [Wikidata data access and etiquette](https://www.wikidata.org/wiki/Wikidata:Data_access)
+- [Europe PMC REST](https://dev.europepmc.org/RestfulWebService)
+- [NCBI E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25501/)
+- [Open Library Developer Center](https://openlibrary.org/developers)
+
+---
+
+## 18. 最终建议
+
+如果现在只做一件事，不应继续增加项目数量，而应把“来源池—canonical ledger—资格状态—产品用户路径”打通：
+
+1. 先修 Truth 与 ledger 漂移；
+2. 保持当前 `main@ebf7124` 为事实点，不把旧 handoff 当实时状态；
+3. 用一套 RawAsset-first 核心阶段协议连接九条入口；
+4. H2 只做零 Token 本地识别闭环和真实 corpus bake-off；
+5. H3 只选一个编辑器族、JSON Canvas + 一个交互层；
+6. H4 再接 Claim 级结构化证据连接器、py-fsrs、可选本地模型和离线 eval；
+7. RAG/Agent/Memory/Workflow/安全实验室项目继续保留历史身份，但不进入当前核心；
+8. 每项开源吸收都必须可替换、可关闭、可卸载、可回滚，且原件与证据不依赖它存在。
+
+推荐的最小技术组合是：
+
+```text
+RawAsset + SQLite/FTS5 + Job/Outbox/Receipt
+PDF.js + MarkItDown/pdfplumber/pypdf
+Tesseract + Paddle/Rapid/EasyOCR bake-off
+FFmpeg + Silero + faster-whisper/whisper.cpp bake-off
+Trafilatura + Readability + 一个动态页 sidecar
+JiWER + RapidFuzz + content hash/manifest
+Crossref/DataCite/OpenAlex/Wikidata/Europe PMC/NCBI/Open Library connectors
+JSON Canvas + 单一 Markdown editor + XYFlow
+py-fsrs
+OpenTelemetry/OpenInference internal semantics
+Syft + pip-audit + 一个漏洞扫描器 + Gitleaks
+```
+
+这套组合既覆盖资料、证据、学习和 AI 使用，又不把产品重新拖回 Agent OS 或平台堆叠。下一次只有在你明确要求“重新审计”或“开始实施”时，才应把本文转换为具体 repo 变更或原子 TaskPack。

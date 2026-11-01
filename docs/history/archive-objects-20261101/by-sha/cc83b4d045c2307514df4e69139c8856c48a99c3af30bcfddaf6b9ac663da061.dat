@@ -1,0 +1,65 @@
+# WORK-LAB GitHub 与项目优化方案
+
+日期：2026年10月14日。观察 main：`14ba8d5650b98caef047b0b9cf2dbd70b6a603e0`。
+
+优先消除同提交重复重运行，修正桌面验收结果的表达，再提高Observer运行稳定性和任务上下文效率。使用既有工作流、合同与适配能力，不另建通用Agent运行时。
+
+保留现有 GitHub 仓库。下列“确认”来自代码或运行记录，“待测”表示尚未做本机性能测量。本轮未修改远端配置或项目源代码。执行前重新读取当前 HEAD、未提交改动、开放 PR 和项目权威入口，避免覆盖正在进行的功能开发。
+
+## 依据与具体问题
+
+| 状态 | 观察 | 优化意义 |
+| --- | --- | --- |
+| 确认 | 同一源分支提交push 16分39秒、PR 15分30秒；两个workflow均响应push/PR，无concurrency | 先消除重复重检查，PR合并树证据仍保留 |
+| 确认 | observer和token-monitor未配置Rust target缓存 | 可以减少依赖重复编译 |
+| 确认 | Observer的typecheck组实际含npm ci、typecheck、build、test | job命名掩盖了组合耗时，应分别计时而非再加第二次build |
+| 确认 | Rust组顺序执行cargo test与cargo check，随后另做release build | 不同profile有实质成本；先核对覆盖范围，再判断check是否冗余 |
+| 确认 | U19 3分51秒后记录SKIPPED_HEADLESS并exit0；CDP/GDI未通过 | Actions绿色不等于真实桌面验收，不能以删除等待伪造通过 |
+| 确认 | useLiveSnapshot已有inFlight/followUp合并请求，但fetchSnapshot没有timeout | 一个永不返回的fetch会让inFlight一直为true，后续tick只能等 |
+| 确认 | SSE可用时仍每5秒poll；同revision也setSnap与更新时间 | 有额外读回/渲染成本候选，需保留新鲜度与重连语义 |
+| 确认 | context pack默认12000字符，按前缀截断；digest在最后截断之前计算 | 可能截掉结尾恢复说明；digest语义应区分完整候选与实际渲染文本 |
+| 确认 | GitHub main规则只要求aggregate，strict=true，无bypass actor | 保留现有strict精确汇总，不为提速关闭 |
+| 确认 | WorkBuddy在adapter registry为manifest-only/OBSERVE_ONLY、apply/readback不支持；未发现Qoder登记 | 常用客户端与已证明集成能力不同；只能做薄兼容与现场核对 |
+
+来源：[PR运行](https://github.com/DTALEX66/WORK-LAB/actions/runs/38487760318)、[同源提交push运行](https://github.com/DTALEX66/WORK-LAB/actions/runs/38487735570)。
+
+## 分阶段任务
+
+| 编号 | 优先级 | 修改位置 | 动作 | 验收 |
+| --- | --- | --- | --- | --- |
+| W01 | P0 | work-lab-gate.yml；wlr-060-gates.yml | 重检查按PR/main push/必要手动入口；developer push保留需要的轻检查；以workflow和PR/ref分组取消旧候选 | 同源提交不再同时两套重运行；strict aggregate保持；不同PR不互相取消 |
+| W02 | P0 | observer/token-monitor；required_groups.json | 在实际target与依赖根加Rust缓存；为npm/typecheck/build/test、cargo test/check/release分别计时；锁toolchain、features与输入key | 热运行真实复用依赖；源码变更仍编译；假缓存命中不被记录成性能改善 |
+| W03 | P0 | workflow前置检查与工具inventory | 先检查Git blob哈希、字节数/行数库存和合同shape；当前inventory不一致反例立即失败 | 不等2712个治理测试跑完才告知清单错误；保持Git blob口径，避免CRLF造成误判 |
+| W04 | P0 | u19_webview_e2e.py；observer工作流 | 独立环境能力探针+总deadline；结构/后端启动与真实WebView读回分别返回机器结果；真实桌面验收在已证明的环境执行 | 产品渲染故障不能被GitHub标志自动解释为headless；skip不能提升为真实桌面PASS；保留清理边界 |
+| W05 | P0/P1 | frontend/src/lib/api.ts | 给快照GET加timeout/cancel，finally释放inFlight；unmount取消；保留合并突发请求、拒绝低revision和UNKNOWN语义 | 一个悬挂请求超时后下一次tick能读到新快照；关闭页面不再更新；SSE恢复不伪造LIVE |
+| W06 | P1 待测 | useLiveSnapshot；sidecar.v3_snapshot | SSE健康时调整轮询节奏；按心跳/最大陈旧时间维持安全网；同revision用内容及transport/coverage判断是否需要重渲染；后端按版本复用纯投影 | sourceWatermark/陈旧状态仍真实；配置或transport变化不会被revision缓存吞掉；测请求数、CPU与数据延迟 |
+| W07 | P1 | impact_planner；run_quality_gate | 复用一个路径风险源，明确CI job与本地gate的映射；为未知路径报原因与需分类内容；减少重复verify调用，保留失败闭合 | 本地建议不会漏掉CI必需job；未知路径仍阻断；不能以少跑测试掩盖归类缺失 |
+| W08 | P1 | build_context_pack.py | 先放当前任务、write set、权威指针、未完成检查和授权边界；技能只放名称/定位；按完整section裁剪并列omitted，必需区不能前缀截断 | 极小max_chars时明确不完整；必需信息全保留或拒绝生成；内容digest与其声明口径一致 |
+| W09 | P1 | adapter-registry/config-ownership及客户端文档 | 以用户实际入口核对Qoder/Codex/WorkBuddy；Qoder/WorkBuddy先native-only/observe，验证所需接口后再提升某个操作能力 | 不把有安装或有manifest记为集成已完成；不改模型、reasoning、账号或MCP全局配置 |
+| W10 | P1 | CI artifacts/summary；现有任务回执 | always保留脱敏的plan、计时、required-gate结果与U19状态；自动审计优先读小结果文件，失败再定位日志 | run、实际SHA/tree、job状态可追溯；缺JSON不能默认为通过；本次0 artifacts问题得到可读结果 |
+| W11 | P2 | 工作流质量门的命令调用链 | 记录阶段→子命令→测试ID；只有相同输入与目标的重复执行可以合并 | 原失败能到达aggregate；PowerShell多命令仍经fail-fast传播，不回到最后命令掩盖前面失败 |
+| W12 | P2 | 历史归档与客户端索引 | 主项目当前2540个blob，其中选定history/archive路径937个、77.32MiB；索引按项目忽略明确历史和大产物，保留当前合同 | 不删除Git历史和归档资产；工作流查询能找到当前入口，不受旧Hermes/CC Switch手册优先影响 |
+
+## 桌面验证如何落地
+
+先用独立、已知能绘制的最小窗口探针证明会话能力，且不依赖被测产品。U19当前判定基于GitHub标志、后端通过、probe构建与进程存活，这不足以排除产品渲染故障。真实桌面runner要证明Windows会话、WebView、显示环境、端口和进程清理；self-hosted标签本身不保证这些。
+
+构建可以留在GitHub-hosted runner。受信候选的真实桌面读回可以用隔离专用Windows环境，安装当前构建artifact并校验SHA/hash。保持两种结果独立：构建/启动结果与真实DOM/像素读回结果。公开PR代码不直接进入有私人配置和长期数据的工作机。
+
+## Observer优化的限制
+
+inFlight已经防止并发风暴，应保留。问题是fetch无限悬挂，不能只在外面Promise.race然后让底层请求继续堆积；必须真正abort，释放等待并允许后续一次followUp读取。
+
+SSE和poll的选择必须遵守当前LIVE/STale/UNKNOWN合同。增加读缓存只缓存纯计算，并且缓存key包含投影输入、sourceWatermark与必要transport信息；浏览器no-store不应改成盲目缓存“看起来更快”。观察界面不能获得执行、批准或修改Task Ledger权限。
+
+## 第一批与完成标准
+
+第一批W01～W03、W05：重复触发、真实缓存、提前inventory检查、快照超时。W04先交环境探针与状态分层设计，再验证专用环境；不直接新建服务器。第二批W06～W08/W10改善长期CPU、上下文和审计。W09仅按用户当前常用软件按需补齐。
+
+每批一个隔离分支。本地与CI仍分开报告，aggregate严格绑定实际版本。任务状态、Telemetry Ledger与历史记录各有owner；不增加第二本派工账本。上线前用悬挂请求、低revision、SSE断连、同revision状态变化、库存错误和真实UI故障做反例验证。
+
+开启提示词：
+
+> 在DTALEX66/WORK-LAB当前隔离分支执行W01～W03和W05。先读当前AGENTS、WORK-LAB-AUTHORITY、当前任务与HEAD，复用现有impact planner和fail-fast组。减少push/PR重复重检查，配置真实Rust缓存和分阶段计时，把Git blob工具inventory错误提前，修复fetchSnapshot悬挂后刷新无法前进的问题。保留strict aggregate、Observer只读、LIVE/UNKNOWN与低revision保护。先交diff、冷热计时、失败反例和回退；U19另交环境分层方案，不把SKIPPED_HEADLESS称PASS，不自动改用户软件配置或发布。
+
+依据：[工作流](https://github.com/DTALEX66/WORK-LAB/blob/main/.github/workflows/work-lab-gate.yml)、[Observer API](https://github.com/DTALEX66/WORK-LAB/blob/main/apps/observer/frontend/src/lib/api.ts)、[上下文包](https://github.com/DTALEX66/WORK-LAB/blob/main/packages/client-neutral-core/scripts/build_context_pack.py)、[客户端登记](https://github.com/DTALEX66/WORK-LAB/blob/main/config/adapter-registry.json)、[请求timeout](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static)、[Actions concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。

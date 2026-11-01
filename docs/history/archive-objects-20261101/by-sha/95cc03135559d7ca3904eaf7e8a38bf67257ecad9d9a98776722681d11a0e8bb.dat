@@ -1,0 +1,1926 @@
+# 三项目 AI 原生桌面工作台与运行闭环研究报告
+
+## 执行摘要
+
+基于你给出的 AijiuOPC 界面拆解，以及对截至 **2026 年 8 月 14 日**可核验的 Tauri、Electron、Dockview、xterm.js、SQLite 和一批开源 AI 工作台项目的交叉研究，我认为：**AijiuOPC 这种“AI 员工 + 浏览器 + 终端 + 多 Tab + Dashboard”的形态完全可以实现，但真正值得你的三个项目吸收的，不是把它的 UI 原样复刻，而是抽出一套共享的 AI Native Workbench Core。**
+
+这里必须先划清信息边界：你提供的 AijiuOPC 技术栈本身是逆向推测，我没有找到可以独立核验其完整源码的公开仓库，所以本文把它作为**产品形态和 UI 参考**，而不把“Tauri + dockview + portable-pty + CDP”等推测当成事实。三个项目的现有蓝图/代码正文这轮也没有提供，因此下面关于 WORK-LAB、ArcheAxis-Knowledge-OS、DESIGN-LAB 的“定位”均是**面向未来发展的推荐定位**，不是在臆测你目前已经实现了哪些模块。
+
+最重要的研究结论有六个。
+
+| 结论 | 判断 |
+|---|---|
+| 是否值得做 AI 原生桌面工作台 | **值得，而且三个项目都能共用底层能力** |
+| 是否应该做三个完全不同的桌面壳 | **不应该** |
+| 最佳组织方式 | **共享 Workbench Core + 三个 Product Profile + Adapter** |
+| AijiuOPC 最大可复用思想 | **Tile 化、运行实例独立于 UI、工作状态可视化、工具执行可回放** |
+| 最关键闭环 | **Task → Run → Tool → Evidence → Verify → Artifact → Audit** |
+| MVP 优先级 | **先做任务/执行/证据闭环，不做“全球热点”和炫技 Dashboard** |
+
+还有一个非常重要的技术纠正：
+
+> **“Tauri WebView + CDP = 跨平台 AI 浏览器”这个推论不能直接成立。**
+
+Tauri 使用的是操作系统 WebView：Windows 是 WebView2，macOS 是 WKWebView，Linux 是 WebKitGTK，而不是自己携带一份统一 Chromium。因此在浏览器自动化、DevTools Protocol、Cookie/Profile、网络抓取等方面存在明显平台差异。Tauri 官方也明确指出系统 WebView 带来了体积优势，但必须处理平台差异。citeturn17search2turn17search3
+
+反过来，Electron 官方的 `WebContentsView` 本身就是可嵌入的 Chromium `WebContents`，并且 `webContents.debugger` 是 Chrome Remote Debugging Protocol 的官方传输接口，所以如果你的工作台把**“真实浏览器 + Agent 操纵 DOM / Network / Screenshot”作为一级能力**，Electron 在第一版反而是工程风险更低的路线。citeturn15search0turn15search5
+
+因此我的主建议不是简单地选“更轻”的 Tauri，而是：
+
+**第一阶段：React/Vite/TypeScript 层保持 Runtime-Neutral；桌面 MVP 优先 Electron。**
+
+**第二阶段：如果 ArcheAxis 或 DESIGN-LAB 之后确实对包体、内存、本地化要求更高，再让共享 Workbench Core 同时支持 Tauri Host。**
+
+最终架构不是：
+
+```text
+WORK-LAB Desktop
+ArcheAxis Desktop
+DESIGN-LAB Desktop
+
+三套完全独立代码
+```
+
+而是：
+
+```text
+                 Shared AI Native Workbench Core
+ ┌────────────────────────────────────────────────────────┐
+ │ Dock / Tile / Theme / Command / Runtime / Evidence     │
+ │ Terminal / Browser / Agent / Editor / Preview / Files  │
+ │ Approval / Event Bus / SQLite / Lifecycle / Plugin SDK │
+ └────────────────────────────────────────────────────────┘
+              │                │                │
+              ▼                ▼                ▼
+        WORK-LAB Profile  ArcheAxis Profile  DESIGN-LAB Profile
+              │                │                │
+              ▼                ▼                ▼
+       Work Adapter      Knowledge Adapter    Design Adapter
+```
+
+**真正应该统一的是壳、协议和执行基础设施；真正不应该统一的是三个项目的业务界面和产品心智。**
+
+## 项目定位与统一闭环
+
+由于当前没有三个项目的完整蓝图正文，这里不强行沿用之前任何关于你项目架构的推断，而是从“这三个产品怎样长期发展并形成闭环”重新定义。
+
+### 三个项目应该长成三种不同的产品
+
+| 项目 | 推荐产品定位 | 主要用户 | 用户进入产品时首先想做什么 | AI 工作台承担什么 |
+|---|---|---|---|---|
+| **WORK-LAB** | AI 工作执行与任务控制工作台 | 开发者、AI 重度用户、项目操作者 | 开始任务、观察执行、处理审批、检查结果 | Run / Agent / Terminal / Browser / Evidence / Review |
+| **ArcheAxis-Knowledge-OS** | AI 原生个人知识与研究操作系统 | 研究者、知识工作者、学习者、创作者 | 找资料、阅读、关联、询问、形成知识资产 | Reader / Search / Sources / Citation / Agent / Browser |
+| **DESIGN-LAB** | AI 原生设计生产与创意实验工作台 | 设计师、创作者、视觉开发者 | 建立 Brief、收集素材、生成/编辑、比较版本、交付 | Asset / Canvas / Preview / Agent / Render / Version |
+
+这意味着三者**不应该拥有完全相同的主页**。
+
+AijiuOPC 式“所有东西都是 Tab”适合作为底层容器，却不适合直接变成三个产品共同的产品心智。一个知识工具一启动就让用户面对 Terminal、Agent、Browser、Dashboard，很容易变成“功能集合”；一个设计工具如果首页像 IDE，也会把创作路径埋掉。
+
+更好的结构是：
+
+```text
+共享 Workbench Shell
+       │
+       ├── WORK-LAB
+       │     首页 = Tasks / Runs / Approvals
+       │
+       ├── ArcheAxis
+       │     首页 = Library / Research / Knowledge
+       │
+       └── DESIGN-LAB
+             首页 = Projects / Assets / Canvas
+```
+
+进入具体工作之后，再全部落入共享的 Dock Workspace。
+
+这是从现有开源产品演进中能够看到的趋势。例如 cc-haha 把多项目、会话、Diff、权限确认和 Browser Preview 放在统一桌面工作区，而不是单纯做聊天窗口；其 2026 年的 UI 重构进一步把散乱原生控件收敛为基础原语层和复合组件层，并建立统一的主题 Token。citeturn14search0turn14search2
+
+Terax 则证明了另一种路线：Tauri 2 + React 19 + xterm.js + `portable-pty` 可以很好地实现 terminal-first 的多 Tab、分栏、后台输出和 Web Preview 工作台。citeturn16search0
+
+### 三个项目不要“合并”，要用协议打通
+
+这里是最核心的系统原则：
+
+> **闭环 ≠ 把三个项目塞进同一个超级 App。**
+>
+> **闭环 = 三个项目能交换 Task、Context、Artifact、Evidence。**
+
+建议统一四个跨项目实体：
+
+```text
+Task
+  ↓
+Run
+  ↓
+Artifact
+  ↓
+Evidence
+```
+
+例如一条真正的跨项目流程可以是：
+
+```text
+ArcheAxis
+研究资料 / 知识上下文
+        ↓
+ContextPackage
+
+WORK-LAB
+创建任务 / 调度执行
+        ↓
+Run
+
+DESIGN-LAB
+生成视觉方案 / 修改素材 / 导出
+        ↓
+Artifact
+
+WORK-LAB
+验证任务条件
+        ↓
+EvidenceManifest
+
+ArcheAxis
+将关键过程 / 结论 / 资产索引回知识库
+```
+
+于是三个项目既独立，又真正连成系统。
+
+### 三种产品组织方案
+
+| 方案 | 优点 | 缺点 | 判断 |
+|---|---|---|---|
+| 三个完全独立桌面 App | 产品边界最清楚 | UI、终端、浏览器、状态、插件重复开发 | 不推荐 |
+| 一个超级 Workbench，三个模块 | 最省底层重复开发 | 很容易越来越复杂，项目边界消失 | 后期可选 |
+| **三个产品 + 共享 Workbench Core** | 产品边界与基础设施复用兼得 | 要认真设计 SDK/协议 | **推荐** |
+
+建议 Monorepo 最终类似：
+
+```text
+apps/
+  work-lab/
+  archeaxis/
+  design-lab/
+
+packages/
+  workbench-core/
+  workbench-ui/
+  tile-sdk/
+  runtime-contracts/
+  event-protocol/
+  evidence-sdk/
+  theme-system/
+
+tiles/
+  agent/
+  terminal/
+  browser/
+  files/
+  editor/
+  evidence/
+  diff/
+  preview/
+
+adapters/
+  work-lab/
+  archeaxis/
+  design-lab/
+```
+
+这样你以后发现 Tauri 不合适，换 Electron，不必重做 ArcheAxis 或 DESIGN-LAB 的业务 UI；反过来换 Agent Runtime，也不需要改 Dock、主题和项目界面。
+
+## 同类界面与视觉交互基准
+
+这轮研究里，比“猜 AijiuOPC 是怎么实现的”更有价值的是看已经公开实现了哪些类似产品。
+
+### 五个最值得拆的项目
+
+| 项目 | 链接 | 界面/交互特征 | 最值得你复用 |
+|---|---|---|---|
+| **cc-haha** | [GitHub](https://github.com/NanmiCoder/cc-haha) · [Demo/Docs](https://cchaha.ai) | 多项目、会话、Diff、浏览器 Preview、权限审批、活动面板；中文社区；2026 年已形成六套主题 | Permission UI、Session Activity、Diff Review、Theme Token、Command Palette |
+| **Terax** | [GitHub](https://github.com/crynta/terax-ai) · [Demo](https://terax.app) | Tauri、Terminal-first、分栏、多 Tab、背景运行、编辑器、文件树、Web Preview | TerminalTile、Split Pane、PTY Lifecycle、Workspace Restore |
+| **opcode** | [GitHub](https://github.com/winfunc/opcode) · [Demo](https://opcode.sh) | Project/Session、Agent、Usage Dashboard、Timeline、Checkpoint、MCP 管理 | Run History、Checkpoint、Agent Profile、权限配置 |
+| **Hermes Studio** | [GitHub](https://github.com/EKKOLearnAI/hermes-studio) · [Demo](https://hermes-studio.ai) | Chat、工具流、Terminal、文件、Jobs、Kanban、Profiles、Coding Agents、SQLite | Agent Stream、Tool Card、Profile、Jobs、Terminal、Runtime Bridge |
+| **Hermes Workspace** | [Demo](https://hermes-workspace.com/) | Chat、Memory、Skills、Terminal、Tool Cards、Conductor、多 Agent Operations | Agent Operations、Tool Timeline、Memory/Skill Surface |
+
+cc-haha 明确采用 Electron + React + Vite，其桌面工作区包含多会话、Worktree、Diff、审批、Browser Preview、Computer Use 和第三方 Skill 等能力，并以 MIT 发布，是中文开源项目里非常适合你直接拆 UI 模式的案例。citeturn14search0
+
+Terax 的技术路线几乎正好对应你给出的 AijiuOPC 推测栈：Tauri 2、Rust、React 19、TypeScript、xterm.js、`portable-pty`、Tailwind、Zustand，同时实现多 Tab 后台输出、分栏、编辑器、Git、原生 child webview Preview 和 Agent approval gating，因此它是验证“Tauri 路线是否可做”的非常强的公开样本。citeturn16search0
+
+opcode 更值得研究的是**运行历史而不是它的视觉皮肤**：它把 Agent 放入独立进程，并将项目、会话、执行记录、Timeline、Checkpoint、Diff 和文件/网络权限暴露为 GUI。这与 WORK-LAB 需要的“执行后可解释、可查看、可恢复”的思路高度契合。citeturn16search1
+
+Hermes Studio 则公开采用 Electron 桌面壳、Socket.IO 流式 Chat、本地 SQLite 会话、`node-pty + xterm` Web Terminal，并把文件、Agent、Coding Agents、Jobs、Kanban 和运行配置统一到一个控制界面，是“Agent Control Plane + Desktop”的成熟参考。citeturn18search0
+
+### 真正值得学习的界面语言
+
+我不建议直接复制 AijiuOPC 所谓“深色液态磨砂”。
+
+**AI 工作台更合适的视觉方向是：专业工具密度 + 少量情绪化表面，而不是整屏玻璃。**
+
+两个方案可以这样比较：
+
+| 视觉方案 | 优点 | 缺点 |
+|---|---|---|
+| Apple/VisionOS 式大量 Glass | 第一眼非常漂亮、Demo 效果强 | 长文本、终端、Diff、知识阅读容易降低可读性；模糊/透明层也增加 GPU 工作 |
+| VS Code/Linear 式实色专业工具 UI | 信息密度高、长期工作舒服 | 第一眼没那么“未来感” |
+| **实色工作面 + 局部 Liquid Glass** | 兼顾长期使用与品牌感 | 需要更严格的设计系统 |
+
+推荐第三种。
+
+整个工作台可以固定成四层视觉：
+
+```text
+┌─────────────────────────────────────────────────────┐
+│ Global Command / Project / Run Status               │
+├─────────┬────────────────────────────────┬──────────┤
+│ Context │                                │Inspector │
+│ Rail    │        Dock Workspace          │Evidence  │
+│         │                                │Agent     │
+├─────────┴────────────────────────────────┴──────────┤
+│ Run / Network / Git / Permission / Resource Status │
+└─────────────────────────────────────────────────────┘
+```
+
+其中：
+
+**左侧 Rail** 只承担产品级导航，例如 WORK-LAB 的 Tasks、Runs，ArcheAxis 的 Library、Research，DESIGN-LAB 的 Projects、Assets。
+
+**中间 Dock** 才是自由组合区域。
+
+**右 Inspector** 放 AI、Properties、Evidence 等“当前对象上下文”。
+
+**底部 Status** 负责持续告诉用户“机器现在在干什么”。
+
+这比满屏可拖 Tab 更重要，因为 AI 原生界面的核心不是“能拖”，而是：
+
+> **人必须一眼知道 AI 正在计划、执行、等待批准、验证、成功还是失败。**
+
+建议统一全系统运行状态语言：
+
+```text
+Idle
+Planning
+Queued
+Running
+Waiting Approval
+Verifying
+Succeeded
+Failed
+Interrupted
+```
+
+同一个状态应该同时体现在 Tab、任务卡、Agent 卡、底部状态栏和通知里。
+
+### Theme 不应该散落在组件里
+
+Tailwind 当前正式支持通过 `@theme` 把 design token 暴露为 CSS variables，因此主题完全可以由统一 Token 系统驱动，而不是每个项目硬编码颜色。citeturn20search1turn20search5
+
+建议：
+
+```css
+@theme {
+  --color-app-bg: var(--app-bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+
+  --color-running: var(--state-running);
+  --color-warning: var(--state-warning);
+  --color-success: var(--state-success);
+  --color-danger: var(--state-danger);
+}
+```
+
+然后三个项目只是 Profile：
+
+```text
+Workbench Base Theme
+      │
+      ├── WORK-LAB theme
+      ├── ArcheAxis theme
+      └── DESIGN-LAB theme
+```
+
+Motion 只用于状态变化、Tile 插入、Inspector 开关、审批弹窗等复杂过渡；普通 Hover/颜色变化用 CSS 即可。Motion 官方提供 `MotionConfig reducedMotion="user"` 以尊重系统 Reduced Motion 设置，适合直接作为全局默认。citeturn20search0turn20search9
+
+**不要对 Terminal、Editor、长文 Reader 做持续模糊、漂浮或大幅缩放动画。**
+
+## 技术架构与关键选型
+
+### Tauri 和 Electron 不应该凭“谁更先进”选择
+
+这是整个研究最关键的一张表。
+
+| 维度 | Electron | Tauri |
+|---|---|---|
+| Renderer | 自带 Chromium | OS WebView |
+| Windows/macOS/Linux 浏览器一致性 | **高** | 中 |
+| CDP/Network/DOM 自动化 | **非常直接** | 平台差异明显 |
+| 原生嵌入网页 | WebContentsView | Webview |
+| 安装体积 | 大 | **通常更小** |
+| Rust 系统层 | 非必须 | **原生优势** |
+| Node 生态 | **直接** | Sidecar/Command |
+| PTY | node-pty | portable-pty |
+| 桌面安全模型 | Chromium sandbox + contextIsolation | Capabilities + Permissions |
+| 做“完整 AI 浏览器” | **优** | 中等，最好增加 Chromium Sidecar |
+| 做轻量知识/终端应用 | 中 | **优** |
+
+Electron 官方支持在 `BaseWindow` 中添加多个 `WebContentsView`，每个拥有独立 `webContents`；其 Debugger API又直接提供 Chrome Remote Debugging Protocol 传输能力。citeturn15search0turn15search5
+
+Tauri 则是一个 Core Process 管理一个或多个系统 WebView，Windows/macOS/Linux 分别依赖 WebView2、WKWebView 和 WebKitGTK。这正是它体积小的重要原因，也是不能把 Windows WebView2 的能力简单外推到所有平台的原因。citeturn17search2turn17search3
+
+因此：
+
+**方案 A：Electron**
+
+适合你想第一版就做到：
+
+```text
+Browser
++ DOM
++ Network
++ Screenshot
++ Cookie Profile
++ Agent Control
++ Terminal
++ Multi-view
+```
+
+**方案 B：Tauri**
+
+适合重点是：
+
+```text
+Local Files
++ Terminal
++ Knowledge
++ Design
++ Editor
++ lightweight desktop
+```
+
+**方案 C：Tauri + 独立 Chromium Runtime**
+
+这是长期非常有吸引力的路线：
+
+```text
+Tauri App
+   │
+   ├── Native OS WebView → App UI
+   │
+   └── Chromium Sidecar → Agent Browser/CDP
+```
+
+优点是 UI 仍轻量，而需要自动化时使用独立 Chromium。
+
+缺点是你实际上同时维护两套 Web Runtime，进程管理、登录 Profile、窗口嵌入和打包复杂度明显提高。
+
+**我的 MVP 推荐仍是 Electron。**
+
+等产品边界稳定以后，再决定是否值得付出 Tauri + Chromium Sidecar 的工程成本。
+
+### Dockview 是合适的，但需要封装
+
+Dockview 当前提供 tabs、groups、grid、split view 等布局能力；React 绑定在 v7 已迁移到 `dockview-react`，这本身就是一个提醒：**不要让业务代码直接依赖 Dockview API。** citeturn13search2
+
+建议自己定义：
+
+```ts
+export interface TileDefinition {
+  type: string;
+  title: string;
+  icon?: string;
+
+  create(ctx: TileContext): Promise<TileInstance>;
+
+  serialize?(): unknown;
+  restore?(state: unknown): Promise<void>;
+
+  activate?(): Promise<void>;
+  deactivate?(): Promise<void>;
+  dispose(): Promise<void>;
+}
+```
+
+然后：
+
+```text
+Dockview
+  ↓
+WorkbenchDockAdapter
+  ↓
+TileHost
+  ↓
+Your Tiles
+```
+
+以后 Dockview 升级、换库甚至开发自有布局系统，业务 Tile 不受影响。
+
+### Tile 至少分成两类
+
+这是 AijiuOPC 类产品最容易踩的大坑。
+
+普通 React Tile：
+
+```text
+Chat
+Task
+Evidence
+File Tree
+Editor
+Dashboard
+Knowledge Reader
+Asset Browser
+```
+
+可以完全放在 Dockview DOM 里。
+
+但：
+
+```text
+Native Browser
+Native WebView
+```
+
+并不是一个普通 React `<div>`。
+
+Electron `WebContentsView` 是 Main Process 管理的 native View；Tauri `Webview` 同样需要指定自己的 x/y/width/height。citeturn15search0turn17search0
+
+所以“每个 BrowserTile 随着 Dockview 随便拖到任意位置”在工程上意味着：
+
+```text
+Dockview DOM Placeholder
+        ↓
+ResizeObserver
+        ↓
+Window Coordinates
+        ↓
+Native View.setBounds(...)
+```
+
+而且需要解决：
+
+```text
+Scroll
+Zoom
+DPI
+Popout
+Split
+Overlay
+Modal
+Z-index
+Window Resize
+隐藏/恢复
+```
+
+这是根据两个官方布局模型作出的工程推断。citeturn15search0turn17search0
+
+所以我建议 **MVP 不把 Browser 当成“完全自由 Tile”**。
+
+更好的是：
+
+```text
+普通 Browser Preview
+      ↓ 点击进入
+Browser Stage
+      ↓
+Native WebContentsView / WebView
+```
+
+类似：
+
+```text
+┌──────────────────────────────┐
+│       Main Dock Workspace    │
+│                              │
+│ Chat | Files | Evidence      │
+├──────────────────────────────┤
+│ Browser Stage                │
+└──────────────────────────────┘
+```
+
+成熟以后再允许完全 Dock 化。
+
+### PTY 也要根据桌面 Runtime 选择
+
+| Runtime | 推荐 |
+|---|---|
+| Electron | `@xterm/xterm + node-pty` |
+| Tauri | `@xterm/xterm + portable-pty` |
+
+Terax 已公开验证了 `Tauri 2 + portable-pty + xterm.js` 的路线。citeturn16search0
+
+Hermes Studio 则实际使用 `node-pty + xterm`，并通过 WebSocket 支持实时 PTY 输入/输出、多 Session 和 Resize。citeturn18search0
+
+所以不要为了“技术栈统一”在 Electron 里硬塞 Rust PTY，或者为了 Tauri 强行运行 node-pty。
+
+### 前后端通信不要全部 WebSocket 化
+
+推荐三层：
+
+| 场景 | Transport |
+|---|---|
+| UI → Desktop Core 普通命令 | Native IPC |
+| PTY / Browser / 高频 Runtime Stream | MessagePort / Channel 类流 |
+| 外部 Runtime / Agent Daemon | WebSocket |
+| 单向远端模型输出 | SSE 可用 |
+
+Hermes Studio 用 Socket.IO `/chat-run` 做 Agent Streaming，同时其终端通过 WebSocket 传 PTY 流，是“后端独立 Server”模式下的合理设计。citeturn18search0
+
+但是在 Electron Renderer 与 Main Process 之间，没有必要再走 localhost WebSocket；Electron 原生 Message Port 和 IPC 更直接。对于隔离插件，Electron 的 `utilityProcess` 支持 `MessagePortMain`，也能独立结束子进程。citeturn15search1
+
+### 状态分成三层
+
+绝对不要让 Zustand 变成整个应用数据库。
+
+```text
+Zustand
+│
+├ UI temporary state
+├ selection
+├ active panel
+└ local interaction
+
+SQLite
+│
+├ workspace
+├ layout
+├ sessions
+├ runs
+├ events metadata
+└ settings
+
+Artifact Store
+│
+├ terminal chunks
+├ screenshots
+├ diffs
+├ browser snapshots
+├ outputs
+└ generated files
+```
+
+这比把所有 Session、Terminal Buffer 和 Artifact 都序列化进一个前端 Store 稳得多。
+
+cc-haha 近期版本已经采用 SQLite 派生索引来覆盖 Session 元数据、内容、统计、定时任务、Team Session 和 Trace，并专门处理增量、删除同步、迁移与损坏恢复，这本身就说明桌面 AI 工作台的数据层应该被当成一个正式系统来设计，而不是 localStorage。citeturn14search2
+
+## 多实例运行、安全与插件化
+
+### 多 Tab 最大的问题不是 Tab，而是“资源到底属于谁”
+
+最危险的实现：
+
+```text
+<TerminalTile />
+    mount → spawn PTY
+
+unmount
+    → kill PTY
+```
+
+这在普通网页里没问题，在 AI 工作台里会导致灾难：
+
+用户只是把 Tab 拖了位置、Dockview 重建组件、切换布局，后台任务可能直接被杀掉。
+
+应该改成：
+
+```text
+             UI Tile
+                │
+             resourceId
+                │
+                ▼
+         Runtime Registry
+       ┌────────┼────────┐
+       ▼        ▼        ▼
+      PTY     Browser   Agent
+```
+
+**UI 是资源的 View，不是资源的 Owner。**
+
+推荐生命周期：
+
+```text
+CREATED
+   ↓
+ATTACHED
+   ↓
+ACTIVE
+   ↓
+BACKGROUND
+   ↓
+DETACHED
+   ↓
+DISPOSING
+   ↓
+DISPOSED
+```
+
+“关闭 Tab”与“终止运行”必须是两个动作。
+
+例如：
+
+```text
+关闭 Terminal View
+
+Terminal 正在运行 npm build
+
+[仅关闭视图]
+[终止进程并关闭]
+[取消]
+```
+
+### 生命周期两种方案
+
+| 方案 | 优点 | 缺点 |
+|---|---|---|
+| React KeepAlive，Tab 永不卸载 | 实现简单 | 浏览器、图表、Terminal 越来越吃内存 |
+| **UI 与 Runtime 解耦** | 后台运行、恢复、资源控制都更可靠 | 架构稍复杂 |
+
+推荐第二种。
+
+每个实例登记：
+
+```ts
+type RuntimeResource = {
+  id: string;
+  kind: "pty" | "browser" | "agent" | "worker";
+  projectId: string;
+  runId?: string;
+
+  state:
+    | "active"
+    | "background"
+    | "detached"
+    | "stopping"
+    | "stopped";
+
+  refCount: number;
+  createdAt: number;
+  lastActiveAt: number;
+};
+```
+
+关闭 App 时 Runtime Registry 做统一 drain：
+
+```text
+Stop accepting new run
+       ↓
+Persist event cursor
+       ↓
+Flush SQLite
+       ↓
+Graceful stop agents
+       ↓
+Terminate PTY
+       ↓
+Destroy Browser
+       ↓
+Exit
+```
+
+### PTY 不要“节流输出”，而要做 Backpressure
+
+这一点非常关键。
+
+xterm.js 官方明确指出 `write()` 是**非阻塞**的：调用后数据进入内部 buffer，而高吞吐 producer 可以持续把 buffer 撑大，最终造成 UI 卡顿甚至缓冲区溢出；官方专门提供了 Flow Control 指南。citeturn13search12
+
+所以单纯：
+
+```ts
+throttle(write, 16)
+```
+
+是不够的。
+
+应该：
+
+```text
+PTY Producer
+    │
+    ▼
+bounded queue
+    │
+    ▼
+frontend write
+    │
+xterm parsed callback
+    │
+    ▼
+ACK bytes / seq
+    │
+    ▼
+producer resume
+```
+
+示意代码：
+
+```ts
+interface PtyChunk {
+  seq: number;
+  data: Uint8Array;
+}
+
+class PtyFlowController {
+  private inflight = 0;
+  private readonly highWaterMark = 512 * 1024;
+
+  constructor(
+    private readonly terminal: {
+      write(
+        data: Uint8Array,
+        callback?: () => void
+      ): void;
+    },
+    private readonly ack: (seq: number, bytes: number) => void,
+  ) {}
+
+  onChunk(chunk: PtyChunk) {
+    const bytes = chunk.data.byteLength;
+    this.inflight += bytes;
+
+    this.terminal.write(chunk.data, () => {
+      this.inflight -= bytes;
+      this.ack(chunk.seq, bytes);
+    });
+  }
+
+  canAcceptMore(): boolean {
+    return this.inflight < this.highWaterMark;
+  }
+}
+```
+
+后端或 PTY Worker 根据 ACK 控制读速率。
+
+**重点不是 512 KB 这个数字本身，而是协议必须有 high-water / low-water / ACK 概念。**
+
+### 安全至少要有三层
+
+**第一层：Renderer 安全。**
+
+Electron 官方对远程内容的要求非常明确：不要给远程网页启用 Node integration，应启用 `contextIsolation` 和 sandbox，限制导航、新窗口、权限请求并验证 IPC sender。citeturn15search2
+
+如果选 Tauri，则用 Capability + Permission + Scope：Tauri 的 Runtime Authority 会在命令真正进入 Core 之前检查调用来源、capability 和 scope，没有权限的命令不会执行。citeturn13search0turn13search3
+
+**第二层：Agent Tool Policy。**
+
+无论 Electron 或 Tauri 的 Sandbox，都不能代替 Agent 行为控制。
+
+推荐统一权限模型：
+
+| 行为 | 默认 |
+|---|---|
+| 读取项目 Workspace | Allow |
+| 项目内创建文件 | Session Allow |
+| 修改大量文件 | Ask |
+| Shell 一般命令 | Session Allow |
+| 删除/覆盖 | Ask |
+| 访问 Workspace 外路径 | Ask |
+| 外网请求 | Scoped Allow / Ask |
+| Git commit | Allow 或 Ask |
+| Git push | Ask |
+| 凭证/系统目录 | Deny |
+| 安装第三方插件 | Ask + 安全摘要 |
+
+cc-haha 已经把 Permission Approval 做成 GUI 一级功能，并提供不同权限模式，说明“审批”本身应该成为桌面 AI UX，而不是藏在终端里。citeturn14search0
+
+opcode 也让 Agent 可以配置文件和网络访问权限，并将后台 Agent 放在独立进程中运行。citeturn16search1
+
+**第三层：执行隔离。**
+
+两个方案：
+
+| 方案 | 好处 | 缺点 |
+|---|---|---|
+| 本机进程 + Policy Broker | 快、开发简单、Vibe Coding 顺畅 | 隔离有限 |
+| Container/VM/Worktree Sandbox | 风险边界更明确 | 启动和跨平台复杂 |
+
+推荐 MVP：
+
+```text
+Git Worktree
++
+Path Scope
++
+Command Policy
++
+Human Approval
++
+Process Isolation
+```
+
+以后再增加：
+
+```text
+Docker / Podman / WSL Sandbox
+```
+
+而不是第一天就构建完整虚拟化系统。
+
+### Plugin 不应直接等于 npm 包随意执行
+
+插件至少分：
+
+```text
+UI Plugin
+Tool Plugin
+Runtime Plugin
+Adapter Plugin
+```
+
+建议 Manifest：
+
+```ts
+export interface PluginManifest {
+  id: string;
+  version: string;
+  apiVersion: "1";
+
+  contributes?: {
+    tiles?: TileContribution[];
+    tools?: ToolContribution[];
+    commands?: CommandContribution[];
+  };
+
+  permissions?: {
+    filesystem?: string[];
+    network?: string[];
+    process?: string[];
+    secrets?: string[];
+  };
+}
+```
+
+加载过程：
+
+```text
+Install
+   ↓
+Read Manifest
+   ↓
+Static Risk Scan
+   ↓
+Show Requested Capabilities
+   ↓
+User Approval
+   ↓
+Isolated Worker
+   ↓
+Capability Bridge
+```
+
+Electron 的 `utilityProcess` 很适合充当一种隔离 Worker：它是独立 Chromium service child process，可以通过 MessagePort 与 Main Process 通信，也可以被显式终止。citeturn15search1
+
+Tauri 自身则天然支持插件 Permission/Scope 声明，官方文档明确允许插件为公开命令提供预定义 Permission，然后由 App 的 Capability 决定哪些窗口/WebView 能调用。citeturn13search0turn13search10
+
+不过第一版**千万不要先做插件市场**。
+
+先把：
+
+```text
+TerminalTile
+BrowserTile
+AgentTile
+EvidenceTile
+FilesTile
+PreviewTile
+```
+
+作为 monorepo 内置 Plugin 写到稳定。
+
+等 `Tile API v1` 和 `Runtime API v1` 连续几版不变化，再开放第三方。
+
+## 三项目适配与证据闭环
+
+这里是整个方案真正把三个项目串起来的地方。
+
+### 不让 UI 直接知道 Agent 是谁
+
+不要写：
+
+```ts
+if (agent === "codex") ...
+if (agent === "hermes") ...
+if (agent === "xxx") ...
+```
+
+UI 只认统一 Runtime Contract：
+
+```ts
+export interface RuntimeAdapter {
+  id: string;
+
+  startTask(task: TaskEnvelope): Promise<RunHandle>;
+
+  cancelRun(runId: string): Promise<void>;
+
+  approve(
+    approvalId: string,
+    decision: ApprovalDecision
+  ): Promise<void>;
+
+  subscribe(
+    runId: string,
+    handler: (event: RuntimeEvent) => void
+  ): () => void;
+
+  getEvidence(runId: string): Promise<EvidenceManifest>;
+}
+```
+
+这样以后接：
+
+```text
+Local Agent
+Codex
+Hermes
+CLI Agent
+Remote Agent
+DSH
+自研 Runtime
+```
+
+都是 Adapter。
+
+### Task 也必须协议化
+
+建议：
+
+```ts
+export interface TaskEnvelope {
+  schemaVersion: "1";
+
+  taskId: string;
+  projectId: string;
+  workspaceId: string;
+
+  objective: string;
+
+  inputs: Array<{
+    type: "file" | "text" | "url" | "knowledge" | "asset";
+    ref: string;
+  }>;
+
+  capabilities: {
+    filesystem: string[];
+    network: string[];
+    shell: boolean;
+    browser: boolean;
+  };
+
+  acceptanceCriteria: Array<{
+    id: string;
+    description: string;
+    verification?: string;
+  }>;
+
+  budget?: {
+    maxDurationMs?: number;
+    maxCost?: number;
+  };
+}
+```
+
+这会成为 WORK-LAB、ArcheAxis、DESIGN-LAB 真正的共同语言。
+
+### Event 不能只是日志字符串
+
+错误：
+
+```json
+{
+  "message": "正在执行 npm test"
+}
+```
+
+应该：
+
+```ts
+export interface RuntimeEvent {
+  schemaVersion: "1";
+
+  eventId: string;
+  seq: number;
+  timestamp: string;
+
+  projectId: string;
+  taskId: string;
+  runId: string;
+
+  actor: string;
+
+  type:
+    | "run.started"
+    | "agent.message"
+    | "tool.started"
+    | "tool.finished"
+    | "file.changed"
+    | "browser.snapshot"
+    | "approval.requested"
+    | "approval.resolved"
+    | "verification.completed"
+    | "run.completed"
+    | "run.failed";
+
+  payload: unknown;
+
+  evidenceRefs?: string[];
+}
+```
+
+为什么要 `seq`？
+
+因为：
+
+```text
+WebSocket reconnect
+后台恢复
+进程 crash
+UI 重载
+```
+
+都可能造成事件重发或缺失。
+
+有：
+
+```text
+runId + seq
+```
+
+就可以恢复：
+
+```text
+give me events after seq 1832
+```
+
+这也是“长任务断点续跑”真正需要的底层结构。
+
+### Evidence 是三个项目共同闭环的核心
+
+我建议把 Evidence 做成正式数据类型，而不是一段日志。
+
+```ts
+export interface EvidenceArtifact {
+  evidenceId: string;
+
+  taskId: string;
+  runId: string;
+  criterionId?: string;
+
+  kind:
+    | "command-log"
+    | "test-result"
+    | "file-diff"
+    | "screenshot"
+    | "dom-snapshot"
+    | "network-trace"
+    | "output-file"
+    | "design-preview"
+    | "citation";
+
+  uri: string;
+  sha256?: string;
+  mime?: string;
+
+  createdAt: string;
+  producer: string;
+}
+```
+
+于是：
+
+WORK-LAB 可以说：
+
+```text
+任务完成
+✓ npm test
+✓ 4 files changed
+✓ Screenshot verified
+✓ Artifact exported
+```
+
+ArcheAxis 可以说：
+
+```text
+这个结论来自：
+Source A
+Source B
+Browser Snapshot C
+Citation D
+```
+
+DESIGN-LAB 可以说：
+
+```text
+交付版本 V7 来自：
+Brief #19
+Assets A/B/C
+Generation Run #24
+Manual Edit #7
+Export preset Web-2x
+```
+
+这就形成了一个非常重要的统一理念：
+
+> **Evidence 不只是“AI 编程”的功能，而是三个产品共享的可信操作层。**
+
+### 从 WORK-LAB 下发到桌面执行再回传的完整流程
+
+这里把 AijiuOPC 理解成未来你的共享 **Workbench Runtime**，而不是单独第四个产品。
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant W as WORK-LAB
+    participant A as Workbench Adapter
+    participant R as Desktop Runtime
+    participant G as Agent Runtime
+    participant T as Tools
+    participant E as Evidence Store
+
+    U->>W: 创建 / 启动 Task
+    W->>A: TaskEnvelope
+    A->>R: createRun(task)
+
+    R->>E: run.started
+    R->>G: 启动 Agent Session
+
+    loop Agent 执行循环
+        G->>R: 请求 Tool
+        R->>E: tool.started
+
+        alt 低风险操作
+            R->>T: Execute
+        else 高风险操作
+            R->>W: approval.requested
+            W->>U: 显示权限确认
+            U->>W: Allow / Deny
+            W->>R: approval.resolved
+            R->>T: Execute if allowed
+        end
+
+        T-->>R: Tool Result
+        R->>E: tool.finished + Artifact
+        R-->>G: Result
+        R-->>W: RuntimeEvent Stream
+    end
+
+    G-->>R: Agent reports completion
+
+    R->>R: Acceptance Verification
+    R->>E: test / diff / screenshot / outputs
+
+    R->>E: EvidenceManifest
+    R-->>A: RunResult + EvidenceManifest
+    A-->>W: completed / failed
+
+    W->>W: 更新 Task / Audit / Artifact
+    W-->>U: 展示结果与证据
+```
+
+这里 WORK-LAB 不是靠读取 Terminal 文本判断任务是不是完成，而是收到：
+
+```json
+{
+  "status": "completed",
+  "runId": "run_20260814_001",
+  "acceptance": [
+    {
+      "criterion": "tests-pass",
+      "status": "passed",
+      "evidence": ["ev_123"]
+    },
+    {
+      "criterion": "artifact-exists",
+      "status": "passed",
+      "evidence": ["ev_124"]
+    }
+  ]
+}
+```
+
+这才是真闭环。
+
+### 三个 Profile 应该加载不同的 Tile
+
+**WORK-LAB Profile**
+
+```text
+Task Board
+Run Graph
+Agent
+Terminal
+Browser
+Diff
+Evidence
+Approval
+Logs
+```
+
+首屏应该是：
+
+```text
+What is running?
+What needs me?
+What failed?
+What finished?
+```
+
+而不是聊天框。
+
+**ArcheAxis Profile**
+
+```text
+Library
+Reader
+Editor
+Search
+Sources
+Citation
+Knowledge Graph
+Agent
+Browser
+Evidence
+```
+
+首屏应该是：
+
+```text
+What am I researching?
+What sources do I have?
+What knowledge was produced?
+```
+
+这里 Terminal 应该是高级 Tile，而不是一级导航。
+
+**DESIGN-LAB Profile**
+
+```text
+Brief
+Asset Browser
+Canvas / Preview
+References
+Browser
+Agent
+Versions
+Render Queue
+Compare
+Deliverable
+```
+
+首屏应该回答：
+
+```text
+What am I making?
+Which version is current?
+What inputs were used?
+What is ready to deliver?
+```
+
+Terminal 同样放到高级工作区。
+
+### ArcheAxis 与 DESIGN-LAB 不应该被 WORK-LAB“吞掉”
+
+两个集成方案：
+
+| 方案 | 特点 |
+|---|---|
+| WORK-LAB 直接 Import 另外两个项目内部代码 | 初期快，后期高度耦合 |
+| **Adapter + Contract** | 项目可独立升级，可单独运行 |
+
+推荐第二个。
+
+例如 ArcheAxis：
+
+```ts
+interface KnowledgeAdapter {
+  search(query: string): Promise<KnowledgeHit[]>;
+
+  resolveContext(
+    refs: string[]
+  ): Promise<ContextPackage>;
+
+  ingestArtifact(
+    artifact: ArtifactRef
+  ): Promise<KnowledgeRef>;
+}
+```
+
+DESIGN-LAB：
+
+```ts
+interface DesignAdapter {
+  resolveAsset(id: string): Promise<AssetRef>;
+
+  registerOutput(
+    runId: string,
+    output: ArtifactRef
+  ): Promise<DesignVersion>;
+
+  createSnapshot(
+    projectId: string
+  ): Promise<VersionSnapshot>;
+}
+```
+
+WORK-LAB 不需要知道 ArcheAxis 用什么数据库，也不需要知道 DESIGN-LAB 用什么 Canvas。
+
+它们只交换协议。
+
+这也避免 Hermes Studio 当前已经出现过的一类真实问题：它的 Web UI Session 与 Hermes 核心 `state.db` 曾经是两个独立存储，造成 UI 聊天不能被核心 session search 正常召回。其 GitHub issue 清晰展示了**两个组件各自维护“类似数据”却没有共同 Source of Truth 后的同步问题**。citeturn18search3
+
+因此你的三个项目尤其不要做：
+
+```text
+WORK-LAB tasks.sqlite
+ArcheAxis copied_tasks.sqlite
+DESIGN-LAB copied_tasks.sqlite
+```
+
+而应该：
+
+```text
+Owner owns data
+Consumers reference IDs
+```
+
+## 性能、资源与可靠性策略
+
+### 浏览器必须是稀缺资源
+
+不要允许用户开 30 个 Browser Tile 就等于启动 30 个永久活跃浏览器实例。
+
+推荐 Resource Manager：
+
+```text
+Browser Resource Pool
+
+ACTIVE
+  前台可见 + Agent操作
+
+WARM
+  后台保持 session，降低更新
+
+SUSPENDED
+  保留 URL / state / screenshot
+  native view 释放
+
+DISPOSED
+  完全释放
+```
+
+这里不能完全依赖系统 WebView 自己处理后台运行，因为 Tauri 当前对 `backgroundThrottling` 的支持仍有平台差异；官方 Webview API 对 Windows/Linux/Android 与 macOS/iOS 的支持状态并不相同。citeturn17search0
+
+因此你的 Runtime 自己必须拥有资源策略。
+
+建议 MVP 默认：
+
+```text
+Active Browser Views: 3
+Background Browser Sessions: 6
+Active PTY: 8
+Agent Runs: 视本机能力配置
+```
+
+这些是工程起始值，不是固定标准，后面让 Resource Monitor 根据机器性能动态调整。
+
+### Layout 持久化不能直接裸存 Dockview JSON
+
+应该：
+
+```json
+{
+  "schemaVersion": 3,
+  "workbenchVersion": "0.8.0",
+  "projectId": "...",
+  "layout": {},
+  "tiles": {}
+}
+```
+
+升级时：
+
+```text
+v1 → migrate → v2 → migrate → v3
+```
+
+Dockview v7 已经发生过 React package 的重命名与 breaking migration，这正好说明 Workbench 要有自己的 layout schema，而不是把第三方库序列化结构当公共协议。citeturn13search2
+
+### SQLite 使用建议
+
+桌面工作台很适合 SQLite，但建议：
+
+```text
+SQLite
+├ metadata
+├ runs
+├ events index
+├ layouts
+├ settings
+└ artifact metadata
+
+Filesystem
+└ large artifacts
+```
+
+避免把：
+
+```text
+巨量 Terminal Output
+Screenshots
+Video
+大 Diff Blob
+```
+
+全部塞 SQLite。
+
+另外一个非常时效性的工程提醒：SQLite 官方在 **2026 年 3 月**披露了 WAL-reset bug，它影响 WAL 模式下多个连接并发写/Checkpoint 的特定竞争场景；修复版本包括 3.51.3 及之后版本，官方后续新闻也建议升级。citeturn20search3turn20search13
+
+因此现在新项目至少应该：
+
+```text
+SQLite >= 3.51.3
+```
+
+更合理的是锁定当前经过测试的新稳定版本，并在 CI 中验证实际打包进去的 SQLite 版本，而不是只检查 npm/Cargo wrapper 的版本。
+
+### Event Log 必须 Append-only，但 Artifact 要分层
+
+建议：
+
+```text
+Event DB
+└ lightweight structured event
+
+Artifact Store
+├ terminal/
+├ browser/
+├ screenshots/
+├ diffs/
+├ outputs/
+└ design/
+```
+
+Event：
+
+```json
+{
+  "seq": 401,
+  "type": "file.changed",
+  "artifactRef": "artifact://run123/diff/401"
+}
+```
+
+这样重放任务时不是重新执行命令，而是：
+
+```text
+Replay Event Timeline
++
+Open Artifact
+```
+
+这对 WORK-LAB 的审计尤其重要，对 ArcheAxis 的来源追踪和 DESIGN-LAB 的版本追溯也同样适用。
+
+### 性能测试必须从第一版开始
+
+至少要有下面几种压力场景：
+
+| 测试 | 目的 |
+|---|---|
+| 连续开关 100 次 Terminal Tab | 检查 PTY 泄漏 |
+| 高频 Terminal 输出 | 验证 Backpressure |
+| 10 个后台 Agent + UI 切换 | 检查 Renderer 卡顿 |
+| Browser 创建/关闭循环 | 检查 WebContents/WebView 泄漏 |
+| Crash 后重新启动 | 验证 Run 恢复 |
+| Layout 多次升级 | 验证 Schema migration |
+| Agent 重复/乱序 Event | 验证 seq / idempotency |
+| 断网/Runtime crash | 验证 reconnect |
+| Permission bypass 测试 | 验证安全边界 |
+
+xterm.js 官方特意警告高吞吐 producer 可能使其输入缓冲不断增长，因此 Terminal burst test 应当进入 CI，而不是等用户报告界面卡死才处理。citeturn13search12
+
+### 最值得防的资源泄漏
+
+一个 Tile 至少可能同时拥有：
+
+```text
+React component
+ResizeObserver
+event listeners
+WebSocket
+MessagePort
+PTY
+Child Process
+WebContentsView
+File watcher
+Agent session
+Timer
+SQLite cursor
+```
+
+所以每个 Resource 都必须有：
+
+```ts
+interface Disposable {
+  dispose(): Promise<void>;
+}
+```
+
+并建立统一：
+
+```ts
+class DisposableStack {
+  private disposables: Disposable[] = [];
+
+  use<T extends Disposable>(item: T): T {
+    this.disposables.push(item);
+    return item;
+  }
+
+  async dispose() {
+    for (const item of this.disposables.reverse()) {
+      try {
+        await item.dispose();
+      } catch (error) {
+        console.error("dispose failed", error);
+      }
+    }
+
+    this.disposables = [];
+  }
+}
+```
+
+然后 Runtime Registry 统计：
+
+```text
+Created resources
+Disposed resources
+Orphan resources
+```
+
+甚至开发环境状态栏直接显示：
+
+```text
+PTY 3
+Browser 2
+Agent 4
+Watchers 12
+Workers 2
+```
+
+资源泄漏立刻可见。
+
+## MVP、里程碑与工程风险
+
+### 不要从“复刻 AijiuOPC UI”开始
+
+VibeCoding 最危险的一种开发方式是：
+
+```text
+先让 AI 生成一个特别漂亮的大工作台
+↓
+不断加 Terminal
+↓
+不断加 Browser
+↓
+不断加 Agent
+↓
+最后发现：
+状态混乱
+进程泄漏
+没有统一协议
+关 Tab 会杀任务
+任务无法恢复
+权限不知道是谁批准的
+日志无法证明任务完成
+```
+
+正确 VibeCoding 流程应该是**按 Vertical Slice 开发**。
+
+一次 Slice 必须从 UI 一直贯穿 Runtime：
+
+```text
+Task
+↓
+Agent
+↓
+Tool
+↓
+Permission
+↓
+Evidence
+↓
+Result
+```
+
+而不是先做 50 个页面。
+
+### MVP 真正应该只有这些东西
+
+**Workbench Core：**
+
+```text
+App Shell
+Dockview
+Command Palette
+Tile Registry
+Theme Tokens
+SQLite
+Runtime Registry
+Event Bus
+Layout Restore
+```
+
+**执行层：**
+
+```text
+AgentTile
+TerminalTile
+FilesTile
+EvidenceTile
+Approval UI
+```
+
+**Browser：**
+
+```text
+1 个 Browser Stage
+Navigation
+Screenshot
+DOM/Network Adapter
+Browser Evidence
+```
+
+**三个项目 Profile：**
+
+```text
+WORK-LAB:
+Task + Run + Evidence
+
+ArcheAxis:
+Library + Reader + Source/Citation
+
+DESIGN-LAB:
+Project + Asset + Preview/Version
+```
+
+而以下全部延后：
+
+```text
+全球热点
+炫技数据大屏
+插件市场
+任意浮动 Browser
+复杂主题商城
+桌面宠物
+全自动多 Agent Swarm
+远程协作
+多端同步
+```
+
+这些功能都不决定你的三个项目能不能形成闭环。
+
+### 推荐里程碑
+
+以下是**按一名熟悉 React/TypeScript 的主开发者 + AI 辅助编码、现有三个项目不需要大规模重构**做的工程估算，不是固定交付承诺。
+
+| 阶段 | 时间估算 | 产物 | 验收 |
+|---|---:|---|---|
+| Architecture Spike | 约 1–1.5 周 | Electron/Tauri Spike、Contracts、Design Tokens | Browser/PTy/Dock 三个技术风险跑通 |
+| Workbench Foundation | 约 2 周 | Shell、Dock、Tile SDK、Zustand、SQLite、Theme | 多 Tab 恢复、Tile 注册正常 |
+| Runtime Foundation | 约 2 周 | PTY、Agent、Event Bus、Resource Registry | 后台运行、Tab 可销毁 UI 不销毁 Run |
+| Evidence Loop | 约 1.5 周 | Approval、Evidence、Task/Run Contract | 一项真实任务端到端完成 |
+| Browser Stage | 约 1.5–2 周 | Browser、CDP、Screenshot、Network Evidence | Agent 能浏览并生成证据 |
+| WORK-LAB Profile | 约 1.5 周 | Task/Run/Approval/Evidence UI | 一个项目任务闭环 |
+| ArcheAxis Profile | 约 1.5–2 周 | Library/Reader/Context/Citation Adapter | 知识内容能进入/返回任务 |
+| DESIGN-LAB Profile | 约 1.5–2 周 | Assets/Preview/Version/Artifact Adapter | 设计输出可成为 Artifact |
+| Hardening | 约 2–4 周 | Crash recovery、Security、Packaging、Stress test | 长任务/异常/升级测试 |
+
+所以：
+
+**第一个真正可用的 WORK-LAB 闭环 MVP：约 6–8 周。**
+
+**三个项目第一次完成协议级打通：约 12–14 周。**
+
+**达到可以长期自用、不会频繁因为底层改造推倒重来的版本：大约还应预留额外 4–8 周的硬化。**
+
+### 最需要防范的工程坑
+
+| 坑 | 后果 | 缓解 |
+|---|---|---|
+| 把 Browser 当普通 React Tile | Bounds/Z-order/Modal/Popout 问题不断 | MVP 使用 Browser Stage |
+| UI Owns PTY | Tab unmount 杀任务 | Runtime Registry 独立持有 |
+| PTY 只做 throttle | 高输出仍可能堆内存 | ACK + bounded buffer + backpressure |
+| Zustand 当数据库 | 状态越来越不可迁移 | SQLite + Store 分层 |
+| 三项目复制 Session/Task | 多个 Source of Truth | ID 引用 + Adapter |
+| 插件直接运行 npm 代码 | 极大供应链风险 | Manifest + Capabilities + isolated worker |
+| Agent 直接拥有所有 Shell 权限 | Prompt injection 后果严重 | Policy Broker + Approval |
+| Dockview 数据直接成为公共协议 | 升级 breaking | 自有 Workspace schema |
+| 大量 Glass / Motion | 工具 UI 性能和可读性下降 | 实色主工作区，Glass 只用于 Overlay |
+| AI 一次生成大工程 | 架构漂移、隐性重复 | Vertical Slice + Contract Tests |
+| Event 只是字符串 | 无法恢复和审计 | Versioned structured event |
+| Evidence 只是聊天总结 | 无法证明完成 | Artifact + hash + criterion |
+| SQLite WAL 旧版本 | 特定并发条件存在数据风险 | 使用含 WAL 修复的 SQLite 版本 citeturn20search3turn20search16 |
+| Dockview Major Upgrade | React import/API 破坏 | Wrapper + major pin + migration citeturn13search2 |
+| Electron Remote Browser 权限过大 | Web 内容可能触及本地能力 | contextIsolation、sandbox、禁 Node、验证 IPC citeturn15search2 |
+
+### 最终的技术栈建议
+
+如果现在让我直接为这三个项目定第一版工程基线，我会定为：
+
+```text
+Desktop:
+Electron
+
+Frontend:
+React 19
+TypeScript
+Vite
+
+Workspace:
+dockview-react
+WorkbenchDockAdapter
+
+State:
+Zustand
+仅处理 ephemeral UI state
+
+Persistence:
+SQLite
+Artifact filesystem
+
+Terminal:
+@xterm/xterm
+node-pty
+
+Browser:
+WebContentsView
+webContents.debugger / CDP
+
+UI:
+Tailwind CSS
+Motion for React
+shadcn-style primitives
+Shiki
+Monaco 或 CodeMirror 按项目需求
+
+Runtime:
+Main Process
++
+Utility Process / Child Process
++
+Runtime Registry
+
+Protocols:
+TaskEnvelope
+RuntimeEvent
+EvidenceArtifact
+ArtifactRef
+
+Integration:
+Adapter SDK
+
+Security:
+contextIsolation
+sandbox
+nodeIntegration=false
+permission broker
+workspace scopes
+human approval
+
+Testing:
+Vitest
+Playwright
+Contract tests
+Lifecycle stress tests
+Crash/recovery tests
+```
+
+Electron 在远程内容场景必须严格按官方安全指南使用 `contextIsolation`、sandbox、禁止远程页面 Node integration，并限制权限与 IPC；否则它的系统能力同时也是攻击面。citeturn15search2
+
+如果后续确定 Browser Agent 在三个产品中都不是核心能力，则第二阶段可以重新评估：
+
+```text
+Tauri 2
+Rust
+React 19
+portable-pty
+Native WebView
+```
+
+Terax 已证明这一组合可以实现非常完整的 terminal-first AI workspace，而且 Tauri 的 Capabilities/Permissions 能细粒度限制 WebView 对命令和资源范围的访问。citeturn16search0turn13search0turn13search3
+
+### 最终蓝图
+
+三个项目真正值得走向的是：
+
+```text
+                     AI Native Workbench Core
+┌───────────────────────────────────────────────────────────────┐
+│ App Shell                                                     │
+│                                                               │
+│  Command Palette     Global Run Status      Notifications     │
+│                                                               │
+│  ┌────────┬──────────────────────────────┬─────────────────┐  │
+│  │Context │                              │ Inspector       │  │
+│  │        │       Dock Workspace         │ Agent           │  │
+│  │        │                              │ Evidence        │  │
+│  │        │ Terminal / Editor / Preview  │ Properties      │  │
+│  └────────┴──────────────────────────────┴─────────────────┘  │
+│                                                               │
+│ Runtime Status / Git / Network / Approval / Resources         │
+└───────────────────────────────────────────────────────────────┘
+                              │
+                    Tile / Runtime SDK
+                              │
+       ┌──────────────────────┼──────────────────────┐
+       │                      │                      │
+       ▼                      ▼                      ▼
+   WORK-LAB              ArcheAxis              DESIGN-LAB
+   Profile               Profile                Profile
+       │                      │                      │
+   Tasks/Runs             Knowledge             Design
+   Approval               Sources               Assets
+   Evidence               Citation              Versions
+       │                      │                      │
+       └──────────────────────┼──────────────────────┘
+                              │
+                         Adapter Layer
+                              │
+                   Runtime Contract Layer
+                              │
+          ┌───────────┬───────┼───────────┬────────────┐
+          ▼           ▼       ▼           ▼            ▼
+        Agent       Shell   Browser     Files        Tools
+          │           │       │           │            │
+          └───────────┴───────┼───────────┴────────────┘
+                              ▼
+                       RuntimeEvent Bus
+                              │
+                              ▼
+                     Evidence Collector
+                              │
+             ┌────────────────┼────────────────┐
+             ▼                ▼                ▼
+           SQLite        Artifact Store      Audit
+                              │
+                              ▼
+                        Acceptance Check
+                              │
+                              ▼
+                      Project Artifact
+```
+
+这套架构最关键的地方不是 Electron，也不是 Tauri，更不是 Dockview。
+
+而是你将得到一组稳定层次：
+
+```text
+UI Layer
+      ↓
+Tile Layer
+      ↓
+Workbench Layer
+      ↓
+Adapter Layer
+      ↓
+Runtime Layer
+      ↓
+Evidence Layer
+      ↓
+Project Domain
+```
+
+以后模型、Agent、Terminal、Browser、甚至整个桌面 Runtime 都能换，而三个产品不会被一起推倒。
+
+**WORK-LAB 的闭环是“任务 → 执行 → 验证 → 证据”。**
+
+**ArcheAxis 的闭环是“来源 → 理解 → 关联 → 知识资产 → 可追溯引用”。**
+
+**DESIGN-LAB 的闭环是“Brief → 素材 → 创作 → 版本 → 审核 → 交付资产”。**
+
+三者之间再通过：
+
+```text
+Task
+Context
+Artifact
+Evidence
+```
+
+形成大闭环。
+
+所以 AijiuOPC 给你的真正启发，不应该是：
+
+> “我的三个项目也做一个好看的多 Tab AI 桌面。”
+
+而应该升级为：
+
+> **“为三个项目建立同一套 AI Native Workbench 基础设施，让知识可以变成上下文，让上下文可以变成任务，让任务可以调用真实工具，让工具产出变成资产，让资产有证据，让证据重新沉淀为知识。”**
+
+一旦这条链跑通，你的三个项目就不再只是三个功能相邻的应用，而会开始形成一个真正相互增益的系统。

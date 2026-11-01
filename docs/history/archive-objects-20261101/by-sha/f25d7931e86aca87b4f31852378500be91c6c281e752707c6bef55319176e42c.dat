@@ -1,0 +1,316 @@
+# Knowledge-Base 二次精简补充方案
+
+# Knowledge-Base 二次精简补充包
+
+第一轮解决“方向太大”，第二轮解决“工程太重”。
+
+目标：
+
+```text
+让项目可以被一个人 + CODEX 稳定维护。
+```
+
+
+---
+
+# 00 还能精简的 10 个点
+
+1. 依赖分层：core / ingest / files / dev / experimental。
+2. 前端脚本瘦身：删除默认串联的十几个 validate。
+3. CI 合并：只留 ci.yml + security.yml。
+4. 测试分层：mvp / experimental / integration / archive。
+5. MCP 工具收敛：默认只加载 8 个核心工具。
+6. 前端页面收敛：dashboard/upload/knowledge/search/review/settings。
+7. reference 大包归档：A/B大规划、FSRS、开源提取进 archive。
+8. docs/architecture 压缩：旧项目名文档归 archive。
+9. data 样例压缩：只保留 seed_minimal.json。
+10. Docker 分层：先保留 dev compose，prod/nginx 双镜像后置。
+
+
+---
+
+# 01 依赖精简方案
+
+## 当前问题
+
+`backend/requirements.txt` 把核心依赖、采集、数据分析、文件解析全部放在一起。
+
+## 建议拆分
+
+### requirements-core.txt
+
+```text
+fastapi>=0.115
+uvicorn>=0.30
+pydantic>=2.7
+orjson>=3.10
+httpx>=0.27
+python-dotenv>=1.0
+typer>=0.12
+rich>=13.7
+```
+
+### requirements-ingest.txt
+
+```text
+markdownify>=0.13
+scrapling[ai]
+```
+
+### requirements-files.txt
+
+```text
+PyMuPDF>=1.23
+python-docx>=1.1
+python-pptx>=1.0
+mutagen>=1.47
+openpyxl>=3.1
+pillow>=10.0
+```
+
+### requirements-dev.txt
+
+```text
+pytest>=8
+ruff>=0.5
+mypy>=1.10
+pip-audit
+bandit
+```
+
+### requirements-experimental.txt
+
+```text
+streamlit>=1.38
+pandas>=2.2
+ollama>=0.3
+```
+
+
+---
+
+# 02 CI 精简方案
+
+## 当前问题
+
+当前 CI 拆成 backend-core、backend-a-line、backend-b-line、backend-integration、frontend，安全扫描也有重复。
+
+## MVP CI
+
+只留：
+
+```text
+.github/workflows/ci.yml
+.github/workflows/security.yml
+```
+
+## ci.yml
+
+```text
+backend-mvp:
+  install core + dev
+  run tests/mvp
+
+frontend-mvp:
+  npm ci
+  npm run lint
+  npm run typecheck
+  npm run build
+```
+
+## 手动 workflow
+
+```text
+experimental-tests.yml
+docker-prod.yml
+full-security.yml
+```
+
+
+---
+
+# 03 前端脚本精简方案
+
+## 当前问题
+
+`frontend/package.json` 的 test 命令串联十几个 validate 脚本，并且 description 仍是 Lumina AI。
+
+## 建议 scripts
+
+```json
+{
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "eslint . --max-warnings=0",
+  "typecheck": "tsc --noEmit",
+  "test:mvp": "node scripts/validate-mvp.mjs",
+  "quality:mvp": "npm run lint && npm run typecheck && npm run test:mvp && npm run build"
+}
+```
+
+## 归档脚本
+
+```text
+validate-i18n
+validate-multisubject-routes
+validate-route-cycle-fixtures
+validate-route-tools
+validate-version-ledger
+regression-loop
+supervised-window
+```
+
+
+---
+
+# 04 测试精简方案
+
+## 建议测试目录
+
+```text
+backend/tests/mvp/
+backend/tests/experimental/
+backend/tests/integration/
+backend/tests/archive/
+```
+
+## MVP 必跑
+
+```text
+test_store.py
+test_ingest.py
+test_search.py
+test_cards.py
+test_reviews.py
+test_mistakes.py
+test_reports.py
+test_context_pack.py
+test_taskpack.py
+test_api_smoke.py
+```
+
+## experimental
+
+```text
+test_cognitive_load.py
+test_encoding.py
+test_skills.py
+test_rubrics.py
+test_teach_back.py
+test_machine_knowledge.py
+test_agent_executor.py
+test_a_to_b_translator.py
+```
+
+
+---
+
+# 05 MCP 工具精简方案
+
+## MVP MCP 只保留 8 个
+
+```text
+health.check
+documents.search
+documents.get
+cards.create
+cards.due
+reviews.submit
+context_pack.build
+taskpack.generate
+```
+
+## 其他工具
+
+移动到：
+
+```text
+backend/pk_radar/mcp/experimental_tools/
+```
+
+或注册时默认：
+
+```text
+enabled = false
+```
+
+默认启动只加载 core tools。
+
+
+---
+
+# 06 数据与参考包精简
+
+## data
+
+只保留：
+
+```text
+data/seed_minimal.json
+data/example_documents/
+```
+
+其余：
+
+```text
+data/archive/
+```
+
+## reference
+
+主入口只保留：
+
+```text
+reference/README.md
+reference/archive/
+```
+
+A/B大规划、开源项目提取、FSRS参考实现都放 archive。
+
+## docs/research
+
+保留最终结论，不保留所有中间过程作为主索引。
+
+
+---
+
+# 07 CODEX 二次精简提示词
+
+请继续对 Knowledge-Base 做工程层二次精简，重点是降低维护复杂度，不新增功能。
+
+## 执行项
+
+1. 拆分 backend/requirements.txt：
+   - requirements-core.txt
+   - requirements-ingest.txt
+   - requirements-files.txt
+   - requirements-dev.txt
+   - requirements-experimental.txt
+
+2. 精简 frontend/package.json：
+   - 修正 Lumina AI 描述
+   - 保留 dev/build/start/lint/typecheck/test:mvp/quality:mvp
+   - 其余 validate 脚本移到 scripts/archive 或不作为默认 test
+
+3. CI 收敛：
+   - ci.yml 只跑 backend-mvp + frontend-mvp
+   - security.yml 合并 ruff/bandit/pip-audit/secret scan
+   - A/B experimental 测试改为 workflow_dispatch
+
+4. 测试目录分层：
+   - tests/mvp
+   - tests/experimental
+   - tests/integration
+   - tests/archive
+
+5. MCP工具默认只加载8个核心工具。
+
+6. reference/docs/data 归档大型参考包和旧项目名内容。
+
+## 禁止
+
+不要删除有价值资料，只移动到 archive。
+不要新增功能。
+不要扩大 A/B 系统。
+不要把 experimental 写成 active。

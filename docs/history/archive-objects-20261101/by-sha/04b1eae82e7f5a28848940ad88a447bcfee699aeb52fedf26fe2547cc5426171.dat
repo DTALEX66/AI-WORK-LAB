@@ -1,0 +1,124 @@
+# 抖音 AI 主题核验与三项目采用决策
+
+日期：2026-09-07  
+范围：WORK-LAB、ArcheAxis-Knowledge-OS（AAOS）、DESIGN-LAB，以及三者共享的治理接口。  
+结论性质：公开仓库与官方文档核验后的**采用决策**，不是安装清单。所有项目均保持个人研究、非商业使用；引入前仍须核对当时版本与许可证。
+
+## 先给结论
+
+11 个主题中，真正应进入近期工作的是：
+
+1. **Codex 原生子代理 + 项目级 Hook**：作为 WORK-LAB 的最小治理能力，先做只读审计、写入门禁、交付证据三个窄用例。
+2. **ComfyUI + 官方 comfy-mcp**：DESIGN-LAB 的首个生成工作流适配器；它是“驱动器”，不是设计判断系统，也不是安全边界。
+3. **UI Automation（先 UIA CLI）**：DESIGN-LAB 对无 API 桌面设计软件的受控试点；只自动化低风险、可复核的动作。
+4. **Mermaid 架构即代码**：三个仓库都纳入文档质量门；先用源码和渲染校验，不把第三方 MCP 当成关键依赖。
+5. **LLM-as-a-Verifier**：只在 WORK-LAB 做离线评测试验，用于候选方案排序；不能替代测试、人工验收或 AAOS 的证据审核。
+
+不应立项或只能后置试验的包括：70 亿 Token 多模型开发叙事、MiniMind/“手搓大模型”路线、把 Open WebUI 发展成第四个系统、用视觉鼠标模拟作为默认桌面自动化、让“缝合怪 Skill”自动安装/发布、把九锚理论写成 Agent 强制规则。
+
+## 对短视频清单的关键纠偏
+
+| 主题 | 核验结论 | 纠偏 |
+|---|---|---|
+| ComfyUI / MCP | 仓库真实、活跃；官方 `comfy-mcp` 用 `comfy-cli` 驱动本机或受控远端 ComfyUI。 | 本地 MCP 与 Comfy Cloud MCP 是两条不同执行路径；两者均涉及认证/潜在付费。官方明确它**不是沙箱**。 |
+| Codex “总管” | Codex 已支持原生子代理、项目/用户级自定义角色与 Hooks。 | 自定义 Agent 文件在 `~/.codex/agents/` 或 `<repo>/.codex/agents/`，不是把所有角色都写进一个“总管框架”。并行只用于独立、主要是读型任务；并行写入会增加冲突。 |
+| LLM-as-a-Verifier 88% | 项目和论文真实；README 提供 Terminal-Bench 2.1 的 self-verification 实验。 | 数字对应特定模型、5 条轨迹、评审提示和基准，不能证明“在任意项目中超过某模型”，也不能验证事实真伪。 |
+| 混合模型二游 70 亿 Token | 没有可复核的开源工程和可复现实验。 | 可以吸收“任务按能力分工、人工验收”的原则；Token 总量、各模型占比、性能结论不作为决策证据。 |
+| Ollama / Open WebUI / MiniMind | 三个公开项目均真实，但用途不同。 | Ollama 是本地模型服务；Open WebUI 是通用自托管模型 UI/RAG 平台；MiniMind 是从零训练教学工程，不是三个仓库的生产底座或 LoRA 管理器。 |
+| Hook 硬约束 | Codex 现已支持生命周期 Hook，`PreToolUse` 可拒绝或重写支持的本地工具调用。 | Hook 只覆盖其支持的工具路径；官方仍要求把它当“有用的护栏”，不是完整安全边界。不要把其他 Harness 的事件名、目录和行为假定为 Codex 通用规范。 |
+| DSH / Pi / Harness | DSH、Pi 公开仓库真实；“事务账本成熟度”需逐版本实测。 | 会话历史不等于可重放的执行事实，这是正确的工程问题；但不能因宣传而把任一 Harness 设为三项目总运行时。 |
+| Mermaid 架构图 | Mermaid 源码可版本化，适合作为架构文档基线。 | `.mmd`/Markdown 源码是权威件，SVG/PNG 是派生产物；AI 生成图必须由源码、部署清单和代码交叉核对。 |
+| 老软件接入 Agent | UIA CLI、uia-agent、Windows Computer Use MCP 均有公开仓库。 | 默认优先级应为：官方 API/脚本 > UI Automation 树 > 人工确认的视觉兜底。不要使用“规避检测/封禁”的表述或能力；高风险业务操作不得自主提交。 |
+| 缝合怪 Skill | 仓库真实，主张来源、许可和安全门禁。 | 适合作为“候选 Skill 评审器”，不适合作为自动安装器或共享权限扩张器。它的自述测评分数不是独立安全认证。 |
+| 九锚认知系统 | 是理论框架，不是可验证工程组件。 | 可作为 AAOS 的可选学习反思卡片；不应伪装成“元认知 Hook”，更不能据此自动阻断工程操作。 |
+
+## 主题到项目的分类
+
+标记：**P0** 当前最小闭环，**P1** 近期开试点，**P2** 有明确需求再做，**否** 不纳入产品路径。
+
+| # | 主题 | WORK-LAB（控制/治理） | AAOS（证据驱动人机学习） | DESIGN-LAB（专业设计生产） | 决策 |
+|---:|---|---|---|---|---|
+| 1 | ComfyUI / comfy-mcp | P1：登记适配器、队列、执行记录与额度/模型风险标签。 | P2：只接收已选择的作品、工作流版本和来源摘要作学习材料。 | **P0**：本地工作流执行、图/视频产出、可复现 workflow。 | 采用，但由 DESIGN-LAB 持有业务能力。 |
+| 2 | Codex 子代理总管 | **P0**：提供可复用的任务分解模板、只读审计角色、交付证据格式。 | P1：文档摄取/证据检索可并行，最终真值仍走人工审核。 | P1：参考收集、资产检查、风格备选可并行；不并行改同一素材。 | 采用原生能力，不另造总管产品。 |
+| 3 | LLM-as-a-Verifier | P1：建立离线基准和成本/误判记录。 | P2：只能作“候选排序信号”，不能为事实盖章。 | P2：可用于提示词/工作流候选排序；审美由 Human Jury 决定。 | 小范围 PoC，必须有盲测、人工基线和停用阈值。 |
+| 4 | 多模型混合开发叙事 | P2：按任务风险/成本选择模型的记录规范。 | 否：不成为学习系统能力。 | P2：为 UI、素材脚本等给出模型选择实验记录。 | 吸收方法，不采纳不可复核的案例数据。 |
+| 5 | Ollama / Open WebUI / MiniMind | P1：Ollama 作为本地推理适配器候选；不在此自建聊天/RAG 产品。 | P1：离线实验模型可通过受控接口调用；知识库仍由 AAOS 自己治理。 | P2：本地视觉/标签辅助可试验。 | Ollama 可试点；Open WebUI 仅作独立实验台；MiniMind/Teachable Machine 不立项。 |
+| 6 | Hook 硬门禁 | **P0**：项目级拦截越界写入、危险命令、未验证交付声明；PostToolUse 留审计摘要。 | P1：限制未经审核的知识发布和来源丢失。 | P1：限制批量覆盖原始素材、外部工具高风险动作。 | 采用，但 Hook 与 OS 权限、Git/CI、人工审批共同防护。 |
+| 7 | DSH / Pi / Harness | P1：定义跨工具的“不可重放动作”账本契约并实测 DSH。 | 否：AAOS 不是通用 Agent Runtime。 | P2：只消费治理侧批准的任务运行接口。 | 不迁移平台；先验证恢复、幂等与回滚。 |
+| 8 | Mermaid / 架构图 | **P0**：架构、运行流、权限流、恢复流纳入 CI。 | P1：摄取—证据—复核—学习链路图。 | P1：DCC/ComfyUI/资产流/人工审批图。 | 采用“文档即代码”；第三方 Mermaid MCP 仅可选。 |
+| 9 | Windows UIA / Computer Use | P1：许可清单、风险级别、执行日志与人工批准。 | 否：不承担桌面控制。 | **P1**：先 UIA CLI 试点单个低风险 DCC/旧软件动作。 | 采用 UIA 优先；视觉鼠标键盘仅受控兜底。 |
+| 10 | 缝合怪 Skill | P2：Skill 引入前做许可证、来源、权限、测试评审。 | P2：仅为明确学习工作流装配候选。 | P2：仅为明确工具链装配候选。 | 评估工具，不作为自动化生产线。 |
+| 11 | 九锚认知 | 否：不能替代工程准则。 | P2：作为用户选择的反思/学习材料，不参与真值判定。 | 否。 | 仅内容层可选功能。 |
+
+## 分项目落地边界
+
+### WORK-LAB：只做控制面，不再变成第四个 Agent OS
+
+WORK-LAB 应持有的是**治理契约**，而不是每个项目的知识、画布或工具实现：
+
+- 适配器登记：工具名称、版本、许可、所需权限、输入/输出位置、是否联网、是否可逆、负责人确认。
+- 执行事实：每次高影响动作写入不可变的任务记录，至少含意图、输入摘要、批准、实际命令/工具、输出哈希、结果、回滚办法；绝不把聊天摘要当账本。
+- 三类最小 Hook：写入前的路径/命令策略，执行后的产物与测试摘要，会话结束时的未完成事项交接。先只拦截明确规则，不写“万能提示词检测器”。
+- 统一风险分级：`R0` 只读；`R1` 可逆生成；`R2` 修改工作区；`R3` 外部调用/付费/发布；`R4` 删除、凭证、不可逆提交。R3/R4 必须显式审批，恢复时不得自动重放。
+- 可视化只做只读状态板：任务、适配器健康、运行记录、待批准项、失败/恢复点。它不调度 Agent、不托管知识库，也不重建设计画布。
+
+### ArcheAxis-Knowledge-OS：唯一可信知识与学习闭环
+
+- 接收来自其他项目的**证据包**，不接收“Agent 结论”本身：原始来源、版本/时间、生成参数、工作流、评测方法、人工复核结论必须可追溯。
+- LLM 验证器可给候选材料排序，但进入 `verified` 的唯一条件仍是明确证据与人类审核；模型评分不得覆盖来源冲突。
+- Ollama 可以用于本地实验、离线摘要或辅助标签，但不要为了它引入 Open WebUI 的完整聊天/RAG/记忆体系，避免形成第二知识库。
+- 九锚如被采用，放入可关闭的“反思练习/学习卡”，标记为理论材料而非事实模型，也不参与自动化决策。
+
+### DESIGN-LAB：主机原生优先的专业生产系统
+
+- 首先落地 ComfyUI 适配器：工作流 JSON、模型/自定义节点版本、输入资产哈希、seed、显存需求、输出路径均必须可记录与重跑；原始模型和大体积产物不进入 Git。
+- `comfy-mcp` 只接到指定的本机/受控地址，并给“下载模型、外部支付、批量运行”单独批准；本地服务以当前用户权限运行，不能默认授予全盘素材访问。
+- 老软件自动化优先用 UIA CLI 的元素树、结构化 JSON 返回和单操作验证。先从“打开文件、导入、导出到临时副本、读取状态”开始；批量覆盖、覆盖源文件、上传、发布、购买均禁止自主执行。
+- 建立 Human Jury：对每轮图像/视频候选保留 brief、参考、提示词、工作流、评分维度和最终选择理由。LLM 验证器只能辅助淘汰明显不符项，不判定审美或版权/商标风险。
+
+## 治理层设计：一套接口，不是一套共享运行目录
+
+```mermaid
+flowchart TD
+  A[AAOS: 证据与学习真源] -->|已审核证据包| B[WORK-LAB: 治理与执行事实]
+  B -->|批准的适配器任务| C[DESIGN-LAB: 专业生产]
+  C -->|来源、参数、产物摘要| A
+  B -->|只读状态| D[轻量状态板]
+```
+
+必须遵守的边界：
+
+1. 三个仓库各自拥有项目规则、运行数据根和变更历史；不能把某一客户端隐藏目录当作跨软件、跨仓库的“公共运行时”。
+2. 共享的是版本化契约：`adapter-manifest`、`task-record`、`evidence-package`、`approval`、`artifact-manifest`，不是共享数据库或共享素材目录。
+3. 工具能力按最小权限注册。MCP、Hook、Skill、UI 自动化都必须显示其命令、环境变量来源、读写范围、网络目的地和停用方式。
+4. 用代码/CI 承担确定性检查（格式、路径、许可证清单、测试、哈希、Schema）；用 Hook 阻断即时高风险调用；用人工处理语义、审美、事实与授权判断。
+5. 不引入“万能总管、万能记忆、万能看板”。它们会与 AAOS 的知识真源、WORK-LAB 的控制面、DESIGN-LAB 的专业能力重叠。
+
+## 30 天最短验证路径
+
+| 阶段 | 交付物 | 验收条件 |
+|---|---|---|
+| 第 1 周 | 三项目的 Adapter Manifest、风险分级、Task Record Schema；Mermaid 架构基线。 | 每个项目至少一条真实任务能用 Schema 表达；图由源码渲染且与仓库现状一致。 |
+| 第 2 周 | WORK-LAB 三个窄 Hook 与只读状态页原型。 | 能拒绝一条违规写入、记录一次失败、显示一次人工批准；不产生跨项目运行目录。 |
+| 第 3 周 | DESIGN-LAB 的本地 ComfyUI 单工作流 + UIA CLI 单软件低风险动作。 | 各执行 10 次；记录成功率、重跑率、显存/耗时、人工介入和是否误触源文件。 |
+| 第 4 周 | LLM-as-a-Verifier 离线 PoC 与 AAOS 证据包接收。 | 与人工/确定性测试对照，公布误选率、额外成本和停止条件；不达阈值即不接入主流程。 |
+
+## 采用前的硬性验收清单
+
+- 固定仓库 commit/Release 与许可证；第三方仓库的 README 说明不等于安全审计。
+- 任何本地模型、ComfyUI、自定义节点和 MCP 都在隔离测试环境进行首次运行；先观察实际读写和网络行为。
+- 高风险工具必须有 dry-run、最大步数/批量上限、可回滚输出和人工确认点。
+- 所有自动生成产物保留来源和重现信息；外部模型/服务的条款、费用、素材授权单独核验。
+- 将“验证器得分”“模型自述”“演示成功”标为实验信号；只有可复现测试、代码审查与人工验收才可标为已验证。
+
+## 核验来源（优先官方/原始仓库）
+
+- [ComfyUI](https://github.com/comfyanonymous/ComfyUI)；[Comfy MCP](https://github.com/Comfy-Org/comfy-mcp)；其 [安全说明](https://github.com/Comfy-Org/comfy-mcp/security)。
+- [Codex AGENTS.md 官方说明](https://developers.openai.com/codex/agent-configuration/agents-md)、[子代理](https://developers.openai.com/codex/subagents)、[Hooks](https://developers.openai.com/codex/hooks)、[高级配置](https://developers.openai.com/codex/config-advanced)。
+- [LLM-as-a-Verifier](https://github.com/llm-as-a-verifier/llm-as-a-verifier) 与其 [论文](https://arxiv.org/abs/2607.05391)。
+- [Ollama](https://github.com/ollama/ollama)、[Open WebUI](https://github.com/open-webui/open-webui)、[MiniMind](https://github.com/jingyaogong/minimind)。
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)、[Pi](https://github.com/earendil-works/pi)。
+- [Mermaid MCP Server](https://github.com/GittyBurstein/mermaid-mcp-server)、[Architecture Diagram Skill](https://github.com/robertanton81/architecture-diagram-skill)。
+- [UIA CLI](https://github.com/amitse/uiacli)、[uia-agent](https://github.com/yokii89/uia-agent)、[Windows Computer Use MCP](https://github.com/betrayzl/windows-computer-use-mcp)。
+- [fengheguai-skill](https://github.com/SunPlough/fengheguai-skill)。
+

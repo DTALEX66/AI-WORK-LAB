@@ -1,0 +1,369 @@
+# ArcheAxis Knowledge 最终执行任务包
+
+- TaskPack ID：`AXR-FINAL-20260826-R2-OSS-FAST-TRACK`
+- 产品名：`ArcheAxis Knowledge｜星环知识平台`
+- 目标仓库：[DTALEX66/ArcheAxis-Knowledge-OS](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS)
+- 审计基线：`main@bf0c48396c751647ac76ee4578bc38f44888a23e`
+- 源码状态：`0.6.11 candidate`；公开发布状态必须执行时重查
+- 基线核验时间：`2026-08-26 UTC`
+- 状态：`READY_FOR_DEEPTUTOR_BASE_ADOPTION`
+- 前序包：`AXR-FINAL-20260825-R1`（被本包取代，保留为历史证据）
+- 执行边界：只修改 ArcheAxis；Agent、记忆引擎、解析器和设计系统只通过可替换 adapter/sidecar 交互。
+
+## 0. 执行者先读
+
+本包的目的不是继续扩展蓝图，而是把“可信知识＋人机双向重型学习”做成同一个可持久化、可证明、可发布的产品闭环。执行时若远端 `main` 已前进，先完成 `AXR-000`；不得将本包基线、历史 demo 或旧 release 当成当前运行事实。
+
+状态只允许 `TODO / IN_PROGRESS / BLOCKED_RUNTIME / CONDITIONAL / DONE / REJECTED`。任何 `DONE` 必须绑定 exact SHA、真实数据库、浏览器/Tauri 读回、失败路径和回滚，不得用 mock、路由 200、旧测试数或“功能文件存在”代替。
+
+## 1. 不可漂移的产品核心
+
+ArcheAxis 是本地优先、原件保全、证据可追溯的人机双向重型学习与可信知识治理系统。它拥有：
+
+- `Source / RawAsset`：原件、版本、rights、fixity 与可恢复内容；
+- `Anchor / Annotation`：页码、文本、区域、时间段、版本状态等精确定位；
+- `Claim / Evidence / KnowledgeUnit`：候选、复核、验证、争议、废止与来源链；
+- `HumanLearningState`：人的理解、记忆、迁移与长期掌握；
+- `MachineCompetenceState`：机器基于可验证任务证据获得的能力，不是“模型说会”；
+- `LearningEvent / DistillationCandidate / EvaluationReceipt`：人教 AI、AI 教人、共同实践、失败与纠错。
+
+ArcheAxis 不是：普通 RAG、聊天壳、文件管理器、通用 Agent OS、模型网关、跨软件控制面或设计生产系统。DeepTutor 可以承担正式产品壳与教学体验；MemOS、Hermes、DSH、Docling、Graphiti 等承担教师、执行器、解析器或投影。它们均不能成为第二知识真源。
+
+## 2. 本轮云端仓库复审结论
+
+### 2.1 当前 P0 硬缺陷
+
+| 缺陷 | 当前实现证据 | 风险/裁决 |
+|---|---|---|
+| 机器掌握 off-by-one | `dual_mastery.machine_mastery_level()` 在某条件未满足时返回该“未达到”级别 | 系统性高估机器能力；P0 重写语义和迁移 |
+| 无原始来源仍为 `K0_RAW` | `MachineEvidence()` 缺 source 仍落 K0 | “RAW”语义自相矛盾；新增 `NONE/INELIGIBLE` |
+| 证据默认 verified | `evaluate_node(... evidence_verified=True)` 与 `/tick` 默认 true | 未经收据即可伪造验证；P0 fail closed |
+| 客户端自报三轴状态 | `/api/v1/learning/tick` 接受 `human/machine/evidence_verified/superseding/contradiction` | 客户端可伪造 M/K/E 与路由；改为服务端从 append-only receipts 推导 |
+| sqlite Row `.get()` | `app/api/learning.py::get_mastery` 对 `sqlite3.Row` 使用 `.get()` | 真实 API 路径可能失败；加数据库级回归 |
+| 人会了被写成机器候选 | `learning_outcome.py` 在 `signal.is_mastered` 时生成 MachineKnowledge 占位内容 | 混淆人类掌握与机器能力；最多产生证据不足的 DistillationCandidate |
+| PDF.js 版本有已知风险 | vendored `pdfjs-3.11.174` | 升级修复线、禁用危险 eval、恶意 PDF fixture 与 worker 隔离 |
+| SBOM 读取错误产品根 | release SBOM 只读取 `desktop/package-lock.json` 与 `desktop/src-tauri/Cargo.lock` | 漏掉 canonical `frontend`、根 `src-tauri`、Python、vendored 资产 |
+| 双 Tauri 壳权威不清 | 根 `src-tauri` 与 `desktop/src-tauri` 具有同产品名/identifier | 构建、安装、升级和发布入口可能混淆 |
+| UI 合同仍未机器化 | 历史要求的 Nav/Inspector/Dock/Reader/Evidence/Learning 与当前实现缺少完整点击/视觉/a11y 门 | 换执行工具后交互语义继续丢失 |
+
+### 2.2 旧任务包需要纠正的地方
+
+- 旧包遗漏 PDF.js、安全 SBOM、双壳裁决和 canonical UI 供应链，现全部提升到 P0。
+- 现有 FSRS/BKT/teach-back/temporal graph 只能认定为“代码/合同存在”；不得作为用户学习闭环已完成。
+- DeepTutor 升格为当前完整产品底座，Docling 升格为主解析器；两者先按发布版跑通，再用窄 Adapter 接入 ArcheAxis 真值。MemOS/Graphiti 继续延后，禁止同时引入多套记忆/图运行时。
+- 历史 `14/14 ASR`、mp3 demo、VLM/video 测试不代表当前安装版上传→处理→锚点→重启读回。
+- 3D/VR/AR、空间记忆、记忆宫殿、仿真继续保留长期蓝图，但不阻塞本轮核心发布。
+
+## 3. 最终对象模型与状态语义
+
+### 3.1 四层不可混写
+
+```text
+RawAsset/Source  --原件、版本、rights、fixity--+
+       |                                         |
+Anchor/Annotation --精确定位、版本状态----------+--> Claim/Evidence/Knowledge
+                                                      |
+                         +----------------------------+-------------------+
+                         |                                                |
+               HumanLearningState                              MachineCompetenceState
+                         |                                                |
+                         +---- LearningEvent / EvaluationReceipt --------+
+```
+
+### 3.2 知识状态
+
+`candidate -> reviewed -> verified | contested | superseded | rejected`
+
+- `verified` 必须引用人工/规则定义的 verification receipt；模型自评、检索命中或外部项目 README 不能验证知识。
+- 任何状态可因新证据降级、争议、撤销或 supersede；不得只升不降。
+- Claim、Evidence、KnowledgeUnit、技能、Persona 和教学内容分别版本化，不相互隐式升级。
+
+### 3.3 机器能力等级 V2
+
+| 等级 | 已达到的含义 | 必需收据 |
+|---|---|---|
+| `NONE` | 无可用原始来源或不具备评估资格 | 无 |
+| `K0_RAW` | 原始来源存在且 fixity/rights 可读 | source ingest receipt |
+| `K1_INDEXED` | 可稳定检索与定位 | index/readback receipt |
+| `K2_STRUCTURED` | 结构化对象与锚点通过验证 | schema/anchor receipt |
+| `K3_REASONABLE` | 能在定义域内解释、推理并引用证据 | reasoning eval receipt |
+| `K4_PROCEDURAL` | 能生成可执行步骤并通过负例 | procedure eval receipt |
+| `K5_CALLABLE` | 能被受控工具/技能调用并读回 | sandbox execution receipt |
+| `K6_VERIFIED` | 固定评测集、人工门与安全门通过 | verification receipt |
+| `K7_ADAPTIVE` | 新情境适配通过且无知识漂移 | adaptation receipt |
+| `K8_TRANSFERABLE` | 跨域迁移与反事实/负例验证通过 | transfer receipt |
+
+函数返回“最高已达到等级”，不是“下一个尚未达到等级”。V1→V2 迁移不得静默升级；无法证明的旧 K 值降级为 `UNMIGRATED` 待重评。
+
+### 3.4 人类学习状态
+
+Human state 与 Machine state 永久分离。人的答题、teach-back、项目实践和复习只更新 learner scoped state。它们可以产生 `DistillationCandidate`，但不能直接产生 MachineKnowledge 或提高机器 K 等级。
+
+## 4. 采用的标准与开源裁决
+
+以下裁决基于 2026-08-25 对官方规范/仓库的复核。并入代码前仍须锁不可变 commit/tag、模型权重 hash、SPDX 和退出策略。
+
+| 上游/标准 | 许可/状态 | 最终裁决 | 吸收范围 | 禁止范围 |
+|---|---|---|---|---|
+| [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/) | W3C Recommendation | `ABSORB_SPEC` | Annotation/Body/Target、TextQuote/Fragment/Time/State selector、canonical/via/rights | 不强制内部存储为 RDF/JSON-LD |
+| [W3C PROV-O](https://www.w3.org/TR/prov-o/) | W3C Recommendation | `ABSORB_MAPPING` | Entity/Activity/Agent 与 wasDerivedFrom/wasGeneratedBy/wasAssociatedWith 映射 | 不因标准化引入重型图数据库 |
+| [OCFL 1.1](https://ocfl.io/1.1/spec/) | CC BY 4.0 规范；数字保存成熟 | `ABSORB_COMPATIBILITY` | 原件版本、inventory、SHA-512/256 fixity、可重建归档布局 | 不在 P0 重写现有 SQLite/Workspace；先兼容导出/验证 |
+| [FSRS / py-fsrs](https://github.com/open-spaced-repetition/py-fsrs) | MIT | `KEEP_ACTIVE_PINNED` | 复用现有间隔重复算法；验证参数/迁移/可重放 | 不再自创另一套调度器，不把模型参数当掌握真值 |
+| [xAPI 2.0](https://opensource.ieee.org/xapi/xapi-base-standard-documentation) | 当前学习事件标准 | `ABSORB_EXPORT_PROFILE` | LearningEvent 的 actor/verb/object/result/context/timestamp 兼容导出 | 不建设独立 LRS 作为核心前置 |
+| [Docling](https://github.com/docling-project/docling) | MIT；模型许可分开 | `ADAPTER_BAKEOFF` | 复杂 PDF/Office/表格/公式/音视频解析，输出 lossless JSON | 不让 DoclingDocument 取代 ArcheAxis Source/Anchor/Claim；模型逐项审查 |
+| [MarkItDown](https://github.com/microsoft/markitdown) | MIT | `LOCAL_FALLBACK_ADAPTER` | 轻量 Office/HTML/EPUB 转 Markdown；仅调用窄 I/O API | 禁止默认插件、远程 URI、YouTube 或宽权限 `convert()` 处理不可信输入 |
+| [faster-whisper](https://github.com/SYSTRAN/faster-whisper) | MIT；CTranslate2/权重另审 | `ASR_SIDECAR_CANDIDATE` | 本地音频转写、时间戳、可替换模型 | 不把 transcript 自动当真；必须人工 WER/锚点/rights |
+| [DeepTutor](https://github.com/HKUDS/DeepTutor) | Apache-2.0；完整本地 Web+CLI 与稳定发布 | `ADOPT_PRODUCT_BASE` | Chat/Solve/Quiz/Research/Visualize、Co-Writer、Book、KB、Space 和 CLI 产品壳 | KB/Memory 只作可重建投影；不写 ArcheAxis 核心真值 |
+| [OpenTutor](https://github.com/zijinz456/OpenTutor) | MIT；public beta | `EXTRACT_MODULES` | block workspace、学习 UX、FSRS/BKT/teach-back 的缺口模块 | 不运行第二套 Tutor，不重复已有算法 |
+| [MemOS](https://github.com/MemTensor/MemOS) | Apache-2.0 | `OPTIONAL_REBUILDABLE_PROJECTION` | 已批准机器知识/技能的运行记忆投影 | 不成为知识真源，不反向自动验证或晋级 |
+| [Graphiti](https://github.com/getzep/graphiti) | Apache-2.0 | `CONDITIONAL_TEMPORAL_PROJECTION` | 双时态/来源方法和可删除图投影 | 无性能瓶颈前不引入 Neo4j/FalkorDB；Kuzu 路线不采用 |
+| [OpenViking](https://github.com/volcengine/OpenViking) | 主项目 AGPL-3.0 | `REFERENCE_OR_EXTERNAL_ONLY` | 与 MemOS 的方法对照 | AGPL 代码不进入核心；不与 MemOS 双生产运行 |
+| [Studyield](https://github.com/studyield/studyield) | AGPL-3.0；项目较新 | `RESEARCH_ONLY` | Teach-back/考试克隆/多语言思路 | 不复制代码或作为核心依赖 |
+
+## 5. 解析、锚点与来源合同
+
+### 5.1 `SourceObject/v2`
+
+- immutable `source_id`、content digest、media type、rights、ingest actor/time；
+- original bytes 在受控外部存储，仓库不保存大资产；
+- version chain、fixity algorithm、storage pointer、encryption/backup class；
+- parser/model/adapter 只生成 derivative，不覆盖原件。
+
+### 5.2 `Anchor/v2`
+
+吸收 Web Annotation selector：
+
+- 文本：`TextQuoteSelector(exact,prefix,suffix)` + 位置辅助；
+- PDF/文档：page/region/text quote + source version；
+- 图像：xywh/shape region；
+- 音视频：time fragment + transcript span；
+- Web：canonical/via + captured state/time；
+- 所有 Anchor 必须绑定 source digest，源变化后标 `STALE` 并尝试受控 re-anchor，不静默漂移。
+
+### 5.3 `Provenance/v2`
+
+内部 schema 保持轻量，同时提供 PROV-O 映射：Source/Knowledge 为 Entity，解析/评审/生成/教学为 Activity，人/模型/adapter 为 Agent。每个派生物可回答“谁、何时、用什么版本、从哪些材料、为何生成”。
+
+## 6. 最终任务 DAG
+
+### AXR-000 — 安装本包并冻结当前事实
+
+- 优先级/状态：`P0 / TODO`
+- 动作：重读远端/local SHA、branch、dirty、CI、Release、安装版、DB schema、生产 UI/壳入口；本包成为仓内唯一 current 前向 TaskPack。
+- 输出：Current Reality Matrix，分 `structural/local runtime/exact-SHA CI/installed Windows/public release`。
+- 验收：旧 handoff、历史 ASR/VLM 数字与当前证据分栏；索引/正文/hash/owner/supersedes 可验证。
+
+### AXR-010 — PDF.js、SBOM、双壳与发布供应链 P0
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：AXR-000。
+- PDF：升级到官方修复线，`isEvalSupported:false`，限制危险 `innerHTML`/脚本行为，worker 隔离、CSP 和恶意 PDF fixture。
+- SBOM：从 canonical `frontend`、根 `src-tauri`、Python lock、vendored PDF.js、模型、二进制、字体/资产生成；PURL/NOTICE 与 Release 同步。
+- 壳：唯一主产品 root；Recovery Shell 使用不同 product name/identifier/installer channel，或退化为非发布工具；构建/升级/卸载入口无歧义。
+- 验收：漏报夹具使门禁失败；恶意 PDF 不执行脚本；两个壳不能覆盖同一安装标识；干净 Windows 升级/回滚读回。
+
+### AXR-020 — 双掌握语义、数据库和 API 安全修复
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：AXR-000。
+- 动作：实现 MachineCompetence V2 与 `NONE`；修复 sqlite Row；`/tick` 只接受 node/learner/action intent/idempotency，不接受决定状态的 human/machine/verified/supersede/contradiction。
+- 推导：服务端从签名/授权 append-only receipts、知识状态和 learner scoped events 计算 M/K/E。
+- 迁移：保存原 V1 值与迁移理由；无法证明不升格；支持 rollback。
+- 验收：每级正/反例、乱序、重复、撤销、争议、重启、损坏 DB、跨 learner 注入；伪造 M7/K8/verified 必须 4xx。
+
+### AXR-030 — Source/Anchor/Provenance/Archive V2
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：AXR-010、AXR-020。
+- 动作：在现有对象上演进；实现 Web Annotation selector 子集、PROV-O 映射和 OCFL-compatible export/validate PoC。
+- 规则：原件不可被解析器覆盖；派生内容绑定 parser/model/version/config；re-anchor 失败显示 STALE；rights 不明不得自动进入训练/发布。
+- 验收：PDF/text/image/audio 各一 fixture；源版本变化、selector 漂移、文件损坏、归档重建和 digest 不匹配全覆盖。
+
+### AXR-040 — DeepTutor 产品底座、UI Contract v2 与人类学习黄金纵切
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：AXR-020、AXR-030。
+- 先锁定 DeepTutor 稳定发布版并在 Windows 跑通原生黄金流程；将六空间合同映射到其现有 Shell/Chat/Book/Knowledge/Space/Settings，只补 ArcheAxis 独有的 Inspector、Evidence Review、Activity/Job 和来源锚点，不重写通用页面。
+- 黄金流程：导入→精确阅读/批注→证据审核→问答→quiz/teach-back→FSRS 队列→掌握图→学习路径→项目迁移→反思。
+- 测试：Playwright 浏览器与 Tauri WebView 点击、视觉基准、axe、键盘/焦点、缩放/高 DPI、窗口恢复、reduced motion、长文/空态/错误态。
+- 验收：关闭重开后 source/anchor/note/review/FSRS/mastery 一致；不存在仅靠聊天完成主任务；当前正在使用的 CSS 类全部有契约或被移除。
+
+### AXR-050 — 多格式导入 Adapter 层
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AXR-030。
+- 路由：现有 parser 为基线；Docling 处理复杂 layout/table/formula；MarkItDown 处理轻量 Office/HTML/EPUB fallback；faster-whisper 处理音频。三者都输出中间 derivative，再映射 ArcheAxis 对象。
+- bake-off 数据集：born-digital PDF、扫描 PDF、DOCX/PPTX/XLSX、EPUB、legacy `.doc`、中英音频、含表格/公式/图片的恶意/损坏文件。
+- 验收：结构/锚点/速度/内存/离线/rights/失败恢复有量化矩阵；插件与远程 I/O 默认关闭；不支持格式给用户明确 UX。
+
+### AXR-060 — Learning Event、FSRS/BKT 与可重放学习内核
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AXR-020、AXR-040。
+- 动作：统一 append-only LearningEvent；FSRS 只负责复习调度，BKT/测验只提供估计；HumanLearningState 由事件与版本化算法推导。
+- 兼容：提供 xAPI 2.0 profile 导出，不要求部署 LRS。
+- 验收：时区/夏令时、参数升级、重复 review、离线同步、撤销、learner 隔离、重放一致；算法版本变化不改写历史事件。
+
+### AXR-070 — 人→AI 证据化蒸馏闭环
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AXR-020、AXR-030。
+- 流程：人的纠错/访谈/案例/复盘→Claim/Anchor→跨案例与负例→rights/conflict→DistillationCandidate→沙箱 eval→人工批准→版本化 MachineKnowledge/SkillCandidate。
+- 修复：删除“learner mastered→MachineKnowledge 占位”的自动提升；最多创建未验证 candidate。
+- 验收：至少 3 个独立案例与 1 个反例；批准前 Hermes/DSH 不可调用；撤销/supersede 后投影失效；每次机器 K 提升都引用真实 eval receipt。
+
+### AXR-080 — AI→人教学闭环
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AXR-040、AXR-060。
+- 动作：从 verified knowledge 生成有锚点的教学计划、例题、quiz、teach-back rubric 和迁移任务；教师实现 `TeachingCapability`，只提交 proposal/result，不写学习真值。
+- DeepTutor：作为正式产品壳和默认 TeachingCapability；通过 `ArcheAxisAuthorityAdapter` 提交 proposal/result/learning event。OpenTutor 只提炼经 bake-off 证明的学习块缺口。更换教师或删除 DeepTutor 投影不能改变历史 learner events。
+- 验收：引用可回原件；过期/争议知识优先触发 evidence review；只有用户行为与授权评估收据更新 HumanLearningState。
+
+### AXR-090 — 机器运行记忆与技能投影
+
+- 优先级/状态：`P2 / CONDITIONAL`
+- 依赖：AXR-070。
+- 首选 PoC：MemOS 作为可删除的 Hermes/DSH runtime projection；消费已批准 MachineKnowledge/Skill，返回成功/失败 candidate receipt。
+- Graphiti：只有 SQLite/现有图查询达到已量化瓶颈才做 temporal projection。
+- OpenViking/Studyield：仅研究或独立外部比较，不进入核心。
+- 验收：删除投影 DB 后可从 ArcheAxis 重建；投影不可写 verified truth；技能新版必须在固定真实任务集优于旧版且可一键回退。
+
+### AXR-100 — Job Center、ASR、取消与桌面恢复
+
+- 优先级/状态：`P1 / BLOCKED_RUNTIME`
+- 依赖：AXR-040、AXR-050。
+- Job：真实 queued/running/retrying/cancel_requested/cancelled/failed/succeeded；SSE 时间线、进度、retry/replay、lease、幂等与持久化。
+- ASR：安装版上传→faster-whisper/替代器→时间戳 Anchor→人工真值 WER→证据复核→重启读回；旧 mp3 数字只作基线。
+- Windows：备份/恢复、升级、卸载保留、重装读回；无签名证书时保持 `BLOCKED_SIGNING`。
+- 验收：进程级取消而非只改 UI；崩溃/断电/损坏输入/模型缺失/重启可恢复；不静默丢任务。
+
+### AXR-110 — 开源供应链与历史资产减法
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AXR-000、AXR-010。
+- 范围：当前 ledger、旧 101 项池、当前约 46 项账本、学习来源、vendored code、模型、optional dependencies、研究文档。
+- 状态：`ACTIVE_CODE / ABSORBED_METHOD / ADAPTER / SIDECAR / REFERENCE / QUARANTINE / REMOVE_ACTIVE`。
+- 规则：同名身份未解析、无 commit/license/consumer/test 的条目退出 current view；Paperless 误项、Phoenix 许可误称、Kuzu 核心候选和通用 Agent/RAG UI 核心声明继续拒绝。
+- 验收：SBOM/NOTICE/rights/model license 完整；引用类不安装依赖；物理删除前有来源卡、派生物、反向依赖、恢复 commit 和 Owner 批准。
+
+### AXR-120 — DESIGN-LAB 双向学习试点
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AXR-070、AXR-080；DESIGN-LAB 对应知识候选和生产收据任务。
+- 场景：人教授一条有证据的设计判断→ArcheAxis review/verify→DESIGN 在真实 brief 使用→返回 artifact/quality/production receipt→ArcheAxis 更新机器能力并生成用户学习建议。
+- WORK 只传执行/上下文收据，不裁决知识或设计。
+- 验收：同一 knowledge ID 可追踪人的学习、AI 使用、失败、修订、撤销和 supersede；任一 sidecar 离线时核心记录不丢。
+
+### AXR-130 — 核心发布门
+
+- 优先级/状态：`P2 / TODO`
+- 依赖：本期批准的 AXR-010～120。
+- 发布前必须证明：原件→锚点→证据→知识、人类学习、AI 教学、人→AI 蒸馏、机器能力评估是同一持久化状态机，不是多个 demo。
+- 门禁：Python/DB/migration/security、frontend、Playwright/a11y/visual、Tauri/Windows、SBOM/NOTICE、backup/restore、exact-SHA CI/Release。
+- 验收：公开声明不高于最弱证据；未完成长期能力继续标 roadmap，不包装为当前产品。
+
+## 7. 执行波次
+
+| 波次 | 任务 | 放行条件 |
+|---|---|---|
+| Safety | AXR-000、010、020 | 安全供应链与掌握真值修复；客户端不能伪造状态 |
+| Truth | AXR-030、060 | 原件/锚点/来源/学习事件可重放 |
+| Product | AXR-040、050、100 | 真实学习黄金纵切、多格式与桌面 Job 诚实运行 |
+| Bidirectional | AXR-070、080 | 人→AI、AI→人分别有证据门 |
+| Projection | AXR-090（可选）、110 | sidecar 可删除；开源 active 面收敛 |
+| Proof | AXR-120、130 | 真实设计试点与 Windows 发布闭环 |
+
+在 WORK-LAB 完成短期 G0/Truth 冻结后，ArcheAxis 是三项目下一主线；不得因同时扩张 DESIGN 和 WORK 而拖延本项目 P0。
+
+## 8. 强制证据包
+
+每项任务至少交付：task/base SHA、迁移前后 DB schema/hash、命令与 exit code、测试层级、浏览器/Tauri 读回、失败路径、rollback、source/anchor/provenance fixtures、开源 commit/SPDX/SBOM，以及 exact-SHA receipt。模型/解析器还必须记录权重 revision、hash、模型许可、硬件、峰值内存、延迟和退出策略。
+
+## 9. 最终完成定义
+
+本轮只有在以下条件同时成立后才可称为 ArcheAxis 核心闭环：
+
+- Machine K 表示最高已达到能力，`NONE`/K0～K8 与真实收据一致；
+- 客户端不能自报 human/machine/verified/contradiction 来改变状态；
+- sqlite 真实 API、迁移、重启与 learner 隔离通过；
+- Source、Anchor、Provenance、rights、fixity 与版本可回读；
+- PDF.js、安全 SBOM、主壳/恢复壳和 Windows 发布入口闭合；
+- 学习黄金纵切在浏览器和 Tauri 可点击、可恢复、可访问；
+- FSRS/BKT/教学只产生学习证据，不自动验证知识；
+- 人→AI 与 AI→人各有真实失败、人工门、撤销和回滚；
+- 任何 sidecar 删除后可从核心重建，不丢知识/学习真值；
+- 公开 release、README、状态页与 exact-SHA 证据一致。
+
+## 10. 明确禁止
+
+- 禁止把 ArcheAxis 改成 Agent OS、普通 RAG、聊天主页或文件管理器。
+- 禁止 retrieval、模型自评、用户掌握或外部 README 自动产生 verified knowledge/skill。
+- 禁止让 DeepTutor、MemOS、Graphiti、Docling 或任何 LLM 写核心真值。
+- 禁止整仓并入 AGPL 项目或同时生产运行多个记忆真源。
+- 禁止在未量化瓶颈前引入 Neo4j/FalkorDB 等重基础设施。
+- 禁止把历史 ASR/VLM/demo、schema pass 或路由 200 写成产品闭环。
+- 禁止将大模型权重、原始个人资料、私有会话或凭据提交 Git。
+
+## 11. 官方调研来源
+
+- [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/)
+- [W3C PROV-O](https://www.w3.org/TR/prov-o/)
+- [OCFL 1.1 Specification](https://ocfl.io/1.1/spec/)
+- [py-fsrs](https://github.com/open-spaced-repetition/py-fsrs)
+- [xAPI 2.0](https://opensource.ieee.org/xapi/xapi-base-standard-documentation)
+- [Docling](https://github.com/docling-project/docling)
+- [MarkItDown](https://github.com/microsoft/markitdown)
+- [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+- [DeepTutor](https://github.com/HKUDS/DeepTutor)
+- [OpenTutor](https://github.com/zijinz456/OpenTutor)
+- [MemOS](https://github.com/MemTensor/MemOS)
+- [Graphiti](https://github.com/getzep/graphiti)
+- [OpenViking](https://github.com/volcengine/OpenViking)
+- [Studyield](https://github.com/studyield/studyield)
+
+研究时间点更新为 2026-08-26；执行时必须锁不可变版本并复核模型权重和转依赖许可。
+
+## 12. R2 OSS 快速成品化增补（取代与其冲突的 R1 条款）
+
+### 12.1 唯一产品路线
+
+```text
+DeepTutor downstream product shell
+               |
+     ArcheAxisAuthorityAdapter
+               |
+ Source / Anchor / Claim / Evidence
+ HumanLearning / MachineCompetence truth
+               |
+Docling + sqlite-vec + py-fsrs + faster-whisper
+```
+
+- DeepTutor 负责完整学习产品体验；ArcheAxis 不再自己重写 Chat、Quiz、Research、Book、KB 和通用设置。
+- ArcheAxis 的 Source、Anchor、rights、provenance、知识状态、人类学习和机器能力仍为唯一真值。
+- DeepTutor KB/Memory、向量索引、Book 指纹和 session 可作为缓存/投影；删除后必须可由 ArcheAxis 对象和事件重建。
+- 当前 React/Tauri 主壳转为迁移期 `LEGACY_COMPAT`；黄金流程迁移后停止双线功能开发。
+
+### 12.2 72 小时执行单
+
+1. 锁 DeepTutor 稳定版、Docling、sqlite-vec、py-fsrs 和 faster-whisper 的 tag/commit、hash、SPDX 与数据目录。
+2. 在 Windows 原样安装 DeepTutor，使用专用 workspace 跑通导入、带引用问答、Quiz、Book/Notebook、退出和重启。
+3. 以一份公开 PDF/DOCX 建 `SourceObject`，让 Docling derivative 和 DeepTutor citation 映射到 `Anchor/v2`；无法定位的引用必须显示 `UNANCHORED`。
+4. 把一次 Quiz/teach-back 转为 append-only `LearningEvent`，用 py-fsrs 生成复习计划；禁止 DeepTutor 直接提交 verified/Machine K 值。
+5. 删除 DeepTutor 测试 KB/索引后从 ArcheAxis 重建，证明没有第二知识真源。
+
+若 DeepTutor 48 小时内不能在目标 Windows 环境完成原生黄金流程，才允许退回 OpenTutor 或现有壳；退回必须有安装失败证据，不能因需要写 Adapter 就放弃复用。
+
+### 12.3 14 天发布门
+
+发布 `ArcheAxis 0.1-usable` 必须证明：
+
+- 导入真实 PDF/DOCX，保留原件 hash、rights、版本和备份；
+- Docling 输出映射为精确 Anchor，引用能回到页/区域/文本；
+- DeepTutor 完成阅读/问答/Quiz/teach-back/Book 中至少四项；
+- HumanLearning 与 MachineCompetence 永久分离，伪造 verified/K 值被拒绝；
+- FSRS 队列和 LearningEvent 关闭重开、算法重放一致；
+- provider/解析失败、源变更、锚点 stale、取消和回滚均有用户可见状态；
+- Windows 安装、备份、恢复、卸载、SBOM/NOTICE 完整。
+
+在上述闭环通过前，冻结 3D/VR/AR、第二 Tutor、第二图数据库、第二记忆引擎、通用 Planner 以及现有壳的新通用页面。

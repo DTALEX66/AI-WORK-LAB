@@ -1,0 +1,188 @@
+# ArcheAxis 前端重构与界面生成提示词
+
+**版本：2026-08-21**  
+**适用：ArcheAxis Knowledge v0.6.0 最小可信闭环**
+
+## 1. 结论
+
+这批历史界面不应推倒。它已经形成了很成熟的视觉语法：统一 Desktop App Shell、左侧主导航、情境二级导航、可关闭的右侧 Context Inspector、底部 Activity & Receipts Dock，以及“原件—锚点—证据—结论—学习”的可追溯工作方式。
+
+重构的原则是 **复用结构与交互语言，校正产品边界与交付阶段**。ArcheAxis 不是 Agent Runtime、模型市场、聊天/RAG 壳、任务调度器或监控大屏。
+
+v0.6 的页面要服务于：
+
+`导入原件 → 本地转换与损失报告 → 原文/转换对照 → 锚点 → Candidate → 人工审核 → Evidence Bundle / Verified Knowledge → 学习记录 → 导出`
+
+## 2. 历史界面资产的取舍
+
+| 历史结构 | 新状态 | v0.6 的正确用途 |
+|---|---|---|
+| 工作台总览、资料库、通用摄取 | P0 保留 | 唯一入口、资料与转换主链 |
+| 并排差异阅读器 | P0 保留并强化 | 原件/转换/差异/锚点的核心可信界面 |
+| Claim 证据工作台、审核队列 | P0 保留并校正 | Candidate、审核、支持/反驳/范围/结论，不可覆盖历史 |
+| 任务与回执恢复 | P0 保留但通用化 | 导入/转换失败恢复；不恢复音频转写 |
+| 能力矩阵设置 | P0 保留 | 真实能力、依赖、限制、最近验证；绝不伪造可用状态 |
+| AI 资产注册表 | P1 简化保留 | Machine Knowledge、Evaluation、Model Reference；没有 Invoke/Agent 操作 |
+| 关系图 Canvas | P1 只读视图 | 关系表优先，二维图谱只是辅助阅读，不做 3D 宇宙图 |
+| 学习主页、复习 | P1 最小保留 | 笔记、学习卡、Teach Back 的证据回链 |
+| Teach Back | P2 预留 | 只冻结数据契约与界面入口，暂不成为发布阻塞项 |
+| 动态课件、课件编辑器 | Future | 仅在能力矩阵显示 Planned，不实现时间线/渲染引擎 |
+| 空间记忆、3D、VR/AR | Future | 不生成、不实现、不占用 v0.6 导航主位 |
+| 音频/视频 ASR | Deferred | 不自动恢复；仅显示“当前版本未启用”与原件安全状态 |
+
+## 3. 统一布局系统（必须复刻）
+
+- Window：桌面优先，基准画板 `1440 × 960`，在 `2560 × 1440` 下舒展。
+- Top App Bar：60px。品牌、工作区、全局搜索、本地状态、原件安全、窗口控制。
+- Primary Rail：92px。只放六个一级区：工作台、资料库、证据、学习、AI 资产、设置。
+- Context Navigation：在资料/证据/学习/设置中出现的第二导航，220px，可随所在一级区替换。
+- Main Canvas：最宽区域，页面的主要工作面，不堆叠无意义卡片。
+- Context Inspector：右侧 300–360px，可收起。永远解释“当前对象从哪里来、当前状态、下一步可做什么”。
+- Activity & Receipts Dock：底部 44–56px，可展开。显示真实处理回执、失败、审核与本地保存，而不是 DevOps 指标。
+
+右侧 Inspector 和底部 Dock 是整套系统最重要的跨页面复用组件。它们让资料、证据、知识、学习和 AI 资产在不同页面里保持上下文连续。
+
+## 4. 视觉系统
+
+### Light Workspace（默认）
+
+- 背景：`#F7F8FA` / 接近白的冷灰。
+- 面板：`#FFFFFF`；边框：`#E8EBF0`；阴影极轻。
+- 主文字：`#171B24`；次文字：`#687386`。
+- 品牌与主操作：`#216CF3`，只用于当前导航、主按钮、可点击证据链接。
+- 已验证/支持：`#1E9B62`；候选/处理中：`#2B72E9`；审核/待补充：`#E9931A`；反驳/失败：`#D94D50`；实验/未来：`#7B61D1`。
+
+### Dark Focus Mode（仅深度阅读、证据工作台、关系视图）
+
+- 背景：`#091521` 至 `#0C1B2B`，不是纯黑。
+- 面板：`#101F30`；边框：低对比蓝灰；阅读器原件保持纸白。
+- 蓝色仅作品牌焦点；绿色/红色/琥珀严格对应证据语义。
+
+### 禁止
+
+- 不能做普通 ChatGPT 对话页、RAG 问答页、Agent Fleet、模型下载市场、Token 成本大屏。
+- 不能使用蓝紫霓虹、玻璃拟态、营销 Hero、大块渐变、Bento 卡片瀑布、3D 地球或宇宙知识图。
+- 不要将所有信息装进卡片；高密度资料优先使用表格、层级列表、工作台分栏。
+
+## 5. 页面任务包与生成顺序
+
+### FE-00 Design System & App Shell（P0）
+
+建立单一应用壳、上述 7 区布局、Light/Dark tokens、状态语义、数据表、详情抽屉、Evidence chip、Anchor chip、Receipt row、Activity Dock。先完成这个，后续页面不得各自发明布局。
+
+### FE-01 Workspace Overview（P0）
+
+复用“工作台总览”的持续工作、待审核、学习上下文、最近资料，但删除旧的 AI 资产候选大卡。核心变成“当前可信链路”：最近导入、转换异常、待审核 Candidate、已验证知识、下一步学习/导出。右侧显示当前来源与安全、关联 Evidence Bundle、建议下一步。
+
+### FE-02 Universal Intake（P0）
+
+复用“五步处理计划”的纵向步骤界面：
+
+1. 原件与授权；
+2. 格式识别与转换计划；
+3. 解析质量与损失报告；
+4. 锚点与候选提取范围；
+5. 人工复核去向。
+
+默认 Tier A：PDF、DOCX、PPTX、XLSX、Markdown/Text、HTML、JSON/CSV、PNG/JPEG/WebP。`.doc`/音频/视频需显示降级或未启用，不能伪装可用。
+
+### FE-03 Source Archive（P0）
+
+复用资料库表格 + 右侧详情。资料列表显示原件、派生文档、转换状态、锚点数量、损失报告、最后验证时间。右侧 Inspector 展示 SHA-256、原件只读保全、派生产物、页锚点、回执；操作为“查看原件 / 打开转换结果 / 查看损失报告 / 创建 Candidate”，不要有不受控删除。
+
+### FE-04 Focus Reader / Difference Reader（P0）
+
+将并排差异阅读器作为主产品界面。左边：页缩略图；中左：原件；中右：转换文本与差异；右边：Evidence / Claim / 引用 / 学习四个 Tab。原件和转换文本之间展示删除、插入、修改三类差异及坐标锚点；点击任一证据可定位回原件页和区域。底部显示转换版本、保存状态、时间戳和不可变 Receipt。
+
+### FE-05 Evidence Workbench & Review Queue（P0）
+
+复用深色 Claim C-017 工作台，但将功能落在可审计决策：顶部是 Claim + 支持/反驳/背景/不适用/待补证计数；中间为按证据角色分层的 Evidence rows；右侧是人工结论、独立性、时效、适用范围、冲突说明、决定理由、版本影响。
+
+固定底部动作：批准为 Verified、维持 Candidate、标记证据不足、记录冲突、驳回、请求补充证据。所有动作追加到决定历史，不能静默覆盖 Claim。
+
+### FE-06 Learning Vault（P1）
+
+复用学习主页、专注复习与 Teach Back 的“证据回链”结构，缩到可交付的学习卡、笔记、复习队列、一次简单 Teach Back。每张学习卡与回答必须有 Evidence Bundle 和原件锚点链接。动态视觉课件、空间记忆、VR/AR 显示为 Planned，不实现编辑器。
+
+### FE-07 AI Asset Vault（P1）
+
+复用 AI 资产注册表的表格、生命周期、右侧详情、评测摘要，但将 `Invoke` 改为 `View provenance` / `View evaluation` / `Approve reference`。模型显示为跨项目共享库的只读 `Model Reference`；ArcheAxis 不下载、不托管、不运行 Agent。
+
+### FE-08 Settings / Capability Matrix / Job Recovery（P0）
+
+复用能力矩阵、失败恢复页面。Capability Matrix 必须显示真实 adapter 状态、依赖、限制、最近验证、下一步；Job Recovery 适用于任意资料导入/转换任务，保存原件和中间版本，允许从失败节点恢复或转人工审核。音频转写不应出现在运行队列中。
+
+## 6. 交互与数据约束
+
+- 一切重要对象均可点入详情，详情可回到原件/锚点/处理回执。
+- `Source` 永不被修改；`Derived Artifact` 有版本；`Candidate` 可被替代但历史保留；`Verified Knowledge` 必须有支持证据与决定记录。
+- 任何 AI 输出显示为 Candidate，不能显示“自动确认”。
+- 所有核心界面使用真实的空、加载、失败、缺少锚点、等待审核和已验证状态。
+- 全局搜索命中 Source、Evidence、Claim、Knowledge Unit、Learning Artifact、AI Asset Reference，并按可信层级分组。
+
+## 7. 主生成提示词（代码型界面生成模型）
+
+```text
+你是一名顶级桌面端产品设计师和 React + TypeScript 工程师。根据我附上的 ArcheAxis 历史界面图，直接生成一套完整、可运行、可导航的 ArcheAxis Knowledge v0.6 前端。不要先解释产品，不要给线框图，不要只输出页面描述；输出完整前端源码和最小启动说明。
+
+产品名称：ArcheAxis Knowledge｜星环知识平台。
+内部工作台：ArcheAxis Learning Workspace。
+技术：React、TypeScript、Vite、Tailwind CSS、可复用的 shadcn/ui 风格组件、lucide 图标、纯本地 mock data、为 Tauri Desktop App Shell 设计。
+
+产品定位：本地优先、原件永久保全、证据驱动的人类与 AI 共享学习与可信知识治理系统。核心不是聊天、Agent 调度、模型市场或普通 RAG。页面必须让用户看见并操作：Source → Conversion → Anchor → Candidate → Human Review → Evidence Bundle / Verified Knowledge → Learning → Export。
+
+将参考图中的结构语言继承下来：60px 顶部栏、92px 一级左导航、按区域出现的 220px 二级导航、主工作画布、300–360px 可收起的 Context Inspector、44–56px 可展开的 Activity & Receipts Dock。不要逐像素复制旧图；按下面的 v0.6 范围重组。
+
+一级导航只有：工作台、资料库、证据、学习、AI 资产、设置。所有页面使用一个唯一 App Shell。
+
+默认 Light Workspace：#F7F8FA 背景、白色面板、1px #E8EBF0 边框、主文本 #171B24、次文本 #687386、品牌蓝 #216CF3、验证绿 #1E9B62、审核琥珀 #E9931A、反驳/失败红 #D94D50、实验紫 #7B61D1。深度阅读、证据工作台、关系视图允许使用克制的深蓝黑 Focus Mode #091521，但不能有霓虹或赛博朋克效果。不要玻璃拟态、渐变营销页、Bento 卡片瀑布、Token/成本仪表盘、聊天主界面、3D 宇宙图。
+
+生成以下真实可路由页面和交互：
+1. Workspace Overview：持续工作、待审核 Candidate、转换异常、最近已验证知识、下一步学习/导出；右侧展示来源安全、当前 Evidence Bundle、建议动作。
+2. Universal Intake：五步纵向流程：原件与授权、格式与转换计划、解析质量与损失报告、锚点与候选提取范围、人工复核去向。Tier A 仅展示 PDF、DOCX、PPTX、XLSX、Markdown/Text、HTML、JSON/CSV、PNG/JPEG/WebP。音频和视频必须显示“当前版本未启用”，不能假装处理。
+3. Source Archive：高质量资料表格、筛选、文件类型、原件/派生文档、转换状态、锚点数量、损失报告、最后验证时间；右侧详情显示 SHA-256、只读原件、派生文档、页锚点、处理回执。
+4. Focus Reader：左页缩略图 + 中左原件 PDF + 中右转换文本与差异 + 右 Evidence/Claim/引用/学习 Tab。差异有删除、插入、修改语义；任一锚点和证据可以定位回原件页与区域。底部有不可变 conversion receipt。
+5. Evidence Workbench：Focus Mode；Claim 顶部计数支持/反驳/背景/不适用/待补证；中间 Evidence rows；右侧人工结论、来源独立性、时效、适用范围、冲突说明、决定理由、版本影响。底部动作：批准为 Verified、维持 Candidate、证据不足、记录冲突、驳回、请求补证；每次操作都追加决定历史。
+6. Review Queue：按风险、冲突、缺少锚点、待人工审核分组，进入 Claim 详情。
+7. Learning Vault：最小学习卡、笔记、复习队列、一次 Teach Back；每项必须显示 Evidence Bundle 与原件锚点。动态课件、空间记忆、VR/AR 只能显示 Planned，不能实现编辑器。
+8. AI Asset Vault：表格型资产注册表，包含 Machine Knowledge、Evaluation、Execution Trace、Model Reference；模型来自共享 Model Library，只有只读引用、许可、版本、评测与本项目允许状态。不能有下载模型、Invoke、Agent 控制。
+9. Settings：四库路径、健康状态、Adapter capability matrix、外部适配器、导出/备份。Capability Matrix 显示真实状态：Available / Partial / Experimental / Planned / Blocked / Unknown、依赖、限制、最后验证、下一步。
+10. Job Recovery：通用导入/转换任务的失败恢复。保留原件、工作版本、失败阶段、日志摘要、可恢复动作或转人工审核。不能出现音频自动续跑。
+
+实现所有页面导航、筛选、右侧抽屉、详情页、导入弹窗、审核动作、状态切换、底部活动回执、空状态与失败状态。不要用假按钮。使用中文界面为主，同时保留 Source、Evidence、Claim、Evidence Bundle、Verified、Candidate 等关键对象英文名。生成整套项目目录。
+```
+
+## 8. 图像模型使用顺序
+
+每次只生成一张，不要让图像模型在一张图里做所有界面：
+
+1. `FE-00 + FE-01`：先验证统一 Light App Shell 与总览；
+2. `FE-04`：再生成 Dark Focus 并排阅读器；
+3. `FE-05`：证据工作台；
+4. `FE-02 + FE-03`：摄取与资料库；
+5. `FE-08`：能力矩阵与失败恢复；
+6. `FE-06 + FE-07`：学习与 AI 资产；
+7. 关系图只做 P1 的阅读辅助；未来能力不要生成成 v0.6 页面。
+
+## 9. 单页图像生成提示词：FE-04 Focus Reader
+
+```text
+高完成度 Windows 桌面端可信知识工作台 UI，产品为 ArcheAxis Knowledge｜星环知识平台，内部名称 ArcheAxis Learning Workspace。参考专业文献阅读器、证据审查工作台和高端本地桌面软件，完整窗口 1440×960，真实可实现的 UI 设计稿。
+
+深蓝黑 Focus Mode：背景 #091521，面板 #101F30，低对比蓝灰边框，品牌蓝与证据语义色点缀；中央 PDF 原件保持纸白。不要赛博朋克、霓虹、玻璃拟态、聊天框、仪表盘、Agent 或机器人。
+
+顶部 60px App Bar：左侧 ArcheAxis Knowledge 标志和 ArcheAxis Learning Workspace；中间全局搜索框；右侧本地模式绿点、原件安全、窗口控制。左侧 92px 主导航：工作台、资料库、证据、学习、AI 资产、设置；资料库处于蓝色高亮。第二栏约 220px，显示一份 PDF 的页缩略图，第 7 页被选中。
+
+主体是四栏证据阅读器。中左为 PDF 原件页，第 7 页，正文有少量琥珀色高亮区域与精确坐标锚点；中右为“转换文本 v2”，内容同源，显示插入绿色、删除红色、修改琥珀色的并排差异；右侧 Inspector 有 Evidence、Claim、引用、学习四个 Tab，Evidence Tab 激活，展示关联 Claim、支持证据、反驳证据、适用范围、定位到原件锚点按钮。底部全宽 Receipt Bar：转换完成（本地）、旧版本已保留、转换版本、时间戳。中文 UI 为主，少量 Source / Evidence / Claim 英文对象名，文字清晰、无乱码、信息密度高但克制。
+```
+
+## 10. 单页图像生成提示词：FE-05 Evidence Workbench
+
+```text
+高完成度桌面端 Evidence Workbench，ArcheAxis Knowledge｜星环知识平台，1440×960，深蓝黑可信知识治理工作台。继承专业审查软件的细密表格、明确证据语义和可追溯结构；不要聊天界面、Token/成本监控、霓虹、玻璃、营销卡片。
+
+顶部是统一 ArcheAxis App Bar，左侧主导航中“证据”高亮。内容顶部是 Claim C-017 标题与原件页码/坐标定位按钮；右侧横向证据计数链：支持 2、反驳 1、背景 2、不适用 1、尚未明确 1。
+
+中间主区域为五类 Evidence rows：绿色支持、红色反驳、蓝色背景、琥珀不适用、灰色待补证。每条证据显示来源名称、原文锚点、独立性、发布日期、适用范围、关键摘录和“查看原文”。右侧固定人工结论 Inspector：来源独立性、时效与适用范围、冲突说明、决定理由、版本影响、不可变审查历史。底部固定动作栏：批准为 Verified、维持 Candidate、标记证据不足、记录冲突、驳回、请求补充证据。按钮色彩严格遵循语义；“批准”并非自动 AI 决策，显示 human review required。
+```
+

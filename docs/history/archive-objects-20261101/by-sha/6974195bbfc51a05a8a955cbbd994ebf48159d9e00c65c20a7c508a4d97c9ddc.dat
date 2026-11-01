@@ -1,0 +1,246 @@
+# ArcheAxis 更新审计与整改清单
+
+审计日期：2026-09-05。仓库：DTALEX66/ArcheAxis-Knowledge-OS。
+
+**结论：更新是真实的，Rust 主核心已落地；现有代码可以继续吸收和修复，不需要再次重开项目。但当前只能认定为“底座和部分流程已实现”，不能认定为“用户可用的 v0.1 全链路已完成”。优先修数据保存、任务一致性、恢复校验和桌面操作链。**
+
+## 1. 本次究竟审计了哪个版本
+
+| 项目 | 核验结果 |
+|---|---|
+| 云端 main | `e9a7d2db854da157138111dc1c772cee95c16647` |
+| 最新提交时间 | 2026-09-05 14:16:01 UTC |
+| Git tree | `5aac244a0ee0b9d47c0f6432bf2e4c9038d9c489` |
+| 上次比较基线 | `ce3c2de551bcaac52c8a26d012e6482c1a73a540` |
+| 增量 | 17 次提交；117 个文件；12,163 行新增、1 行删除 |
+| 最新发布版 | v0.6.14，发布于 2026-08-29；与新增 vNext 代码分开判断 |
+| 审计结束前复查 | main 仍为上述 SHA |
+
+核验了完整增量清单、新增 Rust 生产代码、C# 桌面与 Supervisor、Python worker、关键测试、契约/目录治理入口、状态文档、GitHub CI 作业及 main ruleset。采用独立检出，没有修改、提交或推送云端代码。
+
+本次属于更新增量审计，不能替代仓库外全部历史档案盘点、用户真实数据迁移验收或 Windows 图形界面验收。没有在当前环境重新编译 Rust/C#：环境中没有可用的 cargo、rustup、dotnet。编译依据来自已核验的云端运行；本地补充执行了 Python worker 和从 Rust 源码提取 SQL 的针对性复现，二者在下文明确区分。
+
+来源：[本次完整差异][compare]、[最新提交][head]、[最近发布版][release]。
+
+## 2. 新更新值得保留的内容
+
+- 新增 8 个 Rust crate，已有 store、domain、application、API、migration、archive 等真实实现，不再只是语言架构方案。
+- Avalonia 工程和 C# Supervisor 已存在；较早提交的云端构建与无头启动握手通过。
+- Python 文本提取脚本真实可执行，当前代码没有直接打开主数据库。
+- 已有知识类型词汇、个人定义保存、候选复核、基础 FTS、学习事件、SQLite 在线备份、JSONL 导出等可继续修正的实现。
+- 旧产品新增了备份时排除运行锁文件的修复及测试，应保留。这不等于旧产品所有 Windows 场景已经重新通过。
+- legacy 与 vNext 分开保存的方向正确；旧代码、行为样例、解析能力和旧发布版仍有吸收价值。
+
+此次审计没有发现需要推翻 **C#/Avalonia 桌面 + Rust Core + 隔离 Python 能力 worker** 的依据。当前问题集中在实现深度、跨层契约、数据一致性和验收真实性。继续换语言不能自动解决这些问题。
+
+## 3. 必须修复的问题
+
+这里的 P1 表示应在宣称用户闭环完成、承载重要真实数据或开放相应能力前解决；P2 表示需要跟进的质量与维护问题。功能缺口与代码缺陷均明确说明，不把计划中的能力伪装成已实现功能。
+
+### A01 · P1：导入成功，但原始内容没有持久保存
+
+API 解码 `content_base64` 后，调用 `import_source(..., None)`。该函数只保存 source ID、SHA-256、文件名和可选路径，没有保存传入字节；API 路径中的 `raw_path` 为 NULL。返回的 202 和 source ID 不能证明原文件已经进入工作区。删除外部原文件后，软件没有相应原始字节可供重新解析、定位或完整导出。[导入 API][api]、[source 实现][source]
+
+**修复：** Rust 将原始字节写入内容寻址对象目录，完成临时写入、哈希校验和原子发布，再持久登记 Source。明确文件系统与数据库之间的失败恢复和孤立对象清理。备份/导出包含原始对象。
+
+**验收：** 导入后移走外部原文件，重启真实 Core，仍可读取字节一致的原件；重复导入不重复存储；中途失败不能留下“成功但没有对象”的 Source。
+
+### A02 · P1：任务完成操作既不幂等，也不原子
+
+`jobs::complete` 先 UPDATE 为 completed，再 INSERT transform，没有事务和完成去重。重复提交同一任务会继续新增 transform；源引用无效时，后续外键失败却已留下 completed。`enqueue` 对重复 ID 使用 INSERT OR IGNORE，不能区分相同请求重放与不同载荷冲突。`fail` 还使用字符串拼接生成错误 JSON，包含引号的错误信息可产生无效 JSON。[任务实现][jobs]
+
+**修复：** 用一次存储事务验证任务状态、attempt、输入身份和输出哈希，登记结果并推进终态；设置稳定去重约束。同键同载荷返回原回执，同键异载荷拒绝；失败信息通过 JSON 序列化生成。完成后收到过期 attempt、重复结果或失败消息不得任意改写终态。
+
+**验收：** 重试两次仅有一份结果；注入结果写入失败时，任务不能保持 completed；覆盖重复 ID 异载荷、未知任务、过期 attempt 和含引号的错误。
+
+### A03 · P1：候选、人工接受和可信状态之间没有可靠边界
+
+API 接受客户端自填的 `status`、`created_by`；Domain 只检查知识类型，不验证初始状态和调用身份。默认 candidate 不能阻止调用者显式提交 verified。复核函数忽略旧状态，更新知识与写入复核事件分两次执行；modified 分支提前返回，没有追加复核事件和新旧修订关系。API 也未提供修改正文的字段。[知识 API][api]、[知识实现][knowledge]
+
+**修复：** 由 Core 根据受信任的调用入口决定 actor；机器输出只能形成候选或测量。人工接受只代表用户保留该项，不能隐含事实已证实。实施合法状态转换、expected revision 和事务化复核事件；编辑形成可追溯的新修订，保留旧内容及决策依据。
+
+**验收：** 机器入口不能直接提交 verified；旧版本复核被拒绝；复核事件写入失败时知识状态回滚；修改后能追溯原文与决定。个人定义、笔记、假设仍可无外部证据直接保存。
+
+### A04 · P1：归档恢复不检查哈希，失败可留下部分数据
+
+导出生成每表 SHA-256 和 manifest SHA-256，但 `restore_workspace` 只读取这些字段，没有重新计算和比对，也没有核对实际行数。`rows == 0` 直接跳过文件。恢复开始就打开或创建目标库，没有强制空目标或完整事务；中途失败可留下前面已插入的数据。导出逐表查询也没有固定同一个读事务，读取活跃工作区时存在跨表快照不一致风险。[归档实现][archive]
+
+SQLite 在线备份本身是有价值的；但现有 `verify_counts` 只比较五张表的数量，遗漏 jobs、review_events，不能证明正文、关系或原件一致。[备份与校验][backup]
+
+**修复：** 在固定快照导出；恢复前校验格式版本、全文件哈希、manifest、实际行数、对象哈希和关系约束。恢复到新的 staging 工作区，全部验证成功后才切换；失败保留当前工作区。不能用“传入 manifest 等于返回 manifest”替代内容验证。
+
+**验收：** 任改一字节、伪造行数、缺文件、版本不兼容、外键损坏都明确拒绝；失败后旧工作区可用；成功后全表、关系和原始字节往返一致。
+
+### A05 · P1：首次启动、工作区身份和进程超时存在缺口
+
+桌面默认数据库位于本机应用数据下的嵌套目录，但桌面和 `init_workspace` 都没有创建父目录。新机器目录不存在时 SQLite 无法打开。Supervisor 发现默认端口返回 2xx 就尝试复用，握手仅提取 runtime/contract 字符串，不校验期望值或工作区身份，因此可能连到其他工作区的 Core。20 秒 deadline 包在循环外，不能打断没有输出的 `ReadLineAsync`；stderr 被重定向但没有持续读取。[Supervisor][supervisor]、[桌面接线][windowcs]、[store][store]
+
+**修复：** 明确工作区创建流程；受控创建目录。启动时绑定工作区 ID、进程实例和一次性 launch token，实际校验兼容版本与就绪状态。给读取本身施加取消超时，持续消费日志，失败时清理自己创建的进程。打包后使用稳定的随包 Core 路径。
+
+**验收：** 空目录/首次安装能启动；不同工作区不被误复用；占用端口、无输出、异常退出可限时失败；窗口关闭后无遗留进程。当前无头 smoke 不能覆盖这些情况。
+
+### A06 · P1：桌面尚不能让用户完成业务流程
+
+`MainWindow.axaml` 仍显示 `Welcome to Avalonia!`，代码主要修改标题和启动 Core。不存在导入、原文显示、候选复核、检索、学习记录、导出恢复等操作界面。API 也缺少学习、导出和恢复等可供桌面调用的完整入口。[桌面界面][window]、[API 路由][api]
+
+**修复：** 用现有 Avalonia 壳逐步接入一条真实流程：建工作区 → TXT/Markdown 导入 → 原文与定位 → 个人笔记/机器候选 → 复核 → 检索回原文 → 一次学习记录 → 重启 → 导出恢复。先完成这条流程，再扩展格式和研究功能。
+
+**验收：** 在干净 Windows 环境中从可交付目录启动，无需开发终端或环境变量，实际点击完成整条流程。框架依赖的 dotnet publish 必须如实说明运行时前提；构建成功本身不等于可交付包合格。
+
+### A07 · P1：契约、worker 和运行接口尚未贯通
+
+worker 实际是接收文件路径、输出简单 JSON 的一次性脚本，没有实现声明中的 hello/request/response NDJSON 协议。实际输出缺少 response 必需的 schema、type、job_id、attempt、status、outputs 等字段。Core 没有从 queued 任务启动此 worker、传递输入、验证返回结果的执行链；journey 测试是手工构造 JSON 再 POST 回执。[worker][worker]、[worker 契约][workercontract]、[journey][journey]
+
+HTTP outline 与实现也不同，例如 multipart 对 JSON/base64、POST search 对 GET search、UUID 对自定义 ID；outline 声明 launchToken，但实现没有认证中间件。outline 已明确自称草案，这本身不是错误；错误在于把“草案已入库”报成“契约联通已完成”。[OpenAPI outline][openapi]、[API][api]
+
+**修复：** 冻结最小可执行接口，明确哪些尚为草案。实现 Core 调度、受限输入输出、超时取消、协议/哈希校验和事务回写；将 C#/Rust/Python 真实收发数据加入同一组契约测试。认证用于保护本机调用与工作区归属，不需要引入企业身份系统。
+
+**验收：** 从真实导入触发真实 worker 子进程；注入超时、崩溃、错 schema、错 hash 和过期 attempt，不能假成功。另需修正 worker 的损失说明：当前读取会将 CRLF 归一为 LF，却声称除去 BOM 外无转换。
+
+### A08 · P1：原文定位与检索回链尚不成立
+
+Anchor 接受任意 revision 和 position 字符串，没有校验修订存在、坐标有效或引用内容一致。Knowledge 创建 API 不接收 anchor/evidence 关联，搜索只返回知识 ID、状态和前 60 个字符；没有来源和可解析跳转位置。FTS 仅索引 knowledge，不索引原始/转换文本。每次搜索都删表内容并全量重建，会随数据量增长阻塞同一连接上的工作。[anchor][anchor]、[search][search]、[API][api]
+
+**修复：** 先建立真实 SourceRevision 与归一化文本，固定跨语言字符坐标规则，写入时校验 Anchor；返回来源修订、锚点和解析状态。分别索引原文与知识，采用增量维护；针对中文建立固定检索样例，选择通过样例的分词/索引方案。
+
+**验收：** 中文片段、组合字符、换行、正文修订后仍能正确定位或明确报告无法定位。当前默认 FTS 对“个人知识管理”检索“知识”的 SQL 复现为 0 条；不能用只搜索完整示例词证明中文检索质量。
+
+### A09 · P1：存储边界与版本检查未达到自身契约
+
+API 的 `Arc<Mutex<Connection>>` 确实在单个服务实例中串行使用一条连接，不能说它“每请求新建连接”。但该机制不是跨进程工作区所有权，也不是已实现的 WriterActor。store 向其他层返回裸 Connection；Domain 的 search 自建 FTS DDL，backup 直接创建可写连接，和“store 唯一 DDL”声明不符。[store][store]、[search][search]、[backup][backup]
+
+`init_workspace` 用 CREATE IF NOT EXISTS 和 INSERT OR IGNORE 初始化，没有在写入前验证已有 schema 版本。即使库声明版本 999，初始化 SQL 也不拒绝；API `/system/version` 仍报告编译常量 1。[store][store]、[API][api]
+
+**修复：** 收拢可写句柄、DDL、迁移和恢复入口；由 Core 管理写入队列及工作区单实例锁。打开已有库时先验证身份与兼容版本，版本迁移有顺序、事务和恢复路径；握手使用经过验证的真实工作区信息。
+
+**验收：** 同工作区第二写者被拒绝或通过受控入口复用；新版本库不能被旧程序修改；迁移中断可恢复；非 store 层不能新建主库写者或 DDL。
+
+### A10 · P1：CI 存在触发盲区，回执不能证明完整用户旅程
+
+最新 main 的旧 CI 成功，但 14 个作业中仅 4 个成功、10 个按计划跳过。跳过本身不等于失败。最新 vNext 成功运行对应的是 `2bae648…`，不是当前 `e9a7d2d…`。vnext-ci 的 push 路径缺少 apps、python-workers、packages/contracts，PR 触发更只覆盖 crates；最新 Avalonia 改动没有对应的 vNext 验证。[最新 CI][ci]、[vNext CI][vci]、[工作流][workflow]
+
+main 存在 active ruleset，不能说完全没有保护；但 required check 只有 `a0-gates`，未包含契约声明的 vnext-required/vnext-scope-gate。[main ruleset][rules]
+
+journey 回执记录 11 条步骤结果，其中 worker 是手工回执、学习是直接库调用、“重启”是新开数据库连接，未走桌面。回执没有 subject SHA/tree；CI 仅检查已跟踪文件非空且含任意 `PASS:`，不能排除旧文件或不完整内容。[journey][journey]、[工作流][workflow]
+
+**修复：** 覆盖真实 vNext 输入路径，以始终产出结果的汇总检查连接 required ruleset；按影响范围运行具体作业。回执放入本次运行独有目录，记录 SHA/tree、命令、fixture、实际步骤结果和产物哈希，并校验完整性。代码级 journey 与桌面用户验收分开命名。
+
+**验收：** 只改 C#、worker 或 schema 的 PR 也被正确验证；旧回执、少步骤和错误 SHA 不能通过；精确到当前提交的真实桌面闭环才允许报告 v0.1 完成。
+
+### A11 · P1：Agent 目录规则与实际仓库脱节
+
+规则授权 `apps/desktop/**`，真实 C# 工程却在 `apps/ArcheAxis.Desktop/**`。根 AGENTS 仍指向旧规则，新增中立 Agent 契约只是 docs 下的一份文件。PROJECT_CONTRACT 引用的 `docs/operations/digest-canonicalization.md` 不存在，实际文档在 `docs/vnext-seed/operations/`。正式 `LEGACY_MANIFEST.yaml` 不存在，只有 example；issued task/grant 目录只有 README。代码/工作流中也未找到两个声明的 vNext required checks 的实现。[目录权限][authority]、[项目契约][project]、[Agent 契约][agentcontract]
+
+**修复：** 先统一一个当前入口、实际目录和可执行检查；对仍是模板或蓝图的部分明确标为未启用，修复链接与完成声明。多 Agent 的最低可用约束是任务边界清楚、独立 worktree、实际变更路径检查、共享契约和依赖锁串行合入、同提交 CI。Codex/DSH/Hermes 使用同一项目规则，不把各软件会话状态写入仓库。无需继续增加另一套治理文档来修复现有规则失配。
+
+**验收：** C# 实际路径可被唯一解析；越界改动被检查发现；所有当前必读链接可解析；模板不会被误报成已执行任务或生效授权。旧的 fail-open 约定与新的阻断式规则应有明确适用范围。
+
+### A12 · P1（旧数据切换前）：只读导出不能证明旧项目已经迁入
+
+migration crate 实现 inventory 和 JSONL export，没有旧语义到新 Source/Knowledge/Anchor/Learning 的映射、staging import、差异检查和切换回滚流程。所谓“真实 dry-run”报告中的两个库用户知识表均为空，只能证明那次导出路径可运行，不能证明非空数据迁移成功。合成测试的“零改动”只比较前后文件长度，也不足以证明字节不变。[migration][migration]、[迁移测试][migrationtests]
+
+**修复：** 保留 v0.6.14 和旧库；按已有吸收矩阵逐项采用行为样例、纯函数与解析能力。先做包含原件、笔记、锚点、复核和学习记录的非空真实 schema fixture，再实现到 vNext staging 工作区的语义映射、差异报告和回滚。空库报告标为“只读导出通过，内容迁移未验证”。
+
+**验收：** 原库内容哈希不变；新库对象、正文、关系和附件可逐项对应；人工可审阅丢失/降级；切换失败能回旧版。该项阻止旧数据切换，不必阻止先完成独立的新建工作区闭环。
+
+### A13 · P2：构建可复现性和学习调度仍需补齐
+
+Rust 使用浮动 stable，CI 使用 .NET `10.0.x`；虽已有 Cargo.lock 和显式 Avalonia 包版本，尚未形成完整工具链锁定和锁文件一致性检查。学习事件的 `next_review` 存的是 `+N day` 字符串，而非可执行的到期时间；item_key 也未建立完整学习对象关联。[工具链][toolchain]、[工作流][workflow]、[学习实现][learning]
+
+**修复：** 固定经过验证的 SDK/工具链，启用适当锁定构建；把学习事件、到期时间、时区和重启后的调度语义做成最小可用实现。先验证一条可靠的复习流程，无需此时引入复杂调度算法。
+
+**验收：** 干净环境可按固定命令构建；跨日期/时区和重启后到期项目一致；事件引用不存在项目时明确拒绝。
+
+## 4. 本地针对性复现结果
+
+以下不是本地 cargo test 成绩：除 worker 外，均为从当前 Rust 文件提取 SQL、在 Python SQLite 中按相同顺序执行的行为复现，用来确认 SQL 层缺陷。没有使用用户真实数据。
+
+| 复现 | 观察结果 |
+|---|---|
+| 同任务 complete 两次 | transforms 为 2 条 |
+| 不存在 Source 的任务 complete | transform 外键失败，任务仍为 completed |
+| 创建 verified 知识行 | SQL 接受；源码也未作状态校验 |
+| 注入 review_events 插入失败 | knowledge 已 accepted，review_events 为 0 |
+| 已有 schema_version=999 后重放 init SQL | 初始化不拒绝，版本仍为 999；API 源码报告常量 1 |
+| 父目录不存在时打开 SQLite | unable to open database file |
+| FTS：“个人知识管理”中查“知识” | 0 条 |
+| 真实 Python worker 处理 BOM+CRLF 文本 | 退出 0；输出缺 response 必填字段；CRLF 转为 LF 未在损失说明中体现 |
+| 当前文档/目录检查 | 正式 LEGACY_MANIFEST、引用的 docs/operations 文件、global.json 等不存在 |
+
+云端依据：最新旧 CI 的 gateplan、test (3.12)、lint、a0-gates 成功；vNext 在 `2bae648…` 上 cargo test、dotnet build、Core 构建与 Supervisor smoke 成功。没有把较早 SHA、跳过作业、普通发布构建或手写状态报告计作当前桌面旅程通过。
+
+## 5. 项目定位继续按用户需求执行
+
+1. **个人知识可以无证据保存。** 个人定义、笔记、看法、假设、传闻记录都可进入软件，区分类型和状态即可。
+2. **人工接受不等于事实为真。** 复核状态、来源、转换质量、事实支持情况、是否经过测试、预测状态应分开表达。
+3. **识别质量和事实核查分开验证。** 前者检查模型是否忠实提取原文；后者核对命题与原始资料、多来源是否一致。来源数量或模型自报 confidence 不能充当准确率。
+4. **联网研究尚未在新增链路中实现。** 先完成可用 v0.1；随后加入有范围和截止时间的检索、原始来源定位、独立来源归组、逐命题比对与模型评测。给出覆盖范围、支持/冲突/未验证和实测指标，不承诺“全网无遗漏”或“绝不出错”。这是已知后续范围，不追加为本次 v0.1 必须实现的大平台。
+5. **旧能力吸收保留。** 现有解析/OCR/ASR 逐包接入隔离 worker；旧数据库/领域行为按样例移植；旧前端与生命周期测试作为行为参照。没有必要先机械翻译整个旧仓库。
+6. **个人研究、非商业使用继续作为用途前提。** 本次增量没有完成全体依赖许可复核；不把用途描述自动解释为依赖义务已豁免，也不擅自更改已有 MIT 项目许可。
+
+## 6. 仓库规范化完成度：基础可用，vNext 规则尚未闭环
+
+**尚未完成。** 旧仓库的工程规范并非空白；这次新增的规范文件也不是无价值。但“文件存在”“检查可运行”“CI 必需且有效”“实际操作通过”是四个不同层次。当前最主要的缺口在后面两个层次，不适合用文件数量估算总百分比。
+
+| 规范环节 | 当前完成度 | 已核实的依据与未完成项 |
+|---|---|---|
+| 命名、编码、换行与提交前检查 | 基础已具备 | 有 .editorconfig、.gitattributes、pre-commit、repository-conventions 脚本；最新提交修复了 BOM/空白问题，旧 CI 通过。仍不能因此推定 Rust/C# 全部质量检查已覆盖 |
+| Git 分支保护 | 基础已生效，vNext 接入未完成 | main 有有效 ruleset，required check 当前只有 a0-gates；新增两个必需检查没有接入 |
+| 目录规范 | 部分完成 | Rust crates、worker 目录已建立；真实 C# 路径与 DIRECTORY_AUTHORITY 不匹配；若干规范引用指向不存在的路径 |
+| 语言与数据库权限 | 规则已写，实现部分符合 | C#/Rust/Python 分工清楚；当前 worker 不写主库；store 唯一 DDL、写者封装、数据库版本保护尚未满足声明 |
+| Codex/DSH/Hermes 共同入口 | 未统一 | 根 AGENTS 仍为旧入口，新中立契约在 docs 下；需要明确当前规则和覆盖关系，并验证各入口一致 |
+| 多 Agent 并行写入约束 | vNext 执行闭环未落地 | 有任务/授权 schema 与模板；issued 目录只有 README，未找到对应 vNext scope gate。不能把模板认定为生效的任务协调机制 |
+| 依赖和工具链固定 | 部分完成 | 有 Cargo.lock、旧 Python uv.lock、前端 package-lock；Rust stable 与 CI .NET 10.0.x 仍浮动，vNext .NET 工具链/锁定构建未完整落地 |
+| vNext CI 与跨语言契约检查 | 部分完成 | 已有 Rust/C# 构建及 smoke；漏掉桌面、worker、契约等修改触发，未执行真实跨语言 worker 流程 |
+| legacy 分类、吸收与清理 | 方案已写，正式台账和验收未完成 | 有吸收矩阵与维护限制；仅有 LEGACY_MANIFEST.example.yaml，缺正式逐项分类、非空数据迁移及退役条件的实际证据 |
+| 完成回执与发布规范 | 部分完成 | 有旧发布线和新测试回执；vNext 回执未绑定当前 SHA，发布构建与用户闭环仍未贯通，状态文档存在完成度高报 |
+
+按实际可验证的层级判断：**基础格式规范和旧工程检查可用；vNext 规范处于落仓与部分接线阶段，尚未到“多种 Agent 可以按统一规则放心并行写入、合并后结果可验收”的完成状态。**
+
+规范化收尾只需修现有体系：统一根入口与实际目录 → 修复引用与 legacy 台账 → 让变更路径/契约/构建检查可执行 → 接入必需 CI → 用一条真实 PR 和用户闭环验证。已有基础保留，不再额外扩建一套治理体系。
+
+## 7. 下一轮只做这些，不继续扩大任务包
+
+| 顺序 | 交付物 | 对应问题 | 完成条件 |
+|---|---|---|---|
+| 1 | 修正当前状态、目录/入口/链接与 CI 触发 | A10、A11 | 当前必需检查真实可运行；文档不再报全量完成 |
+| 2 | 原件保存、事务化任务/复核、版本与恢复保护 | A01—A04、A09 | 重试/失败/篡改场景不丢内容、不假成功 |
+| 3 | 最小契约与真实 worker 调度，修启动身份 | A05、A07 | 导入触发真实子进程，严格验证回执与工作区 |
+| 4 | Avalonia 贯通原文、笔记、复核、搜索、学习和恢复 | A06、A08、A13 | 干净 Windows 环境可以实际使用完整流程 |
+| 5 | 发布当前 SHA 的用户闭环证据 | A10 | 真进程重启、原始字节校验、真实 UI 操作和恢复均通过 |
+| 6 | 旧数据 staging 迁移与切换演练 | A12 | 非空数据差异可解释、旧库不改写、可回滚 |
+
+步骤 2 与 UI 布局可在冻结最小接口后分工推进，但共享契约、数据库迁移和依赖锁的更改应顺序合入。先补能被真实验证的实现，不再以增加 crate、schema 或任务模板数量代表产品完成度。
+
+**任务包的修订方向：保留语言架构与旧项目吸收路线；撤销缺乏证据的完成标记；用上表的失败条件和用户验收替换仅有 happy-path 的完成依据。无需重新推倒现有项目。**
+
+[compare]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/compare/ce3c2de551bcaac52c8a26d012e6482c1a73a540...e9a7d2db854da157138111dc1c772cee95c16647
+[head]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/commit/e9a7d2db854da157138111dc1c772cee95c16647
+[release]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/releases/tag/v0.6.14
+[api]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-api/src/lib.rs
+[source]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-domain/src/source.rs
+[jobs]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-application/src/jobs.rs
+[knowledge]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-domain/src/knowledge.rs
+[archive]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-archive/src/lib.rs
+[backup]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-domain/src/backup.rs
+[supervisor]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/apps/ArcheAxis.Desktop/CoreSupervisor.cs
+[windowcs]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/apps/ArcheAxis.Desktop/MainWindow.axaml.cs
+[window]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/apps/ArcheAxis.Desktop/MainWindow.axaml
+[store]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-store-sqlite/src/lib.rs
+[worker]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/services/python-workers/worker_extract.py
+[workercontract]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/packages/contracts/v1/worker-protocol.schema.json
+[journey]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-api/tests/v01_journey.rs
+[openapi]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/packages/contracts/v1/openapi-outline.yaml
+[anchor]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-domain/src/anchor.rs
+[search]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-domain/src/search.rs
+[ci]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/33971303263
+[vci]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/33967476161
+[workflow]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/.github/workflows/vnext-ci.yml
+[rules]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/rules/20849492
+[authority]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/DIRECTORY_AUTHORITY.yaml
+[project]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/PROJECT_CONTRACT.yaml
+[agentcontract]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/docs/authority/AGENTS.vnext-governance.md
+[migration]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-migration/src/lib.rs
+[migrationtests]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-migration/tests/migration_dry_run.rs
+[toolchain]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/rust-toolchain.toml
+[learning]: https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/e9a7d2db854da157138111dc1c772cee95c16647/crates/archeaxis-domain/src/learning.rs

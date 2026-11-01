@@ -1,0 +1,127 @@
+# Knowledge-Base 项目交叉调研任务书
+
+用于交给其他 AI：全网搜集 / GitHub 拆解 / 许可证筛查 / 模块化交叉分析。
+
+## 1. 总任务提示词
+
+你是“开源项目调研与技术拆解专家”。请围绕 DTALEX66/Knowledge-Base 这个目标项目进行全网搜集、GitHub 高热项目筛选、模块拆解、许可证核验、代码吸收建议和交叉分析准备。目标不是简单推荐项目，而是找出哪些项目的哪些模块、数据结构、架构设计、API 设计、前端交互、部署方式、测试方式可以安全借鉴，用来加速 Knowledge-Base 的开发。
+
+请严格按本文档的分类、表格和评分标准输出。所有结论必须带来源链接、许可证、star/fork/最近提交时间、主要语言、部署难度、可借鉴模块、不能直接复制的风险。对许可证不确定的项目必须标记“需人工复核”。
+
+## 2. 目标项目背景
+
+- 当前项目名：DTALEX66/Knowledge-Base。
+- 目标定位：个人 AI 知识中枢，而不是重型企业级 AI 平台。
+- 核心能力：网页采集、文档入库、SQLite/全文搜索、项目研究、GitHub 拆解、Prompt/模型/MCP 管理、CODEX 任务包生成。
+- 当前优先级：先打通最小闭环，再做 RAG、向量库、Agent、同步和模型管理。
+- 最小闭环：URL/文件输入 → 采集/解析 → 存储 → 搜索 → 详情 → 摘要 → 导出。
+
+## 3. 必须调研的方向
+
+| 方向 | 参考项目 | 重点拆解 | 注意事项 |
+|---|---|---|---|
+| RAG / 知识库平台 | Dify, AnythingLLM, FastGPT, Open WebUI, Khoj | 知识库流程、工作流、模型接入、文档聊天、部署体验 | 重点核查许可证，不能盲目复制代码 |
+| 网页采集 / 爬取 | Scrapling, Crawl4AI, Firecrawl | URL 抓取、动态页面、Markdown 输出、批量采集、MCP | 优先选 MIT / Apache / BSD，AGPL 只学设计 |
+| 文档解析 | Microsoft MarkItDown, Docling, Unstructured, MinerU | PDF/Word/PPT/Excel 转 Markdown，表格/图片/OCR 处理 | 评估依赖体积、速度、准确率 |
+| 长期记忆 / Agent Memory | Mem0, Zep, Letta | 用户记忆、项目记忆、模型调用记录、上下文压缩 | 先做轻量表结构，不急着引入重框架 |
+| 向量检索 / 搜索 | Chroma, LanceDB, Qdrant, LlamaIndex, Haystack | chunk、embedding、hybrid search、RAG pipeline | 第一阶段保留 SQLite FTS，第二阶段再接入 |
+| 可视化工作流 | Flowise, Langflow, n8n AI modules | 节点编排、工具调用、任务流、调试面板 | 后期参考，第一阶段不要做重 |
+| 个人知识管理 | Logseq, Obsidian 插件生态, Joplin, AFFiNE | 双链、标签、Markdown、本地文件同步、知识图谱 | 主要借鉴信息架构与导出格式 |
+| GitHub 项目分析 | gitingest, repomix, aider 相关 repo 工具 | 仓库转文本、代码上下文打包、项目摘要、AI 任务包 | 重点找能直接服务 CODEX 的方案 |
+| 模型/Prompt/MCP 管理 | Open WebUI, LiteLLM, MCP servers, Promptfoo | 模型代理、Prompt 版本、MCP 注册、评测、成本记录 | AI库阶段重点调研 |
+
+## 4. 搜索关键词
+
+- AI knowledge base RAG stars:>5000
+- local first RAG
+- open source knowledge base assistant
+- document chat local LLM
+- chat with documents open source
+- LLM web crawler markdown
+- AI web scraping markdown
+- crawl website for RAG
+- PDF to markdown LLM
+- office to markdown AI
+- repo to text LLM
+- GitHub repository summarizer
+- codebase context generator
+- agent memory open source
+- long term memory LLM
+- OpenAI compatible gateway
+- LLM proxy open source
+- prompt management open source
+- prompt versioning
+- MCP server registry
+- model context protocol open source
+- 中文 知识库 RAG GitHub
+- AI 知识库 开源
+- 本地知识库 大模型
+
+## 5. 每个项目必须输出的字段
+
+| 字段 | 填写要求 |
+|---|---|
+| 项目名称 / Repo | 写 owner/name，附 GitHub 链接 |
+| 一句话定位 | 用自己的话概括解决什么问题 |
+| Star / Fork / Watch | 填调研当天数据，并写日期 |
+| 最近活跃度 | 最近提交时间、release、issue/PR 活跃度 |
+| 许可证 | MIT / Apache-2.0 / BSD / AGPL / GPL / Custom / Unknown |
+| 技术栈 | 前端、后端、数据库、向量库、模型接入、部署方式 |
+| 核心模块 | 按模块列出，不要只写功能名 |
+| 可借鉴点 | API、数据表、目录结构、UI 流程、测试方案 |
+| 不可直接复制点 | 许可证、品牌、复杂依赖、安全风险、云服务限制 |
+| 适配 Knowledge-Base 的方式 | 直接依赖 / 写 adapter / 只学思路 / 放弃 |
+| 优先级 | P0 / P1 / P2 / P3 |
+| 证据链接 | README、LICENSE、核心代码文件、文档、release 链接 |
+
+## 6. 模块级拆解要求
+
+- 采集层：网页、动态页面、PDF、Office、GitHub repo。
+- 解析层：Markdown、标题、正文、表格、图片、元数据。
+- 存储层：SQLite、文件、向量库、对象存储。
+- 搜索层：FTS、向量、混合搜索。
+- 摘要层：本地规则、Ollama、云模型。
+- 前端层：知识列表、详情、标签、项目分析页。
+- AI库：模型、Prompt、MCP、调用记录。
+- CODEX 任务包：任务格式、验收命令、回归测试。
+- 部署层：Windows 本地、Docker、NAS、服务器。
+- 同步层：Git、WebDAV、S3/R2、SQLite 复制、CRDT。
+
+## 7. 评分标准
+
+| 评分维度 | 分值 | 说明 |
+|---|---:|---|
+| 功能匹配度 | 20 | 是否直接解决 Knowledge-Base 的核心问题 |
+| 代码可复用性 | 15 | 模块清晰、易拆、依赖可控、接口清楚 |
+| 许可证安全 | 15 | MIT/Apache/BSD 高分；AGPL/GPL/Custom 需降分 |
+| 维护活跃度 | 10 | 近期提交、release、issue/PR 活跃度 |
+| 个人本地部署友好度 | 15 | 是否适合 Windows/本地/Ollama/SQLite/Docker |
+| 复杂度控制 | 10 | 是否避免引入过重架构 |
+| 可交给 CODEX 实施程度 | 10 | 是否能拆成清晰任务并有验收方式 |
+| 中文/国内使用适配 | 5 | 是否方便中文资料、中文文档、国内网络环境 |
+
+## 8. 最终交付物要求
+
+1. 《开源项目调研总表》
+2. 《模块拆解报告》
+3. 《许可证风险表》
+4. 《可借鉴代码/设计清单》
+5. 《Knowledge-Base 第一阶段开发建议》
+6. 《CODEX 任务包草案》
+
+## 9. 禁止事项
+
+- 禁止只按 star 排名，不分析适配性。
+- 禁止没有许可证核查就建议复制代码。
+- 禁止把 Dify、FastGPT、Open WebUI、Khoj、Firecrawl 等项目的受限代码直接纳入。
+- 禁止输出空泛结论，例如“可以借鉴架构”。必须说明借鉴哪个模块、怎么改。
+- 禁止忽略当前项目轻量化目标。
+- 禁止只调研英文项目，也要搜索中文 RAG、知识库、爬虫、文档解析项目。
+
+## 10. 精简版提示词
+
+请围绕“DTALEX66/Knowledge-Base 个人 AI 知识中枢”做开源项目调研。重点搜索 GitHub 高热项目和同类板块，包括 RAG/知识库、网页采集、文档解析、个人知识管理、向量搜索、Agent 记忆、模型/Prompt/MCP 管理、GitHub 项目分析工具。
+
+每个项目必须输出：Repo 链接、star/fork、最近活跃度、许可证、技术栈、核心模块、可借鉴点、不能复制的风险、适配 Knowledge-Base 的方式、优先级和证据链接。
+
+最终按模块给出交叉分析：哪些项目适合直接依赖，哪些适合写 adapter，哪些只能学习设计，哪些不建议使用。最后输出 Knowledge-Base 第一阶段 P0/P1/P2 开发路线和可交给 CODEX 的任务包。

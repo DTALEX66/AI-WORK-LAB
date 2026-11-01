@@ -1,0 +1,164 @@
+# WORK-LAB 深化优化独立任务包
+
+- TaskPack ID：`WL-DEEPEN-20260825-V1`
+- 目标仓库：[DTALEX66/WORK-LAB](https://github.com/DTALEX66/WORK-LAB)
+- 状态：`READY_FOR_EXECUTION`
+- 执行边界：只修改 WORK-LAB；对其他项目只消费版本化协议或创建独立 follow-up。
+
+## 1. 纠错后的项目定位
+
+WORK-LAB 是跨软件、跨项目的轻量治理与执行控制面，负责：
+
+- Desired State、配置所有权、TaskPack、路由策略和适配器协议；
+- Hermes、Codex、DeepSeek Harness、GitHub、Open Design、OpenHuman 及未来软件的可移植接入；
+- Context Capsule、运行证据、备份/恢复、版本与漂移读回；
+- 最小安全护栏和严格只读的观测投影。
+
+它不拥有 Agent、模型运行时、知识真值、学习模型或设计领域能力；不需要坚持自研前端或绝对权威。若成熟开源底座可替换 UI/任务板/运行观察，应融合或替换，但 WORK-LAB 的协议、配置所有权和可移植交接能力必须保留。
+
+## 2. 审计快照与已完成基线
+
+本轮只读审计副本为 `main`，HEAD `c2cb6dccf6aad82aa3df5ecebed2383e5ab06d41`。审计副本存在两项未提交修改，执行者必须先确认归属并保留，禁止 reset/clean。
+
+以下属于 `DONE_BASELINE`，不得重开为新任务：
+
+- 全局执行标准、经验教训、治理最小化原则；
+- model router、agent claims、worktree manager、merge queue、skill call index、drift check、global rules deploy、E-drive guard；
+- Codex overlay 同步与 14 个 repo-owned active skill 生命周期；
+- 历史全量 gate `979 passed + 62 subtests`、CI `c2cb6dc` success；
+- Ollama 五模型/推理修复、Hermes 官方 core 0.20.5 和官方桌面重建；
+- Observer 的 revision 类型、真实 token/cost 投影、8089/8090 服务与只读边界修复；
+- WLR-410 与 work unit、联邦配置合同、TaskPack/Telemetry 基础链。
+
+历史测试数只证明对应旧 SHA；新改动必须重新运行当前范围门禁。
+
+## 3. 当前问题分类
+
+| 类别 | 当前结论 | 处理 |
+|---|---|---|
+| 上下文丢失 | 摘要存在，但没有跨软件一致的 Authority Index、Context Capsule 和导入/冲突机制 | P0 修改 |
+| 真实环境闭环 | `WL-DLC-070` 行为探针和重启后 `.hermes-managed-bak` UI 消失尚无真实证据 | P0 修复 |
+| 产品体量 | 已有控制面能力完整，但 UI/任务板/Agent 运营功能可能与成熟项目重复 | P1 融合/替换 PoC |
+| 外部项目收集 | 历史登记很多，部分仅概念参考、重复或失效 | P1 清理与决策固化 |
+| 插件/技能 | 有生命周期工具和 OBSERVE 合同，仍需跨软件安装态/启用态/回滚的真实闭环 | P1 完善 |
+| 状态真相 | 生成状态仍可能把 `RUNTIME_REQUIRED`/`UNVERIFIED` 与已通过历史测试混写 | P0 分层修复 |
+
+## 4. 任务 DAG
+
+### WL-000 — 当前事实冻结
+
+- 优先级/状态：`P0 / TODO`
+- 修改：新增一次性 snapshot 收据；不得先改代码。
+- 动作：记录本地/远端 SHA、branch、dirty 文件、CI、运行软件版本、活动 TaskPack、Observer/sidecar 端口和备份状态；对 dirty 文件逐项标记 `USER/AGENT/UNKNOWN`。
+- 验收：机器可读 JSON + 人读 Markdown 使用同一内容 digest；运行事实与结构事实分栏；不读取凭据或原始对话正文。
+- 回滚：删除本次生成收据，不触碰用户修改。
+
+### WL-010 — Authority Index V1
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：WL-000。
+- 建议修改：`00-governance/authority-index.v1.yaml`、schema、verifier 和生成文档。
+- 必须定义：每类事实的 owner、SSOT、生成器、消费者、冲突规则、TTL、证据等级、敏感级别、备份与恢复入口。
+- 至少覆盖：全局规则、软件配置、技能、插件、模型路由、TaskPack、Task Ledger、Telemetry、Context Capsule、跨项目协议和 Observer 投影。
+- 验收：重复 owner、无 owner、循环 authority、手写生成文件、Observer 写权限均 fail closed；未知未来软件可用同一 adapter 结构注册。
+
+### WL-020 — Context Capsule V1 与历史导入
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：WL-010。
+- 建议修改：`context-capsule.v1.schema.json`、export/import/verify CLI、三软件 fixture。
+- Capsule 最小字段：project/repo/exact SHA/branch/dirty digest、当前目标、已接受与已废弃决策、未完成项、禁止事项、下一步、测试证据、来源指针、生成时间、过期时间、schema 版本。
+- 导入源：ChatGPT Export、三份本地 summary、GitHub commits/issues/PR/actions/releases、Hermes/Codex/DSH 可导出交接。
+- 规则：原文只存受控归档；运行时只装载去重后的 capsule；内容哈希去重；冲突保留双方并标 `supersedes/contradicts`；任何历史摘要不得自动晋升为 SSOT。
+- 验收：Hermes 导出 → Codex 导入 → DSH 读回后关键字段一致；旧 schema 可迁移；未知字段保留；敏感字段、prompt/response 正文和 token 被拒绝。
+
+### WL-030 — 真实软件行为与重启闭环
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：WL-000。
+- 修复对象：`WL-DLC-070`、禁用备份项重启读回、CURRENT_STATE 证据分层。
+- 动作：在真实 Codex 会话和 Hermes 会话分别复述并实际遵守 5 条核心规则；完全退出并重启软件；确认 14 个禁用 `.hermes-managed-bak` 不再进入 UI/技能发现；执行一次 overlay apply/verify/rollback/readback。
+- 验收：进程、版本、时间、输入摘要、可公开输出摘要、截图/日志哈希和失败路径齐全；不能用 shell 单测替代桌面会话。
+- 阻塞：本环境不能启动真实软件时标 `BLOCKED_RUNTIME`，不得写 PASS。
+
+### WL-040 — Mission Control 兼容性 PoC
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：WL-010、WL-020。
+- 候选：[builderz-labs/mission-control](https://github.com/builderz-labs/mission-control)；其 README 明示仍为 Alpha，必须锁 commit，不跟随 latest。
+- 方式：先外部 sidecar，只用合成数据；禁止直接扫描用户 home、Codex/Hermes 私有会话或替换 WORK-LAB 数据库。
+- 映射：Project、Task、Agent、Skill、Cost、Security Event、Webhook 与 WORK-LAB TaskPack/WorkUnit/Adapter/Telemetry 的字段级对照。
+- 必测：Windows 本地安装、认证/RBAC、SQLite 备份恢复、API/OpenAPI、离线启动、升级迁移、性能、只读导入、写入幂等、数据边界、卸载回滚。
+- 裁决仅允许：`ACCEPT_UI_SHELL`、`ACCEPT_SUBSYSTEM`、`REJECT`。禁止直接 `FULL_REPLACE`。
+- 若接受：明确唯一状态源；优先替换重复的任务板/运营 UI/监控壳，保留 WORK-LAB schemas、policies、adapters、capsules 和 backup/recovery。
+- 若拒绝：记录不匹配原因和上游 commit，停止重复调研 90 天。
+
+### WL-050 — 通用 Software Adapter V1
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：WL-010。
+- 第一批：Hermes、Codex、DeepSeek Harness、GitHub、Open Design、OpenHuman；CC Switch 仅保留退役/观察记录。
+- 合同：discover、capabilities、desired-state plan、apply support、health/readback、backup/rollback、version、permissions、evidence level。
+- 规则：`plan` 与 `apply` 分离；未知字段保留；provider/model/auth 默认不接管；客户端私有数据库不可直接写。
+- 验收：每个 adapter 至少一个 happy path、一个不支持路径和一个失败恢复；增加 future-software fixture 证明无需改核心 schema。
+
+### WL-060 — 技能、插件与运行记忆生命周期
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：WL-050。
+- 修改：统一 `discovered/installed/enabled/active/disabled/quarantined/removed` 状态，记录来源、许可证、版本、hash、兼容软件、权限、最后验证、回滚位置。
+- 插件治理：从 OBSERVE 合同推进到 plan/readback/rollback；任何 apply 均需对应 adapter 明示支持和用户批准。
+- 记忆边界：WORK-LAB 只保存短期、非权威 runtime context record，带 TTL；MemOS 若接入 Hermes/DSH，仅作为外部运行记忆，不成为 WORK-LAB 或 ArcheAxis 的第二知识真值。
+- 验收：安装→启用→重启→发现→禁用→回滚全链；恶意/越权 skill fixture 被隔离；重复 skill 可溯源且只有一个 active owner。
+
+### WL-070 — 安全、凭据与可移植恢复
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：WL-020、WL-050。
+- 动作：对配置、taskpack、capsule、日志、备份运行 secret/path/prompt-body 扫描；将机器路径移入本地 profile；建立新电脑恢复演练。
+- 验收：仓库不含 token/cookie/private key/私有 session；备份加密或仅保存无密钥配置；空白 Windows 用户上可恢复 schemas、rules、skills 和 adapters，但必须重新登录各软件。
+
+### WL-080 — 开源项目与历史资产减法审计
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：WL-000。
+- 对每项只能给出：`ADOPT_CODE`、`FUSE_ADAPTER`、`REFERENCE`、`QUARANTINE`、`REMOVE`。
+- 必须复核：仓库仍存在、正确上游、许可证、维护状态、与当前能力是否重复、当前是否被代码/测试/文档引用、升级/退出成本。
+- 优先检查：Mission Control、AionUi、Hermes Studio、历史 Agent dashboard/observer 候选和 `40-knowledge` 中无消费者资产。
+- 删除规则：先引用图和 SBOM，再移入有清单的历史归档；只有确定无消费者、可从上游/commit 恢复时才物理删除。禁止“因为文件多”批量删。
+- 验收：活动代码/知识体积下降或有保留理由；所有 quarantined 项不进入运行时；生成去重报告。
+
+### WL-090 — 跨软件真实交接试点
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：WL-020、WL-050、WL-060。
+- 场景：Hermes 创建任务 → WORK-LAB 生成 TaskPack/Context Capsule → Codex 或 DSH 执行 → GitHub 读回 CI → 新会话恢复并继续。
+- 必测：中途换软件、旧摘要冲突、网络失败、重复提交、任务取消、rollback、过期 capsule。
+- 验收：第二软件无需重新询问已固定定位/约束；任务结果绑定 exact SHA；Observer/Mission Control 只显示投影，不产生另一套真相。
+
+### WL-100 — 收敛发布
+
+- 优先级/状态：`P2 / TODO`
+- 依赖：WL-030 至 WL-090 中已批准范围。
+- 动作：运行分层门禁和 full gate；更新 CURRENT_STATE 生成器；形成升级、备份、恢复、卸载和替代说明。
+- 验收：结构、local runtime、exact-SHA CI 分开报告；无旧测试数冒充当前结果；所有 `BLOCKED/CONDITIONAL` 保持诚实。
+
+## 5. 明确不做
+
+- 不把 Mission Control 的 Agent memory/skills DB 直接宣布为全局 SSOT。
+- 不继续开发第二个大型前端，仅为保留既有投资而维护重复 UI。
+- 不读取 ChatGPT/Codex/Hermes 私有会话目录绕过导出机制。
+- 不管理 DESIGN-LAB 的设计能力、ArcheAxis 的知识真值或各模型 provider 凭据。
+- 不要求所有动作经过多层治理；检查集中在落地前，默认 fail-open 报告，安全/权限/证据门除外。
+
+## 6. 最终交付物
+
+- Authority Index V1 + verifier
+- Context Capsule V1 schema + import/export/readback
+- Mission Control PoC 裁决记录
+- 六软件 Adapter V1 与 lifecycle 收据
+- 真实会话/restart/rollback 证据包
+- 开源资产保留/融合/隔离/删除台账
+- 新电脑恢复演练报告
+- 当前 SHA 的质量门与 CI 收据
+

@@ -1,0 +1,174 @@
+# ArcheAxis Knowledge Benchmark TaskPack v1.0
+
+## 任务
+
+在 `DTALEX66/Cognitive-Loop-OS` 中建立真实公开案例驱动的知识系统全流程回归测试库。
+
+## 核心要求
+
+1. 所有案例必须使用本任务包登记的真实来源链接。
+2. 下载后立即记录来源页、下载 URL、下载时间、许可和 SHA-256。
+3. 外部数据默认进入独立 Benchmark 区，不得进入用户正式知识库。
+4. 不允许模型自动生成 Ground Truth。
+5. DocLayNet、AMI、MeetingBank 首轮只取固定切片，禁止全量无界下载。
+6. 每个阶段必须跑完整成功、拒绝、冲突或恢复路径。
+
+## 14 个案例
+
+| ID | 案例 | 阶段 | 难度 | 格式 |
+|---|---|---|---|---|
+| A0-DOCX-001 | UK DfE Share Progress with Staff | A0, A1 | L1 | HTML, DOCX, ODT |
+| A0-DOCX-002 | UK DfE Staff Workload Survey | A0, A1, A2 | L2 | HTML, DOCX, ODT |
+| A2-PPTX-001 | NASA James Webb Space Telescope Presentation | A2, A6 | L2 | PPTX |
+| A2-PPTX-002 | NASA Thinking in Systems | A2, A6, A7 | L2 | PPTX |
+| A5-PPTX-001 | NASA LOFTID Collier Trophy Presentation | A2, A5, A6 | L3 | PPTX |
+| A6-TIMELINE-001 | UN 70 Years, 70 Documents (1946–1955) | A2, A6 | L3 | PPTX, PDF |
+| A1-XLSX-001 | US Department of Education REAP FY2022–FY2025 | A1, A2 | L3 | XLSX |
+| A1-XLSX-002 | USITC 2026 HTS Basic and Revisions | A1, A2 | L4 | HTML, CSV, XLSX, JSON |
+| A2-OCR-001 | FUNSD Noisy Scanned Forms | A2 | L4 | PNG, JSON |
+| A2-LAYOUT-001 | DocLayNet Mixed Enterprise Layout | A2 | L4 | PNG, PDF, JSON, COCO |
+| A3-MEETING-001 | AMI Scenario Meeting ES2008a | A3, A5 | L4 | WAV, Transcript, Slides, Shared Documents |
+| A3-MEETING-002 | MeetingBank Metadata v1 | A3, A5 | L5 | ZIP, JSON, Transcript, Agenda, Minutes, Summary |
+| A5-GITHUB-001 | PyPA Sample Project 4.0.0 | A1, A5 | L1-L2 | Git Repository, SDist, Wheel, TOML, Python |
+| A2-PDFPPTX-001 | NASA LOFTID Reentry Vehicle Design | A2, A5, A6 | L4 | PPTX, PDF |
+
+## 执行波次
+
+### Wave 1：A0–A1 基础与治理
+- A0-DOCX-001
+- A0-DOCX-002
+- A1-XLSX-001
+- A1-XLSX-002
+
+退出门禁：下载/快照/许可/哈希完成；版本差异、重启读回、Audit 可验证。
+
+### Wave 2：A2 文档与版面
+- A2-PPTX-001
+- A2-OCR-001
+- A2-LAYOUT-001
+- A2-PDFPPTX-001
+
+退出门禁：PPTX、OCR、版面、跨格式均能形成受审核 Candidate 和评估报告。
+
+### Wave 3：A3–A5 多模态与项目
+- A3-MEETING-001
+- A3-MEETING-002
+- A5-GITHUB-001
+- A5-PPTX-001
+
+退出门禁：会议知识、项目包、只读沙箱构建、工程证据可追溯。
+
+### Wave 4：A6–A7 可视化
+- A2-PPTX-002
+- A6-TIMELINE-001
+
+退出门禁：结构化、可编辑、可审核的概念图、时间线和模拟 Candidate。
+
+## 完成定义
+
+```text
+真实来源
+→ 固定版本
+→ 下载和哈希
+→ Intake
+→ Parse
+→ Source / Claim / Evidence
+→ Human Review
+→ Knowledge
+→ Learning / Project / Visual（按阶段）
+→ Evaluation
+→ Audit
+→ Restart / Resume / Version / Conflict 测试
+```
+
+只有完成上述链路，案例才可标记为 Passed。
+
+
+# 真实来源链接
+
+## SRC-UKDFE-PROGRESS — UK Department for Education
+- 来源页：https://improve-workload-and-wellbeing-for-school-staff.education.gov.uk/workload-reduction-toolkit/identify-workload-issues/share-progress-with-staff/
+- 下载/数据链接：https://improve-workload-and-wellbeing-for-school-staff.education.gov.uk/assets/files/Share%20progress%20with%20staff%20template.docx
+- 许可：Open Government Licence v3.0
+- 固定规则：download_date + sha256
+
+## SRC-UKDFE-SURVEY — UK Department for Education
+- 来源页：https://improve-workload-and-wellbeing-for-school-staff.education.gov.uk/workload-reduction-toolkit/identify-workload-issues/staff-workload-survey/
+- 许可：Open Government Licence v3.0
+- 固定规则：download DOCX from source page; record download_date + sha256
+
+## SRC-NASA-JWST — NASA NTRS
+- 来源页：https://ntrs.nasa.gov/citations/20210021090
+- 下载/数据链接：https://ntrs.nasa.gov/api/citations/20210021090/downloads/MW%20JWST%20Slide%20Deck%20G0%20approved%202021.pptx
+- 许可：Public Use Permitted
+- 固定规则：NTRS Document ID 20210021090 + sha256
+
+## SRC-NASA-SYSTEMS — NASA NTRS
+- 来源页：https://ntrs.nasa.gov/citations/20230006020
+- 下载/数据链接：https://ntrs.nasa.gov/api/citations/20230006020/downloads/Pathways%20Final%20Presentation%20.pptx
+- 许可：Work of the US Government; Public Use Permitted
+- 固定规则：NTRS Document ID 20230006020 + sha256
+
+## SRC-NASA-LOFTID — NASA NTRS
+- 来源页：https://ntrs.nasa.gov/citations/20230003943
+- 下载/数据链接：https://ntrs.nasa.gov/api/citations/20230003943/downloads/Collier%20Trophy%20Presentation%20v5.pptx
+- 许可：Work of the US Government; Public Use Permitted
+- 固定规则：NTRS Document ID 20230003943 + sha256
+
+## SRC-UN-70DOCS — UN Dag Hammarskjöld Library
+- 来源页：https://digitallibrary.un.org/record/3868604?ln=en
+- 许可：Capture rights/terms shown on the record and downloaded files before use
+- 固定规则：2015 record 3868604; download both PPTX and PDF; sha256
+
+## SRC-REAP — US Department of Education
+- 来源页：https://catalog.data.gov/dataset/prior-year-reap-master-eligibility-spreadsheets
+- 下载/数据链接：https://data.ed.gov/dataset/be9e91d2-cc47-44e3-af89-b62bf5b26edc/resource/996776c2-a6f2-4d66-87f2-f88ff9b31581/download/fy2022_master_eligibility_spreadsheet-pmes.xlsx
+- 下载/数据链接：https://data.ed.gov/dataset/be9e91d2-cc47-44e3-af89-b62bf5b26edc/resource/1b6c269f-ed89-4d82-958d-bc8200edba8c/download/fy2023_master_eligibility_spreadsheet-public.xlsx
+- 下载/数据链接：https://data.ed.gov/dataset/be9e91d2-cc47-44e3-af89-b62bf5b26edc/resource/d6514602-b859-498f-b593-b463d546edf3/download/fy2024_master_eligibility_spreadsheet-pmes.xlsx
+- 下载/数据链接：https://data.ed.gov/dataset/be9e91d2-cc47-44e3-af89-b62bf5b26edc/resource/634d3588-62b3-466d-bd0f-8dc8609ea21c/download/fy2025_master_eligibility_spreadsheet-forpublic.xlsx
+- 许可：CC0
+- 固定规则：FY2022, FY2023, FY2024, FY2025 + sha256 each
+
+## SRC-USITC-HTS — US International Trade Commission
+- 来源页：https://www.usitc.gov/harmonized_tariff_information/hts/archive/list
+- 下载/数据链接：https://www.usitc.gov/2026_hts_revision_2
+- 下载/数据链接：https://www.usitc.gov/2026_hts_revision_7
+- 下载/数据链接：https://www.usitc.gov/harmonized_tariff_information
+- 许可：US government public data; retain source and modification notices
+- 固定规则：2026 Basic, Revision 2, Revision 7, latest selected revision; CSV/XLSX/JSON + sha256
+
+## SRC-FUNSD — FUNSD authors / EPFL
+- 来源页：https://guillaumejaume.github.io/FUNSD/
+- 下载/数据链接：https://guillaumejaume.github.io/FUNSD/download/
+- 许可：Read and archive the dataset license before download
+- 固定规则：original FUNSD release; select 15 fixed documents and record file hashes
+
+## SRC-DOCLAYNET — IBM Research / DS4SD
+- 来源页：https://github.com/DS4SD/DocLayNet
+- 下载/数据链接：https://huggingface.co/datasets/docling-project/DocLayNet
+- 许可：CDLA-Permissive-1.0
+- 固定规则：Hugging Face dataset revision + 30 selected page IDs + hashes
+
+## SRC-AMI — AMI Corpus
+- 来源页：https://groups.inf.ed.ac.uk/ami/corpus/
+- 下载/数据链接：https://groups.inf.ed.ac.uk/ami/download/
+- 许可：CC BY 4.0 for publicly released signals, transcription and specified annotations
+- 固定规则：manual annotations v1.6.2 + meeting ES2008a selected streams + sha256
+
+## SRC-MEETINGBANK — MeetingBank / Zenodo
+- 来源页：https://meetingbank.github.io/dataset/
+- 下载/数据链接：https://zenodo.org/records/7983743
+- 下载/数据链接：https://zenodo.org/records/7989108
+- 许可：CC BY 4.0 for Zenodo v1 metadata record; verify the exact record used
+- 固定规则：Metadata v1 record 7983743; MD5 9c1ccd37f8d7f4a1839cc4834198166a
+
+## SRC-PYPA-SAMPLE — Python Packaging Authority
+- 来源页：https://github.com/pypa/sampleproject
+- 下载/数据链接：https://pypi.org/project/sampleproject/4.0.0/
+- 许可：MIT
+- 固定规则：PyPI version 4.0.0 and corresponding source archive hash
+
+## SRC-NASA-LOFTID-DESIGN — NASA NTRS
+- 来源页：https://ntrs.nasa.gov/citations/20240000066
+- 许可：Public Use Permitted
+- 固定规则：NTRS Document ID 20240000066; download PPTX + PDF; sha256

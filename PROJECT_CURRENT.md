@@ -17,9 +17,13 @@ acceptance_blocked_by_boundary = 2
 acceptance_confirmed = 41
 acceptance_deferred_p3 = 3
 acceptance_partial = 2
+archive_excluded_raster_media = 344
+archive_import_verified = 1131
+archive_in_repo_bytes = 217126876
+archive_in_repo_objects = 694
 archive_manifest_rows = 7108
 archive_objects = 1212
-archive_only_objects = 1131
+archive_recorded_not_copied = 93
 archive_registered_not_migrated = 80
 archive_source_hints = 1212
 archive_unclassified_residue = 1
@@ -66,6 +70,14 @@ unsettled_files = 237
   两处缺陷是复验时抓到并修好的：`37` 行原判"本仓已持有"只凭台账 `sha256_source`，而改后文件让
   本仓实际持有的是修复版本、原始字节无处可寻（已补采并逐行复验摘要）；`1` 个 260 字符以上的
   长路径文件首轮静默丢失（已用 `\\?\` 前缀重写，并按行复验，不再用集合式抽查）。
+- 统一归档的正文对象也已进仓，防的就是"任务漂移"：`1212` 个唯一对象现在**每一个都有具名去处**，
+  不再有 `ARCHIVE_ONLY` 这种"没决定"状态——`694` 个（`217,126,876` 字节）逐字节进
+  `docs/history/archive-objects-20261101/`、按摘要命名、写后现算复验（失败 0）；`93` 个容器包
+  （513 MB，其中最大一个 **135,878,909 字节已越过 GitHub 单文件 100MB 硬限**，push 必被拒）
+  不入 Git 但逐个记摘要+字节+成员数+位置；`344` 个位图媒体按「截图照片去掉」排除。
+  这条不变式由检查器守：出现未知处置、`ARCHIVE_ONLY`、或"标了进仓却不在盘上/摘要不符"，直接红。
+- 顶层每个目录都必须在入口三件套里被说明（`ROOT_DIR_UNDOCUMENTED`），未说明即红——
+  一个没人解释的目录就是下一个 Agent 靠猜的地方。
 - 统一归档（`D:\All projects\Project Archiving`，只读）与本仓已逐摘要对账：`1212` 个唯一对象中
   `1131` 个**只在归档里有一份副本**（约 `1.06 GB`），`80` 个已登记但未迁入，`1` 个停在未归类；
   本仓 `migration/copies.json` 的 `962` 个来源摘要与归档对象摘要**交集为 0**——两边的字节不是同一批。

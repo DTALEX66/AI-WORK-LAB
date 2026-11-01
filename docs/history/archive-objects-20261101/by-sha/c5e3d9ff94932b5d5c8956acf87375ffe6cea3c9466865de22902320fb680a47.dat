@@ -1,0 +1,117 @@
+# 两项目云端取证审计
+
+日期：2026-09-22。只读审计；未对远端仓库执行写入。
+
+## 1. 历史意图与当前执行权威
+
+历史仍有效的产品方向：AAOS 是人机双向学习与知识沉淀中枢，DESIGN-LAB 是专业设计与软件执行层，WORK-LAB 为可选治理/编排层。三个项目不得互相复制整套知识权威或强制绑定启动。成熟模块优先吸收，局部自研只补实际闭环缺口。
+
+历史约束仍有效：原位更新、现有本地绿色版优先保护、禁止擅自发版、源代码与真实资料分离；设计必须统一方法但保留各项目品牌；拒绝只交静态原型或仅后端注册表。
+
+本次检索了 Library 中旧 AAOS 2026-09-04 全量审计、旧 AUDIT-REPORT、DESIGN-LAB 历史任务映射与完整项目对话导出，以及 UI 批次映射规则，并结合当前对话历史与仓库 supersession。旧文件不能直接派工：9 月 4 日 AAOS 的 C# sole-writer 方案，已被当前 R6 的 Rust canonical-writer 规则覆盖；R5 并非 AAOS 当前执行包。DESIGN 的旧任务 ID 跨包存在映射/失效状态，必须按当前索引接续。
+
+当前 AAOS：`AAK-LOCAL-GREEN-ABSORB-FIRST-20260919-R6` 加 `M0-SHORTEST-COMPLETE-LOOP` 方向覆盖（SUP-020），活跃执行状态是 `docs/current/R6-EXECUTION.md` 和 `R6-STATE.json`。正式桌面 C#/Avalonia，Rust 持有 canonical 写入，Python 是受约束 worker；不能重新启用旧 Tauri/React 为正式桌面或双写旧库。
+
+当前 DESIGN-LAB：`DL-AUTHORITY-2026-09-18-R2`；当前集成任务包是 2026-09-18 R2，唯一活动账本仍是 `design-lab/config/task-ledger-r3.json`。正式前端 strict TypeScript + Vite + pnpm，后端 Python；不得因参考套件是 React 就改产品技术栈。Open Design 仅可选宿主，MiniMax Design 软件、H3 本地模型、云 API 是三个不同对象。
+
+UI 批次：B10 最高最终视觉/光效，B09 交互，B07 IA/状态，B04 token。AAOS 深黑蓝、Ivory、Aurora Teal，金色只少量强调；DESIGN-LAB 黑/深灰、白、Electric Blue，紫色限内容区。不能把 B04 的基础 token 等价为 B10 全部终版要求，也不能把三个项目界面拼成同一产品。
+
+## 2. AAOS 当前可核实问题
+
+基线 main：`e3875db0ee6d073d37839eb7b95f7ef4ce881bbb`。最新读取的 nightly run `35705091183` / full-suite job `106671984547`，2026-09-22T08:29:34Z 启动，结论 failure。
+
+云端命令：`env -u PYTHONPATH uv run --frozen --group ci --group ci-adapters pytest -q --tb=short tests/ integration-tests/ knowledge_base/tests/`。这不是本次审计环境执行的命令记录。
+
+结果：4 failed、3049 passed、35 skipped、13 warnings、135 subtests passed。Python compatibility 3.11/3.13 的单独 jobs 成功，但 browser-smoke/windows-runtime 因前置链未通过而 skipped；不能用 compatibility 成功覆盖 full-suite 失败。
+
+### AA-01：Schema 覆盖状态清单失配，确认
+
+`tests/contract/test_bulk_schema_matrix.py::test_schema_matrix_coverage_status_is_explicit` 第116行要求状态清单与现存 schema 集合相等。清单仍只有9项，日志指出新增9项没有登记：derived-projection、machine-growth、closed-loop、model-capability-pool、courseware-artifact、domain-pack、format-execution-receipt、local-green-identity、desktop-routes。
+
+修复必须为实际覆盖建立可追踪正反例映射；不允许直接将 present 全部标为 covered、删除新增 schema 或放宽等式。
+
+### AA-02：来源 SHA 的 Git 对象类型未统一，确认失败、局部根因已定位
+
+`tests/test_axr060_completion_audit.py` 第219行拒绝三个 SHA：fbb630e7ff8561bb11b87577aa88716303ca888d、5d34d98c3d80e31a9174b83d78fd1707496ba279、c0ec75b605b0fc1c9d2d14411e7b4d8b208da07b。代码对未获准40位 SHA 主要按 commit 及祖先关系验证，但 M0 证据里第三个明确是候选 tree SHA。
+
+需逐个识别 commit/tree/blob、声明来源/父对象/可达性与语义，修复 typed provenance。前两个的真实对象类型尚未在本审计中独立解析，不能批量直接加入 allowlist。
+
+### AA-03：插件对象进入错误的反序列化分支，确认失败，根因待最小化
+
+`app/capability/store.py` 的 install_builtin 使用 isinstance(PluginManifest) 分派。最新全套日志显示一个 PluginManifest 实例被传入 load_manifest_from_mapping/jsonschema，报“is not of type object”。`tests/test_p0_python_worker_lifecycle.py` 的 manifest 是通过 shared.plugin_manifest 工厂构造。
+
+类身份/import alias/reload/全套测试污染是重点排查假设，尚未独立证明。不得凭类名/hasattr 绕过 schema 校验。需单测、相关测试组合、全套顺序复验。另该测试的 `_TemporaryWorkerGate` 明确是 test-only；即使修复通过，也不能声称正式 Rust/Avalonia 的插件启停已接入。
+
+### AA-04：转换尝试链断言未跟随插件 provenance，确认
+
+`tests/test_workspace_api.py` 第929行仍预期 attempted_engines 只有 faster-whisper/local-model；实际增加 plugin:ax.builtin.converter.media 前缀。该测试前面不同原件 hash、不同 package_id 和两行转换记录已经通过，不能把这次失败描述成已证实的“原件被错误合并”。应核对转换链合同、更新准确的正反例，并继续保留不同原件不被相同文本吞并的约束。
+
+### AA-05：已有 UI 候选不能重做，也不能提前宣布闭环
+
+分支 `codex/aaos-p3-ui-convergence-20260922`，head `4525564bc11be0eb6a88ecb780d882810201a57b`，相对基线 ahead1/behind0，改21个文件。实际 diff 包含 Avalonia MainWindow/主题、路由、启动器和桌面测试，没有修改上述4项失败的直接文件。
+
+候选摘要自报：navigation118、routes6、learning-review16、Debug build 0 warnings/errors。但同一摘要明确 Native GUI/DPI/真实 HTTP/点击键盘读回/安装和 restart readback 未验证。另一份 provenance 文档记录 headless 学习 smoke，且 `mastery_projection.closed=false`。这是不同范围/不同级别的证据，不能相互替代。
+
+需要集成前复核候选、保护已有 UI，真实绑定 Core；不要再以“UI 不存在”为由从头搭壳。当前摘要内 UI 测试大部分为 static/build，不等于真人操作闭环。
+
+### AA-06：M0 仍缺真实产品闭环，不能用旧候选覆盖新主线
+
+R6 状态仍 IN_PROGRESS/FROZEN，多个任务 TESTED_LOCAL_PARTIAL，A02/A16 Owner-gated。A12/A13 记录的本地绿色候选绑定旧 commit 452b5d0cb4f18746347996f7bc03010f4b067637，不能证明当前 main 或新 UI 分支已完成 Green 验收。
+
+下一步应围绕一份真实授权资料、一条真实学习路径、一次真实模型失败→纠错→复测，验证持久化、重启、备份恢复和受控迁移，而不是扩大第二领域/第二模型/第二 renderer。
+
+### AA-07：本地 PDF 路径漂移仍需本机只读证据
+
+本次未访问用户本地仓库或资料库，不能认定所有 PDF 都错放。源码测试夹具、文档示例、临时开发输入和真实学习原件必须区别。正式学习资料不应仅因 gitignored 就永久存进源码目录；也不能未经授权直接移到 Model library 或 Design assets。要识别现有资料库规则、记录读写入口、生成 dry-run 清单，再按批准的范围迁移。
+
+## 3. DESIGN-LAB 当前可核实问题
+
+main：`6a16c40b7a48f72757a0327ec07462d23449bb11`，包含 PR #134。Canonical Verify run35546749035成功，9个jobs总体success；其中 Open Design host adapter job 的实际结构验证步骤因路径条件 skipped，不构成真实宿主证明。
+
+Workbench browser E2E 在 exact-SHA 下实际 RUN/PASS。artifact10616479537已实际下载：ZIP510字节，SHA-256 aab867d7a21b029a9819c5dc49bc43d612fa19fb3a2d71e4f267f984f408338a，与API元数据一致。内部 browser-e2e-summary.json 绑定当前 main，consoleErrors=0，覆盖 Project/Reference/Brief/Direction/选择/绑定/修改/刷新后持久化。它是 E2 摘要，不含真人视觉验收，也不是 Adobe 工程文件。
+
+### DL-01：资产分支 tip 选择错误，已由代码和独立 SQL 反例确认
+
+`src/design_lab/creative/asset_versions.py::branches()` 用 `MAX(version_id)`；同文件 `branch_tip()` 用 `ORDER BY version_no DESC`。`src/design_lab/runtime/asset_store.py::_record_version()` 生成 `v-` + uuid.uuid4().hex，因此 ID 的字典序不能代表时间/版本顺序。
+
+独立 SQLite 反例：v-ffff... 的 version_no=1，v-0000... 的 version_no=2；branches() 返回旧版本，branch_tip() 返回新版本。该反例没有运行仓库包，只验证实际 SQL 语义。需要仓库级回归进一步覆盖分支列表、预览、交付/回退调用者；不能假设所有调用者已发生事故。
+
+### DL-02：环境断言互相冲突，确认冲突，不裁定本机实际安装状态
+
+当前 AGENTS 声明用户已安装 Photoshop/Illustrator 等；PR #134 的 control-capability-matrix 却继续使用“2026-08-22 卸载、Adobe未安装”的说明。二者均不是本次实机探测。
+
+按 `.project/paths.json` 和授权的环境记录探测，而非根据云 runner/默认 C 盘路径/一个找不到的 exe 判定不存在。registered shared inputs：D:/All projects/Model library、Design assets、OS External Configuration、Design External Configuration。它们是路径注册，不是无条件写授权。
+
+### DL-03：控制能力矩阵仍是声明层，不是软件操控已完成
+
+矩阵中 Photoshop、Illustrator、MiniMax Design 各关键能力均 supported=false/E0；浏览器的一部分能力为 E2。矩阵声明 computer-use reachability 与 native-readback/artifact-rehash truth 分离是正确方向，但不能只再加矩阵结束任务。
+
+应先选择一个真实可用且已授权的宿主，把现有设计纵切延伸到 DesignIR、原生可编辑文件、预览、重开读回、局部修改和回退。不能从“MiniMax Design 能操作 PS”推导 Adobe 全家桶都已接入。
+
+### DL-04：恢复测试验证了请求重放，不等于真实断线/进程恢复
+
+读到的 `design-lab/tests/test_design_layer_idempotency_recovery.py` 前165行确实使用真实 loopback HTTP/SQLite，验证相同意图重试与事件唯一性。但测试先收到了第一次成功响应，再发第二次请求；注释中的 commit-then-disconnect 未在这些用例中实际注入 TCP 断线或重启服务器进程。
+
+保留现有幂等性成果，补真实故障注入：提交后响应前断开、受控服务重启、产物落盘后登记前中断、同key不同内容拒绝，区分 API replay、process recovery、native artifact recovery。不要夸大为“仓库完全无恢复实现”。
+
+### DL-05：现有 P0 应保护，剩余 P1 是原生交付
+
+当前 AUTHORITY 已关闭 P0 Authority、strict-TS/Vite/打包/浏览器工程门禁，以及 Project→Brief→Reference→Direction→DesignSystem 第一条完整纵切。明确残留 Reference→DesignIR→editable artifact 与真实 Host E3/人工 E4。
+
+`reports/current/PROJECT_STATUS.md` 是9月20日 dirty WORKTREE 观察下的R5投影，28项仍PARTIAL；自己注明不是当前HEAD/重测。不能把它与 AUTHORITY 的较新关闭状态简单拼接成“全部未完成”或“全部已完成”。只对本轮任务的各证据轴更新唯一账本，再生成报告。
+
+### DL-06：PR #135 正在收敛 UI，尚未合并且不能等于终版视觉
+
+PR #135 head `085a0f6ed8e0cd0db6e459cae9ce9c6f772f8ce2`，2 commits、6 files；新增B04 tokens、12路由壳、真实API视图和未开放说明。PR-triggered run35670330237成功。其“视觉4/4”是作者自报，本审计未见到对应本机图像，不能当独立 E4。
+
+复核并保护此增量，不复制同一壳。B04/B07是基础，仍要按B10/B09核验终版视觉和交互；不得改成React/Tauri或用静态KPI充数据。
+
+## 4. 建议派工顺序
+
+AAOS：刷新主线/候选与任务状态 → 修4个nightly失败 → 正式插件/资源边界核验 → 承接现有UI、做真人学习与Core重启 → 单个真实模型失败纠错复测 → 授权范围内的备份/迁移/新候选 → 独立审查与Owner待审。Owner门禁未解决时只停相应外部动作，不终止安全开发。
+
+DESIGN-LAB：刷新main/PR135 → 修分支tip → 修环境状态来源 → 承接Workbench并把设计状态编译到DesignIR → 单一原生宿主E3 → 真故障恢复/原件保护 → Rights/Preflight/Human Jury/Handoff → 可审查PR；人工E4不得代签。
+
+## 5. 证据强度与范围
+
+云端仓库文件、新候选diff、CI jobs/logs为本次直接读取；DESIGN浏览器artifact实际下载并rehash；SQL反例本次在隔离内存库执行。其余仓库文档自报的本机smoke、GUI、模型、真实Adobe操作未由本次重跑。源码压缩包下载未成功，所以没有两仓库完整本地checkout和全量测试，也没有全部代码逐行审计。未改变真实资料、已安装程序、分支或Release。

@@ -1,0 +1,211 @@
+# OPEN-DESIGN-Assistance 仓库执行包
+
+## 目标
+
+把仓库收敛为 Open Design 官方 runtime 可安装、可验证、轻量、证据真实的专业设计 Domain Pack，而不是配置 Open Design/Codex 的工具或大型资料仓。
+
+## 已确认基线风险
+
+- `configure_open_design_windows.py` 和 `doctor_open_design_windows.py` 解析 `CODEX_HOME/auth.json` 和 access token；
+- 配置器修改 Codex `config.toml`、Open Design 私有 `app-config.json`；
+- 默认权限根为 `D:\All projects`；
+- V3 runtime/visual tests 使用 synthetic records；
+- 当前 CI 只运行 V2/V2.1，不运行 V3；
+- 当前 HEAD 约 68.75 MiB，GitHub 报告仓库约 310 MiB；
+- 六个 GIF 占用约 61 MiB；
+- 497 个大师记录中 420 个未验证、77 个仍是 draft；
+- `capability-status.json` 只定义证据等级，没有实际 per-capability 状态；
+- 无根级 License，且来源许可复杂；
+- Open Design 主线没有 ruleset。
+
+## 任务顺序
+
+### OD-001：P0 凭据和宽权限清除
+
+立即停止推荐和调用：
+
+- `configure_open_design_windows.py`；
+- `doctor_open_design_windows.py` 中 auth/config 私有读取。
+
+替换为：
+
+```text
+plan_open_design_integration.py
+verify_open_design_runtime.py
+```
+
+只允许：
+
+- 官方 `od --version`；
+- `od plugin validate`；
+- `od plugin list --json`；
+- `od mcp install <agent> --print`；
+- 只输出 ActionPlan。
+
+禁止：
+
+- auth/token 读取；
+- 修改 Codex Home；
+- 修改 Open Design 私有配置；
+- 写 Open Design 安装目录；
+- 默认授权整个项目根；
+- 扫描所有项目寻找 `.od-skills`。
+
+必须先写负控测试证明上述行为不存在。
+
+### OD-002：文档与实码安全一致
+
+修改：
+
+- `README.md`；
+- `opendesign-assistance/README.md`；
+- `project-memory/PROJECT_DEFINITION_V3.md`；
+- 安全/安装说明。
+
+删除所有建议解析 Codex OAuth 或直接改 Open Design 私有配置的说明。
+
+### OD-003：证据模型纠正
+
+新增真实能力证据索引：
+
+```text
+evidence/index.json
+evidence/runs/
+schemas/evidence-record.schema.json
+```
+
+每项记录：capability id、level、state、commit SHA、runtime/version、command、exit code、artifact/provenance hash、reviewer、timestamp。
+
+现有 synthetic 检查重命名为：
+
+- contract structure verification；
+- scoring logic verification。
+
+没有真实 Open Design 调用不得使用 runtime-pass。
+
+### OD-004：Canonical CI
+
+统一为一个主 workflow，运行：
+
+- source registry；
+- V2/V2.1 兼容；
+- V3 product manifest；
+- contract structure；
+- scoring logic；
+- total verifier；
+- JSON Schema 实例验证；
+- Agent Skills validation；
+- 官方 `od plugin validate`；
+- Linux/Windows；
+- pinned Actions；
+- 最小权限、timeout、concurrency。
+
+CI 完成后才由用户决定是否授权创建 ruleset。
+
+### OD-005：公开入口收缩
+
+对外只保留三个主入口：
+
+- `commercial-design-core`；
+- `visual-quality-core`；
+- `production-handoff`。
+
+现有七个插件转为 Profile；21 个 Atom 保持内部 Pipeline 组件，不全部暴露为用户入口。
+
+### OD-006：研究和运行数据隔离
+
+将大师和来源划分：
+
+```text
+research-only
+curated-draft
+runtime-eligible
+```
+
+V1 `runtime-eligible` 大师方法不超过 20 个；每项至少两个来源、至少一个主要或机构来源。最终生成 Prompt 不含大师姓名。
+
+生成：
+
+- full research index；
+- runtime-eligible index。
+
+运行包引用 research-only 或许可不清来源时构建失败。
+
+### OD-007：仓库瘦身
+
+硬预算：
+
+- 默认 Domain Pack 小于 5 MiB；
+- Git 主线不新增大于 1 MiB 的二进制；
+- GIF、视频、高分辨率示例移到 LFS/Release；
+- `minigame-runtime` 不进入默认安装；
+- 历史 `design-system` 不进入默认上下文；
+- 一个当前 Project Definition、Architecture、Roadmap；
+- 历史版本进入 archive，默认不加载。
+
+删除/移动动作必须经过精确目标审查和用户授权；不得直接破坏历史来源。
+
+### OD-008：Domain Pack Manifest
+
+新增 `workflow-domain-pack.json`，遵守 Workflow 的版本化 Domain Pack Schema，声明能力、入口、权限、所需工具、支持客户端、Evidence 和资产哈希。
+
+不得把 Open Design 私有配置或用户凭据写入 Manifest。
+
+### OD-009：真实 Open Design E3
+
+选择一个最小黄金场景：
+
+```text
+Brief
+→ commercial-design-core
+→ DESIGN.md
+→ HTML artifact
+→ visual-quality report
+→ production handoff manifest
+```
+
+必须取得：
+
+- Open Design runtime/version；
+- 官方 plugin validate；
+- plugin install/discovery；
+- `od plugin apply --json` 的真实 run/task id；
+- 真实产物；
+- artifact/provenance hash；
+- 一次失败与恢复；
+- 所有产物位于目标测试项目。
+
+### OD-010：许可与发布治理
+
+- 仓库所有者决定原始代码/文档许可证；
+- 复杂第三方资产采用 SPDX/REUSE 清单；
+- 6 个 UNVERIFIED、REFERENCE-ONLY、AGPL、CC-BY-NC、专有服务来源不得进入默认商业运行包；
+- 增加根级 Security、Notices、SBOM；
+- 未解决许可前不得宣称公开商业可复用。
+
+## 当前安全验证命令
+
+在 OD-001 修复前，只运行仓库内静态/合成验证：
+
+```powershell
+python opendesign-assistance\scripts\verify_product_manifest_v3.py
+python opendesign-assistance\scripts\verify_runtime_contracts_v3.py
+python opendesign-assistance\scripts\verify_visual_scoring_v3.py
+python opendesign-assistance\scripts\verify_source_registry_v2.py
+python opendesign-assistance\scripts\verify_v2_protocols.py
+python opendesign-assistance\scripts\verify_visual_quality_v21.py
+```
+
+禁止运行当前 `configure_open_design_windows.py` 和 `doctor_open_design_windows.py`。
+
+## 完成条件
+
+- 零凭据读取；
+- 零宽根默认授权；
+- 所有公开插件通过官方验证；
+- V3 进入 Windows/Linux exact-SHA CI；
+- 默认包小于预算；
+- research/runtime 清晰隔离；
+- 至少一条真实 E3；
+- exact-tree Codex review 通过。
+

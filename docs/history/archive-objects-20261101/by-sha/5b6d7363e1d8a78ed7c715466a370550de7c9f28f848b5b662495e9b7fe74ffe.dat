@@ -1,0 +1,46 @@
+# ArcheAxis｜GPT 独立审计与合并资格任务包
+
+版本：2026-09-07｜执行时机：DP 与 GPT 两个执行包都已停止并提交其 `*-PACK-COMPLETION.json` 后。
+
+## 审计者要求
+
+必须使用**全新 GPT/Codex 会话、全新 worktree**，不能沿用执行 GPT 包的上下文或工作目录。审计者不重做功能开发；它只复现、审查、合并通过项，或明确退回修复。这样 GPT 不会自己给自己签验收。
+
+输入必须包括：
+
+- 共同起点 `4ca46eaf94c486dadcf200aac6b41cd968b1ce6e`；
+- DP 候选分支/commit 与 `DP-PACK-COMPLETION.json`；
+- GPT 候选分支/commit 与 `GPT-PACK-COMPLETION.json`；
+- 原始命令输出、测试日志、样本来源/许可和任务信封。
+
+缺少其中任一项时，标记 `BLOCKED`，不能以口头说明补足。
+
+## A-01｜来源、范围与状态复核
+
+逐条检查两个分支的完整 SHA、实际 diff、任务信封、允许路径和所有证据的 tested SHA。拒绝越界文件、手写 DONE/PASS、复用旧 SHA、未声明外部路径或把缓存/日志/凭据写入版本库的提交。
+
+输出每个切片唯一结论：`ADOPT`、`MODIFY`、`REJECT` 或 `BLOCKED`。
+
+## A-02｜契约兼容性与三语言复现
+
+在干净 worktree 合并候选前，验证 DP 的 `quality-report` schema 与 GPT 的其它 OpenAPI/JSON Schema/生成绑定能共存。运行 Rust、C#、Python 的正例与负例；尤其拒绝 schema 外字段、机器赋予人工 accepted、job 状态混用和任何非 Rust 的主库写入。
+
+若冲突，只产生最小修复任务，不在审计会话内临时大改。
+
+## A-03｜受控合并与全链路复跑
+
+仅对 A-01/A-02 的 `ADOPT` 项进行独立 merge，生成新的候选 SHA。每次合并后执行 scope gate、全量相关测试和 web screenshot → OCR → cross-check；确认 Chromium short-path 例外在 CI 中可见、可清理且不回写 `.hermes`。
+
+任何红灯使候选停在 `INTEGRATED` 或 `BLOCKED`，不能称 `QUALIFIED`。
+
+## A-04｜真实最小闭环资格
+
+在干净 Windows 11 环境，用项目自有/公开许可样本验证：导入→原件 CAS→本地转换→质量/损失显示→有界 cloud cross-check→人工决定→检索/学习→机器只读调用→重启→备份恢复。准确率、模型测量、来源支持度、个人定义状态必须分开显示。
+
+Office、扫描 OCR、音视频等未有金样本的包必须标为 `UNMEASURED`/`DEFERRED`，不得宣传为已支持。
+
+## A-05｜资格结论与 Owner Preview
+
+生成机器可读 `QUALIFICATION-DECISION.json` 和人读事实表，列出：候选 SHA、每项测试、通过/失败/未测量、DP/GPT 贡献来源、已知限制、回滚 SHA、遗留风险。只有所有 v0.1 强制门通过时更新到 `QUALIFIED`；发布仍需 Owner 单独批准。
+
+审计者不能以“两个包都跑完”代替实测，也不能删除旧项目。发现问题时只回发最小、带 SHA 的 DP 或 GPT 修复包。

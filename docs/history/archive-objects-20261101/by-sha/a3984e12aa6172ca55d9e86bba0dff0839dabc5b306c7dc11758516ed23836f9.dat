@@ -1,0 +1,129 @@
+# 最终验收、证据与发布合同
+
+## 1. 证据记录
+
+每个检查必须包含：
+
+- schema version；
+- task id；
+- repository；
+- phase；
+- command；
+- cwd；
+- start/end time；
+- exit code；
+- output digest；
+- artifact path/hash；
+- baseline/final HEAD；
+- baseline/final tree；
+- baseline/final status；
+- evidence level；
+- state；
+- rollback；
+- secret-free 声明。
+
+## 2. 安全验收
+
+Required：
+
+- 凭据读取 0；
+- E 盘访问 0；
+- 默认项目外写入 0；
+- 宽根授权 0；
+- 未授权 GitHub mutation 0；
+- session/prompt 内容遥测 0；
+- destructive broad command 0；
+- boundary negative tests 全部通过。
+
+## 3. Workflow 验收
+
+- 无 Hermes 环境仍可验证核心；
+- 五个一级 Adapter 通过合同测试；
+- Cursor/WorkBuddy 状态诚实；
+- config plan/apply/rollback 有故障注入；
+- Task Ledger 支持 restart/resume；
+- 外部写入不自动重试；
+- Token exact/normalized/unknown 区分；
+- Console 无聊天或 Agent 功能；
+- Python/Node/Rust 同一 exact SHA CI；
+- exact-tree reviewer GO。
+
+## 4. Open Design 验收
+
+- 安全脚本不读取 auth/config 私有内容；
+- 官方插件验证通过；
+- V3 进入 Windows/Linux CI；
+- 默认 Domain Pack 小于 5 MiB；
+- runtime-eligible 来源明确；
+- 至少一个真实 E3；
+- artifact/provenance 可读回；
+- 故障恢复成立；
+- exact-tree reviewer GO。
+
+## 5. 跨仓验收
+
+- 版本化 Domain Pack 合同；
+- pack lock 精确绑定版本和 commit；
+- 无整仓复制；
+- 一条黄金链路完成；
+- 中断恢复 10/10；
+- 预算终止有效；
+- run id 串联任务、Token、Open Design、artifact、review 和 GitHub；
+- GitHub 仍等待用户授权。
+
+## 6. 效率 Benchmark
+
+V1 发布候选至少完成 10 类代表任务、30 次成对运行：
+
+- baseline：未启用 Workflow/Domain Pack 增强；
+- candidate：启用增强；
+- 使用同一输入、同一客户端/模型、同一项目状态；
+- 记录成功率、人工返工、Token、耗时、重试和边界事件。
+
+建议门槛：
+
+- 成功率不下降；
+- Token 中位数降低至少 15%；
+- 总耗时中位数降低至少 15%；
+- 重复失败/重试减少；
+- 边界违规为 0；
+- 设计任务通过独立人工盲评和生产预检。
+
+模型自评分不能作为唯一设计质量证据。
+
+## 7. 最终状态
+
+只允许：
+
+```text
+READY_FOR_USER_APPROVAL
+BLOCKED
+COMPLETED_AND_RELEASE_VERIFIED
+```
+
+默认状态为 `READY_FOR_USER_APPROVAL`。
+
+`COMPLETED_AND_RELEASE_VERIFIED` 需要：
+
+- 用户已分别授权 commit/push/PR/merge/release；
+- 对应 exact SHA 的 required workflow 最新 attempt completed/success；
+- 远端目标分支包含该 SHA；
+- 工作树 clean；
+- release artifact/hash 可读回。
+
+## 8. 最终回复格式
+
+Hermes 最终只返回：
+
+1. 状态；
+2. 两库 baseline/final HEAD/tree/status；
+3. 已完成任务 ID；
+4. 未完成和阻断；
+5. 本地 gates；
+6. live runtime；
+7. Codex review；
+8. rollback；
+9. GitHub exact-SHA CI；
+10. tracked changes 和 ignored artifacts；
+11. 等待用户授权的动作。
+

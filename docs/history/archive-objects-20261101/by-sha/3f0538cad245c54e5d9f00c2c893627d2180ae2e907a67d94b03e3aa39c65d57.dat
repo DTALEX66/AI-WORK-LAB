@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ArcheAxis Desktop A1 Prototype</title>
+<style>
+:root{
+  --bg:#070A13;--deep:#0B1020;--s1:#10172A;--s2:#141D34;--s3:#1A2540;
+  --text:#F3F5FA;--muted:#A3ACC0;--violet:#7C5CFF;--bright:#AA76FF;
+  --blue:#4DB7FF;--green:#4DBB84;--amber:#D8A84E;--red:#D65A67;
+  --line:rgba(155,121,255,.16);--line2:rgba(155,121,255,.36)
+}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--text);
+font:13px/1.45 "Microsoft YaHei UI","Segoe UI",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:56px 252px minmax(0,1fr) 340px;
+grid-template-rows:52px minmax(0,1fr) 44px;height:100vh;background:
+radial-gradient(circle at 48% -20%,rgba(124,92,255,.15),transparent 38%),var(--bg)}
+.top{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--line);
+background:rgba(7,10,19,.88);backdrop-filter:blur(16px)}
+.core{width:30px;height:30px;clip-path:polygon(50% 0,86% 22%,76% 78%,50% 100%,24% 78%,14% 22%);
+background:linear-gradient(145deg,var(--bright),#342071);box-shadow:0 0 28px rgba(124,92,255,.42)}
+.brand b{display:block}.brand span{color:var(--muted);font-size:10px;letter-spacing:.15em}
+.tabs{display:flex;gap:6px;margin-left:18px;flex:1}.tab{border:1px solid var(--line);background:var(--s1);
+border-radius:8px;padding:7px 12px;color:var(--muted)}.tab.active{color:var(--text);border-color:var(--line2);background:var(--s2)}
+.command{width:330px;border:1px solid var(--line);background:var(--s1);border-radius:8px;padding:8px 12px;color:var(--muted)}
+.rail{grid-row:2/4;border-right:1px solid var(--line);background:var(--deep);padding:10px 7px;display:flex;flex-direction:column;gap:7px}
+.rail button{width:42px;height:42px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted)}
+.rail button.active{background:rgba(124,92,255,.14);border-color:var(--line2);color:var(--bright)}
+.side{grid-row:2;border-right:1px solid var(--line);padding:14px 12px;background:linear-gradient(180deg,var(--deep),var(--s1));overflow:auto}
+.side h3{margin:0 0 14px}.group{color:var(--muted);font-size:10px;letter-spacing:.13em;margin:18px 8px 6px}
+.nav{display:block;width:100%;text-align:left;border:1px solid transparent;background:transparent;border-radius:8px;padding:9px 10px;color:var(--muted)}
+.nav.active{background:rgba(124,92,255,.12);border-color:var(--line2);color:var(--text)}
+.main{grid-row:2;padding:18px;overflow:auto;background-image:radial-gradient(circle,var(--line) 1px,transparent 1px);background-size:24px 24px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px}.eyebrow{color:var(--bright);font-size:10px;letter-spacing:.16em}
+h1{margin:3px 0;font-size:25px}.muted{color:var(--muted)}.btn{border:1px solid var(--line);background:var(--s2);border-radius:8px;padding:8px 11px}.btn.primary{background:var(--violet);border-color:var(--violet)}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{border:1px solid var(--line);background:linear-gradient(180deg,var(--s2),var(--s1));border-radius:11px;padding:14px}
+.metric b{display:block;font-size:26px;margin:4px 0}.tone-blue{color:var(--blue)}.tone-amber{color:var(--amber)}.tone-green{color:var(--green)}
+.two{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;margin-top:12px}.list{display:flex;flex-direction:column}.row{padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}.row:last-child{border-bottom:0}
+.badge{border:1px solid var(--line);border-radius:999px;padding:3px 7px;color:var(--muted);font-size:11px}
+.inspector{grid-row:2;border-left:1px solid var(--line);background:var(--deep);padding:14px;overflow:auto}.ins-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding-bottom:8px}.ins-tabs button{border:0;background:transparent;color:var(--muted);padding:6px}.ins-tabs button.active{color:var(--bright)}
+.panel{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--s1);padding:12px}
+.dock{grid-column:2/-1;border-top:1px solid var(--line);background:rgba(11,16,32,.95);display:flex;align-items:center;gap:12px;padding:0 14px}
+.status{display:flex;align-items:center;gap:6px;color:var(--muted)}.dot{width:7px;height:7px;border-radius:50%;background:var(--green)}.dot.amber{background:var(--amber)}.dot.red{background:var(--red)}
+@media(max-width:1150px){.app{grid-template-columns:56px 220px minmax(0,1fr)}.inspector{display:none}.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="core"></div><div class="brand"><b>元枢系统</b><span>ARCHEAXIS DESKTOP</span></div>
+  <div class="tabs"><button class="tab active">观心总览</button><button class="tab">知行任务</button><button class="tab">察微研究</button></div>
+  <div class="command">⌘  输入命令、创建任务或搜索当前工作空间（A1 诚实空状态）</div>
+</header>
+<nav class="rail">
+  <button class="active" title="观心">观</button><button title="智体">智</button><button title="知行">行</button>
+  <button title="察微">察</button><button title="藏识">藏</button><button title="流程">流</button>
+  <button title="连接">连</button><button title="系统">系</button>
+</nav>
+<aside class="side">
+  <h3>元枢·观心</h3>
+  <div class="group">当前模块</div>
+  <button class="nav active">观心总览</button><button class="nav">最近活动</button><button class="nav">待审批</button>
+  <div class="group">快速入口</div>
+  <button class="nav">导入资料</button><button class="nav">查看知行任务</button><button class="nav">进入察微研究</button>
+  <div class="group">状态</div>
+  <div class="panel"><b>本地工作台</b><p class="muted">只展示当前系统可证明的数据。</p></div>
+</aside>
+<main class="main">
+  <div class="head"><div><div class="eyebrow">GUANXIN OVERVIEW</div><h1>早上好，DTALEX66</h1><div class="muted">从真实资料、任务、证据与学习状态继续工作。</div></div><div><button class="btn">系统诊断</button> <button class="btn primary">导入资料</button></div></div>
+  <section class="grid">
+    <div class="card metric"><span class="muted">待审核研究</span><b class="tone-amber">12</b><span class="muted">来自真实 Research Candidate</span></div>
+    <div class="card metric"><span class="muted">后台任务</span><b class="tone-blue">3</b><span class="muted">Job / Delivery 投影</span></div>
+    <div class="card metric"><span class="muted">Runtime 已批准</span><b class="tone-green">8</b><span class="muted">approved-only</span></div>
+    <div class="card metric"><span class="muted">待投递</span><b class="tone-amber">1</b><span class="muted">Outbox pending</span></div>
+  </section>
+  <section class="two">
+    <div class="card"><h3>最近真实活动</h3><div class="list">
+      <div class="row"><div><b>资料导入</b><div class="muted">本地文件 → Candidate Research</div></div><span class="badge">等待复核</span></div>
+      <div class="row"><div><b>知识学习</b><div class="muted">已记录练习与 Mastery</div></div><span class="badge">已完成</span></div>
+      <div class="row"><div><b>投递回执</b><div class="muted">Outbox → Receipt → Reload</div></div><span class="badge">已验证</span></div>
+    </div></div>
+    <div class="card"><h3>能力边界</h3><div class="list">
+      <div class="row"><span>异步 Worker</span><span class="tone-amber">尚未实现</span></div>
+      <div class="row"><span>多 Agent</span><span class="tone-amber">规划中</span></div>
+      <div class="row"><span>真实 Delivery</span><span class="tone-green">已接入</span></div>
+      <div class="row"><span>任务级回放</span><span class="tone-amber">A3</span></div>
+    </div></div>
+  </section>
+</main>
+<aside class="inspector">
+  <div class="ins-tabs"><button class="active">状态</button><button>证据</button><button>权限</button><button>审计</button></div>
+  <div class="panel"><b>认知检查器</b><p class="muted">A1 展示当前聚合字段；任务级 Context、Trace 与 Evaluation 在 A2 接入。</p></div>
+  <div class="panel"><b>来源</b><p class="muted">Research、Knowledge 和 Lifecycle 使用现有真实投影。</p></div>
+  <div class="panel"><b>产品真相</b><p class="tone-green">无假 Agent · 无伪进度 · 无内部 ID</p></div>
+</aside>
+<footer class="dock">
+  <div class="status"><span class="dot"></span>Core 正常</div>
+  <div class="status"><span class="dot"></span>SQLite 可读</div>
+  <div class="status"><span class="dot amber"></span>1 条待投递</div>
+  <div class="status"><span class="dot amber"></span>12 项待审核</div>
+  <div class="status" style="margin-left:auto">本地模式 · Violet Core</div>
+</footer>
+</div>
+</body>
+</html>

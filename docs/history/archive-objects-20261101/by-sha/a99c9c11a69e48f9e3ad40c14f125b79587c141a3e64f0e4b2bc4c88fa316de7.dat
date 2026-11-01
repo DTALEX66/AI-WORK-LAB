@@ -1,0 +1,1297 @@
+# 星环知识平台（ArcheAxis Knowledge）最终架构、外置能力仓与多形态发布任务包
+
+> 版本：Final Architecture / Release Architecture v1  
+> 日期：2026-08-14  
+> 唯一云端项目：`DTALEX66/ArcheAxis-Knowledge-OS`  
+> 云端审计基线：`main@e05765e0d97978b831493eafbf650b91219b0f53`  
+> 开发机项目外置依赖区：`D:\All projects\OS External Configuration`  
+> 产品：星环知识平台（ArcheAxis Knowledge）  
+> 项目边界：WORK-LAB、DESIGN-LAB 是独立项目；不得被并入本仓库、共享数据库或直接写入本项目运行状态。  
+> 执行对象：Hermes / Codex / 项目维护者。  
+
+---
+
+## 0. 最终裁决
+
+### 0.1 总体架构
+
+ArcheAxis Knowledge 应正式收敛为：
+
+> **一个可信产品内核、一个独立前端壳、一个可切换后端运行时、四个用户资产域、一个能力资源仓、两个系统辅助区、四种运行配置、三类公开发布产物。**
+
+它不是“一切皆插件”，而是：
+
+```text
+可信知识与双向学习语义不可替换
+能力实现可替换
+运行环境可替换
+前端与后端可独立开发
+用户数据永远不依赖某个插件或某个发布形态
+```
+
+### 0.2 用户要求的可行性判断
+
+“安装完成后打开前端界面，后端可以随时修改，方便测试”可以实现，但不能让正式生产后端在安装目录中被随意改写。推荐实现为：
+
+```text
+Tauri 前端壳常驻
+    ↓
+Backend Supervisor 选择运行配置
+    ├─ Bundled Stable Backend       正式安装版
+    ├─ Bundled Green Backend        绿色免安装版
+    ├─ Bundled Portable Backend     随身便携版
+    └─ External Dev Backend         可热重载源码后端
+```
+
+开发测试模式下，前端继续打开，后端可以从源码目录启动、停止、重启和热重载；默认使用隔离测试工作区，不直接连接生产数据。正式模式只加载随发布包验证过的内置后端。
+
+### 0.3 发布形态
+
+最终至少交付：
+
+1. **标准安装版**：面向日常稳定使用；
+2. **绿色免安装版**：解压即用，应用本体免安装，但数据默认不随程序移动；
+3. **随身便携版**：程序、数据、能力和配置全部位于便携根目录，可整体移动；
+4. **开发测试套件**：内部产物，不作为普通用户正式版；允许连接外部源码后端并热重载。
+
+另可提供“完整离线便携版”，包含固定版本 WebView2。由于微软官方说明固定版 WebView2 二进制会额外增加约 250 MB 以上，不应作为默认绿色包；普通版本优先使用 Evergreen WebView2，并在缺失时提供离线安装处理。[Tauri Windows Installer](https://v2.tauri.app/distribute/windows-installer/) / [Microsoft WebView2 Distribution](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)
+
+---
+
+## 1. 当前云端事实与审计结果
+
+### 1.1 仓库与发布状态
+
+- 云端 HEAD 仍为 [`e05765e`](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/commit/e05765e0d97978b831493eafbf650b91219b0f53)。
+- `main` 未受保护，repository ruleset 为空。
+- 最新普通 CI 对该 HEAD 成功，但最新 Nightly 仍有批处理 pause/resume 生命周期竞态，不能声明全绿。
+- 最新公开 Release 仍是 [`v0.5.0`](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/releases/tag/v0.5.0)，名称为旧的 `ArcheAxis OS v0.5.0`。
+- v0.5.0 只发布安装器、旧 wheel、release identity 和 checksums，没有绿色 ZIP 或便携 ZIP。
+- 当前 `.github/workflows/release.yml` 已改用新安装器显示名，但仍把 `0.5.0` 和 wheel 文件名写死，下一版本无法可靠发布。
+
+### 1.2 当前桌面架构中值得保留的部分
+
+现有 Tauri + Python 后端生命周期设计已经具备良好基础：
+
+- 桌面壳启动前执行数据库迁移；
+- 后端仅绑定 `127.0.0.1`；
+- 由桌面壳选择随机空闲端口；
+- 使用 launch token 校验 readiness；
+- 后端 stdout/stderr 有限量收集；
+- 窗口关闭后先请求优雅退出，超时才强制结束；
+- Windows Job Object 用于约束后端子进程；
+- 安装模式使用 bundled Python；
+- 开发模式使用仓库 `.venv`；
+- 已有便携根目录的 fail-closed 测试。
+
+这些不能推倒重写，应演进为 Backend Supervisor + Runtime Profile。
+
+### 1.3 当前桌面与发布架构的主要缺陷
+
+#### P0-1：前端依赖后端存活
+
+Tauri 的 `frontendDist` 只有一个“正在启动”页面，真实 UI 由后端 `/workspace` 提供。后端重启、热重载或发生迁移错误时，完整前端也随之不可用，无法实现稳定的后端控制台和重连界面。
+
+#### P0-2：正式、开发、项目内测试模式靠隐式路径判断
+
+`runtime.rs` 会通过资源目录向上寻找 `pyproject.toml + .hermes`，把某些 project bundle 自动识别为项目模式，并把数据写到仓库 `.hermes/task-runtime`。这类隐式推断不应进入发布架构，必须改成显式、可审计的 Runtime Profile。
+
+#### P0-3：便携版只有脚本，没有发布产物
+
+仓库有 `launch_portable.ps1/.bat` 和便携说明，但 Release workflow 没有组装、验证或上传便携 ZIP；用户实际无法从 Release 获得官方便携版。
+
+#### P0-4：便携根目录没有内部职责分区
+
+当前便携模式把 `cwd` 和 `data_dir` 都直接设为 portable root。长期会造成数据库、日志、WebView profile、工作区、插件、模型和程序文件混在同一层。
+
+#### P0-5：环境变量仍双重漂移
+
+Python 入口已优先读取 `ARCHEAXIS_*`，但 Rust launcher 主动设置的仍是 `COGNITIVE_*`；便携脚本也只设置 `COGNITIVE_PORTABLE_ROOT`。应改为新前缀 canonical、旧前缀只作受测回退。
+
+#### P0-6：CSP 为空
+
+`tauri.conf.json` 目前 `csp: null`。当真实前端改为 Tauri 内置静态资源并连接 loopback API 时，必须配置精确 CSP、connect-src、资源来源和导航限制。
+
+#### P0-7：外置依赖文档不是可执行真相源
+
+`docs/environment/EXTERNAL_DEPENDENCIES.md` 已登记 `D:\All projects\OS External Configuration`，但存在：
+
+- “环境变量为会话级、不写注册表”与后文 `setx` 永久写入冲突；
+- 开发工具链、CI venv、运行时引擎、模型、缓存和外部服务混成一张清单；
+- 路径和版本主要靠人工同步；
+- faster-whisper 和 RapidOCR 首次运行可能自动下载，与本地优先授权规则冲突；
+- 没有 host inventory、lock、license、hash、健康检查和清理策略；
+- 这套路径只能属于用户开发机，不能成为公共安装版依赖。
+
+#### P1-1：数据仍集中在旧单库语义
+
+SQLite 默认仍是 `data/cognitive_os.sqlite`，备份 kind、volume id 等仍保留旧命名。兼容旧数据库可以保留，但新工作区布局和显示必须转向 ArcheAxis 语义，并经过迁移/回读，不能直接重命名文件造成历史数据丢失。
+
+#### P1-2：正式安装结束后未形成“前端壳 + 后端状态控制”体验
+
+当前启动页只是文本。安装结束后的首次启动、工作区选择、四资产域位置、能力仓位置、后端健康、迁移进度和失败恢复尚未形成完整前端流程。
+
+#### P1-3：Release 未覆盖多产物身份
+
+当前 release identity 只围绕安装器、wheel 和数据库发布链，没有定义绿色版、便携版、能力包、SBOM、WebView2 依赖模式和多产物之间的同源关系。
+
+---
+
+## 2. 最终三层产品架构
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ Presentation Plane                                          │
+│ Tauri Shell + React/TypeScript UI + Local Recovery Console  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ versioned local API / events
+┌──────────────────────────▼──────────────────────────────────┐
+│ Trusted Product Plane                                       │
+│ Identity / Source / Asset / Document / Evidence / Knowledge │
+│ Human Learning / AI Assets / Job-Outbox-Receipt / Policy    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ Capability Gateway
+┌──────────────────────────▼──────────────────────────────────┐
+│ Capability Plane                                            │
+│ Plugins / Engines / Models / Runtimes / Connectors          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 2.1 Presentation Plane
+
+职责：
+
+- 独立于 Python 后端打包；
+- 后端未启动时仍能显示启动、迁移、错误、日志和修复入口；
+- 后端重启时显示 reconnecting，不关闭窗口；
+- 管理 Runtime Profile；
+- 通过 API handshake 判断兼容性；
+- 不直接访问 SQLite；
+- 不直接加载任意插件网页。
+
+### 2.2 Trusted Product Plane
+
+内核拥有：
+
+- Workspace、Source、RawAsset、Document、Anchor；
+- Claim、EvidenceCandidate、EvidenceBundle、Conflict；
+- KnowledgeVersion；
+- HumanLearningAsset 与 AIAsset 的批准状态；
+- Job、Outbox、Receipt、Migration、Audit；
+- 插件权限、网络授权、模型安装授权；
+- 数据导出、撤销和恢复底线。
+
+### 2.3 Capability Plane
+
+可替换能力：
+
+- OCR、ASR、PDF/Office/HTML/Markdown/Canvas 转换；
+- 搜索、向量、图谱 projection；
+- Web 证据连接器；
+- 本地/云模型 provider；
+- 学习调度和练习策略；
+- 可视化、动画、模拟、2D/2.5D/3D、VR/AR renderer；
+- 外部 Agent/浏览器/终端适配器。
+
+---
+
+## 3. 最终存储模型：一工作区、四资产域、一能力仓、两系统区
+
+### 3.1 每个工作区的四个用户资产域
+
+```text
+Workspace
+├─ Source Archive                 原始资料库
+├─ Evidence & Knowledge Ledger    可信证据与知识库
+├─ Human Learning Vault           人类学习库
+└─ AI Asset Vault                 AI 资产库
+```
+
+#### Source Archive
+
+- 保存原始文件或受控外部引用；
+- 原件只读、哈希和版本登记；
+- 不保存 OCR/ASR 临时产物；
+- 允许用户指向大容量磁盘。
+
+#### Evidence & Knowledge Ledger
+
+- SQLite 事务真相源；
+- 页面/bbox/时间戳等物理锚点；
+- Claim、EvidenceBundle、冲突、有效期和版本；
+- JSON/Markdown/JSON-LD 开放投影；
+- 不能简化为普通文件夹。
+
+#### Human Learning Vault
+
+- Markdown、Canvas、课程、练习、复习、Teach Back；
+- 以开放文件为主，事务状态由 Ledger/State DB 管理；
+- OCR/ASR/转换器不放在这里。
+
+#### AI Asset Vault
+
+- memory、rule、skill、standard、context、evaluation；
+- Markdown 人类审阅层 + JSON/YAML 机器执行层；
+- 未经证据绑定和人工批准不得生效；
+- 模型权重不属于 AI Asset Vault。
+
+### 3.2 能力资源仓
+
+保存插件、引擎、运行环境、模型和公共资源。它是系统级能力层，不是工作区知识库。
+
+### 3.3 两个系统辅助区
+
+- `Derived & Cache`：页面渲染、OCR 中间图、音轨、缩略图、索引、下载缓存；可删除重建。
+- `Backup & Recovery`：数据库快照、开放文件增量、迁移前快照、恢复 manifest；不备份可重新下载的大模型本体。
+
+---
+
+## 4. 开发机外置依赖区最终布局
+
+固定开发机路径：
+
+```text
+D:\All projects\OS External Configuration\
+```
+
+该目录正式定义为：
+
+> **ArcheAxis 项目级开发能力仓与构建资源区。**
+
+它不属于 WORK-LAB，不保存用户知识数据，不是公开安装版的硬依赖。
+
+### 4.1 推荐目录
+
+```text
+D:\All projects\OS External Configuration\
+├─ 00-registry\
+│  ├─ host-profile.local.yaml
+│  ├─ capability-inventory.json
+│  ├─ toolchain-lock.json
+│  ├─ model-lock.json
+│  ├─ plugin-lock.json
+│  ├─ licenses\
+│  └─ sbom\
+│
+├─ 10-toolchains\
+│  ├─ scoop\
+│  ├─ python\
+│  ├─ uv\
+│  ├─ node\
+│  ├─ rust\
+│  ├─ msvc\
+│  ├─ playwright\
+│  └─ webview2\
+│
+├─ 20-runtimes\
+│  ├─ core-dev\
+│  ├─ core-test\
+│  ├─ build\
+│  └─ plugins\
+│     ├─ ocr\
+│     ├─ asr\
+│     ├─ document\
+│     └─ rendering\
+│
+├─ 30-engines\
+│  ├─ tesseract\
+│  ├─ ffmpeg\
+│  ├─ rapidocr\
+│  ├─ whisper\
+│  ├─ document\
+│  └─ rendering\
+│
+├─ 40-models\
+│  ├─ manifests\
+│  ├─ weights\
+│  ├─ tokenizers\
+│  ├─ licenses\
+│  └─ benchmarks\
+│
+├─ 50-plugins\
+│  ├─ packages\
+│  ├─ installed\
+│  ├─ disabled\
+│  ├─ staging\
+│  └─ quarantine\
+│
+├─ 60-cache\
+│  ├─ uv\
+│  ├─ npm\
+│  ├─ cargo\
+│  ├─ huggingface\
+│  ├─ playwright\
+│  └─ downloads\
+│
+├─ 70-test-fixtures\
+│  ├─ conversion-golden\
+│  ├─ workspaces\
+│  ├─ corrupted-inputs\
+│  └─ compatibility\
+│
+├─ 80-build\
+│  ├─ runtime-staging\
+│  ├─ installer-staging\
+│  ├─ portable-staging\
+│  └─ symbols\
+│
+├─ 90-quarantine\
+│  ├─ unverified-downloads\
+│  └─ rejected-plugins\
+│
+└─ logs\
+   ├─ environment-audit\
+   ├─ builds\
+   └─ component-health\
+```
+
+### 4.2 不能放入该目录的内容
+
+- 用户原件、证据、人类学习库和 AI 资产；
+- 正式用户数据库；
+- WORK-LAB 全局配置；
+- API key、密码、签名私钥；
+- 唯一不可替代的备份；
+- Git 仓库源代码本体；
+- 正式发布资产的唯一副本。
+
+### 4.3 配置真相分层
+
+```text
+仓库中的规范：config/environment/capability-requirements.yaml
+开发机实际状态：00-registry/host-profile.local.yaml
+自动探测结果：00-registry/capability-inventory.json
+构建时锁定：toolchain-lock / model-lock / plugin-lock
+人类说明：由上述文件生成 EXTERNAL_DEPENDENCIES.md
+```
+
+不能继续用一份手写 Markdown 同时承担规范、机器状态和安装脚本三种职责。
+
+### 4.4 环境变量策略
+
+正式 canonical：
+
+```text
+ARCHEAXIS_EXTERNAL_ROOT
+ARCHEAXIS_CAPABILITY_STORE
+ARCHEAXIS_MODEL_STORE
+ARCHEAXIS_RUNTIME_PROFILE
+ARCHEAXIS_WORKSPACE_ROOT
+ARCHEAXIS_DATA_DIR
+ARCHEAXIS_CACHE_DIR
+ARCHEAXIS_LOG_DIR
+```
+
+开发机通过 `Enter-ArcheAxisDev.ps1` 在当前 PowerShell 会话注入，不默认使用 `setx` 写入用户全局环境。旧 `COGNITIVE_*` 只保留两个稳定版本的兼容读取，并产生一次性迁移提示。
+
+### 4.5 依赖版本原则
+
+- Contract/Plugin Manifest 使用兼容范围，避免永久锁死；
+- 每一个正式构建必须锁定实际使用的精确版本与 hash，保证可复现；
+- 开发环境允许多个并存版本；
+- 用户升级前运行兼容检查；
+- 模型和引擎不可在首次使用时静默联网下载；
+- 下载、安装、升级、回滚均必须经过 Capability Store。
+
+---
+
+## 5. 正式安装版布局
+
+### 5.1 程序目录与数据目录分离
+
+程序目录只保存不可变发布内容：
+
+```text
+<InstallDir>\ArcheAxis Knowledge\
+├─ ArcheAxis.exe
+├─ frontend\
+├─ runtime\
+│  ├─ python\
+│  ├─ app-wheel\
+│  └─ runtime-manifest.json
+├─ builtin-plugins\
+├─ licenses\
+├─ release-identity.json
+└─ uninstall.exe
+```
+
+用户可写系统数据：
+
+```text
+%LOCALAPPDATA%\ArcheAxis\Workspace\
+├─ config\
+├─ runtime-state\
+├─ capability-store\
+├─ workspaces\
+├─ derived-cache\
+├─ logs\
+├─ updates\
+├─ webview-profile\
+└─ backups\
+```
+
+正式升级不得修改用户工作区、外部 Vault 或原件目录。
+
+### 5.2 安装完成后的用户流程
+
+```text
+安装完成
+  ↓
+可选“立即启动 ArcheAxis Knowledge”
+  ↓
+Tauri 本地前端首先打开
+  ↓
+后端迁移/启动状态在前端展示
+  ↓
+首次运行向导
+  ├─ 新建工作区
+  ├─ 打开已有 ArcheAxis 工作区
+  └─ 连接已有 Markdown/Vault
+  ↓
+选择或确认四个用户资产域位置
+  ↓
+能力检测与基础组件状态
+  ↓
+进入主工作台
+```
+
+首次运行不能在空白/启动失败时直接显示浏览器错误页。
+
+### 5.3 卸载规则
+
+- 默认只卸载程序和内置 runtime；
+- 不删除工作区、原件、证据、人类学习库、AI 资产和备份；
+- Capability Store 由应用内“存储管理”单独清理；
+- 卸载器只能显示数据位置和清理指南，不能默认递归删除外部目录。
+
+---
+
+## 6. 绿色免安装版布局
+
+定义：程序本体无需安装和管理员权限，但用户数据默认仍放在本机用户数据目录或用户选择的位置。适合多版本并存、快速测试和临时使用。
+
+```text
+ArcheAxis.Knowledge.Green-x64\
+├─ ArcheAxis.exe
+├─ frontend\
+├─ runtime\
+├─ builtin-plugins\
+├─ licenses\
+├─ green-profile.toml
+├─ release-identity.json
+├─ SHA256SUMS.txt
+└─ README-绿色版.txt
+```
+
+规则：
+
+- 不写安装注册项；
+- 不强制创建开始菜单或桌面图标；
+- 数据默认进入 `%LOCALAPPDATA%\ArcheAxis\Workspace`，也可在首次启动选择；
+- 多个绿色版本共享同一正式数据前必须通过 schema compatibility；
+- 默认使用系统 Evergreen WebView2；缺失时给出明确修复入口；
+- 绿色 ZIP 必须整体校验和解压后 readback。
+
+---
+
+## 7. 随身便携版布局
+
+定义：程序、数据、配置、能力和 WebView profile 都在同一个便携根目录中，关闭应用后可整体复制到另一台 Windows 电脑。
+
+```text
+ArcheAxis.Knowledge.Portable-x64\
+├─ ArcheAxis.exe
+├─ portable.flag
+├─ portable-profile.toml
+├─ app\
+│  ├─ frontend\
+│  ├─ runtime\
+│  └─ builtin-plugins\
+├─ data\
+│  ├─ system\
+│  ├─ workspaces\
+│  ├─ derived-cache\
+│  ├─ logs\
+│  ├─ backups\
+│  └─ webview-profile\
+├─ capability-store\
+├─ licenses\
+├─ release-identity.json
+├─ SHA256SUMS.txt
+└─ README-便携版.txt
+```
+
+优化要求：
+
+- 使用 `portable.flag + profile`，不再依赖 PowerShell `ExecutionPolicy Bypass` 才能启动；
+- launcher 必须优先读取 `ARCHEAXIS_PORTABLE_ROOT`；
+- 程序文件与 `data` 明确分区；
+- 检测 USB/移动盘突然移除、只读介质、空间不足和文件锁；
+- 应用运行时禁止移动目录；
+- 复制/备份前要求应用完全关闭；
+- portable schema 比 installed schema 更新时必须先备份；
+- 不允许便携版静默回退到用户 `%LOCALAPPDATA%`。
+
+### 7.1 完整离线便携版
+
+可选产物：
+
+```text
+ArcheAxis.Knowledge.Portable-Offline-x64.zip
+```
+
+额外包含固定版本 WebView2 和基础 OCR/媒体能力包。仅用于断网或受控环境。微软建议大多数应用优先 Evergreen，因为自动获得安全更新且占用更小；Fixed Version 只适合严格兼容/离线场景。[Microsoft WebView2 Best Practices](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/developer-guide)
+
+---
+
+## 8. 开发测试套件：前端常驻、后端随时修改
+
+### 8.1 核心设计
+
+真实前端从 Python 后端迁出，编译进 Tauri `frontendDist`：
+
+```text
+Tauri app:// frontend
+   │
+   ├─ 启动/恢复控制台始终可用
+   ├─ Runtime Profile Selector
+   ├─ Backend Logs
+   ├─ Restart / Stop / Reconnect
+   └─ API Client → 127.0.0.1:<random-port>
+```
+
+这样修改 Python 后端时，桌面窗口不关闭。
+
+### 8.2 四种 Runtime Profile
+
+```yaml
+profiles:
+  installed-stable:
+    backend: bundled
+    data_policy: installed-user-data
+    reload: false
+
+  green-stable:
+    backend: bundled
+    data_policy: selected-user-data
+    reload: false
+
+  portable-stable:
+    backend: bundled
+    data_policy: portable-root-only
+    reload: false
+
+  external-dev:
+    backend: external-source
+    source_root: D:\All projects\ArcheAxis-Knowledge-OS
+    python: D:\All projects\OS External Configuration\20-runtimes\core-dev\Scripts\python.exe
+    data_policy: isolated-test-workspace
+    reload: true
+```
+
+路径仅作为本机 profile 示例，不能写进公共默认配置。
+
+### 8.3 External Dev Backend 工作流
+
+```text
+设置 → 开发者 → 启用外接后端
+  ↓
+选择源码根目录和 Python runtime
+  ↓
+检查 pyproject / package identity / API contract
+  ↓
+创建或选择隔离测试工作区
+  ↓
+启动迁移 dry-run
+  ↓
+启动 uvicorn reload 后端
+  ↓
+前端 handshake 成功
+  ↓
+修改 Python 文件 → 后端自动重启 → 前端自动重连
+```
+
+### 8.4 必须建立的握手协议
+
+`GET /api/v1/system/handshake` 至少返回：
+
+```json
+{
+  "product_id": "archeaxis-workspace",
+  "product_name": "ArcheAxis Knowledge",
+  "api_contract": "1.x",
+  "backend_version": "0.6.0-dev",
+  "source_commit": "...",
+  "schema_version": 15,
+  "runtime_mode": "external-dev",
+  "workspace_id": "...",
+  "capabilities": [],
+  "migration_state": "ready"
+}
+```
+
+前端对 product id、API major、schema compatibility 和 launch token fail-closed。
+
+### 8.5 测试数据安全
+
+- external-dev 默认克隆一份测试工作区；
+- 禁止直接打开正式安装版生产数据库；
+- 若 Owner 明确选择正式数据，必须先一致性备份、显示绝对路径和风险确认；
+- reload 前不重复执行非幂等迁移；
+- 前端显示醒目的 `DEV BACKEND / TEST DATA` 状态条；
+- 开发后端不得继承用户全局 `PYTHONPATH`、代理或未授权密钥。
+
+---
+
+## 9. 前后端解耦与安全边界
+
+### 9.1 前端打包
+
+- 目标：React + TypeScript + Vite；
+- OpenAPI 生成类型安全 client；
+- PDF.js 等前端资产由 frontend build 管理；
+- Tauri bootstrap 升级为 Recovery Shell，不再只是文本；
+- 后端不可用时仍能打开设置、日志、恢复和 Runtime Profile；
+- 状态机：starting / migrating / ready / reconnecting / incompatible / failed / stopped。
+
+### 9.2 Loopback API
+
+- 只监听 `127.0.0.1`，不使用 `0.0.0.0`；
+- 端口由 shell 分配；
+- launch token 只在内存传递，不写 localStorage；
+- 限制精确 Tauri origin；
+- SSE/下载/PDF 内容端点同样需要会话授权；
+- 拒绝 proxy headers；
+- 外接 dev 后端仍由 shell 负责生命周期和 Job Object；
+- 禁止导航到任意外部 HTTP 页面。
+
+### 9.3 CSP
+
+建立显式 CSP：
+
+- `default-src 'self'`；
+- scripts/styles/fonts/images 按实际构建产物最小放行；
+- `connect-src` 只允许内存协商出的 loopback origin；
+- 禁用未经授权的 inline/eval；
+- 第三方插件 UI 使用受控 renderer/schema，不能任意注入顶层 DOM。
+
+---
+
+## 10. 目标仓库结构
+
+保持绞杀式迁移，不一次性移动现有模块。目标结构：
+
+```text
+ArcheAxis-Knowledge-OS\
+├─ archeaxis\                      # 目标 Python 根包
+│  ├─ workspace\
+│  ├─ source\
+│  ├─ asset\
+│  ├─ conversion\
+│  ├─ document\
+│  ├─ evidence\
+│  ├─ knowledge\
+│  ├─ learning\
+│  ├─ ai_asset\
+│  ├─ search\
+│  ├─ vault\
+│  ├─ adapter\
+│  │  └─ plugin_host\
+│  ├─ job\
+│  ├─ desktop\
+│  └─ release\
+│
+├─ frontend\
+│  ├─ src\
+│  │  ├─ app\
+│  │  ├─ spaces\
+│  │  ├─ components\
+│  │  ├─ design-system\
+│  │  ├─ api\
+│  │  ├─ runtime\
+│  │  └─ contributions\
+│  ├─ public\
+│  └─ tests\
+│
+├─ desktop\
+│  ├─ src-tauri\
+│  ├─ bootstrap\
+│  ├─ portable\
+│  └─ scripts\
+│
+├─ plugins\
+│  ├─ builtin\
+│  │  ├─ conversion\
+│  │  ├─ evidence-connectors\
+│  │  ├─ search\
+│  │  └─ learning\
+│  └─ fixtures\
+│
+├─ contracts\
+│  ├─ api\
+│  ├─ events\
+│  ├─ plugin\
+│  ├─ workspace\
+│  └─ learning-representation\
+│
+├─ packaging\
+│  ├─ installer\
+│  ├─ green\
+│  ├─ portable\
+│  ├─ offline\
+│  └─ capability-packs\
+│
+├─ config\
+│  ├─ environment\
+│  ├─ profiles\
+│  └─ schemas\
+│
+├─ tests\
+│  ├─ unit\
+│  ├─ contract\
+│  ├─ integration\
+│  ├─ desktop\
+│  ├─ packaging\
+│  └─ fixtures\
+│
+├─ docs\
+└─ compatibility\                 # app/shared/knowledge_base 迁移壳
+```
+
+现有 `app/`、`shared/`、`knowledge_base/` 不立即删除；先通过 facade/adapter 收敛，迁移完成后再进入 compatibility 或删除。
+
+---
+
+## 11. 能力资源仓与插件发布
+
+### 11.1 用户侧 Capability Store
+
+安装版：
+
+```text
+%LOCALAPPDATA%\ArcheAxis\Workspace\capability-store\
+```
+
+绿色版：默认使用安装版相同位置，或用户指定。
+
+便携版：
+
+```text
+<PortableRoot>\capability-store\
+```
+
+### 11.2 Capability Pack
+
+重型能力不全部塞入主安装包，可拆成：
+
+```text
+ArcheAxis.CapabilityPack.OCR.Basic-x64.zip
+ArcheAxis.CapabilityPack.ASR.Whisper-x64.zip
+ArcheAxis.CapabilityPack.Document.Advanced-x64.zip
+ArcheAxis.CapabilityPack.Media.Basic-x64.zip
+ArcheAxis.CapabilityPack.Visual-Learning-x64.zip
+```
+
+每包必须包含：
+
+- `plugin-manifest.json`；
+- 版本和 contract range；
+- 权限；
+- 平台/架构/GPU 要求；
+- 许可证；
+- SBOM；
+- 文件 hashes；
+- 安装体积；
+- healthcheck；
+- uninstall/rollback；
+- 数据所有权声明。
+
+### 11.3 自动下载规则
+
+- 默认禁止模型/引擎首次运行自动下载；
+- UI 展示来源、体积、许可证、磁盘位置和联网域名；
+- 用户确认后下载到 staging；
+- hash/license/manifest 验证后原子激活；
+- 失败进入 quarantine；
+- 工作区通过 capability lock 引用，不复制模型本体。
+
+---
+
+## 12. 多形态发布资产矩阵
+
+| 资产 | 面向用户 | 数据默认位置 | 后端 | WebView2 | 是否公开 |
+|---|---|---|---|---|---|
+| Setup x64 | 普通用户 | LocalAppData/自选工作区 | bundled stable | Evergreen bootstrap/offline installer | 是 |
+| Green x64 ZIP | 免安装、多版本 | LocalAppData/自选 | bundled stable | Evergreen | 是 |
+| Portable x64 ZIP | USB/整体搬迁 | portable root | bundled stable | Evergreen | 是 |
+| Portable Offline x64 ZIP | 断网环境 | portable root | bundled stable | Fixed Version bundled | 可选 |
+| Developer Kit | 开发测试 | isolated test root | external reload | 系统 WebView2 | 否，内部 artifact |
+| Core Wheel | 技术/验证 | 不作为普通用户入口 | Python package | 无 | 可选技术资产 |
+| Capability Packs | 按需能力 | Capability Store | plugin runtimes | 无 | 分阶段 |
+
+### 12.1 标准文件名
+
+```text
+ArcheAxis.Knowledge-vX.Y.Z-Windows-x64-Setup.exe
+ArcheAxis.Knowledge-vX.Y.Z-Windows-x64-Green.zip
+ArcheAxis.Knowledge-vX.Y.Z-Windows-x64-Portable.zip
+ArcheAxis.Knowledge-vX.Y.Z-Windows-x64-Portable-Offline.zip
+ArcheAxis.Knowledge-vX.Y.Z-Developer-Kit.zip
+archeaxis_workspace-X.Y.Z-py3-none-any.whl
+release-identity.json
+release-manifest.json
+SHA256SUMS.txt
+SBOM.cdx.json
+THIRD_PARTY_NOTICES.txt
+```
+
+版本必须从 tag 解析，并与 Python、Tauri、package.json 和 manifest 完全一致。
+
+---
+
+## 13. 更新、迁移与回滚
+
+### 13.1 三种版本独立更新
+
+- App Shell version；
+- Backend contract/runtime version；
+- Capability/plugin version。
+
+它们可以独立演进，但必须有 compatibility matrix。
+
+### 13.2 正式升级顺序
+
+```text
+下载到 staging
+  ↓
+验证 release identity / hash / SBOM
+  ↓
+关闭旧后端
+  ↓
+数据库一致性备份
+  ↓
+迁移 dry-run / compatibility check
+  ↓
+安装或原子切换新版本
+  ↓
+迁移 + readiness + smoke
+  ↓
+成功：保留新版本
+失败：恢复旧程序 + 恢复候选数据库
+```
+
+### 13.3 绿色/便携升级
+
+- 不原地覆盖正在运行的目录；
+- 解压到新版本目录；
+- 首次启动读取旧工作区/portable data；
+- 通过兼容性检查后迁移；
+- 保留旧程序目录直到新版本验证成功；
+- 便携根数据只能由一个版本持有 runtime lease。
+
+---
+
+## 14. CI、测试与门禁减负
+
+### 14.1 四级节奏
+
+| 级别 | 触发 | 内容 |
+|---|---|---|
+| L1 | 单任务/本地 | 目标单测、类型、静态、受影响契约 |
+| L2 | 批次 PR | 相关集成、迁移、UI smoke、组件 health |
+| L3 | 里程碑/Nightly | full suite、多 Python、Windows、浏览器、长路径、离线 |
+| L4 | Release Candidate | Setup/Green/Portable 三产物真实生命周期、公开下载回读、hash/SBOM |
+
+### 14.2 发布版真实测试矩阵
+
+#### Setup
+
+- 干净 Windows 用户安装；
+- 安装完成可启动；
+- 首次运行向导；
+- 关闭后端时 UI 恢复控制台仍可用；
+- 升级、修复安装、卸载；
+- 卸载不删除数据；
+- 无管理员权限 currentUser 安装；
+- 中文/空格/长路径。
+
+#### Green
+
+- 解压到含空格和中文路径；
+- 多版本并存；
+- 不创建安装项；
+- 数据目录选择与回读；
+- ZIP manifest 与解压后文件集合一致。
+
+#### Portable
+
+- USB/非系统盘；
+- 完全断网；
+- 移动目录后启动；
+- 用户目录无数据泄漏；
+- 只读盘/磁盘满/意外移除；
+- 整体复制后数据、插件和 WebView profile 可回读。
+
+#### Developer Kit
+
+- external backend 修改后自动重启；
+- 前端保持打开并恢复；
+- 不兼容 API 拒绝连接；
+- 后端崩溃日志可读；
+- 测试数据库与正式数据库严格隔离；
+- 从 bundled 切回 external、再切回 bundled。
+
+### 14.3 速度优化
+
+- 文档变更不运行桌面构建；
+- 前端变更只跑 frontend + browser smoke；
+- Python 域变更只跑目标测试和相关契约；
+- Tauri/packaging 才触发 Windows desktop；
+- runtime bundle 以 lock hash 缓存；
+- Setup/Green/Portable 并行组装，共享同一已验证 runtime；
+- 每个逻辑批次聚合提交，不每改一段文档就 push main；
+- hash 只在原件、模型/插件包、迁移快照和 Release 边界生成。
+
+---
+
+## 15. UI 与首次运行布局
+
+### 15.1 后端未启动时也存在的 Recovery Shell
+
+```text
+┌──────────────────────────────────────────────────┐
+│ ArcheAxis Knowledge                              │
+├──────────────────────────────────────────────────┤
+│ 后端状态：正在迁移 / 正在启动 / 需要修复         │
+│                                                  │
+│ [重试] [查看日志] [切换运行配置] [恢复备份]       │
+│                                                  │
+│ Runtime: Bundled Stable / External Dev           │
+│ Data:     当前测试工作区路径                     │
+│ API:      contract 1.x                           │
+└──────────────────────────────────────────────────┘
+```
+
+### 15.2 首次存储向导
+
+普通用户默认只选择工作区根目录；高级用户可分别指定：
+
+1. 原始资料库；
+2. 可信证据与知识库；
+3. 人类学习库；
+4. AI 资产库；
+5. 备份位置。
+
+能力资源仓放在高级系统设置，不与四个用户资产域混成同一知识库。
+
+### 15.3 主界面固定结构
+
+```text
+顶部：全局搜索 / Command Palette / 当前工作区 / 后端与任务状态
+左一：Workspace / Library / Evidence / Learning / AI Assets / Settings
+左二：当前空间上下文导航
+中央：Reader / Editor / Canvas / Learning Surface
+右侧：来源、证据、冲突、版本 Inspector
+底部：转换、核验、索引、导入导出 Activity Dock
+```
+
+Developer Mode 只增加状态条和设置入口，不把终端/Agent 变成产品首页。
+
+---
+
+## 16. 安全、隐私与故障隔离
+
+- 正式后端 runtime 只读、受 release identity 绑定；
+- external-dev 必须显式启用；
+- 工作区路径必须通过 ApprovedRoots/junction/symlink 检查；
+- 插件无权直接写核心数据库；
+- 模型与插件下载必须用户授权；
+- API keys 进入 Windows Credential Manager 或等价安全存储，不进入外置依赖区；
+- 日志默认脱敏，不记录文件正文、token、API key 和私人路径全量；
+- 正式/绿色/便携/开发分别使用不同 runtime identity；
+- 任一插件崩溃不得结束 Tauri Shell 或可信内核；
+- capability store 支持 disabled/quarantine/rollback；
+- schema migration 必须离线 lease、备份、完整性检查和回读；
+- 工作区数据所有权不因卸载或插件删除而改变。
+
+---
+
+## 17. Hermes 最终执行任务图
+
+### Batch R0：恢复真实绿色基线
+
+#### AXW-REL-001 修复 Nightly pause/resume 竞态
+
+验收：目标用例循环 100 次；full Nightly 绿色；无悬挂 worker/controller。
+
+#### AXW-REL-002 修复动态版本与新命名 Release
+
+验收：tag、pyproject、package.json、Tauri、wheel、所有资产名一致；不再硬编码 0.5.0；新 Release 使用 ArcheAxis Knowledge。
+
+#### AXW-REL-003 建立最小 main ruleset
+
+验收：禁止 force push/tag overwrite；Release SHA 必须通过 `ci-verdict`；个人项目是否签名作为明确决策记录。
+
+### Batch R1：外置开发能力仓治理
+
+#### AXW-ENV-101 创建机器可读 requirements schema
+
+交付：`capability-requirements.yaml`、JSON Schema、生成文档工具。
+
+#### AXW-ENV-102 创建 Host Inventory
+
+交付：扫描 `OS External Configuration` 的实际路径、版本、hash、license、health；生成 local inventory，不提交个人绝对路径。
+
+#### AXW-ENV-103 重构外置目录
+
+按 §4 建立 00–90 分区；提供 dry-run move plan 和回滚，不直接删除旧目录。
+
+#### AXW-ENV-104 会话环境入口
+
+交付：`Enter-ArcheAxisDev.ps1` / `Exit-ArcheAxisDev.ps1`；停止默认 `setx`；清理继承污染。
+
+#### AXW-ENV-105 下载与模型治理
+
+交付：显式授权、staging、hash、license、quarantine、原子激活；禁止首次调用静默下载。
+
+### Batch R2：前端与后端生命周期解耦
+
+#### AXW-RUN-201 Recovery Shell
+
+把启动/迁移/错误/日志/重试界面编入 Tauri，后端不可用时仍能显示。
+
+#### AXW-RUN-202 Runtime Profile v1
+
+实现 installed/green/portable/external-dev 显式配置；删除基于目录祖先的隐式生产判定。
+
+#### AXW-RUN-203 Backend Handshake
+
+实现 product/API/schema/runtime/capability 握手与 compatibility gate。
+
+#### AXW-RUN-204 Backend Supervisor
+
+支持 start/stop/restart/reconnect/log tail；继续使用随机端口、launch token、Job Object 和优雅退出。
+
+#### AXW-RUN-205 Canonical 环境变量迁移
+
+Rust 优先设置 `ARCHEAXIS_*`；旧 `COGNITIVE_*` 只作回退；迁移测试覆盖。
+
+#### AXW-RUN-206 CSP 与 loopback 安全
+
+移除 `csp:null`；限制 origin、navigation、token、SSE、PDF 和下载端点。
+
+### Batch R3：外接热重载后端
+
+#### AXW-DEV-301 External Backend Profile
+
+允许选择源码和外部 Python，但必须验证身份、contract 和路径。
+
+#### AXW-DEV-302 Hot Reload + Reconnect
+
+Python 变更自动重启；前端保留状态并重连；迁移错误进入 Recovery Shell。
+
+#### AXW-DEV-303 Test Workspace Clone
+
+默认从空 fixture 或正式工作区一致性克隆创建测试数据；禁止直接热重载正式库。
+
+#### AXW-DEV-304 Developer UI
+
+后端版本、commit、数据路径、DEV 标识、日志、重启和切换 bundled 按钮。
+
+### Batch R4：工作区与数据布局
+
+#### AXW-DATA-401 Workspace Manifest
+
+定义四资产域、能力锁、备份、derived/cache、路径模式和 schema version。
+
+#### AXW-DATA-402 首次运行向导
+
+快速模式选择一个根目录；高级模式分别设置四资产域；权限/空间/嵌套/只读检查。
+
+#### AXW-DATA-403 旧单库迁移
+
+保留旧 `cognitive_os.sqlite` 兼容读取；备份后迁移到新布局；完整性与回滚回读。
+
+#### AXW-DATA-404 安装/绿色/便携路径解析器
+
+每个模式都必须 fail-closed；禁止 portable 回退用户目录；禁止安装版写程序目录。
+
+### Batch R5：Capability Store 与内置插件
+
+#### AXW-CAP-501 Capability Store v1
+
+实现 registry、installed、disabled、staging、quarantine、model/engine/runtime 分区。
+
+#### AXW-CAP-502 Plugin Manifest v1
+
+版本、contract、权限、平台、资源、数据所有权、health、rollback、UI contribution。
+
+#### AXW-CAP-503 首批内置转换插件
+
+先抽离 markitdown/pdfplumber/trafilatura/Tesseract/RapidOCR/faster-whisper；不改 Evidence 核心语义。
+
+#### AXW-CAP-504 Capability Pack 构建器
+
+为 OCR/ASR/Document/Media 生成可校验独立包。
+
+### Batch R6：三类发布包
+
+#### AXW-PKG-601 标准安装版
+
+NSIS 自定义 finish launch；真实安装/首次启动/升级/卸载/数据保留验证。
+
+#### AXW-PKG-602 绿色 ZIP
+
+从同一 verified runtime 组装；不安装；LocalAppData/自选数据；解压文件集合回读。
+
+#### AXW-PKG-603 随身便携 ZIP
+
+`portable.flag`、分层目录、root-only 数据；移动/断网/USB/磁盘异常测试。
+
+#### AXW-PKG-604 完整离线便携 Spike
+
+评估并实现可选固定 WebView2 包；记录额外体积、更新和 CVE 责任；不是默认产物。
+
+#### AXW-PKG-605 Developer Kit
+
+提供开发 runtime profile 模板、环境入口、测试 fixture 和后端热重载说明；不包含密钥和个人绝对路径。
+
+### Batch R7：Release 身份、供应链和公开回读
+
+#### AXW-SUP-701 Release Manifest v3
+
+绑定所有产物、源 commit/tree、构建 run、依赖锁、SBOM、WebView2 模式和 capability packs。
+
+#### AXW-SUP-702 多资产 checksums/readback
+
+公开下载后逐项 hash、内部 manifest、ZIP 文件集合、installer lifecycle 回读。
+
+#### AXW-SUP-703 SBOM 与许可证
+
+主程序、Python runtime、前端、Rust、内置插件和能力包分别生成并聚合。
+
+#### AXW-SUP-704 Release 页面清理
+
+新 Release 标题、资产、说明全部使用 ArcheAxis Knowledge；旧 v0.5.0 明确标记为历史品牌，不改写历史资产。
+
+### Batch R8：UI 主界面和结构清理
+
+#### AXW-UI-801 React/TypeScript 渐进迁移
+
+先 Recovery Shell 和 App Shell，再迁 Library/Evidence/Learning/AI Assets；旧页面按路由过渡。
+
+#### AXW-UI-802 六大空间与状态统一
+
+Workspace、Library、Evidence、Learning、AI Assets、Settings；第三方品牌只在 Adapter 设置。
+
+#### AXW-UI-803 OSUI 降级
+
+将 OSUI 变为设计参考和被采纳资产源，移除第二套可运行 UI 真相。
+
+#### AXW-UI-804 性能/无障碍/高 DPI
+
+建立标准硬件基线；冷启动、重连、长列表、键盘、读屏、缩放、reduced motion 验收。
+
+---
+
+## 18. 执行顺序与暂停条件
+
+固定顺序：
+
+```text
+R0 → R1 → R2 → R3 → R4 → R5 → R6 → R7 → R8
+```
+
+允许 R4 的纯 schema 设计与 R2 并行，但不得先做公开三包发布，再补运行时边界。
+
+遇到以下情况必须暂停并提交事实差异报告：
+
+- 云端 HEAD 已变化且涉及 desktop/release/storage/config；
+- 发现正式用户数据实际位于仓库或安装目录；
+- 迁移无法产生一致性备份；
+- external-dev 需要直接读取正式生产库才能工作；
+- Tauri 内置前端无法在后端停止时独立运行；
+- 多发布包不是来自同一 verified runtime；
+- 新插件需要直接写核心数据库；
+- Owner 要求改变产品定位或删除未来蓝图能力。
+
+---
+
+## 19. 发布完成定义
+
+只有同时满足以下条件才能称为“可发布闭环”：
+
+1. main CI 与 Nightly 全绿；
+2. 产品、仓库事实、版本与发布命名一致；
+3. Setup、Green、Portable 三个公开产物来自同一 commit 和 verified runtime；
+4. 安装完成可以直接打开 Recovery Shell/前端；
+5. 后端启动、迁移、失败、重启、停止均可从前端看见和处理；
+6. external-dev 可热重载，前端不关闭；
+7. external-dev 默认只使用隔离测试工作区；
+8. 四资产域和 Capability Store 的路径、所有权和迁移规则明确；
+9. 安装版不依赖 `D:\All projects\OS External Configuration`；
+10. 绿色版不需要安装；
+11. 便携版不向用户目录泄漏运行数据；
+12. 卸载不删除用户资产；
+13. 模型/引擎不静默下载；
+14. CSP、loopback token、origin 和插件权限 fail-closed；
+15. 旧数据库升级、回滚和长路径验证通过；
+16. 所有公开资产有 identity、checksum、SBOM、license 和公开下载回读；
+17. 常规多格式摄取到证据、人类学习与 AI 资产的主链可运行；
+18. LER、动画、模拟、空间学习、3D/VR/AR 仍作为未来插件蓝图保留。
+
+---
+
+## 20. 可直接交给 Hermes 的启动指令
+
+```text
+任务：执行《ArcheAxis Knowledge 最终架构、外置能力仓与多形态发布任务包》。
+
+唯一云端项目：DTALEX66/ArcheAxis-Knowledge-OS。
+开发机外置依赖区：D:\All projects\OS External Configuration。
+WORK-LAB、DESIGN-LAB 是独立项目，禁止修改、合并、共享数据库或建立运行时强依赖。
+
+架构原则：
+1. 可信内核不可替换，能力实现插件化；
+2. Tauri 前端壳必须在 Python 后端不可用时仍可运行；
+3. 正式安装后端不可变；外接可修改后端只通过 external-dev profile；
+4. external-dev 默认使用隔离测试数据；
+5. 安装版、绿色版、便携版来自同一 verified runtime；
+6. OS External Configuration 只服务本开发机，不成为公共发布硬依赖；
+7. 不删除未来 LER、动画、模拟、2D/2.5D/3D、VR/AR 能力；
+8. 不做一次性重写，采用 Contract/Adapter 绞杀式迁移。
+
+执行顺序固定：R0 → R1 → R2 → R3 → R4 → R5 → R6 → R7 → R8。
+先只执行 R0，恢复真实全绿和动态 Release 版本；不要提前构建公开便携版。
+
+每个任务必须输出：
+- 起始云端 HEAD；
+- 修改文件；
+- 当前事实与任务包差异；
+- 数据、契约、目录和发布影响；
+- 目标测试及结果；
+- 回滚方法；
+- 剩余风险；
+- 是否满足验收条件。
+
+验证节奏：单任务目标测试；批次相关集成；里程碑 full suite；Release Candidate 才运行 Setup/Green/Portable 全生命周期和供应链回读。禁止重复哈希、重复全审计和用重跑掩盖 flaky。
+```
+
+---
+
+## 21. 最终结论
+
+本项目最适合的发布与开发方式不是“安装版里直接改安装目录的 Python 文件”，而是：
+
+> **稳定前端壳 + 可验证的内置正式后端 + 可切换的外接开发后端 + 完全隔离的用户数据和能力资源。**
+
+这样同时满足：
+
+- 普通用户安装后直接打开；
+- 绿色版免安装快速测试；
+- 便携版整体移动；
+- 开发者保持前端打开并热修改后端；
+- 正式数据不被开发迁移破坏；
+- OCR/ASR/模型/3D 等重能力能够外置和替换；
+- 发布资产可复现、可回读、可回滚；
+- 项目长期系统级蓝图完整保留。

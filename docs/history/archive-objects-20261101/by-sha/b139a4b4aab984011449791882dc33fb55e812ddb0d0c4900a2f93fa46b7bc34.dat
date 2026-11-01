@@ -1,0 +1,85 @@
+# ArcheAxis 多模型防漂移执行协议
+
+适用基线：远端 `main` `4ca46eaf94c486dadcf200aac6b41cd968b1ce6e`（2026-09-07 审计）。
+
+## 一条原则
+
+模型、DSH、Codex、Hermes 都只是可替换的执行适配器；**Git 提交、可复现实测、独立验证和受保护的任务状态**才是项目事实。任何模型写出的“完成”“PASS”或交接文档都只是候选证据，不能改变任务状态。
+
+## 四角色、三事实面
+
+| 角色 | 可做 | 不可做 |
+|---|---|---|
+| 规划者 | 写原子任务包、验收条件和风险 | 实现后自验并宣布完成 |
+| 实现者（含 DeepSeek） | 只改任务允许路径，交付补丁与执行记录 | 改任务状态、改权威结论、合并主线 |
+| 独立验证者 | 在干净基线复跑、审查 diff、反证 | 使用实现者的“PASS”替代实测 |
+| 集成者/CI | 核对基线、范围、证据并合并/拒绝 | 用文档代替门禁 |
+
+三事实面必须分开保存：
+
+1. **代码事实**：完整 commit SHA、tree/diff、允许路径与实际路径。
+2. **执行事实**：命令、环境、退出码、原始 CI 日志、测试所测 source SHA。
+3. **产品事实**：真实样本、用户闭环和 G 门验收。文档与回执不能替代它。
+
+## 原子任务信封（唯一入口）
+
+每项工作在开始前创建不可覆盖的 `task-envelope.yaml`，至少包含：
+
+```yaml
+task_id: T19-runtime-resolver
+base_sha: 4ca46eaf94c486dadcf200aac6b41cd968b1ce6e
+goal: 统一项目运行目录解析，消除生产性 .hermes 写入
+allowed_paths: ["scripts/", "tests/", "AGENTS.md", "DIRECTORY_AUTHORITY.yaml"]
+forbidden_paths: [".github/rulesets/", "legacy/", "user-data/"]
+owner_role: implementer
+required_checks: ["runtime-path-test", "web-full-chain", "full-suite"]
+acceptance_ids: ["A0-01", "G1-03"]
+runtime_policy: project-local-with-declared-ci-short-path-exception
+```
+
+规则：缺少完整基线 SHA、允许路径、验收命令或独立验证者的任务不得开工；基线变化后旧回执自动降为 `STALE`，不得挪用为新 HEAD 的完成证明。
+
+## 状态机：不再使用手写 DONE
+
+`PLANNED → IN_PROGRESS → IMPLEMENTED → VERIFIED → INTEGRATED → QUALIFIED → RELEASED`
+
+另有 `BLOCKED`、`STALE`、`RETIRED`。只有 CI/集成者能从 `IMPLEMENTED` 之后推进；只有通过真实产品门的任务可到 `QUALIFIED`。状态存入机器生成的 `TASK_STATE.json`，文档只引用该记录。
+
+## 多模型适配要求
+
+- 同一任务中，实现者、验证者、集成者必须角色隔离；高风险任务优先由不同模型完成实现与验证。
+- 每个适配器都只接受同一任务信封，并只返回 `proposal`、`evidence`、`limitations` 三类结构化输出。
+- 适配器不能直接写 `docs/authority` 的状态、验收结论或交接“完成”声明；它的输出写入 `.project-local/runs/<task>/<run-id>/`。
+- 主仓只保留经集成者挑选的最小审计证据；大日志/缓存进入受控工件存储，不可把 `.hermes` 或其他工具私有目录当权威仓库。
+- 不把任一模型的记忆、上下文或任务清单当项目记忆。项目事实始终由版本化契约、任务信封和 CI 工件重建。
+
+## 必须自动化的防线
+
+1. **范围门**：CI 比较实际 diff 与 `allowed_paths`，越界即失败。
+2. **基线门**：回执、测试报告、问题单都必须带 tested SHA；与候选提交不同即标红。
+3. **状态门**：禁止 PR 手写将任务标为完成；必须有独立验证的带 SHA 工件。
+4. **路径门**：唯一运行目录解析器；生产代码、测试、CI 不得散落硬编码 `.hermes`。默认 `.project-local/`；Chromium 等路径长度问题只能使用声明、清理、可追溯的 CI 短路径例外，不能悄悄写 C 盘、系统临时目录或别的项目。
+5. **契约门**：Rust/C#/Python 的状态枚举和 worker JSON 输出由同一 schema 生成/校验；机器不得自行赋予 `accepted` 等人工语义状态。
+6. **质量门**：对摄取、OCR、网页、模型交叉核验使用固定金样本与回归阈值；区分“模型识别准确度”和“来源证据支持度”。
+7. **合并门**：涉及运行时、摄取、路径、契约或发布的 PR 必须跑相关全链路套件；夜间全套失败会使发布资格为红，不能继续称主线“已验证”。
+
+## 并行规则
+
+可以并行：互不重叠的 worker、UI 草图、文档整理、样本准备。必须串行：数据库迁移、公共契约、运行目录、CI、发布门和同一用户数据集。每个并行任务独立 worktree、任务 ID 与运行目录；共享文件的编辑权只在任务信封中显式授予。
+
+## 对昨天 DeepSeek 交付的处置
+
+不回滚、不删除、不凭文档认定完成。将全部输出登记为 `CANDIDATE_SLICE`，逐项附上：输入任务、base SHA、修改文件、复现命令、实际输出、局限与风险。随后由非原实现角色在当前基线复跑并作出唯一三选一结论：`ADOPT`、`MODIFY`、`REJECT`。未带 SHA 或无法复现的内容保留为参考，不进入权威任务状态。
+
+当前优先恢复顺序：先建立此状态/信封/范围门，再修复已知 Chromium socket-path nightly 失败及运行目录漂移，再审查 DSH 的各候选切片。不要先做全仓改名或全量语言迁移；那会在事实面未稳定前扩大漂移。
+
+## 近期 72 小时落地清单
+
+1. 建立 `project-control/`：任务信封 schema、任务状态 schema、生成状态脚本和 CI 校验。
+2. 把当前 21 项任务重新登记；状态全部从“文档称完成”回到可证实状态。
+3. 建立 `DRIFT-001`：记录 `4ca46ea` 的 nightly 失败、`.hermes`/`.project-local` 双标准与责任边界。
+4. 实现单一路径解析器和 CI 短路径例外；修复后以同一 SHA 重跑 web 全链路和 full-suite。
+5. 对 DeepSeek/DSH 每一切片做独立复验并生成 adopt/modify/reject 决议。
+6. 将 ruleset 从只要求 `a0-gates` 提升为按变更类型要求的检查；发布前必须是最新 commit 全绿。
+
+这是一套项目内协议，不依赖 WORK-LAB，也不引入第四套“Agent 平台”。未来若有公共治理仓，只消费这些不可变工件，而不取代 ArcheAxis 的项目事实。

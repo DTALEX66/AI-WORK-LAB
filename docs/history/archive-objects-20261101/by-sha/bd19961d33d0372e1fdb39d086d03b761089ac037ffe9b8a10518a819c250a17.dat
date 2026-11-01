@@ -1,0 +1,132 @@
+# ArcheAxis云端复审与R5后续深化｜2026-09-14
+
+本次真实读取GitHub main/工作分支、比较接口、当前台账与关键源代码；不是对用户交接摘要的转述。审计范围是固定提交的定向代码/证据审查，加3项合成独立复现；未运行全仓构建、Windows GUI、真实资料库、安装签名或完整Q00/Q01。
+
+## 结论
+
+当前仍未达到完整Green或正式Release资格。已有Rust/FSRS、Avalonia宿主、worker、真实MCP等成果继续复用；阻塞集中在实际用户入口、学习契约、恢复资格、环境解析及发布链收口。不能把结构门、局部测试或环境拒绝写成全链PASS。
+
+## 已核远端
+
+- main：1e9813ea2bd49f47d334ba6717c78d3e9feda6ce。
+- codex/full-loop-0906：38930cfd27c0806845e65386d439468ce31405b0。
+- 比较：ahead 52 / behind 1；不能把分叉当成已证明文本冲突。
+- AGENTS指定当前R5，live state/ledger位于docs/current；本交付为R5增量建议，不另建TASKS、不覆盖已有状态或签发执行授权。
+- 本次commit workflow查询和combined status查询均返回空集合。不能拿较早commit成功当此头通过。
+
+## 发现与修复要求
+
+### A01｜P1｜发布产物链与正式桌面不一致
+
+证据类型：STATIC_CONFIRMED；承接：X03, X11, X13。
+
+发现：发布仍读取frontend/package.json、src-tauri配置、Tauri exe/NSIS与desktop分发脚本；AGENTS指定正式Avalonia。
+
+修复与验收：保留旧版恢复用途，给Green/RC明确Avalonia→Rust→worker产物链；正式发布仅提升经同源验收的候选，旧链不得冒充新桌面。
+
+来源：[.github/workflows/release.yml](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/.github/workflows/release.yml)。
+
+### A02｜P1｜恢复入口只检查SQLite可读性，缺应用身份与迁移资格
+
+证据类型：REPRODUCED_SYNTHETIC；承接：X05, X10, X11。
+
+发现：restore_database只用PRAGMA schema_version确认SQLite可读，sidecar hash可缺；合成任意SQLite被返回restored=true且替换目标。旧文件保留，故不是证明旧数据丢失。
+
+修复与验收：恢复先验证ArcheAxis应用/schema/库绑定/完整性与附件清单，持有跨启动器租约，staging验证再切换；不相关SQLite拒绝且活动库不变。
+
+来源：[scripts/launch/core_launch.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/scripts/launch/core_launch.py)。
+
+### A03｜P1｜执行预检会误报通过
+
+证据类型：REPRODUCED_SYNTHETIC；承接：X00, X01, X13。
+
+发现：非Git目录passed=true且head=null；任意tests/fixtures缺失链接自动归为expected。两种均用临时夹具复现。
+
+修复与验收：Git根/HEAD失败应明确失败；预期缺失必须逐项登记文档、目标、原因；未知缺失不得豁免。链接探测还须先判批准范围，避免触及外部或私有路径。
+
+来源：[scripts/workflow/execution_preflight.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/scripts/workflow/execution_preflight.py)。
+
+### A04｜P1｜默认学习UI只读取项目数
+
+证据类型：STATIC_CONFIRMED；承接：X03, X08, X11。
+
+发现：OnLearningClick只GET items并显示count；没有题目呈现、作答或review提交。启动数据库使用环境变量或LocalAppData默认路径，未见四库首次设置接线。
+
+修复与验收：完成四库绑定和题目→提示→作答→反馈→复习→重启读回的默认GUI；所有动作调用Core。
+
+来源：[apps/ArcheAxis.Desktop/MainWindow.axaml.cs](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/apps/ArcheAxis.Desktop/MainWindow.axaml.cs)。
+
+### A05｜P1｜复习契约不能承载R5学习证据
+
+证据类型：STATIC_CONFIRMED；承接：X04, X05, X08。
+
+发现：additionalProperties=false，字段只有item_key/client_event_id/correct/rating/now；Rust StatefulReviewBody同样deny_unknown_fields。
+
+修复与验收：版本化增加原回答、题目/知识版本、曝光、辅助策略、评分版本与纠正关联；升级旧客户端/归档；保留当前FSRS原子更新，不另写调度器。
+
+来源：[packages/contracts/learning/v1/review.schema.json](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/packages/contracts/learning/v1/review.schema.json)。
+
+### A06｜P1｜环境诊断尚未形成统一Registry解析
+
+证据类型：STATIC_CONFIRMED_WITH_PATH_404；承接：X01, X04, X11, X13。
+
+发现：已有外置Rust环境变量fallback，不能说完全没有外置能力；但preflight只看Python模块和Markdown，core_launch还查仓内debug/Core、Tesseract数据及临时cargo wrapper。.project/resources.yaml在该提交返回404。
+
+修复与验收：复用已有doctor并接资源ID→定位→版本→能力→许可→执行环境；移除发布运行对开发wrapper的硬前提；只报告已探测能力。
+
+来源：[scripts/doctor_windows.ps1](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/scripts/doctor_windows.ps1)。
+
+### A07｜P1｜当前分支头缺可查询的CI运行证据
+
+证据类型：REMOTE_QUERY_AND_LEDGER；承接：X01, X11, Q00。
+
+发现：当前commit workflow_runs=[]；combined statuses=[]。旧23fe970 CI成功不能替代38930cf。台账高覆盖回归为2767 passed/7 skipped/126 subtests/3 failed，且ignore了test_dev_paths.py。
+
+修复与验收：集成分支锁SHA重跑适用CI；local Windows补真实进程回收；保留排除与失败，环境拒绝不计通过。空API列表仅代表该接口未返回记录，不证明所有其他检查不存在。
+
+来源：[docs/current/R5-EXECUTION.md](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/docs/current/R5-EXECUTION.md)。
+
+### A08｜P2｜台账存在历史口径与当前汇总不同步
+
+证据类型：REMOTE_DOCUMENT_CONSISTENCY；承接：X00, X02, X14。
+
+发现：STATE仍写1793 tracked，后续矩阵写1994；cards X14-02仍AWAITING_EXACT_PATH_AUTHORIZATION而gap已记录授权清理；已提交矩阵尾部仍称当前修改未提交。
+
+修复与验收：历史原文保留；当前摘要增加as_of/tested SHA/artifact hash、适用范围与supersedes，逐项更新卡片，不改旧tested SHA。
+
+来源：[docs/current/R5-STATE.json](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/docs/current/R5-STATE.json)。
+
+### A09｜P2｜静态外溢候选及可读占用不能当完整释放证明
+
+证据类型：SCOPE_LIMIT_CONFIRMED；承接：X01, X14, Q01。
+
+发现：矩阵明确1051静态候选；盘点110284文件/11523900070逻辑bytes、186权限错误、11重解析点。13.6GiB是旧可读目录减少；不是独立验证卷净释放。
+
+修复与验收：保留已清理成果，继续批准范围的生产者运行差分；私有目录/ACL-deny保持不触碰；记录同范围净变化、隔离和并发写入。
+
+来源：[scripts/maintenance/trace_output_producers.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/38930cfd27c0806845e65386d439468ce31405b0/scripts/maintenance/trace_output_producers.py)。
+
+## Green与环境方案的真实地位
+
+AA-ENV与AA-GREEN是用户本次明确提出的待承接要求，不能因为聊天出现就标已实现。仓库AGENTS仍把现有Green v0.6.14列为恢复/行为参考；需通过当前决策机制明确“旧Green身份”和“新滚动Green通道”的替代关系，不抹去旧版本事实。
+
+四库逻辑设计保留；第四库职责仍缺定义。先核已有配置/历史记录，不凭猜测命名。未解决时仅阻塞四库最终语义，通用路径/版本/锁机制可用明确标注的测试槽位开发。Test Source是测试输入副本，不是用户真实四库。合理无障碍支持不视为代答。
+
+## 后续实施顺序
+
+1. 当前main建integration/r5-main-reconcile，合并最新候选并解决权威/当前状态漂移；该分支是集成载体，不需等全部产品完成才开始。不得自动merge受保护main。
+2. 先修A03预检与A06 Registry/doctor，生成环境能力和执行位置收据；同源绑定测试证据。
+3. Green通道与四库binding/TEST隔离/单写者/一致备份先落实；修A02恢复资格。旧库和新库不得双写。
+4. X03/X04/X05/X08接默认GUI与版本化学习事件，保留现有FSRS实现；X09补真实客户端纠错后调用和资格变化。
+5. 在Green TEST中跑人类与机器两条Golden Journey，退出重启读回；修A01发布链，形成同源候选。
+6. 本机Windows补进程树/GUI/浏览器等真实能力；Clean VM验证安装升级卸载回滚和按当前发布要求的签名。独立GPT按原Q00范围审计。
+7. X12全16格式/三主题、X13剩余全仓和语言收口、X14预算与外溢复测，再独立Q01。M1不全部压成Q00前置；清理可按原X01/X02依赖提前推进。
+
+保留全部23任务、原GOV/LANG/HL/清理切片及冻结F01—F06。新增切片只挂原父任务，先契约/实现再集成，避免跨父任务相互等待。框架重写、通用Agent治理、批量安装全部资源不在本轮方向内。
+
+## 状态与证据边界
+
+- STATE的X00—X14全部PARTIAL_NEEDS_WORK；Q00/Q01 BLOCKED；六个F任务DEFERRED_RETAINED。
+- 2767通过为台账报告，本次未重跑；三处独立复现仅针对提取的生产脚本及临时合成数据。
+- 私有原始收据未下载，Windows工具链/外置资源/真实Green与四库未访问，清理净释放未独立测量。
+- 这是定向复审，不是全仓无缺陷保证，不是Q00/Q01签字，不提交代码、不发PR、不修改权限或真实数据库。

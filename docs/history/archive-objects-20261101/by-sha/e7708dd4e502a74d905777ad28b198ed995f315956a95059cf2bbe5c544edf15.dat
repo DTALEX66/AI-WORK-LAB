@@ -1,0 +1,124 @@
+# 元枢系统 ArcheAxis OS｜Phase 5 最小可运行闭环交付包
+
+版本：`v0.1.0`  
+对齐仓库：`DTALEX66/Cognitive-Loop-OS`  
+对齐基线：`main@752997d7f712655ef73e99c657111ebfaa45dcf5`
+
+这不是“把远景页面做出来”的演示稿，而是一条可运行、可审核、可追溯、可回滚的真实纵向切片：
+
+```text
+Research Candidate
+→ Human Review
+→ Formal Knowledge Version
+→ Learning Artifact
+→ Deterministic Practice Evidence
+→ Mastery Signal
+→ Machine Knowledge Candidate
+→ Human Review / Approved Machine Knowledge
+```
+
+## 交付内容
+
+- FastAPI 本地 API 与自动 OpenAPI 文档；
+- SQLite 事实库、状态对象、重建型统计投影；
+- 事务 Outbox、Job、审计事件与幂等 Command；
+- “元枢·观心”可视化工作台；
+- IFEval 风格的 5 项确定性指令约束验证器；
+- Google Research / 500 AI 治理种子资产；
+- Provider/Model 能力路由面板，默认不连接任何云模型；
+- Windows 一键启动、Linux/macOS 启动脚本；
+- 闭环测试、验收脚本、导出和回滚说明；
+- 可选的 Cognitive-Loop-OS 仓库桥接与挂载说明。
+
+## 为什么这次只做这条闭环
+
+当前仓库已经完成 Phase 4 GitHub Research candidate-only 持久化链路，下一工程主线是 Phase 5：
+
+```text
+Research Candidate → Review → Knowledge → Learning → Mastery → Machine Knowledge Candidate
+```
+
+本包严格不宣称以下能力已完成：完整 Human Learning OS、通用 Dynamic Planner、完整 Sleep Loop、3D 宫殿、VR/AR、多租户和全端同步。
+
+## Windows 一键启动
+
+双击：
+
+```text
+START_WINDOWS.bat
+```
+
+或 PowerShell：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\START_WINDOWS.ps1
+```
+
+启动后打开：
+
+- 工作台：http://127.0.0.1:8010/
+- API 文档：http://127.0.0.1:8010/docs
+- 健康检查：http://127.0.0.1:8010/api/v1/system/health
+
+首次启动会创建隔离虚拟环境 `.venv` 并安装最小依赖。不会访问或修改项目目录之外的文件。
+
+## Linux / macOS
+
+```bash
+chmod +x START_LINUX_MAC.sh
+./START_LINUX_MAC.sh
+```
+
+## 最快验收路径
+
+1. 打开工作台，点击“初始化演示闭环”。
+2. 在“研究审核”中批准 IFEval 研究候选。
+3. 等待约 1 秒，正式知识版本和学习资产自动出现。
+4. 批准学习资产。
+5. 点击“填充合格示例”，连续提交 3 次练习。
+6. 掌握度变为 `Mastered`，机器知识候选自动出现。
+7. 批准机器知识候选。
+8. 在“审计与事件”查看完整来源、审核、生成、练习和批准记录。
+
+也可以运行自动验收：
+
+```bash
+python scripts/smoke_test.py
+```
+
+## 数据与回滚
+
+运行数据仅写入：
+
+```text
+data/mcs.sqlite
+```
+
+重置演示：
+
+```text
+RESET_DEMO.bat
+```
+
+完全回滚：停止进程后删除本交付包目录即可。它不会自动改写 Cognitive-Loop-OS 主仓库。
+
+## 仓库接入
+
+参见：
+
+```text
+integration/Cognitive-Loop-OS_INTEGRATION.md
+```
+
+推荐先以独立端口 `8010` 验收闭环，再将路由挂载到主网关 `/api/v1/mcs`。不要直接替换现有 `app/main.py`、`knowledge_base/api.py` 或已有 SQLite。
+
+## 安全边界
+
+- 默认无外部网络调用；
+- 不执行任何第三方仓库代码；
+- 不下载模型、权重和数据集；
+- 云模型路由全部为 Candidate/Planned；
+- 正式知识、机器知识必须经过人工审核；
+- 所有不可静默覆盖的事实采用追加记录；
+- 所有关键写命令支持幂等键；
+- 数据库与审计都保存在交付包目录内。

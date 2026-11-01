@@ -1,0 +1,32 @@
+# WORK-LAB 今日整合总提示词（可直接交给原生执行器）
+
+你现在接手 WORK-LAB 的2026-09-23整合与收敛工作。先读取随包INTEGRATED_REPORT.md、SOURCES.md和evidence/OBSERVATIONS.json，再执行prompts/00的只读对账。不要默认执行全套修复。
+
+## 目标
+把今日统一入口/原生Agent增强/全量治理审计三个方向统一起来：网页ChatGPT负责规划与复核，Codex/Hermes/DSH保留原生Harness；WORK-LAB复用已有控制面负责任务、权限、上下文恢复、外置资源发现和证据。AAOS和DESIGN-LAB领域权威不迁入WORK-LAB。
+
+## 首先纠正输入基线
+本包观察：main@803268da9dc356fe63f26b3b5405f724bc06b5b9；PR#127 head@9f57ca34faea94c6accb521b1799a9e31767cb5c未合并。前者是主干，后者已有大量V2实现。执行前重新读取两者与本机状态，不照搬旧main-only审计重建已有模块。
+
+该head的work-lab-gate 35801327360和wlr-060-production-gates 35801327365已success，Observer步骤8 U19回读也success；仍需原始工件与最终接受核验。ruleset23825562本轮实读active、main required aggregate strict。PR正文/总账的旧失败或OPEN标记不能覆盖新实证。
+
+main索引已指向20260918 CURRENT，但本轮对应正文main读取404、在PR可读。先处理权威引用/正文落地阶段，不制造新的CURRENT或第二OPEN总账。
+
+## 实施顺序
+1. 双基线与当前权威/任务状态只读对账，指出“PR已实现待收口”“仍有缺口”“待授权”“可选”四类。
+2. 优先收敛A00/A03/A04/U02/U17a与现行V2；历史按索引定向查，不全量注入启动上下文。
+3. 对Context恢复和外部资源发现做真正缺口测试：新会话恢复、旧路径诱导、卷离线/拒绝访问/没查过与确实不存在的区别、下载许可绑定发现证据。
+4. 复核现有U10–U14配置/证据/Inbox/隔离/原生效果，U17/U21安装位置和更新，U20并行派发；不重写。
+5. 仅在能力/安全条件满足且得到授权后做薄Remote MCP→现有任务服务→一个原生Codex任务→状态/结果回读；后续再扩Hermes/DSH。
+6. n8n、Omnigent、Orca、Beacon、Jev为候选，SoL仅吸收可验证局部方法；先比较净价值，不无差别安装。
+7. 使用既有A/U编号更新派生差集，全部状态经证据确认后按授权完成合并与回读，不能自动发布。
+
+## 必守
+每checkout一个writer；并行审计只读，parallel writer隔离worktree。保留原生模型/provider/reasoning/auth和固定安装路径；禁止未检查既有工具链就下载，禁止擅自转装C盘，禁止访问未授权保护盘和私人凭据/会话。生成物留当前项目.project-local；原生Homes不迁移。Observer只读，主动操作不塞入Observer。
+
+规则/schema数量动态发现，不固定13 Skills/38 Gates；required失败不放行，建议性检查不阻塞无关任务；同题两轮不收敛就重新分类，不循环堆修复。
+
+本任务默认不授权commit/push/merge/release、改远端保护、全局配置、安装/下载、外发或付费调用。先给出只读发现与最小改动计划；明确仓内写授权后按prompts/01–12选取需要的任务。
+
+## 必须输出
+来源与SHA；main/PR/本机差异；逐条原有实现和真实剩余；所需授权；选中的现有任务ID；变更域与验收命令；实际结果/退出码；证据工件引用；下一步。不得把文档、代码存在、结构PASS、同SHA CI、实机回读、merge和用户接受写成同一状态。

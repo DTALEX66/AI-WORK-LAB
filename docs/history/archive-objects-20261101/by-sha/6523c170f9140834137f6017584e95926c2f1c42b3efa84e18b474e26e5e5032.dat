@@ -1,0 +1,116 @@
+# ArcheAxis｜GPT 架构、集成与验收任务包
+
+版本：2026-09-07｜起始代码基线：`4ca46eaf94c486dadcf200aac6b41cd968b1ce6e`
+
+## 0. GPT 的职责与硬边界
+
+GPT 负责高级架构决策、受保护契约、Rust 核心和 Avalonia 最小产品；它不是“用一份新文档覆盖旧文档”的角色。所有结论必须对应当前 SHA 上的可复现实测。
+
+语言架构在本包内**不重开全量迁移**：C# + Avalonia 仅做桌面体验；Rust 是唯一权威写入、任务编排、SQLite、CAS、迁移与恢复核心；Python 只能是隔离 capability worker；HTTP 用 OpenAPI 3.1、消息用 JSON Schema 2020-12。React/Tauri/旧 Python 只作维护、行为参考和迁移来源，待两个稳定新架构 Release 且 Owner 明示同意后才可逐区删除。
+
+禁止：UI/worker/agent 直接写主 SQLite；双写；改 legacy DB；将 WORK-LAB 变成本项目运行前提；访问 E 盘或未指明外部路径；把工具私有会话、缓存、密钥提交进仓。
+
+**一次跑完规则**：从同一 `4ca46ea` 新建独立分支/独立 worktree，例如 `agent/gpt-core-20260907`。GPT-00～GPT-08 在此工作区连续执行，不等待 DP，也不吸收 DP 的提交。该包禁止修改 DP 独占的 `services/python-workers/evaluation/worker_quality.py`、`services/python-workers/web/worker_webpage.py`、`packages/contracts/v1/quality-report.schema.json` 与 `fixtures/golden/dp-capabilities/**`。两包可按任意先后甚至并行运行；最终只有独立审计包能把它们放到同一候选提交中。
+
+## 1. GPT-00｜建立唯一项目治理面并登记 DRIFT-001
+
+**目标**：先修“权威冲突”，再让任何实现任务开工。
+
+**范围**：`AGENTS.md`、`PROJECT_CONTRACT.yaml`、`DIRECTORY_AUTHORITY.yaml`、`.project/**`、相关 CI/schema 测试；本项串行且只由集成者处理。
+
+**必须定稿**：
+
+- `.project/`：受版本控制的项目治理、task envelope、grant、schema、状态和 gate registry。
+- `.project-local/`：每个 worktree 的忽略运行材料（runs/cache/tmp/logs/artifacts），永不提交。
+- `.hermes/`：只保留已追踪的历史/迁移对象；禁止新的运行时写入与新权威。
+- `.codex/`、`.dsh/`：各软件私有、忽略、非项目权威；不得强行移动真实软件的会话或凭据。
+- `DRIFT-001`：记录当前 `.hermes`/`.project-local`/`.project` 规则矛盾、nightly 失败和先前文档性完成声明的降级处理。
+
+**验收**：三份根契约不再互相指向不同运行根或不同权威；机器校验可拒绝缺 SHA、越界路径、旧证据和手写完成状态的任务。
+
+## 2. GPT-01｜统一运行目录解析并修复 web nightly 路径失败
+
+**问题基线**：当前 nightly 在 `4ca46ea` 的 `test_web_full_chain_screenshot_ocr_crosscheck` 因 Chrome socket path 过长失败；根 `AGENTS.md` 和 `scripts/ci/run_tests.sh` 仍把运行材料写向 `.hermes`。
+
+**范围**：路径 resolver、`scripts/ci/run_tests.sh`、`conftest.py`、相关 workflow/test；不批量删除已有 `.hermes`。
+
+**设计要求**：
+
+- 普通本地运行默认 `<repo>/.project-local/...`；所有生产/测试路径通过同一 resolver。
+- CI 仅可使用声明的、单次运行结束即清理的短路径（如 runner temp 下项目专用短目录），并在日志记录解析结果和清理结果。
+- 禁止悄悄落入用户家目录、系统临时目录、C/E 盘或别的项目；Chromium 的例外必须被显式验证。
+
+**验收**：没有生产性 `.hermes` 硬编码；web screenshot → OCR → cross-check 在同一提交的 CI 重跑通过；`full-suite` 通过或明确阻断发布，不能把跳过当成功。
+
+## 3. GPT-02｜把“完成”改为可验证状态，并收紧 CI/远端保护
+
+**范围**：`.project/` 状态 schema/生成器、CI workflows/ruleset 配置、release gate、现有 21 项任务登记。
+
+**工作**：
+
+- 采用 `PLANNED / IN_PROGRESS / IMPLEMENTED / VERIFIED / INTEGRATED / QUALIFIED / RELEASED / BLOCKED / STALE / RETIRED` 状态机；没有 `DONE`。
+- 代码变动的 PR 校验基线 SHA、diff scope、任务 grant、独立证明和对应风险测试；不允许只运行 `a0-gates` 就隐含全套绿。
+- 对 runtime、摄取、路径、公共契约、发布变更要求相关全链路测试；nightly 红色使 release qualification 失效。
+
+**验收**：故意伪造越界 diff、旧 SHA 回执、缺失独立验证、伪造 PASS 的 fixture 均被 CI 拒绝；远端 required check 的覆盖与实际风险分类一致。
+
+## 4. GPT-03｜统一人机语义契约与三语言生成边界
+
+**范围**：除 `packages/contracts/v1/quality-report.schema.json` 外的 `packages/contracts/**`、`crates/archeaxis-contracts/**`、生成绑定及合同测试；串行。
+
+**必须解决**：
+
+- 统一 knowledge status（candidate/accepted/rejected/deprecated）、job lifecycle（避免 `completed`/`succeeded` 混用）及来源/创建者权限。
+- 机器/worker 只能产生 candidate、measurement、evidence suggestion，不能写 `accepted` 或人类掌握度。
+- 为所有非质量报告消息决定测量/损失信息的规范位置/版本；`quality-report` 的 `loss_receipt` 专属决定由 DP 包负责，GPT 只在审计阶段校验其兼容性。
+- 生成/校验 Rust、C#、Python DTO，拒绝手写漂移。
+
+**验收**：三语言正反例一致；未知字段、非法状态迁移、machine→accepted、schema 版本不匹配均失败；DP-01/03 只能在此结果上继续。
+
+## 5. GPT-04｜Rust 原始对象、来源与恢复完整性
+
+**范围**：`crates/archeaxis-{archive,store-sqlite,domain,application,api}/**` 与对应窄测试路径；数据库迁移须独立 envelope。
+
+**已知缺口**：来源目前只留 metadata/SHA、`raw_path` 为空，未证明 raw bytes 进入 CAS；archive restore 未在事务前验证 manifest 行、hash 和对象集合。
+
+**验收**：导入原件按 SHA-256 content-addressed storage 保存；来源、派生转换、锚点可追溯；损坏/缺失对象/manifest 不一致会 fail closed 且不留下半恢复状态；真实测试涵盖重启、备份、恢复。
+
+## 6. GPT-05｜Rust job 原子性和唯一写入者修复
+
+**范围**：`crates/archeaxis-store-sqlite/**`、`crates/archeaxis-application/**` 与独立迁移/测试 envelope。
+
+**已知缺口**：`complete()` 先更新 completed 再插 transform，未在同一事务；重复完成可产生重复 transform，FK 失败可留下假 completed。
+
+**验收**：一次事务完成状态与 transform；重复/并发完成幂等；失败回滚；唯一 Rust WriterActor 约束和迁移测试可证明。不得让 UI、Python 或 agent 开 SQLite 写连接。
+
+## 7. GPT-06｜最快真实可用闭环（v0.1）
+
+**依赖**：GPT-01、GPT-03、GPT-04、GPT-05。
+
+**产品路径**：
+
+1. 导入 Markdown/TXT/JSON、原生文本 PDF、静态网页快照、截图/图片；每项保存原件和来源。
+2. 通过已定义的 Python capability boundary 接收可追溯候选转换及 loss/质量测量；DP 的实装可在最终审计时合入，未合入时明确显示为未测量，不伪造分数。
+3. 有界 cloud web cross-check 返回原始来源定位、支持/反驳/未知、独立性与限制；它不自动把结果判为真。
+4. 人工可查看原件—提取—来源—差异—准确率，选择接受/保留为个人定义/拒绝。
+5. Rust 存储并提供只读 machine API；人类侧可阅读、复习和得到学习材料。
+
+**边界**：Office、扫描 PDF OCR、音频、视频等只能在其 worker 有真实金样本与能力收据后加入 capability pack；不得以“脚本存在”宣称全部格式可用。
+
+**验收**：干净 Windows 11 环境，以项目自有/公开许可样本走完上述五步，重启后仍可检索、回看来源和继续学习；同一数据不会被自动写成“人类已接受”。
+
+## 8. GPT-07｜Avalonia 真实桌面 MVP 与恢复界面
+
+**范围**：`apps/ArcheAxis.Desktop/**`；不含 domain、SQLite 或 worker 直连。
+
+**问题基线**：当前 `MainWindow.axaml` 仍是 “Welcome to Avalonia!”。
+
+**验收界面**：导入、处理状态、原件/结果/证据对照、人工状态选择、检索/学习入口、失败与恢复提示。桌面只经 loopback HTTP + per-launch token 调 Rust core；不嵌入业务规则、不直连数据库、不直接启动任意 worker。
+
+## 9. GPT-08｜旧项目吸收映射与 GPT 包完成
+
+**工作**：将旧 React/Python/Tauri 代码按行为 oracle、可迁移实现、只保留历史、不可用分类。建立从 legacy manifest 到新模块/测试/不吸收理由的一对一映射；不读取、更改或吸收 DP 的候选提交。
+
+**验收**：任何吸收都有来源、许可、行为对照和迁移/回滚路径；没有删除旧代码。两个稳定新架构 Release 及 Owner 单独批准前，禁止 legacy 物理清除。
+
+本包完成时只输出 `GPT-PACK-COMPLETION.json`、完整 SHA、允许路径证明、命令和局限。它不是最终资格审计，也不自行接受 DP 成果。最终合并、独立审计和 Owner Preview 由第三份 GPT 审计包完成。

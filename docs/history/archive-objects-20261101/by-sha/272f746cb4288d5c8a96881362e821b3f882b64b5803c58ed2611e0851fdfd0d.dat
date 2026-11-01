@@ -1,0 +1,166 @@
+# ArcheAxis 云端更新复审 · 2026-09-17
+
+## 一、结论
+
+本轮已对更新后的云端工作分支做独立只读复核。结论是：**本次有实质修复，但仍不能验收为完整、稳定的多格式人机双向学习产品。** 上轮三项 CI 配置缺陷已有源码修复，旧桌面 `desktop-fast` 的后续云端运行实际通过；原件导入到识别、正式多格式注册、学习反馈保真和完整恢复仍未闭合。
+
+当前 SHA 的 CI 是 **3 项成功、16 项跳过、0 个产物**，不是全套产品测试成功。对只有交接文档变化的提交按路径跳过重测试可以合理；不能把这种绿色状态提升为整个产品合格，也不能把历史失败直接叫作当前失败。[E03–E08]
+
+本轮不修改代码、不推送分支、不创建 Issue/PR。此包是复审报告，不是替代 R5 的新主任务包或执行授权。
+
+## 二、审计对象
+
+| 项目 | 本轮确认 |
+|---|---|
+| 仓库 | DTALEX66/ArcheAxis-Knowledge-OS |
+| 工作分支 | codex/full-loop-0906 |
+| 当前提交 | 82378461f40052c9346726fd43ea45a9cef8326c |
+| 当前 Tree | 71d774bd517dd1fc2218471d1fe48ec253019edc |
+| 上轮审计提交 | b8bbd16b5155a3dd1da925e50a828a58fe41119b |
+| 增量 | ahead 28、behind 0；21 个文件净变更 |
+| main | 1e9813ea2bd49f47d334ba6717c78d3e9feda6ce，未更新到上述工作分支 |
+| 本地目录记录 | D:\All projects\ArcheAxis-Knowledge-OS；本轮没有访问用户本地磁盘 |
+
+结束前再次读取分支列表，工作分支仍是上述 SHA。[E01–E03]
+
+最新提交只增加 `docs/current/R5-HANDOFF-2026-09-17.md`。该文档记录生成时的父提交 `eec612d…`，不应仅因它没有写入自身尚未生成的提交 SHA 就认定漂移。正式 Avalonia 窗口、crates 下的 Rust 产品代码、R5-STATE.json 均未出现在此次净变更列表中。[E02–E03]
+
+## 三、哪些修复应当承认
+
+| 原发现/问题 | 当前复核 | 仍需要的证据 |
+|---|---|---|
+| AUD-10：vnext smoke 缺数据库参数 | 已给 `--smoke` 传入显式项目内 SQLite 路径 | 当前候选的实际启动、握手、退出；不是继续修同一个参数 |
+| AUD-11：绿色候选 setup-uv 少一位 | 已改为完整 `d0cc045d04ccac9d8b7881df0226f9e82c39688e` | 绿色候选在当前 SHA 实际构建、校验、产出 |
+| AUD-12：worker CI 缺适配依赖 | 已在 frozen/hash 配方中增加 ci-adapters | 当前 SHA 格式回归真实运行 |
+| 旧桌面运行时资源误判 | `db5858a…` 排除了 runs 临时目录；desktop-fast 与恢复契约在 run 35118134675 实际通过 | 这属于旧 Tauri 兼容路线，不替代 Avalonia 完整 GUI |
+
+前三项是“修复已进入源码，当前 SHA 运行资格未补齐”，不能写成“完全没有修”，也不能直接标成“完整验收已关闭”。[E08–E09、E16–E17]
+
+## 四、CI 与交付证据核对
+
+| 运行 | 提交 | 复核结果 |
+|---|---|---|
+| 35165068639（最新） | 8237846… | gateplan、lint、a0-gates 成功；16 项跳过；0 个产物 |
+| 35120587113（交接引用） | eec612d… | 同样只有上述 3 项成功、16 项跳过；Rust 作业未执行 |
+| 35118134675 | db5858a… | gateplan、desktop-fast、a0-gates 成功；旧桌面与恢复契约真实执行成功 |
+| 35117008379 | abf17fa… | 历史 desktop-fast 失败，后续成功已读到；不继续报作当前失败 |
+
+最新运行中跳过的项目包括 Rust、Avalonia、worker、格式、迁移、安全、浏览器、Windows runtime 和安装生命周期。`a0-gates` 是对本轮计划的汇总判定，不是一次完整用户流程。[E04–E08、E23]
+
+最新交接自报本地 Python `2840 passed / 10 skipped / 13 warnings`、Rust workspace 离线通过、路径归属 2040/2040。这里保留其价值，但将它们标为**执行端本地记录**：本轮没有独立获得并重放其完整原始运行，也没有把它们当作最新 CI 的实测数量。[E21]
+
+## 五、仍需修复的产品主线
+
+### 5.1 导入与生产 worker 注册：AUD-01、AUD-02
+
+桌面导入仍只发送文件名、Base64 原件到 `/api/v1/imports`，没有消费 source_id、接续创建/执行识别作业、跟踪输出。成功提示把“原件提交”称作“导入任务”。正式 Core main 仍调用 `Executor::open`；该函数传入空额外路由，默认只注册 `text.extract`。没有文本 profile 时还会进入不带 executor 的投影模式。[E10–E12]
+
+因此，测试用 `open_routes` 手工加上 PDF/OCR 的成功不能证明正式桌面拥有同样能力。先复用现有作业接口接通真实入口，不另建只供演示的流程。验收应使用空工作空间、真实文件，从用户导入操作追到内容块、结构、锚点与查询。
+
+### 5.2 原始学习反馈仍未完整保存：AUD-03
+
+`record_review_with_state` 把 `canonical_request` 纳入哈希，但实际写入 `learning_events.outcome` 的是 `outcome` 和 `schedule`；`learning_event_keys` 保存键和哈希等收据。完整回答不能由哈希恢复。[E13]
+
+修复应在同一权威事务内保存版本化原始反馈，并使重启、导出恢复与幂等重放都能逐字段核对。不能把 FSRS 状态已经持久化扩大为完整学习过程已经保真。
+
+### 5.3 队列和重试语义未闭合：AUD-06、AUD-07
+
+`item_keys_with_latest_review` 从已有 learning_events 取最新事件，按 item_key 排序，没有到期筛选。桌面取首项并展示编号、时间而非完整题目。新工作空间还缺少从材料到初始题目的入口。[E10、E13、E22]
+
+本轮将其实际 SELECT 放入合成内存 SQLite：2099 年才到期的项目仍被返回，还会因为字母排序在 2000 年已到期项目之前。该结果证明查询的筛选/排序语义，不是 GUI 集成实测。
+
+桌面每次提交仍重新生成事件 ID、曝光 ID，只在收到成功响应后禁用按钮。服务器的相同键幂等不能阻止客户端重试换键形成第二条事件。应固定同一次曝光和提交身份，重试复用原请求，真实下一次学习再生成新曝光。[E10]
+
+### 5.4 深化发现：来源引用读错 JSON 层级，AUD-08
+
+后端 `/api/v1/learning/items/{id}/state` 返回的引用位于：
+
+```text
+learner.references
+```
+
+桌面却用：
+
+```text
+document.RootElement.TryGetProperty("references", ...)
+```
+
+这不只是没显示 `active`：字段根本不在桌面读取的位置。即使存在来源引用，界面也可能仍显示“来源版本：未记录”。修复应让生产客户端解析真实响应结构，同时处理已替换/撤销版本；补一个以真实响应为输入的客户端契约回归，不只分别测试两端。[E10、E13、E22]
+
+### 5.5 开放归档及机器收据仍缺字段/关系：AUD-04、AUD-09
+
+开放格式 `EXPORT_TABLES` 仍没有 `card_references` 与 `machine_tasks`。机器收据写入有条件和知识/方法/工具版本，但读回函数及 HTTP 投影仍省略这些字段。[E13–E15、E22]
+
+两类问题要区分：前者是这条开放格式恢复路径未保全关系/记录；后者是数据库有数据但受支持读回不完整。不要误说原生 SQLite 整库备份一定丢数据，或机器字段从来没写入。
+
+### 5.6 绿色候选的数据位置仍不一致：AUD-05、AUD-14
+
+VBS 仍设置 `ARCHAXIS_DATA_DIR`、`ARCHAXIS_LAUNCHER_DATA_DIR`，正式桌面却读取 `ARCHAXIS_VNEXT_DB`，否则回落 LocalApplicationData。组装器的长路径修正没有修复这一模式错位。[E10、E18]
+
+应明确 portable 与用户目录模式，界面显示实际数据库/工作空间，不让复制包的用户误以为同时带走真实知识库。当前 SHA 的候选作业是跳过、产物为 0，不再沿用旧 SHA“新候选构建失败”的措辞；本轮也没有证明其他历史提交从未产出过候选。[E05–E06]
+
+### 5.7 PDF 测试的成功分母仍不可靠：AUD-13
+
+PDF 样例无法创建时测试仍打印 skipping 后正常 return，后续端到端断言没有执行。必测能力缺依赖应不具备资格；可选能力未执行应单列，不混入资格通过分母。[E19]
+
+## 六、额外发现：长路径转换不幂等，AUD-17
+
+绿色组装脚本 `_native_path` 没有识别输入已带 `\\?\`。`_remove_tree` 先把根路径转成长路径，再通过 os.walk 得到子路径，并再次调用该函数。使用 249 字符的合成 Windows 路径，无损字符串测试得到：
+
+```text
+第一次：\\?\D:\audit-synthetic\...
+第二次：\\?\\\?\D:\audit-synthetic\...
+```
+
+这证明前缀被重复添加。**没有在 Windows 运行文件清理，也没有认定它是本次更新新引入的回归。** 修复重点是幂等转换与深路径合成回归；范围只应是调用方创建的候选输出，不涉及用户 Green 或资料。函数转录与结果在 evidence/ 中。[E18]
+
+## 七、R5 的对账与继续顺序
+
+R5 总体仍是 PARTIAL / BLOCKED。X08 的局部描述仍说默认 GUI 未切换，但源码已经调用 `/learning/reviews`；应更正缺口说明，不能重复做端点切换，也不能因这一点升级整项完成。[E02、E10、E20–E21]
+
+保留 X00–X14、Q00/Q01 与 F01–F06，不新建替代主任务体系。AUD 编号只是审计发现编号。
+
+| 下一组 | 原任务 | 验收目标 |
+|---|---|---|
+| 生产入口与能力注册 | X03、X05、X06、X11 | 真实导入→正确 worker→结果/来源回跳；明确失败状态 |
+| 学习反馈与双方投影 | X04、X07、X08、X09 | 原始回答、稳定重试键、实际到期队列、正确 learner.references、完整机器收据 |
+| 恢复及候选身份 | X01、X10、X11、X13 | 补归档关系、统一数据模式、验证长路径，并让同候选跨重启/恢复 |
+| 当前资格验收 | X00、X12、Q00，随后按前置解锁 Q01 | 对候选实际执行必要云端与 Windows 门禁；缺失项留作未执行，不用文档 CI 替代 |
+
+本轮已经做了独立云端复审，结论是不予完整产品通过；但尚未执行 Q00 规定的所有 G01–G14，不能将“GPT 看过了”写成“Q00 PASS”，也不能只安排另一位审计者而不补产品与运行证据。Q01 不解锁。16 格式 0 complete/14 partial/2 custody-only 是交接记录中的全链路覆盖状态，不表示 16 种格式都没有任何解析能力。[E21]
+
+个人笔记、经验和假设继续允许保全入库，用来源/验证状态与使用资格区分；不为了验收速度裁掉人类学习或机器调用侧。未来的空间记忆、3D/动画等扩展继续保留在原延期范围，不改为永久取消。
+
+## 八、边界
+
+没有完整克隆和重跑整仓；没有访问用户 Windows、真实数据库、共享模型/工具库或 Agent 私有状态；没有完成可见 GUI、干净机、安装/升级/卸载及完整 G01–G14。没有穷尽所有历史 CI 和全部历史分支。源文件读取覆盖、运行摘要与未覆盖项均在 JSON 文件中列明。
+
+两个探针分别是生产 SQL 的合成内存验证和转录函数的 Windows 路径字符串验证。它们确认的是缺陷现象，不是产品通过。文件校验和只用于此交付包一致性，不冒充源仓库 Git 对象验证。
+
+**判断：继续在现有架构修已定位问题，不推倒重做；承认已进入源码和已被真实 CI 证明的进展，同时拒绝把有限绿色检查写成完整闭环合格。**
+
+## 来源索引
+
+- **E01** 远端分支列表（结束时再次读取）：https://api.github.com/repos/DTALEX66/ArcheAxis-Knowledge-OS/branches?per_page=100
+- **E02** 前次基线到本轮 HEAD 的完整净变更文件清单：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/compare/b8bbd16b5155a3dd1da925e50a828a58fe41119b...82378461f40052c9346726fd43ea45a9cef8326c
+- **E03** 当前提交及其新增交接文件：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/commit/82378461f40052c9346726fd43ea45a9cef8326c
+- **E04** 最新 SHA 的 CI 运行：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/35165068639
+- **E05** 最新 SHA 的作业清单：https://api.github.com/repos/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/35165068639/jobs?per_page=100
+- **E06** 最新 SHA 的产物清单：0：https://api.github.com/repos/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/35165068639/artifacts?per_page=100
+- **E07** 交接文档引用的父提交 CI：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/35120587113
+- **E08** 旧桌面测试实际执行成功的运行：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/35118134675
+- **E09** 旧桌面修复提交：排除 runs 临时资源：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/commit/db5858ad30b724ce09bd144b6b343f7aa64ae89a
+- **E10** 正式桌面事件处理：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/apps/ArcheAxis.Desktop/MainWindow.axaml.cs
+- **E11** 正式 Core 入口：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/crates/archeaxis-api/src/main.rs
+- **E12** Executor 默认能力注册：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/crates/archeaxis-application/src/executor.rs
+- **E13** 学习事件、队列及引用域实现：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/crates/archeaxis-domain/src/learning.rs
+- **E14** 开放格式归档布局：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/crates/archeaxis-archive/src/lib.rs
+- **E15** 机器收据写入与读回：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/crates/archeaxis-domain/src/machine.rs
+- **E16** 当前 vnext-ci 配方：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/.github/workflows/vnext-ci.yml
+- **E17** 主 CI 的桌面、绿色候选及 worker 作业：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/.github/workflows/ci.yml
+- **E18** 绿色候选组装器及启动器：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/scripts/release/assemble_green_candidate.py
+- **E19** PDF 端到端测试的提前返回：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/crates/archeaxis-application/tests/pdf_job_end_to_end.rs
+- **E20** 当前 R5 任务状态：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/docs/current/R5-STATE.json
+- **E21** 当前交接：本地测试自报与剩余验收：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/docs/current/R5-HANDOFF-2026-09-17.md
+- **E22** API 的 item_state/learning_items/machine_task_readback 投影：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/82378461f40052c9346726fd43ea45a9cef8326c/crates/archeaxis-api/src/lib.rs
+- **E23** 最近读取的失败运行（后续 desktop-fast 已成功，不列为当前失败）：https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/35117008379

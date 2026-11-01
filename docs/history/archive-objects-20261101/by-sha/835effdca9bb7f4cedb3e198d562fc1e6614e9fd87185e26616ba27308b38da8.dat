@@ -1,0 +1,86 @@
+# AAOS：两份学习 PDF 错放源码目录专项任务
+
+**事件 ID：AAOS-PDF-DATA-PATH-DRIFT-20260922。优先级：P0 资料边界保全与防复发。**
+
+## 1. 用户已确认的事实——不得再误判为测试样例
+
+用户给出的精确目录：
+`D:\All projects\ArcheAxis-Knowledge-OS\docs\history\desktop-attachments`
+
+两份文件是《时间简史（插图本）》与《牛津通识读本：缤纷的语言学（中文版）》。用户明确说明它们来自外置副本学习资料库，不是源码工程文档或专门制作的测试 fixture。截图分别显示 18,967,447 与 2,260,557 字节；文件名标点、空格和扩展名须按本机实际枚举结果保留，不能拿显示名拼接后直接执行删除。
+
+**裁决：这两份具体文件的放置属于 DATA_PATH_DRIFT。**这替代前一轮对这两份文件“用途未明、尚无法分类”的状态；不扩大为“全仓所有 PDF 都违规”。
+
+目录叫 history/attachments 不会改变资料所有权。历史对话归档可以保存来源引用、用途、摘要与必要元数据，不等于授权收进整本学习 PDF。即使文件被 Git 忽略，错误的永久存放位置也没有因此修复。
+
+## 2. 已核实的权威位置
+
+以接手时的 `docs/SHARED_RESOURCE_PATH_INDEX.md` 为唯一映射入口。本次固定 main 已读到：
+
+| 资源 | 位置 | 操作边界 |
+|---|---|---|
+| project_test_corpus | `D:\All projects\ceshi` | 专属测试学习资料库/学习资料副本；按已批准精确样例只读使用，保留原件 |
+| green_material_library | `D:\All projects\资料库` | 真实产品资料；默认仅核实路径元数据，不读正文、不写、不清理、不迁移 |
+| green_application | `D:\All projects\ArcheAxis.Knowledge.Green-x64` | 保护当前可用软件与用户数据 |
+| 开发输出 | `dev.py` 分配的 `<repo>/.project-local/` | 隔离、Git-ignored 的工作树/运行输出；不是第二个正式资料库 |
+
+不能把这两份 PDF 搬进 Model library、Design assets、另一个项目、C 盘默认目录或真实资料库。也不能把 ceshi 当作可任意写入/删除的临时目录。两份 PDF 在 ceshi 内的具体原路径与 hash 尚未核实。
+
+## 3. 当前已知与未知
+
+本次云端 main 仍为 `e3875db0ee6d073d37839eb7b95f7ef4ce881bbb`。精确目录 Contents 查询返回 404；针对该路径且从该 main 可达的 commits 查询返回空；默认分支关键词搜索也无命中。
+
+这只能说明这些查询没有发现该路径，**不能证明两个文件从未上传**：未审查本地 index/refs/reflog、其他云端 refs、改名前路径、历史发布包、Actions artifacts 或 LFS。也不能从这两个结果认定“确定只在本地”。
+
+截图的创建/修改时间均为 2026-08-11 20:47:50；这是文件属性显示时间，不是确定的复制时间、Git 提交时间或操作人证据。本次只收到属性截图，未收到 PDF 原件，未打开用户本地磁盘，未移动或删除文件。
+
+## 4. 第一阶段：只读取证和保全——立即执行
+
+1. 核对源码仓库真实根、worktree、HEAD、tree、index、未提交与未推送增量。对目标目录及祖先做 ReparsePoint/junction/symlink 元数据检查，不跟随重定向到受保护或未知目录；必要时识别硬链接，防止改动同一底层原件。
+2. 只枚举上述精确目录的顶层文件元数据，不递归扫全盘、不读私有 .codex/.hermes/.zcode/凭据/会话。找到显示名对应的**真实 basename**，记录精确路径、大小、时间、链接类型、SHA-256。哈希不等于允许上传正文。
+3. 分别判断 HEAD 中存在、index 已跟踪、未跟踪、ignored、仅本地提交、可达远端提交、是否存在改名前记录。以下是只读排查示意，须在确认工作树和 shell 后执行：
+
+```text
+git rev-parse --show-toplevel
+git rev-parse HEAD
+git rev-parse HEAD^{tree}
+git status --short --branch --untracked-files=all -- docs/history/desktop-attachments
+git ls-files --stage -- docs/history/desktop-attachments
+git ls-files --others --exclude-standard -- docs/history/desktop-attachments
+git log --all --full-history --name-status -- docs/history/desktop-attachments
+```
+
+逐个实际文件用 `git check-ignore -v -- <精确路径>` 核对忽略来源；状态为未匹配不代表执行错误或文件安全。需要审查重命名时对单文件用 `git log --all --follow -- <精确路径>`，记录它仍然不是所有可能副本的完整证明。
+4. 从既有 source registry、已授权样例索引与当前路径映射找到 ceshi 中相应原路径。只核对已批准的两份具体样例；没有精确路径/权限时记录缺口，不递归搜索真实资料库补救。比较大小和 SHA-256，不以同名、同大小或相同时间认定同一版本。
+5. 查项目内现有历史整理/附件复制/资料导入/迁移/打包代码与允许读取的任务日志，搜索 `desktop-attachments` 及两份文件名。建立：输入根→分类规则→复制命令→目标路径→运行证据。候选原因可能是历史附件归档误收，但没有命令或日志证据就写 UNKNOWN，不能归罪于某个 Agent、用户或同步工具。
+6. 检查是否有链接、测试、资料索引、source_id、anchors 或运行配置依赖错误路径。证据与快照保存到批准的本地输出根，仅保存必要元数据，不再复制两本书制造“备份污染”。若唯一副本保护确需复制，先取得精确私有目的路径与操作授权。
+
+## 5. 第二阶段：修入口、防再写，不先删文件
+
+在本项目任务授权内修复导致复制的实际入口：
+- 资料输入根与源码/历史文档输出根分离。用户学习原件不能被目录清理器或附件收集器当作工程附件永久归档。
+- 必要的有界转换 staging 只能落在 `dev.py` 分配的 ignored 运行目录，保留 source ID/hash、用途与清理策略，不升级为权威原件库。
+- 归档器使用用途/来源根/manifest allowlist；不以“所有 PDF 都拒绝”代替分类。合法小型合成 fixture 保留独立许可和登记规则。
+- 校验规范化路径、Windows 大小写、`..`、junction/symlink/reparse 及硬链接风险；不以链接方式规避外置边界。
+- 提交、打包和 artifact 采集入口禁止误收真实学习原件；新增精确 guard。只加 `.gitignore` 不算根因修复，也不会清除已跟踪对象或历史。
+- 若写入来自外部工具，仅记录确认过的入口、版本和精确建议；不得擅自修改全局代理配置。项目内 guard 和其他独立任务继续推进。
+
+回归使用临时合成占位文件与 metadata，不把这两本书上传到测试仓库、CI、模型 API 或报告。至少覆盖：原件保留、输出不入 docs/history、同名异内容不覆盖、中文/空格路径、重解析逃逸拒绝、重复执行不重拷、已有未跟踪资产不删除、合法 fixture 不误封、资料不会进入新打包结果。
+
+## 6. 第三阶段：逐文件处置计划——必须先校验与取得授权
+
+| 核验结果 | 处置 |
+|---|---|
+| 外置指定副本存在且 hash 相同 | 提交精确误放副本移除/归位计划；原外置文件保持只读。未获清理授权不删任何一份 |
+| 外置副本不存在、不可访问或不完整 | 视误放文件为可能的唯一完整副本；禁止删除，申请新的精确保存/恢复方案；不得擅自向 ceshi 或真实库写入 |
+| 同名但 hash 不同 | 视为不同候选版本并保留双方；检查来源、阅读注释和引用，不覆盖、不自动去重 |
+| 已进入 Git index/历史 | 当前停止跟踪与历史清除分开申请；`git rm --cached` 不会清除历史。禁止强推、历史重写、删分支或批量 clean |
+| 已进入公开 Git/发布包/artifact | 记录已证实的对象与传播范围，另提受控整改方案；不把元数据没命中说成已清除全部副本 |
+
+**本用户消息确认了归属，不等于授权删除、移动、写真实库或重写 Git 历史。**本包默认允许先完成无破坏审计、现有项目授权内的代码防复发和 dry-run 清单；待批准的文件处置不阻断无关开发任务。
+
+## 7. 验收和回报
+
+必须分别交付：两份文件 exact path/size/hash 与外置来源对照、Git 跟踪与可达性结论、实际写入原因或 UNKNOWN、被修入口和回归、引用保护、逐文件 dry-run、所需 Owner 动作、回滚点。
+
+完成级别分开：`LOCATION_DRIFT_CONFIRMED` → `LOCAL_GIT_AND_SOURCE_VERIFIED` → `WRITER_GUARD_TESTED` → `CLEANUP_PLAN_READY_FOR_OWNER` → `AUTHORIZED_CLEANUP_VERIFIED`。不能因为加了忽略规则就直接跳到最后一级。截图与完整路径只用于用户私有交接，不默认提交到公开仓库。

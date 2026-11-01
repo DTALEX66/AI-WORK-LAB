@@ -1,0 +1,243 @@
+# ArcheAxis 云端独立复审 · 2026-09-11
+
+**结论：Q00（M0）不通过；Q01（M1）未具备通过条件。代码已有实质进展，继续修现有实现，不重选语言、不另起架构。**
+
+## 基线与读取范围
+
+- 实际远端分支 `codex/full-loop-0906`：`c78919271afe61789b51be7a1ddd081ca9991d69`；结束前通过git ls-remote再次确认未变化。
+- `main`仍`4ca46eaf94c486dadcf200aac6b41cd968b1ce6e`。不是main上的已合并交付。
+- 相较上一审计`cbe253b`：150提交、259文件、45,119行新增/168行删除。此统计包含大量文档、测试和原任务包，不代表功能完成度。
+- 隔离工作树读取当前AGENTS、R3入口/状态/证据索引、G01–G14、关键Rust/Python/宿主/打包/归档调用链及测试。未逐行审完全部259文件，未声称全仓安全审计。
+- GitHub Actions最近10次vnext-ci均failure；本次HEAD无专属run，最近run为[34525395437](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34525395437)，源码SHA `46de83e2ea8fa4292f5343ebe85e1e469b0fbfbf`。它到本次HEAD只有EXECUTION、HANDOFF、R14-EVIDENCE-INDEX三份文档变化，相关源码未修。
+- 本环境无cargo/.NET/pytest/FSRS/MCP SDK；运行了8个无需这些依赖的检查器与有限Python/SQL演示。没有把它们冒充Windows全量测试、实际模型学习或完整恢复验收。
+- 未修改或推送产品源码，未访问用户Windows磁盘、E盘、私密.hermes内容、真实资料库；git status保持干净。
+
+## 已确认的实质进展
+
+1. 知识接受/拒绝/撤销携new_body已被拒绝，修改走新candidate与supersedes，同一事务记录事件；上次正文覆盖缺陷已修。[代码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/crates/archeaxis-domain/src/knowledge.rs)
+2. 归档升级schema4，明确兼容v3的10/11/12/13表布局，新增四套非空历史fixture。逐表hash本地核对均匹配，每套含2条知识；存在旧实现导出说明与恢复回归，但本轮没运行Rust恢复。[归档](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/crates/archeaxis-archive/src/lib.rs)
+3. 未知启动actor已拒绝；最新失败CI在失败前仍实际通过6项launch_auth进程测试，包括伪造身份与未知actor。真实宿主凭据隔离尚不能据此整项签过。
+4. 学习同键异对象/异correct的基础去重、实际py-fsrs调用适配已新增；存在下述更深的状态与重放缺口。
+5. 不支持/无法判断不再误判支持。本地真实函数检查确认；云端交叉核查仍明确BLOCKED_EXTERNAL。
+6. 统一格式路由、PDF/OCR、容器成员、目录批量、Canvas/字幕以及真实MCP SDK客户端均有新实现。真实协议不等于机器任务能力已通过。
+7. 架构/语言/路径/格式/证据/worker覆盖检查可在本环境运行；完整蓝图仍保留，重型3D/动画/大型宫殿未删除。
+
+## 本轮发现（映射回R3，不新建产品队列）
+
+### A01 · P1 · Windows CI持续失败，未取得同源发布资格
+
+原任务：R05, R13, R14。
+
+发现：最新HEAD没有专属run；最近10次vnext-ci结论均failure。最新run 34525395437测46de83e，FSRS测试期望fsrs、实际unavailable，cargo退出101，后续C#与Supervisor步骤跳过。46de83e到本次HEAD只有3份文档变化，相关源码与工作流未修。
+
+修复：工作流设置并安装锁定的FSRS及worker依赖；确保解释器和共享模块路径在新环境可用。用实际错误日志确认根因，不能把失败改成skip；让受影响Python/host/MCP/release路径触发对应门禁。
+
+验收：在同源Windows候选完整跑过Rust、真实FSRS、C#与Supervisor，发布制品和结果绑定实际SHA。
+
+证据与限制：GitHub原始job日志与本地Git diff，未在本环境重跑Rust。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/.github/workflows/vnext-ci.yml#L1)
+
+### A02 · P1 · FSRS接入未形成持久复习系统
+
+原任务：R05, R10。
+
+发现：未传schedule_state时继续走placeholder_ladder，shared/core_client.py默认旅程确实不传。API只保留next_review_days，丢弃due和完整卡片状态；adapter也未返回stability/difficulty。domain按数据库当前时间加整数天，0天变NULL，会丢失分钟级复习时间；now与实际due不一致。
+
+修复：由Core持久化完整卡片状态、精确due、reviewed_at及算法版本，与学习事件同事务更新；普通产品调用从Core取状态，不让调用者手动维护。新卡也走FSRS，缺依赖显式不可排程。
+
+验收：新卡、分钟级重学、成熟卡、跨日、重启后的连续两次复习与直接FSRS一致；默认旅程不落临时梯度。
+
+证据与限制：源码调用链；0天→NULL为SQL等价演示，未运行FSRS模型包。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/crates/archeaxis-api/src/lib.rs#L426)
+
+### A03 · P1 · 幂等重试仍未绑定完整排程语义
+
+原任务：R05。
+
+发现：当前摘要仅kind和correct/不可用标记；同键同对象更改schedule_state或now仍可被当成相同请求。重试先重算调度再查键，依赖可用性变化会把同一请求从成功重试变成冲突。不可用首回-2，持久键存NULL，重试回0；响应authority来自本次调用，不是原收据。
+
+修复：请求身份与稳定规范化输入绑定；先查原事件并返回原完整收据，不依赖本次worker可用性；冲突返回明确409，卡片状态更新与事件事务化。
+
+验收：原请求精确重放相同due/authority/状态；同键异状态/时刻拒绝；成功后worker故障仍可回放；并发重试不多计。
+
+证据与限制：源码验证，未宣称运行Rust回归。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/crates/archeaxis-domain/src/learning.rs#L120)
+
+### A04 · P1 · 开放归档遗漏两类新增持久数据
+
+原任务：R03, R09, R11, R13。
+
+发现：EXPORT_TABLES仍13表，不含card_references与machine_tasks；两表在domain按需创建，代码直接声明不进入归档。重启原库可保留，不等于导出后恢复仍保留。
+
+修复：将两表纳入显式schema迁移与归档布局，升级归档契约并保留旧版本兼容；不能把领域事实当成可再生FTS缓存。
+
+验收：包含知识修订、卡片引用、学习事件及失败/成功/重测机器收据的非空包，导出后在新目录恢复逐字段一致。
+
+证据与限制：直接读表创建与导出循环；未运行Rust恢复程序。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/crates/archeaxis-archive/src/lib.rs#L12)
+
+### A05 · P1 · 启动器备份恢复不完整且接受无关SQLite
+
+原任务：R13, R03。
+
+发现：backup_database只备SQLite和hash，未携<db>.objects。实际调用备份及恢复到新路径均exit0/restored=true，但sources有记录、原件目录不存在。另一个仅含unrelated表的SQLite也被接受恢复；校验仅PRAGMA schema_version而非ArcheAxis schema/FK/原件一致性。
+
+修复：统一复用已验证的工作区归档/恢复能力；备齐原件与领域事实，staging内验证schema、完整性、外键与对象hash，通过后无覆盖发布。失败自动恢复旧工作区；不将单库备份称完整恢复。
+
+验收：新目录恢复后每个原件可读；无关SQLite、丢失对象、损坏表、复制失败拒绝且旧工作区无变化。
+
+证据与限制：真实Python函数、合成SQLite和原件的有限复现；未访问用户数据。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/scripts/launch/core_launch.py#L280)
+
+### A06 · P1 · 候选包未证明产物来自声明提交
+
+原任务：R13, R14。
+
+发现：脚本接受已有binary和任一存在的commit，没有执行对应构建或核验构建收据。有限复现中27字节非可执行文本放release路径，被标为旧main提交的release-build，exit0。默认也可能捡到旧release二进制配新HEAD。
+
+修复：同一受控流程锁定干净源码SHA、依赖、构建profile和输出hash；外部二进制必须带可核验构建收据，否则标来源未验证。运行成功也不能替代同源证明。
+
+验收：拒绝旧产物+新HEAD、伪二进制与任意commit重标；清单可追踪实际构建输入和命令。
+
+证据与限制：调用真实builder，未执行伪二进制；hash只能证明与清单一致。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/scripts/release/build_candidate.py#L66)
+
+### A07 · P1 · 打包拒绝前已递归删除输出目录
+
+原任务：R13。
+
+发现：out存在就shutil.rmtree，再复制二进制，然后才检查dirty tree；--out没有限定自有输出边界。合成目录实验仅模拟dirty判定，函数exit5却已删除原keep.txt，留下新a.exe。
+
+修复：所有资格/路径检查前置；仅管理已确认归属的产物目录，拒绝仓库根/源树/符号链接与任意既存目录；先新staging，验后原子发布，默认不覆盖。
+
+验收：dirty、错路径、构建失败均不改变原输出；拒绝不等于已经清空。
+
+证据与限制：真实builder+仅dirty谓词模拟；仅操作临时合成文件。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/scripts/release/build_candidate.py#L103)
+
+### A08 · P1 · 界面和候选包仍不能供普通用户完成M0
+
+原任务：R10, R13。
+
+发现：面板仅GET状态、健康、容器成员；没有完整导入/讲解/练习/纠错/复习操作。DeepTutor未接入这条完整旅程，Avalonia主窗仍Welcome。bundle只含Core二进制、README、清单，不带worker/Python/宿主，且干净机器未验。
+
+修复：按既有复用授权完成最薄的上游接线或独立可操作界面，可先本地Web；将一键启动、worker与默认复习路径装进可用候选。挂一个只读URL不足以验收。
+
+验收：用户从交付物完成导入→定位→理解→练习/讲回→纠错→复习→重启继续，并完成机器调用与反馈。
+
+证据与限制：源码与R13-USAGE明确限制；本轮未操作Windows GUI。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/scripts/host/journey_panel.py#L317)
+
+### A09 · P1 · 真实MCP协议已有，但机器能力验收仍是检索/自报收据
+
+原任务：R11, R09。
+
+发现：真实SDK客户端已加入，应承认进展。但probe先检索，随后直接提交固定outcome=succeeded，model_version是字符串标签，没有实际解题答案或任务产物评测。留出probe明确只测5文档检索，不测能力改善。machine_tasks写入也未校验knowledge_version的当前资格。
+
+修复：选择一个有确定验收标准的机器任务，记录实际产物、知识/方法/模型版本、评测结果；用户纠错后用独立留出例重测。旧版本任务结果允许历史留存，但必须标陈旧/不可复用，不能默认为当前有效。
+
+验收：真实MCP客户端完成任务而非仅search/list/record；至少一例失败→修订→重测；失效引用和未知版本可识别。
+
+证据与限制：真实客户端代码与结果登记链审读；本轮未安装MCP SDK或调用模型。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/scripts/probes/r11_mcp_client_smoke.py#L145)
+
+### A10 · P2 · 清理未执行，容量只迁位置仍增长
+
+原任务：R01, R12。
+
+发现：本轮清单明确nothing deleted。自报同口径23.423→27.469 GiB（不含私密排除项），根target5.729 GiB仍在，另列.hermes42.853 GiB。候选约22.4 GiB，其中target+cache6.877 GiB；不能把提议当实际回收。清单日期写2026-09-12，晚于本次UTC2026-09-11，需校时核验。
+
+修复：在既有授权与明确范围内清理可再生缓存，先保全/列清单/停止相关进程，清后复测；唯一历史、真实资料、私密内容继续保留。若实际安全规则阻塞应说明具体规则，不能无限只列候选。
+
+验收：同范围清前/后/构建后逻辑大小及卷空间变化；私密排除项单列未知，不报精确全仓。
+
+证据与限制：仅云端摘要，原始本机库存未上传；不推定本机实际大小。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/docs/authority/taskpack-0910-r3/R12-CLEANUP-MANIFEST.md#L1)
+
+### A11 · P2 · 旧资产迁移和全格式仍未收口
+
+原任务：R07, R15。
+
+发现：旧迁移export_jsonl未在同一读事务获取表清单和内容，inventory另开连接；附件、链接仍记loss，旧时间戳未保留。1246资产只是盘点。当前格式检查0完整/14部分/2保管；音频仅WAV头、视频仅容器头，不是转写/视听理解。
+
+修复：先对选定首版非空旧资产完成一致快照、附件/关系/历史差分；其余有明确保留去向。格式按真实语义能力验收，优先复用现成解析，不以路由可达代替功能完成。
+
+验收：非空迁移不丢首版必需资产；剩余16组状态逐项对应原要求；格式头解析不宣称内容学习。
+
+证据与限制：源码、格式矩阵和本地检查器；未读取真实资料库。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/crates/archeaxis-migration/src/lib.rs#L51)
+
+### A12 · P2 · 包完整性与执行口径仍有不必要阻塞
+
+原任务：R00, R14。
+
+发现：上一包把可写EXECUTION/STATE放进不可变MANIFEST，且读UTF8未指定编码、部分文件无LF。这是本审计方上一包的设计问题，不能归为执行者篡改。新检查器依赖ignored安装快照，新checkout仍exit1；证据索引文字还残留49指针/5部分11保管，实测80指针/14部分2保管。
+
+修复：拆分冻结定义与可变状态校验，原始模板从已交付ZIP或受控历史追溯；明确UTF8/LF，追加修订记录即可，不需重造审批。更新当前摘要，修正先做M0却跨到大量M1任务的执行顺序。
+
+验收：新checkout无私有安装快照也可验证冻结定义/任务图；活动状态校验结构与证据，不要求等于初始模板。
+
+证据与限制：8项本地检查中7项exit0，完整性检查exit1；本轮不改仓库代码。 [固定提交源码](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/c78919271afe61789b51be7a1ddd081ca9991d69/docs/authority/taskpack-0910-r3/PACKAGE-STATUS.md#L1)
+
+## R3逐项判定
+
+|任务|本次审计判断|说明|
+|---|---|---|
+|R00|部分通过|当前入口已统一；包校验与摘要问题见A12|
+|R01|部分/本机未验证|路径止增有摘要；物理占用与完整范围未测|
+|R02|定向源码修复确认|正文不可变及事务已补；不代表全部版本导航通过|
+|R03|部分通过|旧v3兼容已补；新持久数据未入归档|
+|R04|部分通过|actor修复有实际CI进程通过；完整宿主身份隔离未齐|
+|R05|不通过|A01–A03：CI、FSRS状态与幂等问题|
+|R06|部分/外部阻塞|否定判定修好；真实云端交叉核查未做|
+|R07|部分|一致快照、附件/关系/旧时间戳未闭合|
+|R08|部分|统一路由有进展；转换→知识→教学完整用户链未齐|
+|R09|部分|引用/状态有实现；归档及机器结果版本闭环不足|
+|R10|不通过|只读面板不等于完整学习操作|
+|R11|部分|真实MCP有实现；实际任务与独立能力改善评测未齐|
+|R12|未完成|本轮清理0删除；容量仍增|
+|R13|不通过|备份、同源证明、输出删除和可用包缺口|
+|R14/Q00|不通过|本报告独立结论，不改写实现者台账|
+|R15|未完成|14部分/2保管；旧资产/路径/学科活动仍未齐|
+|R16/Q01|尚未具备条件|M0关键门未过，M1未完成|
+
+## 沿用G01–G14门禁
+
+|门禁|判断|证据含义|
+|---|---|---|
+|G01 来源身份|FAIL|产物来源可任意标注，无合格同源可用包|
+|G02 原件与转换|PARTIAL|路由和原件有进展，定位/语义转换仍未完整|
+|G03 质量与核查|BLOCKED/PARTIAL|公开否定回归修复；真实云端交叉核查缺证据|
+|G04 个人知识|PARTIAL|个人定义接受的实际CI测试通过；完整学习调用未齐|
+|G05 人类学习|FAIL|只读UI、临时间隔、卡片状态与精确due未持久化|
+|G06 机器学习|PARTIAL|真实MCP协议；检索和固定成功收据不能代替任务评测|
+|G07 双向反馈|PARTIAL|修订与过滤有进展；下游归档/结果资格未闭合|
+|G08 权限与数据|PARTIAL|进程身份基础通过；完整宿主及路径/打包风险未消除|
+|G09 原子与恢复|FAIL|新增表丢失；原件备份遗漏；无关DB被接受|
+|G10 旧资产|PARTIAL|合成迁移有损失台账，非无损附件/关系/历史迁移|
+|G11 Windows可用|FAIL|无可供普通用户完成闭环的交付物|
+|G12 运行目录|NOT_VERIFIED/PARTIAL|本机摘要说明止增但无本轮实际清理及物理占用证据|
+|G13 能力/历史|定向保留确认|原23任务与远期蓝图仍在，不代表全部资产语义审完|
+|G14 依赖与发布|FAIL|最近CI失败，后续必要步骤跳过，制品未达资格|
+
+## 独立验证记录
+
+|检查|结果|说明|
+|---|---|---|
+|架构检查|exit0|规则检查，不是软件可用证明|
+|语言边界检查|exit0|Rust/Python/schema协议主版本与数据库边界检查|
+|格式矩阵|exit0|16组：0完整、14部分、2仅保管|
+|路径规范|exit0|1792跟踪路径中1723有归属；69未归属已登记，不等于已修|
+|证据索引|exit0|17切片、80跟踪指针、3本机收据；检查存在性不评判内容|
+|任务包完整性|exit1|缺ignored安装快照，不能解释两活动进度文件变化；旧包设计问题|
+|worker可达性|exit0|12能力worker、10有路由、2有例外；路由不等于能力完成|
+|命令索引|exit0|21命令结构/存在性检查；该程序未执行这21个命令|
+|旧v3 fixture逐表hash|4套均匹配|10/11/12/13表；只核对fixture，不冒充恢复运行|
+|备份/恢复有限复现|复现缺陷|真实Python函数，sources记录存活但新目录无objects；无关SQLite恢复exit0|
+|候选包同源有限复现|复现缺陷|27字节文本被旧SHA标release，exit0；未运行伪程序|
+|打包dirty拒绝有限复现|复现缺陷|只模拟dirty谓词；exit5前已删除既有合成输出|
+|否定核查回归|修复确认|真实parse_verdict函数拒绝不支持/无法判断|
+|FSRS 0天投影|缺陷推导确认|依据domain实际分支作SQL等价演示；未调用FSRS包|
+
+审计工作树的dev.py初次启动失败，原因是其共同Git目录位于旧审计checkout，那里.project-local未被ignore；这属于本次审计环境布局，不列为用户产品新缺陷。之后仅直接运行只读检查器，有限复现全部使用独立临时合成数据。
+
+## 最短后续顺序
+
+1. R03/R13先保住资料与恢复：完整备份/归档，拒绝错误库；同时修打包输出删除。
+2. R05补完整FSRS持久状态、due及幂等；修复当前Windows CI，不能用旧绿灯覆盖新失败。
+3. R10交付可操作最薄学习入口，R11加入真实任务产物和纠错重测，R13打出同源可用包。
+4. R12在已有授权和明确清单范围内执行可再生缓存清理，清前/后/重构建后同口径计量；私密与唯一资料保全。
+5. 重跑Q00。通过后再扩M1格式与学科活动。3D、动画、大型知识宫殿继续保留，优先现成复用，重自研冻结。
+
+语言保留Rust权威核心、Python能力层、C#/Avalonia壳与可复用Web/TS。既有规则检查通过，不等于全量语言迁移完成；也没有证据支持现在推翻语言分工。不要因缺少UI接线、schema迁移或清理决策就新增无限治理循环。
+
+本报告没有变更仓库任务状态，没有清理本机，没有发布代码。下一位执行器继续原R任务修复即可；本报告的A编号只是审计发现索引。

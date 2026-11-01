@@ -1,0 +1,68 @@
+# AAOS GitHub 与项目优化方案
+
+日期：2026年10月14日。观察 main：`c541ed8315e54aaa111da64ba79c95cad19b408d`。
+
+优先修正缓存与真实路径不一致的问题，再缩短失败反馈和构建链路。正式宿主仍是 frontend + src-tauri，Rust Core 保持唯一写入者；不因提速更换框架、拆仓或减少保存与恢复验证。
+
+保留现有 GitHub 仓库。下列“确认”来自代码或运行记录，“待测”表示尚未做本机性能测量。本轮未修改远端配置或项目源代码。执行前重新读取当前 HEAD、未提交改动、开放 PR 和项目权威入口，避免覆盖正在进行的功能开发。
+
+## 依据与具体问题
+
+| 状态 | 观察 | 优化意义 |
+| --- | --- | --- |
+| 确认 | 最近 PR 总耗时23分15秒；desktop-build 16分02秒后串行 installer-lifecycle 6分22秒 | 优先处理最长串行链，而不是相加所有并行任务 |
+| 确认 | runtime/dev.py 将 CARGO_HOME 指向 .project-local/cache/cargo，两个手写 cache 步骤却保存 ~/.cargo/bin、registry、git | 缓存命中不能证明真实依赖缓存被保存 |
+| 确认 | cargo-audit 脚本检查 $HOME/.cargo/bin，日志却安装到 .project-local/cache/cargo/bin | 预检路径与安装位置不一致，会反复尝试安装 |
+| 确认 | 手写 key 主要取 src-tauri/Cargo.lock；root Core 是另一个 workspace/lockfile | key 没有充分表达实际构建输入；恢复成本与可复用内容要分开测 |
+| 确认 | frontend.py 的 build 模式先执行 tsc --noEmit，再执行 Vite | 已有类型检查，不要重复安装一套检查工具 |
+| 确认 | stage_runtime.py 复制 sys.base_prefix 的完整 Python 安装，仅排除 site-packages、bytecode 等 | 包含内容的大小和复制成本值得量化，不能直接假定全部需要 |
+| 确认 | Tauri build.rs 监听整棵前端产物目录，以及 ARCHEAXIS_FRONTEND_DIST / TAURI_CONFIG | 每次新 run 的路径和配置可触发重新构建；这是正确嵌入资源的保护，也可能有额外成本 |
+| 确认 | local_verify.py 已有 quick/full；GatePlan 已支持按路径选检查 | 复用这些入口，不再增加第二个检查编排器 |
+| 确认 | SQLite writer 默认有界队列64，独立线程，with_store 使用 submit | 已有异步与单写者保护，不能建议随意多连接写入“加速” |
+| 确认 | main ruleset 要求 a0-gates，strict=false；有一个 always bypass 的 RepositoryRole actor | 精确版本资格依赖已有回执；不能误称平台强制所有最新 base 检查 |
+
+日志来源：[最近PR](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/38487686931)、[30分钟成功样本](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/38268676998)。
+
+## 分阶段任务
+
+| 编号 | 优先级 | 修改位置 | 动作 | 验收 |
+| --- | --- | --- | --- | --- |
+| A01 | P0 | .github/workflows/ci.yml；scripts/runtime/dev.py | 在路径初始化之后输出非敏感的有效缓存路径；两个手写cache保存实际 CARGO_HOME 子目录；分别管理root Core和Tauri目标；cargo-audit预检改用实际安装根 | 冷/热运行记录 path、key、restore秒数、编译秒数；真实Cargo下载目录命中，audit工具不再因检查错根反复安装 |
+| A02 | P0 | 两个手写cache key/restore策略 | 纳入 rustc身份、OS/target、两个锁文件、.cargo/config 和编译feature边界；依赖缓存与可变构建输出分开；避免同key永久停留在第一次保存的输出 | 工具链/锁/feature变化有可解释的新key；恢复旧key后实际源码仍编译；不缓存运行数据和资格回执 |
+| A03 | P0 | scripts/ci/local_verify.py；ci.yml前置检查 | 将路由文档、挂载库存与生成合同检查提前接入已有quick/preflight，后续重构建依赖该检查 | 本轮61/59和缺layout路由的反例在重编译前失败；保留原断言意义，不改成任意数量 |
+| A04 | P0 | desktop/scripts/prepare_bundle.py；stage_runtime.py；ci.yml | 为复制Python、导出依赖、安装依赖、构建wheel、安装wheel、Core编译、Tauri编译、NSIS压缩分别计时 | 成功和失败都保留阶段时间；8分07秒Tauri步骤能拆到内部，不继续把它全叫Rust编译 |
+| A05 | P1 | runtime基础依赖与候选组装 | 按Python版本、uv.lock、ABI、平台缓存不可变基础环境；每次重新安装当前项目wheel并组装当前Core与worker，保持候选SHA/tree绑定 | 改一个Python源文件后安装包读回的是新源码；依赖未变时减少重复准备；离线安装与恢复仍通过 |
+| A06 | P1 待测 | src-tauri/build.rs；runtime/frontend.py | 同一run复用已验证的前端产物；记录Cargo重建原因，研究稳定内容寻址输入与每run隔离的兼容方式；先保留当前监听，不能靠删rerun-if规则提速 | 改CSS、JS、合同后嵌入资源必更新；相同内容重建成本有对比；并发run不串产物 |
+| A07 | P1 | tests/conftest.py；Python/Rust测试入口 | pytest先加 --durations 统计与JUnit；Rust分开build/test时间。纯合同和纯计算先试独立分片，OCR/ASR/恢复、共享端口与有状态测试显式隔离 | 测试ID全集无遗漏；失败仍传播；无共享数据库、目录或端口污染；不要直接给整套测试加无限并发 |
+| A08 | P1 | .worklab/project-validation.v1.yaml；ci.yml | 维护变更→消费者→资格映射：普通前端走既有路径；共享合同覆盖TS/Rust/Python及需要保留的C#消费者；安装候选才完成安装验收 | 混合变更不能漏消费者；未知路径仍阻断并要求分类；本次改ci.yml仍会触发安装链，不假称第一轮补丁一定是快CI |
+| A09 | P2 待测 | writer.rs；API各列表查询；frontend/src/app/App.tsx | 测队列等待、执行时间、Busy比例与大列表响应；用EXPLAIN QUERY PLAN定位慢SQL，再按结果补索引/游标分页；前端采样首屏/切页/大文档与长列表 | 单写者和事务/CAS保持；普通保存不加云端检查；按100/1000/10000条合成数据记录p50/p95，而非凭代码长度判断卡顿 |
+| A10 | P2 | 根AGENTS与当前权威路由 | 根只保留当前宿主、入口、边界、检查命令和活动指针；历史迁移展开按需读；修正对WORK-LAB旧00-governance路径的引用 | 当前版本唯一入口可读回；旧证据原件不重写；本项目本地独立工作不被外部WORK-LAB探测阻断 |
+
+## 缓存路径必须先核对
+
+| 用途 | 当前实际来源 | 当前手写cache覆盖情况 |
+| --- | --- | --- |
+| Cargo registry/git/bin | environment()导出的CARGO_HOME，通常为.project-local/cache/cargo | 写的是~/.cargo，存在错位 |
+| root Core build | environment()导出的CARGO_TARGET_DIR，默认路由到项目build根 | 手写清单没有直接表达这个实际目标 |
+| Tauri build | 包装入口另行路由到.project-local/build/tauri | 已在清单中，需确认同profile和有效输入 |
+| uv | environment()导出的UV_CACHE_DIR，通常为.project-local/cache/uv | setup-uv的真实恢复须核对；不能因手写清单出现uv-desktop就认定实际uv已覆盖 |
+
+Swatinem/rust-cache主要保留依赖构建产物，主动清除workspace自有产物和incremental信息。它命中后仍重编译项目源码是正常行为；应根据日志比较依赖是否反复编译。不能通过缓存“上次PASS”跳过当前源码验证。
+
+## 第一批可直接交工程师执行
+
+只做A01～A04：缓存路径与工具预检、key输入、快失败合同、阶段计时。一个隔离分支，一个写入者；先补丁审阅，再按项目既有权限落地。不要同时改运行时架构、桌面主题和历史归档。
+
+本地先执行已存在的quick入口，并定向包含两项maintenance合同测试；完整安装资格使用该分支真实CI候选。记录冷运行与热运行，统计阶段数据而不是只写“变快了”。原required check `a0-gates`保持稳定。规则strict与bypass调整属于单独的GitHub设置任务，应结合Owner协作方式评估，不能把关掉strict当成提速手段。
+
+下一批A05～A08在阶段数据可用后实施。A09必须先做实际性能采样。A10采用保留边界的精简，避免让本项目再次进入无限治理。
+
+## 回退与完成标准
+
+每批一个可回退提交；缓存修改只失效自己的新key，不清空其他任务状态。bundle优化一旦无法证明新源码进入安装包，回退组装路径。不能覆盖保留的Green、真实用户数据库或知识状态。最终比较四类提交：文档、前端、共享合同/Rust、安装候选，并逐类记录实际选中检查。
+
+可用作第一批开启提示词：
+
+> 在DTALEX66/ArcheAxis-Knowledge-OS当前隔离分支执行本方案A01～A04。先重读当前HEAD、AGENTS、AUTHORITY和活动指针，核对有无别人的修改。只修真实缓存路径、cargo-audit预检、key输入和前置合同检查，增加阶段计时，复用现有quick/full与GatePlan。保留Rust单写者、Tauri正式宿主、现有exact-SHA汇总与安装验收。按当前源版本验证冷/热缓存和失败反例。先交可审阅diff、真实结果、回退方式；不要自动改GitHub规则、推送、合并、发布或覆盖用户数据。
+
+依据：[ci.yml](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/main/.github/workflows/ci.yml)、[runtime/dev.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/main/scripts/runtime/dev.py)、[Cargo缓存说明](https://doc.rust-lang.org/cargo/reference/build-cache.html)、[build.rs变更检测](https://doc.rust-lang.org/cargo/reference/build-scripts.html#change-detection)、[rust-cache行为](https://github.com/Swatinem/rust-cache)、[uv Actions](https://docs.astral.sh/uv/guides/integration/github/)。

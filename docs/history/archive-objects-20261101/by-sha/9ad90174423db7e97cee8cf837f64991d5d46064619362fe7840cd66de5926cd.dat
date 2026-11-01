@@ -1,0 +1,313 @@
+# DTALEX66/WORK-LAB 云端重新审计报告
+
+> 审计日期：2026-08-14  
+> 审计对象：`DTALEX66/WORK-LAB`，仅此独立仓库  
+> 云端基线：`main@6c6ae8a5aefe0aa0e280fbc182c1bd95e088c754`  
+> 审计方式：GitHub 云端只读结构扫描、关键源码/配置/文档抽查、提交/PR/Actions/Release 证据核验  
+> 未执行：本机真实配置 readback、Windows 本地运行、外部项目写入、仓库修改、PR/Release 操作
+
+---
+
+## 一、最终裁决
+
+WORK-LAB 的核心定位没有发生根本漂移：它仍是客户端中立的全局工作流与配置治理控制面，内部只有两个活动模块：
+
+1. `10-workflow/workflow-assistance`：唯一主动执行与写入面；
+2. `30-observer/work-lab-observer`：严格只读的派生观测面。
+
+ArcheAxis、DESIGN-LAB 及其他业务项目均不是 WORK-LAB 的子模块、monorepo 成员、Git submodule/subtree 或内部产品。当前代码已在多个位置声明这一边界，WLG-000～130 的三批整改也已合并，最新 `main` CI 成功。
+
+但项目尚不能判定为“全局闭环已经完成”。当前处于：
+
+> **控制面主体可用，Observer UI/本地运行链已具备；跨项目活动识别、外部端点合同、CI 减负、配置权威一致性和 Release 自动证明仍未闭环。**
+
+本轮裁决：**CONDITIONAL GO**。可以继续迭代，但应先完成 P0 修复；不建议继续新增大功能、技能或审计文档。
+
+---
+
+## 二、云端真实状态
+
+- 最新 `main`：`6c6ae8a5aefe`，提交签名有效；最新 Actions 成功。
+- 仓库当前树：659 个条目、553 个文件、106 个目录；当前 blob 合计约 4.70 MB。
+- 主要文件：Python 214、Markdown 163、JSON 85。
+- 目录占比：Workflow 392 项、Observer 100 项、TaskPack 44 项、Governance 33 项。
+- GitHub 仓库统计体积约 412,686 KB，而当前树仅约 4.70 MB，说明历史迁移/大文件造成明显仓库历史膨胀。
+- 仅一个活动 GitHub workflow：`.github/workflows/work-lab-gate.yml`。
+- 远端分支 44 个，绝大多数是已合并任务遗留分支；`main` 显示为 protected。
+- 共 91 个 PR，当前无开放 PR、无开放 Issue。
+- 最近 50 次 Actions：39 成功、11 失败，平均约 292 秒；最近 12 次 `main` 均成功。
+- 已发布 Workflow Assistance alpha 与 Observer native build，但仓库没有独立 Release workflow。
+- 公共仓库未声明许可证。
+
+---
+
+## 三、已经做对并应保留的部分
+
+### 1. 两模块边界已经基本收口
+
+`projects.json`、`module-ownership.json`、根 README、PROJECT_POSITIONING 与 AGENTS 均把活动模块限制为 Workflow Assistance 和只读 Observer。Open Design/MiniGame 已退出活动模块注册表。
+
+### 2. 配置权威开始机器化
+
+`config-authority-index.json` 与 `config-ownership.json` 已建立：
+
+`UPSTREAM_OFFICIAL → USER_OVERLAY → PROJECT_OVERLAY → TASK_EPHEMERAL → RUNTIME/SECRET`
+
+项目 Rules/Skills/Profile/Gate 已明确归项目仓库所有，未知字段默认观察/隔离，秘密不得采集。
+
+### 3. WLG 任务包核心整改已合并
+
+PR #81～#83 已落地外部端点、tier 词汇、Runner 减负、hash 预算、审计去重、单一 CI 权威、Observer 只读强化、Apply 安全与跨项目契约测试。
+
+### 4. Observer 写边界较清楚
+
+Observer 无任务执行、批准、重试、回滚和 Ledger 写回接口；HTTP 面限制为 GET，并明确 `externalMutation=false`。派生 event/projection 可重建，不作为业务项目真值。
+
+### 5. 主分支当前健康
+
+最新 `main` Actions 全绿，近 12 次 `main` 无失败，说明基础结构和测试体系并非失控。
+
+---
+
+## 四、P0：必须立即修复
+
+### P0-1｜CI 减负没有真正完成
+
+工作流同时监听所有 `push` 和 `pull_request`。同一 PR 分支的同一 SHA 会跑两遍；合并到 `main` 后再跑第三遍。
+
+实例：`docs/guard-error-archive` 同一 SHA 的 push 与 PR 分别耗时 324 秒和 336 秒。最近多个 PR 都存在相同重复。
+
+更严重的是 GatePlan 把任何未命中模块路径的文件归为 `unknown_paths → critical → 全部 Gate`。因此根文档、TaskPack、普通治理记录都可能触发 Workflow、Observer、Integration 和 Windows Token Monitor。
+
+最新 `main@6c6ae8a` 总耗时 338 秒，其中：
+
+- gate-plan：27 秒；
+- workflow：33 秒；
+- integration：15 秒；
+- observer：9 秒；
+- **token-monitor：296 秒**，其中 Rust test 185 秒、cargo check 84 秒。
+
+该提交主要是 guard/skill/documentation 更新，运行 Windows Rust Token Monitor 没有业务必要。
+
+立即调整：
+
+1. `push` 仅监听 `main`；功能分支仅走 `pull_request`；
+2. 增加 concurrency，同分支新提交自动取消旧 run；
+3. 根路径分类细分为 `docs/static`、`governance-contract`、`release`，禁止 unknown 自动全矩阵；
+4. Token Monitor 只在自身目录、Rust/Node 锁文件或 RC/Release 触发；
+5. `workflow` 和 `integration` 中重复的 CURRENT_STATE/Stage3 检查去重；
+6. 普通 PR 目标 60～120 秒，Windows Rust 移至目标变更、nightly、RC。
+
+### P0-2｜外部项目端点实现与声明不一致
+
+WLG 裁决文档宣称 ArcheAxis 端点只保存“仓库地址 + 协议元数据”。实际 `project-profiles.json`：
+
+- 没有保存 `DTALEX66/ArcheAxis-Knowledge-OS` 的 repository URL/slug；
+- 却保存了 `modules.archeaxis-core`、`.worklab` 根、risk zones、runtime path 和 precedence；
+- 使用 `archeaxis-core` 模块语义，容易再次被误解成 WORK-LAB 内部模块。
+
+这既没有完成“外部地址登记”，又超过“仅地址和协议元数据”的边界。
+
+立即调整：建立独立 `external-project-endpoints` 合同，只保存：
+
+- stable endpoint ID；
+- repository slug/URL；
+- protocol/schema version；
+- project-owned profile pointer；
+- workflow/check 名称；
+- privacy/observation policy。
+
+删除外部项目的内部 module、risk path、runtime path、业务命令和配置镜像。
+
+### P0-3｜“正在执行哪个项目”的识别仍不可靠
+
+`active_projects.py` 已经避免把 Git 仓库内普通目录误认成项目，这是正确进步；但活动识别仍是启发式：
+
+- Windows `tasklist` 只能看到进程名，看不到项目 cwd；
+- 以 `.hermes/.codex/.agents` 下任意文件 120 分钟内更新作为活跃证据；
+- `agent == "agents"` 可在没有匹配运行进程时直接判 ACTIVE；
+- 测试没有 mock 真实进程与心跳，只断言返回类型是 list；
+- `.codex`/Hermes 状态未必写在项目目录，可能漏报；
+- 项目 ID 由目录名生成，同名目录会碰撞。
+
+因此目前的 ACTIVE 既可能是假阳性，也可能漏掉真实 Hermes/Codex 项目，不能作为全局项目真值。
+
+推荐真值模型：
+
+1. 受管 Runner 在项目本地写短租约 heartbeat：repo root、PID、process start time、agent、task/session ID、lease expiry；
+2. GitHub Actions/PR/SHA 状态直接来自 GitHub；
+3. 非受管 Agent 只能通过进程命令行/显式 workspace registration 给出 `PROBABLE`；
+4. 任意文件 mtime 只能是 `STALE_HINT`，不得升级为 ACTIVE；
+5. Observer 展示 `source + observed_at + expires_at + confidence`；
+6. 本地 canonical store 仅是可重建缓存，不是第二事实源。
+
+### P0-4｜Adapter Registry 存在机器可验证的一致性错误
+
+`workflow-manifest.yaml` 的 adapter 顺序是：Hermes、Codex、CC Switch、GitHub、OpenHuman、Open Design、Cursor、Claude Code、WorkBuddy。
+
+但 `adapter-registry.json` 缺少 OpenHuman/Open Design 条目，并出现索引错位：
+
+- Cursor 指向 `entries[5]`，实际是 Open Design；
+- Claude Code 指向 `entries[6]`，实际是 Cursor；
+- WorkBuddy 指向 `entries[7]`，实际是 Claude Code。
+
+现有 CI 全绿却没有发现该语义错位，说明 verifier 只验证格式/路径存在，没有校验引用目标 ID。
+
+立即调整：用稳定 adapter ID 引用，禁止数组索引作为 provenance；补充 `referenced.id == registry.id` 契约测试。
+
+---
+
+## 五、P1：下一批完成
+
+### P1-1｜Tier 词汇尚未贯通 Runner 与 CI
+
+全局权威声明 `TARGETED/STAGE/NIGHTLY/RC/RELEASE`，但：
+
+- `work-lab.project-profile.yaml` 仍使用 `module/full/release`；
+- Runner CLI 仍只有 `--risk low|high`；
+- high-risk 一律完整本地 gate + reviewer + exact-SHA CI；
+- low-risk publish prompt 仍要求“一次 full gate、等待 CI”，实现却只验证 remote sync，提示词与代码互相矛盾。
+
+需要让 tier 成为唯一执行参数，risk 只决定审批/复核强度，不直接扩大测试矩阵。
+
+### P1-2｜自然语言正则会把大量任务误升高风险
+
+Runner 根据任务说明里的 `delete/release/credentials/config/...` 字样判高风险。审计报告即使只是在讨论“不得删除”“Release 延后”，也可能被误判。
+
+风险应来自 typed ActionPlan、允许路径、实际 staged diff 和操作类别；自然语言正则只能提示，不能单独升级完整发布流程。
+
+### P1-3｜CURRENT_STATE 仍在制造哈希与提交噪音
+
+pre-commit 对任何 tracked 改动都重生成并 stage CURRENT_STATE，失败还不阻止提交；CI 随后又强制检查。结果是大量普通提交都会修改两份生成文件，且未安装 hook 的 clone 容易在 CI 才失败。
+
+建议：CURRENT_STATE 作为 stage/RC 生成制品或 CI artifact；日常只在权威输入发生变化时生成。运行态 attestation 留在 `.hermes`，不要每个文档提交都写入 tracked hash。
+
+### P1-4｜技能权威与体积继续膨胀
+
+仓库目前存在：
+
+- canonical `skills/`：13 个、约 160 KB；
+- `codex-assets/skills/`：14 个、约 63 KB；
+- 本机 live skills：第三份运行副本。
+
+近期 PR #85/#87 已经出现 live→repo backflow 漂移。AGENTS 要求单个 skill 约小于 10 KB，但 canonical skill 中：
+
+- python-testing：约 51.7 KB；
+- windows-development-environment：约 31.4 KB；
+- agent-workflow-fortress：约 22.0 KB。
+
+建议保留一个 canonical capability source，客户端 skill 由构建器生成；长参考资料移到 references，入口 SKILL 只保留路由和核心规则。Live 变化进入 candidate diff，禁止直接作为反向权威。
+
+### P1-5｜DESIGN-LAB 更名尚未同步
+
+云端真实仓库已是 `DTALEX66/DESIGN-LAB`，旧 `DTALEX66/OPEN-DESIGN-Assistance` 仅发生重定向。但 WORK-LAB 的 README、AGENTS、PROJECT_POSITIONING、配置字段、技能名和 GitHub topic 仍大量使用旧名。
+
+需要完成兼容迁移：活动名称改为 DESIGN-LAB；旧名仅作为历史 alias/redirect，不继续作为活动 adapter/skill ID。
+
+同时应解决文档内部矛盾：一处说只保留“一次性迁移 pointer”，另一处又说持续 MANAGE Open Design registry/directory/MCP declarations。
+
+### P1-6｜活动状态文档仍混有历史结论
+
+`wlg130-delivery-verdict.md` 仍写 PR #81 验证中、#82 待合并、#83 待开，但三者已全部合并。
+
+`TASKPACK_SUMMARY.md` 仍把 ignored `.hermes/desktop-attachments/...` 中不可从 GitHub恢复的附件称为 current forward authority，并混入大量历史测试数量、旧 SHA、旧阻塞和旧机器状态。
+
+应形成三份明确文件：
+
+1. `CURRENT_STATUS.md`：只写当前能力/阻塞；
+2. `ACTIVE_TASKPACK.md/json`：跟踪的当前任务包清单与 digest；
+3. `archive/`：旧 verdict、handoff、测试数量和机器状态。
+
+已批准 TaskPack 规范应跟踪在仓库中；运行日志与大体积证据继续 ignored。
+
+---
+
+## 六、P2：发布与仓库卫生
+
+1. 公共仓库 `license=null`：外部复用权限不明确；应完成依赖许可证审计后选择许可证。
+2. 只有 CI workflow，没有可重复的 Release workflow；现有 Release 有 checksum，但无可见 SBOM/签名自动链。
+3. `v0.1.0-alpha.1` 被标为正式 release 而非 prerelease。
+4. 44 个远端分支中大量为已合并任务分支，应在确认无未合并提交后批量清理。
+5. 仓库统计约 403 MB、当前树约 4.70 MB；应审计历史大对象/LFS，避免普通 CI 使用 `fetch-depth: 0`。
+6. `NOTICE.md` 仍写“三个模块仓库历史”，应明确这是迁移历史，不是当前三模块结构。
+7. GitHub topics 仍含 `open-design`，应更新为当前身份与能力词汇。
+
+---
+
+## 七、目录级判定
+
+| 目录 | 判定 | 主要动作 |
+|---|---|---|
+| `00-governance` | 方向正确，存在合同重复/旧状态 | 修正外部端点、tier 与 current status |
+| `10-workflow` | 主体能力最完整，但配置/技能/Runner 偏重 | 优先减负、单一技能权威、typed risk |
+| `30-observer` | 只读边界较好，活动识别真值不足 | heartbeat/置信度/source freshness |
+| `40-knowledge` | 目前只是边界占位，无明显漂移 | 保持轻量，不扩成知识产品 |
+| `50-taskpacks` | 历史堆积明显，当前权威难定位 | active/archive 分层，不再追加汇总长文 |
+| `90-archive-manifests` | 合理历史区 | 只保留 pointer/manifest，不被活动文档反向引用 |
+| `.github` | 单一 workflow 已收口，但触发和矩阵过重 | push/PR 去重、concurrency、targeted jobs |
+| `scripts/tests` | 覆盖广，但存在“全绿却语义错位” | 增加跨文件语义与真实活动识别测试 |
+
+---
+
+## 八、最短修复顺序
+
+### PR-A：真实减负（最高优先，预计一个短 PR）
+
+- push 仅 main；PR 分支不重复 push workflow；
+- concurrency cancel-in-progress；
+- docs/root path 细分；
+- Token Monitor 仅自身变更/nightly/RC；
+- 去掉重复 CURRENT_STATE/Stage3 checks；
+- 输出修改前后 Actions 时间对比。
+
+### PR-B：真值合同修复
+
+- external endpoint schema/registry；
+- adapter provenance ID 修复；
+- tier 词汇贯通 profile/runner/CI；
+- low-risk prompt 与实现一致；
+- typed ActionPlan 风险，不再仅靠文字正则。
+
+### PR-C：全局活动识别闭环
+
+- runner heartbeat lease；
+- external/unmanaged agent `PROBABLE` fallback；
+- source/freshness/confidence；
+- 同名项目 ID 防碰撞；
+- 主项目/嵌套仓库/多 worktree/进程退出/陈旧证据测试。
+
+### PR-D：命名、权威与发布卫生
+
+- DESIGN-LAB 兼容迁移；
+- CURRENT_STATUS/ACTIVE_TASKPACK/archive 收口；
+- skill canonical→generated client overlay；
+- branch/history/license/release workflow 整理。
+
+---
+
+## 九、完成标准
+
+WORK-LAB 只有满足以下条件才可判定“当前闭环完成”：
+
+1. 普通文档/技能 PR 不运行 Windows Rust；同 SHA 不重复跑 push+PR；
+2. 普通 PR 60～120 秒，模块变更只跑受影响 Gate；
+3. ACTIVE 必须来自有效租约或可验证运行证据，mtime 不能直接升格；
+4. 外部项目目录只保存地址和协议元数据，绝无内部 module/risk/runtime 镜像；
+5. manifest、registry、ownership、profile 的 adapter/tier ID 完全一致；
+6. 无 WORK-LAB 时外部项目独立运行，无外部项目时 WORK-LAB 独立运行；
+7. CURRENT_STATE、TaskPack、handoff 不再形成多套活动权威；
+8. Release 可由 exact SHA 重建，并产生 checksum、SBOM、签名/证明与下载回读；
+9. Observer 明确区分 LIVE、PROBABLE、STALE、UNKNOWN，不把未知显示为 0/PASS；
+10. main 持续受保护，分支、历史大对象和过期 Release 已治理。
+
+---
+
+## 十、最终结论
+
+WORK-LAB 不是推倒重做的问题。当前最有价值的 Workflow、Task Ledger、单 Writer、配置所有权、Observer 只读边界和桌面观测面都应保留。
+
+真正拖慢项目的不是测试本身，而是：
+
+> **错误的触发范围 + 同一 SHA 重复 CI + 自然语言高风险误判 + 生成状态/技能多副本漂移 + 历史文档继续充当活动权威。**
+
+先完成 PR-A～PR-C，再继续吸收新 Agent、Skill、平台或观测能力，项目速度会有实质提升；在此之前继续扩功能只会扩大治理负担。

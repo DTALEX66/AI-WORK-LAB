@@ -1,0 +1,508 @@
+# DESIGN-LAB FINAL AUTHORITY CONVERGENCE TASKPACK — R2
+
+**TaskPack ID:** `DL-TP-20260918-FINAL-AUTHORITY-CONVERGENCE-R1-R2`  
+**Authority:** `DL-AUTHORITY-2026-09-18-R2`  
+**Status:** `FINAL_INTEGRATED_REMAINING_WORK`  
+**Product state source:** existing `design-lab/config/task-ledger-r3.json` (do not create a parallel mutable ledger)
+
+## 0. What changed after re-audit
+
+The earlier package baseline is superseded.
+
+Verified current cloud facts:
+- `main@0e9f687ca306226f984f9ac49d222c0d8ff8a1e5`
+- PR #116 is MERGED
+- open PRs = 0
+- remote branches = 28
+- latest main Canonical #182 = SUCCESS
+- all 6 jobs success
+- Actions artifacts = 0
+- main protection enabled
+
+Already completed in UCR convergence and NOT to be reimplemented from scratch:
+- FA-03 report-fail/stale semantics
+- FA-05 zero-spill denied/incomplete handling
+- FA-11 task-preflight path/query/import fix
+- active ARCHITECTURE real-tree rewrite
+- old Architecture V2/V3 downgrade
+- product-manifest version/path truth
+- report input-digest/tree-scope truth work
+- PR #116 / structural branch convergence into main
+
+These become regression invariants, not new implementation tasks.
+
+---
+
+# A. P0 — Land top-level Authority
+
+## A001 — create short-lived authority branch from CURRENT main
+
+Do NOT write to old `codex/deepseek-authority-r1`.
+
+Create a new short-lived branch from the latest live `main`, e.g.:
+
+`docs/top-level-authority-20260918`
+
+Before commit, re-read `main`; if SHA changed, rebase/review delta.
+
+## A002 — land Authority package
+
+Add:
+- `/AUTHORITY.md`
+- `/.project/governance/authority-index.json`
+- `/docs/current/HISTORY-FREEZE-RULES.md`
+- `/docs/current/CLOUD-BASELINE-PROVENANCE-2026-09-18.json`
+- this taskpack
+
+## A003 — patch AGENTS.md
+
+Make `AUTHORITY.md` the mandatory first project-authority document after live-GitHub fetch.
+
+Update module wording:
+- `src/design_lab/` = runtime
+- `apps/workbench/` = frontend
+- `design-lab/` = authoring/content/contracts/tests, not runtime
+
+Replace “2026-09-14 DeepSeek pack is the highest current authority” wording with:
+- Top-level project Authority = `AUTHORITY.md`
+- R5 = product lineage/state source
+- DeepSeek 2026-09-14 = structural predecessor/lineage
+- this R2 pack = unified remaining-work pack
+
+No new ledger.
+
+## A004 — regenerate/demote old authority chain
+
+`reports/current/DEEPSEEK-AUTHORITY-CHAIN.json` currently binds `cbc0463...`.
+
+After top-level Authority lands:
+- regenerate it as a subordinate lineage projection OR
+- move/freeze old chain and replace current path with a pointer to `AUTHORITY.md` + authority index
+
+It must not continue to look like higher/current authority.
+
+---
+
+# B. P0 — Resolve Workbench authority wording in current product docs
+
+## B001 — PRODUCT_DEFINITION
+
+Current wording says future visualization is only a light Lab Review Surface.
+
+Replace with the current rule:
+
+- DESIGN-LAB has one Workbench product frontend
+- Workbench is a professional design control/decision/execution/readback surface
+- Workbench is NOT a second Photoshop/Figma-style general canvas/editor
+- native deep editing remains host-native
+
+Also replace any “不得拥有第二前端” wording that can be read as “no frontend” with:
+“不得建立第二个并行通用前端/编辑器；唯一产品前端为 Workbench.”
+
+## B002 — BOUNDARY_CONTRACT
+
+Clarify:
+- single Workbench frontend = allowed and required
+- duplicate independent frontend/editor shell = forbidden
+- generic canvas duplication = forbidden
+- host-native production remains required
+
+This prevents future GPT from concluding “DESIGN-LAB has no frontend”.
+
+---
+
+# C. P0 — Finish lower-level authority truth
+
+## C001 — LANGUAGE-POLICY text consistency
+
+Current real state:
+`Ruff = CONFIGURED_NOT_ENFORCED`.
+
+Remove/replace the later stale sentence that still calls it `DECLARED_NOT_ENFORCED`.
+
+Do NOT add Ruff merely to make wording disappear.
+Installing/enforcing Ruff is a separate toolchain decision.
+
+## C002 — freeze superseded MAIN-MERGE-READINESS
+
+`reports/current/MAIN-MERGE-READINESS.md` says PR #116 is NOT_YET_MERGED and binds old SHA.
+
+Preferred:
+- move it to `reports/history/...`, OR
+- replace current-path file with a short `SUPERSEDED` pointer containing merge outcome and historical location.
+
+Do not leave stale readiness text in a current-looking path.
+
+## C003 — projection semantics
+
+Keep `PROJECT_STATUS` / `TASK_PROGRESS` as generated projections, but:
+- authority index must classify them as PROJECTION
+- consumers must use observed/input state, not assume they equal current `main`
+- generation time is not test time
+
+---
+
+# D. P0 — Branch protection must enforce authority
+
+Current `main` protection is enabled, but required checks observed do not include the authority-gate job.
+
+## D001
+Add as required after the new Authority flow is stable:
+
+`DeepSeek authority gate chain (DLDS-H010 / DL-AUDIT-20260914-07)`
+
+or rename/evolve it into a neutral project-authority gate and require that neutral name.
+
+Long-term preferred:
+`DESIGN-LAB authority gate`
+
+rather than keeping “DeepSeek” in the permanent top-level required-check name.
+
+## D002
+When Workbench CI exists, add the Workbench Gate as a required check.
+
+Do not make optional real-host qualifications global required checks unless the product/release stage specifically requires them.
+
+---
+
+# E. P0/P1 — Workbench strict-TypeScript convergence
+
+Remote `main` still has no:
+- product `package.json`
+- `pnpm-lock.yaml`
+- product `tsconfig`
+- Vite config
+- browser E2E
+
+The UCR handoff records a LOCAL, unpushed Workbench WIP. Cloud audits must NOT treat that local branch as landed.
+
+## E001 — first reconcile local WIP
+
+Before recreating work:
+- inspect local `feat/ucr-workbench-strict-ts`
+- preserve useful work
+- compare against current main
+
+Known handoff conflict to resolve:
+- `workbench.py` route expects `dist/main.js`
+- local Vite WIP reportedly used `outDir: build`
+- `.gitignore` treatment of `dist/` must match packaging policy
+
+Choose one build-output contract and use it consistently in:
+- Vite
+- Workbench resource serving
+- wheel/sdist packaging
+- `.gitignore`
+- tests
+
+## E002 — one product Node workspace
+
+Use pnpm and one committed lockfile.
+Do not turn MiniGame fixture package into product workspace truth.
+
+## E003 — strict TypeScript
+
+At minimum:
+- strict
+- noImplicitAny
+- strictNullChecks
+- noImplicitReturns
+- noFallthroughCasesInSwitch
+
+Cross-language enums/status come from schemas/generated contracts.
+
+## E004 — real frontend build
+
+`TS source -> typecheck -> Vite build -> packaged Workbench`
+
+Stop production-serving a `.ts` file as fake `.js`.
+
+## E005 — Workbench CI
+
+Independent job:
+- frozen pnpm install
+- typecheck
+- production build
+- unit tests
+- Playwright Chromium
+- wheel/package integration
+- generated-tree clean check
+
+Python failure must not silently hide frontend result.
+
+---
+
+# F. P1 — Workbench product UX
+
+Default top-level Workbench surfaces:
+- Projects
+- Brief
+- References
+- Research
+- Directions
+- Design System
+- Create
+- Versions
+- Review
+- Preflight
+- Handoff
+- Evidence
+
+Raw RIR/Patch/Styles/receipt JSON goes to Advanced/Developer mode.
+
+Workbench must support real design decisions, not just task/log monitoring.
+
+---
+
+# G. P1 — Design backend -> Workbench vertical slice
+
+Reuse existing `src/design_lab/creative/`; no parallel v2 backend.
+
+First-class state/API/UI objects:
+- Brief
+- ReferenceSet
+- ResearchFinding
+- Direction
+- DesignSystem
+- DesignIR
+- CreativeJob
+- Artifact
+- ToolRun
+- QualityAssessment
+- JuryDecision
+- PreflightReport
+- HandoffPackage
+- EvidenceRecord
+
+First vertical slice:
+`Project -> Brief -> Reference -> Research -> >=3 Directions -> Human Choice -> DesignSystem`
+
+Every stage:
+state/version/hash/owner/evidence/failure.
+
+---
+
+# H. P1 — Production vertical slice
+
+`DesignSystem -> DesignIR -> Photoshop/Illustrator -> editable artifact -> readback -> patch/revision -> recovery/rollback`
+
+Real E3 requires actual current host/tool evidence.
+
+Do not restore obsolete UXP architecture; selectively requalify useful capability under current `integrations/hosts/adobe/`.
+
+---
+
+# I. P1 — Quality / Jury / Preflight / Handoff
+
+Separate:
+- automated assessment
+- Human/independent Jury
+
+Support:
+`Critique -> Apply/Reject -> Revision -> Compare -> Re-score`
+
+Preflight covers applicable:
+dimensions, resolution, color mode, bleed, fonts, links, rights, editability, BOM, limitations.
+
+Handoff includes:
+editable source, preview, manifests, rights summary, BOM, provenance, evidence.
+
+VLM/model self-score is not Human E4.
+
+---
+
+# J. P1 — Package / product smoke
+
+Even with Canonical green, product qualification should include a clean installed-wheel/outside-checkout smoke:
+
+- import
+- CLI
+- resource/schema loading
+- Workbench static assets
+- real loopback HTTP
+- `/api/task-preflight`
+- native plan
+- bundle/readback as applicable
+
+FA-11 code defect is considered closed; this task is product-level installed qualification, not reimplementation of the same bug.
+
+---
+
+# K. P1 — Actions artifact/evidence path
+
+Latest main Canonical #182 uploaded zero artifacts.
+
+If project/release evidence policy requires CI artifacts:
+- upload real artifact
+- API query
+- identity/readback/hash
+- bind run/SHA
+
+If artifacts are NOT required for ordinary Canonical verification:
+- document that explicitly
+- do not keep a gate/report that implies an artifact exists
+
+No fake local “API readback”.
+
+---
+
+# L. P1 — Branch cleanup
+
+Current remote branch count at R2 preparation: 28; open PRs: 0.
+
+At least the recently merged UCR branches/document handoff branch must be reevaluated as cleanup candidates:
+- `feat/ucr-convergence`
+- `feat/ucr-p0a-truth`
+- `feat/ucr-report-truth`
+- `docs/ucr-handoff-20260918`
+
+Also reevaluate remaining historical branches by semantic residual, not age/ahead count.
+
+Deletion requires:
+- residual=0/rejected/superseded
+- no PR/tag/automation/worktree dependency
+- history preserved
+- owner authorization
+
+---
+
+# M. Existing R5 product backlog remains active
+
+Do not invent a second state for these tasks.
+Current generated R5 projection still shows all 28 tasks PARTIAL; the existing ledger decides exact state.
+
+All unfinished R5 scope remains included:
+
+- DL-R5-001 分支收敛、账本与增量接入
+- DL-R5-002 仓库路径规范与旧运行根治理
+- DL-R5-003 CI 与验证环境补齐
+- DL-R5-004 运行状态与宿主异常恢复
+- DL-R5-005 资产原子版本与完整交付清单
+- DL-R5-006 软件与模型资格选择
+- DL-R5-007 Doctor 与本机证据接续
+- DL-R5-008 ComfyUI 生产适配与可选本地 MCP
+- DL-R5-009 Python 安装包与 RIR 门面
+- DL-R5-010 工作台执行、修改、取消与导出
+- DL-R5-011 Illustrator 产品链路
+- DL-R5-012 Photoshop 产品链路
+- DL-R5-013 真实参考到可修正对象计划
+- DL-R5-014 局部对比、Human Jury 与生产预检
+- DL-R5-015 M1 首个可用研究版
+- DL-R5-016 本地语音生成
+- DL-R5-017 音乐与音轨
+- DL-R5-018 H3 本地专项
+- DL-R5-019 Premiere 可编辑视频
+- DL-R5-020 Blender 可编辑场景
+- DL-R5-021 可选宿主与 Agent 收敛
+- DL-R5-022 跨媒体依赖更新
+- DL-R5-023 历史完整性、维护与扩展交付预检
+- DL-R5-024 UIA 与视觉控制后备
+- DL-R5-025 Comfy 短视频动效
+- DL-R5-026 Comfy 提取与透明资产
+- DL-R5-027 游戏交互资产交付
+- DL-R5-028 语言治理与渐进迁移
+
+This R2 taskpack may group/schedule them, but must not silently mark them DONE.
+
+---
+
+# N. Golden workflows
+
+## GOLDEN-001 — DESIGN-LAB designs DESIGN-LAB
+Brief -> References -> Research -> 3 Directions -> Human Choice -> DesignSystem -> Workbench Implementation -> Browser E2E -> Quality -> Accessibility -> Human Jury -> Preflight -> Handoff.
+
+## GOLDEN-002 — professional commercial visual
+Brief -> References -> Directions -> DesignSystem -> DesignIR -> Photoshop/Illustrator -> editable artifact -> readback -> patch -> critique -> Human Jury -> preflight -> handoff.
+
+PNG-only success is insufficient.
+
+---
+
+# O. Expansion after core closure
+
+Only after core vertical slices:
+- UI/UX
+- Packaging
+- Spatial/Exhibition
+- Motion
+- Video
+- Audio
+- 3D/VFX
+- additional hosts/providers
+
+Do not reopen a broad “support everything” migration before core product closure.
+
+---
+
+# P. Permanent anti-drift gates
+
+1. live GitHub first
+2. `AUTHORITY.md` first repository authority
+3. exact SHA in every audit
+4. history only through authority index/crosswalk
+5. no old taskpack auto-reactivation
+6. no fake aggregate completion across unrelated ledgers
+7. no E1 -> E3
+8. no VLM -> Human E4
+9. no candidate/branch success -> main/current success
+10. no commit-count -> capability judgment
+11. no second runtime/backend/ledger
+12. no multiple dependency-language truths
+13. no old architecture resurrection
+14. no governance-only product waves
+15. no destructive merge/delete/release without owner authorization
+16. REUSE-FIRST = actual absorption, not registry accumulation
+
+---
+
+# Q. Recommended execution order
+
+1. Authority branch from live main
+2. Authority/index/AGENTS landing
+3. Product Definition + Boundary wording fix
+4. old authority-chain / stale readiness freeze
+5. required Authority check on main protection
+6. reconcile local Workbench strict-TS WIP
+7. strict TS/Vite/pnpm/Playwright + Workbench CI
+8. Project->Brief->Reference->Direction->DesignSystem vertical slice
+9. Photoshop/Illustrator production/readback slice
+10. Quality/Jury
+11. Preflight/Handoff
+12. installed-wheel/product smoke
+13. branch cleanup
+14. Golden workflows
+15. optional media/domain expansion
+16. E3/E4/E5 qualification at their proper levels
+
+---
+
+# R. Closeout
+
+Structural:
+- top-level Authority merged to main
+- lower current docs no longer contradict it
+- authority chain subordinate/fresh
+- stale current-path readiness frozen
+- main protection requires authority + frontend checks where applicable
+
+Frontend:
+- strict TS
+- real build
+- browser E2E
+- packaged Workbench
+- user-visible design workflow
+
+Product:
+- Brief -> Direction -> DesignSystem -> DesignIR
+- real Host/Generator as applicable
+- readback
+- quality/human gate
+- rights/preflight
+- editable handoff
+
+Evidence:
+- E3 only real workflow
+- E4 only independent/human acceptance
+- E5 only exact release/repeatability
+
+END — `DL-TP-20260918-FINAL-AUTHORITY-CONVERGENCE-R1-R2`

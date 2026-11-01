@@ -1,0 +1,563 @@
+# WORK-LAB 全仓范围云端审计报告
+
+审计日期：2026-09-16。仓库：DTALEX66/WORK-LAB。固定分支：r4-recovery-exec。
+固定提交：`7e19fb545c7d9af3ec08427749cd72bff7902287`。只读审计；没有修改远端仓库、分支、PR、客户端或用户全局配置。
+
+## 1. 结论
+
+**保留已有实现，不建议推倒重来；但不能签收为“全任务完成”或安全的真实多客户端管理产品。当前上限仍为有缺陷待修的 READ_ONLY_PREVIEW／部分离线原型。**
+
+本次不再局限于上一轮的六项缺陷，而沿生产链检查了桌面入口、React、sidecar、快照、用量、会话、执行适配、配置、权限、租约、验收、技能投影、复用候选、CI、分支和发布。最突出的模式是：**声明了能力，测试没有执行到或只测局部，生产入口又走另一条路径，最后把局部通过扩大成闭环完成。**
+
+真实写入、多项目数据展示、自动跨软件派发以及依赖资源互斥的并行执行，在各自相关高优先级缺陷修复前不应升级验收。本结论是针对这些能力的准入范围，不是把全部正常只读操作一刀切阻塞。
+
+## 2. 实际覆盖与不能作出的承诺
+
+本报告列出 **56 个文件级审阅条目**，逐一记录全文、行段、或沿用同 SHA 上轮读取；另核对根目录、多个模块子树、55 个分支元数据、相关祖先关系、开放 PR、两条工作流、精确 SHA 的 Actions 和发布记录。`AUDIT-COVERAGE.csv` / `coverage.json` 是实际读取清单，不是“所有文件已读”的宣传数字。
+
+**没有取得可在本环境完整检出的全仓压缩包；没有逐一读取全仓所有文件和全部 55 个分支的历史内容；没有逐行认证所有文档和二进制；没有复跑全仓或 Windows 桌面测试。** 顶层已枚举不等于目录下每个文件已全文审计。knowledge-staging、历史大归档、部分 receipts/knowledge 实现及多份被忽略目录中的任务包仍不能据此报告声称全部审计通过。
+
+这次实际运行了 **18 组隔离反例**：12 组本轮新增、6 组上一轮同 SHA 重新运行。17 组使用校验过 Git blob 的原始模块（TypeScript 经转译），1 组是 unittest 收集机制探针；另有 4 个正向边界对照。共保留 6 份与远端 Git blob 匹配的源码副本。所有反例均复现预期缺陷。
+
+**脚本退出 0 表示“该历史版本缺陷成功复现”，不是“修复通过”或“项目测试全绿”。** 新测试没有真实网络、付费模型、用户凭据或原生客户端副作用。源码哈希只证明所测代码一致，不证明测试覆盖完整。
+
+## 3. 云端事实底座
+
+| 检查项 | 本次读到的事实 | 解释 |
+|---|---|---|
+| 执行分支 | r4-recovery-exec @ 7e19fb5 | 收尾再次读取，未变化 |
+| 默认分支 | main @ e5231f0，2026-08-30 | 不是当前执行成果 |
+| 相对 main | ahead 119 / behind 0 | 不需要盲目把全部旧分支再合一遍 |
+| 相对 migration | ahead 77 / behind 0 | 当前 R4 已在其上继续推进 |
+| 分支保护 | R4 protected=false；rulesets=[] | 与 main 受保护区分；未代用户修改保护规则 |
+| 开放 PR | #123，migration→main | 现有执行基线明确 DO_NOT_MERGE，不直接合并 |
+| 精确 SHA Actions | 35038477908，work-lab-gate，success | 真实成功，不是所有业务验收通过 |
+| 本次 run artifacts | 0 | 有 job/log 不等于有此 SHA 安装包 |
+| 发布记录 | Observer 2026-08-11；Workflow alpha 2026-08-10 | 不能拿旧二进制证明 9 月 R4 已交付 |
+
+对应 API：分支、比较、PR、Actions 和 releases 的提炼记录保存在 `remote_state.json`。主工作流 success 与第二工作流未被本次文档提交触发要分开；不能将合法 paths 过滤简单说成 CI 失败。已有本地报告“1259 passed / 8 skipped”是本地执行者记录，不是本轮独立复跑结果。上一轮读取的云端 governance 日志是 1218 个运行、6 个 skip；重复执行的子套件不能加总当成不同用例。
+
+## 4. 已有成果与正确边界必须保留
+
+已有 guarded Hermes 同步器缺省预览，并有路径/重解析点、所有权与退休资产保护；三方配置比较会保留机器已有值。应当收敛到这些已存在的机制，而不是再造一个全局发布器。相关来源：[同步器](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/integrations/executors/hermes/sync_hermes_workflow_assets.py)、[三方比较](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/policy/config_coordinator.py)。
+
+配置事务已经添加 NOOP、APPLY_FAILED/UNDETERMINED、模拟标签和回滚回读，方向正确，剩余目标核验缺口应补齐而不是全部删除。NF-07 明确 real_adapter_exercised=False，保持真实字段未验收也是正确的。
+
+注册表还记录 **2026-09-14 Hermes 0.21.2 的 CLI/status/doctor、13 个技能发现和一次非工具回复**。这属于已有仓库记录，不是本次独立实机验证；因此不能把全项目说成“完全没有原生证据”，也不能把这组轻量原生证据扩大到 fork/cancel/配置事务/完整桌面联调已通过。[注册表](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/config/adapter-registry.json)。
+
+actionlint、zizmor、Trivy 的工作流调用是实际复用；Hindsight、Penguin 和 SkillSpector 的契约包装则要按原型/未接线区分。候选调研有价值，但输入字段自称已调用不是调用证据。
+
+旧 `web/assets/live-snapshot.json` 顶部明确为 SNAPSHOT、stale、non-live；本次不把它单凭名字认定为假 LIVE 或污染。Token Monitor 前端要求点击开始才扫描，本次也不把默认目录误说成自动读取用户会话。外溢/磁盘瘦身的本地总量仍需本机证据，云端不能认证本机“全盘零外溢”。
+
+## 5. 发现清单与最小修复
+
+优先级按**能力准入风险**解释：P0 是相关真实副作用/多项目边界开放前必须处理；P1 是核心可用性、真实性或验收缺陷；P2 是范围、维护、格式与成熟度问题。条目数量不等于全仓缺陷总数。
+
+### F01 · P1 · 必做测试没有被实际执行
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+governance 只 glob test_*.py，再以 unittest 运行；nf*、wl_* 新文件不在该集合。函数式 test_config_transaction 即使命名匹配也不会由此运行器执行。编译不是执行断言。Observer 新测试也不在已读显式清单中。
+
+**影响：**CI success 只说明已选择的步骤成功，不能代表 16 张卡的全部断言通过。
+
+**最小修复：**复用现有运行器，接入适合的 pytest/显式套件；统一测试清单和实际收集数，不重写所有既有 TestCase。
+
+**验收：**所有必做套件被收集；故意破坏任一关键断言应令 CI 失败；产出逐套件计数、命令和退出码。
+
+**固定源码：** [services/orchestration/run_quality_gate.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/orchestration/run_quality_gate.py)；[.github/workflows/work-lab-gate.yml](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/.github/workflows/work-lab-gate.yml)；[tests/workflow-assistance/test_config_transaction.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/tests/workflow-assistance/test_config_transaction.py)。
+
+**复现编号：** `unittest_free_function_probe`。
+
+### F02 · P0（真实写入前） · 事务可在目标值未实现时提交成功
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+transaction 将 effective_before 传入适配器，并比较适配器返回值和 readback，而不是独立核对请求的 diff 目标。请求 m1→m2，不执行写入、原值回读可返回 COMMITTED。首次 readback 异常直接抛出。
+
+**影响：**无法以 COMMITTED 证明用户要求已落实；写入后读失败缺少终态回执。
+
+**最小修复：**独立计算预期目标；核对目标/适配器结果/回读；真实副作用前建立恢复点；将读失败归入未知写态或明确恢复流程。
+
+**验收：**无操作、写错值、部分写、回读失败、回滚失败均不得报完成；不要把未知写态直接盲重试。
+
+**固定源码：** [services/policy/config_control_plane.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/policy/config_control_plane.py)。
+
+**复现编号：** `transaction_noop_false_commit`, `readback_exception_has_no_terminal_receipt`。
+
+### F03 · P0（真实写入前） · 普通配置可以削弱安全下限
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+SAFETY_KEYS 的特殊合并仍按 official→compatibility→user 覆盖。官方 approval_required/credential_redaction=True，可被 user_profile=False 变为 False。
+
+**影响：**安全下限停留在注释，不能作为写入许可的可靠依据；不是已经突破操作系统权限的证明。
+
+**最小修复：**对不同安全字段定义不变式；安全策略变更独立授权，不走普通偏好覆盖路径。
+
+**验收：**普通 profile 不能静默禁用审批或脱敏；正常用户模型/界面选择继续保留。
+
+**固定源码：** [services/policy/config_control_plane.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/policy/config_control_plane.py)。
+
+**复现编号：** `safety_baseline_can_be_weakened`。
+
+### F04 · P1 · 跨重启交接只实现了同对象去重
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+HandoffRelay 将记录放在内存字典；restart_duplicate 在同一个对象调用两次。两个独立进程各自返回 DELIVERED。
+
+**影响：**进程重启后的投递重复没有受此原语阻止。演示副作用计数不能证明真实外部副作用只发生一次。
+
+**最小修复：**复用已有持久 Task Ledger/投递记录；未接入前只声明同进程幂等。
+
+**验收：**同 id 跨进程恢复不重复执行；同 id 不同载荷冲突；外部结果未知时先对账，不盲重试。
+
+**固定源码：** [packages/client-neutral-core/scripts/handoff.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/handoff.py)；[tests/workflow-assistance/nf08_cross_software_handoff.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/tests/workflow-assistance/nf08_cross_software_handoff.py)。
+
+**复现编号：** `handoff_cross_process_replay`。
+
+### F05 · P0（跨软件传输前） · 交接白名单不等于内容脱敏
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+白名单只删除顶层字段，verified 嵌套 token 和 goal 文本中的假密钥仍保留。
+
+**影响：**数据内容可能随允许字段传递；本次只有合成标记，没有真实凭据读取或外发。
+
+**最小修复：**限制类型、深度、大小；复用已有内容脱敏器；正文用受控引用，不复制敏感原文。
+
+**验收：**嵌套、数组、自由文本的合成敏感标记不应穿透；安全普通目标描述仍可交接。
+
+**固定源码：** [packages/client-neutral-core/scripts/handoff.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/handoff.py)。
+
+**复现编号：** `handoff_allowed_value_not_sanitized`。
+
+### F06 · P1 · 新五态分类器仍能把未知活动数标为 LIVE
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+authorized=True、freshness=fresh、quality=exact、active_tasks=None 会进入 LIVE，并用 int(active or 0) 输出 0。
+
+**影响：**UNKNOWN 与真实零值混合；新分类器本身也不是生产 UI 真实性的充分条件。
+
+**最小修复：**严格校验计数类型和范围；无观测值保持 UNKNOWN；分别检验真实 0 和正数。
+
+**验收：**None、负数、字符串、布尔、缺来源均不得被误算为真实活动。
+
+**固定源码：** [apps/observer/src/observer_state_classification.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/src/observer_state_classification.py)。
+
+### F07 · P1 · 桌面完整 endpoint 被前端再次追加路径
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+Rust 校验并注入完整 /api/v1/snapshot URL；React 将 query 参数 api 当作基础地址，再追加同一路径。原始 TypeScript 转译隔离运行请求了双重路径。
+
+**影响：**按该桌面注入路径启动时，快照请求地址错误；本次没有运行 Windows WebView。
+
+**最小修复：**在现有接口中明确 apiBase 与 snapshotUrl，只保留一种含义；复用 descriptor，不增加代理服务。
+
+**验收：**随机端口 descriptor→Rust 注入→React fetch 的最终 URL 完全一致；浏览器和桌面入口各有一条联调用例。
+
+**固定源码：** [apps/observer/src-tauri/src/lib.rs](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/src-tauri/src/lib.rs)；[apps/observer/frontend/src/lib/api.ts](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/frontend/src/lib/api.ts)；[apps/observer/src-tauri/tauri.conf.json](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/src-tauri/tauri.conf.json)。
+
+**复现编号：** `desktop_full_endpoint_is_duplicated`。
+
+### F08 · P1 · 一键启动器与 sidecar 默认端口不一致
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+脚本启动 sidecar 时不传 --port，却等待固定 61867；服务 --port 默认 0，即系统分配端口。脚本还打开旧 web/index.html，而桌面构建指向 React frontend/dist。
+
+**影响：**“一键入口”与实际运行组合并未收敛；可能等错端口或观察另一个已有实例。
+
+**最小修复：**启动后读取该实例的 descriptor，以 PID/身份/endpoint 连贯绑定；不要把随机端口改回任意固定端口来掩盖错配。
+
+**验收：**无服务、已有无关服务、端口占用、重启四种场景均定位正确实例；只保留用户认可的主入口。
+
+**固定源码：** [apps/observer/start-observer.cmd](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/start-observer.cmd)；[services/orchestration/sidecar.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/orchestration/sidecar.py)。
+
+### F09 · P1 · 生产 React 把拿到 JSON 当实时、把未知/取消当成功
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+App 得到 truthy 快照即 setLive(true)；fetchSnapshot 没有校验快照 schema。时间线非 fail/pend/run 状态默认 success，UNKNOWN/CANCELLED 两个输入均复现为 success。
+
+**影响：**过期、非快照和未知执行可能显示成功/实时；Python 分类器新增不自动修复 React 链。
+
+**最小修复：**接入已有 transport/freshness/quality 状态；严格快照解析和完整枚举映射；不可识别状态保留 UNKNOWN。
+
+**验收：**过期、断链、取消、未知、schema 不符均不能变为绿色完成；真实健康输入仍显示正常。
+
+**固定源码：** [apps/observer/frontend/src/App.tsx](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/frontend/src/App.tsx)；[apps/observer/frontend/src/lib/api.ts](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/frontend/src/lib/api.ts)。
+
+**复现编号：** `non_snapshot_json_is_accepted`, `unknown_and_cancelled_map_to_success`。
+
+### F10 · P1 · 费用和资源展示脱离身份与证据
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+费用统一使用写死的 DeepSeek 参考输入/输出费率和 7.2 汇率；没有 provider/model/currency/effective_at/source/version 绑定。缺少报价身份也能生成数值。CPU 可用时其余缺失 Prometheus 资源被填 0。
+
+**影响：**估算标签不能使跨模型套价正确；缺失资源不应显示实际零。这里审计代码常量，不是在提供现行报价。
+
+**最小修复：**复用规范化价格/用量对象；无适用报价则 UNKNOWN；资源指标保留可空值和逐项覆盖率；已停用监控源不默认探测。
+
+**验收：**订阅/API/套餐/实际消费分道；缺来源报价、不同提供方、非美元以及局部资源缺失均正确展示。
+
+**固定源码：** [apps/observer/frontend/src/lib/api.ts](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/frontend/src/lib/api.ts)；[apps/observer/frontend/src/App.tsx](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/frontend/src/App.tsx)。
+
+**复现编号：** `price_without_provider_model_or_quote_is_numeric`, `unknown_resources_are_zero_filled`。
+
+### F11 · P1 · 项目用量被重复归属到多条执行；质量聚合不一致
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+executionsToAgents 为同项目每条执行赋项目总 token/cost，120 被显示为两条各 120。后端单项目汇总任何 EXACT 即提升整体 EXACT，而全局汇总对 EXACT+UNKNOWN 正确保持 UNKNOWN。
+
+**影响：**误归属/展示重复，且部分数据质量被夸大；未证明原始账本被重复计费。
+
+**最小修复：**有执行级源才分配用量，无则保留项目级合计；质量采用与覆盖范围相符的保守聚合。
+
+**验收：**两执行项目总数不复制为两份真实执行消耗；EXACT+UNKNOWN 不能变为整体 EXACT。
+
+**固定源码：** [apps/observer/frontend/src/lib/api.ts](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/observer/frontend/src/lib/api.ts)；[packages/client-neutral-core/scripts/snapshot_api.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/snapshot_api.py)。
+
+**复现编号：** `project_total_repeated_for_each_execution`, `mixed_quality_project_rollup_overstates_exact`。
+
+### F12 · P0（多项目展示前） · 项目列表过滤没有传播到所有投影数据
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+组合根 _project_rows 使用批准索引，而 _execution_rows/_usage_rows/_ci_rows 直接映射存储记录；快照保留原执行数组并汇总所有传入 usage。隔离样本仅列批准项目，但外部项目执行与 120 token 仍在输出。
+
+**影响：**历史或撤销授权数据若留在存储中，可能出现在投影/合计里。未读取真实未授权项目数据，未证明已有泄露事件。
+
+**最小修复：**在组合根统一以 approved project 集合筛选所有数据域与合计；授权撤销后投影立即移除，原账本保留合法历史。
+
+**验收：**在存储预置未批准和已撤销记录，验证 projects/executions/tasks/usage/CI/sourceRefs 的每个输出域，不只测项目卡。
+
+**固定源码：** [services/orchestration/composition_root.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/orchestration/composition_root.py)；[packages/client-neutral-core/scripts/snapshot_api.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/snapshot_api.py)。
+
+**复现编号：** `filtered_projects_do_not_filter_other_snapshot_arrays`。
+
+### F13 · P1 · Git 身份回退串项目，CI 映射丢 projectId
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+effective_git=(git_map or {}).get(project_id) or git_state；项目 B 无观测时借用 A 的 SHA/branch。组合根 _ci_rows 不输出 projectId，但项目投影用它筛选，导致正常项目 CI 映射为空。
+
+**影响：**仓库一致性和项目 CI 状态可能显示错对象或无数据；增加源引用还不够，必须保留正确归属。
+
+**最小修复：**项目缺失 Git 保持 UNKNOWN，只有显式单项目兼容入口可用旧全局字段；CI 保留项目身份。
+
+**验收：**两个项目，其中一个无 Git、另一个有 CI；检查结果不跨项目借值且 CI 落入正确项目。
+
+**固定源码：** [services/orchestration/composition_root.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/orchestration/composition_root.py)；[packages/client-neutral-core/scripts/snapshot_api.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/snapshot_api.py)。
+
+**复现编号：** `git_identity_falls_back_across_projects`。
+
+### F14 · P1 · Token Monitor 的通用递归 usage 解析破坏嵌套计数
+
+**类别：**静态解析缺陷（未编译运行 Rust）。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+含子 usage 的父对象不计数；Responses 的 input_tokens_details.cached_tokens / output_tokens_details.reasoning_tokens 被识别为独立叶 usage。父总量可丢失、一次响应可计成两次。缺失值默认为 0，有任何识别记录即可能 exact。
+
+**影响：**原生 Windows 构建通过不证明兼容所有真实日志；默认数据源是 Codex sessions，解析必须严格限制可读字段。前端当前要求点击开始，并非启动即自动读。
+
+**最小修复：**复用已有按提供方/事件结构规范化的 usage 接口；明细附属于一次响应；禁止把 reasoning 子集重复加到输出总量。
+
+**验收：**官方嵌套样本、真实 0、缺字段、累计/增量事件、重复请求、多个数据源和部分坏行都单独回归。
+
+**固定源码：** [apps/token-monitor/src-tauri/src/lib.rs](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/token-monitor/src-tauri/src/lib.rs)；[apps/token-monitor/src/main.js](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/apps/token-monitor/src/main.js)。
+
+### F15 · P0（全局发布前） · 仍有绕开正式同步器的旧全局规则发布入口
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+deploy_global_rules 手工镜像标准，生成“数据留在 .hermes”旧要求；目标硬编码到用户 Hermes SOUL.md；__main__ 直接 deploy，缺少与正式同步器等价的审批/备份/回读链。
+
+**影响：**是目录漂移和全局规则分叉的具体风险源；本次未执行这个入口，也未确认它是否曾在本机运行。
+
+**最小修复：**把该入口变成正式 guarded sync 的薄包装或退役；默认计划模式，从一个数据源生成，不再手工同步硬编码副本。
+
+**验收：**无授权运行不改 Home；输出为 .project-local 规范；未知/用户原有内容不丢失；已审核变更有备份与回读。
+
+**固定源码：** [packages/client-neutral-core/scripts/deploy_global_rules.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/deploy_global_rules.py)；[integrations/executors/hermes/sync_hermes_workflow_assets.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/integrations/executors/hermes/sync_hermes_workflow_assets.py)。
+
+### F16 · P2 · 生成技能的 frontmatter 被注释放到文件中间
+
+**类别：**标准兼容性风险。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+生成器在 YAML 开头前加四行 HTML 注释。Agent Skills 官方解析说明要求 opening --- 在文件起始；存在格式兼容风险。
+
+**影响：**不能用“文件存在/内容哈希正确”证明原生技能被正确发现。未声称所有客户端必定拒绝。
+
+**最小修复：**将生成声明放到 YAML 合法元数据或结束后的正文；复用现有生成器和原生格式解析测试。
+
+**验收：**生成文件满足标准；实际目标客户端发现正确 name/description；不把全部技能正文常驻加载。
+
+**固定源码：** [projections/agents/generate.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/projections/agents/generate.py)；[.agents/skills/work-lab-workflow/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/.agents/skills/work-lab-workflow/SKILL.md)。
+
+### F17 · P1 · 模型版本审计读取了错误字段，并未覆盖全部受管技能
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+model_version_diff 读取 entry.version，注册表版本在 entry.provenance.version；已记录 Hermes 0.21.2 仍会拿到 unknown 目标。skill_load_surface 只扫描 .agents/skills，不能代表 packages 下 13 个受管技能或真实客户端加载。
+
+**影响：**版本差分和“技能已收敛”的结论存在覆盖错误；不应因此重置用户模型或重新生成所有技能。
+
+**最小修复：**使用已有 schema 的真实字段；区分源码技能、投影技能、部署技能、原生加载；只检查受影响层。
+
+**验收：**同版本 NO_CHANGE、未探测 UNKNOWN、真实差异 DIFFERENT；每个技能结果都注明范围和是否原生加载。
+
+**固定源码：** [services/policy/convergence_audit.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/policy/convergence_audit.py)；[config/adapter-registry.json](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/config/adapter-registry.json)。
+
+### F18 · P1 · 执行适配器能力声明超出实现
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+二进制存在后声明 fork/cancel/stream 等能力，但操作仍继承 NOT_IMPLEMENTED；某些会话能力在无后端证据时也被宣告。已有被动注册与安全降级可以保留。
+
+**影响：**调度器可能把任务路由到尚不可执行的路径；“检测存在”“原生软件支持”“WORK-LAB 已接线”是三回事。
+
+**最小修复：**能力按可调用实现与探针证据声明；未接线返回 unsupported/prepared，分开记录 installed/implemented/verified。
+
+**验收：**每一个 supports 条目都有对应可执行行为或明确只读探针；没有接口就不能宣称可执行。
+
+**固定源码：** [services/execution-federation/acp_adapter.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/execution-federation/acp_adapter.py)；[services/execution-federation/hermes_adapter.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/execution-federation/hermes_adapter.py)；[services/execution-federation/codex_adapter.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/execution-federation/codex_adapter.py)；[services/execution-federation/federation.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/execution-federation/federation.py)。
+
+### F19 · P1 · 会话 facade 把准备/空操作报告成原生完成
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+session_prompt 和 session_close 不调用 provider 发送/关闭却返回 PROMPTED/CLOSED。resume 取得命令并看到历史 metadata 标记后返回 RESUMED，未执行命令或回读。均用原始模块隔离复现。
+
+**影响：**上层看到已完成可能继续推进，而真实工作未发生。不能仅通过更强的模型或再写文档解决。
+
+**最小修复：**接线前返回 PREPARED/UNSUPPORTED/HANDOFF_CREATED 等真实状态；只有实际受控调用和回读后才使用完成态。
+
+**验收：**spy provider 必须记录实际调用；调用失败、未调用、只生成命令时不得报告 PROMPTED/CLOSED/RESUMED。
+
+**固定源码：** [services/session-federation/acp_facade.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/session-federation/acp_facade.py)。
+
+**复现编号：** `session_prompt_and_close_false_completion`, `session_resume_command_is_counted_as_resumed`。
+
+### F20 · P0（作为写入边界前） · readonly 策略尚未表达文件读写区别
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+readonly 仅限制 ActionKind=filesystem；模型中没有 read/write 区分，普通目标仍自动允许。禁用路径使用原始、区分大小写的 startswith，未统一 Windows 大小写/分隔符与路径身份。
+
+**影响：**这个纯决策器不足以独立承担只读和路径隔离；不等于其他现有 guard 或操作系统权限已被绕过。
+
+**最小修复：**用现有策略契约加入具体 operation；规范化并确认路径身份；最终副作用前强制检查，原生权限继续生效。
+
+**验收：**只读策略允许普通读但拒绝写/删除；Windows 别名、大小写、重解析点和越界路径负控通过。
+
+**固定源码：** [services/task-governance/permission_gate.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/task-governance/permission_gate.py)。
+
+### F21 · P1 · 独立验收可由同一生产者的自报标签满足
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+只检查 kinds 集合与任何 claim 的 INDEPENDENT 级别，不绑定 independent_check 的生产者独立性；顺序并未实际验证；artifacts/extras 是调用者提供的名字，非证据实体核验。
+
+**影响：**哈希能证明输入记录未变化，不能证明“独立”和“真实完成”；不应让同一执行者换标签就自动晋级。
+
+**最小修复：**在已有回执中绑定任务、树、产物摘要、检查者和实际结果；验证独立角色与必要顺序，不新建庞大审批平台。
+
+**验收：**同一 writer 自称 independent、只有 output 标为 independent、空审批人及不存在证据引用均不能验收。
+
+**固定源码：** [services/task-governance/completion_authority.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/task-governance/completion_authority.py)；[services/task-governance/task_protocol.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/task-governance/task_protocol.py)。
+
+### F22 · P1 · 最终审计把字符串 false 转为通过
+
+**类别：**源码缺陷。**证据方式：**原始模块隔离复现＋静态链路检查。
+
+bool(ev.get("pass",False)) 会把非空字符串 "false" 视为 True。原模块输入 14 个字符串 false 得到 14 PASS 与 promotion_allowed=True。
+
+**影响：**来自表格/JSON 适配的错误类型可误亮绿灯；测试 all_pass_evidence helper 的存在本身不是生产伪造证据。
+
+**最小修复：**严格要求布尔类型；无效输入返回 INVALID/PENDING/FAIL，不作宽松真值转换。
+
+**验收：**bool False 全拒绝，字符串 false/0/unknown 不通过；缺证据保持 pending。
+
+**固定源码：** [services/cleanup/final_audit.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/cleanup/final_audit.py)。
+
+**复现编号：** `string_false_passes_final_audit`。
+
+### F23 · P1（启用并行前） · 资源租约获取缺少排他操作，停止回执不验证结果
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+acquire 是先读后写，无排他创建/事务；os.replace 保证替换原子性但不使“判空＋抢占”原子化；共用临时文件还会竞争。Windows taskkill check=False 后不查退出码或存活即返回 STOPPED。
+
+**影响：**两个争抢者可能都认为持有资源；停止失败可被当成成功。此项是静态并发/回执缺陷，未在本轮实际终止进程。
+
+**最小修复：**复用既有可靠文件锁/SQLite 事务和 fencing；停止仅操作已证明拥有的实例，并核对退出结果/进程身份。
+
+**验收：**独立进程同屏障竞争只能一个 HELD；损坏锁 fail-closed；停止返回非零或进程仍活着不得 STOPPED。
+
+**固定源码：** [services/authority/resource_lease.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/authority/resource_lease.py)。
+
+### F24 · P1 · 当前文档和运行默认值仍生产旧目录
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+根 README 把已删除旧目录继续列作当前入口；sidecar 直接默认 .hermes/task-runtime/workflow；发布器也生成 .hermes 规则。
+
+**影响：**不同软件从不同入口继承矛盾指令，是持续漂移的可见根因，而不是仅凭模型稳定性解释。
+
+**最小修复：**只改当前入口和活跃生产者；历史文档标历史，不做全仓无差别替换；统一现有路径常量与运行环境。
+
+**验收：**从任意受支持入口启动，输出均归属声明的 .project-local；当前 README 链接/命令可用，历史仍可追溯。
+
+**固定源码：** [README.md](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/README.md)；[services/orchestration/sidecar.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/orchestration/sidecar.py)；[packages/client-neutral-core/scripts/deploy_global_rules.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/deploy_global_rules.py)。
+
+### F25 · P2 · 冻结权威与执行新鲜度混在多个文件里
+
+**类别：**权威/证据一致性问题。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+R1 权威明确冻结至 2026-09-24，尚未到期；R4 执行指针却保留旧 SHA 与 pending-refresh；最新完成报告引用其父提交作为双端状态。并非所有旧日期都自动是过期。
+
+**影响：**自动化可能把冻结规范、正在执行包、最新回执混作同一种 current。云端未取得被忽略目录中的全部原始任务包正文。
+
+**最小修复：**区分 policy_authority、execution_head、delivery_claim 三类已有字段，显式替代关系；保留最小可审计的非秘密任务/验收摘要。
+
+**验收：**从任一当前入口得出同一执行树；冻结权威不会被更新回执静默替代；不再靠报告引用自身 SHA 产生提交循环。
+
+**固定源码：** [.project/governance/taskpack-authority-index.json](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/.project/governance/taskpack-authority-index.json)；[.project/governance/generated/CURRENT_EXECUTION_BASELINE.json](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/.project/governance/generated/CURRENT_EXECUTION_BASELINE.json)；[taskpacks/current/WORK-LAB-INTEGRATED-TASKPACK-20260916-CLOSEOUT.md](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/taskpacks/current/WORK-LAB-INTEGRATED-TASKPACK-20260916-CLOSEOUT.md)。
+
+### F26 · P2 · 实际应用、路径规划和验证范围并未完全一致
+
+**类别：**架构与实现范围差异。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+实际 apps 仅 observer/token-monitor；控制面应用仍只是声明，convergence 对允许集合只拒绝多余应用却不证明期望应用存在。token-monitor 路径规划仍有旧目录。
+
+**影响：**应用存在性/接线不能由目录白名单通过推出；路径不明时全跑也会增加开销。
+
+**最小修复：**已实现、可选、规划分别列明；更新现有路径映射，不因缺少控制面 GUI 就另造平台。
+
+**验收：**新增/迁移路径选到正确最小门禁；计划应用不会被报为已交付，现有 CLI 可完成最小闭环。
+
+**固定源码：** [.project/manifest.yaml](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/.project/manifest.yaml)；[.project/governance/work-lab.project-profile.yaml](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/.project/governance/work-lab.project-profile.yaml)；[.project/governance/module-ownership.json](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/.project/governance/module-ownership.json)；[services/policy/convergence_audit.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/policy/convergence_audit.py)。
+
+### F27 · P2 · 开源候选包装不能混算为真实复用成果
+
+**类别：**复用成熟度与证据差异。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+Hindsight 实际继承本地字典 retain/recall；Penguin 主要是本地候选/快照状态，未调用真实 engine；SkillSpector gate 消费输入回执，不是在运行外部扫描器。
+
+**影响：**这些 POC 有接口价值，但不能写成外部服务已经吸收。另一方面 actionlint/zizmor/Trivy 已接入 CI，不能说全仓完全没有复用。
+
+**最小修复：**只选当前闭环确需的一项接线，并附依赖/调用位置/实际运行证据；其余保留 POC/REFERENCE_ONLY，不强迫部署所有候选。
+
+**验收：**真实调用 spy/服务回读和停用回退均可验证；不用输入 has_real_call 布尔值替代接线证据。
+
+**固定源码：** [services/memory/hindsight_poc.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/memory/hindsight_poc.py)；[services/memory/provider.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/memory/provider.py)；[services/evolution/provider.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/evolution/provider.py)；[services/security/skillspector_gate.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/security/skillspector_gate.py)。
+
+### F28 · P2 · Radar/价格辅助函数有额外边界缺陷
+
+**类别：**源码缺陷。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+_version_key 对 v 前缀版本不正确解析；_stamp 将浮点 0.0 归 UNKNOWN，复用于 real_consumption 时损失真实零；离线候选回执仅哈希实体列表，不能覆盖版本/判断等完整结论。
+
+**影响：**版本差分、价格状态和回执完整性可能错误；分类输入中的 has_real_call 也不是独立集成证据。
+
+**最小修复：**复用现成版本解析器并区分 opaque commit；身份字段和数字字段分型；回执哈希覆盖需要证明的规范化载荷。
+
+**验收：**v 前缀/预发布/commit、真实 0.0/缺值分别正确；修改判断/版本必须改变对应内容回执。
+
+**固定源码：** [services/radar/radar_reuse_loop.py](https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/radar/radar_reuse_loop.py)。
+
+### F29 · P1（对外交付前） · 执行分支、默认分支和发布产物尚未收敛
+
+**类别：**云端交付状态问题。**证据方式：**静态代码/配置/云端元数据核对；未声称实机复现。
+
+固定 R4 比 main 前进 119 个提交、落后 0；比 migration 前进 77、落后 0。R4 未受分支保护；rulesets 返回空。唯一开放 PR #123 是 migration→main，最新执行基线明确 DO_NOT_MERGE。现有发布产物来自 8 月 10/11 日。
+
+**影响：**不能把 main 或旧二进制当成最新已验收产品，也不能为图省事直接合并 #123。
+
+**最小修复：**修复并独立验收后，通过明确批准的现有 PR/分支流程交付该精确树；门禁和产物绑定同一 SHA。
+
+**验收：**发布包、构建/测试回执、来源 SHA 和用户安装入口一致；保留冻结与权限边界。
+
+**云端证据：** `remote_state.json`，以及 GitHub 的分支、compare、pulls、rulesets、actions/runs、releases API 读取记录。
+
+## 6. 按原始五维基线复核
+
+| 原始要求 | 本次可作结论 | 缺的不是更多规则，而是 |
+|---|---|---|
+| 每软件唯一官方入口 | 部分未收敛 | fixed-port 脚本、随机端口 sidecar、旧 web 与 React 桌面入口一致 |
+| 桌面入口可直接打开 | 未完成独立实机验收，存在明确地址错配 | 打包入口到实际快照的端到端证明 |
+| 官方标准＋用户配置 | 有保留原值机制，但有旁路 publisher 与安全合并缺口 | 唯一受控写入入口；标准字段/格式的真实适配 |
+| 不阻塞、轻量、按需加载 | 文档方向正确，实际常驻体积/启动耗时未测 | 只查受影响层；技能真实发现；去掉旧监控源和重复链 |
+| 任务级模型策略 | 不能签为全部新模型已适配 | 实际版本字段、用户选择不被覆盖、带身份的价格与真实授权测试 |
+
+软件升级不应自动触发“重做所有插件和技能”。只有官方接口/格式变化影响到具体适配层时才修改；版本未变化、无影响的层应 NO_CHANGE。确认安装、确认该版本、确认此功能可执行、确认该功能被 WORK-LAB 接入，四者必须分别记录，不靠一个 support=deep 代替。
+
+## 7. 任务收口重分类：不能把未授权等同技术不可修
+
+NF-00/01/02/03/04/05/06/07/08/09/10/11/12、WL-R01/07、NF-14 的“闭环”应按实际证据重新限定，而非抹除所有工作。重点承接如下：
+
+| 原任务面 | 本次处理建议 |
+|---|---|
+| NF-01/03 | 重开活跃旧路径/旁路发布器；历史数据保留与活跃写入根分开 |
+| NF-02 | 将必做套件真正接入 CI；导入修复本身保留 |
+| NF-04 | 重开目标值验证、回读异常、安全合并；保留已有诚实态 |
+| NF-05/06 | 只读样本/身份契约不代替生产快照授权过滤和真实能力 |
+| NF-07 | 保留“合成机制验证”；真实字段仍需 client/profile/field/operation 明确授权 |
+| NF-08 | 重开跨进程去重、内容脱敏、原生会话结果真实性 |
+| NF-09 | 优先修真实 React/Tauri/sidecar 链，再接状态分类和项目隔离 |
+| NF-10/11/12 | 修技能生成格式、扫描范围和注册表字段；不宣布模型行为已验证 |
+| WL-R01/07 | 保留离线工作；修版本/价格边界，工作簿实体与 Excel/WPS 后半程仍未验证 |
+| NF-14 | 从“16 必做全部通过”改为各卡结构/模拟/接线/实机分列 |
+
+`WORK-LAB-MONITORING-INTAKE-20260915-OPEN-TASKS.md` 还有跨软件执行、MCP/ACP/AG-UI、会话新建/恢复/分叉/取消/权限、观察重放等未完成项。不能只因为新的 closeout 表较短就让它们消失。Hermes 自升级锁、hook 重批、Codex ACL、本地 Windows 顺序相关 flaky、旧 test_apply_safety 独立直跑、全局技能备份/缓存清理也仍有各自状态；本次没有绕过它们。
+
+四张付费可选卡 NF-13/W05/W06/W08 不是修上述离线错误的先决条件。“需付费模型/单批授权”不能成为修 CI、URL、状态、类型和字段错误的阻塞理由；同时本次只读审计也不构成之后的付费/全局写入授权。
+
+## 8. 最短修复顺序（不新增治理平台）
+
+1. **统一验收入口**：接入遗漏套件及故意失败负控，导出当前实际测试集合。先知道什么真的跑了。
+2. **收敛规则生产者和写入口**：只改活跃旧路径、旁路 publisher、skill frontmatter 与版本 schema；使用已有同步器/索引，不再加另一套权威。
+3. **修真实产品入口与读链**：descriptor→Tauri/浏览器→React→sidecar→快照，解决地址/端口、授权范围、Git/CI 归属、UNKNOWN、成本与 Token 解析。
+4. **修副作用真实性**：事务目标及恢复、会话原生调用、能力声明、持久交接、租约排他、验收类型和独立角色。复用现有 Task Ledger、文件 guard 与适配器。
+5. **单软件最小原生闭环**：在明确授权后，只选一个具体非敏感受管字段，完成读取/计划/备份/应用/回读/受控恢复/恢复回读。修其他无关软件不作先决条件。
+6. **绑定同一 SHA 做 Windows/发布验收**：不使用旧发布包证明新代码，不盲合并 #123，不强推或清理所有历史分支。
+
+这些是修复建议分组，不是新任务权威或执行授权。不会在此轮替用户开启后台任务、付费调用或全局写入。详细承接见 `REPAIR-SEQUENCE.md`。
+
+## 9. 范围判断：治理确有重复，但不是所有保护都该删
+
+应保留的最小保护：单写者、真实动作的明确授权、未知结果不报成功、受管字段白名单、备份与受控恢复、凭据边界、原生权限、精确树的必要发布门禁。
+
+应删减/合并的重复：手工镜像的全局规则、多个 current 混用、重复的假定报价/通用 usage 解析、被停用却仍默认探测的监控源、同一能力多份未接线包装、把每个小任务都升级为全仓/全生命周期审计的流程。
+
+不建议本轮再全仓换语言、重排全部目录、重建 Agent 平台、强上所有候选开源项目或新增控制台。当前已证实的关键问题跨 Python/TypeScript/Rust 接口；换语言不会自动修复接口含义、数据归属和验收语义。现有应用若不需要控制面 GUI，先用原生入口/已有 CLI 完成一条真实链。
+
+## 10. 官方规范核对范围
+
+只核对本次具体缺陷所需的第一方规范，并未重新对所有软件/模型开展新一轮全网排行：
+
+- Agent Skills 客户端实现：frontmatter 起始位置及按需加载元数据。来源：https://agentskills.io/client-implementation/adding-skills-support
+- pytest 的 unittest 兼容：可渐进复用 TestCase，不要求全部重写。来源：https://docs.pytest.org/en/stable/unittest.html
+- OpenAI Responses usage：父级 token 总量与 cached/reasoning 明细嵌套，明细不是独立请求。来源：https://developers.openai.com/api/reference/cli/resources/responses/methods/create
+
+引用官方格式，不等于本轮已经访问用户的 API 或复现每一个客户端版本。价格常量只作为源码审计对象，不代表现行真实价格或汇率。
+
+## 11. 证据与重跑说明
+
+`source_hashes.json`：6 份源码与远端 Git blob 一致。
+`results/summary.json`：18 个反例、4 个对照的统计。
+`results/python_counterexamples.json`：6 个新 Python 模块反例。
+`results/frontend_counterexamples.json`：6 个 TypeScript 原模块隔离反例。
+`previous_audit/reproduction_results.json`：本轮重跑的 6 个旧反例。
+`AUDIT-COVERAGE.csv` / `coverage.json`：实际源码读取范围。
+`findings.json`：29 条发现、风险、来源与最小验收。
+`remote_state.json`：云端元数据提炼。
+
+优先查看 README 后重跑。复现只用于证明该固定旧树的行为，不能当作自动修复；修复后的负控测试应改为断言“错误行为不再出现”，并接入正式 CI。不要拿此证据包当安装包或全仓替代品。
+
+**最终意见：WORK-LAB 有可保留的基础，但交付链存在具体接线和语义缺陷。下一轮要让已有规则、测试、适配器和生产入口真正对齐，而不是用更多报告覆盖这些缺口。**

@@ -1,0 +1,302 @@
+# ArcheAxis 项目内目录迁移、隔离与彻底清理任务包
+
+```yaml
+id: AX-DIR-MIG-R1
+name: ArcheAxis repository layout convergence and zero-spill migration
+version: 1.0.0
+date: 2026-09-01
+project: ArcheAxis-Knowledge-OS
+baseline_sha: db13d0564ac2971d4b1eb3e3a5bff9c9256af313
+executor: any-qualified-executor
+execution_role: bounded-writer
+priority: P0
+mode: sequential-single-writer
+mutation_policy: task-path-allowlist
+commit_policy: atomic-local-commits
+push_policy: explicit-user-approval
+merge_policy: exact-sha-ci-and-human-approval
+network_policy: default-deny-except-locked-upstream-and-github
+runtime_policy: repository-root-zero-spill
+```
+
+## 1. 交付目标
+
+在不改变 ArcheAxis 产品定位、不重写语言架构、不损坏用户知识和学习数据的前提下：
+
+1. 建立中性的 `.project/` 项目治理契约；
+2. 将所有项目运行、缓存、构建、证据和独立 worktree 固定到 `.project-local/`；
+3. 收敛重复 Windows 前端和 Tauri 壳，冻结唯一生产入口；
+4. 消除 `.worklab`、`.codex.example`、`codex-taskpacks` 等工具所有权错觉；
+5. 合并大小写重复的研究目录；
+6. 自动修改所有有效引用、CI路径、包配置、文档索引和发布脚本；
+7. 完整测试、fresh-clone和升级回读通过后，删除旧目录及其已迁移内容；
+8. 最终云端树无空目录、无重复壳、无被跟踪运行数据、无活动旧路径。
+
+## 2. 不允许扩大范围
+
+- 不在本任务中实施 Python→Rust 或全栈语言迁移；
+- 不改变 Source/Anchor/Evidence/Provenance、Human Learning、Machine Competence 的领域语义；
+- 不删除未来蓝图、3D/动态课件/记忆宫殿等规划；只按 current/history/blueprint 分类；
+- 不修改外部 Hermes/Codex/WORK 全局配置；
+- 不访问未授权盘符或用户目录；
+- 不自动删除真实用户资料、SQLite数据库、学习记录、浏览器状态或未确认 WIP；
+- 不使用 `git reset --hard`、`git clean -fdx`、force push 或无清单的递归删除。
+
+## 3. 当前基线与主要问题
+
+当前根包含：`.codex.example`、`.worklab`、`OSUI`、`frontend`、`desktop`、`src-tauri`、`codex-taskpacks`、`Inspiration-Research`、`inspiration_research`、`app`、`shared`、`knowledge_base`、`workspace` 等。
+
+已确认的活动引用规模：
+
+| 路径 | 引用文件数（审计时） | 处置 |
+|---|---:|---|
+| `.hermes` | 101 | 新写入迁至 `.project-local`，旧路径只在迁移器中短期读取 |
+| `.worklab` | 12 | 迁至 `.project/governance` |
+| `.codex.example` | 9 | 迁至 `integrations/executors/codex/example` |
+| `codex-taskpacks` | 4 | 迁至 `docs/taskpacks` |
+| `OSUI` | 19 | 与 `frontend`逐文件裁决，吸收后删除 |
+| `desktop/` | 43 | 与根 `src-tauri`裁决，吸收后删除 |
+| `src-tauri` | 55 | 保留为唯一生产 Tauri 壳，最终迁至 `apps/windows/src-tauri` |
+| `Inspiration-Research` | 53 | 并入小写 `inspiration_research`后删除 |
+
+## 4. 最终目录树
+
+本任务采用“先消除重复，再适度收敛”的结构，不强制搬动稳定的 Python import 包。
+
+```text
+ArcheAxis-Knowledge-OS/
+├─ .project/
+│  ├─ manifest.yaml
+│  └─ governance/
+│     ├─ gates.yaml
+│     ├─ path-risk.yaml
+│     └─ data-ownership.yaml
+├─ .github/
+├─ .project-local/                   # ignored
+│  ├─ worktrees/
+│  ├─ runs/
+│  ├─ cache/
+│  ├─ toolchains/
+│  ├─ build/
+│  ├─ artifacts/
+│  └─ locks/
+├─ app/                              # canonical Python product package
+├─ shared/                           # shared Python models/compat
+├─ knowledge_base/
+├─ inspiration_research/             # 唯一小写研究包
+├─ apps/
+│  └─ windows/
+│     ├─ ui/                         # 原 frontend + 已吸收 OSUI
+│     └─ src-tauri/                  # 唯一生产桌面壳
+├─ integrations/
+│  └─ executors/
+│     ├─ codex/example/
+│     ├─ hermes/
+│     ├─ dsh/
+│     └─ work-lab/
+├─ config/
+├─ contracts/
+├─ migrations/
+├─ packaging/
+├─ scripts/
+├─ tests/
+├─ integration-tests/
+├─ workspace/
+│  └─ intake/
+├─ docs/
+│  ├─ architecture/
+│  ├─ decisions/
+│  ├─ current/
+│  ├─ blueprints/
+│  ├─ taskpacks/
+│  └─ history/
+└─ reports/
+   └─ release/
+```
+
+最终不得存在：`.worklab/`、`.codex.example/`、`codex-taskpacks/`、`OSUI/`、`desktop/`、根 `frontend/`、根 `src-tauri/`、`Inspiration-Research/`、`.hermes/`的新写入依赖。
+
+## 5. 路径迁移矩阵
+
+| 旧路径 | 新路径 | 方法 | 旧路径最终状态 |
+|---|---|---|---|
+| `.worklab/gate-registry.v1.yaml` | `.project/governance/gates.yaml` | schema字段保持稳定并加兼容读取测试 | 删除 |
+| `.worklab/project-validation.v1.yaml` | `.project/governance/path-risk.yaml` | 更新CI分类器和文档 | 删除 |
+| `.codex.example/` | `integrations/executors/codex/example/` | `git mv`，补 GENERATED/非权威声明 | 删除 |
+| `codex-taskpacks/` | `docs/taskpacks/` | 合并同名任务包，状态化 current/superseded | 删除 |
+| `frontend/` | `apps/windows/ui/` | 作为前端 canonical source | 删除 |
+| `OSUI/archeaxis-knowledge-ui-v2/` | `apps/windows/ui/` | 只吸收未重复且已进入生产的组件/样式/测试 | 删除整个 `OSUI/` |
+| `src-tauri/` | `apps/windows/src-tauri/` | 作为唯一生产壳 | 删除根目录 |
+| `desktop/src-tauri/` | `apps/windows/src-tauri/` | 仅吸收仍被生产使用的bootstrap/portable/installer能力 | 删除整个 `desktop/` |
+| `Inspiration-Research/` | `inspiration_research/` | 大小写安全的两步 `git mv`；合并资源和测试 | 删除 |
+| `.hermes/task-runtime/` | `.project-local/runs/` | 一次性迁移器，复制→哈希→回读 | 验证后清理本地旧内容 |
+| `.hermes/task-artifacts/` | `.project-local/artifacts/` | 原始证据迁移；稳定净化证据提升到reports | 验证后清理本地旧内容 |
+
+## 6. 执行任务 DAG
+
+### AX-DIR-000：创建隔离执行面
+
+1. 从基线 SHA 创建分支 `migration/ax-directory-convergence-r1`。
+2. 在 `<repo>/.project-local/worktrees/AX-DIR-MIG-R1/` 创建独立 worktree。
+3. 在 `.project-local/runs/AX-DIR-MIG-R1/<attempt-id>/` 写运行manifest。
+4. 子进程的 TEMP/TMP、uv/pip、npm、Cargo、Playwright、HF/Torch缓存全部重定向到本项目 `.project-local/`。
+5. 校验canonical路径、盘符、UNC、junction/reparse point，拒绝项目根外写入。
+
+验收：主工作树clean；独立worktree分支正确；系统Temp和其他项目无任务指纹。
+
+### AX-DIR-010：冻结迁移清单
+
+输出 `reports/migration/AX-DIR-MIG-R1/pre-migration-inventory.json`，每个旧目录记录：
+
+- tracked/untracked文件数与总字节；
+- 相对路径、Git blob SHA或文件SHA-256；
+- 当前引用者、Owner、是否用户数据；
+- `MOVE / MERGE / EXTRACT / DELETE_DUPLICATE / PRESERVE_USER_DATA / BLOCKED`；
+- 目标路径、验证命令和回滚commit。
+
+使用 Git 原生命令、`rg`、成熟 secret scanner（固定版本 gitleaks）和 SBOM 工具；不重新自研通用扫描器。
+
+### AX-DIR-020：建立 `.project` 与零外溢启动器
+
+1. 新建 `.project/manifest.yaml`、治理和数据Owner合同。
+2. 更新 `.gitignore`：递归忽略 `.project-local/`、任何深度运行缓存、真实工具状态。
+3. 将 `scripts/ci/run_tests.sh` 的逻辑根从 `.hermes` 改为 `.project-local`。
+4. 为Windows增加等价PowerShell入口；不得永久修改用户环境变量。
+5. 新增 no-spill 测试：伪造TEMP、绝对路径、`..`、其他盘符、junction逃逸并断言fail closed。
+
+### AX-DIR-030：迁移项目治理与执行器适配
+
+1. 先实现新路径读取；禁止新写旧路径。
+2. 迁移 `.worklab` 到 `.project/governance`。
+3. WORK-LAB适配器只读取公开schema，不成为运行依赖。
+4. 迁移 `.codex.example` 和 `codex-taskpacks`。
+5. 更新 `AGENTS.md`、README、配置权威索引、path-risk分类、CI和任务包链接。
+6. 活动代码和当前文档对旧路径引用归零后，用 `git rm` 删除旧目录。
+
+### AX-DIR-040：合并研究目录
+
+1. 先比较 `Inspiration-Research` 与 `inspiration_research` 的逐文件哈希。
+2. Windows大小写安全迁移：先移动到唯一临时中间名，再移至小写canonical路径。
+3. 合并资源、包数据、导入、ruff路径和CI测试目标。
+4. 更新 `pyproject.toml`，只保留小写包。
+5. 测试安装wheel并从临时目录导入。
+6. 删除 `Inspiration-Research/` 和临时中间目录。
+
+### AX-DIR-050：前端与桌面壳资格化
+
+建立逐功能矩阵：路由、六空间、Reader/Evidence/Learning、Context Navigation、Inspector、Activity Dock、API client、主题、动效、可访问性、Tauri命令、更新/安装。
+
+裁决规则：
+
+- `frontend` 为canonical UI起点；
+- `OSUI`只有真实生产使用且测试覆盖的差异才能吸收；
+- 根 `src-tauri`为canonical壳起点；
+- `desktop/src-tauri`只有根壳缺失且已验证的能力才能吸收；
+- 不允许为了“保险”保留两份同功能代码。
+
+执行顺序：
+
+1. `git mv frontend apps/windows/ui`；
+2. 调整Vite、Tauri `frontendDist`、package脚本、Playwright和CI；
+3. 逐项吸收OSUI差异，给每项增加测试；
+4. `git mv src-tauri apps/windows/src-tauri`；
+5. 吸收desktop有效差异，统一identifier、资源、installer和runtime定位；
+6. build/installer/readback通过后删除 `OSUI/` 和 `desktop/`；
+7. 根 `frontend/`、`src-tauri/` 不留兼容副本、symlink或空目录。
+
+### AX-DIR-060：自动修改所有引用
+
+覆盖：Python、Rust、TypeScript、JSON/YAML/TOML、PowerShell/BAT、GitHub Actions、安装器、SBOM、报告生成器、文档索引。
+
+要求：
+
+- 使用AST/语言工具能安全修改的优先使用成熟工具；文本替换必须有变更清单；
+- 不改 `docs/history/` 中作为历史事实的文字，只加 `LEGACY_PATH`说明；
+- 当前代码、配置、CI、README、current报告不得命中旧路径；
+- 路径分类测试必须覆盖新目录和旧目录拒绝策略。
+
+### AX-DIR-070：本地运行数据迁移
+
+一次性迁移器只处理本项目根的 `.hermes`：
+
+1. dry-run列出来源、目标、字节、哈希和冲突；
+2. 停止相关进程并获得writer lease；
+3. 复制到 `.project-local`，禁止跨盘；
+4. 对数据库执行完整性检查，对证据逐文件哈希，对浏览器/profile做启动读回；
+5. 新版本只写 `.project-local`；
+6. 成功后将旧目录移入 `.project-local/quarantine/legacy-hermes-<date>/`；
+7. 一个完整启动/停止/重启周期和用户确认后，按manifest明确删除旧目录内容；
+8. 不处理Hermes Home或其他项目的 `.hermes`。
+
+### AX-DIR-080：测试矩阵
+
+必须全部通过：
+
+```text
+scripts/ci/run_tests.sh --full
+uv run --frozen --group ci --group ci-adapters pytest tests/ integration-tests/ knowledge_base/tests/ -q --tb=short
+uv run --frozen --group ci python -m ruff check app shared knowledge_base inspiration_research shared-contracts/adapters app/workflow integration-tests scripts --select E9,F63,F7,F82
+python scripts/check_repository_conventions.py --source head
+python scripts/check_architecture.py
+npm ci --prefix apps/windows/ui --ignore-scripts
+npm test --prefix apps/windows/ui -- --run
+npm run build --prefix apps/windows/ui
+cargo test --manifest-path apps/windows/src-tauri/Cargo.toml
+cargo check --manifest-path apps/windows/src-tauri/Cargo.toml
+```
+
+另需Windows真实验收：
+
+- 2560×1440、1920×1080、1366×768；缩放100/125/150/175%；
+- 安装、启动、六空间导航、导入、Reader→Evidence→Learning黄金纵切；
+- SQLite重启读回、离线启动、异常恢复、升级旧数据目录；
+- Chromium console/page errors为0；
+- 运行前后对项目外路径做任务指纹扫描，外溢为0。
+
+### AX-DIR-090：旧目录清理
+
+清理必须在AX-DIR-080全绿后进行：
+
+1. 用迁移清单证明所有tracked文件已有目标或明确删除裁决；
+2. `git rm`精确删除旧tracked目录；
+3. 删除旧 `.gitkeep`、空目录、compat shim和临时迁移器；仅保留必要的一次性迁移命令到一个Release；
+4. 对忽略的旧 `.hermes`按AX-DIR-070处理，不使用通配递归删除；
+5. 再跑完整测试；
+6. fresh clone复跑；
+7. `git status --short`必须为空（完成最终commit后）；
+8. Git历史不因普通目录迁移而重写。只有secret/巨大错误blob被扫描确认时，另行申请使用 `git filter-repo`。
+
+## 7. 清理硬门
+
+以下任一不满足，禁止合并：
+
+- `git ls-files`仍出现 `.worklab/`、`.codex.example/`、`codex-taskpacks/`、`OSUI/`、`desktop/`、根 `frontend/`、根 `src-tauri/`、`Inspiration-Research/`；
+- 当前代码/配置/CI仍写 `.hermes`；
+- 前端或Tauri存在两个生产入口；
+- wheel安装后导入失败；
+- fresh clone测试不全绿；
+- 发现项目外写入；
+- 用户资料或数据库没有完整性回执；
+- 迁移后仍保留“以防万一”的重复目录。
+
+## 8. 回滚
+
+- 每一阶段一个本地原子commit；失败只回滚该阶段commit，不硬重置；
+- 数据迁移以复制和哈希读回开始，清理前保留manifest；
+- tracked目录通过Git前一commit恢复；
+- ignored用户数据从项目内quarantine恢复；
+- 不把回滚包放到项目外或其他盘符。
+
+## 9. 完成定义
+
+只有同时满足以下条件才能标记 `E5 RELEASED`：
+
+1. 目标目录树落地；
+2. 所有旧tracked目录物理删除；
+3. 所有活动旧引用归零；
+4. 本地运行数据完成哈希/完整性/重启读回并清理旧目录；
+5. Python、前端、Rust、Windows真实黄金纵切全绿；
+6. no-spill扫描为0；
+7. exact-SHA CI全绿；
+8. Release证据与最终SHA绑定；
+9. 用户批准push/merge/release。

@@ -1,0 +1,1346 @@
+# WORK-LAB 全局项目执行观测深度优化任务包
+
+版本：2026-08-13  
+任务编号：`WLGM-000～WLGM-240`  
+适用仓库：`DTALEX66/WORK-LAB`  
+云端审计锚点：`e40c8f9561aca1df2b480f98e83e2ceacf4b43b0`  
+性质：现行 `WL3-*` 主线的专项增量任务包，不替代 `WORK-LAB-FINAL-MASTER-HERMES-TASKPACK-2026-08-10.md`  
+状态：`READY_FOR_APPROVAL`；未授权 commit、push、PR、merge、release 或修改全局 live 配置
+
+---
+
+## 0. 执行结论
+
+本任务包解决三个相互关联的问题：
+
+1. WORK-LAB 如何发现 Hermes、Codex 及其他 Agent 平台上同时执行的多个项目；
+2. 如何识别“主体项目”，避免把仓库子目录、子模块、worktree 或临时访问仓库误判为新项目；
+3. 如何在不干扰 Agent 和项目执行的前提下，将可信状态实时或延迟投影到严格只读 Observer。
+
+最终架构不是全盘扫描电脑，也不是读取所有 Agent 私有会话，而是：
+
+```text
+用户批准的主体项目注册表
+        │
+        ▼
+Project Identity Resolver
+        │
+        ├── Hermes 原生只读事件/API
+        ├── Codex 受支持状态/Adapter
+        ├── 其他 Agent Adapter
+        ├── 异步 heartbeat
+        ├── Windows 进程回退
+        └── Git/文件活动低频回退
+        │
+        ▼
+Evidence Normalizer + Activity Aggregator
+        │
+        ▼
+Workflow-owned canonical SQLite WAL
+        │
+        ├── GET /api/v1/snapshot
+        └── GET /api/v1/events
+        │
+        ▼
+Observer Web + Tauri（严格只读）
+```
+
+核心原则：
+
+> 强证据负责确认，弱证据只负责提示；宁可显示延迟、不可见或未知，也不能误报正在运行，更不能为了监控而影响项目施工。
+
+---
+
+## 1. 不可变产品边界
+
+### 1.1 活动模块
+
+WORK-LAB 仍只有两个活动模块：
+
+1. `10-workflow/workflow-assistance`
+   - 唯一主动后台；
+   - 唯一 canonical SQLite、Task Ledger 和运行事件写入者；
+   - 负责项目注册、身份解析、Adapter、采集器、聚合、Snapshot 和 SSE。
+
+2. `30-observer/work-lab-observer`
+   - 严格只读；
+   - 只负责 Web/Tauri 展示、过滤、钻取和数据质量解释；
+   - 不执行、不批准、不重试、不应用配置、不写业务数据、不控制 Agent。
+
+不得重新加入设计、游戏或其他已切割模块。
+
+### 1.2 唯一事实源
+
+- Git：Rules、Skills、Profile、Adapter 合同和门禁等期望状态；
+- Workflow-owned SQLite WAL：任务、执行、事件、Token、CI、质量、checkpoint 等实际运行事实；
+- Observer：只消费 Workflow 输出的 Snapshot + SSE；
+- GitHub：远端发布证据，不代表本地当前运行状态；
+- 禁止 Observer 建立第二事件库、第二业务数据库或 Observer-owned 运行日志。
+
+### 1.3 本任务包明确不做
+
+- 不读取 prompt、回复正文、会话全文、API key、Cookie 或凭据；
+- 不扫描用户整块磁盘；
+- 不自动把发现的 Git 仓库加入监控；
+- 不修改外部项目源码或配置；
+- 不用 Agent 进程存在证明项目正在执行；
+- 不因一次 `cd` 或读取另一个仓库就迁移会话所属项目；
+- 不用模型执行常规监控或状态摘要；
+- 不通过 Observer 启动、停止、重试或批准 Agent；
+- 不写死 Agent 版本、模型、安装路径、端口或数据库内部结构。
+
+---
+
+## 2. 当前问题与任务包入口条件
+
+### 2.1 审计确认的问题
+
+当前实现存在以下结构性问题：
+
+- 项目发现依赖工作区 Git 扫描，缺少用户批准 allowlist；
+- 活跃检测主要依赖 Agent 进程与 `.hermes/.codex/.agents` 文件时间，误判概率较高；
+- Git 根目录、当前 cwd、模块、worktree 与产品主体项目没有分层；
+- 一个 Agent 会话临时访问其他仓库时可能被错误迁移；
+- 一个主体项目的多个 Agent execution 没有独立建模；
+- Observer 的项目状态和任务状态存在混用；
+- 当前 LIVE 只证明进程/轮询线程存在，不能证明来源新鲜或 SSE 连续；
+- Workflow `/api/v1/snapshot` 与 Observer `/api/dashboard` 形成双投影拓扑；
+- SSE 游标只在内存中，重启、过期和断线恢复不完整；
+- 自动 fixture/snapshot 回退可能把旧数据展示成当前状态；
+- Token、CI、数据质量仍存在字段级真值错误；
+- 当前 main exact-SHA 没有独立 GitHub Actions 运行证据。
+
+### 2.2 入口条件
+
+开始 `WLGM-010` 前必须记录：
+
+```text
+baseSha
+worktreePath
+dirtyState
+authorizedWriteScope
+forbiddenPaths
+targetedTestCommands
+rollbackPath
+externalProjectWriteAllowed=false
+globalLiveConfigWriteAllowed=false
+```
+
+若本地工作树存在用户修改：
+
+- 不清理；
+- 不覆盖；
+- 不移动到 stash；
+- 只在不冲突的独立 worktree 或批准范围内施工。
+
+---
+
+## 3. 状态和证据模型
+
+### 3.1 必须区分的对象
+
+```text
+ProductProject               用户认知中的主体项目
+  ├── Repository             一个或多个仓库
+  │     ├── Worktree         同一仓库的施工副本
+  │     ├── Module/Package   仓库内部模块
+  │     └── GitSubmodule     可独立版本化但可能归属主体项目
+  ├── AgentInstance          一个 Agent 安装/运行实例
+  ├── Session                Agent 会话
+  ├── Execution              一次实际执行
+  ├── Task                   WORK-LAB 任务
+  └── Evidence               支撑状态判断的证据
+```
+
+任何实现不得把以上对象压缩成一个 `project` 或一个 `status` 字段。
+
+### 3.2 项目状态
+
+```text
+ACTIVE
+IDLE
+NO_ACTIVE_EXECUTION
+PARTIAL_VISIBILITY
+UNRESOLVED
+UNKNOWN
+```
+
+### 3.3 Execution 状态
+
+```text
+DISCOVERED
+STARTING
+RUNNING
+WAITING_USER
+WAITING_APPROVAL
+BLOCKED
+IDLE
+COMPLETED
+FAILED
+CANCELLED
+LOST
+UNKNOWN
+```
+
+### 3.4 Transport 与数据状态
+
+```text
+transportState:
+  CONNECTING | LIVE | DELAYED | OFFLINE | UNKNOWN
+
+freshnessState:
+  FRESH | STALE | EXPIRED | UNKNOWN
+
+dataQuality:
+  EXACT | SOURCE_REPORTED | CORRELATED | DERIVED | INFERRED | PARTIAL | UNKNOWN
+
+coverageState:
+  FULL | PARTIAL | UNSUPPORTED | DENIED | OFFLINE | UNKNOWN
+```
+
+`RUNNING`、`ACTIVE`、`LIVE`、`EXACT` 不能互相替代。
+
+### 3.5 证据等级
+
+| 等级 | 来源 | 可确认的内容 | 默认延迟 |
+|---|---|---|---:|
+| A | Agent 官方 run/session 事件或 SSE | execution 生命周期、session、模型、Token | 1～5 秒 |
+| B | 受支持只读 API/CLI 状态 | session/run 元数据、最近活动 | 5～15 秒 |
+| C | WORK-LAB 异步 heartbeat/hook | execution 与 project correlation | 5～15 秒 |
+| D | OS 进程、父子进程、命令行 | Agent instance 存在、候选关联 | 15～30 秒 |
+| E | Git HEAD、worktree、文件活动 | 项目发生变化的弱提示 | 30～120 秒 |
+
+规则：
+
+- A/B/C 可以参与 `RUNNING` 判定；
+- D/E 单独存在时只能显示 `INFERRED_ACTIVITY` 或 `PROJECT_UNKNOWN`；
+- 弱证据不能覆盖强证据；
+- 冲突时保留所有证据并将聚合质量降级；
+- 证据过期只降级状态，不自动推断 completed。
+
+---
+
+## 4. 性能与无干扰预算
+
+### 4.1 默认 Passive Mode
+
+- 不向 Agent 注入配置；
+- 优先官方 GET/SSE；
+- 进程检测 15～30 秒；
+- Git HEAD 15～30 秒；
+- dirty 检测 30～60 秒且使用无锁/不刷新策略；
+- 工作区候选扫描只在首次、手动或低频校准时运行；
+- 不递归扫描 `.git`、`node_modules`、虚拟环境、构建产物、模型和设计资产库。
+
+### 4.2 可选 Enhanced Mode
+
+每个 Adapter 单独批准后才允许：
+
+- 订阅官方事件；
+- 增加异步 heartbeat；
+- 传递 execution/project/task correlation ID；
+- 读取官方 usage 字段。
+
+仍然不得读取内容正文或写外部项目。
+
+### 4.3 资源预算
+
+建议初始预算：
+
+```text
+空闲 CPU：平均 < 1%
+内存：基础 Worker + collectors < 200 MiB
+单 collector 超时：2～5 秒
+heartbeat 发送预算：< 100 ms，异步、非阻塞
+单项目 Git 查询：< 2 秒，超时即 UNKNOWN
+全局发现扫描：默认不高于每 6 小时一次
+连续失败熔断：3～5 次
+熔断冷却：1～5 分钟，指数退避并设上限
+事件队列：有界，满时丢弃旧 heartbeat，不丢终态事件
+```
+
+这些是初始预算，必须通过 canary 实测调整，不能写成跨机器永久常量。
+
+### 4.4 故障隔离
+
+- Collector 失败不阻塞 Agent；
+- Observer 失败不阻塞 Workflow；
+- SSE 客户端断线不阻塞 canonical writer；
+- Git 查询失败不重试风暴；
+- 单 Agent Adapter 崩溃不影响其他 Adapter；
+- canonical 写入与采集执行分离；
+- 系统资源过高时优先暂停 E/D 级采集，保留 A/B/C 事件；
+- 宁可 `DELAYED/OFFLINE/UNKNOWN`，不允许影响项目执行。
+
+---
+
+# 5. 执行任务
+
+## WLGM-000 — 锁定审计基线与授权边界
+
+目标：建立本专项任务包的可追溯入口，不修改运行配置。
+
+工作：
+
+1. 回读当前 main、CURRENT_STATE、Error Ledger、现行 Master Taskpack；
+2. 记录 exact base SHA、dirty 文件、已有运行事实和 CI 证据；
+3. 明确本轮只允许修改 WORK-LAB 批准范围；
+4. 把当前 exact-SHA CI 无运行记录写成 `UNVERIFIED_MAIN_CI`；
+5. 生成专项 Task Contract。
+
+验收：
+
+- base SHA 不使用分支名代替；
+- 用户文件没有被清理或覆盖；
+- 没有写外部项目或全局 live 配置；
+- 未知事实没有被补成成功。
+
+依赖：无。
+
+---
+
+## WLGM-010 — 建立主体项目领域模型
+
+目标：从 Schema 层阻止“子模块被当成主体项目”。
+
+工作：
+
+1. 定义 `ProductProject`、`RepositoryIdentity`、`ProjectRootBinding`、`WorktreeIdentity`、`ModuleIdentity`、`SubmoduleRelation`；
+2. 一个主体项目允许绑定多个仓库；
+3. 一个仓库允许多个 worktree，但都归属于同一主体项目；
+4. 模块只作为 `workingArea`，默认不升级为项目；
+5. 子模块通过策略选择 `attach_to_parent` 或 `independent_project`；
+6. 所有自动发现只生成 candidate。
+
+验收：
+
+- `frontend/`、`backend/`、`docs/` 不会因为存在配置文件而自动成为项目；
+- worktree 显示为主体项目下的 execution workspace；
+- 未批准仓库只能显示候选，不能进入正式监控列表。
+
+依赖：`WLGM-000`。
+
+---
+
+## WLGM-020 — 建立 Git 期望状态与本机根映射
+
+目标：兼顾可移植配置与 Windows 本机路径。
+
+工作：
+
+1. Git 中只保存 project ID、显示名、remote identity、仓库角色和包含策略；
+2. 用户全局覆盖层保存 `D:\All projects\...` 等本机根映射；
+3. canonical SQLite 保存解析后的实际 root、路径 hash 和最近验证时间；
+4. 禁止把绝对路径、凭据或私有会话写入 Git；
+5. 配置修改保留 diff、backup、readback、rollback；
+6. 未批准写全局配置时只生成 proposed diff 和 `WAITING_APPROVAL`。
+
+验收：
+
+- 换机器后 Git Profile 仍可复用；
+- Windows 路径大小写、斜杠、junction 不产生重复项目；
+- Observer 不提供修改注册表的入口。
+
+依赖：`WLGM-010`。
+
+---
+
+## WLGM-030 — 实现 Project Identity Resolver
+
+目标：将任意 execution 路径稳定映射到主体项目。
+
+解析顺序：
+
+1. 规范化路径和 filesystem identity；
+2. 解析 `git rev-parse --show-toplevel`；
+3. 解析 `git rev-parse --git-common-dir`；
+4. 解析 `git rev-parse --show-superproject-working-tree`；
+5. 匹配批准的 remote identity；
+6. 匹配 git-common-dir/worktree identity；
+7. 匹配批准 root 包含关系；
+8. 应用 submodule/module policy；
+9. 无匹配则返回 unresolved candidate。
+
+每次解析输出：
+
+```json
+{
+  "projectId": null,
+  "repositoryId": null,
+  "worktreeId": null,
+  "workingArea": null,
+  "resolutionState": "UNRESOLVED",
+  "quality": "UNKNOWN",
+  "evidenceRefs": []
+}
+```
+
+验收：
+
+- 路径包含不是唯一身份依据；
+- 同名仓库不因目录名相同被合并；
+- remote 改名、无 remote、本地-only 仓库均有明确策略；
+- resolver 纯函数测试覆盖冲突、未知、submodule 和 worktree。
+
+依赖：`WLGM-020`。
+
+---
+
+## WLGM-040 — 会话锚定与临时访问仓库模型
+
+目标：阻止一次 `cd` 或跨仓读取改变主体项目身份。
+
+工作：
+
+1. Execution 建立不可轻易漂移的 `anchorProjectId`；
+2. 单独记录 `currentWorkingArea` 与 `visitedRepositories`；
+3. project switch 只接受强证据：新 Task Contract、Agent 原生 switch、用户明确操作或新 execution；
+4. 单次工具访问只更新 visited，不迁移 anchor；
+5. 多证据冲突时标记 `PROJECT_IDENTITY_CONFLICT`；
+6. context compression、resume、fork 后保持 lineage 与 anchor。
+
+验收：
+
+- Hermes/Codex 从 OS 项目临时读取 WORK-LAB 时，execution 仍归 OS；
+- 新 worktree 不创建新主体项目；
+- compression 后 cwd 丢失不会把项目改成 unknown，只降级当前路径质量。
+
+依赖：`WLGM-030`。
+
+---
+
+## WLGM-050 — 候选发现、allowlist 与隐私边界
+
+目标：替换“扫描到即注册”的行为。
+
+工作：
+
+1. `D:\All projects` 只作为显式配置的 discovery root；
+2. 首次扫描生成候选，不自动写正式 registry；
+3. 排除隐藏/依赖/缓存/构建/模型/设计资产目录；
+4. 每个候选只采集最小元数据：root fingerprint、Git identity、显示名候选；
+5. 用户批准后才启用 collectors；
+6. 支持 denylist 和 `never_scan`；
+7. 取消批准后停止采集，但保留历史事实的 TTL/归档策略。
+
+验收：
+
+- 未批准项目不会显示为 active；
+- 大型资源库不会被递归扫描；
+- discovery 失败不会影响已注册项目；
+- 发现过程不修改候选项目。
+
+依赖：`WLGM-020`、`WLGM-030`。
+
+---
+
+## WLGM-060 — Execution Evidence 标准合同
+
+目标：让所有 Agent Adapter 输出统一、可审计的事实。
+
+标准事件至少包含：
+
+```text
+eventId / sourceEventId
+collectorId / adapterId / agentInstanceId
+sessionId / executionId / taskId
+anchorProjectId / repositoryId / worktreeId / workingArea
+eventType / reportedState
+occurredAt / observedAt / expiresAt
+sourceRef / evidenceLevel / quality
+sequence / dedupeKey
+privacyClassification
+```
+
+工作：
+
+1. 禁止正文、完整命令行、环境变量和值、凭据进入事件；
+2. 路径默认投影为 project-relative 或 hash；
+3. 定义开始、运行、等待、结束、失败、heartbeat 和不可见事件；
+4. 定义乱序、重复、缺失终态和 clock skew 处理；
+5. source event ID 优先，派生事件使用稳定 dedupe key。
+
+验收：
+
+- Adapter schema 可独立版本化；
+- 未知字段向前兼容；
+- 缺失关键字段时进入 quarantine，不污染当前状态；
+- 同一事件重复采集不会重复计数。
+
+依赖：`WLGM-010`、`WLGM-040`。
+
+---
+
+## WLGM-070 — 非干扰 Collector Scheduler
+
+目标：提供低优先级、可熔断、可预算的持续采集框架。
+
+工作：
+
+1. Collector 独立线程或进程运行；
+2. 每个 Collector 有 timeout、budget、backoff、circuit breaker；
+3. 高资源压力时分级降载；
+4. heartbeat 使用异步有界队列；
+5. 终态事件与 heartbeat 使用不同丢弃策略；
+6. 记录 collector health，而不是伪造项目状态；
+7. 禁止 Collector 阻塞 canonical writer。
+
+验收：
+
+- 停止任一 Collector 不影响 Agent 和 Task Ledger；
+- 模拟卡死/超时不会形成线程或进程泄漏；
+- 队列满时行为确定且有 dropped 指标；
+- CPU/I/O 预算可以配置且有 canary 数据。
+
+依赖：`WLGM-060`。
+
+---
+
+## WLGM-080 — Hermes 只读 Adapter
+
+目标：优先使用 Hermes 官方元数据能力监控多 profile、多 session、多 run。
+
+数据优先级：
+
+1. Runs status/events；
+2. Dashboard/status/sessions 元数据；
+3. Hermes 导出的 `HERMES_SESSION_ID` correlation；
+4. 进程和文件活动回退。
+
+工作：
+
+1. 通过能力探测发现可用只读接口；
+2. 只读取 run/session ID、状态、时间、cwd/git root、模型标识和 usage；
+3. 不调用 stop、delete、pause、resume、trigger、配置写入接口；
+4. 支持多个 Hermes profile/instance；
+5. 修复 cwd 漂移防护：anchorProject 不随临时访问迁移；
+6. compression/resume/fork 通过 lineage 合并到同一 execution 或明确创建子 execution；
+7. API 不可用时降级，不读取 Hermes 私有 state DB 作为正式依赖。
+
+验收：
+
+- 两个 Hermes 项目并行执行可分别显示；
+- 同一 Hermes profile 的多个 session 不互相覆盖；
+- API 关闭时显示 `PARTIAL_VISIBILITY`，不显示 0 个任务；
+- Adapter 全部调用为只读方法。
+
+依赖：`WLGM-040`、`WLGM-060`、`WLGM-070`。
+
+参考：Hermes 官方 Sessions、Dashboard、Runs API 和 `HERMES_SESSION_ID` 文档。
+
+---
+
+## WLGM-090 — Codex 只读 Adapter
+
+目标：在不依赖 Codex 私有会话库的情况下关联本地、worktree 和远程任务。
+
+工作：
+
+1. 先做官方能力探测：受支持事件、状态输出、CLI JSON、任务/线程元数据；
+2. 支持一个主体项目存在多个 Codex execution/worktree；
+3. 对无受支持事件的版本，使用 WORK-LAB 启动契约或异步 correlation hook；
+4. hook 未经批准不得写 Codex 全局配置；
+5. 进程只证明 Agent instance 存在；
+6. 本地 execution、远程/cloud execution 和 GitHub PR/CI 分开建模；
+7. 不读取 `/root/.codex/sessions` 或对应 Windows 私有 session 存储作为正式方案；
+8. 沙箱不可读取项目时显示 `VISIBILITY_DENIED`，不归因项目停止。
+
+验收：
+
+- 两个 Codex worktree 同时施工时归于同一主体项目、两个 execution；
+- Codex 进程存在但 project 未知时不会显示 RUNNING；
+- worktree 被删除后 execution 按证据进入终态或 LOST；
+- Adapter 不修改 Codex 配置、模型或审批模式。
+
+依赖：`WLGM-040`、`WLGM-060`、`WLGM-070`。
+
+---
+
+## WLGM-100 — 通用 Agent Adapter SDK
+
+目标：支持 Claude Code、OpenCode、Aider、Cursor、Qwen Code、WorkBuddy 等，而不把产品名称写死进核心。
+
+Adapter 能力声明：
+
+```text
+session_list
+run_status
+event_stream
+working_directory
+worktree_identity
+token_usage
+approval_state
+remote_execution
+heartbeat
+```
+
+工作：
+
+1. 定义版本无关 Adapter interface；
+2. 能力不存在时返回 unsupported，不返回空成功；
+3. 每个 Adapter 声明读取面、隐私面、延迟和证据等级；
+4. Adapter 禁止直接写 canonical SQLite，由 normalizer 统一写入；
+5. 提供 mock Adapter、Generic Process Adapter 和 Generic Heartbeat Adapter；
+6. 第三方 Adapter 放入隔离运行边界。
+
+验收：
+
+- 新 Agent 接入不需要修改聚合器核心；
+- Adapter 崩溃不会污染其他 Agent；
+- 无 Token 能力时显示 unsupported/unknown，不显示 0；
+- 测试覆盖 capability negotiation。
+
+依赖：`WLGM-060`、`WLGM-070`。
+
+---
+
+## WLGM-110 — Windows Agent Instance 与进程回退采集器
+
+目标：在原生接口缺失时提供低可信、低干扰的候选证据。
+
+工作：
+
+1. 采集 PID、父 PID、进程开始时间、映像名和必要的脱敏参数；
+2. 不读取完整环境变量；
+3. 不尝试注入、调试或打开进程内存；
+4. Electron 多会话共享主进程时只报告 Agent instance；
+5. 将 terminal/build/test 子进程与可能的 execution correlation；
+6. 15～30 秒采样，系统繁忙时自动延迟；
+7. 权限不足返回 denied/unknown。
+
+验收：
+
+- `Codex.exe`/`Hermes.exe` 存在不能单独生成 RUNNING；
+- 多实例不会按映像名错误合并；
+- 采集不要求管理员权限；
+- 高负载测试下不明显增加项目执行耗时。
+
+依赖：`WLGM-070`、`WLGM-100`。
+
+---
+
+## WLGM-120 — Git/worktree/submodule 低频回退采集器
+
+目标：以最小 Git 开销补充项目身份与活动证据。
+
+允许优先读取：
+
+```text
+git rev-parse HEAD
+git rev-parse --show-toplevel
+git rev-parse --git-common-dir
+git rev-parse --show-superproject-working-tree
+git worktree list --porcelain
+```
+
+工作：
+
+1. 使用 `GIT_OPTIONAL_LOCKS=0` 等不刷新 index 的读取策略；
+2. dirty 状态低频、超时、可关闭；
+3. 检测 merge/rebase/checkout/GC 时跳过重查询；
+4. HEAD 变化不直接归因某个 Agent；
+5. submodule 不自动升级为主体项目；
+6. 文件 mtime 只能生成 activity hint；
+7. 禁止递归扫描整个仓库内容。
+
+验收：
+
+- 监控不会创建 Git lock 或修改 index；
+- 大仓库查询超时后显示 unknown；
+- 一个仓库多个 worktree 能正确归并；
+- 用户手工修改不会错误归因给 Agent。
+
+依赖：`WLGM-030`、`WLGM-070`。
+
+---
+
+## WLGM-130 — 多证据状态聚合器
+
+目标：从 execution facts 生成可信项目活动投影。
+
+工作：
+
+1. 每个 execution 独立保存状态；
+2. 项目聚合不覆盖 execution 细节；
+3. 强证据优先、弱证据补充；
+4. 定义证据 TTL 和迟到事件窗口；
+5. 15 秒未更新可进入 DELAYED，60 秒可进入 LOST，但阈值必须可配置；
+6. 缺失终态不自动 completed；
+7. WAITING_USER、WAITING_APPROVAL 与 BLOCKED 分开；
+8. 一个项目多 Agent 并行时显示数量与平台分布；
+9. source conflict 降低质量并保留解释。
+
+建议项目投影：
+
+```json
+{
+  "projectId": "archeaxis-knowledge-os",
+  "activityState": "ACTIVE",
+  "attentionState": "WAITING_APPROVAL_PRESENT",
+  "activeExecutionCount": 4,
+  "agentCounts": {"hermes": 1, "codex": 2, "reviewer": 1},
+  "visibility": "PARTIAL",
+  "quality": "CORRELATED"
+}
+```
+
+验收：
+
+- 一个任务 waiting 不会把整个项目标记 waiting；
+- 一个 execution failed 不会覆盖其他 running execution；
+- 所有 execution 证据过期后项目进入 partial/unknown，而非 completed；
+- 状态机 property-based/fuzz 测试无非法转换。
+
+依赖：`WLGM-060`、`WLGM-080～120`。
+
+---
+
+## WLGM-140 — canonical SQLite Schema 与迁移
+
+目标：让所有运行事实进入唯一 Workflow-owned SQLite WAL。
+
+建议新增或调整：
+
+```text
+project_definitions
+project_root_bindings
+repository_identities
+worktree_identities
+agent_instances
+agent_capabilities
+sessions
+execution_instances
+execution_evidence
+execution_heartbeats
+collector_health
+project_activity_projection
+projection_revisions
+```
+
+工作：
+
+1. 保持 WAL、外键、唯一约束和索引；
+2. 使用 migration version，不在启动时猜测 schema；
+3. source event ID/dedupe key 建唯一约束；
+4. evidence 与 projection 分开；
+5. Snapshot 读取在一致性事务中完成；
+6. Observer 连接必须 `mode=ro` + `query_only`；
+7. migration 提供 backup、readback、rollback 和幂等测试。
+
+验收：
+
+- 不创建 Observer DB；
+- 重放相同事件不增加计数；
+- migration 中断可恢复；
+- WAL 并发读写测试通过；
+- 老数据库升级后 Task Ledger 和历史事件仍可读。
+
+依赖：`WLGM-010`、`WLGM-060`、`WLGM-130`。
+
+---
+
+## WLGM-150 — 唯一只读 Snapshot API
+
+目标：消除 `/api/dashboard` 与 `/api/v1/snapshot` 双投影。
+
+工作：
+
+1. canonical → Observer projection 只在 Workflow 实现一次；
+2. 正式接口固定为 `GET /api/v1/snapshot`；
+3. Snapshot 包含 revision、generatedAt、source watermark、transport/quality/coverage；
+4. `null` 与 0 严格区分；
+5. 项目、任务、execution 分离；
+6. Token 分列，费用标记 exact/estimated/unknown；
+7. Git local/remote/CI SHA 分离并提供 match state；
+8. 去除 Observer-side projection server 的正式职责；
+9. 只允许 loopback、GET、no-store 和严格 Origin。
+
+验收：
+
+- Web 与 Tauri 使用同一个 Snapshot；
+- `generatedAt` 是合法 RFC3339；
+- Schema 校验失败返回明确错误，不输出部分伪成功；
+- 未知数据不被补零；
+- 所有核心字段可追溯到 sourceRef。
+
+依赖：`WLGM-130`、`WLGM-140`。
+
+---
+
+## WLGM-160 — 持久 revision、真正 SSE 与断线恢复
+
+目标：提供持续连接、可验证游标和服务重启后的恢复语义。
+
+事件：
+
+```text
+snapshot
+observed
+heartbeat
+resync_required
+collector_state
+shutdown
+```
+
+工作：
+
+1. SSE ID 使用 canonical 持久 sequence/revision，不使用内存 UUID；
+2. 正确支持 `Last-Event-ID`；
+3. 游标过期或缺失时发送 `resync_required`；
+4. 服务重启后客户端能够重新 GET Snapshot；
+5. 心跳必须是可监听的命名事件；
+6. 前端使用 `addEventListener("observed", ...)` 等命名监听；
+7. 慢消费者有明确断开和重同步语义；
+8. SSE 断线不能阻塞 writer；
+9. 增加抖动、退避和最大连接数。
+
+验收：
+
+- 真实浏览器 EventSource 测试通过；
+- 断网、休眠、服务重启、游标过期均恢复；
+- 不重复计数、不跳过终态事件；
+- heartbeat 超时触发 transport DELAYED，而不是项目 FAILED；
+- 同时多个 Observer 客户端不影响 Agent 执行。
+
+依赖：`WLGM-140`、`WLGM-150`。
+
+---
+
+## WLGM-170 — 证据驱动 LIVE 与字段级质量
+
+目标：消除伪 LIVE、伪 exact、伪 complete 和伪 0。
+
+LIVE 条件必须同时满足：
+
+1. Snapshot Schema 有效；
+2. SSE 已连接；
+3. heartbeat 在阈值内；
+4. cursor/revision 有效；
+5. canonical writer watermark 新鲜；
+6. 关键 collector coverage 满足声明；
+7. 数据不是 fixture 或 bundled snapshot。
+
+工作：
+
+1. 每个字段支持 value/state/quality/sourceRef/observedAt；
+2. unknown、unsupported、not_applicable、withheld、denied 分离；
+3. coverage 同时展示 numerator、denominator、scope；
+4. 自动 snapshot/fixture 回退不得进入 LIVE；
+5. last-good 只能标记 stale，并显示原始时间；
+6. exact-SHA CI 只有 SHA 匹配且 run 可验证才为 exact。
+
+验收：
+
+- API 离线时不展示 bundled 假项目；
+- 未接入 Agent 不显示 0 个 execution，而显示 unsupported/unknown；
+- exact-SHA 无 run 时显示 `UNVERIFIED`；
+- 任意单一条件不足都无法进入 LIVE。
+
+依赖：`WLGM-150`、`WLGM-160`。
+
+---
+
+## WLGM-180 — Observer Full 全局执行视图
+
+目标：让用户一眼看到“哪些主体项目正在由哪些 Agent 执行，以及判断有多可信”。
+
+页面结构：
+
+1. 全局传输/新鲜度/覆盖率条；
+2. 主体项目列表；
+3. 当前 executions；
+4. 等待用户、等待批准和阻塞；
+5. Git/exact-SHA CI；
+6. Token/费用；
+7. Rules/Skills/Memory/Adapter 漂移；
+8. Collector coverage 与证据质量。
+
+主体项目行至少显示：
+
+```text
+项目名称
+activityState
+active execution 数量
+Agent 分布
+当前 working areas
+最需要关注的状态
+最近强证据时间
+visibility/quality
+Git/CI identity
+```
+
+验收：
+
+- 子模块只显示为 working area；
+- 多 worktree/多 Agent 不生成重复项目行；
+- 状态不只依赖颜色；
+- 无执行与不可观测能明确区分；
+- 不出现控制、批准、重试或应用按钮。
+
+依赖：`WLGM-150～170`。
+
+---
+
+## WLGM-190 — Observer 项目与 Execution 证据详情
+
+目标：让任何状态都能被用户追问“为什么”。
+
+项目详情：
+
+- project identity、绑定仓库、worktree、模块关系；
+- 当前/最近 executions；
+- Agent instance 与 capability；
+- Git/CI SHA 对照；
+- collector coverage；
+- unresolved/conflict；
+- 数据新鲜度。
+
+Execution 详情：
+
+- execution/session/task ID；
+- anchor project；
+- current working area；
+- visited repositories；
+- 状态时间线；
+- evidence level 和 sourceRef；
+- last heartbeat；
+- 终态/LOST 原因；
+- Token 字段质量。
+
+验收：
+
+- 默认不显示绝对路径、prompt 和完整命令行；
+- 用户可以看出状态由 A/B/C/D/E 哪一级证据产生；
+- conflict 不被静默消解；
+- UI 只有筛选、搜索、展开、复制脱敏 ID 等只读操作。
+
+依赖：`WLGM-180`。
+
+---
+
+## WLGM-200 — Compact、Dark/Light 与响应式可用性
+
+目标：完成 Dark/Light × Full/Compact 四种正式视图。
+
+Compact 只展示：
+
+- transport/freshness；
+- active projects；
+- active executions；
+- waiting/blocked；
+- 主阻塞；
+- exact-SHA CI；
+- Token coverage；
+- last strong evidence。
+
+工作：
+
+1. 保留克制的 Apple 液态玻璃视觉；
+2. 数据密度和可读性优先于装饰；
+3. 支持键盘、屏幕阅读器、缩放和 reduced motion；
+4. 长项目名、Windows 路径 hash、SHA 不溢出；
+5. 图表缺失区间断线，不能补零；
+6. fixture 仅显式开发入口并显示高可见标识。
+
+验收：
+
+- 320px 起无横向页面滚动；
+- 四种视图快照与交互测试通过；
+- 状态文字、图标、颜色三重表达；
+- OFFLINE 页面不加载自动假数据。
+
+依赖：`WLGM-180`、`WLGM-190`。
+
+---
+
+## WLGM-210 — Tauri 严格只读壳与端点发现
+
+目标：让桌面壳连接唯一 Workflow sidecar，而不管理或启动它。
+
+工作：
+
+1. 移除对旧 `/api/dashboard` 的绑定；
+2. 只读解析 Workflow-owned sidecar endpoint descriptor；
+3. 校验 loopback、随机端口、固定路径、PID/启动 epoch；
+4. Tauri 不启动、停止或重启 Workflow；
+5. 设置严格 CSP；
+6. 最小化 capability，禁止 shell、写文件、Git、下载和 updater；
+7. 版本能力探测，不写死 Rust/Tauri 组合；
+8. Windows 原生构建验证当前 `rust-version` 合同；
+9. endpoint 不可用时显示 OFFLINE，不回退 fixture。
+
+验收：
+
+- Web 与 Tauri 显示完全相同的 revision；
+- CSP 不为 null；
+- 不存在业务写入 IPC；
+- sidecar 停止不影响 Tauri 安全退出；
+- Tauri 不持久化业务 Snapshot 或事件。
+
+依赖：`WLGM-150～170`、`WLGM-200`。
+
+---
+
+## WLGM-220 — 隐私、安全与对抗测试
+
+目标：证明全局观测不会扩大 Agent 和项目风险面。
+
+必须测试：
+
+1. prompt/回复/凭据/环境变量不能进入 canonical 或 Snapshot；
+2. 未批准项目和目录不能被采集；
+3. symlink/junction 不能越过 allowlist；
+4. 恶意项目名、分支名、Agent 名不能造成 XSS/命令注入；
+5. 假 sidecar、端口劫持、DNS rebinding、恶意 Origin 被拒绝；
+6. EventSource 重连风暴被限制；
+7. SQLite malformed/partial migration fail closed；
+8. Adapter 返回冲突/巨大 payload 时隔离；
+9. Observer 不能写 Ledger、GitHub 或项目文件；
+10. 未知值不能被转为 0/LIVE/exact/complete。
+
+验收：
+
+- 敏感字符串 canary 不出现在数据库、API、日志和 UI；
+- 所有写方法负向测试返回拒绝；
+- 任何单一 Adapter 不能伪造全局 LIVE；
+- 权限拒绝显示 DENIED/UNKNOWN，不尝试绕过。
+
+依赖：`WLGM-050～210`。
+
+---
+
+## WLGM-230 — WORK-LAB + 一个真实 OS 项目 canary
+
+目标：用真实多项目、多 Agent 场景验证，而不是 fixture 自证。
+
+授权边界：
+
+- 未获得外部项目写权限前，只读观察；
+- canary 数据写入仅进入 WORK-LAB canonical SQLite；
+- 不修改 OS 项目配置；
+- 不使用付费 API smoke，除非另行批准。
+
+场景矩阵：
+
+1. Hermes 在 WORK-LAB，Codex 在 OS；
+2. Hermes 与 Codex 同时在 OS 不同 worktree；
+3. Hermes 暂时读取另一个仓库；
+4. Agent 等待批准；
+5. Agent 进程存在但无活动 execution；
+6. SSE 断线/恢复；
+7. Worker 重启；
+8. execution 无终态并超时；
+9. submodule 与内部模块；
+10. GitHub CI 无 exact-SHA run。
+
+记录指标：
+
+```text
+项目身份准确率
+execution 发现率
+误报 RUNNING 次数
+漏报次数
+状态延迟 P50/P95
+CPU/内存/磁盘 I/O
+Agent 任务耗时差异
+断线恢复时间
+重复/丢弃/乱序事件
+人工干预次数
+```
+
+验收：
+
+- 主体项目识别 100% 命中测试矩阵；
+- 子模块误报为项目次数为 0；
+- 弱证据单独导致 RUNNING 次数为 0；
+- 对 Agent 执行耗时无统计上显著恶化；
+- 状态不确定时正确降级。
+
+依赖：`WLGM-220`。
+
+---
+
+## WLGM-240 — 收口、迁移与发布前审查
+
+目标：清除旧架构入口并给出可回滚的完成证据。
+
+工作：
+
+1. 删除或归档 Observer-owned event migration/runtime 写入语义；
+2. 正式路径删除 `/api/dashboard` 依赖；
+3. 生产 UI 删除自动 fixture 和 bundled snapshot 回退；
+4. 更新 README、module profile、Schema 和架构图；
+5. 更新 Error Ledger 与 CURRENT_STATE；
+6. 运行 Targeted、Stage、Windows/Tauri、对抗和 canary 门禁；
+7. 获取 candidate exact-SHA CI；
+8. 生成 rollback、known limitations 和 unsupported Adapter 清单；
+9. 未经批准不 commit/push/PR/merge/release。
+
+最终验收包必须包含：
+
+```text
+Task Contract
+Base SHA
+Candidate SHA（如获批准产生）
+Schema migration evidence
+Unit/integration/browser/Windows test results
+Canary metrics
+Privacy negative tests
+Performance comparison
+Independent review
+Exact-SHA CI evidence
+Rollback instructions
+Remaining UNKNOWN/UNSUPPORTED items
+```
+
+依赖：`WLGM-230`。
+
+---
+
+## 6. 建议测试矩阵
+
+### 6.1 Identity Resolver
+
+- 普通单仓库项目；
+- monorepo 内部模块；
+- Git submodule 附着主体；
+- Git submodule 独立主体；
+- 多仓库主体项目；
+- 多 worktree；
+- remote 重命名；
+- 无 remote 本地项目；
+- 相同目录名不同 remote；
+- Windows 大小写和斜杠差异；
+- junction/symlink；
+- 临时访问其他仓库；
+- compression/resume/fork 后 cwd 缺失。
+
+### 6.2 Agent/Execution
+
+- 一个 Agent 多 session；
+- 多 Agent 同项目；
+- 多 Agent 多项目；
+- Electron 单进程多会话；
+- CLI 子进程树；
+- 远程/cloud run；
+- WAITING_USER 与 WAITING_APPROVAL；
+- 崩溃无终态；
+- 迟到终态；
+- 重复、乱序和 clock skew。
+
+### 6.3 SSE/Observer
+
+- 命名事件；
+- heartbeat；
+- Last-Event-ID；
+- retention gap；
+- sidecar 重启；
+- 浏览器休眠恢复；
+- 多客户端；
+- 慢消费者；
+- schema 版本不兼容；
+- last-good stale；
+- offline 无 fixture；
+- null/unknown/unsupported/denied。
+
+### 6.4 非干扰
+
+- 大仓库 Git 查询；
+- 正在 rebase/merge；
+- 高 CPU 编译；
+- 大量 node_modules/设计资产；
+- Collector 超时/崩溃；
+- canonical writer 高负载；
+- Observer 打开/关闭前后 Agent 任务耗时对照。
+
+---
+
+## 7. 必须新增的质量门禁
+
+建议门禁名称：
+
+```text
+project-identity-contract
+agent-adapter-readonly-contract
+execution-state-machine
+collector-noninterference
+canonical-single-writer
+observer-no-business-write
+snapshot-schema-v3
+sse-browser-reconnect
+field-quality-no-fabrication
+privacy-redaction
+windows-project-resolution
+tauri-readonly-shell
+work-lab-os-canary
+exact-sha-ci
+```
+
+任何门禁不得只搜索字符串证明通过；至少包含行为测试、失败路径和真实浏览器/Windows 证据。
+
+---
+
+## 8. 数据契约最低要求
+
+### 8.1 Project Projection
+
+```json
+{
+  "projectId": "work-lab",
+  "displayName": "WORK-LAB",
+  "identityState": "RESOLVED",
+  "activityState": "ACTIVE",
+  "attentionState": "NONE",
+  "activeExecutionCount": 2,
+  "visibility": "FULL",
+  "quality": "CORRELATED",
+  "lastStrongEvidenceAt": "2026-08-13T00:00:00Z",
+  "repositories": [],
+  "executions": [],
+  "sourceRefs": []
+}
+```
+
+### 8.2 Execution Projection
+
+```json
+{
+  "executionId": "exec-opaque-id",
+  "agent": "codex",
+  "sessionId": "session-opaque-id",
+  "anchorProjectId": "work-lab",
+  "worktreeId": "worktree-opaque-id",
+  "workingArea": "30-observer/work-lab-observer",
+  "state": "RUNNING",
+  "stateQuality": "SOURCE_REPORTED",
+  "startedAt": "2026-08-13T00:00:00Z",
+  "lastHeartbeatAt": "2026-08-13T00:00:05Z",
+  "transportState": "LIVE",
+  "sourceRefs": []
+}
+```
+
+### 8.3 Collector Coverage
+
+```json
+{
+  "agent": "codex",
+  "capability": "run_status",
+  "coverageState": "PARTIAL",
+  "evidenceLevel": "C",
+  "reason": "official_event_stream_unavailable",
+  "observedAt": "2026-08-13T00:00:00Z"
+}
+```
+
+字段命名可以在 Schema 评审时调整，但语义不得丢失。
+
+---
+
+## 9. 执行顺序与现行 WL3 主线映射
+
+```text
+可信事实状态
+  └── WLGM-000
+
+唯一 Worker + Task Ledger
+  └── WLGM-060～070
+
+唯一 SQLite 事实源
+  └── WLGM-140
+
+Task/Git-CI/Token/项目采集器
+  └── WLGM-010～130
+
+WORK-LAB + OS canary
+  └── WLGM-230
+
+真正 SSE
+  └── WLGM-150～170
+
+Observer 直接只读
+  └── WLGM-180～210
+
+一次性收口审查
+  └── WLGM-220～240
+```
+
+为减少返工，实际实施建议采用以下硬依赖顺序：
+
+```text
+000
+→ 010 → 020 → 030 → 040 → 050
+→ 060 → 070
+→ 080 / 090 / 100 → 110 / 120
+→ 130 → 140 → 150 → 160 → 170
+→ 180 → 190 → 200 → 210
+→ 220 → 230 → 240
+```
+
+---
+
+## 10. 审批点
+
+以下动作必须停下等待批准：
+
+- 修改 Hermes、Codex 或其他 Agent 全局 live 配置；
+- 安装/升级/卸载 Agent 或 Adapter；
+- 将 heartbeat/hook 注入 Agent 启动链；
+- 写 `D:\All projects` 中的外部项目；
+- 读取未公开私有 session 数据库；
+- 开启付费 API smoke；
+- commit、push、PR、merge、release；
+- 删除旧生产路径或迁移数据库；
+- 修改 GitHub Actions 工作流。
+
+局部批准缺失时：
+
+```text
+标记 WAITING_APPROVAL
+记录具体阻塞动作
+继续不依赖该批准的安全任务
+不得把等待批准误报为 BLOCKED 全局主线
+```
+
+---
+
+## 11. Definition of Done
+
+本任务包只有同时满足以下条件才能整体标记完成：
+
+1. 主体项目由批准 registry 定义，不由 cwd 或目录名猜测；
+2. 子目录、模块、submodule、worktree 与主体项目关系正确；
+3. Hermes、Codex 可同时监控多个项目与多个 execution；
+4. 至少提供一个通用 Adapter fallback；
+5. 弱证据不能单独产生 RUNNING/ACTIVE；
+6. Collector 不干扰 Agent，性能 canary 有证据；
+7. canonical SQLite 是唯一业务事实源；
+8. Snapshot 与 SSE 只有一个 Workflow-owned 投影实现；
+9. SSE 支持命名事件、持久游标、断线和重启恢复；
+10. LIVE 由完整证据状态机产生；
+11. Observer 无业务写入、无控制按钮、无自动 fixture 假数据；
+12. Web/Tauri 四种视图完整且只读；
+13. WORK-LAB + 真实 OS 项目 canary 通过；
+14. 隐私、对抗、Windows 和 exact-SHA CI 证据齐全；
+15. 所有未知、未支持、权限拒绝和覆盖缺口被显式展示。
+
+---
+
+## 12. 最终产品判定标准
+
+完成本任务包后，WORK-LAB 应能够回答：
+
+```text
+现在有哪些“主体项目”正在执行？
+每个项目有多少个 execution？
+分别由哪些 Agent/实例/session 执行？
+当前是在运行、等待用户、等待批准、阻塞还是失联？
+Agent 当前施工的是哪个 worktree 和模块？
+临时访问过哪些其他仓库，但主体项目是否保持稳定？
+这些结论来自什么证据，延迟多少，覆盖多少？
+哪些 Agent 或项目暂时不可观测？
+监控自身是否健康，并且是否没有影响项目执行？
+```
+
+若不能给出证据，应回答 `UNKNOWN/PARTIAL/UNSUPPORTED/DENIED`，而不是给出看似完整的状态。
+

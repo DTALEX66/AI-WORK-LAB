@@ -1,0 +1,129 @@
+# 双仓集成与黄金链路任务包
+
+## 启动前提
+
+只有以下全部成立才进入本包：
+
+- Workflow WA-001 至 WA-006 本地通过；
+- Open Design OD-001 至 OD-008 本地通过；
+- 两库分别有 baseline/final HEAD、tree、status；
+- 两库无其他 writer；
+- 两库 canonical gate 通过；
+- Open Design 官方 CLI/MCP 接口现场可确认；
+- 无需读取凭据或修改私有配置。
+
+## BR-001：合同兼容
+
+Workflow 提供 Domain Pack Schema；Open Design 提供 `workflow-domain-pack.json`。
+
+验证：
+
+- schema version；
+- pack id/version；
+- capability ids；
+- permissions；
+- required tools；
+- supported clients；
+- entrypoints；
+- evidence level；
+- asset hashes；
+- compatibility ranges。
+
+目标项目通过 `.workflow/packs.lock` 锁定精确版本和来源 commit，不跟随 latest/main。
+
+## BR-002：Open Design Adapter
+
+Workflow 的 Open Design Adapter 只调用官方接口：
+
+```text
+detect version
+list plugins
+validate pack
+plan install/MCP registration
+apply only after approval
+invoke plugin
+observe run
+read artifact metadata
+rollback supported installation
+```
+
+不读取 Open Design 私有 app-config，不修改 Codex config，不解析 OAuth。
+
+## BR-003：真实黄金链路
+
+固定执行：
+
+```text
+HERMES 创建 Workflow run
+→ Client Adapter 能力检查
+→ 权限/来源/预算预检
+→ 锁定 OPEN-DESIGN Domain Pack
+→ Open Design 官方 plugin apply
+→ 读取真实 artifact/provenance
+→ 视觉和生产门禁
+→ 最多三轮有界修复
+→ Codex exact-tree review
+→ READY_FOR_USER_APPROVAL
+```
+
+默认不进入 GitHub 发布。
+
+## BR-004：故障矩阵
+
+必须验证：
+
+- Open Design 未安装；
+- daemon 离线；
+- plugin 未安装；
+- plugin 版本不兼容；
+- Domain Pack hash 不一致；
+- 权限不足；
+- artifact 缺失；
+- provenance 缺失；
+- Token/时间/迭代预算耗尽；
+- 中途进程退出；
+- 重启后恢复；
+- review NO-GO；
+- GitHub CI 失败；
+- rollback 成功/失败。
+
+不得 silent fallback 到其他模型、插件、目录或旧 artifact。
+
+## BR-005：监控闭环
+
+同一 run id 关联：
+
+- Workflow task；
+- Client Adapter；
+- Open Design task/run；
+- Token usage；
+- network metadata；
+- artifact hash；
+- Codex review；
+- Git commit/SHA；
+- GitHub workflow run。
+
+不记录 Prompt/回复正文和凭据。
+
+## BR-006：第二批客户端
+
+黄金链路稳定后才验证：
+
+- Cursor；
+- Claude Code；
+- WorkBuddy。
+
+采用同一 Adapter Conformance Suite。只有官方稳定接口和真实运行证据才能标记 `supported`；否则保持 `detect-only/planned/blocked-no-stable-interface`。
+
+## 完成条件
+
+- 两库无源码复制耦合；
+- Pack 可独立安装和升级；
+- 目标项目锁定精确版本；
+- 一条完整 E3；
+- 中断恢复 10/10；
+- 边界违规 0；
+- Token 无估算；
+- exact-tree review 通过；
+- GitHub 发布仍等待用户授权。
+

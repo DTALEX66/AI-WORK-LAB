@@ -1,0 +1,364 @@
+# WORK-LAB 云端重新审计报告
+
+审计日期：2026-08-10  
+审计对象：`DTALEX66/WORK-LAB` 远端默认分支 `main`  
+审计基准：`699ab50f47da5dcf3e92c81bea72504b6425f475`  
+审计方式：只读回读远端仓库、PR、Actions、治理文件、Workflow Assistance、Observer、测试与交接状态；未修改仓库。
+
+## 一、最终结论
+
+WORK-LAB 的方向已经基本回正，两个活动模块的边界也正确：
+
+1. `10-workflow/workflow-assistance`：唯一主动的工作流增强与治理控制面；
+2. `30-observer/work-lab-observer`：严格只读的观测界面。
+
+Open Design 应继续独立留在 `DTALEX66/OPEN-DESIGN-Assistance`；MINIGAME 不应恢复为活动模块。WORK-LAB 不是智能体、聊天软件、模型网关或新的产品平台。
+
+但是，当前云端版本仍不能称为“可正式使用的全局工作流增强系统”。更准确的定位是：
+
+> **治理合同、离线脚本、单元测试和 UI 源码较丰富的控制面原型；真实平台发现、跨项目采集、自动循环、唯一事实源、持续实时推送和可安装桌面运行仍未闭环。**
+
+因此结论是：**继续现有仓库，不推倒重做；立即停止继续堆 TaskPack、Schema 和重复 UI，下一阶段集中把已有骨架接成一条真实运行链。**
+
+## 二、远端事实基线
+
+| 项目 | 审计事实 |
+|---|---|
+| 默认分支 | `main` |
+| 当前 HEAD | `699ab50f47da5dcf3e92c81bea72504b6425f475` |
+| 最新交付 | PR [#33](https://github.com/DTALEX66/WORK-LAB/pull/33)，89 个文件，+4292 / -270 |
+| PR head | `b020c71af298766e0ec2f809027fa3eab218d531` |
+| PR CI | Actions [run 31344164328](https://github.com/DTALEX66/WORK-LAB/actions/runs/31344164328)；`gate-plan`、`workflow-assistance`、`observer`、`integration`、`aggregate` 全部成功 |
+| merge commit | [699ab50](https://github.com/DTALEX66/WORK-LAB/commit/699ab50f47da5dcf3e92c81bea72504b6425f475) |
+| merge/main exact-SHA CI | 本次回读未获得该 merge SHA 的独立成功状态；仓库自身也记录 `ci.status=unknown`，不能拿 PR-head run 替代 main SHA 证据 |
+| 活动分支 | `main`、`migration/minigame-local-head` |
+| 开放 PR / Issue | 0 / 0 |
+| GitHub 仓库 size 字段 | 410641 KiB，约 401 MiB；对当前两模块定位明显偏大 |
+
+## 三、证据等级
+
+本报告使用以下等级，避免把“有代码”误写成“已经可用”：
+
+| 等级 | 含义 |
+|---|---|
+| E0 | 文档、声明或计划 |
+| E1 | Schema、静态校验、fixture 或单元测试 |
+| E2 | 隔离环境本地集成验证 |
+| E3 | 真实本机配置或真实运行时 readback |
+| E4 | 精确提交 SHA 的远端 CI |
+| E5 | 外部项目 canary、安装包或真实长期运行证明 |
+
+PR #33 对其 head 的 CI 达到 E4；多数新增 Stage 3 能力只达到 E1～E2，不能由 PR 标题统一提升为 E4/E5。
+
+## 四、已经做对、应当保留的部分
+
+### 1. 项目定位已回正
+
+根 README、`PROJECT_POSITIONING.md` 与 `projects.json` 已把活动范围收敛为 Workflow Assistance + Observer。Open Design 不再是活动模块，MINIGAME 只被描述为历史/fixture/archive。
+
+### 2. “官方基准 + 用户覆盖层 + 项目覆盖层 + 临时状态隔离”是正确思路
+
+正确分层应为：
+
+| 层 | WORK-LAB 权限 |
+|---|---|
+| 官方基准 | 发现、读取版本与能力、兼容性验证；不复制成永久私有分叉 |
+| 用户覆盖层 | 仅管理用户明确拥有且官方稳定支持的规则、Skill、插件和偏好；可回读、可回滚 |
+| 项目覆盖层 | 管理项目规则、项目 Skill、边界、TaskPack、门禁和运行时目录 |
+| 会话/线程/缓存 | 只观测必要元数据，不接管、不同步 |
+| Desktop 私有内部状态 | 忽略；只能受控复现和报告漂移 |
+| 凭据/认证/Prompt/Response | 禁止采集和入库 |
+
+Codex v3 overlay 已有 managed block、CAS、冲突阻断、状态迁移、回滚和用户字段保留，属于当前较成熟的局部实现。Hermes 资产同步也采用精确托管子树、备份和保留用户能力的思路。
+
+### 3. Task Ledger 与单写者方向正确
+
+Task Ledger 已包含状态机、预算、依赖、checkpoint、lease、fence、外部副作用对账等有价值的基础结构。它适合继续作为自动执行的核心，不需要再建另一套任务系统。
+
+### 4. Observer 的信息架构和视觉源码方向基本正确
+
+静态 Web/Tauri 源码已经具备 Full/Compact × Dark/Light、液态玻璃 token、项目全景、任务、阻塞、Token、CI、治理和数据质量区域。视觉方向比最初黑白表格壳明显成熟，值得保留。
+
+### 5. CI 已有 path-aware Gate Plan 与稳定 aggregate 名称
+
+Gate Plan、模块依赖传播、aggregate 门禁和 Actions SHA pin 是正确基础。PR #33 的五个 job 确实成功，不是假 CI。
+
+## 五、P0 阻断问题
+
+### P0-1：事实状态不可信，TaskPack 完成度被标题放大
+
+合并后的 [`CURRENT_STATE.json`](https://github.com/DTALEX66/WORK-LAB/blob/699ab50f47da5dcf3e92c81bea72504b6425f475/00-governance/generated/CURRENT_STATE.json) 仍记录：
+
+- branch：`stage3/control-plane-20260808`；
+- head：`54eeb7f8134aa865a0642657da9251964e879447`；
+- CI：`unknown / not-provided`。
+
+而当前 main 是 `699ab50...`。`generate_current_state.py --check-current` 的 `projection_digest()` 明确排除了 `git` 和 `ci`，因此旧分支、旧 HEAD、无 main CI 仍可得到 `CURRENT_STATE_FRESHNESS_PASS`。
+
+同时：
+
+- PR/commit 标题写成 `WL3-000..820`；
+- Stage 3 graph 只有 `initialState=PENDING`，没有逐任务实时状态；
+- delivery manifest 又明确写着 `full-stage3-task-graph-completion`、durable worker、portable desktop 等仍 deferred。
+
+这不是代码失败，而是**完成声明与事实模型不一致**。
+
+修复要求：
+
+1. 保留不可自引用的 source/tree digest，但必须把当前 checkout 的 `HEAD^{tree}`、branch、remote-main、PR/run identity 放进独立 attestation；
+2. 增加逐任务 `PENDING / IMPLEMENTED_LOCAL / VERIFIED_LOCAL / CI_VERIFIED / LIVE_VERIFIED / DEFERRED / BLOCKED` 状态及 evidence refs；
+3. PR #33 重新定义为“Stage 3 foundation slice”，不得再被后续文档当作 WL3-000～820 全完成；
+4. main exact-SHA 无证据时必须显示 `UNVERIFIED_MAIN_CI`。
+
+### P0-2：Observer 仍有第二套事件库，不是单一事实源
+
+[`observer_store.py`](https://github.com/DTALEX66/WORK-LAB/blob/699ab50f47da5dcf3e92c81bea72504b6425f475/30-observer/work-lab-observer/src/observer_store.py) 持久化 `.hermes/task-runtime/observer/observer-events.jsonl`；Observer 服务的 `/api/dashboard` 由这份文件重建。Workflow 的 Telemetry Ledger 只被 SSE sidecar 读取，Observer 并未直接使用它作为 dashboard 权威来源。
+
+合同目录还把 `observer-event`、`observer-pricing`、`data-quality`、`dashboard-projection` 的 owner 设为 Observer。由此形成：
+
+1. Workflow Telemetry Ledger；
+2. Observer event store；
+3. bundled snapshot/fixture。
+
+这与“Workflow 唯一事实源、Observer 零复制只读”直接冲突。
+
+修复要求：只保留 Workflow-owned canonical ledger。Observer 只能：
+
+- 调用 Sidecar 的只读 snapshot/query/SSE；或
+- 以数据库只读连接方式查询同一个 canonical store。
+
+Observer 不再持久化事件、不拥有 pricing/data-quality 事实，只拥有 UI projection schema 和纯函数渲染。外观偏好可本机保存，但不能变成业务事实库。
+
+### P0-3：SSE 不是持续实时流
+
+[`sidecar.py`](https://github.com/DTALEX66/WORK-LAB/blob/699ab50f47da5dcf3e92c81bea72504b6425f475/10-workflow/workflow-assistance/scripts/workflow/sidecar.py) 的 `/api/v1/events` 会把当前事件一次性拼成 body，设置 `Content-Length`，写完后关闭连接。它是“带 SSE 格式的回放 GET”，不是持续事件流。
+
+EventSource 会反复重连，但只有重连时才能看到新数据，且没有心跳、阻塞等待、背压、连接生命周期或事件通知。当前测试只验证文本格式和 `Last-Event-ID`，没有验证连接持续存在并收到追加事件。
+
+修复要求：实现真实长连接 SSE；增加 heartbeat、cursor、断线续传、event retention、慢消费者上限、关机通知和“连接期间追加事件可被收到”的集成测试。
+
+### P0-4：唯一 Telemetry Ledger 无法承载 Token 监控
+
+[`telemetry_ledger.py`](https://github.com/DTALEX66/WORK-LAB/blob/699ab50f47da5dcf3e92c81bea72504b6425f475/10-workflow/workflow-assistance/scripts/workflow/telemetry_ledger.py) 把字符串片段 `token` 视为敏感字段，因此 `input_tokens`、`output_tokens`、`reasoning_tokens`、`cache_read_tokens` 等合法用量字段都会被拒绝。
+
+此外它：
+
+- 把 `project_id`、`sourceRef` 强制写成 `unknown`；
+- projection 只返回 event id/source/outcome，不返回用量；
+- JSONL append 没有跨进程锁、事务、fsync、损坏恢复和 schema migration；
+- 并发 append 可能产生重复 sequence 或丢写。
+
+当前测试使用的是 `usage_total`，恰好绕过了 `token` 过滤，且没有验证 projection 里真的能显示 Token。
+
+修复要求：把“认证 token/secret”与“token usage numeric metrics”分开；使用严格字段 allowlist。建议把 Task、Telemetry、CI observation、source quality 统一到 Workflow 自己的一份 SQLite WAL 数据库，Observer 只读查询；不再增加第三种存储。
+
+### P0-5：跨项目监控尚未实现，界面会制造过度确定性
+
+当前 `project-profiles.json` 只有 `work-lab` 和 `fixture-external`。没有真实 OS 项目、自动注册、项目发现或长期 collector。
+
+[`project_authority_dashboard()`](https://github.com/DTALEX66/WORK-LAB/blob/699ab50f47da5dcf3e92c81bea72504b6425f475/30-observer/work-lab-observer/src/observer_runtime.py) 还存在以下准确率问题：
+
+- 未识别事件状态被强制改成 `running`；
+- `agentPlatform` 固定为 `hermes`；
+- `branch` 固定为 `main`；
+- 每个项目 `evidenceCompleteness` 固定为 `complete`；
+- rules/adapters drift 固定 0，memory/context 全部固定 0；
+- CI 所有指标固定 0，同时 `dataQuality=exact`；
+- `sourceRefs=[]`；
+- 即使没有事件，projection 仍返回 `mode=LIVE`。
+
+这些值在视觉上很像真实监控，但并非源证据。**未知必须显示 unknown，不能显示 0、complete、exact 或 running。**
+
+修复要求：每个指标绑定 `sourceRef + observedAt + freshness + coverage + quality + collectorState`；无来源时值为 null/UNKNOWN。先用 WORK-LAB + 一个真实 OS 项目做双项目 canary，再扩展其他项目。
+
+### P0-6：自动循环执行仍是文档能力，不是运行能力
+
+- `growth_watcher.py` 明确写着“no live watcher is exposed”；
+- `ci_watcher.py` 只查询一次并写出 `next_observation_at`，不会按时间再次执行；
+- `sleep-mode` 是 Skill 文档，依赖 Hermes cron，没有仓库内平台中立 worker；
+- `run_taskpack_agent.py` 仍同步轮询 CI，默认最长 1200 秒，结束后超时失败；
+- Task Ledger 有 lease/fence 数据结构，但跨进程更新没有真正的数据库事务锁；
+- 没有一个长期进程负责恢复 zombie、唤醒 deferred task、续租、采集事件和推进下一任务。
+
+因此系统不能在你做其他项目时自动发现记忆污染、规则变化、双入口或 CI 卡住并持续处理。
+
+修复要求：只有一个 Workflow Worker/Sidecar 常驻进程；所有平台调度都经 Adapter。Hermes cron 可以是当前实现，但不能成为核心前提。队列必须区分 `DEFERRED_EXTERNAL`、`WAITING_APPROVAL`、`BLOCKED_POLICY` 和 `FAILED_PRODUCT`，CI 排队/平台故障不得消耗 writer lease，也不得四小时占住会话。
+
+## 六、P1 高优先问题
+
+### P1-1：平台唯一性只有分类器，没有真实发现器
+
+`platform_identity.py` 只消费调用方已准备好的 observations；测试全部是构造的 Windows 路径。仓库没有真实扫描 Start Menu、桌面快捷方式、App Execution Alias、PATH、包管理器、安装目录、启动参数与实际 config root 的 Windows probe。
+
+而且 resolver 先按调用方给出的 `logical_instance_id` 分组；如果两套 Codex 被预先标成不同 logical id，它们可能永远不会进入同一冲突组。任何 stale observation 又会优先返回 `STALE_SHORTCUT`，可能掩盖双安装或配置分裂。
+
+正确目标不是“只允许一个图标”，而是：每个平台只有一个 canonical logical instance；多个快捷方式可存在，但必须指向同一 executable + profile + config root。歧义时只报告和阻断 apply，绝不自动卸载。
+
+### P1-2：配置所有权有三个事实源
+
+当前至少存在：
+
+1. `config/config-ownership.json`；
+2. `config/managed-config-schema.yaml`；
+3. `sync_codex_global_assets.py` 内硬编码 `MANAGED_CONFIG`。
+
+三者字段和语义不完全一致。前者把 Hermes 外观语言、busy input 当用户托管字段；后者还包含 memory、session auto prune；Codex 又管理自己的三个字段。长期一定会漂移。
+
+应建立一个 canonical ownership registry，再生成 Hermes/Codex/未来平台 overlay。外观、主题等非关键项默认 `USER_OWNED/IGNORE`，除非用户显式选择；执行边界、规则、Skill、项目数据约束才是核心托管对象。
+
+### P1-3：兼容性仍被静态版本范围锁住
+
+`workflow-manifest.yaml` 固定 `hermes-agent>=0.19,<0.21` 和 config `>=33,<35`。这类范围可以作为“已验证窗口”，但不能作为永久运行阻断条件。
+
+应改为 capability probe：满足必要配置键、命令、Skill 发现根和 hook 能力即可运行；版本只用于报告“已验证/未验证”，未知新版本进入兼容性 canary，而不是直接复制旧结构或永久锁死。
+
+### P1-4：Adapter 的“deep”支持被高估
+
+registry 把 Hermes、Codex、CC Switch、GitHub 均标记为 deep，但 detection 都是 `UNVERIFIED`，Codex/CC Switch/GitHub provenance 还是 quarantined。Adapter conformance 测试测试的是 `FakeAdapter`，不是四个真实 Adapter。
+
+当前是“若干平台专用脚本 + manifest”，还不是统一 Adapter 实现。Cursor、Claude Code、WorkBuddy 目前保持 manifest-only 是诚实且正确的。
+
+### P1-5：记忆、成长 Skill 与污染治理只有离线模型
+
+`growth_watcher.py`、`memory_contamination.py` 对分层、隔离、晋级和七种污染场景的规则设计有价值，但没有读取 Hermes/Codex 的真实记忆目录、没有适配平台各自的存储语义、没有 TTL/来源撤销运行链，也没有与 Task/Telemetry Ledger 联动。
+
+其中版本比较仍是普通字符串比较，日期 expiry 也没有真正按时间验证，不能用于真实版本/价格过期判断。应把它们保留为 policy/eval，不得宣传成已经自动治理记忆。
+
+### P1-6：CI 有成功证据，但效率治理尚未落地
+
+当前 workflow：
+
+- 没有 `concurrency` / `cancel-in-progress`，容易同分支重复排队；
+- `push` 与 `pull_request` 全开，可能制造重复 runs；
+- 没有 `timeout-minutes`；
+- workflow job 串行执行大量 Python 命令；
+- 仅 Ubuntu，和 README 所称 Windows/Linux CI 不一致；
+- Observer job 未显式安装其 Python 依赖，依赖 runner 预装环境；
+- 无依赖缓存；
+- `ci_watcher.py` 没有接入 runner 的等待状态机。
+
+应把快速静态门禁、模块测试、Windows canary、Tauri build/release 分层；普通脚本改动只跑受影响 gate，release 才跑完整矩阵。对 exact SHA 只接受一个 canonical run；重试只重跑失败 job。
+
+### P1-7：Observer UI 源码不错，但运行与安全未闭环
+
+优点：四视图、暗/亮主题、12-column/full 与 440px compact、真实 glass token、状态不只依赖颜色、reduced-motion 和响应式都已考虑。
+
+问题：
+
+- Tauri 不会自动启动 Workflow Sidecar 或 Observer service，双击后很可能只显示 bundled snapshot；
+- Windows portable build、重启 readback、WebView 行为和人工视觉验收未完成；
+- `tauri.conf.json` 的 CSP 为 null；
+- Sidecar/Observer 对任意 loopback Origin 开 CORS，且没有会话 nonce；
+- Python server-rendered UI 与 `web/` Tauri UI 是两套渲染实现，易漂移；
+- sidebar 有 `#ci`、`#quality`，实际 section 合并成 `#health`，存在失效导航；
+- fixture 中仍内嵌大量示例项目与 Token 数据，生产模式必须高可见标识并禁止默认冒充 live。
+
+建议保留 `web/` + Tauri 为唯一 UI；Python Observer 页面退役为调试兼容入口，最终由同一 projection contract 驱动。
+
+### P1-8：Token Monitor 是重复 UI，应吸收采集器而不是保留第二个产品
+
+`apps/token-monitor-desktop` 和 Tkinter `token_monitor.py` 与 Observer 的 Token 页面功能重叠。其“只统计显式 usage、不按字符估算”的解析逻辑值得保留，但 UI 不应继续独立发展。
+
+正确做法：提取为 Workflow-owned headless usage collector，向 canonical ledger 写标准化数字；Observer 只显示。完成迁移后，旧 Token Monitor UI 归档或标记 developer diagnostic。
+
+### P1-9：仓库偏大且仍有历史噪声
+
+约 401 MiB 对两个活动模块过大；`migration/minigame-local-head` 仍存在；MINIGAME fixture、旧设计内容、重复 UI、历史 TaskPack/截图/二进制很可能持续放大 clone、CI 和审计成本。
+
+先做只读 top-N blob 与重复内容报告；把必须保留的历史迁入 archive release/LFS/独立归档仓库。历史重写必须单独批准，不能在功能任务中顺手执行。
+
+## 七、原始需求达成矩阵
+
+| 原始要求 | 当前状态 | 证据等级 | 结论 |
+|---|---|---:|---|
+| 管理全局规则、Skill、插件、配置 | Hermes/Codex 有部分同步器和清单 | E2，部分旧 E3 | 部分达到，所有权仍分裂 |
+| 官方更新不覆盖用户关键配置 | Codex overlay 较强；Hermes 采用保守同步 | E2～E3 | 方向正确，尚缺自动升级 canary |
+| 软件唯一入口、唯一配置 | 有 identity/reconciler 分类器 | E1 | 未达到，无真实 Windows 发现/处置 |
+| 客户端中立、可替换 Agent | schema/manifest 已中立，真实实现仍偏 Hermes/Codex | E1～E2 | 部分达到 |
+| 自动发现 Skill/记忆成长与污染 | 离线 policy/eval | E1 | 未达到 |
+| 自动循环、失败恢复、持续推进 | Task Ledger + runner + sleep-mode 文档 | E1～E2 | 未达到长期自动运行 |
+| 跨项目任务/工作监控 | UI schema 和 fixture | E1 | 未达到真实跨项目采集 |
+| Token/流量/成本准确监控 | 旧 Token collector 可解析部分 usage；新 Ledger 不兼容 | E1～E2 | 未集成，不能保证完整准确 |
+| Observer 严格只读 | 外部 mutation 为只读，但仍有 Observer-owned store | E2 | 操作只读，事实源不唯一 |
+| 不需要模型搬运数据 | 目标正确，采集器尚未闭环 | E1 | 尚未达到 |
+| 实时显示 | 一次性 SSE replay + GET refresh | E1～E2 | 不是真实时 |
+| Apple 液态玻璃、深浅色、大小窗 | 源码已实现 | E2 | 视觉源码达到，安装运行未验收 |
+| exact-SHA 高效 CI | PR-head CI 成功 | E4 | 准确性部分达到，效率和 main attestation 不足 |
+
+**总判断：原始目标尚未达成。当前完成的是“可继续建设的正确底座”，不是最终可用结果。**
+
+## 八、推荐的最终简化架构
+
+不要增加模块，仍维持两个：
+
+```text
+各项目 / Agent / GitHub / usage sources
+            ↓ 只读 probes + approved actions
+Workflow Assistance（唯一主动控制面）
+  - Platform/Config/Skill/Memory Adapters
+  - Durable Worker + Task Ledger
+  - Canonical SQLite Ledger
+  - CI watcher / usage collector / project registry
+  - loopback snapshot + real SSE
+            ↓ 只读 API
+WORK-LAB Observer
+  - Full / Compact
+  - Dark / Light
+  - 不执行、不批准、不重试、不写业务数据
+```
+
+每个被监控项目只需要一个极小的 project profile/registration（项目 ID、Git root、允许读取的公开源、门禁身份）；不需要复制整套 WORK-LAB 配置。全局控制面配置一次，项目只登记差异。
+
+模型不参与常规采集、计数、去重、状态机、规则 hash、CI 查询或 UI projection。模型只可作为可选解释器生成摘要，而且摘要不得覆盖原始事实。
+
+## 九、下一阶段只发一个任务包
+
+不要再次给 Hermes 同时发送多个重叠包。下一包建议固定为：
+
+`WORK-LAB-STAGE-3.1-TRUTH-RUNTIME-CONVERGENCE`
+
+范围只包括：
+
+1. 修正 CURRENT_STATE、Task graph 与 PR #33 完成声明；
+2. 建立 Workflow-owned 唯一 canonical ledger；
+3. 把 Task、Git/CI、usage 四类真实 collector 接入；
+4. 用 WORK-LAB + 一个真实 OS 项目完成双项目 canary；
+5. 实现真正 SSE，Observer 删除业务 event store，直接只读 projection；
+6. UI 只保留一套 Web/Tauri 实现，完成 Full/Compact × Dark/Light；
+7. 增加 Windows CI、concurrency、timeout、缓存、exact-SHA run 去重；
+8. 生成 Windows portable candidate，但不发布；
+9. 所有 unknown/null/quality/sourceRef/freshness 负控通过后才结束。
+
+本包明确不做：
+
+- 新 Agent；
+- Open Design/MINIGAME；
+- 新插件市场；
+- 自动卸载 Codex/Hermes；
+- 自动改官方私有状态；
+- 全部未来 Agent Adapter；
+- Git 历史重写；
+- 商业发布。
+
+平台唯一性、统一 ownership registry、真实记忆/Skill 成长监测作为 Stage 3.2，在 Stage 3.1 的唯一事实源和 worker 真正跑通后再接入。否则只会继续产生更多不能运行的 Schema。
+
+## 十、验收红线
+
+以下任一未满足，不得称为下一阶段完成：
+
+1. main checkout 的 branch/tree/source/CI attestation 不一致；
+2. Observer 仍保留第二套业务 event store；
+3. SSE 连接追加事件测试不通过；
+4. `input_tokens/output_tokens/cache/reasoning` 不能进入 canonical ledger；
+5. 无来源数据仍显示 0、exact、complete、running 或 LIVE；
+6. OS 项目没有真实 canary；
+7. 后台重启后不能从 Task Ledger 恢复；
+8. CI queued-no-job 时仍占着 writer 或反复触发新 run；
+9. Tauri 双击启动后只能看 fixture/snapshot；
+10. Windows portable build 与人工视觉验收缺失；
+11. 任何凭据、Prompt/Response、Desktop 私有状态进入仓库或 ledger；
+12. 把测试 FakeAdapter 的通过写成真实平台已支持。
+
+## 十一、一句话决策
+
+**WORK-LAB 值得继续，但现在应从“不断补合同和任务包”切换到“事实修正 → 唯一数据源 → 真实采集 → 持续 Worker → Observer 直读 → 双项目 canary”。只有这条链跑通，项目才真正开始帮助其他项目。**

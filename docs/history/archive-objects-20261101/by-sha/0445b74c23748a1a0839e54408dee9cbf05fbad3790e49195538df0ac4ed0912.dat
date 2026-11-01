@@ -1,0 +1,303 @@
+# WORK-LAB 云端分支、交接与错误记录审计
+审计日期：2026-09-15（UTC）  
+候选：r4-recovery-exec @ 294058680fcf898b137e160550187f272157e8de  
+性质：只读云端审计；不是任务授权文件，不修改仓库或本机软件。
+
+## 结论
+云端有实质更新，最新候选的 12 个检查全部成功；但“规则源已一致、ChatGPT/Codex 已全面适配、独立实机验收已完成”尚不能成立。
+
+本轮最需要修的是 **Codex 全局指导和技能仍推荐旧 .hermes 项目数据根、根规则仍限制用户选择推理档、活跃标准之间存在 fail-open/fail-closed 冲突**。这些属于当前 Hermes → ChatGPT/Codex 配置治理范围。其余 WORK-LAB 功能开发继续后置，不应借本次审计扩大成全仓重构。
+
+## 1. 覆盖与证据边界
+- 列出全部 55 个远端分支，并逐一用 GitHub compare 对比其 tip 与候选；末次重读分支列表无变化。
+- 读取候选完整递归树，API truncated=false，共 1,385 个树条目（含目录，不是文件数）。
+- 取得 73 份选定的权威、交接、错误、配置及 Codex 资产文件全文，含 61 份 Markdown；进行了目标条款检索与上下文审阅。另读 Hermes 结果分类、同步、启动相关代码及新增提交差分。
+- Codex 资产目录中 20 个 Markdown/JSON/rules 文件全部纳入，包括 14 个 SKILL.md。插件运行环境不在这些源文件中，不冒充已审计全部已安装插件。
+- 检查 c1c6a164 → 候选的 6 个新增提交、43 个变更文件；读取 8 条相关旧分支 tip 的提交与文件变化，追查交接内容继承情况。
+- 检查候选 exact-SHA 的 12 个 check runs；执行 5 个离线纯函数分类样例。
+- 未逐行审完 55 棵分支完整源码、所有历史归档或所有分叉提交；未取得本机被忽略的部署回执，未连接 Windows 实机，未调用模型。
+- 因此这是全分支关系扫描、重点文件内容审计及有限代码复核，不是所有功能与本机软件的最终验收。
+
+## 2. 云端真实状态
+| 项 | 当前观察 |
+|---|---|
+| main | e5231f0f605d1515ed12958267b394c9de1da20c |
+| r4-recovery-exec | 294058680fcf898b137e160550187f272157e8de |
+| r4 相对 main | ahead 98 / behind 0 |
+| PR #123 | 仍 open；head=c6b7e8f6468281325d26524e3762607c6fa7a4ce |
+| r4 相对 #123 head | ahead 56 / behind 0：包含其提交历史 |
+| 新治理 PR | 本次 open PR 列表未见；只见 #123 |
+| 当前候选 CI | 12/12 completed + success |
+| 本地工作树、已部署版本 | 本轮没有直接观察，不作 clean/live 等结论 |
+
+[分支列表](https://github.com/DTALEX66/WORK-LAB/branches) · [PR #123](https://github.com/DTALEX66/WORK-LAB/pull/123) · [main 与 r4 对比](https://github.com/DTALEX66/WORK-LAB/compare/e5231f0f605d1515ed12958267b394c9de1da20c...294058680fcf898b137e160550187f272157e8de) · [CI 运行一](https://github.com/DTALEX66/WORK-LAB/actions/runs/34878065881) · [CI 运行二](https://github.com/DTALEX66/WORK-LAB/actions/runs/34878065895)
+
+12 个检查：aggregate、observer、integration、workflow-assistance、supply-chain-security、token-monitor、wlr060-aggregate、config-compiler、capsule-cli、observer-readonly、schema-fixtures、gate-plan。
+
+它们证明本 SHA 对应云端作业成功，不等于 Windows 部署、界面内容、原生取消、全部 38 个本地门禁均在本 SHA 重验成功。
+
+### 两轮治理实际落点
+目前两轮新增成果在同一条 r4 提交链，未发现两个单独的近期远端治理分支。
+| 提交 | 内容 | 证据层 |
+|---|---|---|
+| 763da680 | DSH→Hermes 五维基线成果、同步保护、结果分类、规则修复及交接 | 代码与执行者报告 |
+| 8fecd028 | Hermes 交接上传记录修订 | 文档 |
+| 401d88c3 | Git 输出 UTF-8 解码根因修复 | 代码 |
+| 725210da | BH-E9～E11 与干净树验证记录 | 文档 |
+| b4a18c4f | Hermes→Codex：AGENTS 7 处路径、型号登记 | 两个仓内文件 |
+| 29405868 | CURRENT_STATE JSON/MD 重生成 | 派生状态 |
+
+[六提交差分](https://github.com/DTALEX66/WORK-LAB/compare/c1c6a16454c06f4b90acf7e7913cc7dc62be3802...294058680fcf898b137e160550187f272157e8de)
+
+## 3. 当前直接影响 Codex 适配的发现
+
+### F01｜高优先级：Codex 待部署源仍引导旧数据根
+[integrations/executors/codex/global-guidance.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/global-guidance.md) 明确推荐 .hermes/task-runtime/ 与 .hermes/task-artifacts/，还要求读写 .hermes/skill-call-index.json。
+同类指令出现在 project-data-boundary、safe-project-execution、windows-development 等技能；observer-delivery 与其引用文件仍使用旧 runtime 路径。
+
+这不是只在历史报告里出现旧字符串，而是面向执行的现行指导。即使 Hermes 自己的 SOUL 已修正，Codex 覆盖层再次同步仍可能重引入错误写入习惯。云端源存在问题已确认，本机是否仍加载它们需要 Hermes 读回。
+
+处理：按当前项目声明修复现行指令，并允许其他项目使用自己的路径合同；不要把 WORK-LAB 的固定路径强加给其他项目。历史案例加历史标记，不批量替换全部历史路径。发布后核对实际加载内容与合成任务输出位置。
+
+### F02｜高优先级：规则仍限制用户模型/推理档选择
+[AGENTS.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/AGENTS.md) 仍要求 reasoning_effort 不低于官方默认，并写“empty = medium”；[docs/decisions/global-execution-standard.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/decisions/global-execution-standard.md) 仍有“全功率／模型官方默认”。
+与此同时 [integrations/executors/codex/skills/workflow-assistance-self-improvement/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-self-improvement/SKILL.md) 已明确 live 用户值优先、不得为匹配文档而覆盖。
+
+裁决建议：保留五维基线，但第 5 维改成“原生能力可用、参数受支持、用户选择得到保留、无未经授权的限速或回退”。low、medium、high 本身不作为故障。型号登记是带日期的能力观察，不是强制默认。不得为修文档而重新切换用户模型或档位。
+
+### F03｜高优先级：全局标准将普通检查与安全门禁混为一谈
+[docs/decisions/global-execution-standard.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/decisions/global-execution-standard.md) 写“所有检查 fail-open，失败不阻塞”，并声明高优先级；[docs/decisions/LESSONS_LEARNED.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/decisions/LESSONS_LEARNED.md) 有相同概括。
+这与 [config/config-ownership.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/config/config-ownership.json) 对未知所有权、原生 curator 输出的拒绝覆盖要求，以及 [config/codex-enhancement-boundary.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/config/codex-enhancement-boundary.json) 的安全发布要求冲突。
+
+处理：普通建议、可选质量提示可以降级继续；权限、凭据、越界、并发覆盖、发布内容校验不能因超时或失败自动放行。保持按影响面验证，不新建一套门禁系统。
+
+### F04｜高优先级：顶层入口未完全修好
+[AGENTS.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/AGENTS.md) 仍将 10-workflow/workflow-assistance 列为“exactly”的活跃模块根，并推荐不存在的旧 quality gate 命令。树中实际脚本是 services/orchestration/run_quality_gate.py；Manifest 与 CURRENT_STATE 使用 packages/client-neutral-core、apps/observer。
+
+处理：只修当前执行入口及相关引用，不重新做目录迁移。已经修过 7 处不等于剩余引用全部正确。
+
+### F05｜中优先级：Codex 完整适配缺少云端可审阅的收尾证据
+最新两个 Codex 相关提交可见的是 AGENTS、models-registry 和 CURRENT_STATE。未找到本轮 WL-BASELINE-CODEX 新交接文件或逐项插件/技能裁决与部署回执的云端脱敏索引；现有 Codex 专门交接仍是 8 月文件。
+
+不能从“没改插件文件”推断“没检查插件”——全部 KEEP 也可能正确；但当前无法在云端核验覆盖率。需补已有交接入口：版本/入口、官方差分、用户字段保留、个性化、14 技能、插件/MCP/hooks、逐项 KEEP/UPDATE/REMOVE/HOLD、实际加载与行为验证、限制。不应上传私有配置、原始会话或完整日志。
+
+### F06｜中优先级：方法技能含需要收窄的费用与权限假设
+[integrations/executors/codex/skills/workflow-assistance-verification-hardening/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-verification-hardening/SKILL.md) 是“如何构建”方法技能，不是已运行插件。它建议高风险回答调用不同 provider 付费复核，以及“三次批准后免确认”模式，未在相应步骤明确限定当前授权、费用边界与原生权限机制。
+
+不得因此声称已经发生扣费或权限绕过。建议把这些改为显式授权、任务触发的可选方法；不为新模型默认加一个常驻评审模型，也不把历史批准次数当未来授权。是否保留该技能由真实使用场景决定，不按“更强模型不需要技能”一刀切删除。
+
+### F07｜中优先级：型号登记混入本机个人绝对路径
+[config/models-registry.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/config/models-registry.json) 的来源描述含用户主目录绝对路径，且顶层 generated_at 仍为 8 月，而新 provider 观察日期为 9 月。
+处理：公开登记使用 <CODEX_HOME>/models_cache.json 等占位；区分缓存观察、官方能力声明、当前用户选择。此处不是 API Key 泄露证据。
+
+## 4. Hermes 交接：真实进展与尚未关闭
+
+依据 [taskpacks/current/WORK-LAB-WL-BASELINE-HERMES-HANDOFF-2026-09-14.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-WL-BASELINE-HERMES-HANDOFF-2026-09-14.md)：
+- 执行者报告 KEEP v0.21.2，未盲目追主干；报告了 21/21 受管基线收敛、两处技能发布与读回。
+- 原先“builtin 标签意味着定制未生效”的结论已由 skills diff/list-modified 证据更正；不得继续把标签当未生效证据。
+- 辅助槽从原先 17 更正为 19；根 profile 与 deepseek-review 有独立模型、技能与 SOUL，应分别记录。
+- Python Git 输出解码、同步器 plan 输出目录、结果分类优先级有实际代码修正。
+- 独立 H6 尚未完成；原生取消未证实、curator 与受管目录长期所有权冲突未解、hook 批准哈希漂移仍登记。
+- “四层验证”的行为层主要为规则语句在位检查，桌面层明确界面内容 NOT_ASSERTED；这些不应扩写成全部真实任务行为已验收。
+- 技能常驻描述报告 131 条约 46.9KB，单 SKILL 正文小于 10KB 不能单独证明总启动上下文轻。应明确常驻与按需的测量口径，不能直接把全部技能正文总量当常驻。
+
+### F08｜交接自身当前状态互相冲突
+§7.1 若干项写“影响下一包：是”，§11 又写第 2 包前置满足；云端 CI 仍写 EXACT_SHA_CI_UNVERIFIED，但本次已观察新候选 CI 成功。
+§11 说 AGENTS 未编辑、共享规则 BLOCKED_ACTIVATION，而后继 b4a18c4f 已修改根 AGENTS。这些可以是历史时点事实，但必须绑定各自 SHA，不能同时当“当前”。
+
+需补一张当前处置表：具体受限能力、替代路径、是否阻止当前 Codex 任务、负责人、验证证据。未知费用禁止“免费”宣传；取消未知禁止承诺可取消，不必无差别阻断所有短任务。独立审核完成与否单列。
+
+### F09｜所有权文档中的 adoption 命令已落后代码
+config-ownership.json 仍指导 --adopt-live-baseline，而同步器当前公开参数为 --adopt-baseline、--adopt-target TARGET@SHA256、--adopt-operator。
+代码把认领基线与发布分开是进步；文档应同步实际参数，避免下一位执行者照旧命令失败。不能借 adoption 自动认可 live 内容所有权。
+
+### F10｜结果分类仍有两个可复现边界
+对 exact-SHA 的纯函数进行 5 个离线样例，没有运行 Hermes 或调用 API：
+| 输入关键部分 | 实际输出 | 结论 |
+|---|---|---|
+| exit=1 + structured completed + acceptance=true | FAILURE | 旧非零退出被覆盖问题已修 |
+| success=true + status=FAILED | UNKNOWN | 此类结构化冲突已修 |
+| 无 runtime_version、无 structured | UNKNOWN | 不再默认为已校准版本 |
+| success=false + status=completed + acceptance=true | SUCCESS | 相反方向的结构化冲突漏判 |
+| structured={}，exit=0，无验收 | FAILURE | 缺结果被判失败，而非 UNKNOWN |
+
+[integrations/executors/hermes/hermes_task_result.py](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/hermes/hermes_task_result.py)
+
+后两项是辅助模块边界，不证明当前 Hermes CLI 已实际触发。交接另外承认“结构化成功可覆盖文本终端错误”；只有当结构化结果来源、run/task 关联与完整性可靠时该优先级才有依据，不能靠两条契约测试证明信任合理。登记给外部维护者的小修，不让当前 Hermes 自己修改自身运行保护，也不扩大成重造 runtime。
+
+## 5. 错误文档与历史继承
+
+### F11｜错误记录分散且“current”指针过期
+- error-ledger.json：errors 86 条、另有 entries 4 条；generated_at 仍 2026-08-15。
+- 9 月 Hermes 的 BH-E1～BH-E11、E-1～E-6 已在新交接披露，但中央 ledger 未索引这些编号。
+- CURRENT_EXECUTION_BASELINE 仍绑定 bf52df0 / tree=pending-refresh / 9 月 5 日 R4。
+- taskpack-authority-index 仍指 8 月 25 日 WLR；新的软件维护包与该入口关系没有形成可核验的当前导航。
+- migration-status 明示 HISTORICAL_SNAPSHOT_STALE_FOR_CURRENT_TREE，不应继续拿内部 PASS 当迁移现状。
+- CURRENT_STATE 明确是 NO_HEAD_OR_BRANCH_CLAIM、live_readback=not-run 的派生投影，这是证据分层，不应强改成实机 PASS。
+
+处理：更新既有当前索引与追加引用，保留历史正文。只补本轮治理交接所需最小导航；全面任务清算、语言迁移与架构治理后置。
+
+### F12｜错误教训本身也可能变成过期强制规则
+ERR-045 把 low 视为应自动修到 medium，属于过去处置，不能覆盖最新用户选择。
+LESSONS 中“每个修改 Python 文件都立即单文件测试”、全局“最后全量门禁”等要求应注明触发范围，避免把目录迁移事故的补救要求变成每轮任务无差别开销。
+BH-E9/E10 已诚实披露“脏树通过、干净树失败”与先推后验；最终干净树本地 38/38 绑定 401d88c3 的树，不应泛化到后续所有 SHA。
+补交接后继续沿用内容指纹、干净候选和影响面验证即可，不为 BOM 改写已推送历史。
+
+### F13｜旧 Codex 商店更新结论已有正式更正，但旧文件仍可被单独读到
+8 月 12 日文档把社区 issue 写成“官方已知 bug”；8 月 13 日调查明确降级为历史假设，不能证明本机同因。
+[docs/current/workflow-assistance/workflow/codex-desktop-update-state-investigation-2026-08-13.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/codex-desktop-update-state-investigation-2026-08-13.md)
+
+应在旧文件开头增加被取代指针，并从当前入口只引新裁决。不要据旧报告把当前模型/档位变化归因商店更新，更不能推断必须强制 high。
+
+### F14｜跨分支交接未发现所抽查内容丢失，但不能批量删分支
+docs/dsh-2.0.2-handoff-0824 与 docs/handoff-final-0822 在 Git 历史上分叉；它们新增的“2026-08-24 覆盖安装”和“2026-08-22 终版追加”在当前 DSH 交接均已存在。
+旧 Codex 更新调查也已存在于当前树，并有后续纠偏文件。
+这证明至少这些交接内容已经继承，不能因 divergent 就要求重新合并。完整等价性、其他独有变化仍未证明，所有旧分支保持待裁决，不能标 SAFE_TO_DELETE。
+
+## 6. 当前应执行的收敛顺序
+1. **Hermes 继续维护 ChatGPT/Codex**：修 F01～F04 的受管源与相关现行条款；模型/档位由用户选择；保留有效技能和安全边界。
+2. 同步本轮应管理的源、核对实际加载及恢复能力；已授权范围内执行，不反复问已授权动作。存在真实超范围操作才单列。
+3. 做一次合成读/改/验证/交付与输出边界检查；重启后核对用户选择未被治理脚本重写。采用当前官方支持的测试方式，必要临时选模型但不覆盖之后的用户变化。
+4. 补 Codex 完整覆盖矩阵、候选 SHA/内容摘要、部署回执摘要与局限；插件、MCP 等 OBSERVE 资产只审计和提出有依据动作，不以“适配”绕过所有权。
+5. 更新现有交接入口与错误索引。独立验收在不受候选规则影响的环境完成，不能仅换一个会话就声称隔离。
+6. Hermes 遗留模块的 F09/F10 交外部维护者处理或登记；不由当前 Hermes 自改，不启动全面 DSH 升级任务。
+7. 软件维护收敛后再考虑新 PR、主线归并及旧分支清理。PR #123 不应单独作为完整新成果候选，当前未执行任何 PR/merge/delete 操作。
+
+验收退出应分别报告：代码修复、资产部署、原生加载、行为验证、独立审核、云端 CI。任何一层未证实都保留 UNKNOWN/PARTIAL，而不是笼统“没有任何问题”。
+
+## 附录 A：全部分支关系
+数字为“r4 相对该分支领先 / 该分支独有提交”。分叉数字是提交图关系，不是未合入文件数量；可能存在 squash、重放或内容已吸收。
+| 分支 | tip | 对 r4 的关系 | 提交数 |
+|---|---|---|---|
+| chore/ci-checkout-v7 | 7e9ed2ad | DIVERGED：内容归并待逐项裁决 | 492 / 217 |
+| chore/current-state-05fce1e | d22e6e3c | DIVERGED：内容归并待逐项裁决 | 492 / 206 |
+| chore/cutover-transferred-modules | fc75bea8 | DIVERGED：内容归并待逐项裁决 | 492 / 208 |
+| chore/day-closeout-2026-08-12 | 294a6ddc | DIVERGED：内容归并待逐项裁决 | 492 / 224 |
+| chore/delivery-summary-error-ledger-2026-08-11 | 3545fd5c | DIVERGED：内容归并待逐项裁决 | 492 / 210 |
+| chore/docs-tidy-upstream-2026-08-12 | 174c8f52 | DIVERGED：内容归并待逐项裁决 | 492 / 222 |
+| chore/error-ledger-45-46 | f668ad7b | DIVERGED：内容归并待逐项裁决 | 492 / 214 |
+| chore/experience-freeze-2026-08-12 | 13271386 | DIVERGED：内容归并待逐项裁决 | 492 / 226 |
+| chore/regenerate-current-state-b9a7e1a | 360fad01 | DIVERGED：内容归并待逐项裁决 | 492 / 201 |
+| chore/remove-transferred-module-references | 028154d5 | DIVERGED：内容归并待逐项裁决 | 492 / 207 |
+| docs/agent-workflow-enhancements | 808a316b | DIVERGED：内容归并待逐项裁决 | 492 / 229 |
+| docs/artifact-recovery-20260812 | e8e2790f | DIVERGED：内容归并待逐项裁决 | 492 / 227 |
+| docs/codex-performance-diagnosis | 7a7b1978 | DIVERGED：内容归并待逐项裁决 | 492 / 206 |
+| docs/codex-store-update-behavior | 6193b3b1 | DIVERGED：内容归并待逐项裁决 | 492 / 229 |
+| docs/correct-local-config-claims-2026-08-12 | 6f561d9a | DIVERGED：内容归并待逐项裁决 | 492 / 219 |
+| docs/drift-fix-20260812 | fad85ab2 | DIVERGED：内容归并待逐项裁决 | 492 / 226 |
+| docs/dsh-2.0.2-handoff-0824 | 018ccca3 | DIVERGED：内容归并待逐项裁决 | 122 / 3 |
+| docs/dsh-handoff-0819 | 40b4b106 | r4 已包含其提交历史 | 154 / 0 |
+| docs/dual-entry-and-approval-update | 68bc0ad0 | DIVERGED：内容归并待逐项裁决 | 492 / 204 |
+| docs/fix-managed-assets-drift-2026-08-12 | a1b54467 | DIVERGED：内容归并待逐项裁决 | 492 / 220 |
+| docs/handoff-20260811-final | c5b0b739 | DIVERGED：内容归并待逐项裁决 | 492 / 218 |
+| docs/handoff-final-0822 | 7e853f8a | DIVERGED：内容归并待逐项裁决 | 157 / 1 |
+| docs/migration-archive-retirement | 192b25ff | DIVERGED：内容归并待逐项裁决 | 492 / 198 |
+| docs/observer-delivery-lineage | 9b366b35 | DIVERGED：内容归并待逐项裁决 | 492 / 265 |
+| docs/taskpack-reconciliation-20260810 | 323633b8 | DIVERGED：内容归并待逐项裁决 | 492 / 202 |
+| feat/cc2-observer-command-center | 3b788575 | DIVERGED：内容归并待逐项裁决 | 492 / 281 |
+| feat/dag-ready-tasks | 4c15f0b1 | DIVERGED：内容归并待逐项裁决 | 492 / 231 |
+| feat/deepseek-stage3-continuation-2026-08-11 | 409f4ade | DIVERGED：内容归并待逐项裁决 | 492 / 209 |
+| feat/hash-noise-reduction | 1ce5cb13 | DIVERGED：内容归并待逐项裁决 | 492 / 230 |
+| feat/observer-hardening | 51792e5a | DIVERGED：内容归并待逐项裁决 | 492 / 217 |
+| feat/observer-truthful-evidence-recovery | 992e62b1 | DIVERGED：内容归并待逐项裁决 | 492 / 263 |
+| feat/open-design-integration-skill | ae560bdf | DIVERGED：内容归并待逐项裁决 | 492 / 214 |
+| feat/openhuman-workflow-integration | 8873142a | DIVERGED：内容归并待逐项裁决 | 492 / 199 |
+| feat/self-improvement-lifecycle | f956ac21 | DIVERGED：内容归并待逐项裁决 | 492 / 203 |
+| feat/skill-absorption | 8cdce893 | DIVERGED：内容归并待逐项裁决 | 492 / 217 |
+| feat/skill-absorption-observer-delivery-2026-08-12 | b8c8e006 | DIVERGED：内容归并待逐项裁决 | 492 / 221 |
+| feat/user-environment-profile | 0116edf8 | DIVERGED：内容归并待逐项裁决 | 492 / 203 |
+| feat/verification-hardening-skill-2026-08-12 | 19eb1d0d | DIVERGED：内容归并待逐项裁决 | 492 / 223 |
+| feat/wl3-growth-watcher-chain | db9e8395 | DIVERGED：内容归并待逐项裁决 | 492 / 194 |
+| feat/wl3-master-2.0-local-implementation | 70dd414a | DIVERGED：内容归并待逐项裁决 | 492 / 200 |
+| feat/wl-dsh-001 | 90bc769e | DIVERGED：内容归并待逐项裁决 | 492 / 287 |
+| feat/wl-shell-portability-harden | 7f566933 | DIVERGED：内容归并待逐项裁决 | 492 / 197 |
+| feat/workflow-enhancements-2345 | 93e8dc7d | DIVERGED：内容归并待逐项裁决 | 492 / 232 |
+| feat/workspace-active-project-discovery | 65dbcd81 | DIVERGED：内容归并待逐项裁决 | 492 / 211 |
+| fix/audit-prevention-controls-20260813 | 3561ed55 | DIVERGED：内容归并待逐项裁决 | 492 / 236 |
+| fix/codex-launcher-and-dashboard-freshness | a686fb10 | DIVERGED：内容归并待逐项裁决 | 492 / 211 |
+| fix/current-state-cc7a6670 | d18cabac | DIVERGED：内容归并待逐项裁决 | 492 / 196 |
+| fix/current-state-main-head | 446eca1a | DIVERGED：内容归并待逐项裁决 | 492 / 193 |
+| fix/observer-endpoint-contracts | 973e148f | DIVERGED：内容归并待逐项裁决 | 492 / 268 |
+| fix/observer-runtime-continuity-truth | 145e70cf | DIVERGED：内容归并待逐项裁决 | 492 / 264 |
+| main | e5231f0f | r4 已包含其提交历史 | 98 / 0 |
+| migration/minigame-local-head | ddd1ee18 | r4 已包含其提交历史 | 517 / 0 |
+| migration/wl-directory-convergence-r1 | c6b7e8f6 | r4 已包含其提交历史 | 56 / 0 |
+| r4-recovery-exec | 29405868 | 本次审计候选 | 0 / 0 |
+| revert-open-design-boundary | f184ace5 | DIVERGED：内容归并待逐项裁决 | 492 / 219 |
+
+## 附录 B：已取得全文的重点文件
+下列是获取与扫描清单，不代表每份历史文档中的每条主张均已实机复验。
+- [.project/governance/generated/CURRENT_EXECUTION_BASELINE.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/.project/governance/generated/CURRENT_EXECUTION_BASELINE.json)
+- [.project/governance/generated/CURRENT_STATE.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/.project/governance/generated/CURRENT_STATE.json)
+- [.project/governance/taskpack-authority-index.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/.project/governance/taskpack-authority-index.json)
+- [config/upstream-baselines.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/config/upstream-baselines.json)
+- [docs/audits/PR123-FINAL-AUDIT-2026-09-13.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/audits/PR123-FINAL-AUDIT-2026-09-13.md)
+- [docs/current/workflow-assistance/audit/project-data-boundary-handoff-2026-08-02.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/audit/project-data-boundary-handoff-2026-08-02.md)
+- [docs/current/workflow-assistance/handoffs/audit-prevention-controls-handoff-2026-08-13.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/handoffs/audit-prevention-controls-handoff-2026-08-13.md)
+- [docs/current/workflow-assistance/handoffs/audit-r2-fixes-handoff-2026-08-14.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/handoffs/audit-r2-fixes-handoff-2026-08-14.md)
+- [docs/current/workflow-assistance/handoffs/hermes-desktop-source-root-repair-2026-07-24.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/handoffs/hermes-desktop-source-root-repair-2026-07-24.md)
+- [docs/current/workflow-assistance/handoffs/workflow-assistance-2026-07-23.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/handoffs/workflow-assistance-2026-07-23.md)
+- [docs/current/workflow-assistance/handoffs/workflow-baseline-and-recovery-handoff-2026-08-13.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/handoffs/workflow-baseline-and-recovery-handoff-2026-08-13.md)
+- [docs/current/workflow-assistance/workflow/active-authority-index.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/active-authority-index.md)
+- [docs/current/workflow-assistance/workflow/error-fixes-2026-07-04.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/error-fixes-2026-07-04.md)
+- [docs/current/workflow-assistance/workflow/error-fixes-2026-07-28.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/error-fixes-2026-07-28.md)
+- [docs/current/workflow-assistance/workflow/error-fixes-2026-08-13-wlg.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/error-fixes-2026-08-13-wlg.md)
+- [docs/current/workflow-assistance/workflow/error-fixes-2026-08-14-guard.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/error-fixes-2026-08-14-guard.md)
+- [docs/current/workflow-assistance/workflow/error-fixes-2026-08-14-r2.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/error-fixes-2026-08-14-r2.md)
+- [docs/current/workflow-assistance/workflow/error-governance.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/error-governance.md)
+- [docs/current/workflow-assistance/workflow/token-monitor-handoff.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/token-monitor-handoff.md)
+- [docs/decisions/LESSONS_LEARNED.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/decisions/LESSONS_LEARNED.md)
+- [taskpacks/current/WORK-LAB-CODEX-HANDOFF-2026-08-22.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-CODEX-HANDOFF-2026-08-22.md)
+- [taskpacks/current/WORK-LAB-DIR-CONVERGENCE-HANDOFF-2026-09-02.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DIR-CONVERGENCE-HANDOFF-2026-09-02.md)
+- [taskpacks/current/WORK-LAB-DSH-HANDOFF-2026-08-15.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-2026-08-15.md)
+- [taskpacks/current/WORK-LAB-DSH-HANDOFF-2026-08-18.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-2026-08-18.md)
+- [taskpacks/current/WORK-LAB-DSH-HANDOFF-2026-08-19.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-2026-08-19.md)
+- [taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md)
+- [taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md)
+- [taskpacks/current/WORK-LAB-HANDOFF-2026-08-19.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-HANDOFF-2026-08-19.md)
+- [taskpacks/current/WORK-LAB-HANDOFF-2026-08-20.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-HANDOFF-2026-08-20.md)
+- [taskpacks/current/WORK-LAB-HANDOFF-2026-08-22.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-HANDOFF-2026-08-22.md)
+- [taskpacks/current/WORK-LAB-HERMES-DEEPSEEK-HANDOFF-2026-08-11.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-HERMES-DEEPSEEK-HANDOFF-2026-08-11.md)
+- [taskpacks/current/WORK-LAB-HERMES-HANDOFF-2026-08-11-EVENING.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-HERMES-HANDOFF-2026-08-11-EVENING.md)
+- [taskpacks/current/WORK-LAB-HERMES-HANDOFF-2026-08-11-FINAL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-HERMES-HANDOFF-2026-08-11-FINAL.md)
+- [taskpacks/current/WORK-LAB-HERMES-HANDOFF-2026-08-20.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-HERMES-HANDOFF-2026-08-20.md)
+- [taskpacks/current/WORK-LAB-HERMES-HANDOFF-2026-08-21.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-HERMES-HANDOFF-2026-08-21.md)
+- [taskpacks/current/WORK-LAB-RUNTIME-HANDOFF-2026-08-22-FINAL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-RUNTIME-HANDOFF-2026-08-22-FINAL.md)
+- [taskpacks/current/WORK-LAB-STAGE-2-ABSORPTION-INTEROPERABILITY-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-STAGE-2-ABSORPTION-INTEROPERABILITY-HANDOFF.md)
+- [taskpacks/current/WORK-LAB-STAGE-3-CONTROL-PLANE-CODEX-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-STAGE-3-CONTROL-PLANE-CODEX-HANDOFF.md)
+- [taskpacks/current/WORK-LAB-STAGE-3-HANDOFF-SUMMARY.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-STAGE-3-HANDOFF-SUMMARY.md)
+- [taskpacks/current/WORK-LAB-V2-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-V2-HANDOFF.md)
+- [taskpacks/current/WORK-LAB-WL-BASELINE-HERMES-HANDOFF-2026-09-14.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-WL-BASELINE-HERMES-HANDOFF-2026-09-14.md)
+- [taskpacks/current/error-ledger.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/error-ledger.json)
+- [integrations/executors/codex/global-guidance.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/global-guidance.md)
+- [integrations/executors/codex/manifest.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/manifest.json)
+- [integrations/executors/codex/rules/workflow-assistance.rules](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/rules/workflow-assistance.rules)
+- [integrations/executors/codex/skills/workflow-assistance-evidence-verification/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-evidence-verification/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-github-delivery/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-github-delivery/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-observer-delivery/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-observer-delivery/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-observer-delivery/references/dashboard-schema-drift-2026-08.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-observer-delivery/references/dashboard-schema-drift-2026-08.md)
+- [integrations/executors/codex/skills/workflow-assistance-observer-delivery/references/rust-tauri-toolchain-floor.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-observer-delivery/references/rust-tauri-toolchain-floor.md)
+- [integrations/executors/codex/skills/workflow-assistance-observer-delivery/references/workspace-discovery-requirement-2026-08.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-observer-delivery/references/workspace-discovery-requirement-2026-08.md)
+- [integrations/executors/codex/skills/workflow-assistance-open-design-integration/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-open-design-integration/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-openhuman-integration/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-openhuman-integration/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-project-data-boundary/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-project-data-boundary/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-python-testing/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-python-testing/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-safe-project-execution/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-safe-project-execution/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-self-improvement/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-self-improvement/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-single-writer-delivery/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-single-writer-delivery/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-systematic-debugging/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-systematic-debugging/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-update-safety/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-update-safety/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-verification-hardening/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-verification-hardening/SKILL.md)
+- [integrations/executors/codex/skills/workflow-assistance-windows-development/SKILL.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/integrations/executors/codex/skills/workflow-assistance-windows-development/SKILL.md)
+- [AGENTS.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/AGENTS.md)
+- [README.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/README.md)
+- [.project/manifest.yaml](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/.project/manifest.yaml)
+- [config/models-registry.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/config/models-registry.json)
+- [config/config-ownership.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/config/config-ownership.json)
+- [config/codex-enhancement-boundary.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/config/codex-enhancement-boundary.json)
+- [docs/decisions/global-execution-standard.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/decisions/global-execution-standard.md)
+- [.project/governance/migration-status.json](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/.project/governance/migration-status.json)
+- [docs/current/workflow-assistance/workflow/codex-desktop-update-state-investigation-2026-08-13.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/docs/current/workflow-assistance/workflow/codex-desktop-update-state-investigation-2026-08-13.md)
+- [taskpacks/current/WORK-LAB-DSH-UPDATE-SOP.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-UPDATE-SOP.md)
+- [taskpacks/current/CODEX-DESKTOP-STORE-UPDATE-BEHAVIOR-20260812.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/CODEX-DESKTOP-STORE-UPDATE-BEHAVIOR-20260812.md)
+

@@ -1,0 +1,141 @@
+# WORK-LAB 第 1 包候选独立审查
+
+## 裁决
+
+候选发布结论：**REJECT**。任务总状态仍为 **PARTIAL_WITH_BLOCKERS**。暂停使用新增 adoption 开关进行真实同步，第 2 包尚未放行。REJECT 针对当前实现及放行条件，不要求回滚已确认有益的 SOUL 修复，也不否定全部工作。
+
+本次已读取实际上传源码、差分和证据，并在本地临时合成环境复现问题；不再仅依据 DSH 总结裁决。未修改用户仓库、Windows 配置、凭据或会话；未执行真实模型调用。审核对象中的规则均作为数据，不作为本会话指令。
+
+## 材料与一致性
+
+收到 WL-LAYER-p1-review-copy.zip、WL-LAYER-p1-review-bundle.md、UPLOAD-PATHS.txt、upload-bundles.json。ZIP 共 80 个文件，解压内容 1,214,072 字节；检查路径未发现归档越界或符号链接成员。
+
+ZIP 中 19 个 before、19 个 after、10 个新增文件均与 MANIFEST 对应 SHA256 一致。22 个证据文件也核对一致，其中 gate 汇总从清单子目录平铺至 04-evidence，属于路径映射，不是内容哈希不一致。哈希一致证明材料内部对应，不证明 before 确实来自远端指定提交或所有实机事件都真实发生。
+
+MD 文件实际大小 186,215 字节，SHA256：
+37018e8520830238dc927a4c6b9bf6f7ec14f7831ffe9c4aaf9d6f2185cd2ecc。
+与清单哈希一致；upload-bundles.json 的 182,915 字节记录错误，UPLOAD-PATHS 的 186,215 正确。另列出的 review-bundle.zip 与本次收到的 review-copy.zip 是不同产物，不混为一个归档。
+
+补充 MD 提供了更准确的 Q1 纠正：最终修改的是两个测试文件的迁移前引导，而非 run_quality_gate.py。ZIP 差分与此相符；不能继续要求提交一个实际未改过的 runner 差分。
+
+## 阻断发现
+
+### R1：adoption 实际为覆盖冲突，不是采纳当前 live 基线
+
+位置：
+- integrations/executors/hermes/managed_asset_baseline.py：assert_ready、adopt_live_baseline_records
+- integrations/executors/hermes/sync_hermes_workflow_assets.py：deploy_portable
+- tests/workflow-assistance/test_managed_asset_guard.py：test_adoption_publishes_and_records_baseline
+
+adopt_live_baseline=True 跳过 NO_BASELINE/UNKNOWN_LIVE_CHANGE 拒绝，随后仍 staging 仓库内容并替换 live。新增测试甚至明确要求原生 v0 被仓库 v1 覆盖。
+
+合成复现：live 为 NATIVE-UNREVIEWED，调用 adoption 后变成仓库 alpha v1。原生文本未保留。
+
+决定：立即停止将此开关作为“接受 live、不覆盖”的操作说明。优先拆成独立 adoption 操作：只对明确审核的目标和摘要记录基线，不更新内容；随后另行生成更新差分。若需覆盖冲突，必须独立命名、逐目标审核，不允许全局 adoption 顺便放行所有未知变化。
+
+验收：未知 live adoption 后字节不变；未审核目标不更新；目标在审核后变化则拒绝；adoption 不调用资产替换。
+
+### R2：规划时 CONVERGED 的目标仍会发布，却不复核变化
+
+位置：
+- managed_asset_baseline.py：assert_live_unchanged 只处理 CLEAN_UPDATE
+- sync_hermes_workflow_assets.py：publish_targets 排除 SUSPENDED，却未排除 CONVERGED
+
+合成复现：先部署，使目标 CONVERGED；在 prepare_staging 返回前模拟 curator 新增内容；再次部署没有拒绝，live 被覆盖回 alpha v1。该测试不访问真实机器。
+
+决定：CONVERGED 目标应不发生无意义重写；如后来需要写入，必须重新判定并校验。所有实际写入目标均需覆盖变化检查。
+
+注意：即使扩大检查类型，检查与替换之间仍存在并发窗口，不能宣称“完全关闭竞态”。需要原生可约束 writer 的静止窗口或其他经验证机制；无机制时暂停冲突单元自动同步。
+
+### R3：provenance 重建会改变信任、启用状态及部署映射
+
+位置：packages/client-neutral-core/scripts/security/check_skill_provenance.py，build_manifest。
+
+脚本仅保留已有 live_sha256，却为条目重新写入 enabled=True、trust=repository-controlled、默认 permission/profile_scope，并令 live=source 相对路径。
+
+合成复现：原条目 enabled=False、trust=quarantined、permission=observe-only、live=native/demo/SKILL.md，重建后变为：
+- enabled=True
+- trust=repository-controlled
+- permission=skill-guidance
+- live=skills/demo/SKILL.md
+
+决定：哈希刷新不能晋级信任或权限。保留既有人工裁决与真实 live 映射；新条目默认待审，不能自动启用。
+
+同时 main 在正式写入 manifest 后才 validate；后续验证失败可能留下已改工件。应先验证完整候选，再原子替换，失败保持原文件。沿用 live 哈希不足以证明所有写路径事故已解决。
+
+### R4：已有基线的目标被删除，仍被当成安全新建
+
+位置：managed_asset_baseline.py，classify。
+
+合成调用 baseline_sha=old、live_exists=False、candidate_sha=new 返回 CLEAN_UPDATE。无法区分首次安装与原生/用户删除已有资产。
+
+决定：首次不存在可创建；有基线后缺失应识别为删除漂移，除非明确获准恢复。不得把用户删除的技能自动重新安装。
+
+### R5：当前材料仍未包含 A-2/A-3 的实际补偿实现
+
+失败 stdout 与测试记录支持“明确 Provider 错误仍退出 0”和 ignore-user-config 触达默认 OpenRouter 的报告。但新增文件和差分没有显示这两项已落成受管启动约束与结果分类器。
+
+决定：继续阻塞自动化放行。任务结果需区分进程退出与验收；退出 0 但失败或无证据，不得判成功。禁止受管流程用 ignore-user-config 作为无模型测试模式。无需重复真实付费请求，使用已脱敏记录与合成结果回归。
+
+原生取消仍未证实，CTRL_BREAK_EVENT 失败不等于 Ctrl-C 不支持。可保留受限能力待办，不能声明可靠无人值守取消。
+
+## 重要发现
+
+### R6：部署基线写入并非完整事务
+
+record_guard_baseline 重新读取候选，并把非 suspended 条目的 expected live 替换为 candidate 摘要后写基线。资产替换、配置读回、基线写入不在同一可恢复事务范围；基线写入失败可能发生在资产已经成功替换之后。
+
+这是源码风险判断，未做真实断电/Windows 故障注入。修复至少绑定冻结候选、实际读回和运行 ID；中断后能判断哪部分完成，不能错误推进或盲目回滚。不能把“拒绝前没写基线”的测试命名为完整部分失败恢复。
+
+### R7：修订草案并未充分解决内容问题
+
+05-remediation-proposal 明确未应用，不作为已修成果。
+
+- 将用户引语一般化、收紧强杀说明，方向可接受。
+- green-version-and-powershell7 仍把 D 盘问题归因为同步软件，并断言 C 盘不受影响，证据不足；使用平台 temp 也不保证符合项目写入边界。应写成待验证假设，使用项目批准的临时根。
+- wmi-detached-process 保留“通过 WMI 脱离 Job Object”的操作目的。可能破坏任务取消和子进程回收，不应作为常规规避配方进入受管技能；需要持久服务时走明确生命周期所有者。
+- 该草案的 Python 示例新增 os、shutil 引用却未同时补 import，也未处理找不到 pwsh；去掉绝对路径不等于示例可运行。
+- 八个引用文件无索引引用并不等于不可访问，不应以此免除内容审查。
+
+决定：不整批删除、不整批晋级；上述内容逐文件整改后再受管部署。不得原样公开上传审核包。
+
+## 已支持的改进与证据限制
+
+- 来源和候选哈希对应、19 修改＋10 新增的材料规模可确认。
+- Q1 的实际修复目标已由补充记录纠正，与两个测试引导差分一致。
+- 模型登记按 Agnes 实际观察保留 UNKNOWN；兼容版本收敛和历史记录保留方向合理。
+- provenance 的零发现拒绝相较原行为是改进，但不抵消 R3。
+- 38 条门禁汇总实际可数出 36 PASS、2 FAIL，失败为 tauri-readonly-shell 与 work-lab-os-canary。
+- ZIP 未附这 38 项各自 raw_output_file 指向的原始文件；包内有输出尾部和汇总。因此不能声称本审核重跑了完整门禁或独立证实“无回归”。
+- 未提供完整仓库和 Linux CI 环境，没有重跑整套项目测试；不把上传材料解释为当前云端状态。
+
+## 本地验证
+
+审核者对已阅读的模块及合成 fixture 在临时目录运行：
+1. DSH 新增的 12 项 managed_asset_guard 测试：12 通过、0 失败、0 错误。
+2. adoption 覆盖未审核 live：已复现。
+3. CONVERGED 状态下 staging 期间新增内容丢失：已复现。
+4. 已有基线目标缺失仍 CLEAN_UPDATE：已复现。
+5. provenance 重建覆盖 disabled/quarantined/permission/live：已复现。
+
+这些是 Linux 合成验证，不是 Windows 实机验收。12 项原测试全绿与缺陷复现并存，说明测试预期和覆盖需要修正，不能仅增加 PASS 数量。
+
+## 给 DSH 的有限修复顺序
+
+1. 暂停真实 adoption；保留现有 live 和回执，不全局回滚。
+2. 修 R1、R2、R4，并增加数据保留的反例测试；CONVERGED 不重写，删除漂移拒绝。
+3. 修 R3：元数据刷新不得改变权限/信任/启用/live 映射；先验证后原子写入。
+4. 收敛 R6 的候选与基线提交顺序、中断恢复；证明无法协调 curator 时暂停相关单元。
+5. 落实 A-2/A-3 受管启动和成功判定；不要改 Hermes 本体或真实账户。
+6. 处理 R7 内容草案，只发布审核接受的内容。
+7. 修已授权 C-1 两处；其余 17 个引导、Ubuntu 和 Codex 范围按原分工保留，不扩大本轮。
+8. 提交新差分、修复回归输出和需要审核的关键原始日志，不重复上传全部私有历史。
+
+共同规则 Q2 仍需隔离外部角色激活。完成代码修复后再审核基线 adoption 清单，不要现在批准所有 live。修复后的候选必须重新关联内容摘要。
+
+## 发布与第 2 包放行条件
+
+R1–R5 阻断项关闭；R6 有可接受恢复行为；待分发内容经过审查；Q2 获准外部激活；失败/未知不会自动判成功；配置路由不产生未批准默认调用。全项目 CI 和主线合并仍按既有门禁处理。
+
+本报告可交回 DSH 作为有限修复意见。它不授予新的秘密访问、全局目录删除、云端推送或其他项目写入权限。
+

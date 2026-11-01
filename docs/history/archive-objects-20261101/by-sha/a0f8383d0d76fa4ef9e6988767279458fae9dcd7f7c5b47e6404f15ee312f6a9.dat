@@ -1,0 +1,741 @@
+# WORK-LAB 最终前向收敛执行任务包
+
+> 文件定位：把 WORK-LAB 的历史对话、旧任务包、旧蓝图、云端现状、未完成项和用户最新决策压缩成一个可执行 successor。  
+> 本文件不是新的产品蓝图，不恢复旧模块，不把历史“已完成”声明直接当成当前事实。
+
+## 0. 任务包元数据
+
+```yaml
+taskpack_id: WORK-LAB-FORWARD-RECONCILIATION-2026-08-20
+task_namespace: WLR
+version: 1.0.0
+snapshot_date: 2026-08-20
+repository: DTALEX66/WORK-LAB
+default_branch: main
+audited_remote_head: eafccadb1d7b9eea45a1df4d51369530bdbcc766
+audited_tree_source: github-recursive-tree
+remote_permission_observed: read-only
+status: READY_FOR_LOCAL_SAFE_EXECUTION
+product_maturity: CONTROL_PLANE_PROTOTYPE_CONDITIONAL_GO
+active_modules:
+  - 10-workflow/workflow-assistance
+  - 30-observer/work-lab-observer
+writer_policy: ONE_INTEGRATION_WRITER_PER_TARGET_TREE
+parallel_policy: READ_ONLY_PARALLEL_PLUS_ISOLATED_WORKTREE_CANDIDATES
+observer_policy: STRICTLY_READ_ONLY
+knowledge_migration: DEFERRED_BY_USER
+knowledge_current_authority: WORK-LAB/40-knowledge
+model_policy: CLIENT_PROVIDER_MODEL_VERSION_NEUTRAL
+publication_policy: EXPLICIT_PER_ACTION_APPROVAL
+```
+
+本次只生成任务包，没有修改云端仓库，没有 commit、push、PR、merge、release，也没有修改任何全局 live 配置、外部项目、模型库或系统软件。
+
+---
+
+## 1. 给执行器的最高优先级指令
+
+1. 先完整读取本文件，再从 `WLR-000` 开始；不得只摘要后自行选择喜欢的功能施工。
+2. 执行前重新读取远端 `main`。若 HEAD 不等于本包审计 SHA，记录新 SHA、tree、变更文件和影响任务；不得 reset 回本包 SHA。
+3. `WL-*`、`NX-*`、`WL3-*`、`WLO-*`、`WLGM-*`、`TP-20260819-*` 全部只作 predecessor 和需求证据；本包是唯一前向任务序列。
+4. 旧文档中的 `PASS/DONE/COMPLETED` 不自动继承。代码、测试、报告、运行证据和 exact-SHA CI 必须在当前 tree 重新对账。
+5. 同一 checkout/目标分支只有一个集成写者。允许多个只读审计器并行；允许每个隔离 Git worktree 各有一个候选写者，但只有集成写者能按序合入目标 tree。
+6. Observer 永远不拥有或控制 Worker。任何 Observer 进程管理、锁删除、任务重试、配置应用、数据库写入都按 P0 违规处理。
+7. 常规监控、hash、diff、计数、状态机、CI 查询、路由判定和缓存统计不调用模型。
+8. 所有未知值保持 `null/UNKNOWN/UNAVAILABLE/UNVERIFIED`；禁止显示为 `0/PASS/COMPLETE/RUNNING/HEALTHY/LIVE`。
+9. 未经单独批准，不得修改 Hermes、Codex、CC Switch、Open Design、OpenHuman、DSH 或其他软件的 live 用户配置。
+10. 未经单独批准，不得写其他项目、`D:\All projects\Model library`、`D:\All projects\Design assets`、`OS External Configuration` 或受保护数据盘。
+11. 不读取或存储凭据、Cookie、OAuth、API Key、完整 Prompt/Response、完整会话正文、浏览器私有数据或模型权重正文。
+12. commit、push、PR、merge、release、GitHub 设置、付费 API smoke、安装/升级/卸载软件、历史重写和删除归档均逐项等待批准；局部等待不阻塞其他安全任务。
+
+---
+
+## 2. 不得漂移的当前项目定位
+
+### 2.1 一句话定位
+
+> WORK-LAB 是面向个人用户、Windows 本地优先、客户端中立的 AI 项目工作流控制面。它以一个用户级 canonical source 管理 Rules、Skills、插件/MCP 声明、便携 Memory 元数据、能力、模型使用策略、配置覆盖层和执行边界，再通过 Adapter 编译成各客户端的原生配置；项目级私有配置继续由各项目持有并受全局边界约束。
+
+### 2.2 当前工作流与中立性
+
+当前使用的软件链为：
+
+```text
+Hermes + Codex + CC Switch + GitHub + Open Design + OpenHuman + DeepSeek Harness
+```
+
+它们都是可替换的当前客户端、入口或运行时，不是 WORK-LAB 的永久依赖。DESIGN-LAB 是独立项目；Open Design 是外部设计客户端；`DTALEX66/OPEN-DESIGN-Assistance` 只保留历史迁移含义。DSH 是可替换 Agent Runtime，不能成为第三活动模块或第四中心。
+
+### 2.3 两个活动模块
+
+| 模块 | 权责 | 明确禁止 |
+|---|---|---|
+| `10-workflow/workflow-assistance` | 唯一主动控制面、Desired State 编译、Adapter、Task Ledger、Worker、唯一 SQLite 事实源、采集器、ActionPlan、readback/rollback | 不变成新 Agent、聊天软件、凭据库、模型网关或业务平台 |
+| `30-observer/work-lab-observer` | 对 Workflow Snapshot/SSE/只读 SQLite projection 的严格只读展示 | 不执行、不审批、不重试、不启停 Worker、不删锁、不应用配置、不写业务数据 |
+
+`40-knowledge/` 是支持区，不是第三活动模块。`30-products/minigame` 只是历史/fixture/archive，不重新加入。
+
+### 2.4 配置层级
+
+```text
+官方基准（只读发现）
+  → 用户全局 canonical overlay
+  → 项目级 overlay
+  → 机器级 overlay
+  → 当前任务/session 临时状态
+  → 有效配置 + Diff + ActionPlan
+  → 批准后的 Adapter transaction
+  → Readback / Drift / Rollback
+```
+
+官方基准不能复制成长期私有分叉；用户资产不能被升级覆盖；客户端私有会话、缓存、凭据和外观状态默认不接管。
+
+### 2.5 模型与高命中、低消耗边界
+
+当前已确认模型资源：DeepSeek API、ChatGPT Codex 订阅、本地 MiniMax H3（DESIGN-LAB 共用）；Kimi 已被用户移除。所有模型都只是注册能力。WORK-LAB 管理能力发现、任务分类、上下文预算、缓存友好策略、调用计划和 usage 事实，不代理凭据、不承载模型请求正文、不成为模型网关。
+
+本地模型库路径当前为 `D:\All projects\Model library`，但核心合同不得写死该路径。仓库只保存 `ModelReference/CapabilityProfile`，不搬运权重，不修改模型 UI 配置。
+
+### 2.6 三项目知识边界
+
+- ArcheAxis 的未来定位仍是知识/证据/学习治理平面，不是 Agent OS。
+- DESIGN-LAB 是设计专业智能与生产能力平面。
+- WORK-LAB 是配置、执行、权限、任务、证据和观测控制平面。
+- 用户已决定：ArcheAxis 尚未成熟，WORK-LAB 的知识性内容暂不迁移，先存入 `40-knowledge/`；源内容不得删除。
+
+---
+
+## 3. 2026-08-20 云端现状审计结论
+
+### 3.1 已核实事实
+
+| 项目 | 当前事实 |
+|---|---|
+| 云端 main | `eafccadb1d7b9eea45a1df4d51369530bdbcc766` |
+| 仓库树 | 872 个 tree entries；Workflow 447 个文件，Observer 123 个文件，`40-knowledge` 只有 README |
+| 权限 | 当前连接只有 pull/read，无 push |
+| 当前 SHA Actions | 没有读取到 workflow run；combined status 为空 |
+| CURRENT_STATE | 生成于 2026-08-19；明确 `RUNTIME_REQUIRED` 与 `UNVERIFIED_MAIN_CI`，但没有当前 checkout HEAD/branch 证明 |
+| 当前架构 | 两活动模块定位已在 `PROJECT_POSITIONING.md` 收敛 |
+| 知识迁移 | `DEFERRED`，但临时知识治理结构尚未建立 |
+
+### 3.2 P0 缺陷
+
+1. **Observer 实际违反严格只读。** Tauri `src/lib.rs` 会扫描并强制终止 `durable_worker`、删除 `worker.lock`、启动新 Worker、退出时杀子进程，并写死用户和项目绝对路径。
+2. **只读证明是伪充分证据。** `OBSERVER_READ_ONLY_PROOF.json` 只证明七个模拟 action 被拒绝，没有扫描或运行 Tauri 生命周期，因此与真实实现矛盾。
+3. **React 前端真值语义错误。** 写死 sidecar 端口、Origin、DeepSeek 价格和汇率；缺失 Token 转成 0；未知 execution 转成 idle/success；Snapshot 请求成功就添加健康 Sidecar；每个 execution 重复使用 project token；随意计算 usagePct。
+4. **Token Ledger 无法承载 Token 真值。** `telemetry_ledger.py` 将包含 `token` 的任何字段名都判定为敏感，合法 `input_tokens/output_tokens/cached_tokens` 会被拒绝。
+5. **活动项目识别不可靠。** `.hermes/.codex/.agents` 两小时内任意文件 mtime 被当成活动证据，`.agents` 甚至无需匹配真实进程；不能证明哪个 Agent、哪个 session、哪个 Git root 正在执行。
+6. **配置控制面仍是内存原型。** `apply_plan(approved=True)` 直接返回 `APPLIED`，没有 Adapter transaction、备份、实际写入、readback 或可恢复 rollback；`rollback()` 只比较字典。
+7. **当前报告漂移。** exact-SHA 报告仍绑定 `86a53c7`，而 main 已为 `eafccadb`；仓库体积报告把本地 loose objects 278KB 当成整个远端仓库体积，与 GitHub repo size 约 415412KiB 冲突。
+8. **完成声明过度。** `TP-20260819` 勾选了多项任务，但失败 fixtures 未齐；交接称 E2E 14 测试/全部未完成已补齐，证据与实际文件/实现强度不一致。
+
+### 3.3 P1 缺陷
+
+1. Observer 同时保留 legacy `web/` 与 React `frontend/`，生产入口、合同测试和视觉基线不唯一。
+2. CI 的 Observer job 主要测试 legacy Web 和 Python；没有构建 React frontend，也没有对 Observer 自身 Tauri crate 做 `cargo check/test`。
+3. CI 缺少 current-main exact-SHA 闭环、Windows Observer canary、长时 SSE/Worker soak 和明确 concurrency 取消策略。
+4. `TASKPACK_SUMMARY.md` 仍把 ignored `.hermes` 中的 R6 candidate 当候选权威，并混入大量过时本地数字、旧用户名和历史 Release 声明。
+5. README 存在语句重复和模块描述断裂；50 个历史任务/交接文件缺统一 supersession 索引，执行入口易漂移。
+6. 控制面中已经存在 Sandbox Manager、MCP Gateway、Policy Engine 等原型，但文档仍同时声称“缺失/暂缓/已实现”，需要按能力证据重分级。
+
+### 3.4 成熟度
+
+当前判定：
+
+> **CONDITIONAL GO 的控制面原型。** 合同、脚本、测试和 UI 数量较多，但严格只读、真实活动项目身份、配置事务、Token 真值、当前 exact-SHA CI、Observer 单一前端和可恢复长期运行尚未同时闭环，不能宣称正式可用产品。
+
+---
+
+## 4. 历史材料处置矩阵
+
+| 历史来源 | 本包处置 |
+|---|---|
+| WL-000～WL-820、NX-000～NX-720 | `CLOSED_PREDECESSOR`；不重开旧 Gate，仅引用需求和事故经验 |
+| WL3-000～WL3-820 | `SUPERSEDED_BY_WLR_RECONCILIATION`；已实现部分在当前 tree 重验，不能继承旧绿灯 |
+| WLO-000～WLO-160 | 合并进 WLR-100～160、WLR-800～840、WLR-920～950 |
+| WLGM-000～WLGM-240 | 合并进 WLR-000～040、WLR-200～250、WLR-900～950 |
+| `WORK-LAB-GLOBAL-PROJECT-EXECUTION-OBSERVABILITY` | 保留 Project/Execution/CollectorCoverage 语义；删除旧固定编号入口 |
+| Observer 3.0 / 全量重构报告 | 保留 execution-centric Projection、Truth/Provenance/Trust、LIVE/SNAPSHOT/OFFLINE；不照搬旧框架选择 |
+| 全局配置去重任务包 | 保留 canonical source → native projection、官方基准 + 用户 overlay、事务应用；由 WLR-300～350 收口 |
+| TP-20260819 federation | 只继承合同思想和未完成证据；三项目知识迁移保持延期 |
+| Open Design 旧模块任务 | `TRANSFERRED_OUT_OF_SCOPE`；Open Design 只作为外部客户端 Adapter |
+| MiniGame | `ARCHIVE_FIXTURE_ONLY`；不进入活动 Gate、Observer 或任务类型 |
+| DSH main 标签/UI 修改 | `EXTERNAL_RUNTIME_UI_OUT_OF_SCOPE`；不得在 WORK-LAB 主线实施 |
+| Kimi 配置/文档 | `RETIRE_FROM_ACTIVE_CONFIGURATION`；历史来源可留档但不得出现在当前 lane |
+| ArcheAxis 知识迁移 | `DEFERRED_BY_USER`；当前只建设 `40-knowledge` 临时治理区 |
+
+---
+
+## 5. 统一状态与证据等级
+
+任务状态只能使用：
+
+```text
+PENDING
+IN_PROGRESS
+IMPLEMENTED_LOCAL
+VERIFIED_LOCAL
+CI_VERIFIED_EXACT_SHA
+LIVE_VERIFIED
+WAITING_APPROVAL
+DEFERRED_BY_USER
+BLOCKED_EXTERNAL
+TRANSFERRED_OUT_OF_SCOPE
+SUPERSEDED
+```
+
+证据等级：
+
+| 等级 | 含义 |
+|---|---|
+| E0 | 文档/声明，无执行证据 |
+| E1 | 静态结构或 Schema 存在 |
+| E2 | focused deterministic tests |
+| E3 | 模块集成测试、真实本地文件/进程但隔离环境 |
+| E4 | 当前 candidate exact-tree 全量门禁 |
+| E5 | 云端当前 exact-SHA CI |
+| E6 | Windows 实机 + 长期运行 + canary + 恢复演练 |
+
+任何 `LIVE_VERIFIED` 至少需要 E6；任何“已发布”必须另有 release identity、artifact digest 和下载回读。
+
+---
+
+## 6. 前向依赖图
+
+```text
+WAVE 0  Truth & Authority Reset
+  ↓
+WAVE 1  Observer Read-only P0
+  ↓
+WAVE 2  Canonical Runtime + Project/Execution Truth
+  ↓
+WAVE 3  Global Configuration Transaction Plane
+  ├──────────────┐
+  ↓              ↓
+WAVE 4 Model     WAVE 5 Single-project Parallel Execution
+Efficiency       Acceleration
+  └──────┬───────┘
+         ↓
+WAVE 6 Skills / Plugins / Memory Governance
+         ↓
+WAVE 7 Temporary Knowledge Governance
+         ↓
+WAVE 8 Observer Projection + Frontend Rebuild
+         ↓
+WAVE 9 CI / Canary / Exact-SHA / Final Closure
+```
+
+Wave 1 的只读修复是硬门。未通过前不得继续美化 Observer 或增加观测栈组件。Wave 2 的真实 project/execution identity 是 Wave 8 UI 的前置；不允许 UI 先造字段。
+
+---
+
+## 7. WAVE 0 — 可信事实与唯一执行权威
+
+### WLR-000｜锁定新基线与安全工作区（P0）
+
+实施：读取 root/module `AGENTS.md`、branch、HEAD、tree、remote-main、dirty、Git worktree、活动 writer、当前 CI 和运行锁。对本包 SHA 与执行时 SHA 生成差异清单。禁止自动清理用户 dirty 文件。
+
+产物：`00-governance/generated/CURRENT_EXECUTION_BASELINE.json`（tracked 定义不包含不可复现本机秘密）和 ignored runtime attestation。
+
+验收：HEAD/tree/remote/dirty/CI 分别有来源；没有 CI 时为 `UNVERIFIED_MAIN_CI`；同一 tree digest 重跑稳定。
+
+### WLR-010｜唯一前向权威与 supersession index（P0）
+
+实施：建立机器可读 `taskpack-authority-index.json`，把 50-taskpacks 下全部历史包分类为 CURRENT/SUPERSEDED/HISTORICAL/OUT_OF_SCOPE/DEFERRED。更新 `TASKPACK_SUMMARY.md`，不得再指向 ignored attachment 作为权威。
+
+验收：干净 clone 可解析唯一 current taskpack；任一历史 ID 只能映射到一个 WLR successor 或明确淘汰状态。
+
+### WLR-020｜报告新鲜度与反自证（P0）
+
+实施：所有 `reports/current/*` 增加 `sourceCommit/sourceTree/generatedAt/evidenceLevel/expiry`。current 报告若不绑定当前 tree，CI fail closed。exact-SHA 报告不能由同一未发布 tree 自行声称 E5。
+
+验收：将 HEAD 改成旧 SHA、报告改成未来时间或缺失 tree 时测试失败；旧 `86a53c7` 报告自动标为 STALE。
+
+### WLR-030｜错误台账重构（P1）
+
+实施：保留 83 个历史错误但增加 lifecycle、introduced/fixed/verified commit、affected capability、regression command、current applicability。历史 `status_after=PASS` 不能代表当前 tree 通过。
+
+验收：可查询 current-open/current-regressed/historical-closed；错误摘要只暴露脱敏元数据。
+
+### WLR-040｜文档定位去漂移（P1）
+
+实施：修复 README 断句/重复，统一 Open Design 与 DESIGN-LAB、DSH、ArcheAxis、MiniGame、40-knowledge 的身份。冲突旧文档加醒目的 historical/superseded header，不删除历史。
+
+验收：定位 lint 覆盖 README、PROJECT_POSITIONING、projects.json、module ownership、taskpack summary；只有两个活动模块。
+
+---
+
+## 8. WAVE 1 — Observer 严格只读 P0 修复
+
+### WLR-100｜切断 Observer 对 Worker 的生命周期控制（P0）
+
+实施：从 Tauri 删除 `kill_stale_worker`、`spawn_collector_worker`、lock 删除、进程杀死、退出杀 Worker。Worker 生命周期只属于 Workflow Assistance 的 composition root/用户级 service。Observer 只发现经验证的 loopback endpoint。
+
+验收：Rust/JS/Python production 静态扫描无 `Stop-Process/kill/remove lock/spawn durable_worker`；启动/关闭 Observer 前后 Worker PID、锁和 SQLite metadata 不变。
+
+### WLR-110｜删除 Observer 第二写入面（P0）
+
+实施：`observer_store.py`、event migration、usage rollup 和 legacy write path 退出 production import graph；必要兼容代码移至 tests/fixtures/compat。Observer 不创建 SQLite/JSONL/cache/report business data。
+
+验收：以只读 ACL 启动仍可工作；不存在 INSERT/UPDATE/DELETE/append/write business path；缺库不创建空库，只进入 OFFLINE/UNKNOWN。
+
+### WLR-120｜合法 Token usage 与敏感 token 分离（P0）
+
+实施：敏感检测从模糊字符串包含改为 typed allowlist/denylist。合法字段：input/output/total/cached/reasoning token counts；敏感字段：access token、bearer、refresh token、credential value 等。
+
+验收：合法 usage 可入 canonical ledger；任何凭据 token 值拒绝；null 不变 0；total 不满足合同则 quality=CONFLICT/INVALID。
+
+### WLR-130｜字段级 Truth Envelope（P0）
+
+每个显示字段携带：`value/sourceRef/observedAt/freshness/coverage/quality/semantics/derivation`。项目状态、任务状态、进程状态、Git 状态、CI 状态严格分离。
+
+验收：UNKNOWN CI 不为 PASS；REGISTERED project 不为 IDLE task；snapshot success 不等于 LIVE；缺少 rate 时 cost 为 UNKNOWN。
+
+### WLR-140｜动态 endpoint 与去硬编码（P0）
+
+实施：React/Tauri 通过经过 PID、nonce、schema、loopback 验证的 descriptor 获得 Snapshot/SSE endpoint。删除 61867/8090/9090、用户路径、固定模型价格和固定汇率。
+
+验收：随机端口、不同 Windows 用户、不同项目根运行；外部 URL、query 注入、过期 PID、错误 nonce fail closed。
+
+### WLR-150｜真正 SSE、游标与断线恢复（P0）
+
+实施：持续连接、单调 revision、Last-Event-ID、heartbeat、retention gap/resync、指数退避、last-good、epoch fence、乱序响应防回滚。
+
+验收：断网/重启/游标未来值/缺口/重复帧/乱序 GET/时钟倒退测试；断线期间不得恢复 LIVE；恢复后 cursor 单调前进。
+
+### WLR-160｜只读 Tauri 壳（P0）
+
+实施：只保留窗口、tray、主题/compact 外观偏好和经过验证的 GET/SSE 导航；Tauri capabilities 无业务 write command。外观偏好必须与业务事实完全隔离。
+
+验收：cargo test/check；Windows 实机打开/隐藏/退出不改变 Worker、Task Ledger、Git、配置或 canonical SQLite。
+
+---
+
+## 9. WAVE 2 — 唯一运行事实与主体项目识别
+
+### WLR-200｜Canonical SQLite WAL vNext（P0）
+
+实施：统一 Project、Execution、Task/WorkUnit、AgentInstance、GitObservation、CIObservation、UsageObservation、CollectorHealth、ActionPlan、Receipt、Checkpoint、DataQuality。迁移先 WAL checkpoint + backup + readback，禁止 Observer 自有库。
+
+验收：幂等迁移、旧库升级、失败回滚、WAL 损坏/锁冲突、只读并发；数据库路径来自 runtime root。
+
+### WLR-210｜唯一持续 Worker 与监督（P0）
+
+实施：Workflow-owned 单实例 Worker 使用 OS lock + lease/fencing/heartbeat；异常自动恢复，阻塞 collector 有 timeout/budget/circuit breaker；Observer 与 Agent 会话退出不影响 Worker。
+
+验收：重复启动只有一个 writer；kill/restart 恢复 checkpoint；同 fingerprint 未变不重复昂贵分析；Windows 登录后可恢复但安装 service 需批准。
+
+### WLR-220｜Task Ledger / Work Unit 统一（P0）
+
+实施：合并重复 task/work-unit 状态机，冻结一个 canonical contract。支持依赖图、lease、checkpoint、approval wait、retry budget、side-effect reconciliation、evidence refs。
+
+验收：WAITING_APPROVAL 释放 writer lease；崩溃恢复不重复外部副作用；任务与项目状态不混用。
+
+### WLR-230｜标准采集器与 typed trust（P0）
+
+Task、Git/CI、usage、process、platform、source-quality collector 均输出 typed observation。优先官方接口；进程/mtime 仅为低信任 candidate，不能直接授权 ACTIVE/LIVE。
+
+验收：稳定事件 ID、防重复计费、每 collector freshness/coverage；失败保留 last-good 并降级；常规循环零模型调用。
+
+### WLR-240｜主体项目身份算法（P0）
+
+项目身份必须由 canonical Git root 定义：`git rev-parse --show-toplevel` + root fingerprint + remote identity（可缺失）+ project approval。子模块、monorepo package、nested worktree、symlink、同名目录不能冒充主体项目。
+
+验收 fixtures：主仓 + 子模块、主仓 + nested package、Git worktree、无 remote、同名根、路径大小写、junction/symlink。Observer 展示主体项目，working area 另字段显示子路径。
+
+### WLR-250｜Agent/Session/Execution 关联（P0）
+
+活动执行不能靠 `.agents` mtime 推断。关联证据优先级：官方 runtime event/session hook > Adapter status > task/worktree marker > PID + verified root handle > mtime candidate。每条 Execution 有 `anchorProjectId/worktreeId/workingArea/agentInstanceId/sessionOpaqueId/evidenceLevel`。
+
+验收：Hermes/Codex/DSH 多会话并行、一个 Agent 多项目、一个项目多 Agent、后台进程无任务、旧 mtime、共享 Electron 主进程；无法关联时显示 UNATTRIBUTED，不猜项目。
+
+### WLR-260｜项目 allowlist 与隐私边界（P0）
+
+workspace scan 只产生 candidate，用户批准后才进入 registry/collector。支持 deny/never-scan、深度、排除模型/设计资产/venv/node_modules；只读 Git 元数据，不读项目正文。
+
+验收：未批准项目不显示业务数据；外部项目零写入；Model library 和 Design assets 默认 never-scan。
+
+---
+
+## 10. WAVE 3 — 全局配置事务控制面
+
+### WLR-300｜全局资产 inventory 与 authority map（P0）
+
+盘点 Rules、Skills、插件/MCP、Memory 元数据、能力、模型策略、Adapter、客户端官方基准、用户 overlay、项目 overlay、机器/session 状态。每个字段只有一个 owner 和 authority。
+
+验收：不存在三处互相矛盾的 owner；私有 platform state 只记录 reference/capability，不复制正文。
+
+### WLR-310｜官方基准发现（P0）
+
+通过客户端官方 schema/命令/文档/默认文件进行只读发现，记录 source version/digest/capability；不把官方配置整体复制入仓成为私有 fork。基准不可用时 `BASELINE_UNAVAILABLE`。
+
+验收：客户端升级后可重发现并生成语义 diff；不写死版本、路径和端口。
+
+### WLR-320｜Canonical Config IR 与编译器（P0）
+
+建立客户端中立 IR：Rule、SkillReference、PluginDeclaration、MemoryPolicy、CapabilityPolicy、ModelLane、ApprovalBoundary。Adapter 把 IR 编译成 Hermes/Codex/CC Switch/GitHub/Open Design/OpenHuman/DSH 的原生 projection，而不是复制一份相同文件。
+
+验收：缺能力输出 `UNSUPPORTED_PROJECTION/APPLY`；客户端替换只新增 Adapter，不改核心实体。
+
+### WLR-330｜真实配置事务（P0）
+
+替换内存 `apply_plan`：Discover → Effective → Semantic Diff → Backup → Approval → Adapter Apply → Readback → Commit Receipt 或 Rollback。每个阶段有 digest、idempotency key 和恢复点。
+
+验收：模拟崩溃发生在 backup/apply/readback 各阶段均可恢复；`APPLIED` 只有原生 readback 一致才产生；未批准永不写 live。
+
+### WLR-340｜安全边界不可降级（P0）
+
+官方安全下限 + 用户更严格边界只能取更严格值；项目 overlay 不得弱化。Secret 仅 `SecretReference`，永不进入 diff/evidence。主题、窗口位置默认 unmanaged。
+
+验收：恶意 session/project overlay 无法关闭审批、扩大路径或暴露 credential；负向属性测试覆盖嵌套对象而非顶层 key。
+
+### WLR-350｜流畅门禁与风险分层（P1）
+
+将臃肿的“一切全量门禁”改为确定性影响图：L0 文档/只读、L1 局部可逆、L2 跨模块/迁移、L3 外部写/发布/凭据。GatePlan 只选择受影响门，但唯一 aggregate fail closed；同输入 digest 复用已验证结果。
+
+验收：低风险小改不会重复跑无关重型门；安全/配置/CI 关键改必须触发对应 Gate；不得以缓存掩盖 tree 改变。
+
+---
+
+## 11. WAVE 4 — 模型高命中、低消耗、客户端中立
+
+### WLR-400｜Model Reference 与能力目录（P1）
+
+只读发现 DeepSeek API、Codex 订阅、本地 MiniMax H3 和未来模型管理器。记录 context、tool calling、structured output、vision、local/remote、billing mode、cache semantics、health；不存密钥和权重。
+
+验收：Kimi 不在 active registry；H3 作为共享本地 ModelReference，DESIGN-LAB UI 不变；路径通过 machine overlay 发现。
+
+### WLR-410｜任务→能力→Lane 解析（P1）
+
+先按任务风险、代码/研究/视觉、上下文长度、隐私、工具需求和预算选择 capability lane，再由客户端/Adapter 选择实际模型。WORK-LAB 产出 invocation plan，真实调用由 Hermes/Codex/DSH 等完成。
+
+验收：核心合同无永久模型 ID；无满足能力时 fail closed；订阅与 API 成本分开，不把订阅 token 伪算 API 费用。
+
+### WLR-420｜缓存友好上下文编译（P1）
+
+吸收 DeepSeek Harness/pi 的原则而非复制运行时：稳定 system/rules/tool schema 前缀；动态任务、时间戳、随机 ID 放后缀；Canonical ContextPack digest；仓库地图/规则/工具清单分段缓存；避免每轮重排或注入不断变化的全量状态。
+
+验收：同一任务连续调用的稳定前缀 digest 不变；变更一个项目文件只失效相关 segment；不缓存 Prompt/Response 正文到 WORK-LAB。
+
+### WLR-430｜Token/缓存命中/成本真值（P1）
+
+按 provider/agent/project/execution 记录 input/output/cached/reasoning tokens、billing source、estimated/exact、price source/version。未知价格不算 0；缓存命中率只有 provider 提供或可验证分母时计算。
+
+验收：禁止镜像 cached token、禁止固定 DeepSeek 价格/汇率；UI 清楚区分 EXACT/ESTIMATED/UNKNOWN/SUBSCRIPTION_INCLUDED。
+
+### WLR-440｜项目专属效率 Eval（P1）
+
+建立 30–50 个真实小中型任务样本，比较命中率、首次测试通过、人工干预、回归、耗时、Token、缓存命中、成本和越界。只在本地 fixture 先跑；付费 smoke 等批准。
+
+验收：路由变更必须由 Eval 改善支持；不得用公开榜单替代本项目结果。
+
+---
+
+## 12. WAVE 5 — 单项目并行加速而不破坏单写者
+
+### WLR-500｜并行执行合同（P1）
+
+冻结定义：一个目标 tree/集成分支只有一个 Integration Writer；Planner、Repo Mapper、Test Reader、Security Reviewer、Architecture Reviewer 可并行只读；候选实现只能进入独立 worktree。
+
+验收：任何 worker 都有 task contract、allowed paths、base SHA、worktree ID、output patch digest 和超时。
+
+### WLR-510｜隔离 worktree 候选写者（P1）
+
+允许一个项目内部按无重叠依赖拆成 N 个候选 worktree，每个 worktree 单写者。禁止共享 node_modules build output、SQLite writer、真实 Git index 或同一生成文件。
+
+验收：并发 patch 不直接触碰 main checkout；路径/Schema/迁移/lockfile 冲突在派工前检测。
+
+### WLR-520｜串行集成队列（P1）
+
+Integration Writer 按依赖和风险 cherry-pick/apply candidate，重新运行受影响 gate；候选绿灯不能替代集成 tree 绿灯。冲突退回原 candidate，不在目标 tree 临时“顺手修”。
+
+验收：每次集成绑定 before/after tree、tests、rollback ref；失败不会污染后续队列。
+
+### WLR-530｜构建/测试/研究并行化（P1）
+
+并行化只读索引、测试分片、静态分析、依赖审计和视觉截图；共享只读 content-addressed cache。格式化、迁移生成、lockfile 更新和自动 fix 串行。
+
+验收：可复现输出；缓存 key 含 tree/toolchain/config；失败 fingerprint 未变化不重复消耗模型。
+
+### WLR-540｜并行状态的 Observer 投影（P1）
+
+Observer 显示 project → task graph → executions/worktrees → integration queue，但不控制它们。明确 RUNNING/WAITING/CONFLICT/STALE/UNATTRIBUTED 和证据等级。
+
+验收：关闭 Observer 不影响任务；多个执行不会重复累计项目 Token；working area 不冒充主体项目。
+
+---
+
+## 13. WAVE 6 — Skills、插件、Memory 与能力成长
+
+### WLR-600｜13 个 canonical Skills 重验（P1）
+
+以当前 13 个高层 Skill 为 canonical catalog，检查重复、失效链接、客户端投影、版本、来源 digest、最小权限和实际 readback。大量底层 skill/reference 作为依赖，不把数量冒充能力。
+
+验收：每个 Skill 有 owner/source/trust/capability/clients/tests；未实际安装为 `NOT_APPLIED`。
+
+### WLR-610｜插件/MCP 注册与权限（P1）
+
+统一 Plugin/MCP declaration、官方来源、权限范围、网络/文件边界、可替代性和健康状态。WORK-LAB 管理声明与 Adapter，不成为 MCP proxy 事实源。
+
+验收：插件升级生成 diff；新增权限需要批准；凭据不进仓；失效插件不拖垮核心工作流。
+
+### WLR-620｜Portable Memory 元数据（P1）
+
+只管理可移植、脱敏、非权威的 memory metadata：scope、TTL、source digest、confidence、contamination state、supersedes、promotion state。客户端私有完整会话和 memory body 不接管。
+
+验收：跨项目污染、过期、冲突、删除候选和 forget 请求有状态机；Observer 只读显示健康。
+
+### WLR-630｜Growth Candidate 生命周期（P1）
+
+Candidate → Quarantine → Review → Approved Asset / Rejected / Expired。模型只可提出候选，不能自行提升全局 Rule/Skill/插件权限。
+
+验收：提升需要确定性测试、来源、差异、影响范围和批准；失败可回滚到前一 asset digest。
+
+### WLR-640｜配置/Skill/插件事务共用（P1）
+
+所有实际 apply 复用 WLR-330 的 transaction engine，避免三套 backup/readback/rollback。Adapter 没有官方安全写接口时返回 `UNSUPPORTED_APPLY`。
+
+---
+
+## 14. WAVE 7 — WORK-LAB 临时知识治理区
+
+### WLR-700｜扩展 `40-knowledge/`，不增加第三模块（P1）
+
+创建：
+
+```text
+40-knowledge/
+  catalog/
+  workflow/global-configuration/
+  workflow/client-adapters/
+  workflow/execution-patterns/
+  workflow/observer-and-telemetry/
+  workflow/model-efficiency/
+  workflow/windows-environment/
+  research/external-projects/
+  research/official-baselines/
+  research/comparative-studies/
+  troubleshooting/errors/
+  troubleshooting/root-causes/
+  troubleshooting/recovery-patterns/
+  candidates/unverified/
+  candidates/reviewed/
+  candidates/rejected/
+  asset-provenance/rules/
+  asset-provenance/skills/
+  asset-provenance/plugins-mcp/
+  migration/
+  archive/
+```
+
+边界：可执行 Rule/Skill/Adapter 仍在 Workflow；`asset-provenance` 只保存来源、摘要和索引，不复制执行资产。
+
+### WLR-710｜Knowledge Catalog 与 provenance（P1）
+
+字段：knowledge_id、title、type、status、authority、source_refs、source_digest、rights_status、sensitivity、compiled_asset_refs、supersedes、created/updated、`archeaxis_migration=DEFERRED_BY_USER`。
+
+验收：外部研究有 URL/repo/commit/license/accessedAt/trust；未核实只进 candidates/unverified；Secret/会话/模型权重/私有正文拒绝。
+
+### WLR-720｜历史知识内容盘点与搬迁计划（P1）
+
+只盘点 WORK-LAB 自身知识性文档，先生成 inventory 和建议目标，不自动移动大量历史文件。DESIGN-LAB 专业知识继续留 DESIGN-LAB；ArcheAxis 原生知识不复制回来。
+
+验收：每个候选有 KEEP/MOVE_LATER/REFERENCE_ONLY/HISTORICAL/OUT_OF_SCOPE；移动需单独批准并保留 Git 历史可追溯。
+
+### WLR-730｜迁移延期与未来 readiness（P1）
+
+在 `migration/DEFERRED.md`、readiness JSON、inventory、rollback contract 固化：当前 authority 为 WORK-LAB/40-knowledge，源删除禁止。只有 ArcheAxis Candidate→Review→Verified、稳定 API/schema、provenance/rights/dedupe、readback、幂等、rollback 都通过且用户显式批准，才允许新迁移任务包。
+
+验收：本包不得执行任何向 ArcheAxis 的知识写入或源删除。
+
+---
+
+## 15. WAVE 8 — Observer Projection、信息架构与全量前端
+
+### WLR-800｜Execution-centric Projection v3（P0）
+
+围绕 Project → Execution → Span/Event → Agent/Model/Tool → Git/CI/Artifact/Evidence 建模；Project 是主体根，working area 是子路径。所有 measurement 具有 provenance/freshness/quality。
+
+验收：兼容 adapter 从旧 snapshot 转换时不得补造值；Schema 反例覆盖 null/unknown/stale/conflict。
+
+### WLR-810｜冻结单一生产前端（P0）
+
+对 legacy `web/` 与 React `frontend/` 做 Architecture Gate。选择一个生产实现，另一个转 compat/test/archive，不允许两个 production source。选择标准：truth tests、Tauri 构建、可访问性、性能、维护性；不能只按视觉偏好。
+
+验收：Tauri frontendDist、CI build、测试、文档和设计 token 全部指向同一前端。
+
+### WLR-820｜信息架构（P1）
+
+正式页面：Overview、Executions、Projects、Delivery、Trust。Overview 只回答正在发生什么/哪里阻塞/哪些数据不可信；Executions 展示 trace/waterfall；Projects 展示主体项目；Delivery 展示 Git/CI/exact SHA；Trust 展示 freshness/coverage/provenance/governance。
+
+验收：不再堆重复 KPI/Project Health/Runtime Matrix 卡片；同一事实只有一个主显示面。
+
+### WLR-830｜视觉系统与四视图（P1）
+
+Apple 液态玻璃方向保留，但以信息层级和真实性优先。Dark/Light × Full/Compact 四视图，共用 design tokens；未知、fixture、snapshot、stale、offline、live 视觉可区分，颜色不是唯一编码。
+
+验收：2560×1440、1920、1366、compact；无内容、长中文、100 项目、10 万事件；视觉回归只在 truth tests 通过后运行。
+
+### WLR-840｜可访问性与性能（P1）
+
+WCAG 2.2 AA、键盘/焦点/reduced motion、语义表格、虚拟列表、分页/增量 selector、SSE burst 合并。
+
+验收：axe、键盘 smoke、性能预算、内存泄漏、断线恢复；不因降级数据造成布局跳动或假绿。
+
+---
+
+## 16. WAVE 9 — CI、Canary、恢复和最终收口
+
+### WLR-900｜CI 覆盖真实生产路径（P0）
+
+Observer job 必须构建选定前端、运行 JS/TS tests、cargo check/test Observer crate；Windows job 做 Tauri smoke。Workflow job增加 knowledge catalog、authority index、stale reports、Token schema、project identity tests。
+
+验收：GatePlan 能选择这些 gate；唯一 aggregate 读取真实 job result；workflow 添加 concurrency/取消旧 run 和合理 timeout/cache。
+
+### WLR-910｜对抗性测试包（P0）
+
+覆盖：伪 LIVE、null→0、Token 镜像、固定价格、旧 SHA CI、Observer 写入、Worker 被 Observer 杀死、错误项目根、子模块冒充、mtime 假 ACTIVE、SSE gap/乱序/重放、数据库锁/WAL 损坏、凭据字段、外部路径越界、配置半应用、rollback 失败、并行冲突。
+
+验收：每个 P0 至少一条 RED→GREEN regression；测试必须验证行为，不只搜索字符串。
+
+### WLR-920｜WORK-LAB + 一个 OS 项目只读 canary（P0）
+
+在用户批准的 workspace allowlist 中，只读观察 WORK-LAB 和一个真实 ArcheAxis 项目；验证主体 Git root、Agent execution、Task/Git-CI/usage、Worker→SQLite→Snapshot/SSE→Observer。不得写 OS 项目。
+
+验收：两项目身份不串、子目录不冒充主体、Token 不重复、关闭 Observer 无干扰；外部数据未知时显示 UNKNOWN。
+
+### WLR-930｜长期运行与恢复（P0）
+
+Windows 实机至少覆盖登录启动、Agent/Observer 分别重启、网络断开、GitHub rate limit、Worker crash、机器睡眠唤醒、数据库占用、端口变化。无变化时不触发模型或重复任务。
+
+验收：checkpoint/lease/fence/cursor 全部恢复；stale/offline/last-good 转换正确；无孤儿 Worker 和无锁删除。
+
+### WLR-940｜current exact-SHA CI（P0，需批准 push）
+
+本地 E4 通过后冻结 candidate tree；申请 commit 和 push 授权。云端当前 candidate SHA 所有 required jobs 成功才为 E5；合并后 main SHA 需要独立 run，不能继承 PR-head。
+
+验收：报告包含 commit/tree/workflow run/job/artifact identity；无 run 时保持 WAITING_APPROVAL/UNVERIFIED。
+
+### WLR-950｜一次性批准包（P0）
+
+汇总 candidate SHA、diff、测试、独立只读审计、风险、配置迁移/回滚、canary、未完成外部门。按 commit/push/PR/merge/release/live apply 分开请求，不打包偷渡权限。
+
+### WLR-960｜最终收口审查（P0）
+
+重新读取云端 main 和整个 recursive tree，逐项核对本包状态。清理重复入口仅限标记/索引；删除历史或重写 Git 另需批准。最终只允许一个 current taskpack 和一个 current facts report。
+
+关闭条件：
+
+- 两活动模块未漂移；
+- Observer production 零业务写入与零 Worker 控制；
+- 唯一 Workflow SQLite/Worker/Task Ledger；
+- 主体项目与 Execution 关联有真实证据；
+- 全局配置是真事务，不是内存返回值；
+- Token/cost/cache 字段 truth-first；
+- 选定单一前端并由 CI 构建；
+- WORK-LAB + OS canary E6；
+- 当前 main exact-SHA CI 有独立证据；
+- 知识迁移仍为 DEFERRED_BY_USER，源内容未删除。
+
+---
+
+## 17. 推荐执行批次
+
+为避免任务包过大失控，按以下批次提交候选 diff，每批仍遵守逐项 Git 授权：
+
+| 批次 | 任务 | 目标 |
+|---|---|---|
+| R0 | WLR-000～040 | 事实、权威、文档不再漂移 |
+| R1 | WLR-100～160 | 先恢复 Observer 严格只读 |
+| R2 | WLR-200～260 | 建立真实 Worker/SQLite/项目与执行身份 |
+| R3 | WLR-300～350 | 全局配置事务闭环 |
+| R4 | WLR-400～440 + 500～540 | 模型效率与单项目并行提速 |
+| R5 | WLR-600～640 + 700～730 | 资产成长与知识暂存治理 |
+| R6 | WLR-800～840 | 数据模型冻结后全量重做 Observer |
+| R7 | WLR-900～960 | CI、canary、exact-SHA 和一次性收口 |
+
+任何批次只要出现 P0 regression，暂停后续增强，回到最后 verified checkpoint；不得用 UI 或新功能覆盖真实性缺陷。
+
+---
+
+## 18. 每个任务必须提交的证据模板
+
+```yaml
+task_id: WLR-NNN
+base_sha:
+candidate_sha_or_tree:
+writer:
+read_only_reviewers: []
+allowed_paths: []
+forbidden_paths: []
+inputs:
+changes:
+red_tests:
+green_tests:
+targeted_gate:
+module_gate:
+aggregate_gate:
+windows_runtime:
+data_migration:
+backup_ref:
+readback:
+rollback_test:
+external_mutation: false
+approval_state:
+evidence_level:
+remaining_unknowns: []
+```
+
+禁止用截图、文件存在、测试数量、自然语言“已完成”替代上述字段。
+
+---
+
+## 19. 验证命令基线
+
+执行器必须先从当前仓库的 Justfile/quality gate/lockfile 发现真实命令。最低建议集合：
+
+```text
+python scripts/ci/generate_current_state.py --check-current
+python tests/ci/test_current_state.py
+python tests/ci/test_aggregate_gate.py
+python tests/ci/test_governance_gate.py
+
+Workflow focused tests:
+  telemetry / worker / sidecar / project identity / config transaction /
+  task ledger / collectors / model policy / skills / memory / MCP
+
+Observer:
+  Python read-only and projection tests
+  selected production frontend build + unit tests
+  cargo test --locked
+  cargo check --locked
+
+Final:
+  path-aware module gates
+  aggregate on exact candidate tree
+  Windows runtime canary
+  cloud exact-SHA CI after approval
+```
+
+命令不存在或工具链未安装时，状态为 BLOCKED_EXTERNAL/WAITING_APPROVAL；不得换成弱测试后宣称同等通过。
+
+---
+
+## 20. 最终成功标准
+
+本项目的成功不是“安装更多 Agent、模型、门禁和仪表盘”，而是：
+
+```text
+一套客户端中立的用户全局规则/技能/插件/Memory/模型策略
+  + 项目级私有配置不被吞并
+  + 可恢复、可并行但不冲突的任务执行
+  + 真实、低干扰的跨 Agent/跨项目采集
+  + 唯一事实源与严格只读 Observer
+  + 高缓存命中、低无效消耗的上下文与路由策略
+  + 所有写入可 diff、backup、readback、rollback
+  + GitHub exact-SHA 证据和人工关键批准
+```
+
+达到这些条件后，Hermes、Codex、CC Switch、GitHub、Open Design、OpenHuman、DSH 或未来替代软件都可以更换，而 WORK-LAB 的治理合同、用户资产和证据链仍保持稳定。
+

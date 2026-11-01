@@ -1,0 +1,355 @@
+# WORK-LAB 项目内目录迁移、执行器解耦与彻底清理任务包
+
+```yaml
+id: WL-DIR-MIG-R1
+name: WORK-LAB client-neutral layout convergence and legacy cleanup
+version: 1.0.0
+date: 2026-09-01
+project: WORK-LAB
+baseline_sha: e5231f0f605d1515ed12958267b394c9de1da20c
+executor: any-qualified-executor
+execution_role: bounded-writer
+priority: P0
+mode: sequential-single-writer
+mutation_policy: task-path-allowlist
+commit_policy: atomic-local-commits
+push_policy: explicit-user-approval
+merge_policy: exact-sha-ci-and-human-approval
+network_policy: default-deny-except-locked-upstream-and-github
+runtime_policy: repository-root-zero-spill
+```
+
+## 1. 交付目标
+
+将当前编号式单根仓库收敛成客户端中立的工作流控制面：
+
+1. 保留WORK-LAB独有的Authority、Policy、Gate、Adapter、Receipt、Control Surface和只读Observer；
+2. 把Hermes/Codex/DSH/OpenCode从核心目录拆成可替换执行器适配；
+3. 把根 `.agents`变成可重建投影，而不是唯一真相源；
+4. 把项目内运行数据统一迁至 `.project-local`，维持零外溢；
+5. 将 `40-knowledge`明确收敛为暂存区，不让WORK成为长期知识库；
+6. 整理当前taskpacks与历史归档，去掉重复副本；
+7. 修复7个被Git跟踪的Hermes配置备份；
+8. 完整测试后删除所有原编号目录、旧客户端资产目录、备份目录和兼容副本，保持最终仓库clean。
+
+## 2. 产品边界
+
+WORK-LAB拥有：
+
+- 跨软件工作流治理、single-writer/lease/checkpoint；
+- 权限、预算、风险、人工审批；
+- 项目注册、状态、事件和回执；
+- 可写Control Surface；
+- 严格只读Observer；
+- Hermes/Codex/DSH/OpenCode等Adapter和投影生成器。
+
+WORK-LAB不拥有：
+
+- Hermes/Codex/DSH的全局Home、凭据或私有数据库；
+- ArcheAxis知识/学习真相；
+- DESIGN-LAB Domain Pack、Design IR和设计资产；
+- 第二套通用Agent Runtime或外部执行引擎内部实现。
+
+## 3. 当前基线与必须清理的问题
+
+当前活动根被限定为 `10-workflow/workflow-assistance` 和 `30-observer/work-lab-observer`，同时存在 `00-governance`、`40-knowledge`、`50-taskpacks`、`90-archive`、`.agents`。
+
+已确认：
+
+- `10-workflow/config/.backups/` 中7个 `hermes-*.json` 被Git跟踪；当前文件未发现敏感键，但备份入库本身违规；
+- `10-workflow/.../codex-assets/` 混合中性工作流规则、Codex投影、用户profile和17项skill/参考；
+- 根 `.agents/skills/work-lab-workflow/SKILL.md` 缺少明确的中性canonical source和哈希生成门；
+- `40-knowledge`含大量Hermes/Codex/DSH资产来源记录，容易被误当正式知识库；
+- `.hermes`、`80-evidence`仍是当前运行边界命名；
+- CI、合同和测试大量硬编码编号式模块路径，必须原子更新。
+
+## 4. 最终目录树
+
+```text
+WORK-LAB/
+├─ .project/
+│  ├─ manifest.yaml
+│  └─ governance/
+│     ├─ projects.yaml
+│     ├─ gates.yaml
+│     ├─ path-risk.yaml
+│     └─ data-ownership.yaml
+├─ .github/
+├─ .githooks/
+├─ .project-local/                    # ignored
+│  ├─ worktrees/
+│  ├─ runs/
+│  ├─ cache/
+│  ├─ toolchains/
+│  ├─ build/
+│  ├─ artifacts/
+│  └─ locks/
+├─ apps/
+│  ├─ control-surface/                # 可写治理控制面
+│  ├─ observer/                       # 严格只读Observer
+│  └─ token-monitor/                  # 若资格化保留
+├─ services/
+│  ├─ authority/
+│  ├─ orchestration/
+│  ├─ policy/
+│  └─ receipts/
+├─ packages/
+│  ├─ contracts/
+│  ├─ client-neutral-core/
+│  └─ sdk/
+├─ integrations/
+│  ├─ executors/
+│  │  ├─ hermes/
+│  │  ├─ codex/
+│  │  ├─ dsh/
+│  │  └─ opencode/
+│  ├─ engines/
+│  └─ projects/
+├─ projections/
+│  └─ agents/                         # 根 .agents 的canonical生成源
+├─ taskpacks/
+│  └─ current/
+├─ knowledge-staging/                 # DEFERRED_STAGING
+├─ config/
+├─ scripts/
+├─ tests/
+├─ docs/
+│  ├─ architecture/
+│  ├─ decisions/
+│  ├─ current/
+│  └─ history/
+└─ reports/
+   └─ release/
+```
+
+最终不得存在：`00-governance/`、`10-workflow/`、`30-observer/`、`40-knowledge/`、`50-taskpacks/`、`90-archive/`、`90-archive-manifests/`、`10-workflow/config/.backups/`、`codex-assets/`、旧 `.hermes/`新写入、旧 `80-evidence/`新写入。
+
+根 `.agents/`若客户端强制发现可保留，但只能是由 `projections/agents/`生成的最小投影；不得手工维护或保存用户状态。
+
+## 5. 迁移映射
+
+| 旧路径 | 新路径 | 处置 | 旧路径最终状态 |
+|---|---|---|---|
+| `00-governance/` | `.project/governance/` + `docs/decisions/` | 机器合同与解释文档拆分 | 删除 |
+| `10-workflow/workflow-assistance/scripts/workflow/` | `services/{authority,orchestration,policy,receipts}/` | 按领域职责拆分，不复制外部引擎 | 删除旧模块根 |
+| `10-workflow/.../schemas/` | `packages/contracts/` | 保持schema ID/version兼容 | 删除旧副本 |
+| `10-workflow/.../apps/token-monitor-desktop/` | `apps/token-monitor/` | 通过真实资格化才保留 | 删除旧路径 |
+| `10-workflow/.../codex-assets/` | `integrations/executors/codex/` + `packages/client-neutral-core/` | 中性逻辑与客户端投影拆开 | 删除 |
+| Hermes/DSH脚本与bin | `integrations/executors/{hermes,dsh}/` | 固定Adapter合同 | 删除散落副本 |
+| `30-observer/work-lab-observer/` | `apps/observer/` | 保持只读数据模型与前后端 | 删除 |
+| 根 `.agents/` | `projections/agents/` → 生成根 `.agents` | canonical source+hash | 根只留生成投影 |
+| `40-knowledge/` | `knowledge-staging/` | 只迁移、改状态和import门；不删除未迁知识 | 删除旧路径 |
+| `50-taskpacks/` | `taskpacks/current/` + `docs/history/taskpacks/` | CURRENT与历史拆分、去重 | 删除 |
+| `90-archive*` | `docs/history/` + archive index | 精确去重后保留唯一历史事实 | 删除 |
+| `.hermes/task-runtime/` | `.project-local/runs/` | 项目内复制/哈希/读回 | 清理旧本地目录 |
+| `.hermes/task-artifacts/`、`80-evidence/` | `.project-local/artifacts/` | 净化稳定证据可提升至reports | 清理旧本地目录 |
+
+## 6. 执行任务 DAG
+
+### WL-DIR-000：创建项目内隔离执行面
+
+1. 基线分支：`migration/wl-directory-convergence-r1`。
+2. worktree：`.project-local/worktrees/WL-DIR-MIG-R1/`。
+3. run root：`.project-local/runs/WL-DIR-MIG-R1/<attempt-id>/`。
+4. 设置本任务TEMP/TMP、pip/npm/Cargo/Tauri缓存到项目内。
+5. writer lease只允许本分支写；Observer仍保持只读。
+
+### WL-DIR-010：生成迁移与重复清单
+
+对所有tracked文件生成：blob SHA、字节、Owner、引用者、许可、当前/历史状态、目标、删除裁决。
+
+必须额外输出：
+
+- `codex-assets`中“中性能力 vs Codex投影”分类；
+- Hermes、Codex、DSH脚本的重复功能矩阵；
+- `50-taskpacks`与`90-archive`同哈希/近重复文档清单；
+- `40-knowledge`每项长期Owner和迁移状态；
+- 7个配置备份的历史secret扫描结果。
+
+使用成熟工具：Git、`rg`、gitleaks固定版本、Syft/SPDX；普通目录迁移不重写Git历史。
+
+### WL-DIR-020：先修配置备份违规
+
+1. 记录7个文件blob SHA、大小和递归JSON键名，不输出值。
+2. gitleaks扫描当前树和相关commit范围。
+3. 增加递归忽略：任何深度 `.backups/`、真实客户端profile、token、session、cookie、credential。
+4. 用精确 `git rm`停止跟踪7个文件，删除空 `.backups`。
+5. 若发现真实secret，停止普通迁移，单独申请撤销/轮换和 `git filter-repo`历史清理；不得自行force push。
+
+### WL-DIR-030：建立中性 `.project` 和运行根
+
+1. 把项目注册、Gate、path-risk、数据Owner迁入 `.project/governance`。
+2. 更新 `00-governance/project-data-boundary.json`语义并迁移到新位置。
+3. 项目启动器统一导出 `PROJECT_LOCAL_ROOT`/`PROJECT_RUN_ROOT`，不使用Hermes命名代表公共运行根。
+4. 路径解析拒绝 `..`、其他盘、UNC、junction/reparse point和其他项目。
+5. 新写入只到 `.project-local`；旧 `.hermes/80-evidence`仅迁移器只读。
+
+### WL-DIR-040：拆分中性核心与执行器适配
+
+逐文件裁决 `10-workflow/workflow-assistance`：
+
+- Authority/lease/single-writer/checkpoint → `services/authority`；
+- orchestration/state machine → `services/orchestration`；
+- budget/approval/risk/config policy → `services/policy`；
+- CloudEvents/OTel/in-toto风格回执 → `services/receipts`；
+- schema → `packages/contracts`；
+- 通用SDK → `packages/sdk`；
+- Codex/Hermes/DSH专用入口 → `integrations/executors/<client>`；
+- Dagu等外置执行引擎 → `integrations/engines`。
+
+硬规则：
+
+- 核心不得import某一执行器实现；
+- Adapter只能依赖稳定合同；
+- 用户profile不得进入默认仓库配置；
+- 不复制Hermes/Dagu/Mission Control的通用运行时。
+
+### WL-DIR-050：迁移Control、Observer和Token Monitor
+
+1. Observer整体迁至 `apps/observer`，同步更新Python import、schema、frontend、Tauri和CI。
+2. 保持 `UNKNOWN`、STALE、ERROR语义，不得在迁移中变成0/健康/成功。
+3. Control Surface迁至 `apps/control-surface`；如果当前尚无合格实现，建立最小外壳和合同，但不得把Observer改成可写控制面。
+4. Token Monitor通过数据真值、Windows build、重启读回和成本映射资格化后迁至 `apps/token-monitor`；不合格则冻结到`docs/history`并删除运行模块。
+5. 更新模块注册表：最终活动产品根只能是新的apps/services/packages/integrations。
+
+### WL-DIR-060：生成式投影取代根工具真相
+
+1. 将 `work-lab-workflow` canonical skill迁至 `projections/agents/source/`或中性能力目录。
+2. 实现确定性生成命令，输出根 `.agents/skills/work-lab-workflow/SKILL.md`。
+3. 生成文件标记 `GENERATED — DO NOT EDIT`、源路径、生成器版本和内容哈希。
+4. CI删除投影后重建并执行 `git diff --exit-code`。
+5. Codex/Hermes/DSH投影都由同一中性合同生成，不人工复制三份规则。
+
+### WL-DIR-070：知识暂存区迁移
+
+用户既定约束：ArcheAxis未完成前，WORK知识内容暂不做跨项目删除迁移。
+
+本任务只做：
+
+1. `git mv 40-knowledge knowledge-staging`；
+2. 所有索引状态标为 `DEFERRED_STAGING`；
+3. 生产核心和Observer禁止import该目录；
+4. 每项保留来源、SHA、许可证、未来Owner；
+5. 删除旧 `40-knowledge/`和空 `.gitkeep`；
+6. 未来迁移到ArcheAxis必须是另一任务、另一分支、两仓各自回执。
+
+### WL-DIR-080：任务包与历史去重
+
+1. 只将当前可执行包放入 `taskpacks/current`。
+2. SUPERSEDED/REJECTED历史移动到 `docs/history/taskpacks`。
+3. 同hash副本只保留一个，其他用索引记录旧路径、旧SHA和删除原因。
+4. 90-archive中的唯一历史事实迁入 `docs/history`；可由Git历史恢复且无独立价值的重复文件删除。
+5. 删除 `50-taskpacks`、`90-archive`、`90-archive-manifests`。
+
+### WL-DIR-090：全引用迁移
+
+必须更新：
+
+- `.github/workflows` working-directory和paths filter；
+- `scripts/ci/classify_paths.py`、module registry、contract catalog、source ledger；
+- tests中的固定模块路径；
+- AGENTS、README、当前报告和taskpack索引；
+- package/Cargo/Tauri相对路径；
+- Observer事件、schema ID保持兼容，不因目录改名改变领域协议。
+
+当前代码、CI、配置、current文档对旧编号路径引用必须为0；历史文档可以保留并标记`LEGACY_PATH`。
+
+### WL-DIR-100：本地运行数据迁移
+
+1. dry-run列出 `.hermes`和`80-evidence`来源/目标/哈希/冲突；
+2. 复制到 `.project-local`，不跨盘；
+3. 回读lease/checkpoint/receipt/event/log和Observer投影；
+4. 重启后状态一致，Observer仍严格只读；
+5. 旧目录移入项目内quarantine；
+6. 一个完整任务执行、暂停、恢复、回执、Observer重建周期通过后，按manifest删除旧内容；
+7. 不触碰Hermes Home、Codex Home和其他项目数据。
+
+### WL-DIR-110：测试矩阵
+
+核心门：
+
+```text
+python services/orchestration/run_quality_gate.py verify
+python -m unittest discover -s tests -p "test_*.py"
+python scripts/ci/verify_contract_catalog.py
+python scripts/ci/verify_module_dependencies.py
+python scripts/ci/verify_project_data_boundary.py
+python scripts/ci/verify_supply_chain.py
+python scripts/ci/verify_source_health.py
+python scripts/ci/verify_source_ledger.py --root .
+python scripts/ci/verify_cross_module_source_index.py
+python scripts/ci/verify_source_governance.py
+python scripts/ci/verify_skill_mcp_consistency.py
+```
+
+应用门：
+
+```text
+npm ci --prefix apps/observer/frontend
+npm run build --prefix apps/observer/frontend
+npm test --prefix apps/observer/tests
+npm ci --prefix apps/token-monitor
+npm run build --prefix apps/token-monitor
+cargo test --locked --manifest-path apps/token-monitor/src-tauri/Cargo.toml
+cargo check --locked --manifest-path apps/token-monitor/src-tauri/Cargo.toml
+```
+
+真实黄金纵切：
+
+1. Control创建低风险任务；
+2. 执行器Adapter接收；
+3. lease和checkpoint落项目内sandbox；
+4. 失败→恢复；
+5. Receipt精确绑定task/baseline SHA；
+6. Observer只读重建；
+7. UNKNOWN保持UNKNOWN；
+8. 项目外任务指纹为0。
+
+### WL-DIR-120：旧目录彻底清理
+
+在所有测试全绿后：
+
+1. 精确 `git rm`所有已迁旧tracked路径；
+2. 删除旧compat副本、空目录、`.gitkeep`、配置备份、临时生成输出；
+3. 根 `.agents`只保留生成投影；若所有客户端支持显式路径，则连根投影也删除；
+4. 本地 `.hermes/80-evidence`按迁移manifest清理；
+5. 禁止 `git clean -fdx`，禁止删除未知WIP；
+6. 全量复测、fresh clone、Windows启动、exact-SHA CI；
+7. 最终commit后 `git status --short`为空。
+
+## 7. 清理硬门
+
+禁止合并，如果：
+
+- 任一旧编号根仍被Git跟踪；
+- 7个配置备份或任意真实客户端profile仍在Git；
+- `codex-assets`仍存在；
+- 核心import Hermes/Codex/DSH私有实现；
+- `.agents`不是可重建投影；
+- `knowledge-staging`进入生产依赖；
+- Observer出现写操作或UNKNOWN伪装；
+- CI paths filter漏掉新目录；
+- 本地运行数据或构建输出外溢；
+- fresh clone不clean或测试不全绿。
+
+## 8. 回滚
+
+- 每阶段独立本地commit；不硬重置；
+- tracked内容从上一commit恢复；
+- ignored运行数据从项目内quarantine恢复；
+- schema ID和事件合同在迁移期保持兼容；
+- 如果新目录导致外部客户端失效，只回滚对应Adapter/投影阶段，不恢复重复核心。
+
+## 9. 完成定义
+
+`E5 RELEASED`必须同时满足：
+
+1. 新apps/services/packages/integrations布局成为唯一活动面；
+2. 旧编号目录、备份目录、codex-assets和重复归档物理删除；
+3. 当前引用归零；
+4. Control/Adapter/Receipt/Observer真实闭环通过；
+5. Observer只读真值门通过；
+6. no-spill为0；
+7. local、fresh clone、exact-SHA CI全部通过；
+8. 最终Release证据与SHA绑定；
+9. 用户批准push、merge和release。

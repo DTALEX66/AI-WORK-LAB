@@ -1,0 +1,723 @@
+# 星环知识平台（ArcheAxis Knowledge）
+
+# 常规多格式统一全链路闭环・Hermes 最短执行任务包
+
+> 文档版本：v1.0  
+> 生成日期：2026-08-13  
+> 执行对象：Hermes 主执行代理 + Codex 实现/审计代理  
+> 云端审计基线：`DTALEX66/ArcheAxis-Knowledge-OS@1d9d87564fef066e401321ab450d998f309c7d9a`  
+> 当前产品公开名称：`ArcheAxis Knowledge` / `星环知识平台`  
+> 内部工作台视图：`ArcheAxis Learning Workspace`  
+> 技术包根：`archeaxis-workspace`  
+> 执行目标：在最短真实时间内完成“常规多格式全部可转换并进入同一人机双向学习链”的安装态闭环。  
+> 固定口号：同一份可信知识，人学得更深，AI 用得更准。
+
+---
+
+## 0. 可直接复制给 Hermes 的总指令
+
+```text
+读取并严格执行本任务包。
+
+本轮不是单一 PDF MVP，也不是未来蓝图重构。本轮必须覆盖任务包列出的常规多格式，并让每种格式真实进入同一条统一管线：
+
+Source Intake
+→ RawAsset 原件先保存
+→ Format Router
+→ 本地优先转换/OCR/ASR
+→ ConversionRun / DerivedDocument / DerivedBlock / LossReport / Anchor
+→ 转换质量门控
+→ ClaimCandidate
+→ 可验证性分类
+→ 异步公开来源交叉核验或明确跳过
+→ 人工审核 / EvidenceBundle
+→ Knowledge
+→ Human Learning
+→ AI Asset Candidate
+→ 人工批准、调用、撤销
+→ 重启读回、搜索、引用回跳、开放导出。
+
+未来蓝图中的系统级能力、3D/VR、3D 记忆宫殿、动态视觉课件、动画、模拟器、高级自适应学习、扩展生态、同步、协作、通用 Agent 等全部保留，不得删除、改写或否定；统一标记 DEFERRED/PARKED，不进入当前关键路径。
+
+禁止把 metadata、能 import、单元测试通过、源码环境运行、空文本、固定 mock、静态 UI 或 release 字符串当作格式可用或闭环完成。
+
+开发阶段只运行受影响测试；普通 PR 不运行安装器生命周期、exact-SHA 发布证明、下载哈希回读、SBOM 或重复全仓审计。重型验证仅进入 nightly、release candidate 或正式 release。原件 SHA-256 仍必须在摄取边界计算，因为它是业务数据身份，不是可删除的 CI 装饰。
+
+采用单 writer、WIP=1、一个垂直切片一个 checkpoint、阶段末一次聚合 PR。未经所有者明确授权，不改仓库名、不发布 Release、不合并 PR、不修改全局 Hermes/Codex/用户配置。
+
+先做 MCL-000～MCL-020，输出实际差异和阻塞；然后按依赖图持续执行，直到 MCL-EXIT。不要重新做泛化调研，不要生成新的平行蓝图，不要为了“更放心”重复门禁。
+```
+
+---
+
+## 1. 本轮唯一目标与完成定义
+
+### 1.1 唯一目标
+
+让一个干净安装的 Windows 桌面版本，在用户授权的本地目录中，对本任务包规定的常规格式完成：
+
+1. 导入并永久保全原件；
+2. 以本地/外置引擎优先转换为可用文本；
+3. 保留格式相关的页面、坐标、幻灯片、表格或时间锚点；
+4. 记录转换引擎、版本、质量、损失和失败原因；
+5. 形成可审核的 Claim/Evidence 候选；
+6. 只对公开可查事实异步执行公开来源核验；
+7. 经人工审核后进入 Knowledge；
+8. 同一证据基底支持人类学习和 AI Asset 候选；
+9. 重启后能够读回、搜索、回跳来源并导出；
+10. 任一失败不修改或丢失原件，且可重试、取消、恢复。
+
+### 1.2 `MCL-EXIT` 完成判据
+
+只有以下条件同时满足才能宣布本轮完成：
+
+- 格式矩阵中所有 `REQUIRED` 行均通过真实 fixture、源码链、wheel、Windows 安装态验证；
+- 所有格式进入同一个 Canonical Intake，而不是为测试建立平行入口；
+- 音视频产生真实 ASR 正文和时间戳，不能只产生 FFmpeg metadata；
+- 扫描 PDF/图片产生真实 OCR 正文，低质量结果不会被静默当成成功；
+- RawAsset、ConversionRun、DerivedBlock、Anchor、Claim、Evidence、Knowledge、Learning、AI Asset 关系可查询；
+- 公开核验与转译质量严格解耦；
+- 离线、无模型、无网络、缺可选引擎时基础链能诚实降级；
+- 重启读回和开放导出通过；
+- 当前安装制品的能力清单与实际结果一致；
+- 未来蓝图仍完整存在且标记为延期，不被本轮删除。
+
+### 1.3 明确不算完成
+
+- 文件上传 HTTP 200，但未产生正文；
+- `markitdown`、Tesseract、Whisper 可以 import；
+- FFmpeg 只读到时长、编码或生成 WAV；
+- 测试 mock 返回固定文字；
+- 只验证 PDF 或 DOCX；
+- 只在源码目录可运行，安装版缺依赖或模型；
+- 只有一个没有页码/时间戳的 `document:first-claim`；
+- 公开 API 返回元数据就标记 `verified`；
+- OCR/ASR confidence 被当成事实准确率；
+- CI 全绿但没有安装态格式矩阵证据。
+
+---
+
+## 2. 范围冻结：格式矩阵
+
+### 2.1 当前闭环必须支持（REQUIRED）
+
+| 类别 | 扩展名/来源 | 默认本地链 | 必须保留的锚点 |
+|---|---|---|---|
+| 纯文本 | `.txt` | 编码探测 → UTF-8/GB18030/GBK 回退 | 行号、字符范围 |
+| Markdown | `.md`, `.markdown` | passthrough + 结构解析 | 标题路径、块号、字符范围 |
+| 表格文本 | `.csv`, `.tsv` | 编码探测 + CSV parser；MarkItDown 仅辅助 | 行、列、单元格范围 |
+| 文字 PDF | `.pdf` | MarkItDown/pdfplumber/PyMuPDF，按质量选择 | 页码、字符范围；可得时保存 bbox |
+| 扫描/混合 PDF | `.pdf` | 页面文字探测 → RapidOCR/Tesseract OCR | 页码、区域 bbox |
+| Word | `.docx` | MarkItDown/python-docx 结构回退 | 标题路径、段落/表格/图片引用 |
+| PowerPoint | `.pptx` | MarkItDown/python-pptx 结构回退 | 幻灯片号、对象号、备注 |
+| Excel | `.xlsx` | MarkItDown/openpyxl 结构回退 | sheet、cell/range、公式/值边界 |
+| HTML 文件 | `.html`, `.htm` | Trafilatura → ReadabiliPy → 安全纯文本 | DOM/标题路径、块号 |
+| 公开网页 | `http/https URL` | Safe HTTP + Trafilatura/ReadabiliPy | URL、抓取时间、正文块 |
+| 图片 | `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.tif`, `.tiff` | RapidOCR → Tesseract 回退 | 页/图片、区域 bbox |
+| 音频 | `.wav`, `.mp3`, `.m4a`, `.flac`, `.aac`, `.ogg` | FFmpeg 规范化 → faster-whisper CPU | segment start/end |
+| 视频 | `.mp4`, `.mov`, `.mkv`, `.webm`, `.avi` | FFmpeg 抽音轨 → faster-whisper | segment start/end、源视频时间 |
+| JSON Canvas | `.canvas` | 原生安全解析 | node id、node type、坐标 |
+| Vault | 用户授权的 Markdown/附件/Canvas 目录 | 现有 Vault Adapter + Canonical Intake | vault-relative path、revision |
+
+### 2.2 兼容级支持（COMPAT；不阻塞首个闭环制品）
+
+| 格式 | 策略 |
+|---|---|
+| `.doc`, `.ppt`, `.xls`, `.rtf` | 独立 `LibreOfficeHeadlessAdapter`；未安装时明确 `ENGINE_UNAVAILABLE`，不得映射成 docx/pptx/xlsx 后伪成功。首个 MCL 版本可以声明“需外置 LibreOffice”。 |
+| YouTube | 优先公开 transcript；无 transcript 时只在用户授权下载/处理的前提下进入音频 ASR。 |
+| RSS/Search | 作为多来源发现入口，不作为二进制格式闭环证明。 |
+
+### 2.3 本轮延期但必须保留蓝图
+
+- EPUB/漫画包/压缩包递归摄取；
+- 邮件、CAD/BIM、PSD/AI 工程文件；
+- 医学影像、专业地理空间格式；
+- 复杂公式、版面和图表的像素级重建；
+- 视频场景理解、动作识别、视觉大模型全片分析；
+- 3D/VR、3D 记忆宫殿、空间知识图谱渲染；
+- 动态视觉课件、动画演示、交互模拟器；
+- 完整自适应学习研究、多人协作、云同步；
+- 通用 Agent、多智能体自治、Marketplace、企业多租户。
+
+延期只影响排期，不删除需求、模型、任务编号或未来兼容接口。
+
+---
+
+## 3. 审计基线与必须修复的已知断点
+
+以审计 SHA 为准，执行前必须在最新 `origin/main` 上复核，但不得重新开展无边界全仓调研。
+
+| 断点 | 当前事实 | 本轮处置 |
+|---|---|---|
+| 双入口 | `shared.pipeline` 的 file 仍只读 UTF-8、≤2MB；Workspace 才调用 multi-format | 收口到 Canonical Intake |
+| 媒体伪入口 | 正式 `_ENGINES` 对 media 只走 FFmpeg metadata；ASR 只在 bake-off | 下沉 faster-whisper 生产 Adapter |
+| 质量门无控制权 | `quality=True` 只返回报告；首个非空结果立即返回 | 质量门控制继续/接受/复核 |
+| 原件语义冲突 | Workspace 转换成功后才保存；失败删除临时文件；RawAsset 合同要求失败也保留 | RawAsset-first；统一失败保留策略 |
+| 对象未接线 | ConversionRun/DerivedBlock/LossReport 已存在但未进入 Workspace 主链 | 复用并接入，不建平行模型 |
+| 锚点过弱 | 本地文档只取第一条非空内容，位置为 `document:first-claim` | 多块、多 Claim、格式化锚点 |
+| 核验未接主链 | Public Evidence APIs 已有，但不是 Workspace Claim 异步流程 | Claim 级 eligibility + verify job |
+| 安装态未证实 | Truth 文档仍标记全格式 `UNVERIFIED/BLOCKED` | 每格式安装态 E2E |
+| CI 触发过重 | CI 716 行/11 jobs；部分变更触发桌面构建、Rust audit、NSIS | 开发/PR/nightly/release 分层 |
+| 配置与命名漂移 | 云仓名称含 OS，`.worklab project_id` 仍指向 archeaxis-workspace，存在历史 COGNITIVE/runtime 名称 | 记录偏差；闭环前不做全仓改名 |
+
+---
+
+## 4. 目标架构：只保留一条主链
+
+```text
+[Workspace upload / directory / Vault / URL / API]
+                         │
+                         ▼
+              CanonicalIntakeService
+                         │
+              权限确认、流式读取、MIME/格式探测
+                         │
+                         ▼
+                 RawAssetStore
+           原件先保存 + SHA-256 + source metadata
+                         │
+                         ▼
+                  Durable Job
+       command/idempotency/lease/checkpoint/retry/cancel
+                         │
+                         ▼
+                  FormatRouter
+      text | document | OCR | web | audio | video | canvas
+                         │
+                         ▼
+             Local-first Adapter Chain
+                         │
+                         ▼
+                  QualityGate
+      ACCEPT | COMPARE | NEEDS_REVIEW | FAILED
+                         │
+                         ▼
+                  ConversionRun
+         DerivedDocument + DerivedBlocks + LossReport
+                         │
+                         ▼
+              Anchor + ClaimCandidate
+                         │
+                         ▼
+            VerificationEligibility
+        ┌────────────────┼──────────────────┐
+        │                │                  │
+ public_verifiable  private/nonpublic  opinion/noise
+        │                │                  │
+        ▼                └──── skip + reason ┘
+ Async Public Cross-check
+        │
+        ▼
+ Review Queue → EvidenceBundle
+        │
+        ├──────── Knowledge → Human Learning
+        │
+        └──────── AI Asset Candidate → Review → Approved
+                         │
+                         ▼
+          Restart readback / Search / Citation jump / Export
+```
+
+### 4.1 强制复用，不得平行重建
+
+- RawAsset：复用 `app.ingestion.raw_asset`，修正合同冲突；
+- Conversion：复用 `app.ingestion.conversion_run` 并补版本化锚点；
+- Job/Outbox/Receipt：复用 `app.workspace.job_outbox`、worker、dispatcher；
+- Research graph：复用 `persist_research_graph` 和既有 Candidate 治理；
+- Evidence：复用 Claim/Evidence/EvidenceBundle 合同；
+- Knowledge/Learning/AI candidate：复用当前生命周期和人工批准机制；
+- Storage：保持 SQLite 单一事实源，不新增第二个“管线状态数据库”；
+- UI：复用 Workspace 现有页面，只补最小状态和复核交互，不进行视觉重构。
+
+---
+
+## 5. 执行策略与依赖图
+
+```text
+MCL-000 → MCL-010 → MCL-020 → MCL-030 → MCL-040
+                                      ├→ MCL-041～049
+                                      └→ MCL-050
+MCL-041～050 → MCL-060 → MCL-070 → MCL-080 → MCL-090
+MCL-060 + MCL-090 → MCL-100 → MCL-110 → MCL-120 → MCL-130
+MCL-140 可与 041～130 同步补 fixture，但必须在功能实现后真实执行
+MCL-140 → MCL-150 → MCL-160 → MCL-170 → MCL-EXIT
+```
+
+执行规则：
+
+- 单 writer；最多一个实现任务处于 `IN_PROGRESS`；
+- 允许一个只读 reviewer 在高风险节点检查，不得多人同时改同一文件；
+- 每个任务形成可回滚本地 checkpoint；
+- 低风险 checkpoint 不逐个 push；
+- 完成一个纵向阶段后聚合一次 PR；
+- 先修接缝，后补覆盖，不为“漂亮架构”重写可复用代码；
+- 新依赖必须说明许可证、Windows/CPU 支持、模型体积、下载行为和替换方式；
+- 不允许程序首次导入时静默下载大模型；模型安装/下载必须显式显示大小、来源和授权。
+
+---
+
+## 6. 详细任务清单
+
+### MCL-000｜基线冻结与反漂移
+
+**目标**：建立本轮唯一执行真相，不改产品蓝图。
+
+**动作**：
+
+1. 从最新远端 main 建立隔离 worktree；记录 repo、branch、HEAD、dirty state。
+2. 读取当前 `AGENTS.md`、`VERIFICATION_POLICY.md`、CURRENT_STATE_TRUTH、命名 V2、未来蓝图。
+3. 新增一个当前闭环状态入口，其他历史 handoff 只读。
+4. 将 H6～H10 和所有高阶视觉/3D/Agent 能力保持 `DEFERRED/PARKED`。
+5. 建立 `known_deviations`：仓库名含 OS、历史环境变量/DB/UI 路由命名等；本轮不进行全仓命名迁移。
+
+**验收**：没有删除未来任务；没有启动 UI、命名、Agent 或 3D 实现；没有覆盖用户其他项目配置。
+
+### MCL-010｜真实格式 corpus 与 Oracle
+
+**目标**：先定义“什么叫可用”，防止测试替身。
+
+**动作**：
+
+- 为 REQUIRED 矩阵每类准备最少一个真实、可公开提交的小型 fixture；
+- PDF 必须含文字、扫描、混合、中英文；
+- OCR 必须含中文、英文、数字表格；
+- Office 必须含标题、列表、表格、备注或公式值；
+- 音视频必须含中文/英文短样本及人工 transcript；
+- 每个 fixture 记录来源、许可证、SHA-256、预期结构、truth 文本和允许误差；
+- 私人资料只做本地验收，正文和绝对路径不得提交。
+
+**验收**：fixture 不是扩展名伪装文件；Oracle 能发现空文本、乱码、页/时间锚点丢失。
+
+### MCL-020｜统一 Canonical Intake
+
+**目标**：所有来源使用同一个摄取服务。
+
+**动作**：
+
+1. 建立 `CanonicalIntakeService` 或等价 facade。
+2. Workspace upload、`/pipeline file`、目录、Vault、URL 只提交 source descriptor。
+3. 文件采用流式写入，不将长音视频整体读入内存。
+4. 统一批准目录、文件大小/配额、MIME 和扩展名冲突策略。
+5. API 返回公共 `intake_id/job_id/status`，不等待长任务完成。
+6. 旧入口保持兼容但内部转发到 canonical service。
+
+**验收**：同一文件从不同公开入口产生同一 RawAsset 身份和同类任务，不产生不同管线结果。
+
+### MCL-030｜RawAsset-first 与失败保全
+
+**目标**：任何转换前原件已经不可变保存。
+
+**动作**：
+
+- 统一 RawAsset 保存目录、数据库记录和内容寻址；
+- 流式 SHA-256 只在摄取边界计算一次并复用；
+- 原件身份使用原始字节哈希，不能使用转换文本哈希替代；
+- 转换失败保留原件和 failure record；
+- 只有明确取消且用户选择删除、保留策略到期或用户主动删除才可移除原件；
+- 修复 `run_import_with_receipt` 删除失败原件与 RawAsset 合同冲突；
+- 重复导入相同字节去重，但保留多个来源引用和导入事件。
+
+**验收**：在转换器、数据库提交、进程退出三处故障注入下，原件不丢、无伪成功、可安全重试。
+
+### MCL-040｜FormatRouter 与统一 Adapter 合同
+
+**目标**：格式识别、引擎执行和降级语义统一。
+
+**AdapterResult 必须包含**：
+
+```text
+status / content / blocks / anchors / engine / engine_version
+format / language / warnings / loss_report / quality_signals
+model_id(optional) / model_revision(optional) / duration / resource_usage
+```
+
+**动作**：
+
+- 扩展名只作提示，Magika/MIME/文件签名与容器检查共同决定格式；
+- 修复 `.doc/.ppt/.xls` 被映射成 OOXML 的问题；
+- `metadata_only` 永远不能变成 `success`；
+- 引擎不可用、文件损坏、密码保护、空内容、质量不足分别建错误码；
+- 所有 Adapter 都可被替换，不把引擎细节泄漏到知识层。
+
+### MCL-041｜文本、Markdown、CSV/TSV、Canvas/Vault
+
+- 完成编码探测与可逆的 UTF-8 派生输出；
+- CSV/TSV 使用结构化 parser，产生 cell/range anchor；
+- Canvas 保留 node id、类型、坐标与未知字段；
+- Vault 路径使用相对身份、revision 和批准 root；
+- 不执行嵌入脚本或跟随未经授权的外部链接。
+
+### MCL-042｜文字 PDF
+
+- 区分文字、扫描、混合页面；
+- 文本型优先本地轻量提取；
+- 按页生成 block 和 anchor；
+- 加密/损坏文件进入明确复核状态；
+- 不为文字 PDF 默认启动 OCR。
+
+### MCL-043｜扫描 PDF 与图片 OCR
+
+- 产品链正式接入 RapidOCR/Tesseract；
+- 根据语言提示选择 `chi_sim/eng` 或 RapidOCR；
+- 保存页码、bbox、识别文本、引擎和可得 confidence；
+- confidence 仅作路由信号，不是 CER，也不是事实准确率；
+- 低质量时比较第二本地引擎；仍不确定进入人工复核；
+- LLM 视觉 OCR 默认关闭，仅用户授权后作为末级辅助。
+
+### MCL-044｜DOCX/PPTX/XLSX
+
+- DOCX：标题、段落、列表、表格、图片引用；
+- PPTX：幻灯片顺序、文本框、备注、表格、媒体引用；
+- XLSX：sheet、cell/range、公式和值；
+- 视觉布局无法完整保留时写入 LossReport；
+- MarkItDown 结果质量不足时使用 python-docx/python-pptx/openpyxl 结构回退。
+
+### MCL-045｜旧 Office 兼容 Adapter
+
+- 独立识别 `.doc/.ppt/.xls/.rtf`；
+- 外置 LibreOffice headless 转换到临时 OOXML/PDF，再进入既有链；
+- 临时文件是派生产物，可删除；原件保持不变；
+- 未安装 LibreOffice 时返回带安装指导的 `ENGINE_UNAVAILABLE`；
+- 不阻塞首个 MCL Release，但能力页必须诚实标记 external dependency。
+
+### MCL-046｜HTML 与网页
+
+- 本地 HTML 不通过网络；
+- URL 使用 Safe HTTP、响应大小/类型/重定向/SSRF 边界；
+- Trafilatura 主链、ReadabiliPy 回退；
+- 保存 canonical URL、抓取时间、content hash、正文块；
+- 联网摄取需要用户授权；离线状态可重试。
+
+### MCL-047｜音频 ASR 产品化
+
+- FFmpeg 转为 16kHz mono PCM；
+- 正式 Adapter 调用 faster-whisper CPU/int8；
+- 保留每段 start/end/text/language；
+- 模型必须显式安装或随受控资源包提供，不在后台静默下载；
+- 默认小/中型模型按本机能力配置，模型 ID/revision 写入 ConversionRun；
+- transcript 质量不足进入人工复核，不能只返回音频 metadata。
+
+### MCL-048｜视频转译
+
+- 从视频抽取音轨并复用 MCL-047；
+- transcript 时间直接锚定源视频；
+- 可选关键帧只用于封面/复核，不要求当前完成视觉语义理解；
+- 无音轨视频应标记 `NO_SPEECH_TRACK`，不得伪造正文。
+
+### MCL-049｜URL/YouTube/Vault 兼容入口
+
+- YouTube transcript 可用时保存来源和时间戳；
+- 无 transcript 时只有用户授权后才走媒体处理；
+- Vault 附件重新进入 FormatRouter；
+- 入口差异不能改变下游对象模型。
+
+### MCL-050｜真正可执行的质量门控
+
+**有人工 truth 时**：
+
+- 计算 CER/WER；
+- 中文以 CER 为主，英文语音同时报告 WER；
+- 初始建议：`CER ≤ 0.10 PASS`、`0.10 < CER ≤ 0.25 WARN/COMPARE`、`>0.25 FAIL/REVIEW`；
+- 阈值必须用项目 corpus 校准，不能永久硬编码为行业真理。
+
+**没有 truth 时**：使用组合信号，不生成伪准确率：
+
+- 空文本、控制字符、乱码/替换字符比；
+- 页覆盖率、有效字符密度、重复行/页眉页脚比；
+- 语言一致性、词典/字符集异常；
+- 表格/块结构完整度；
+- 双引擎一致度；
+- ASR 的 no-speech、segment 覆盖、重复片段；
+- 文件大小与输出量只作弱信号。
+
+**门控决策**：
+
+```text
+ACCEPT：进入派生文档
+COMPARE：运行一个不同架构的本地候选并择优/保留差异
+NEEDS_REVIEW：保存全部候选，不自动覆盖
+FAILED：保留原件和失败记录，可重试
+LLM_ASSIST：仅显式授权、局部片段、最后一级
+```
+
+### MCL-060｜ConversionRun、Blocks、Anchors、LossReport 接线
+
+- Workspace 主链必须创建并持久化 ConversionRun；
+- 每个 block 绑定 raw asset revision、格式锚点和转换器版本；
+- conversion 重新运行产生新 revision，不覆盖旧结果；
+- Anchor 可从 Claim/Evidence 回跳到原始页、单元格、节点或时间；
+- LossReport 记录未提取图片、公式、动画、布局、密码保护、无音轨等损失；
+- 删除派生结果后可由原件重建。
+
+### MCL-070｜多 Claim 与验证资格分类
+
+- 不再只取第一条非空行；
+- 从 block 中提取多个 `ClaimCandidate`，保留 block/anchor；
+- 默认全部为 candidate；
+- 分类至少包括：
+  - `public_verifiable`
+  - `private_or_nonpublic`
+  - `subjective_or_opinion`
+  - `instruction_or_question`
+  - `translation_noise`
+  - `insufficient_context`
+- 只有 `public_verifiable` 进入自动全网核验；
+- 私人记录、非公开业务信息、个人观点、纯噪声不浪费网络请求。
+
+### MCL-080｜Claim 级异步公开来源核验
+
+- 复用 Crossref、DataCite、OpenAlex、Wikidata；
+- 增加可插拔官方文档/Wikipedia/图书馆或学术来源 Adapter 接口，但本轮不追求全网爬虫；
+- 每个请求绑定 claim_id、query、来源、时间、URL/ID、返回摘要和哈希；
+- 输出：`supports/refutes/qualifies/insufficient/conflict/not_applicable`；
+- API metadata 只能生成 EvidenceCandidate，不能自动 `verified`；
+- 网络失败不阻塞知识摄取，状态为 `not_checked_offline` 或 `retryable`；
+- 缓存同一规范化查询，设置 TTL、限流和失败退避，减少网络与 token 消耗；
+- 默认不调用付费 LLM。
+
+### MCL-090｜人工复核与 EvidenceBundle
+
+- 统一队列展示原文锚点、转换质量、不同引擎差异、公开来源差异；
+- 支持批准、驳回、修订、冲突保留、暂缓、重新核验；
+- 人工修订不覆盖原转换文本，形成新 revision；
+- EvidenceBundle 只有人工批准后生效；
+- 单一网页、OCR confidence、LLM 输出不能独立升级可信等级。
+
+### MCL-100｜Knowledge、人类学习、AI Asset 双向复用
+
+- 复用现有 Research → Knowledge → Learning → AI candidate 生命周期；
+- Knowledge 必须能追踪 EvidenceBundle 和原件 Anchor；
+- Human Learning 至少完成：学习条目、练习、一次复习、Teach Back/人工反馈入口；
+- AI Asset 至少完成：Candidate → Review → Approved → Revoked；
+- AI 调用只读取 approved、scope 匹配、未撤销资产；
+- 人类修订和 AI 发现的冲突能返回 Evidence Review Queue；
+- 本轮不实现通用 Agent 或自动工具执行。
+
+### MCL-110｜Job、幂等、重试与恢复
+
+幂等只用于有副作用的边界：
+
+- intake command；
+- 原件保存；
+- ConversionRun 创建；
+- 外部核验请求缓存；
+- outbox delivery；
+- 人工批准/撤销；
+- migration。
+
+不得给纯读取、纯质量计算或每个 UI 查询反复做“幂等认证”。
+
+必须验证：崩溃恢复、lease fencing、重试上限、取消、暂停、断点、无无限循环、无重复 Evidence/Knowledge。
+
+### MCL-120｜最小 UI 接线
+
+只增加完成闭环必需界面：
+
+1. 导入入口与格式/引擎能力提示；
+2. Job Center：排队、转换、复核、失败、重试、取消；
+3. 文档/媒体阅读与锚点回跳；
+4. 转换质量与 LossReport；
+5. Evidence Review；
+6. Knowledge、Learning、AI Asset Candidate 状态；
+7. 离线/网络授权/模型安装提示；
+8. 导出。
+
+禁止本轮重新设计全套 UI、动画系统、3D 界面或品牌视觉。
+
+### MCL-130｜重启读回、搜索、引用与开放导出
+
+- 关闭应用后重新启动，所有对象关系仍成立；
+- 全文搜索能命中 DerivedBlock；
+- Knowledge/Learning/AI Asset 可回跳 RawAsset anchor；
+- 导出至少包含：原件 manifest、SHA、派生文档、anchors、claims、evidence、knowledge、learning、AI assets、版本关系和 loss；
+- 导出使用开放 JSON/Markdown/CSV 等，不建立专有锁定。
+
+### MCL-140｜全格式真实 E2E 矩阵
+
+对每个 REQUIRED 格式运行同一测试模板：
+
+```text
+intake
+→ raw preserved
+→ conversion content non-empty
+→ correct format anchor
+→ quality decision
+→ claim candidate
+→ verification decision or explicit skip
+→ human approval
+→ knowledge
+→ learning
+→ AI asset candidate
+→ restart
+→ search
+→ citation jump
+→ export
+```
+
+报告必须逐格式列出 PASS/WARN/FAIL/BLOCKED，不得用一个格式代表另一格式。
+
+### MCL-150｜Windows 安装态资格
+
+- 从干净 exact tree 构建一次 wheel/desktop/installer；
+- 在没有源码路径污染的 Windows 环境安装；
+- 验证 Python、Tesseract、FFmpeg、RapidOCR、faster-whisper 和模型资源的真实可用性；
+- 每个 REQUIRED 格式跑 MCL-140；
+- 验证首次启动、正常关闭、重启、升级数据保留、卸载不误删用户数据；
+- 失败只修真实阻塞，不在每个开发 checkpoint 重跑安装器。
+
+### MCL-160｜CI 与认证减负
+
+**保留门禁，调整频率。**
+
+| 层级 | 触发 | 目标耗时 | 内容 |
+|---|---|---:|---|
+| Dev Loop | 每次实现迭代 | 30～90 秒 | changed-file Ruff + 受影响单测 |
+| PR Fast | 聚合 PR | 2～4 分钟 | gateplan、static、lint、受影响测试、必要 wheel smoke |
+| Main/Nightly | 每日/主线阶段 | 10～20 分钟 | 全 Python、兼容矩阵、浏览器、Windows runtime、格式 corpus |
+| RC | 候选发布 | 20～40 分钟 | Desktop build、真实安装态全格式矩阵、供应链检查 |
+| Release | tag/人工触发 | 按需 | exact-SHA、NSIS 生命周期、SBOM、checksum、签名、下载回读 |
+
+具体整改：
+
+- 保持现有 GatePlan，不再进行第二轮大重写；
+- 普通 Python/格式实现不触发 NSIS；
+- `cargo audit` 不在每次非 Rust 变更运行；
+- installer lifecycle、download readback、release checksum 仅 RC/Release；
+- dependency/license 检查只在 lockfile、模型、payload 或 release 变化时触发；
+- 文档变更只跑 static，当前已有约 35 秒快速路径，保留；
+- 使用 concurrency 取消旧 PR run；
+- 同一 frozen diff 只运行一次完整门禁；失败后先重跑失败 job；
+- CI 产物自动生成证据，不手工复制测试数量和哈希到多个文档；
+- 原件 SHA、派生 SHA 是业务身份，必须保留；禁止为了提速删除业务哈希。
+
+### MCL-170｜能力真值与交付
+
+- 更新 CURRENT_STATE_TRUTH，只声明安装态真实通过的格式；
+- 生成 `format-capabilities.json`，区分 built-in/external/optional/unavailable；
+- 记录精确 SHA、安装器、模型 revision、fixture 结果和已知限制；
+- 历史 Handoff 归档，不再新增多个平行真值文件；
+- 命名漂移只登记后续任务，不夹带全仓迁移；
+- 未来蓝图任务保持原编号和内容，状态为 DEFERRED/PARKED。
+
+### MCL-EXIT｜本轮裁决
+
+输出一个明确结论：
+
+- `GO`：所有 REQUIRED 格式完成安装态统一全链路；
+- `CONDITIONAL GO`：仅 COMPAT 外置格式缺系统依赖，REQUIRED 全通过；
+- `NO-GO`：任一 REQUIRED 格式只能 metadata、无正文、无锚点、未进知识/学习/AI 候选或重启丢失。
+
+不得用测试数量、PR 数量、代码行数或“模块已存在”替代裁决。
+
+---
+
+## 7. 建议的三批 PR，而不是几十个小 PR
+
+### PR-A｜Canonical Intake + RawAsset + Conversion Core
+
+包含：MCL-000～040、041 基础格式、050、060 的基础接线。  
+验收：文本/Markdown/CSV/Canvas + 一个 PDF 进入同一对象链。
+
+### PR-B｜常规格式 Adapter + Evidence
+
+包含：MCL-042～049、070～090。  
+验收：格式矩阵源码 E2E 通过；音视频已有真实 ASR 和时间戳；核验异步且不自动转正。
+
+### PR-C｜双向学习 + UI + 安装态闭环
+
+包含：MCL-100～170。  
+验收：Windows 安装版全格式矩阵、重启、搜索、引用、导出和人机双链通过。
+
+如果 PR-A 规模过大，可按“数据模型/入口”和“转换路由”拆为 A1/A2，但不得回到每个测试一个 PR。
+
+---
+
+## 8. 状态报告模板
+
+Hermes 每个 checkpoint 只输出以下内容，禁止重复长篇项目介绍：
+
+```markdown
+## MCL-XXX 状态
+
+- 基线 SHA：
+- 状态：NOT_STARTED / IN_PROGRESS / PASS / BLOCKED / DEFERRED
+- 实际修改：
+- 复用的现有模块：
+- 新增依赖与许可证：
+- 定向 RED：
+- 定向 GREEN：
+- 未运行的重门禁及原因：
+- 真实 fixture：
+- 已知限制：
+- 下一任务：
+- 是否需要所有者决策：否 / 是（只写一个明确问题）
+```
+
+阶段末才补：聚合 SHA、完整 CI URL、安装态矩阵和 GO/NO-GO。
+
+---
+
+## 9. 禁止事项
+
+1. 禁止删除或否定未来蓝图能力。
+2. 禁止把任务缩成单一 PDF、单一 OCR 或单一文本入口。
+3. 禁止重建第二套 Evidence、Job、Knowledge、Learning 或 AI Asset 数据库。
+4. 禁止默认调用云端 LLM 做整文件 OCR/ASR。
+5. 禁止在未授权时联网、扫描用户目录或下载模型。
+6. 禁止自动覆盖不同引擎结果、原文、人工修订或冲突证据。
+7. 禁止把置信度当 CER/WER，或把 CER/WER 当事实准确率。
+8. 禁止 metadata-only success。
+9. 禁止为了每次小改动重复 exact-SHA、安装器、签名、SBOM、下载回读。
+10. 禁止为了提速删除原件哈希、来源锚点、人工复核和撤销机制。
+11. 禁止同时推进全仓命名、全套 UI、3D、Agent、云同步等非关键路径。
+12. 禁止未经授权修改 GitHub 仓库名、branch protection、Release、全局 Hermes/Codex/CC Switch 或用户配置。
+
+---
+
+## 10. 工期与资源预算
+
+在复用现有代码、单 writer、命名/UI/未来蓝图冻结的前提下：
+
+| 阶段 | 预计集中工作日 |
+|---|---:|
+| 基线、corpus、统一 intake、RawAsset | 1.5～2.5 |
+| 格式 Adapter、ASR、质量门、anchors | 2.5～4 |
+| Claim/核验/双向学习接线 | 1.5～2.5 |
+| UI 最小接线、重启/导出、Windows 安装态 | 2～3 |
+| 合计 | 7.5～12 |
+
+这是“真实可安装全格式闭环”的估算，不包含 3D/VR、视觉课件、通用 Agent、完整品牌/UI 重构或云同步。
+
+---
+
+## 11. 所有者需要保持冻结的三个决定
+
+执行期间默认采用以下决定，除非出现安全/许可证硬阻塞，否则不反复询问：
+
+1. REQUIRED 格式矩阵即本轮范围；旧 Office 为外置 COMPAT。
+2. 本地引擎优先，LLM 仅局部、末级、显式授权。
+3. 未来蓝图完整保留但延期；当前唯一优先级是安装态常规多格式统一全链路闭环。
+
+---
+
+## 12. 最终交付物
+
+Hermes 完成任务包时必须交付：
+
+1. Canonical Intake 实现与版本化接口；
+2. REQUIRED/COMPAT 格式 Adapter 与能力清单；
+3. RawAsset/ConversionRun/DerivedBlock/Anchor/LossReport 实际关系；
+4. 质量门控和多引擎差异保留；
+5. Claim eligibility、异步公开核验、人工 EvidenceBundle；
+6. Knowledge/Human Learning/AI Asset 双向闭环；
+7. Job Center 最小 UI、重试/取消/恢复；
+8. 开放导出与重启读回；
+9. 全格式 fixture、Oracle、源码 E2E 和 Windows 安装态报告；
+10. 分层 CI 与实际耗时；
+11. 当前能力真值与已知限制；
+12. 未被删除的未来蓝图和明确 DEFERRED/PARKED 状态；
+13. 最终 `GO / CONDITIONAL GO / NO-GO` 裁决。
+
+---
+
+**最终原则**：本轮不是“证明系统很严谨”，而是让严谨机制服务于真实产品闭环。哈希用于原件和制品身份，幂等用于副作用与恢复，CI 用于对应风险，人工门禁用于可信知识生效；它们都必须保留，但不能在每个微小改动上重复执行。当前只做一件事：让所有规定的常规格式，从真实原件进入同一条证据驱动的人类学习与 AI 复用链，并在安装版中完整跑通。

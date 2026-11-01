@@ -1,0 +1,365 @@
+# WORK-LAB 云端重新审计报告 R2
+
+审计时间：2026-08-14 UTC  
+审计对象：`DTALEX66/WORK-LAB`  
+审计基线：`main@f0e703d60f30e71f7676d44d003527df0a0f2163`  
+对比基线：`6c6ae8a5aefe0aa0e280fbc182c1bd95e088c754`  
+审计方式：云端提交/PR 回读、独立只读克隆、代码级数据流审计、隔离依赖测试、针对性反例复现。  
+
+## 1. 执行结论
+
+WORK-LAB 的产品定位没有漂移，活动模块仍只有：
+
+1. `10-workflow/workflow-assistance`：唯一主动后台和事实写入方；
+2. `30-observer/work-lab-observer`：严格只读观测层。
+
+从 `6c6ae8a` 到 `f0e703d`，仓库新增约 6,168 行、删除约 142 行，已经加入 WLGM 项目身份、执行证据、SQLite v2、v3 Snapshot、SSE、LIVE Gate、Observer v3 UI 和 canary 代码。这是明显进展。
+
+但当前最关键的问题是：**新增组件多数仍是未接入运行主链的“并行实现”**。生产入口仍主要运行旧 Worker、旧项目注册器、旧 Sidecar、旧 SSE Hub 和旧 `/api/dashboard` 投影。因此，提交说明中的“完成 WLGM-000～WLGM-240”不能作为真实闭环结论。
+
+当前成熟度判定：
+
+- 治理与测试骨架：中高；
+- 全局项目身份基础：中；
+- Agent 执行状态真实采集：低；
+- Snapshot/SSE/Observer 端到端链路：低；
+- Windows/Tauri：未验证；
+- 整体：**控制面工程原型，尚未达到双项目 canary 可用状态，更不是正式产品。**
+
+## 2. 云端增量
+
+本轮新增合并提交：
+
+| SHA | PR | 声明内容 | 审计判定 |
+|---|---:|---|---|
+| `3368cd5` | #92 | WLGM 全局项目执行观测基础 | 大量代码已加入，但未接入运行主链 |
+| `1003f7c` | #93 | v3 UI、Schema Validator、迁移恢复、门禁、Tauri 描述符 | UI/单测推进明显；生产 Sidecar 仍未使用 v3 |
+| `7c448f1` | #94 | 外部项目不应被吸收到 WORK-LAB | 只验证“未批准项目保持 UNRESOLVED”，不等于双项目监控 canary |
+| `f0e703d` | #95 | canary 输出 PASS/PENDING | 只改输出；自 canary 失败仍以进程退出码 0 结束 |
+
+`CURRENT_STATE` 仍保持 fail-closed：
+
+- `RUNTIME_REQUIRED`
+- `NO_HEAD_OR_BRANCH_CLAIM`
+- `UNVERIFIED_MAIN_CI`
+
+这部分没有把未知 CI 伪装成成功，是正确的。
+
+## 3. P0 问题
+
+### P0-1：WLGM 新架构未接入真实 Worker/Sidecar
+
+新增的以下模块几乎只被单元测试、canary 或性能脚本调用：
+
+- `product_project.py`
+- `project_identity_resolver.py`
+- `project_candidate_discovery.py`
+- `execution_evidence.py`
+- `evidence_aggregator.py`
+- `collector_scheduler.py`
+- `hermes_adapter.py`
+- `codex_adapter.py`
+- `process_collector.py`
+- `git_collector.py`
+- `snapshot_api.py`
+- `snapshot_validator.py`
+- `sse_revision.py`
+- `live_gate.py`
+
+真实 Durable Worker 仍加载旧 `collectors.py`；真实 Sidecar 仍加载旧 `sse_hub.py`。仓库没有一个 composition root 把以下链路真正连起来：
+
+`approved ProductProject → Agent Adapter → Collector Scheduler → Execution Evidence → Aggregator → canonical SQLite → v3 Snapshot → persistent SSE → Observer`
+
+影响：当前无法真实持续监控 Hermes/Codex 的多个主体项目和多个执行实例。
+
+### P0-2：`/api/v1/snapshot` 名称是 v3，实际返回旧 v1
+
+真实 `WorkflowSidecar.projection()` 返回：
+
+```json
+{
+  "schema_version": "workflow/sidecar-projection/v1"
+}
+```
+
+Sidecar 把同一个旧投影挂到了 `/api/projection` 和 `/api/v1/snapshot`。新增 `snapshot_api.build_snapshot()` 没有被 Sidecar 调用。
+
+影响：Observer 请求所谓 v3 endpoint 时得不到 `workflow/snapshot/v3`，项目、执行、质量、Token、Git/CI、coverage 和 transport 合同均无法按新 UI 工作。
+
+### P0-3：v3 Snapshot 本身仍会伪造和破坏结构
+
+实测：
+
+1. `executions` 被构造成二维数组：`"executions": [[...]]`；
+2. 没有任何 usage 时，Token 被输出为 `0/0/0`；
+3. 空 usage 因 `all([]) == True` 被标记为 `costQuality=EXACT`；
+4. Validator 只检查 `executions` 是数组，不验证数组成员，因此二维错误仍返回 `valid=true`；
+5. 测试注释写“无 usage 应为 null”，断言却接受 `0`，测试已经向错误实现妥协；
+6. governance 的 drift 未知时可能被计算成 `CLEAN`；
+7. 缺少完整字段级 quality/sourceRef 约束。
+
+这直接违反“未知不能显示为 0、EXACT、complete 或 LIVE”。
+
+### P0-4：LIVE 与 SSE 仍不可信
+
+真实链路存在多重断点：
+
+- Sidecar 使用旧 `EventHub`：UUID 游标、内存历史、重启丢失；
+- 新 `SseRevisionHub` 虽名为 persistent，但本身仍只有内存 `_sequence/_history`，且未接入 Sidecar；
+- 老 SSE 在 cursor 丢失时返回空数组，不发 `resync_required`；
+- Sidecar 仍在启动 watcher 时直接 `set_mode(LIVE)`；
+- Observer dashboard 只要发现一个 PID 存活的 endpoint descriptor 就标记 LIVE，没有验证 SSE 连接、游标前进、writer watermark、coverage；
+- `normalizeV3()` 无条件写入 `mode: "LIVE"`，即使 transport 明确为 UNKNOWN；
+- v3 Snapshot 不输出 `eventsUrl`，前端无法建立订阅；
+- SSE 服务发送 `event: observed` 等命名事件，前端只绑定 `source.onmessage`，没有对 `observed/heartbeat/resync_required` 使用 `addEventListener`。
+
+因此 PR 中的浏览器 SSE 探针不能证明当前正式 Web/Tauri 客户端链路有效。
+
+### P0-5：主体项目识别仍未替换旧自动注册逻辑
+
+新 ProductProject/Identity Resolver 是正确方向，但没有成为生产权威。旧路径仍在：
+
+- `project_registry.py` 以目录名生成 project ID；
+- 扫描到 Git 根后直接 `register_discovered()`，没有用户批准；
+- `active_projects.py` 继续使用“Agent 进程存在 + `.hermes/.codex/.agents` 120 分钟 mtime”推断活动；
+- 没有加载持久化 `project_definitions` 构造 ApprovedProjectIndex 的生产代码；
+- Hermes Adapter 不能枚举所有 session，run status 返回空；
+- Codex Adapter 明确不支持 session/run status；
+- Windows process collector 只取进程名/PID/父 PID，不取 cwd，也不能映射到主体项目；
+- Electron 多会话被按 image+parent 去重，可能把多个执行合成一个实例。
+
+此外，Identity Resolver 的 `_working_area()` 使用 repository ID 拼路径，并且调用时只传 Git top-level，不传原始执行路径，实际不能正确产出模块 working area。
+
+结果：用户最关心的“主体项目 vs 主项目内子模块/子项目”仍未真正解决。
+
+### P0-6：双项目 canary 验收目标被降级
+
+当前外部 canary 的正确条件是：外部项目不在 approved index 中，因此返回 `UNRESOLVED`。这只能证明“不会错误吸收到 WORK-LAB”，不能证明：
+
+- 外部 OS 项目作为独立 ProductProject 被批准并解析；
+- WORK-LAB 与 OS 同时存在时，各自执行不会串线；
+- Hermes/Codex 多执行能归属到正确项目；
+- Snapshot/Observer 能同时显示两个主体项目；
+- 采集不会干扰外部项目。
+
+真正的 canary 应把 WORK-LAB 与一个真实 OS 项目都注册为批准主体项目，然后验证 distinct project IDs、repositories、worktrees、executions 和 evidence lineage。
+
+### P0-7：Canary 和质量门禁存在伪通过
+
+在当前 Linux 审计克隆中，`canary_runner.py` 因硬编码 `D:\All projects\WORK-LAB` 输出：
+
+- `self_root_resolved=false`
+- `module_inside_same_repo=false`
+- `CANARY_SELF FAIL`
+
+但脚本始终退出 0，`gate_work_lab_os_canary()` 直接返回该退出码，因此整体仍输出 `QUALITY_GATE_PASS`。
+
+`gate_exact_sha_ci()` 同样在打印 PENDING 后返回 0。虽然尾部补充了 `GATE_SEMANTICS`，但机器仍会把未完成门禁当作成功退出。
+
+更严重的是，`.github/workflows/work-lab-gate.yml` 仍逐个调用旧 Gate，只运行到 `powershell`；新增的 WLGM Gate（project identity、SSE、v3 schema、privacy、Tauri、canary 等）没有进入 GitHub Actions workflow job。
+
+### P0-8：Guard 修复产生外部路径前缀绕过
+
+为避免含空格路径被正则截断，Guard 使用：
+
+```python
+if root_str.startswith(res_str):
+    continue
+```
+
+这会把“项目路径的字符前缀”误当作项目内路径。实测项目根为：
+
+```text
+/tmp/.../repo with space
+```
+
+访问外部同级路径：
+
+```text
+/tmp/.../repo
+```
+
+Guard 返回 `reason=None`，即放行。Windows 下 `D:\All projects\WORK-LAB` 的祖先/字符前缀路径存在同类风险。
+
+原来的“含空格合法路径”和“省略号误判”已修复，但当前修复方式不是安全的路径解析方案。
+
+### P0-9：Durable Worker 仍不是真正可恢复的持续 Worker
+
+问题包括：
+
+- 仓库没有安装/启动/守护 Durable Worker 与 Sidecar 的正式入口；目前只能手工运行脚本；
+- 新 Collector Scheduler 没有接入 Durable Worker；
+- 失败重试次数保存在进程内 `_retries`；Worker 重启后重新从 1 开始；
+- 实测同一失败任务经过 4 次 Worker 重建，每次仍为 `attempts=1 / FAILED_RECOVERABLE`，无法达到 BLOCKED_POLICY；
+- 因此重复失败可能在进程重启后无限循环。
+
+### P0-10：旧 Observer 真值链仍是正式入口
+
+旧 `/api/dashboard` 和 `observer_canonical.py` 仍保留并被 README/Tauri 接受，其中仍有：
+
+- inputTokens 读取 total tokens；
+- outputTokens 复制 inputTokens；
+- 缺失 series token 变 0；
+- 只要有 usage 行就标记 `EXACT_SOURCE`；
+- activeProjects 使用 running/waiting task 数量；
+- `generatedAt=null`；
+- 质量 coverage/schema 字段不完整。
+
+虽然 `ObserverStore` 已经改为 SQLite `mode=ro` 且 append 会拒绝，这是实质进展；但文档仍声称持久化 Observer-owned event log，runtime/schema/fixture 仍声明 `allowedWrites`，严格只读边界尚未收口。
+
+## 4. P1 问题
+
+### P1-1：Collector “硬超时”不会终止线程
+
+`CollectorScheduler` 对 collector 启动 daemon thread 后只做 `join(timeout)`。超时线程不会被取消。实测连续 5 次超时，活动线程从 1 增加到 6。
+
+如果采集器卡在 Git、PowerShell、网络或文件系统调用中，重复调度会积累线程与 CPU/IO 压力，可能干扰正在执行的 Agent 项目。
+
+### P1-2：性能基线是假低延迟
+
+`perf_baseline.py` 硬编码 `D:\All projects\WORK-LAB`。在该路径不存在的环境中，Git 命令快速失败，脚本仍输出低毫秒延迟和 `PERF_BASELINE PASS`。
+
+该结果不能证明真实仓库、真实多项目、真实 Agent 并发下无干扰。
+
+### P1-3：硬编码路径仍进入活动代码
+
+以下脚本仍硬编码用户本机路径：
+
+- `canary_runner.py`
+- `perf_baseline.py`
+
+这违反能力探测和路径中立原则，也让 CI/其他客户端无法重用。
+
+### P1-4：Tauri 只完成静态壳，没有真实发现链
+
+进展：
+
+- `rust-version` 已改为 1.88；
+- CSP 不再为 null；
+- endpoint 仅允许 loopback。
+
+剩余问题：
+
+- 当前环境无法运行 cargo；Windows 上又被 MSVC `link.exe` 阻塞；
+- Rust 壳只读取 `WORK_LAB_OBSERVER_API_URL`，没有读取/验证 Workflow 的 endpoint descriptor；
+- Python `sidecar_endpoint.py` 只是参考实现，没有被 Rust 调用；
+- Tauri 仍允许旧 `/api/dashboard`；
+- SSE endpoint 发现与连接没有进入 Rust/前端正式链路。
+
+### P1-5：DESIGN-LAB 重命名仍有活动规则漂移
+
+大部分指针已经更新到 `DTALEX66/DESIGN-LAB`，但根 `AGENTS.md` 仍写：
+
+- `DTALEX66/OPEN-DESIGN-Assistance`
+- `OPEN-DESIGN-Assistance` project
+
+这会继续误导 Agent 的项目边界判断。
+
+### P1-6：WLGM 权威任务包没有进入仓库
+
+仓库代码和错误 Ledger 大量使用 `WLGM-000～WLGM-240`，但 `50-taskpacks/` 中没有对应权威任务包或机器可读任务图。
+
+同时，用户指定的 `WORK-LAB-FINAL-MASTER-HERMES-TASKPACK-2026-08-10.md` 只在仓库文档中被引用为 `.hermes/desktop-attachments/...`，并未作为 Git 期望状态中的跟踪文件出现。
+
+因此当前无法从仓库独立验证 WLGM 的目标、依赖、验收、批准边界和完成状态。
+
+### P1-7：README 与真实前端行为漂移
+
+Observer README 仍描述：
+
+- `/api/dashboard` 是正式入口；
+- Observer-owned event store；
+- 自动 fallback 到 `live-snapshot.json`。
+
+但新前端代码已经改成优先 `/api/v1/snapshot`，失败时不自动加载 fixture。代码方向正确，文档没有同步。
+
+## 5. 测试结果
+
+隔离安装 `jsonschema>=4,<5` 到 `/tmp` 后：
+
+| 项目 | 结果 | 审计解释 |
+|---|---|---|
+| Workflow 全测试 | 719 passed, 6 skipped | 覆盖面扩大，但未覆盖生产 wiring |
+| Observer Python | 59 passed, 3 skipped | 旧 dashboard/投影测试仍大量存在 |
+| Observer Web | 45 passed | v3 renderer 合同通过 |
+| Desktop component | 4 passed | 静态配置合同，不是 Tauri 编译/运行 |
+| Quality Gate | 进程退出 0 | 同时明确显示 self canary FAIL、external PENDING、Tauri PENDING、exact-SHA CI UNVERIFIED |
+
+当前测试盲区：
+
+1. 没有测试真实 Sidecar `/api/v1/snapshot` 返回 v3；
+2. 没有测试 Sidecar 使用 persistent revision；
+3. 没有测试浏览器监听命名 SSE 事件；
+4. 没有 producer → validator → HTTP → normalize → renderer E2E；
+5. 没有验证空 usage 保持 null/UNKNOWN；
+6. 没有批准的 WORK-LAB + OS 双项目 canary；
+7. 没有 Worker 重启后的持久失败计数测试；
+8. 没有超时线程泄漏测试；
+9. 没有 Guard 项目路径字符前缀绕过测试；
+10. GitHub workflow 没有运行新增 WLGM Gate。
+
+## 6. 是否会干扰正在执行的项目
+
+当前 WLGM 主链尚未真正启用，所以它现在还没有大规模主动干扰 Hermes/Codex 项目；但这不是“无干扰验证通过”，而是“功能尚未接通”。
+
+如果按当前实现直接启用，存在以下干扰风险：
+
+- 旧 workspace discovery 会递归发现并直接注册项目；
+- 旧 activity detector 会递归检查 `.hermes/.codex/.agents` mtime；
+- Git dirty/status/worktree 查询可能在大量仓库上产生 IO；
+- Collector timeout 后线程不会停止；
+- Worker 失败计数重启丢失，可能无限重试；
+- 250ms Sidecar fingerprint polling 会持续读取多张 SQLite 表；
+- 错误的 Guard 仍可能放行外部路径或阻塞合法任务。
+
+正式启用前必须建立：approved allowlist、低频/事件优先、每项目预算、全局并发上限、可取消子进程、资源压力降级、采集性能对照、Agent 任务时长 A/B canary。
+
+## 7. 建议执行顺序
+
+### 第一批：修正真值与安全门禁
+
+1. 修复 Guard 字符前缀绕过，使用完整 token/AST/Windows 路径规范化，不再用字符串 prefix 作为“截断安全例外”。
+2. 让 self canary 失败返回非 0；PENDING 使用独立状态，不进入 PASS Gate。
+3. 让 exact-SHA Gate 在 required 场景缺证据时失败，在普通本地结构检查中明确不加入 required gate 列表。
+4. 将全部 WLGM Gate 加入 GitHub Actions workflow。
+5. 把 WLGM 权威任务包和机器任务图纳入 Git。
+
+### 第二批：建立唯一运行 composition root
+
+1. Durable Worker 加载 approved ProductProject definitions/root bindings；
+2. candidate discovery 只生成候选，不直接注册；
+3. Agent adapters/process/Git fallback 接入 Collector Scheduler；
+4. Scheduler 只把 validated Execution Evidence 写入 canonical SQLite；
+5. Aggregator 从 canonical evidence 重建 execution/project projection；
+6. 重试次数、collector health、cursor/watermark 全部持久化；
+7. 正式安装为单实例、可恢复、可停止的本地服务/登录启动项。
+
+### 第三批：替换 Snapshot/SSE/Observer 主链
+
+1. `/api/v1/snapshot` 只返回 `workflow/snapshot/v3`；
+2. 修复 executions 一维数组、Token null/UNKNOWN、字段级 quality；
+3. Validator 深度检查 project/execution/token/git/ci/transport/coverage；
+4. SSE revision 从 canonical `projection_revisions` 恢复；
+5. cursor gap 必须返回 `resync_required`；
+6. 前端为每个命名事件注册 listener；
+7. LIVE 只采用后端 Live Gate verdict，GET 成功不能代表 LIVE；
+8. 删除旧 `/api/dashboard` 正式入口、旧 Observer event/projection runtime 和 `allowedWrites`。
+
+### 第四批：真实双项目 canary
+
+1. 批准 WORK-LAB 和一个真实 OS 项目为两个 ProductProject；
+2. 同时启动 Hermes/Codex 多执行；
+3. 验证 worktree、module、submodule、nested repo、同名目录、路径含空格；
+4. 验证项目不会串线、子模块不会升级为主体项目；
+5. 验证 Observer 只读、断线重连、重启恢复、last-good、unknown；
+6. 对比启用/停用监控时 Agent 任务耗时、CPU、IO、Git lock、线程数；
+7. 完成 Windows Tauri 编译、真实 sidecar descriptor 发现和浏览器 smoke；
+8. 最后取得 `main@exact-SHA` CI 证据。
+
+## 8. 最终判定
+
+本轮更新不是无效工作：领域模型、SQLite v2、v3 UI、迁移 backup、Guard 回归测试、CSP 和门禁语义都取得了真实进展。
+
+但当前最大的工程风险是“新系统以文件形式完成、旧系统仍在运行”。在正式收口前，不应再把新增文件数、单元测试数或本地 `QUALITY_GATE_PASS` 等同于 WLGM 完成。
+
+下一阶段应停止继续扩展 UI/Adapter 数量，优先完成唯一 composition root、真实 v3 Sidecar、持久 SSE、批准双项目 canary 和 fail-closed CI。只有这五项通过，WORK-LAB 才能从“控制面原型”进入“可信 canary”。

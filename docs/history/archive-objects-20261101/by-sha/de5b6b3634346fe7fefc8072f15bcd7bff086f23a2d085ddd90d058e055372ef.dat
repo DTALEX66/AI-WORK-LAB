@@ -1,0 +1,46 @@
+# WORK-LAB 2026-09-26 复审后的定点执行指令
+
+## 先恢复身份，不重做已完成修复
+本次观察 main=e6b501b83946b06e9635a4fb372f5b26a0aa05c4，tree=a160a5c66d757861628468cfe2915a82df37006a；PR #135 head=61f4db99ffe007344c60a9a8ea886d5d59e4b1f9，临时合并提交=371504d9f23a43acc78084cb9eca9ed4550187e4。接手时重新读取，不能把这些值当永久最新。
+
+先读 WORK-LAB-AUTHORITY.md → project-authority-index → AGENTS → taskpack-authority-index 所指 CURRENT → OPEN-TASK-REGISTER → 本任务范围代码。
+
+PR #134 已修复 Observer jsonschema 缺失和多命令 failure masking。复用 scripts/ci/failfast_group.py、required_groups.json 及现有依赖锁，不重建。
+
+## 阶段 A：先完成现有 PR #135，不另开重复治理工程
+1. 读取当前 PR/branch/SHA、实际必需 checks 和每条失败的 run/job/checkout。
+2. ERR-089 的 phase=DELIVERY 和 evidence_level=REAL 与 error-ledger 验证器枚举不匹配。保留真实事故，按事实对齐合同，或正式扩展合同+测试；禁止删验证、降级事实或把待合并写完成。
+3. 单独处理临时合并运行的 token-monitor does_not_estimate_unknown_lines 断言失败（1 != 0）。先验证测试隔离，fixture 仅时间戳目录且非排他创建是候选根因，不是已证结论。保留不估算 UNKNOWN 的断言；禁止只重跑到绿。
+4. governance 批次捕获输出后只打印 exit=1。补脱敏失败摘要及可回读日志后定位真实测试，不能猜测同源。
+5. 更新 reports/WL3-DELIVERY-20260925.md 与 OPEN 的当前摘要，保留旧 head/过程为历史；不得复制“全绿待合并”。
+6. 只在已有授权允许合并时执行：验证当前 head 与合并测试对象符合有效 required checks → 合并成功响应 → main 回读 → 才清理已合并短命分支。任何失败即停止对应副作用。无合并授权则只交付修复与证据。
+
+## 阶段 B：现有前端正确性优先于再搭壳
+将现有 React/Vitest 行为测试接入 fail-fast frontend group，不能仅 typecheck/build。
+覆盖并修正：
+- Tauri panel view=compact 与 React layout=compact 参数不一致；兼容旧链接。
+- index.html 首屏 .light 与 App 运行中只 toggle .dark 不一致；检验双向切换的 computed style。
+- App URL 回写丢 api；保留合法 RuntimeDescriptor，验证刷新/深链/导航；Rust 注入幂等，不能靠固定 preview 端口掩盖。
+- 无快照的项目数显示 UNKNOWN，不把未取得数据说成 0 项。
+这些都在现有代码中修，不改框架，不增加 Observer 业务写权限。
+失败时上传经过脱敏、绑定 SHA/tree/run/job 的 JSON/截图/摘要；禁止上传私人会话或凭据。
+
+## 阶段 C：修恢复材料与资源定位，不新建记忆系统
+build_context_pack.py 对齐当前 authority/manifest，覆盖 CURRENT/OPEN/任务约束与未完成事项；技能根从 manifest 得到，不是 root/skills。保留按需预算，缺资料报告缺失，禁止把全部历史当当前。
+verify_external_libraries_index.py 去除 D:\All projects\WORK-LAB 固定 INDEX。拆仓内结构检查与获准本机 discovery，区分 NOT_SEARCHED/ACCESS_DENIED/VOLUME_OFFLINE/INCOMPATIBLE/确实缺失。复用 U17/U21；不要安装工具链来修正不存在的预期路径。
+local --changed 与 CI 共用现有 canonical planner；修 token-monitor 旧路径，保留未知变更安全兜底。
+本地 exact-sha-ci gate 必须验证内容绑定，不仅 is_file；加入空文件/错误SHA/失败run等负控。
+
+## 阶段 D：立即转向用户可见 Lite 闭环
+复用现有 React/Tauri/设计组件与 Snapshot；交付七个一级导航、真实 Work 详情与 Context/Evidence Inspector。可优先用同一 React 产物的获准本地浏览器入口交付只读可见版本，桌面接受单独完成。
+Native Launcher 是受控入口，不嵌套改造原生 Harness。写动作只走授权 Control Surface 与现有服务，Observer 永久只读。
+Orca/Omnigent/Argos/OpenViking/ContextForge/Graphiti 等仍是候选，不把安装它们设为 Lite 可用的前置条件。
+
+## 权限与范围
+本审计包不授予新的执行/写入权限。现有明确仓内写授权覆盖的任务可继续；缺权限只停该分支。未经明确授权不得 commit/push/merge/release、下载/安装、全局配置变更、外部上传、付费调用、访问受保护 E:/F: 或迁移原生软件 Home。
+一个 checkout 一个 writer；并行审阅只读，并行写隔离 worktree/所有权。不新建 CURRENT、Task Ledger、Evidence Store、配置权威或长期影子 main。
+
+## 每批交付
+当前 source身份 / 原有任务编号 / 变更文件 / 逐命令结果 / 必需测试是否真运行 / 语义verdict / 可回读工件 / 用户可见入口 / 未解决问题。
+将已修、候选待合并、未实现、环境待验、待授权分别列出。
+U19 SKIPPED_HEADLESS != WINDOWS_TAURI_E2E；U18 不由单一pilot替代；规划 != 授权。

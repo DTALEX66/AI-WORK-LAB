@@ -1,0 +1,121 @@
+# WORK-LAB Observer 严格只读增强任务包
+
+## 0. 执行定位
+
+任务包 ID：`WLO-20260811`
+
+唯一目标：把 `30-observer/work-lab-observer` 收敛为对 Workflow-owned canonical SQLite WAL + Snapshot/SSE 的严格只读投影，不拥有任何业务事实、价格、事件账本、任务状态或控制动作。
+
+本任务包不得重开 WL3 历史任务，不改变 `WORK-LAB-FINAL-MASTER-HERMES-TASKPACK-2026-08-10.md` 的权威性。
+
+## 1. 强制边界
+
+- Observer 不执行、不批准、不重试、不应用配置、不回滚、不切模型、不控制 Agent。
+- Observer 不写 SQLite、JSONL、event store、projection cache、report business data。
+- Observer 不读取凭据、会话正文、Memory 正文、Prompt/Response 正文。
+- 所有未知值保持 `null/UNKNOWN`；不得显示 0、exact、complete、running 或 LIVE。
+- Open Design 不作为 WORK-LAB 模块；外部项目只有经用户注册且存在只读采集合同后才出现。
+- 未批准不得 commit、push、PR、merge、release、global apply、外部项目写入。
+
+## 2. 任务图
+
+### WLO-000 — 建立干净基线与失败清单（P0）
+
+读取精确 main SHA、CURRENT_STATE、error-ledger、CI run、Observer production imports 和 tests。为本轮新增 ERR-047 起的条目，不重写旧错误。
+
+验收：输出 source digest；当前 SHA CI 无证据时明确 `UNVERIFIED_MAIN_CI`。
+
+### WLO-010 — 删除第二事件写入面（P0）
+
+移除 production path 中的 `append_events`、Observer-owned events/projections/reports、legacy event history 和 pricing ownership。若旧纯函数仍供迁移测试使用，移动到 test fixtures/compat namespace，运行时不可导入。
+
+验收：静态扫描 Observer production code 不出现写 SQLite/JSONL、append、INSERT/UPDATE/DELETE、allowedWrites 非空；负向测试验证所有 mutation API fail closed。
+
+### WLO-020 — 单一只读数据源合同（P0）
+
+只允许：SQLite URI `mode=ro&immutable=0`、Workflow Snapshot GET、Workflow SSE GET。canonical store 路径来自能力发现或明确参数，不固定 `D:\All projects`、端口或版本。
+
+验收：无 Workflow store 时进入 OFFLINE/UNKNOWN；不得创建空数据库。
+
+### WLO-030 — 修复 Token 真值投影（P0）
+
+分别聚合 `input_tokens/output_tokens/total_tokens/cached_tokens/reasoning_tokens`；校验 total 与分量关系；保留 provider/model/source/observed_at/quality。缺字段时仅该字段为 null，不镜像或推断。
+
+验收：已知输入、输出、总量、部分字段、重复样本、乱序样本六组测试；Dashboard 不再把 total 复制为 input/output。
+
+### WLO-040 — 分离项目与任务状态（P0）
+
+`activeProjects` 只统计 projects.status=ACTIVE；任务计数只来自 tasks 表。项目 ACTIVE 必须由 Workflow heartbeat/lease 事实产生，Observer 不推断。
+
+验收：1 个 ACTIVE 项目 + 10 个 RUNNING 任务仍显示 activeProjects=1。
+
+### WLO-050 — 字段级数据质量（P0）
+
+为每个投影字段增加：`value/sourceKind/observedAt/freshness/completeness/exactness/provenanceRef`。页面级 mode 只能作为传输状态，不能覆盖字段质量。
+
+验收：部分缺失、陈旧、离线、fixture、snapshot 都能正确区分；未知不归零。
+
+### WLO-060 — 真正 SSE 长连接（P0）
+
+实现 heartbeat、event id、cursor、Last-Event-ID、断线重连、指数退避、去重、顺序检查、gap detection、snapshot resync、慢消费者背压。
+
+验收：持续连接测试；断线后不丢不重；服务器重启、cursor 过期、事件乱序、心跳超时可恢复。
+
+### WLO-070 — LIVE 证据状态机（P0）
+
+禁止直接 `set_mode(LIVE)`。LIVE 必须同时满足：snapshot 成功、SSE 已连接、心跳未超时、cursor 前进、数据完整性通过。任一条件失效自动降级。
+
+状态：FIXTURE、SNAPSHOT、LIVE、DELAYED、STALE、OFFLINE、UNKNOWN。
+
+### WLO-080 — 项目注册与隐私边界（P0）
+
+移除 Observer/启发式进程扫描。Workflow 通过显式 allowlist 注册项目；只记录必要元数据，路径在 UI 中默认脱敏。禁止遍历 `.codex/sessions`、Memory、cache、logs。
+
+验收：未注册 Open Design 不出现；被注册项目撤销后停止采集但保留审计事件。
+
+### WLO-090 — Git/CI 精确 SHA 投影（P0）
+
+区分 working tree SHA、remote main SHA、PR head SHA、workflow head SHA、conclusion。不同 SHA 的成功不得继承。
+
+验收：当前 SHA 无 run 时显示 UNVERIFIED；旧 SHA success 不得让 main 变绿。
+
+### WLO-100 — Token/费用来源治理（P1）
+
+Observer 只显示 Workflow 已记录的用量与价格观察；价格必须有来源、币种、有效期和 freshness。订阅制、未计量、未知价格不得生成 USD 估值。
+
+### WLO-110 — Observer UI 信息架构（P1）
+
+保留 Web + Tauri 正式 UI，提供 Dark/Light × Full/Compact。布局：全局健康、项目、任务/阻塞、Git/CI、Token/费用、Rules/Skills/Memory、数据质量。每个卡片显示来源和最后更新时间。
+
+### WLO-120 — Tauri 本地只读壳（P1）
+
+通过 loopback GET-only API 或内嵌只读连接读取；禁止 write IPC command。动态端口、单实例、健康检查、自动重连；Rust 最低版本与依赖图一致。
+
+### WLO-130 — 可访问性和性能（P1）
+
+WCAG 2.2 AA、键盘完整操作、焦点可见、reduced motion、颜色不作为唯一状态；100 项目/10 万事件下投影分页、虚拟列表和增量更新。
+
+### WLO-140 — 对抗性测试（P0）
+
+覆盖伪 LIVE、Token 镜像、旧 SHA CI 继承、SQLite 缺失、数据库锁、WAL 损坏、SSE gap、重复事件、时钟倒退、敏感字段、外部项目越界、写入尝试。
+
+### WLO-150 — Canary 与证据收口（P0）
+
+使用 WORK-LAB + 一个经批准真实 OS 项目 canary。验证 Worker → SQLite → Snapshot/SSE → Observer 的端到端链路；外部项目保持只读，不写 OS。
+
+### WLO-160 — 最终审查（P0）
+
+重新生成 CURRENT_STATE；精确 SHA CI；干净 checkout；Windows/Tauri 实机；离线/重启/恢复；错误台账；未满足条件保留 WAITING_APPROVAL/UNVERIFIED。
+
+## 3. 完成定义
+
+以下全部满足才可关闭：
+
+- Observer production code 无业务写入面。
+- 只有一个 Workflow-owned SQLite WAL 事实源。
+- LIVE 由连接和新鲜证据产生，不能手工设置。
+- Token、项目、任务、Git/CI 字段均通过反例测试。
+- WORK-LAB + OS canary 真实运行通过。
+- main 精确 SHA CI 有独立证据。
+- 未知、fixture、snapshot、stale、offline、live 视觉与语义都可区分。
+

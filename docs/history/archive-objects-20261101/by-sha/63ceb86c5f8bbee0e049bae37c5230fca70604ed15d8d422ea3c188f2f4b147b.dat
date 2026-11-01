@@ -1,0 +1,188 @@
+# 两个本地仓库与两个 GitHub 仓库运行手册
+
+## 1. 先理解“运行”
+
+四个仓库实例不会同时作为四个服务运行。
+
+```text
+本地 Workflow 仓库：开发、验证、治理和 Console 源码
+本地 Open Design 仓库：设计 Domain Pack 源码和验证
+GitHub Workflow 仓库：远端事实源和 CI
+GitHub Open Design 仓库：远端事实源和 CI
+```
+
+真正运行的软件仍然是：Hermes、Codex、CC Switch、Open Design、Git 和 GitHub Actions。
+
+## 2. 推荐本地目录
+
+```text
+D:\All projects\
+├─ Workflow-assistance\
+├─ OPEN-DESIGN-Assistance\
+└─ Dual-Repository-Hermes-TaskPack-v4.0\
+```
+
+两个 Git 仓库必须并列，不能把一个放进另一个。
+
+## 3. 现在如何运行 Workflow-assistance
+
+当前安全基线操作：
+
+```powershell
+Set-Location 'D:\All projects\Workflow-assistance'
+git status --short --branch
+git rev-parse HEAD
+git rev-parse 'HEAD^{tree}'
+python scripts\workflow\run_quality_gate.py verify
+python scripts\workflow\hermes_workflow_doctor.py
+python scripts\workflow\sync_hermes_workflow_assets.py
+```
+
+最后一条默认应为预览/计划；禁止加 `--apply`，除非用户单独批准 live Hermes Home 写入。
+
+Token Monitor 仅在 Node/Rust 可用时单独验证：
+
+```powershell
+Set-Location 'D:\All projects\Workflow-assistance\apps\token-monitor-desktop'
+npm ci
+npm run build
+cargo test --manifest-path src-tauri\Cargo.toml --locked
+```
+
+当前 CI 没有完整证明 Rust/Tauri，因此本机缺少 Cargo 时状态为 `UNVERIFIED`，不是失败也不是通过。
+
+## 4. 现在如何运行 OPEN-DESIGN-Assistance
+
+当前只运行仓库验证：
+
+```powershell
+Set-Location 'D:\All projects\OPEN-DESIGN-Assistance'
+git status --short --branch
+git rev-parse HEAD
+git rev-parse 'HEAD^{tree}'
+python opendesign-assistance\scripts\verify_product_manifest_v3.py
+python opendesign-assistance\scripts\verify_runtime_contracts_v3.py
+python opendesign-assistance\scripts\verify_visual_scoring_v3.py
+python opendesign-assistance\scripts\verify_source_registry_v2.py
+python opendesign-assistance\scripts\verify_v2_protocols.py
+python opendesign-assistance\scripts\verify_visual_quality_v21.py
+```
+
+目前禁止运行：
+
+```text
+configure_open_design_windows.py
+doctor_open_design_windows.py
+```
+
+原因：当前版本读取 Codex auth/config 并可能扩大用户级写权限。
+
+当前 V3 验证只能证明结构和合成逻辑，不能证明 Open Design 实时可用。
+
+## 5. 当前两个本地仓库的协作顺序
+
+```text
+1. 分别只读检查两个仓库
+2. 在 Open Design 仓库修 P0 安全
+3. 在 Workflow 仓库完成中立合同
+4. 分别运行各自 gate
+5. 分别冻结 tree 和 Codex review
+6. 再执行跨仓桥接
+```
+
+Hermes 不应同时让两个 writer 修改两个仓库。默认全局串行；只读审计可以并行。
+
+## 6. GitHub 仓库如何运行
+
+GitHub 仓库本身不在你的电脑上启动。它们负责：
+
+- 保存远端代码；
+- 接收 branch/PR；
+- 运行 GitHub Actions；
+- 保存 exact-SHA CI、review 和 release 证据。
+
+### 从云端更新本地
+
+每个仓库分别执行：
+
+```powershell
+git status --short --branch
+git fetch --prune origin
+git log --oneline --decorate --max-count=10 --all
+git pull --ff-only
+```
+
+只有工作树干净、没有本地未提交修改、当前分支明确时才执行 `pull --ff-only`。两个仓库不能用一次 pull 同时更新。
+
+### 从本地交付云端
+
+默认流程停在本地：
+
+```text
+修改
+→ 本地测试
+→ git diff/status
+→ frozen tree
+→ Codex reviewer
+→ READY_FOR_USER_APPROVAL
+```
+
+用户明确授权后才允许：
+
+```text
+commit
+→ push feature branch
+→ draft PR
+→ exact-SHA Actions
+→ review
+→ merge/release 的再次授权
+```
+
+Workflow 当前 GitHub CI 已覆盖 Linux/Windows Python gate；Open Design 当前只覆盖 V2/V2.1。任务包会补齐桌面端和 V3，但在补齐前不得把云端绿色标记解释为所有能力已发布。
+
+## 7. 改造完成后的统一运行入口
+
+以下是目标命令，不是当前已经存在的命令：
+
+```text
+workflow doctor
+workflow clients list
+workflow config plan
+workflow config apply
+workflow packs validate
+workflow task run
+workflow task status
+workflow task resume
+workflow release verify --sha <sha>
+```
+
+设计任务目标调用：
+
+```text
+workflow task run --pack open-design-assistance --scenario commercial-design-core
+```
+
+Workflow 负责状态和边界，Open Design 负责设计执行，GitHub 只在用户批准后负责交付。
+
+## 8. 日常最简使用方式
+
+### 普通编码任务
+
+```text
+用户 → Hermes → Workflow rules/task → Codex writer → tests → reviewer → 等待审批
+```
+
+### 设计任务
+
+```text
+用户 → Hermes → Workflow task → Open Design Domain Pack → Open Design runtime
+→ artifact/quality/handoff → reviewer → 等待审批
+```
+
+### 云端同步
+
+```text
+GitHub → fetch/pull --ff-only → 本地验证
+本地 → review → 用户批准 → push/PR → exact-SHA CI
+```
+

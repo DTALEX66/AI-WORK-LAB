@@ -1,0 +1,282 @@
+# WORK-LAB 任务包执行汇总（供独立复核）
+
+**汇总日期**：2026-09-14
+**执行者**：DSH（DeepSeek Harness）会话，模型 deepseek-v4-flash
+**任务包**：`D:\All projects\WORK-LAB-LAYERED-FINAL-2026-09-14`（7 文件），第 1 包 `01-DSH-TO-HERMES.md`
+**目标软件**：Hermes Agent
+**仓库**：`DTALEX66/WORK-LAB`，分支 `r4-recovery-exec`，HEAD `c1c6a16454c06f4b90acf7e7913cc7dc62be3802`
+**仓库可见性**：**PUBLIC** → 因此全部交付走压缩包，**0 提交、0 推送、0 gist**
+
+> 本文档中所有"已完成"都附可复现的验证入口和精确摘要值。请按证据核，不要按叙述核。
+
+---
+
+## 0. 一句话结论
+
+Hermes **这个软件本身**已修复、已部署、已验证可用；但**第 1 包（H-01…H-07）未全部完成**。24 项核查 **18 OK / 6 OPEN**。任务包共 6 个串行执行步骤，**只完成了第 1 步**。
+
+---
+
+## 1. 任务包总览与完成度
+
+| 步骤 | 文件 | 角色 | 任务号 | 状态 |
+|---|---|---|---|---|
+| 1 | `01-DSH-TO-HERMES.md` | DSH/DeepSeek → Hermes | H-01…H-07 | 已执行，`PARTIAL_WITH_BLOCKERS` |
+| 2 | `02-HERMES-TO-CODEX.md` | Hermes → Codex | C-01…C-08 | **未开始** |
+| 3A | `04-INDEPENDENT-AUDIT.md` A 段 | Codex/GPT-6 审第 1、2 包 | — | **未开始** |
+| 3B | `03-CODEX-TO-DSH.md` | Codex/GPT-6 → DSH | D-01…D-07 | **未开始** |
+| 4 | `04-INDEPENDENT-AUDIT.md` B 段 | Hermes 新会话审第 3 包 | — | **未开始** |
+| 5 | `04-INDEPENDENT-AUDIT.md` C 段 | Codex 只读汇总收敛 | — | **未开始** |
+| 后置 | `04` 最终分层修订 | WL-LAYER-12 社区单能力试点、WL-LAYER-14 零模型 Radar | — | 包内明文**延后**至三软件闭环通过后 |
+
+七层职责（L0 权限/身份 → L6 更新雷达）是加载范围划分，不新建七个服务。
+
+---
+
+## 2. 第 1 包逐任务结论
+
+| 任务 | 结论 | 依据 / 缺口 |
+|---|---|---|
+| **H-01** 定位和所有权 | ✅ 完成 | 版本 `v0.21.2 (2026.9.11)`、安装方式 `git`、入口、配置作用域、`HERMES_HOME` 均已核；错误上游 `anthropics/hermes` → `NousResearch/hermes-agent` 已修；Compat 区间 `>=0.19,<0.21` → `0.21.2`（只声明原生实测过的版本，旧区间移入 `version_historical`） |
+| **H-02** 配置结构 | ✅ 完成 | **无需迁移**：`custom_providers` 为空（旧结构已迁）、`doctor` 报 "No deprecated config keys or env vars"、顶层键 74 个；用户主模型保持不变 |
+| **H-03** 预算和回退 | ⚠️ 缺 1 项 | `fallback_providers: []`（空 → 额度耗尽即停，无未批准付费链）；17 个辅助槽全部 `provider: auto` 继承主模型；`auxiliary.transient_retries: 2`；`reasoning_effort: high`（未降级）。**缺：合成额度耗尽验证从未做**（历史那次 402 是真实账户撞的，不是合成测试） |
+| **H-04** 技能与插件 | ⚠️ 缺 1 项 | 13 个受管技能全部被原生发现为 `enabled`；enabled 插件来源/版本证据已补齐。**缺：N-8 同名 builtin 遮蔽未裁决** → `requesting-code-review` 与 `autonomous-ai-agents/codex` 显示为 `builtin`，**受管副本实际未生效** |
+| **H-05** 写入边界 | ✅ 完成 | 原生边界检查 exit 0（runtime root 正确落到 `.project-local/runs`，全部 env 重定向受控）；`/plan` 写 `<workspace>/.hermes/plans/` 的冲突已裁决"不进入项目默认流程"；cron `list --all` 显示 2 个 **paused** 作业（`cognitive-loop-os-*`），无零模型采集作业 |
+| **H-06** 原生零模型采集试点 | ⏸ 包内正式延后 | 包自己写明延后到 WL-LAYER-14、不阻塞本包交接 → **不算漏做** |
+| **H-07** 外部激活与验证 | ⚠️ 部署完成，验证缺 2 项 | 部署 + 四层验证 + 原生读回均通过。**缺：① 原生取消未验证；② 真失败路径未端到端验证**（只有合成分类证据） |
+
+### 最低验收 6 条：5 通过 / 1 未通过
+
+| # | 条目 | 判定 | 依据 |
+|---|---|---|---|
+| 1 | 配置解析和原生启动成功；模型选择保持用户意图 | ✅ | `hermes doctor` exit 0；`model.default = "agnes-3.0-flash"` |
+| 2 | 主/辅助/回退关系明确；模拟额度不足无未授权计费路径 | ✅ | `fallback_providers` 空；17 槽 `provider: auto`；守卫拦截 `--ignore-user-config` |
+| 3 | 一项必要技能能被发现和调用 | ✅ | `python-testing` 可见且被调用 |
+| 4 | 任务/缓存/子进程写入有观测证据；未覆盖环境明确列出 | ✅ | 不泛称 Zero-Spill 全通过；Ubuntu/CI 未复现已列明 |
+| 5 | **正常完成、失败/取消都有原生结果** | ❌ | **取消 `NOT_EXERCISED`**；失败仅合成分类证据 |
+| 6 | 交接附下一包所需 Hermes 可用入口，不含凭据 | ✅ | `HANDOFF.md` 第 11 节 |
+
+---
+
+## 3. 本轮实际执行的三步操作（每步附证据）
+
+### 步骤 1：建立受管资产基线
+
+```
+python integrations/executors/hermes/sync_hermes_workflow_assets.py \
+  --repo <repo> --home <hermes-home> --apply --approved
+```
+- 结果：`will write 0 target(s)`；21/21 `CONVERGED`；`ACTION_PLAN_READBACK_PASS`
+- 基线文件首次落盘：`run_id = sync-20260914T134235Z`，21 条记录，`suspended: []`
+- **不是照抄日志**：用同步器自身的 `sha_tree`/`_path_state` 在前后各抓 21 个 live 摘要 → `changed = 0`
+- 同时把 `config/skill-provenance.yaml` 前后各取一次 SHA256 → **字节一致**（上一轮的 E-1 事故正是这个文件，本次未复发）
+
+### 步骤 2：R7 修复落到仓库源（5 文件，字节级）
+
+| 文件（`packages/client-neutral-core/skills/software-development/windows-development-environment/`） | 前 | 后 |
+|---|---|---|
+| `SKILL.md` | `9acf578fda04b47e` | `454de204857506e7` |
+| `references/green-version-and-powershell7.md` | `6f4d2f04273b2af3` | `44774bdcaabfeef3` |
+| `references/pre-verify-commands.md` | `f6f1ad48245c57fb` | `1b6494da3353d265` |
+| `references/wmi-detached-process.md` | `0cc61dc80e022aca` | `853149d3b9bc9724` |
+| `references/wrapper-run-quirks-windows.md` | `63f2f63f4414b6ed` | `5dd305ea29c380e0` |
+
+（仅示 16 位；全摘要见 `r7-applied.json`）
+
+实质变化：逐字用户引述 → 中性需求陈述；硬编码 `C:\Users\...\pwsh.exe` → `PWSH_EXE`/`shutil.which("pwsh")` 且缺失时明确失败；`C:\Users\...\Temp` → 项目内 `.project-local/runs/tmp`；未证实的"BaiduSyncdisk 根因" → 明确标注未验证的假设；`taskkill /F /PID` 不再是常规配方，并写入"不得被当作原生取消可用的证据"；WMI 分离进程文档增加"不得用于逃避取消"的作用域限制。
+
+**应用前先证明草案不是陈旧副本**：与仓库当前字节逐行对比，差异恰好是 R7 替换；清洁度扫描 0 处 `C:\Users\`、0 处 `taskkill /F /PID`、0 处逐字引述、0 处 `U+FFFD`。
+
+### 步骤 3：发布到 Hermes
+
+- 恰好 **1 个**目标被写：`skills/software-development/windows-development-environment`，`CLEAN_UPDATE`，`59cf51d046f81510 → 2bd2de7e07fe162e`
+- 其余 20 个未动（**计算得出**，非假设）
+- `ACTION_PLAN_READBACK_PASS`，`run_id = sync-20260914T135005Z`
+- 仓库 HEAD 未变，0 提交 0 推送
+
+---
+
+## 4. 验证结果（四层 + 门禁）
+
+### 四层验证 —— 全 PASS
+
+| 层 | 结论 |
+|---|---|
+| 1 存在 | live 22 文件 / 仓库 22 文件；5 个修复文件均在位 |
+| 2 源等价 | 无 live-only、无 repo-only，22 个共同文件 **0 字节差异**；树摘要两侧均为 **`2bd2de7e07fe162e`**，且等于发布记录的候选值 |
+| 3 运行时可达 | frontmatter 可解析（`name`、`version: 1.3.0`、`platforms: [windows]`），9194 字节 |
+| 4 行为应用 | 修复语句全部在位；禁止内容（用户主目录路径、强杀配方、逐字引述）全部不在位 |
+
+### 发布后原生读回 —— `ALL_OK = true`
+
+| 检查 | 结果 |
+|---|---|
+| `hermes --version` | exit 0，`v0.21.2 (2026.9.11)`，git 安装，Python 3.11.15 |
+| `model.provider` | `"agnes-3-0-flash"` |
+| `model.default` | `"agnes-3.0-flash"` |
+| `hermes skills list` | exit 0，131 行；修复后的技能以 `enabled` 列出 |
+| `SOUL.md` 与部署源字节一致 | true |
+| 修复技能 live 与仓库字节一致 | true |
+| `hermes doctor` | exit 0 |
+
+**本轮未发模型请求** —— 只改了技能树，付费请求不会增加证据。受控模型请求总量仍为 2 次（来自更早的 step-1 验收）。
+
+### 完整门禁 —— 38/38 PASS，0 FAIL，0 TIMEOUT
+
+- **候选指纹**：`45db3642d8e9d729d0a7dd22a342b9926d3d03ceb330a39b1441b5ecb9726eec`（覆盖 22 个修改 + 13 个未跟踪文件；已用同一算法重算，一致）
+- 环境：Python 3.11.15，`Windows-10-10.0.26100-SP0`
+- 聚合入口 `verify` 在首个失败处停止，所以每个门禁都是**单独调用**的
+- `EXACT_SHA_CI_UNVERIFIED`：无 exact-SHA CI 覆盖此工作树
+
+---
+
+## 5. 配置与部署现状（分层，勿合并判断）
+
+| 层 | 内容 | 状态 |
+|---|---|---|
+| 受管资产（21） | `.env.template`、`SOUL.md`、`bin/`×6、`skills/`×13 | ✅ 已部署已验证，21/21 live == 候选 |
+| 受管配置字段 | 仅 `display.language = zh`、`display.busy_input_mode = queue` | ✅ 本来就合规，**无需部署** |
+| `config.yaml` 其余 74 个顶层键 | 混合所有权（`sessions.*`、`memory.*`、`hooks.*`、`mcp_servers.*`、`hermes.model.*`、`plugins`） | OBSERVE，**刻意不写**。注意：同步器 `main()` 恒 `include_config=False` → **永不** promote `config.yaml` |
+| 仓库侧配置 | `skill-provenance.yaml`（含 R7 哈希）、`config-ownership.json`、`adapter-registry.json`（仅 Hermes 记录）、`models-registry.json`、`software-registry.json`、`client-evidence.json` | ✅ 已修 |
+| **共同规则（D-9/D-8）** | `AGENTS.md`、`C:\Users\ALEX\.agents\skills\**` | ❌ **候选已制作，一行未激活**，状态 `BLOCKED_ACTIVATION` |
+
+**新发现的不一致**：DSH Desktop 版本三方记录不同 —— `AGENTS.md` `2.0.4`、`client-evidence.json` `2.0.4`、**`adapter-registry.json` 仍为 `2.0.2`**。属第 3 包（D-01）范围，本包未改。
+
+---
+
+## 6. 技能 / 插件 / 规范规则 的增减现状
+
+| 类别 | 增减 | 结论 |
+|---|---|---|
+| **技能成员** | **13 → 13，无增减** | 合规。本轮只有**内容**变化：curator 折回（4 个提升 + 8 个新增 reference 文件）+ R7 修改 5 文件 |
+| **插件** | **无增减**（enabled 5：`chrome-profiles`、`disk-cleanup`、`observability/langfuse`、`security-guidance`、`web/ddgs`；disabled 2：`google_meet`、`spotify`） | 合规（包内"不因新版就新增 MCP"、"社区技能不全装"）。证据已补齐（`chrome-profiles` 有完整 revision `5b9c3257b464c0f926d4355149a8aed9c8f307b4` + source `anpicasso/hermes-plugin-chrome-profiles`）。**N-7**：其 toolset 未在 `plugin.yaml` 声明 → 插件侧清单缺口（非 WORK-LAB 缺陷，已记录） |
+| **规范/规则** | 部分 | `SOUL.md` 已部署 ✅；**L0 共同规则候选已制作**（`q2-candidate-stale-references.md`，10 行具体替换：`AGENTS.md` 8 处 + 用户共享技能 2 处，每行含候选真实目标与是否存在）但**未激活** ❌ |
+| **减项（撤副本 / 撤 builtin 二选一）** | **未做** | **N-8**：包要求"插件和可编辑副本只选一种来源"，该二选一未裁决 |
+
+`AGENTS.md` 被 `.project/governance/config-authority-index.json` 声明为 ACTIVE 执行规则权威 → 修它是**治理变更**，不是排版修正。
+
+---
+
+## 7. 更新（upgrade）现状
+
+| 事实 | 数据 |
+|---|---|
+| 落后提交数 | **819**（缓存 `.update_check` 记 478 是 9-13 的，一天涨 341） |
+| 安装 | `git`，`v0.21.2 @ 53c57871`（2026-09-12） |
+| 目标提交 | `b9271bcb34e1a8b8fe0eeaef0ef4a6e1f93ba543` |
+| 影响面（官方只读 `--plan`） | Profiles: **default, deepseek-review**；**Running Hermes services: none detected — code swap only** |
+| 本地安装树 | **0 处修改** → 更新不需要 stash |
+| **风险** | `updates.pre_update_backup = false` → 默认**不自动备份**；而 `state.db` **4.0 GB**、两个 profile |
+
+**目标版本号不做推断** —— 上游 tag 是自定义命名（最新 `v2026.8.19` 与版本串 `0.21.2 (2026.9.11)` 不同轨），不 fetch 无法得到目标版本。
+
+按包内规定"目标版本升级不必要时不升级"，**未升级属合规裁决，不是遗漏**（此措辞早前表述过头，特此更正）。
+
+---
+
+## 8. 未完成项清单
+
+### A. 硬缺口 —— 需授权或换手段
+1. **原生取消验证**：`CTRL_BREAK_EVENT` 在 T+8.01s 未中断任务，任务跑到 41s、exit 0；`hermes pause` 是全局的且明确不杀在途工作；无会话级取消。闭合它需授权停机实验，或接受"取消不可用"为已记录结论。
+2. **真实失败路径端到端**：当时为避免消耗额度与污染 native 状态而回避，目前只有合成输入的分类证据。
+3. **H-03 合成额度耗尽测试**。
+
+### B. 需裁决（不是不会做，是没定口径）
+4. **N-8**：受管副本 vs builtin，二选一。
+5. **N-9 口径冲突**：任务包正文假设"Hermes 使用 DeepSeek 或免费模型"，实机主模型是 `agnes-3.0-flash`（`apihub.agnes-ai.com`，第三方聚合商）。**这直接是第 2 包的执行身份前提**。
+6. **N-4 / N-5**：`sync_hermes_workflow_assets.py` 自身两处缺陷（行号已复核仍存在）
+   - N-4：`--plan-json` 仍强制输出到 `<repo>/.hermes/task-artifacts/`（旧根），与 `.project-local/` 边界冲突（脚本 1390/1461/1463 行）
+   - N-5：`MANAGED_SESSION_KEYS`/`MANAGED_MEMORY_KEYS` 与 `config-ownership.json` 的 OBSERVE 声明冲突（脚本 55-56/1147/1155 行）；当前 `main()` 恒 `include_config=False`，故为潜在风险而非现行行为
+
+### C. 外部角色才能做（本会话不得激活 —— 会影响维护者自身）
+7. **D-9** `AGENTS.md` 失效路径；**D-8** `C:\Users\ALEX\.agents\skills\**` 陈旧路径（2 个 SKILL.md）；**D-10** 用户 PATH 约 70 条 `ArcheAxis-Knowledge-OS\.project-local\runs\…\dotnet\.dotnet\tools` 残留（需用户裁决）
+
+### D. 内容扫描新发现（会部署到用户机器的范围）
+8. **`references/validated-cases.md`**：3 处 `taskkill /F /PID`（第 99、103、108 行，其中 103 行是可复制粘贴的命令块）。**此项加剧了 R7 的自我抵消**：R7 在 `SKILL.md` 里移除配方后写的正是"完整症状见 `references/validated-cases.md`"，而该文件仍保留原始强杀配方。
+9. **`agent-workflow-fortress/references/workflow-absorption-2026-07.md`**：第 5、6 行含用户逐字引述（与 R7 修复的类别相同，但属另一个受管技能）。
+10. 两者均**已确认部署到 live**（byte-identical）。
+
+### E. 文档债
+11. **`HANDOFF.md` §8.1（主阻塞）与 §11（下包前置条件）已过期** —— 主阻塞已修、门禁已 38/38、N-2/N-3 已闭合，但交接文档仍写旧状态。第 3A 步审计若照此判会得出过期结论。
+
+---
+
+## 9. 交叉验证入口（复核请用这些）
+
+### 命令
+```
+# 满仓库扫描（只输出模式名与行号，不输出匹配值）
+python .project-local/runs/wl-layer/deploy/audit_repo_wide.py <repo> <artifact-dir>
+
+# 四层部署验证
+python .project-local/runs/wl-layer/deploy/verify_r7_deploy.py
+
+# 受管资产守卫（只读计划）
+python integrations/executors/hermes/sync_hermes_workflow_assets.py --repo <repo> --home <hermes-home>
+
+# 原生边界检查（只读）
+python packages/client-neutral-core/bin/hermes-project-data.py --project <repo> --json check
+
+# 逐门禁（聚合入口 verify 会在首个失败处停止）
+python services/orchestration/run_quality_gate.py <gate>
+```
+> 注意：若 shell 里设了 `PYTHONIOENCODING=utf-8`，`governance` 门禁会**假失败**（子进程按 UTF-8 写、测试用 `text=True` 按本机 GBK 读 → reader 线程 `UnicodeDecodeError` → `stdout=None`）。去掉该变量即通过（1164 tests, OK）。触发它的 em dash 在 HEAD 中本就存在。
+
+### 关键摘要值
+| 项 | 值 |
+|---|---|
+| 候选指纹 | `45db3642d8e9d729d0a7dd22a342b9926d3d03ceb330a39b1441b5ecb9726eec` |
+| 门禁 | 38 / 38 PASS，0 FAIL，0 TIMEOUT |
+| 部署树摘要 | `2bd2de7e07fe162e`（live == 仓库 == 候选） |
+| 基线 run_id | `sync-20260914T134235Z`（建立）、`sync-20260914T135005Z`（发布） |
+| 交付包 | `WL-LAYER-p1-FINAL-DEPLOYED.zip`，532,525 字节，139 成员，SHA256 `782B119A0844265C19E5442518FA195041F91F0E30A255BA361EEFE3D9293349` |
+| HEAD | `c1c6a16454c06f4b90acf7e7913cc7dc62be3802`（未变，0 提交 0 推送） |
+
+### 证据文件（均在 `.project-local/artifacts/task-artifacts/WL-LAYER-20260914/`）
+`pre-baseline-live-digests.json`、`post-apply-live-digests.json`、`post-publish-live-digests.json`、`prov-before-apply.yaml`、`r7-applied.json`、`r7-verification.txt`、`r7-deploy-verification.txt`、`r7-publish.log`、`post-deploy-hermes-readback.json`、`gate-evidence-bound.json`、`gate-collection-r7/`（38 份原文）、`content-audit-repo-wide.json`、`q2-candidate-stale-references.md`、`curator-content-audit.json`、`HANDOFF.md`、`PROBLEM-REPORT.md`
+
+---
+
+## 10. 必须随附的事实与澄清（防止误判）
+
+1. **不升级 Hermes 是合规的**：包内 "目标版本升级不必要时不升级" + README "不要求升级全部软件"。
+2. **原生取消 `NOT_EXERCISED`** —— 强杀从不被当作取消；这是唯一未闭合的验收项。
+3. **两个已知上游不安全行为仍在**：失败/中止的任务返回 exit code 0；`--ignore-user-config` 会回退到内置 `openrouter` / `z-ai/glm-5.2`。候选在这两条**受管启动路径**上加了守卫（`hermes_task_result.py`、`managed_launch_policy.py`），但那是我们的路径守卫，不是上游修复。
+4. **计费/额度 `UNKNOWN`** —— 未声明免费、未写 0。历史一次 402 的准确表述是"请求被拒绝，未观察到成功生成"。
+5. **验证是本地结构性的** —— 无 exact-SHA CI，`EXACT_SHA_CI_UNVERIFIED`。
+6. **计划→发布竞态只是收窄，未关闭** —— 原生写入者仍可能在复核与原子替换之间动作。
+7. **本会话加载 `AGENTS.md` 与 `C:\Users\ALEX\.agents\skills\**`** —— 改它们等于会话激活自己加载的规则，故 Q2 维持 `BLOCKED_ACTIVATION`，必须由不受候选控制的隔离环境执行。
+8. **H-05 的 `TASK_DATA_POLICY.md` 缺失不是缺陷**：该文件只在 `hermes-project-data init|policy` 子命令下按需生成，项目从未运行过该子命令。
+9. **`cron list` 默认只列启用项**，报"无作业"；`cron list --all` 显示 2 个 **paused** 作业 —— 与 H-05 记录一致，非矛盾。
+
+---
+
+## 11. 执行者自己的错误（含自曝，勿视为已解决）
+
+| 编号 | 内容 | 处置 |
+|---|---|---|
+| E-1 | 对生产 `config/skill-provenance.yaml` 运行 `--write`，把 13 个 `live_sha256` 替换为 `pending-live-sync` 占位符 | 已从备份恢复；后续证明可由重算复现（13/13，差异恰好 10 行）；并新增"绝不对生产运行 `--write`"约束 |
+| E-2 | 打包脚本 `rmtree` 删除了手工撰写的 `00-INDEX.md`/`06-convergence-addendum.md` | 已恢复；脚本改为只清理生成物 |
+| E-3 | 上传自检的假阳性（正文里出现 `.env`/`config.yaml` 字样被判为敏感） | 改为内容形态检测 |
+| E-4 | 清理动作删除了被引用的 `prov-neg/real-backup.yaml` | 已披露；E-1 的验证改写为"重算复现" |
+| E-5 | PowerShell `Get-Content -Raw`+`Out-File` 的 GBK 往返损坏 4 个构建脚本；修复后**仍残留 17 处 `—?`**，且已写进上一版压缩包 README | 已修（`—?` → `— `）；旧包移入 `superseded/`，由本包取代 |
+| E-6 | 我在 shell 里设 `PYTHONIOENCODING=utf-8` 导致 `governance` 假失败（见 §9 注） | 已确认为调用方环境错配、非回归；仍记录，因为"调用方环境能让门禁假失败"本身是真实脆弱点 |
+
+---
+
+## 12. 请独立复核的具体问题
+
+1. **R7 是否真的闭合了它声称的类别？** §8-D 找到两个同类残留（另一个受管技能里的逐字引述、以及 `validated-cases.md` 的 3 处强杀配方），而 `SKILL.md` 修复后恰好把读者指向后者。这算 R7 完成还是未完成？
+2. **H-05 的 `/plan` 越界裁决是否充分？** 现裁决为"不进入项目默认流程"，且产物落在已被 `.gitignore` 忽略的 `.hermes/plans/`，"越界但受控"。是否可接受？
+3. **不升级是否符合任务包意图？** 819 提交落后、`pre_update_backup=false`、`state.db` 4.0 GB、两个 profile。
+4. **`adapter-registry.json` 的 DSH 版本不一致（`2.0.2` vs `2.0.4`）应归第 1 包还是第 3 包？**
+5. **N-9 口径冲突如何处理？** 第 2 包的执行身份建立在一个与实机不符的模型假设上。
+6. **N-4/N-5 是否应在本包修？** 它们是同步器自身的边界/键集缺陷，不是 Hermes 软件缺陷。
+7. **N-8 的二选一该怎么裁？** 撤受管副本还是撤 builtin。
+8. **`HANDOFF.md` 过期**（§8.1/§11）—— 由本包刷新，还是留给第 3A 步审计时发现？
+
+---
+
+## 13. 排除范围（未读取、未复制、未上传）
+
+Hermes home 正文、`config.yaml`、`.env`、`auth.json`、`state.db`、`sessions/`、`memories/`、`E:\` 下任何内容、任何凭据。Hermes 自身掩码的值从未被复现。本会话未推送、未创建 PR、未合并、未建 gist。

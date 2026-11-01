@@ -1,0 +1,231 @@
+# WORK-LAB 云端复审｜2026-09-26
+
+## 结论
+
+上一次已实锤的 Observer「缺 jsonschema + PowerShell 多命令失败掩盖」已通过 PR #134 修复并进入 main；不能继续原样派工。当前 main 的所读 Actions 运行成功，PR #135 尚未合并且其当前 head/临时合并测试有真实失败。
+
+下一步不是新建治理系统，而是：修 PR #135 的确定失败并补可回读证据；把已完成修复与仍未覆盖的测试分开；修现有 UI 入口、Context Pack 与外置库定位，再交付同一 React 产品的可见 Lite 入口。
+
+## 1. 证据边界
+
+本轮通过 GitHub 连接器读取分支、main、开放 PR、权威文件、OPEN Register、当前任务包、PR 补丁、main/候选 CI 原始日志、关键前端与治理代码。没有修改远端、提交、合并、删除分支、安装工具链或接触用户 Windows 主机。
+
+本报告是关键链路和变更的源代码/运行记录审计，不是所有文件逐行运行验证，也不是本机桌面产品验收。日志事实、代码事实、推断、建议分别表述。目录中附带的微型反例仅复现代码表达式，不是运行完整 WORK-LAB 测试。
+
+## 2. 冻结观察身份
+
+| 对象 | 本轮读取结果 |
+|---|---|
+| main | `e6b501b83946b06e9635a4fb372f5b26a0aa05c4` |
+| main tree | `a160a5c66d757861628468cfe2915a82df37006a` |
+| 最近落地主干修复 | PR #134；commit 时间 2026-09-25T15:59:37Z |
+| 活动分支 | main；p0/docs-taskcard-authority |
+| 开放 PR | #135，尚未合并 |
+| PR head | `61f4db99ffe007344c60a9a8ea886d5d59e4b1f9` |
+| PR 临时合并提交 | `371504d9f23a43acc78084cb9eca9ed4550187e4` |
+| main 主工作流 | run 36157861336，成功 |
+| head 测试运行 | run 36204841950，aggregate 失败 |
+| 临时合并测试运行 | run 36204845454，aggregate 失败 |
+| main 所读运行 artifacts | 0 |
+
+Ruleset 23825562 仍为 active，作用于 main，要求 aggregate，strict=true，当前连接身份不可 bypass。这不自动证明所有管理员、审查、强推等配置已经全量核验。
+
+## 3. 已修复：Observer 具体假绿问题
+
+代码与原始运行记录相互支持：
+
+- Windows Observer job 固定 Python，安装已有 hash-locked requirements，不另建平行依赖清单。
+- failfast_group.py 逐条执行 argv，遇非零停止并传播失败；required_groups.json 明确四组命令。
+- 当前 main 原来出错的 runtime/evidence/store 三组 Python 测试分别运行 12/9/5 项并通过。
+- 四组实际结果：Python 8 条命令、Web 10 条、frontend 3 条、Rust 2 条均 all_exit_0。
+- 候选分支的 integration 日志也确认 failfast 负控通过：A1+B0 仍失败、B 不执行、退出码传播、清单完整性、未知组处理。
+
+结案范围：旧的依赖缺失与命令失败掩盖。不能扩成「所有前端行为测试都已运行」「真 Windows WebView 已通过」「所有 gate 已无漏洞」。[failfast, required_groups, main_observer]
+
+## 4. PR #135：已有修复，不等于可以合并
+
+### 4.1 确定阻塞：错误账本 ERR-089
+
+最新 head integration 日志明确：
+
+`ERROR_LEDGER_FAIL ERR-089 invalid phase`
+
+新增记录使用 phase=DELIVERY、evidence_level=REAL。该账本验证器允许的 phase 是 AUDIT_ONLY / PLAN / LOCAL_IMPLEMENTATION / LOCAL_VERIFICATION / EVIDENCE_CLOSEOUT；evidence_level 是 local-focused / local-full / isolated-runtime / historical。
+
+因此不仅 phase 不匹配，REAL 也不属于该账本的枚举。只改第一处可能继续在第二处失败。这里不是凭名称判断证据真伪，而是两个合同词汇没有对齐：中心 Evidence 的 REAL 与 error-ledger 的分类字段不能直接混用。
+
+修复要求：保留真实事故；选择符合事实的现行值，或者正式扩展合同、验证器与回归测试。不得删校验、降低证据真实性或将未完成合并标成完成。[branch_error_validator, branch_error_ledger, head_integration]
+
+### 4.2 另一条失败：Token Monitor Rust 测试
+
+临时合并提交的 token-monitor 日志显示：
+
+`tests::does_not_estimate_unknown_lines ... FAILED`
+`assertion left == right failed; left: 1, right: 0`
+`7 passed; 1 failed`
+
+这是独立失败，不应被同 head 的另一条 token-monitor 成功运行覆盖。当前材料尚不能证明是解析器回归还是测试隔离问题。
+
+代码中的 fixture 只用 SystemTime::now().as_nanos() 命名目录，create_dir_all 非排他，随后各测试都写 session.jsonl。可合理怀疑并行碰撞/相互覆盖；但这仍是待复现根因，不是已完成诊断。建议使用真正唯一且排他创建的测试目录，验证并发隔离，再保留 UNKNOWN 不估算的业务断言。不要以反复 rerun 到绿作为修复。[branch_token_tests, merge_token]
+
+### 4.3 governance 失败未给出可定位原因
+
+head 的 workflow-assistance 日志仅暴露：
+
+`QUALITY_GATE_GOVERNANCE_FAIL exit=1`
+
+run_quality_gate.py 捕获组合输出，但 gate_governance 在失败时未打印失败用例/尾部摘要，也未在该入口写入可回读工件。因此不能断言这一失败必然与 ERR-089 同源。
+
+整改：输出失败测试名与脱敏摘要，保存完整脱敏结果至允许的项目工件目录，CI 在失败时上传；不能把日志细节重新隐藏。[quality_gate, head_workflow]
+
+### 4.4 新交接记录也已经落后于当前 head
+
+reports/WL3-DELIVERY-20260925.md 仍包含 b219fe2、CI in-flight、「P0-02/03 全绿待合并」等叙述，而当前 head 已是 61f4db9，运行失败。文件也记录了先合并被拒、再删分支导致 PR 关闭的事故。
+
+应把历史经过保留为历史，当前摘要绑定新 head 和实际 checks。批准合并、合并 API 成功、main 回读成功、删短命分支是不同步骤；必须有失败停止，不只是文档里的顺序。[branch_handoff, pr135]
+
+## 5. 文档与从属任务卡：不要重复修，也不要提前称已落地
+
+PR #135 已有以下实现补丁，主干尚未包含：
+
+- AGENTS 的两 canonical modules 与 supporting source surfaces 区分。
+- project-definition 的实际路径与 Open Design client / DESIGN-LAB project 双身份修正。
+- CONTROL_PLANE_CONVERGENCE 的 HISTORICAL banner。
+- currentTaskCards[] 登记两张从属卡，不创建第二 CURRENT。
+- 验证器检查路径、OPEN 引用、非顶层声明、候选反向绑定、未额外授予执行权限。
+- 当前 head integration 的 19 条 authority tests 通过。
+
+处理方式是审核和修红既有 PR，不再生成一套内容重复的新任务卡模型。通过专项测试不等于整个 PR 通过。[pr135_patch, head_integration]
+
+## 6. CI 还有覆盖和证据语义缺口
+
+### 6.1 React 行为测试没有进入当前 required frontend group
+
+required_groups.json 的 observer-frontend-typecheck 只有 npm ci、npm run typecheck、npm run build。没有 npm test / vitest。Web 组跑的是旧 web/ 的 Node 合同，不等同于 React 组件行为测试。
+
+应把现有 React 行为测试接入同一 fail-fast group，并增加下面的参数、主题和来源恢复负控。不要再用 build PASS 概括完整 UI 通过。[required_groups]
+
+### 6.2 main 运行未上传工件
+
+run 36157861336 的 artifacts API 返回 total_count=0。U19 日志中的 .project-local/runs/u19_webview_readback.json 是临时 runner 内路径，不自动成为下一次会话可取的证据。
+
+日志仍有审计价值，不能说「完全没有证据」；但结构化 JSON、截图和失败上下文尚无该运行的 Actions artifact 支撑。应在 always 条件下保存经过脱敏、绑定 commit/tree/run/job 的工件，并提供摘要与哈希。[main_artifacts, main_observer]
+
+### 6.3 本地 exact-sha gate 只检查文件存在
+
+当前 gate_exact_sha_ci 在 required=true 时，仅判断 .project-local/artifacts/exact-sha-ci.json 是否 is_file；没有在该函数解析仓库、SHA、tree、run 结论、digest。
+
+空文件或错误 SHA 文件在这一函数即可获得 PASS。它并不等于 GitHub Ruleset 可绕过，但这个本地 PASS 不能用作交付证明。应复用真实 CI evidence verifier，至少覆盖空文件、坏 JSON、错 SHA、错仓库、失败 run 的负控。[quality_gate]
+
+### 6.4 零测试判定仍太弱
+
+gate_governance 的正则是 `^Ran \d+ tests?`；`Ran 0 tests` 也匹配。当前大批测试真实运行，不代表这个「防 not-run」判定已经满足其注释中的保证。应核验每个必需测试单元的执行/断言证明，不能只找整个输出任意一个 Ran 行。[quality_gate]
+
+### 6.5 依赖扫描告警要分级核验
+
+main Observer npm ci 输出 5 vulnerabilities（3 moderate、1 high、1 critical）；临时合并 token-monitor 的 npm ci 输出 1 high。它们是包管理器扫描信号，不是本轮已经证明的生产可利用漏洞。
+
+应生成锁文件绑定的审计结果，区分开发依赖/生产产物、受影响版本、可达性与缓解措施。不要盲目执行 npm audit fix --force，也不要忽略它们。[main_observer, merge_token]
+
+## 7. 前端：尚未交付 Lite，而且已有三处可定位接口问题
+
+当前 apps 只有 observer / token-monitor；PR #135 的变更是文档与治理，不是 Lite UI 开发。P1-01 在交接记录中仍为未启动。
+
+### 7.1 Compact 的入口参数不一致
+
+Tauri panel: `index.html?view=compact&mode=UNKNOWN&theme=dark`。
+React readInitialLayout: 读取 `layout`，缺省 full；readInitialView 只接收注册 view。
+
+故此入口不会按预期选择 dedicated CompactHUD。应使用同一参数合同，兼容旧链接，并测试托盘打开/刷新/切换后的布局。[tauri, app]
+
+### 7.2 浅色首屏与运行中切换是两套逻辑
+
+index.html 首屏脚本设置 .light 与 colorScheme；CSS 由 html.light 切换主题。但 App 的运行中 effect 只 toggle('dark', ...)，未同步 .light。
+
+因此不能说「浅色完全没有实现」；实际问题是首次带参数打开与运行中切换不一致。应统一主题状态投影，双向切换并检验真实 computed style，而不只测试按钮字样。[index_html, css, app]
+
+### 7.3 路由回写会丢弃 api 参数
+
+App 的 URL effect 新建空 URLSearchParams，仅写 view/theme/layout，replaceState 后丢掉已有 api。api.ts 在模块初始化时读取 api 并固定 descriptor；Rust 又在 page-load finished 时检查缺 api 并 navigate 注入。
+
+代码冲突已确认。浏览器刷新可能退回非权威 preview endpoint；Tauri 是否重复导航与具体加载时序有关，本轮未做真桌面复现，不能断言已经造成无限循环。
+
+整改是保留被批准的 runtime descriptor 参数、让注入幂等，明确预览与生产数据源。不能删验证或改固定端口兜底来掩盖来源丢失。[app, api, tauri_rust]
+
+### 产品优先级
+
+先把上述可复现入口问题及 React 测试修好，再做 7 一级导航、Work 页、Context/Evidence Inspector 与最小 Launcher。复用同一 React 产品，在获准本地浏览器入口交付可见版本；真 Tauri desktop 验收另行完成。不要等候选开源软件全部部署才交付自身 Lite 入口。
+
+Observer 仍只读。写控制薄壳不复制所有页面、不改原生 Agent Harness、不变成第二 Task/Config/Evidence 权威。
+
+## 8. 上下文恢复与外置资源：存在具体旧代码，不只是规划缺口
+
+### Context Pack
+
+build_context_pack.py 的 SELECTED_TEXT_FILES 仍优先旧 project-definition 等说明文件，未直接列出顶层 Authority、机器 authority index、CURRENT/OPEN；INVENTORY_ROOTS 仍是根目录 bin/config/docs/scripts/skills/templates/tests；skill_inventory 读取 root/skills。
+
+在当前 monorepo，受控资产实际在 packages/client-neutral-core 下；services/integrations/apps 等也未完整进入这份 inventory。这个安全摘要脚本并不等同完整恢复协议，生成成功也不能代表必需上下文已恢复。
+
+建议对齐现有 manifest/authority/context 合同：关键约束先保留、清楚标注未取得项目、按需检索；不把全部历史直接灌入 12k/30k 包。加入“权威/任务/约束/未完成/来源SHA必需覆盖”和“技能库存来自当前 manifest”的测试。[context_pack]
+
+### 外置库 verifier
+
+verify_external_libraries_index.py 将 INDEX 硬编码为 `D:\All projects\WORK-LAB\.project/governance\external-libraries-index.json`，同时直接检查登记磁盘路径存在性；run_quality_gate 的 external-libraries-index 会调用该文件。
+
+这在换 checkout、盘符或云端 runner 时不是可移植验证，也不能区分未授权、盘离线与资源不存在。
+
+应分成：仓内结构校验（从当前 Git root / 明确参数解析）与获准本机 discovery/readback；缺环境回报具体状态，不安装工具链去“修绿”。继续复用 U17/U21 安装身份与更新前后检查。[external_verifier, quality_gate]
+
+## 9. Gate Planner 与候选规划：收敛既有机制
+
+- local --changed 仍有 config/client-neutral-manifest.json、config/adapters.json、setup.sh/setup.ps1 等旧 GATE_PATH_SCOPES。
+- canonical project profile 的 token-monitor paths 仍指向 packages/client-neutral-core/apps/token-monitor-desktop/**。
+- 应让 local 与 CI 共享当前路径计划，修 active supporting surfaces 映射；未知路径安全兜底不应简单移除。
+- Future registry 已是规划材料，不要重建。其 verifier 的 required 字段/schema 错误仍为 advisory；PROMOTED 分支只要求 task_card 路径存在，没有在该函数核验真正批准与晋升证据。应在任何自动启用前补齐；不能把“有一张文件”当权限。此观察不等于证明目前有可利用的全链路权限绕过。[profile, quality_gate, future_validator]
+
+## 10. U18 / U19 与交付标签
+
+U19 在当前 main 原始日志仍是 SKIPPED_HEADLESS：backend PASS、app ALIVE，但 in-app CDP readback FAIL、GDI unavailable。不得称 WINDOWS_TAURI_E2E 已完成。这个结果也不能证明所有前端问题都仅由 headless 环境引起；本轮静态接口缺陷需要独立处理。
+
+U18 更强通用协作标签仍需要获准真实外部项目、第二执行器、revision/cancel/restart/receipt 场景。Orca 一个 pilot 不替代 U18，规划登记不等于部署授权。[authority, register, main_observer]
+
+## 11. 下一轮最小执行顺序
+
+1. 沿 PR #135 修 ERR-089 合同冲突，定位并修/隔离 Token Monitor 失败；输出 governance 失败明细，更新交接摘要。不得强合/先删分支。
+2. 将 React tests 接入 fail-fast 组，修 Compact/主题/api 三处合同问题；保留失败工件。
+3. 修 Context Pack 的当前权威覆盖与外置索引根解析；同一轮增加相应负控，不扩建记忆数据库。
+4. 交付 Lite 首个用户可见闭环：同一 React 产物、真实只读快照、七级主导航、Work/Inspector 与获准原生入口；无数据展示准确原因，不伪造业务进度。
+5. 在各自批准范围完成 U19 真桌面与 U18 双执行器；未来候选仍按触发条件验证。
+
+本报告只是审计与后续工作建议，不批准任何新的安装、下载、全局变更、外发、commit/push/merge/release。
+
+## 来源索引
+
+- **authority**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/WORK-LAB-AUTHORITY.md
+- **register**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/taskpacks/current/OPEN-TASK-REGISTER.md
+- **failfast**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/scripts/ci/failfast_group.py
+- **required_groups**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/scripts/ci/required_groups.json
+- **quality_gate**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/services/orchestration/run_quality_gate.py
+- **context_pack**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/packages/client-neutral-core/scripts/build_context_pack.py
+- **external_verifier**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/packages/client-neutral-core/scripts/verify_external_libraries_index.py
+- **profile**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/.project/governance/work-lab.project-profile.yaml
+- **app**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/apps/observer/frontend/src/App.tsx
+- **api**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/apps/observer/frontend/src/lib/api.ts
+- **css**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/apps/observer/frontend/src/index.css
+- **index_html**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/apps/observer/frontend/index.html
+- **tauri**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/apps/observer/src-tauri/tauri.conf.json
+- **tauri_rust**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/apps/observer/src-tauri/src/lib.rs
+- **future_validator**: https://github.com/DTALEX66/WORK-LAB/blob/e6b501b83946b06e9635a4fb372f5b26a0aa05c4/scripts/ci/verify_future_candidate_registry.py
+- **pr135**: https://github.com/DTALEX66/WORK-LAB/pull/135
+- **pr135_patch**: https://github.com/DTALEX66/WORK-LAB/pull/135/files
+- **branch_error_validator**: https://github.com/DTALEX66/WORK-LAB/blob/61f4db99ffe007344c60a9a8ea886d5d59e4b1f9/scripts/ci/verify_error_ledger.py
+- **branch_error_ledger**: https://github.com/DTALEX66/WORK-LAB/blob/61f4db99ffe007344c60a9a8ea886d5d59e4b1f9/taskpacks/current/error-ledger.json
+- **branch_handoff**: https://github.com/DTALEX66/WORK-LAB/blob/61f4db99ffe007344c60a9a8ea886d5d59e4b1f9/reports/WL3-DELIVERY-20260925.md
+- **branch_token_tests**: https://github.com/DTALEX66/WORK-LAB/blob/61f4db99ffe007344c60a9a8ea886d5d59e4b1f9/apps/token-monitor/src-tauri/src/lib.rs
+- **main_run**: https://github.com/DTALEX66/WORK-LAB/actions/runs/36157861336
+- **main_observer**: https://github.com/DTALEX66/WORK-LAB/actions/runs/36157861336/job/108146869437
+- **head_integration**: https://github.com/DTALEX66/WORK-LAB/actions/runs/36204841950/job/108299127650
+- **head_workflow**: https://github.com/DTALEX66/WORK-LAB/actions/runs/36204841950/job/108299127704
+- **merge_token**: https://github.com/DTALEX66/WORK-LAB/actions/runs/36204845454/job/108299138846
+- **main_artifacts**: https://api.github.com/repos/DTALEX66/WORK-LAB/actions/runs/36157861336/artifacts?per_page=100
+- **ruleset**: https://api.github.com/repos/DTALEX66/WORK-LAB/rulesets/23825562

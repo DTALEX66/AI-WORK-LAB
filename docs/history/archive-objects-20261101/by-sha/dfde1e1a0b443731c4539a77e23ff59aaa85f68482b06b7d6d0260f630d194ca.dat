@@ -1,0 +1,64 @@
+# DESIGN-LAB GitHub 与项目优化方案
+
+日期：2026年10月14日。观察 main：`174a804f541ee0c96e3aabd9e0d9b7ed65972840`。
+
+优先减少重复运行和串行全套测试的反馈时间，同时降低Workbench的维护耦合。保留原生TypeScript与设计能力层，真实制作仍使用已有创意宿主；不为了优化引入第二画布或换成React。
+
+保留现有 GitHub 仓库。下列“确认”来自代码或运行记录，“待测”表示尚未做本机性能测量。本轮未修改远端配置或项目源代码。执行前重新读取当前 HEAD、未提交改动、开放 PR 和项目权威入口，避免覆盖正在进行的功能开发。
+
+## 依据与具体问题
+
+| 状态 | 观察 | 优化意义 |
+| --- | --- | --- |
+| 确认 | 最新main运行11分02秒；Python unit tests步骤9分18秒，3011个测试实际运行557.124秒 | 主要瓶颈是串行测试，不是装依赖 |
+| 确认 | 前一失败样本3011个测试运行990.101秒，失败是list容器52与旧预期50不符 | 便宜结构错误不应在全套完成后才反馈；最新main已修正，不应继续报旧故障 |
+| 确认 | run_python_tests.py标准unittest discover + TextTestRunner；没有逐测试时间 | 先计时，再决定分片；不能指定一个未经测量的“罪魁祸首” |
+| 确认 | verify_design_lab.py包含74个校验器，11个名称又在其他workflow步骤/job出现 | 按输入/参数/目的核对后消重，不能一刀切删11项 |
+| 确认 | workflow对所有push/PR触发，无concurrency；同SHA有两套check-runs | 可以减少开发分支与PR的重复重工作 |
+| 确认 | apps/workbench/shell.ts 约448KB、7751行；build/main.js约367.5KB | 维护、定位和AI改动范围大；文件大小尚不证明首屏卡顿 |
+| 确认 | workbench.ts通用api()没有AbortSignal或deadline；local-session请求已有8秒timeout | 通用请求可以长时间悬挂，需区分读取和写入结果不确定 |
+| 确认 | Python测试中包含实际浏览器E2E包装，工具链不足时会skip；另有独立no-skip浏览器job | “Python unit tests”并非全部纯单元，分类须保留真实E2E覆盖 |
+| 确认 | main分支接口protected=false，rulesets列表为空 | 当前自动检查与主分支强制约束有差异，稳定汇总后可配置必需检查 |
+
+来源：[最新main运行](https://github.com/DTALEX66/DESIGN-LAB/actions/runs/38488078871)、[前一失败样本](https://github.com/DTALEX66/DESIGN-LAB/actions/runs/38431613481)。
+
+## 分阶段任务
+
+| 编号 | 优先级 | 修改位置 | 动作 | 验收 |
+| --- | --- | --- | --- | --- |
+| D01 | P0 | .github/workflows/canonical-verify.yml | 重检查采用PR、main push、必要手动入口；独立开发分支需要时保留轻检查；按workflow+PR/ref取消旧运行 | 一个源分支更新不启动两套重检查；main真实合并树仍验证；不同PR不互相取消 |
+| D02 | P0 | scripts/run_python_tests.py | 定制unittest结果器记录test id、模块/类、setup/call/teardown或可取得的整体wall-time、状态；在既有项目运行目录写JSON/JUnit | 3011个测试ID及skip原因完整；原退出码保持；不靠verbosity或缓冲日志猜耗时 |
+| D03 | P0 | workflow前置静态步骤；UI结构合同 | 提前执行源码/DOM结构、路由与合同库存的便宜检查；确保真正枚举对应测试 | 用52/50旧反例与一次真实错误证明先失败；不能把执行零测试当PASS |
+| D04 | P1 | run_python_tests.py；test_environment.py；workflow matrix | 按计时拆成独立进程/runner；模块或类作为组，恢复/归档/端口/环境测试显式隔离；从小分片试起 | test id全集与串行一致；无重复、无遗漏；每片独立PROJECT_LOCAL_ROOT；失败/skip完整汇总 |
+| D05 | P1 | verify_design_lab.py；canonical workflow | 给74个验证器记录命令、输入、参数、结果目标；核对11个重复候选，语义等价项只执行一次 | 同一输入/同一意义才复用；跨SHA不复用PASS；删除重复后原失败仍能阻断 |
+| D06 | P1 | apps/workbench/workbench.ts及调用者 | 为GET加有界timeout和页面取消；写请求超时记录“结果待核对”，用幂等键/服务读回确认，禁止盲目重发；保留401清会话行为 | 悬挂、断网、切页、401、已提交但响应丢失均有可区分结果；不把写超时显示成已失败且安全重试 |
+| D07 | P1 | apps/workbench/shell.ts；测试与入口 | 按能力资产、项目/brief、制作、成果版本、评审/权利拆模块；共用状态组件和合同；先保持导出边界，再对高成本页面试动态加载 | 当前页面、主题、键盘、200%缩放一致；source字符串位置型测试先转为明确页面合同；不只改数字让测试过 |
+| D08 | P1 待测 | 列表渲染与design_layer查询 | 用大量资产/版本/任务建立合成基准，测DOM节点数、响应大小、首屏/切页；分页与按需加载按测量落地 | 100/1000/10000项的p50/p95与内存数据；筛选/排序/选中语义保留，未读取不能伪装成空列表 |
+| D09 | P1 | canonical workflow与GitHub main规则 | 先新增稳定、绑定实际SHA的汇总检查，验证条件required skip失败，再将其设为main必需检查；汇总名称事先确定 | 故意失败的子检查阻断；路径选择没有让required检查永远Pending；通过后才加规则 |
+| D10 | P2 | 历史索引、候选档案、项目指南 | Qoder索引排除明确历史/产物，保持源文件与权威材料；根指南只保留当前范围与指针，历史原件冻结 | 典型源码查询能命中当前文件；实际素材恢复仍依manifest；不重写git历史、不删除归档 |
+
+## 测试拆分方法
+
+先保留unittest。为了并行直接迁移测试框架会增加一项无关工程。D02产出计时后，把同模块/类、共享setUpClass资源放在同片；后台进程、恢复/备份和全局环境测试单独分组。每片传自己的项目内运行根，汇总检查test id并集等于本次发现全集。
+
+长期可以评估pytest-xdist，但它是可选执行器，不是本批前置条件。不能直接对所有测试加-n auto：其隔离问题必须先证明。浏览器no-skip检查依然存在，且不能因为Python包装用例skip就称真实E2E完成。
+
+现有74个校验器会启动多个子进程，少量启动成本和重复解析可用只读、按输入hash的缓存减少；有状态校验、时间/本机资格、secret扫描和会写证据的脚本不能按文件mtime粗糙复用。
+
+## Workbench拆分顺序
+
+第一步保持当前工具栈和行为，提取共同错误/加载/状态组件及纯格式函数；第二步按页面导出独立render函数；第三步再量化动态import的首屏收益。7751行说明维护耦合，不能据此承诺加载时间下降多少。
+
+固定整文件源码出现次数的合同是拆分障碍。应逐项明确它想保护的是语义结构、声明库存还是字节保真；结构验证迁到页面或DOM合同，真正的字节档案继续保真。改模块边界时保留相同公共合同，禁止把“已有production readback”降级为mock。
+
+## 第一批与完成标准
+
+第一批只做D01～D03：触发去重、逐测试计时、提前反馈静态错误。此批不拆7751行文件，也不并行恢复测试。第二批按计时做D04/D05；第三批D06/D07改善产品体验与维护。D09在稳定汇总和失败注入验证后处理。
+
+回退按批次撤回；计时数据不进入Git源码；不修改冻结任务定义和旧证据。保存unknown字段、rights/Human Gate和宿主边界。测试通过仅证明对应层级，不自动提升真实宿主E3、真人E4或发布E5。
+
+开启提示词：
+
+> 在DTALEX66/DESIGN-LAB当前隔离分支执行D01～D03。先读当前AUTHORITY、authority-index、AGENTS和currentExecution，核对HEAD/未提交改动/当前PR。只减少重复CI、增加unittest逐测试计时、提前执行易失败结构合同；保留完整测试ID、退出码和no-skip浏览器验收。不要换框架，不直接并行恢复/共享目录测试，不删除冻结资料。交付diff、失败反例、完整计时结果和回退方式；GitHub规则与提交推送合并发布按既有授权另行处理。
+
+依据：[测试入口](https://github.com/DTALEX66/DESIGN-LAB/blob/main/scripts/run_python_tests.py)、[Workbench源码](https://github.com/DTALEX66/DESIGN-LAB/blob/main/apps/workbench/shell.ts)、[统一验证链](https://github.com/DTALEX66/DESIGN-LAB/blob/main/design-lab/scripts/verify_design_lab.py)、[pytest分组机制](https://pytest-xdist.readthedocs.io/en/stable/distribution.html)、[Vite动态加载与类型检查](https://vite.dev/guide/features.html)、[GitHub规则](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)。

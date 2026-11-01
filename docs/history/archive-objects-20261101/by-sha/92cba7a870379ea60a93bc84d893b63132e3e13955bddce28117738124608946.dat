@@ -1,0 +1,1126 @@
+# HERMES 执行包：Obsidian-Assistance V3 生动学习知识库生成器
+
+> 交付对象：HERMES / 本地 Agent / Codex 协同执行  
+> 项目仓库：`DTALEX66/Obsidian-Assistance`  
+> 目标：把当前“课程资料转 Markdown / 核验流程”升级为“本地 Obsidian 生动学习知识库生成器”  
+> 核心原则：先演示库，后正式库；先 dry-run，后 apply；先备份，后写入；不确定内容不入库。
+
+---
+
+## 0. HERMES 总任务定位
+
+你不是单纯写文档，也不是只整理 Obsidian 插件。你要完成的是：
+
+**把 Obsidian-Assistance 升级为一个本地优先、安全可控、能把课程/资料自动转成 Obsidian 学习系统的工程项目。**
+
+最终效果不是生成一篇纯文字总结，而是每个课程或资料包生成一整套 Obsidian 学习空间：
+
+```text
+课程主页
+课程地图 Canvas
+逐节总结
+知识卡片
+复习卡片
+术语索引
+方法卡
+案例卡
+行动卡
+Mermaid 流程图
+Mermaid 时间线
+Excalidraw 图解入口
+Bases 数据库视图
+Dataview 卡片墙
+待审核清单
+导入报告
+```
+
+---
+
+## 1. 项目现状判断
+
+当前仓库已有：
+
+```text
+skills/
+  course-verifier/
+scripts/
+  course_verify.py
+  setup_obsidian_mvp_flow.ps1
+docs/
+  data-boundary.md
+  pipeline-acceleration.md
+  pipeline-v2-full-flow.md
+  project-experience-2026-07-01.md
+  ui-audit.md
+  open-source-counterparts.md
+```
+
+当前项目优点：
+
+1. 有清晰的数据边界。
+2. 有本地证据检索与核验方向。
+3. 已跑通过 “输入箱 → 素材识别 → 转写/OCR → 核验 → 总结 → 卡片 → 复习 → 入库报告” 的基础链路。
+4. 已有 Obsidian MVP 写入脚本。
+5. 已经意识到 Dataview、QuickAdd、Templater、Meta Bind、Omnisearch、Local REST API 等插件的重要性。
+
+当前项目不足：
+
+1. 输出仍偏纯文字。
+2. 首页只是总控台入口，不是学习工作台。
+3. Dataview 只停留在表格，不是卡片墙。
+4. 没有 Canvas 课程地图自动生成。
+5. 没有 Mermaid 图解自动生成。
+6. 没有 Bases 数据库视图模板。
+7. 没有统一 YAML 数据模型。
+8. 没有将课程拆成对象：课程、章节、概念、方法、案例、任务、复习、证据、待审核。
+9. 没有完整的视觉 CSS / Callout / Dashboard / Review Center 样式层。
+10. 没有 HERMES / Codex / Local REST API 的安全读写边界说明。
+
+---
+
+## 2. HERMES 执行模式
+
+### 2.1 禁止直接 YOLO 正式库
+
+不要让 HERMES 直接对正式 Obsidian 库执行 YOLO 写入。
+
+正式库可能在：
+
+```text
+E:\BaiduSyncdisk\Obsidian知识库
+```
+
+但是 HERMES 必须先确认路径，不得猜测。
+
+正确顺序：
+
+```text
+Inspect only → Dry-run → Demo vault → Backup → Apply
+```
+
+### 2.2 三种运行模式
+
+#### 模式 A：inspect-only
+
+只读取仓库和 vault 结构，不写入任何文件。
+
+```powershell
+python scripts/obsidian_v3_audit.py --vault "E:\BaiduSyncdisk\Obsidian知识库" --inspect-only
+```
+
+#### 模式 B：dry-run
+
+生成写入计划、文件树、diff 预览，但不写入正式库。
+
+```powershell
+python scripts/generate_course_pack.py --course "Demo课程" --out ".\demo-output" --dry-run
+```
+
+#### 模式 C：apply
+
+只允许在用户确认后执行。执行前必须备份。
+
+```powershell
+python scripts/generate_course_pack.py --course "Demo课程" --vault "D:\OBS-V3-DEMO" --apply
+```
+
+---
+
+## 3. 不可违反的安全边界
+
+HERMES 必须遵守：
+
+1. 不上传用户正式 Obsidian vault。
+2. 不上传课程原始资料、视频、音频、PDF、图片、OCR 全文、ASR 全文。
+3. 不删除用户本地文件。
+4. 不改动正式库，除非用户明确指定 `--apply`。
+5. 不覆盖任何已有文件，除非：
+   - 已备份；
+   - 已生成变更计划；
+   - 用户确认；
+   - 文件在允许写入清单内。
+6. 所有脚本默认 `dry-run`。
+7. 所有写入必须经过 `safe_vault_writer.py`。
+8. 禁止路径穿越：禁止写入 vault 根目录之外。
+9. 禁止处理 `.git/`、`node_modules/`、`.obsidian/workspace*`、缓存目录。
+10. 不确定术语、识别错误、证据不足内容必须标记为：`待人工补充`。
+11. 不得把模型推测当成课程事实。
+12. 不得把学员姓名、手机号、微信号、二维码、私密信息写入正式课程笔记。
+13. 不得将 API Key、token、Local REST API bearer token 写入仓库。
+14. 不得把 `.obsidian/plugins/*/data.json` 中可能包含密钥的信息上传。
+15. 不得删除、移动、清理正式库附件。
+
+---
+
+## 4. V3 目标目录结构
+
+在仓库中新增：
+
+```text
+DTALEX66/Obsidian-Assistance/
+  docs/
+    obsidian-v3-visual-learning-os.md
+    hermes-execution-guide.md
+    plugin-stack-p0-p1-p2.md
+    yaml-schema-standard.md
+    course-output-standard.md
+    codex-hermes-safe-write-rules.md
+    local-rest-api-mcp-bridge.md
+    open-source-reference-map.md
+    test-and-acceptance-checklist.md
+
+  templates/
+    course-home.md
+    lesson-summary.md
+    concept-card.md
+    method-card.md
+    case-card.md
+    review-card.md
+    action-card.md
+    import-report.md
+    pending-review.md
+    visual-mermaid-flow.md
+    visual-mermaid-mindmap.md
+    visual-mermaid-timeline.md
+    canvas-course-map.template.json
+
+  snippets/
+    dt-knowledgeos-v3.css
+    dt-dashboard-cards.css
+    dt-dataview-cards.css
+    dt-callouts.css
+    dt-review-center.css
+    dt-bases-polish.css
+
+  bases/
+    courses.base
+    lessons.base
+    knowledge-cards.base
+    review-center.base
+    pending-review.base
+    project-actions.base
+
+  scripts/
+    setup_obsidian_v3_visual_flow.ps1
+    obsidian_v3_audit.py
+    generate_course_pack.py
+    generate_canvas_map.py
+    generate_mermaid_graph.py
+    generate_bases_views.py
+    validate_yaml_schema.py
+    safe_vault_writer.py
+    backup_before_write.ps1
+    test_demo_vault.ps1
+
+  examples/
+    demo-course/
+      00_课程主页.md
+      01_课程地图.canvas
+      02_逐节总结/
+      03_知识卡片/
+      04_复习卡片/
+      05_视觉图解/
+      06_项目行动/
+      07_证据索引/
+      08_导入报告.md
+
+  tests/
+    test_safe_vault_writer.py
+    test_yaml_schema.py
+    test_generate_course_pack.py
+    test_canvas_map.py
+    test_mermaid_graph.py
+```
+
+---
+
+## 5. 正式 Obsidian 输出目录结构
+
+每个课程或资料包输出到：
+
+```text
+02_课程库/
+  课程名/
+    00_课程主页.md
+    01_课程地图.canvas
+    02_逐节总结/
+      第01节_标题.md
+      第02节_标题.md
+    03_知识卡片/
+      概念_XXX.md
+      方法_XXX.md
+      案例_XXX.md
+    04_复习卡片/
+      Q_XXX.md
+      Cloze_XXX.md
+    05_视觉图解/
+      XXX流程图.md
+      XXX时间线.md
+      XXX框架图.excalidraw.md
+    06_项目行动/
+      行动清单.md
+      实操任务.md
+    07_证据索引/
+      evidence-index.md
+      source-map.json
+    08_导入报告.md
+```
+
+---
+
+## 6. 统一 YAML Schema
+
+所有生成的 Markdown 文件必须有 frontmatter：
+
+```yaml
+---
+type: course
+status: processing
+course: ""
+lesson: ""
+source_type: video
+source_path: ""
+evidence_id: ""
+confidence: medium
+review_level: new
+difficulty: 1
+priority: 1
+created: 2026-07-01
+updated: 2026-07-01
+tags:
+  - course
+  - knowledgeos
+aliases: []
+links:
+  concepts: []
+  methods: []
+  cases: []
+cssclasses:
+  - dashboard
+  - course-home
+---
+```
+
+### type 可选值
+
+```text
+course
+lesson
+concept
+method
+case
+review
+task
+evidence
+visual
+report
+pending
+```
+
+### status 可选值
+
+```text
+inbox
+processing
+converted
+verified
+review
+done
+archived
+blocked
+```
+
+### confidence 可选值
+
+```text
+high
+medium
+low
+unknown
+```
+
+### review_level 可选值
+
+```text
+new
+learning
+familiar
+mastered
+```
+
+---
+
+## 7. 课程主页模板要求
+
+`templates/course-home.md` 必须包含：
+
+```markdown
+---
+type: course
+status: processing
+course: "{{course}}"
+created: "{{date}}"
+updated: "{{date}}"
+cssclasses:
+  - dashboard
+  - course-home
+tags:
+  - course
+  - knowledgeos
+---
+
+# {{course}}
+
+> [!summary] 课程概览
+> - 状态：`=this.status`
+> - 进度：`=this.progress`
+> - 核验：`=this.confidence`
+> - 待审核：见下方待确认区
+
+## 1. 今日入口
+
+- [ ] 继续整理本课
+- [ ] 复习知识卡片
+- [ ] 处理待人工确认
+- [ ] 生成项目行动
+
+## 2. 课程地图
+
+![[01_课程地图.canvas]]
+
+## 3. 核心概念
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 概念,
+confidence AS 可信度,
+review_level AS 复习等级
+FROM "{{course_path}}/03_知识卡片"
+WHERE type = "concept"
+SORT priority ASC
+```
+
+## 4. 核心方法
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 方法,
+difficulty AS 难度,
+status AS 状态
+FROM "{{course_path}}/03_知识卡片"
+WHERE type = "method"
+SORT priority ASC
+```
+
+## 5. 复习中心
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 复习卡,
+review_level AS 等级,
+difficulty AS 难度
+FROM "{{course_path}}/04_复习卡片"
+SORT updated DESC
+```
+
+## 6. 项目行动
+
+```dataview
+TASK
+FROM "{{course_path}}/06_项目行动"
+WHERE !completed
+```
+
+## 7. 待人工确认
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 问题,
+reason AS 原因,
+source_path AS 来源
+FROM "{{course_path}}"
+WHERE status = "blocked" OR confidence = "low"
+```
+
+## 8. 导入报告
+
+![[08_导入报告]]
+```
+
+---
+
+## 8. 知识卡片模板要求
+
+`templates/concept-card.md`：
+
+```markdown
+---
+type: concept
+status: verified
+course: "{{course}}"
+lesson: "{{lesson}}"
+source_type: "{{source_type}}"
+source_path: "{{source_path}}"
+evidence_id: "{{evidence_id}}"
+confidence: "{{confidence}}"
+review_level: new
+difficulty: 1
+priority: 1
+created: "{{date}}"
+updated: "{{date}}"
+tags:
+  - concept
+  - knowledge-card
+cssclasses:
+  - knowledge-card
+  - cards
+---
+
+# {{concept_name}}
+
+> [!definition] 定义
+> {{definition}}
+
+> [!example] 例子
+> {{example}}
+
+> [!important] 为什么重要
+> {{why_important}}
+
+## 使用场景
+
+{{use_cases}}
+
+## 与其他概念的关系
+
+- 相关概念：{{related_concepts}}
+- 所属方法：{{related_methods}}
+- 可落地项目：{{related_actions}}
+
+## 证据来源
+
+- 来源文件：`{{source_path}}`
+- 证据编号：`{{evidence_id}}`
+- 可信度：`{{confidence}}`
+
+## 待人工确认
+
+{{pending_review}}
+```
+
+---
+
+## 9. 复习卡片模板要求
+
+`templates/review-card.md`：
+
+```markdown
+---
+type: review
+status: review
+course: "{{course}}"
+lesson: "{{lesson}}"
+review_level: new
+difficulty: 1
+priority: 1
+created: "{{date}}"
+updated: "{{date}}"
+tags:
+  - review
+  - spaced-repetition
+cssclasses:
+  - review-card
+---
+
+# {{question}}
+
+> [!question] 问题
+> {{question}}
+
+> [!answer] 答案
+> {{answer}}
+
+## 记忆线索
+
+{{memory_hook}}
+
+## 容易混淆
+
+{{confusions}}
+
+## 来源
+
+- 课程：[[{{course}}]]
+- 章节：[[{{lesson}}]]
+- 证据：{{evidence_id}}
+```
+
+---
+
+## 10. Canvas 课程地图生成规范
+
+`generate_canvas_map.py` 生成 `.canvas` 文件。
+
+节点类型：
+
+```text
+course
+lesson
+concept
+method
+case
+task
+review
+evidence
+```
+
+节点布局：
+
+```text
+课程主页在中心
+章节在左侧
+概念在上方
+方法在右侧
+案例在下方
+任务在右下角
+复习卡在左下角
+证据在底部
+```
+
+生成规则：
+
+1. 每个节点必须有唯一 id。
+2. 每个节点必须有 x、y、width、height。
+3. 课程节点连接所有章节。
+4. 章节连接概念、方法、案例。
+5. 概念连接复习卡。
+6. 方法连接行动任务。
+7. 所有内容连接证据节点。
+8. 不确定内容连接待审核节点。
+
+---
+
+## 11. Mermaid 图解生成规范
+
+`generate_mermaid_graph.py` 至少支持：
+
+### flowchart
+
+```mermaid
+flowchart LR
+  A[原始素材] --> B[素材识别]
+  B --> C[转写/OCR]
+  C --> D[核验]
+  D --> E[总结]
+  E --> F[知识卡片]
+  F --> G[复习]
+  E --> H[课程地图]
+```
+
+### mindmap
+
+```mermaid
+mindmap
+  root((课程名))
+    核心概念
+    核心方法
+    案例
+    复习卡
+    项目行动
+```
+
+### timeline
+
+```mermaid
+timeline
+  title 课程处理时间线
+  阶段1 : 素材识别
+  阶段2 : 转写/OCR
+  阶段3 : 核验
+  阶段4 : 总结
+  阶段5 : 卡片与复习
+```
+
+---
+
+## 12. CSS 视觉要求
+
+`snippets/dt-knowledgeos-v3.css` 必须支持：
+
+1. 首页 dashboard 卡片化。
+2. callout 圆角、阴影、图标、状态色。
+3. Dataview 表格卡片化。
+4. 知识卡片墙。
+5. 复习中心卡片。
+6. 待审核红色提醒。
+7. 课程状态标签。
+8. 深色模式兼容。
+9. 不依赖远程字体。
+10. 不影响 Obsidian 默认编辑体验。
+
+建议 CSS 类：
+
+```css
+.dashboard
+.course-home
+.knowledge-card
+.review-card
+.pending-review
+.action-card
+.cards
+.card-grid
+.status-processing
+.status-verified
+.status-blocked
+```
+
+---
+
+## 13. Bases 视图要求
+
+新增 `.base` 示例文件：
+
+```text
+bases/
+  courses.base
+  lessons.base
+  knowledge-cards.base
+  review-center.base
+  pending-review.base
+  project-actions.base
+```
+
+目标：
+
+1. 课程库：按 status / course / updated 排序。
+2. 章节库：按 course / lesson / confidence。
+3. 知识卡片墙：按 type / priority / review_level。
+4. 复习中心：按 review_level / difficulty / updated。
+5. 待审核：只显示 confidence=low 或 status=blocked。
+6. 项目行动：显示未完成任务。
+
+如果 `.base` 格式不确定，先生成文档和示例，不强写用户 vault。
+
+---
+
+## 14. HERMES 执行阶段
+
+### 阶段 0：仓库体检
+
+执行：
+
+```powershell
+git status
+git branch --show-current
+dir
+dir docs
+dir scripts
+```
+
+输出：
+
+```text
+reports/repo-audit.md
+```
+
+检查：
+
+1. README 是否说明 V3。
+2. docs 是否齐全。
+3. scripts 是否存在破坏性命令。
+4. 是否有硬编码用户路径。
+5. 是否误包含私人 vault 内容。
+
+---
+
+### 阶段 1：创建 V3 文档层
+
+新增：
+
+```text
+docs/obsidian-v3-visual-learning-os.md
+docs/hermes-execution-guide.md
+docs/plugin-stack-p0-p1-p2.md
+docs/yaml-schema-standard.md
+docs/course-output-standard.md
+docs/codex-hermes-safe-write-rules.md
+docs/local-rest-api-mcp-bridge.md
+docs/test-and-acceptance-checklist.md
+```
+
+要求：
+
+1. 全部中文。
+2. 可以直接给用户看。
+3. 可以直接给 Codex / HERMES 执行。
+4. 不要写空话，要写目录、命令、字段、路径、验收标准。
+
+---
+
+### 阶段 2：创建模板层
+
+新增：
+
+```text
+templates/course-home.md
+templates/lesson-summary.md
+templates/concept-card.md
+templates/method-card.md
+templates/case-card.md
+templates/review-card.md
+templates/action-card.md
+templates/import-report.md
+templates/pending-review.md
+templates/visual-mermaid-flow.md
+templates/visual-mermaid-mindmap.md
+templates/visual-mermaid-timeline.md
+templates/canvas-course-map.template.json
+```
+
+要求：
+
+1. 每个模板有 YAML frontmatter。
+2. 每个模板有 `cssclasses`。
+3. 每个模板都能被 `generate_course_pack.py` 渲染。
+4. 所有变量格式统一：`{{course}}`、`{{lesson}}`、`{{date}}`。
+
+---
+
+### 阶段 3：创建视觉 CSS 层
+
+新增：
+
+```text
+snippets/dt-knowledgeos-v3.css
+snippets/dt-dashboard-cards.css
+snippets/dt-dataview-cards.css
+snippets/dt-callouts.css
+snippets/dt-review-center.css
+snippets/dt-bases-polish.css
+```
+
+要求：
+
+1. 不使用外部资源。
+2. 不使用远程字体。
+3. 不破坏默认主题。
+4. Minimal Theme 和默认主题都能看。
+5. 深色模式可用。
+6. 所有 CSS 选择器尽量绑定 `cssclasses`，避免污染全库。
+
+---
+
+### 阶段 4：创建脚本层
+
+新增：
+
+```text
+scripts/safe_vault_writer.py
+scripts/backup_before_write.ps1
+scripts/validate_yaml_schema.py
+scripts/generate_canvas_map.py
+scripts/generate_mermaid_graph.py
+scripts/generate_bases_views.py
+scripts/generate_course_pack.py
+scripts/setup_obsidian_v3_visual_flow.ps1
+scripts/obsidian_v3_audit.py
+scripts/test_demo_vault.ps1
+```
+
+脚本总原则：
+
+1. 所有 Python 脚本支持 `--dry-run`。
+2. 所有写入脚本支持 `--apply`。
+3. 不传 `--apply` 就不写入正式 vault。
+4. 所有写入经过 `safe_vault_writer.py`。
+5. 所有写入前生成计划。
+6. 所有写入后生成报告。
+7. 支持 Windows PowerShell 5.1。
+8. 路径处理必须用 `pathlib`，防路径穿越。
+
+---
+
+### 阶段 5：创建 demo 课程
+
+新增：
+
+```text
+examples/demo-course/
+```
+
+内容：
+
+```text
+00_课程主页.md
+01_课程地图.canvas
+02_逐节总结/第01节_如何高效学习.md
+03_知识卡片/概念_输入箱.md
+03_知识卡片/方法_课程处理流程.md
+04_复习卡片/Q_什么是输入箱.md
+05_视觉图解/课程处理流程.md
+06_项目行动/行动清单.md
+07_证据索引/evidence-index.md
+08_导入报告.md
+```
+
+要求：
+
+1. demo 内容可以是虚构课程，但必须标注“示例”。
+2. 不得混入用户真实课程内容。
+3. 打开后能看到卡片、流程图、复习、行动、待审核结构。
+
+---
+
+### 阶段 6：测试与验收
+
+新增 tests：
+
+```text
+tests/test_safe_vault_writer.py
+tests/test_yaml_schema.py
+tests/test_generate_course_pack.py
+tests/test_canvas_map.py
+tests/test_mermaid_graph.py
+```
+
+必须测试：
+
+1. `safe_vault_writer` 不能写出 vault 根目录。
+2. dry-run 不写入任何文件。
+3. apply 前自动备份。
+4. YAML 字段完整。
+5. Canvas JSON 可解析。
+6. Mermaid 文件可生成。
+7. 路径中包含中文时不报错。
+8. 目标文件存在时不会无备份覆盖。
+9. 不允许删除文件。
+10. 导入报告必须生成。
+
+运行：
+
+```powershell
+python -m pytest tests -q
+```
+
+---
+
+## 15. HERMES 主提示词
+
+把下面这段作为 HERMES 的主执行提示词：
+
+```text
+你是 HERMES，本地执行 Agent。你的任务是升级 GitHub 仓库 DTALEX66/Obsidian-Assistance，将其从“Obsidian 课程资料转文字与核验流程”升级为“Obsidian V3 生动学习知识库生成器”。
+
+你必须遵守：
+
+1. 默认只读和 dry-run，不允许直接修改用户正式 Obsidian vault。
+2. 不允许删除任何用户文件。
+3. 不允许上传用户正式 vault、课程原始资料、OCR 全文、ASR 全文、附件、token、API Key。
+4. 不确定内容一律标记“待人工补充”，不能编造。
+5. 所有写入必须先生成写入计划，再备份，再写入，再生成报告。
+6. 所有脚本必须支持 Windows PowerShell 5.1。
+7. 所有写入必须通过 safe_vault_writer.py，禁止路径穿越。
+8. 正式库路径必须由用户确认，不得猜测。
+9. 可以先在 demo vault 或 examples/demo-course 中完成验证。
+10. 不能把核心内容锁死在插件中，Markdown 本身必须可读。
+
+你的交付目标：
+
+1. 新增 docs、templates、snippets、bases、scripts、examples、tests。
+2. 创建 Obsidian V3 视觉学习系统规范。
+3. 创建课程主页、知识卡片、复习卡片、行动卡、导入报告等模板。
+4. 创建 CSS snippets，实现 dashboard、卡片墙、callout、复习中心视觉。
+5. 创建 generate_course_pack.py，将课程结构生成完整 Obsidian 学习包。
+6. 创建 generate_canvas_map.py，生成 JSON Canvas 课程地图。
+7. 创建 generate_mermaid_graph.py，生成 flowchart、mindmap、timeline。
+8. 创建 validate_yaml_schema.py，检查所有生成文件的 frontmatter。
+9. 创建 safe_vault_writer.py，保护用户 vault。
+10. 创建 demo 课程和测试用例。
+11. 更新 README，写清楚 V3 使用方法。
+
+执行顺序：
+
+第一步：检查仓库结构，输出 repo-audit.md。
+第二步：新增 V3 文档。
+第三步：新增模板。
+第四步：新增 CSS snippets。
+第五步：新增脚本。
+第六步：生成 demo-course。
+第七步：运行测试。
+第八步：更新 README。
+第九步：输出最终交付报告。
+
+在任何可能破坏用户数据的操作前停止，并输出风险说明与需要用户确认的命令。
+```
+
+---
+
+## 16. HERMES 具体执行命令建议
+
+### 16.1 克隆/进入仓库
+
+```powershell
+cd "D:\CODEX Project Directory"
+git clone https://github.com/DTALEX66/Obsidian-Assistance.git
+cd Obsidian-Assistance
+git status
+```
+
+如果已经存在：
+
+```powershell
+cd "D:\CODEX Project Directory\Obsidian-Assistance"
+git status
+git pull
+```
+
+### 16.2 新建分支
+
+```powershell
+git checkout -b feature/obsidian-v3-visual-learning-os
+```
+
+### 16.3 创建 Python 环境
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install pyyaml rich pytest
+```
+
+### 16.4 运行测试
+
+```powershell
+python -m pytest tests -q
+```
+
+### 16.5 生成 demo
+
+```powershell
+python scripts/generate_course_pack.py `
+  --course "Demo课程_生动学习系统示例" `
+  --output "examples/demo-course" `
+  --dry-run
+```
+
+确认后：
+
+```powershell
+python scripts/generate_course_pack.py `
+  --course "Demo课程_生动学习系统示例" `
+  --output "examples/demo-course" `
+  --apply
+```
+
+### 16.6 安装到测试 vault
+
+先建测试库：
+
+```powershell
+New-Item -ItemType Directory -Force -Path "D:\OBS-V3-DEMO"
+```
+
+执行 dry-run：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup_obsidian_v3_visual_flow.ps1 `
+  -VaultPath "D:\OBS-V3-DEMO" `
+  -DryRun
+```
+
+确认后 apply：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/setup_obsidian_v3_visual_flow.ps1 `
+  -VaultPath "D:\OBS-V3-DEMO" `
+  -Apply
+```
+
+---
+
+## 17. 验收标准
+
+HERMES 完成后必须满足：
+
+1. 仓库新增 V3 文档、模板、CSS、脚本、demo、tests。
+2. README 说明 V3 使用方法。
+3. demo 课程可以打开，不是纯文字。
+4. 课程主页有 dashboard 结构。
+5. Dataview 查询可显示知识卡片。
+6. 有 `.canvas` 课程地图文件。
+7. 有 Mermaid flowchart / mindmap / timeline 示例。
+8. 有复习卡片。
+9. 有项目行动卡。
+10. 有待审核区。
+11. 有导入报告。
+12. 所有 Markdown 文件都有 YAML frontmatter。
+13. 所有脚本默认 dry-run。
+14. `--apply` 前必须备份。
+15. `safe_vault_writer.py` 阻止路径穿越。
+16. 测试通过。
+17. 不包含用户私密数据。
+18. 不包含 API Key / token。
+19. 不删除任何文件。
+20. 最终输出交付报告。
+
+---
+
+## 18. HERMES 最终交付报告模板
+
+完成后生成：
+
+```text
+reports/hermes-v3-delivery-report.md
+```
+
+内容：
+
+```markdown
+# HERMES V3 交付报告
+
+## 1. 本次目标
+
+## 2. 已新增文件
+
+## 3. 已修改文件
+
+## 4. 未执行的高风险动作
+
+## 5. 安全检查结果
+
+## 6. 测试结果
+
+## 7. Demo 课程预览路径
+
+## 8. 如何安装到 Obsidian 测试库
+
+## 9. 如何迁移到正式库
+
+## 10. 后续建议
+```
+
+---
+
+## 19. 不要做的事
+
+HERMES 不要做：
+
+1. 不要直接改 `E:\BaiduSyncdisk\Obsidian知识库`。
+2. 不要一上来就装很多插件。
+3. 不要直接修改 `.obsidian/plugins` 真实配置。
+4. 不要直接删除旧文件。
+5. 不要把课程全文写进 GitHub 仓库。
+6. 不要生成没有 YAML 的普通笔记。
+7. 不要只生成长总结。
+8. 不要让 Canvas、Bases、CSS 成为唯一可读结构，Markdown 正文必须完整。
+9. 不要把用户路径硬编码到仓库。
+10. 不要使用外部字体、外部 CSS、外部图片链接。
+
+---
+
+## 20. 最终一句话
+
+HERMES 的目标不是“帮用户美化 Obsidian”，而是：
+
+**把用户的本地课程资料变成一个可视化、可复习、可追踪、可核验、可项目化输出的 Obsidian 学习操作系统。**

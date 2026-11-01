@@ -1,0 +1,967 @@
+# Knowledge-Base 双系统 + A转B转译层 + 算法实现包
+
+## 核心升级
+
+在原来的 A线 / B线 / 隔离层基础上，新增“双系统”和“转译层”。
+
+```text
+A系统：Human Learning System
+人学、记、练、复习、输出。
+
+B系统：Machine Knowledge System
+AI / Agent / CODEX / DEEP 可调用、可检索、可执行的机器知识系统。
+
+中间：A→B Knowledge Translation Layer
+当人真正学会某个知识点后，系统总结收藏，并转化成机器可学习、可调用、可拆解的知识点。
+```
+
+## 关键判断
+
+A线不是只把知识给人看；  
+B线也不是直接读人的学习卡片。
+
+正确结构：
+
+```text
+外部资料
+  ↓
+隔离层
+  ↓
+A系统：人学会
+  ↓
+人类掌握信号 Mastery Signal
+  ↓
+收藏总结层 Canonical Summary
+  ↓
+A→B 转译层
+  ↓
+B系统：机器知识单元 Machine Knowledge Unit
+  ↓
+MCP / CODEX / DEEP / Agent 调用
+```
+
+## 本包内容
+
+```text
+00_双系统总架构.md
+01_A系统实现总图.md
+02_B系统实现总图.md
+03_A转B转译层.md
+04_隔离层升级设计.md
+05_A线算法总表.md
+06_A线各环节算法.md
+07_B线机器知识算法.md
+08_掌握度与触发规则.md
+09_数据库模型补充SQL.md
+10_API与事件流设计.md
+11_CODEX执行任务包.md
+12_DEEP并行任务包.md
+13_验收标准.md
+
+dropin/backend/pk_radar/learning_algorithms/
+dropin/backend/pk_radar/translation/
+```
+
+
+---
+
+# 00 双系统总架构
+
+## 为什么需要双系统
+
+你说得对：不能只有“人学习系统”，也不能只有“机器调用系统”。
+
+真正应该是：
+
+```text
+A系统：人学会知识
+B系统：机器能调用知识
+```
+
+两者之间不能直接打通，必须通过隔离层和转译层。
+
+## 双系统关系
+
+```text
+┌─────────────────────────────────────────────┐
+│                 外部内容输入                 │
+│ 文档 / 网页 / GitHub / 项目经验 / 人工笔记   │
+└─────────────────────┬───────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────┐
+│                  隔离层                      │
+│ quarantine / sanitize / trust / review      │
+└─────────────────────┬───────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────┐
+│       A系统：Human Learning System           │
+│ route / card / review / training / palace   │
+│ mistake / observation / report              │
+└─────────────────────┬───────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────┐
+│        人类掌握信号 Mastery Signal           │
+│ review_count / stability / output / mistakes │
+└─────────────────────┬───────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────┐
+│        收藏总结层 Canonical Summary          │
+│ 人已学会的知识被整理成稳定知识条目            │
+└─────────────────────┬───────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────┐
+│        A→B 转译层 Translation Layer          │
+│ 将人类知识拆成机器知识单元                    │
+└─────────────────────┬───────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────┐
+│      B系统：Machine Knowledge System         │
+│ MKU / rules / procedures / tool hints        │
+│ prompts / tasks / graph facts / MCP outputs │
+└─────────────────────────────────────────────┘
+```
+
+## 核心原则
+
+```text
+A系统负责“人是否真的学会”
+B系统负责“机器是否能正确调用”
+转译层负责“把人的理解变成机器可用结构”
+隔离层负责“防污染、防越权、防混淆”
+```
+
+## 不能直接做的事
+
+```text
+不能让 AI 直接把学习卡片当长期机器知识
+不能让 B系统直接修改 A系统复习记录
+不能让外部网页直接进入 B系统 prompt
+不能让 AI 输出绕过人工审核进入人的长期记忆
+不能把人的错题/掌握度裸露给所有 Agent
+```
+
+
+---
+
+# 01 A系统实现总图
+
+## A系统定位
+
+```text
+A系统 = 人的学习、复习、训练、理解、输出、掌握系统。
+```
+
+## A系统内部流程
+
+```text
+知识输入
+  ↓
+知识点抽取
+  ↓
+学习路线归属
+  ↓
+知识卡片生成
+  ↓
+人工审核
+  ↓
+复习调度
+  ↓
+主动训练
+  ↓
+错题薄弱点
+  ↓
+观察笔记
+  ↓
+输出报告
+  ↓
+掌握判断
+```
+
+## A系统核心模块
+
+| 模块 | 作用 |
+|---|---|
+| learning_routes | 学习路径 |
+| knowledge_cards | 可复习知识卡 |
+| review_scheduler | 间隔复习 |
+| training_engine | 主动回忆训练 |
+| mistake_engine | 错题和薄弱点 |
+| observation_engine | 理解笔记和项目经验 |
+| palace_engine | 知识宫殿和图谱 |
+| report_engine | 学习输出报告 |
+| mastery_engine | 判断是否学会 |
+
+## A系统输出
+
+A系统最终不只是输出报告，还要输出：
+
+```text
+MasteredKnowledge
+```
+
+即“人已经掌握的知识”。
+
+只有达到掌握阈值的知识，才进入 A→B 转译层。
+
+
+---
+
+# 02 B系统实现总图
+
+## B系统定位
+
+```text
+B系统 = 机器可读、可检索、可调用、可执行的知识系统。
+```
+
+## B系统不要直接存人的卡片
+
+人的卡片是为了复习，机器知识是为了调用。
+
+例如：
+
+A系统卡片：
+
+```text
+Q：为什么 Knowledge-Base 不默认使用 Qdrant？
+A：因为项目本地优先，SQLite 是现有内核，Qdrant 更适合作为后续可选 Adapter。
+```
+
+B系统机器知识：
+
+```json
+{
+  "type": "decision_rule",
+  "title": "Default vector strategy for Knowledge-Base",
+  "rule": "Prefer sqlite-vec over Qdrant in default local-first deployments.",
+  "when_to_use": ["single-user", "local-first", "SQLite already exists"],
+  "when_not_to_use": ["multi-user large-scale server", "distributed vector search needed"],
+  "confidence": 0.88,
+  "source": ["human_mastered_card:123", "project_decision:45"]
+}
+```
+
+## B系统知识单元类型
+
+```text
+definition       定义
+fact             事实
+decision_rule    决策规则
+procedure        步骤流程
+constraint       约束
+tool_hint        工具调用提示
+prompt_rule      Prompt规则
+code_pattern     代码模式
+anti_pattern     反模式
+case             案例
+memory           项目记忆
+```
+
+## B系统用途
+
+```text
+MCP 检索
+CODEX 任务包生成
+DEEP 并行任务拆解
+项目研究
+Prompt 注入上下文
+Agent 工具选择
+自动报告
+错误避免
+```
+
+
+---
+
+# 03 A→B 转译层
+
+## 转译层目标
+
+当人学会某个知识点后，系统做三件事：
+
+```text
+1. 总结收藏：把人学会的知识整理成稳定表达。
+2. 结构拆解：把知识拆成机器可理解的知识单元。
+3. 安全发布：经过审核/置信度/冲突检测后进入 B系统。
+```
+
+## 转译触发条件
+
+一个知识点从 A系统进入 B系统，必须满足：
+
+```text
+card.review_status = approved
+memory_strength.mastery_level >= 4
+review_count >= 3
+最近一次 rating >= 4
+未解决 mistake 数 = 0
+来源 trust_level >= medium
+人允许 publish_to_machine = true
+```
+
+## 转译流程
+
+```text
+A卡片 / 学习单元 / 观察笔记
+  ↓
+Mastery Signal 判断
+  ↓
+Canonical Summary 生成
+  ↓
+Machine Knowledge Unit 拆解
+  ↓
+Conflict Detection
+  ↓
+B Candidate
+  ↓
+审核 / 自动低风险批准
+  ↓
+B Active Knowledge
+```
+
+## 转译输出格式
+
+### Canonical Summary
+
+```json
+{
+  "title": "sqlite-vec 优先策略",
+  "summary": "Knowledge-Base 默认优先 sqlite-vec，因为它符合本地优先和 SQLite 内核策略。",
+  "human_evidence": {
+    "card_ids": [1, 2],
+    "review_count": 5,
+    "mastery_level": 4,
+    "mistakes_resolved": 1
+  }
+}
+```
+
+### Machine Knowledge Unit
+
+```json
+{
+  "unit_type": "decision_rule",
+  "title": "Use sqlite-vec before Qdrant",
+  "machine_statement": "For local-first Knowledge-Base deployments, prefer sqlite-vec before external vector databases.",
+  "preconditions": ["single-user", "local-first", "SQLite core exists"],
+  "actions": ["use sqlite-vec adapter", "keep Qdrant optional"],
+  "anti_patterns": ["making Qdrant a default hard dependency"],
+  "confidence": 0.86,
+  "source_card_ids": [1, 2],
+  "scope": "project_memory"
+}
+```
+
+## 转译原则
+
+```text
+人学会 ≠ 机器可用
+机器可用 ≠ 自动执行
+B系统知识必须结构化、可溯源、可撤销
+```
+
+
+---
+
+# 04 隔离层升级设计
+
+## 新增两个隔离区
+
+在原隔离层基础上新增：
+
+```text
+A_System_Private
+B_System_Executable
+```
+
+## 隔离分区
+
+| 分区 | 内容 | 访问 |
+|---|---|---|
+| raw_external | 原始外部资料 | 系统清洗器 |
+| candidate_learning | AI 生成卡片/路线/测验 | 人审核 |
+| active_learning | 人已批准学习内容 | A系统 |
+| mastery_archive | 人已学会的知识收藏 | A系统 + 转译层 |
+| machine_candidate | 转译后的机器候选知识 | 审核器 |
+| machine_active | 机器可调用知识 | B系统 |
+| machine_executable | 可执行工具/任务/Prompt | 高权限 B系统 |
+| audit_log | 所有关键操作 | 管理员/人 |
+
+## A系统到B系统的隔离规则
+
+```text
+A系统 approved 不等于 B系统 active
+A系统 mastery 不等于 B系统 executable
+B系统 candidate 必须保留 source_card_ids
+B系统 executable 必须标注 risk_level
+高风险知识只能提示，不能自动执行
+```
+
+## 读写权限
+
+| 动作 | A系统 | B系统 |
+|---|---|---|
+| 读 active_learning | 可 | 只读摘要 |
+| 写 active_learning | 人/审核后 | 不可 |
+| 读 mastery_archive | 可 | 通过转译层 |
+| 写 machine_candidate | 转译层 | 可 |
+| 写 machine_active | 审核器 | 不可直接 |
+| 执行 machine_executable | 不可 | 需权限 |
+
+
+---
+
+# 05 A线算法总表
+
+| 环节 | 算法 | 第一阶段实现 |
+|---|---|---|
+| 知识点抽取 | chunk关键词 + LLM候选 + 人审核 | heuristic + candidate |
+| 卡片生成 | 原子化 + 来源绑定 + 质量评分 | atomic card scorer |
+| 卡片质量 | 原子性、可回忆性、明确性、来源可信 | card_quality_score |
+| 学习路线 | 知识点依赖图 + 拓扑排序 | prerequisite DAG |
+| 复习调度 | Leitner/SM-2/FSRS分阶段 | Simple SRS → SM-2 |
+| 掌握度 | 复习表现 + 稳定度 + 错题 + 输出 | mastery_score |
+| 训练题选择 | 薄弱优先 + 到期优先 + 路线当前单元 | priority queue |
+| 错题分类 | 规则 + AI分类 | mistake_type classifier |
+| 知识宫殿 | 标签聚类 + 图谱布局 | category grid / graph layout |
+| 报告生成 | 事件统计 + 模板 + AI润色 | deterministic report first |
+| A转B触发 | 掌握阈值 + 审核 + 置信度 | mastery_gate |
+
+
+---
+
+# 06 A线各环节算法
+
+## 1. 卡片质量评分
+
+```text
+score = 0.25 * atomicity
+      + 0.20 * recallability
+      + 0.20 * clarity
+      + 0.15 * source_trust
+      + 0.10 * difficulty_fit
+      + 0.10 * usefulness
+```
+
+卡片低于 0.7 不自动进入 approved。
+
+## 2. 复习调度算法
+
+第一阶段用 Simple SRS：
+
+```text
+rating=1 → 1天
+rating=2 → 3天
+rating=3 → 7天
+rating=4 → 14天
+rating=5 → 30天
+```
+
+第二阶段用 SM-2。SM-2 会跟踪 repetition number、easiness factor 和 interval，用户每次复习后给 0-5 评分，再更新下次复习间隔；SuperMemo 对 SM-2 的公开描述中也使用这些核心变量。citeturn685020view2
+
+第三阶段再接 FSRS。FSRS4Anki 官方说明中，FSRS 由 scheduler 和 optimizer 两部分组成，scheduler 按 FSRS 算法排卡，optimizer 会从复习历史中学习最适合用户记忆模式的参数。citeturn685020view0 Anki 手册也把 FSRS 作为牌组选项中的调度能力，并提示用户理解参数后再调整。citeturn685020view1
+
+## 3. 掌握度算法
+
+```text
+mastery_score =
+  0.35 * recent_recall_score
++ 0.20 * stability_score
++ 0.15 * review_consistency
++ 0.15 * mistake_penalty_inverse
++ 0.10 * output_score
++ 0.05 * confidence_score
+```
+
+达到：
+
+```text
+mastery_score >= 0.78
+mastery_level >= 4
+review_count >= 3
+recent_rating >= 4
+```
+
+可进入 mastery_archive。
+
+## 4. 学习路线算法
+
+路线不是简单排序，而是 DAG：
+
+```text
+node = learning_unit
+edge = prerequisite
+```
+
+排序：
+
+```text
+1. 先按 prerequisite 做拓扑排序
+2. 同层按 difficulty 从低到高
+3. 再按 usefulness / user_goal 权重排序
+```
+
+## 5. 训练题选择算法
+
+```text
+priority =
+  0.35 * weakness_score
++ 0.25 * due_score
++ 0.20 * route_relevance
++ 0.10 * mistake_frequency
++ 0.10 * difficulty
+```
+
+## 6. 错题分类算法
+
+规则优先：
+
+```text
+答错事实 → fact_wrong
+步骤漏掉 → process_missing
+相似概念混淆 → concept_confusion
+能说但不会用 → application_failure
+耗时过长 → slow_recall
+```
+
+AI 只作为补充分类器，不直接改错题类型。
+
+## 7. 报告算法
+
+先确定性统计，再 AI 润色：
+
+```text
+review_count
+approved_cards
+new_cards
+mistakes_open
+weakest_units
+mastered_units
+due_tomorrow
+```
+
+AI 只处理表达，不改事实统计。
+
+
+---
+
+# 07 B线机器知识算法
+
+## 1. A转B知识蒸馏算法
+
+输入：
+
+```text
+approved card
+review history
+memory strength
+observations
+mistakes
+source documents
+```
+
+输出：
+
+```text
+Machine Knowledge Unit
+```
+
+流程：
+
+```text
+1. canonicalize：合并同义表达
+2. classify：判断知识类型
+3. decompose：拆成定义/规则/步骤/约束
+4. attach evidence：绑定来源
+5. conflict_check：检测冲突
+6. confidence_score：计算置信度
+7. publish_candidate：进入 machine_candidate
+```
+
+## 2. 机器知识类型分类
+
+```text
+if contains "是什么/定义/指的是" → definition
+if contains "应该/优先/不要" → decision_rule
+if contains "步骤/流程/先后" → procedure
+if contains "不能/必须/限制" → constraint
+if contains "代码/命令/配置" → code_pattern
+if contains "错误/不要这样" → anti_pattern
+```
+
+## 3. 机器知识置信度
+
+```text
+confidence =
+  0.30 * human_mastery_score
++ 0.20 * source_trust
++ 0.20 * review_stability
++ 0.15 * conflict_free_score
++ 0.10 * evidence_count
++ 0.05 * recency_score
+```
+
+## 4. 冲突检测
+
+```text
+同一 subject + predicate 下：
+如果 object 不同 → potential_conflict
+如果 scope 不同 → scoped_conflict
+如果时间不同 → temporal_version
+如果来源可信度不同 → source_priority
+```
+
+## 5. 机器知识发布规则
+
+```text
+confidence >= 0.85 且 risk=low → 可自动进入 machine_active
+0.65 <= confidence < 0.85 → candidate，需审核
+confidence < 0.65 → draft，不进入B系统
+risk=high → 永远需要人工确认
+```
+
+## 6. MCP 输出规则
+
+B系统输出必须附带：
+
+```text
+source
+confidence
+scope
+risk_level
+last_verified_at
+not_instruction_notice
+```
+
+防止机器把外部资料或旧知识当系统指令。
+
+
+---
+
+# 08 掌握度与触发规则
+
+## A系统学会的判断
+
+一个知识点不能因为用户看过就算学会。
+
+必须满足：
+
+```text
+已审核 approved
+复习 >= 3 次
+最近两次评分平均 >= 4
+未解决错题 = 0
+mastery_score >= 0.78
+能完成至少一次输出/解释
+```
+
+## 触发事件
+
+```text
+card_mastered
+unit_mastered
+route_stage_mastered
+mistake_resolved
+report_generated
+```
+
+## A转B触发
+
+```text
+on card_mastered:
+  create canonical_summary
+  create machine_knowledge_candidate
+  run conflict detection
+  calculate confidence
+  if low risk and high confidence:
+      publish to machine_active
+  else:
+      wait for human review
+```
+
+## 不触发的情况
+
+```text
+只有一次复习
+AI 生成但未审核
+来源低可信
+存在 unresolved mistake
+卡片答案很模糊
+知识点属于私人隐私
+```
+
+
+---
+
+# 09 数据库模型补充 SQL
+
+```sql
+CREATE TABLE IF NOT EXISTS mastery_archive (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_card_id INTEGER,
+  source_unit_id INTEGER,
+  title TEXT NOT NULL,
+  canonical_summary TEXT NOT NULL,
+  mastery_score REAL NOT NULL,
+  mastery_level INTEGER NOT NULL,
+  evidence_json TEXT NOT NULL DEFAULT '{}',
+  publish_to_machine INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS machine_knowledge_units (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_mastery_id INTEGER,
+  unit_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  machine_statement TEXT NOT NULL,
+  preconditions_json TEXT NOT NULL DEFAULT '[]',
+  actions_json TEXT NOT NULL DEFAULT '[]',
+  anti_patterns_json TEXT NOT NULL DEFAULT '[]',
+  evidence_json TEXT NOT NULL DEFAULT '{}',
+  confidence REAL NOT NULL DEFAULT 0,
+  risk_level TEXT NOT NULL DEFAULT 'low',
+  scope TEXT NOT NULL DEFAULT 'project_memory',
+  status TEXT NOT NULL DEFAULT 'candidate',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(source_mastery_id) REFERENCES mastery_archive(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS knowledge_translation_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_type TEXT NOT NULL,
+  source_id INTEGER NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id INTEGER,
+  event_type TEXT NOT NULL,
+  status TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS knowledge_conflicts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  left_unit_id INTEGER NOT NULL,
+  right_unit_id INTEGER NOT NULL,
+  conflict_type TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'medium',
+  resolution_status TEXT NOT NULL DEFAULT 'open',
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+```
+
+
+---
+
+# 10 API 与事件流设计
+
+## A系统掌握相关 API
+
+```text
+GET  /learning/mastery/candidates
+POST /learning/mastery/{card_id}/archive
+POST /learning/mastery/{id}/publish-to-machine
+```
+
+## A转B转译 API
+
+```text
+POST /translation/mastery/{id}/to-machine
+GET  /translation/events
+GET  /machine/knowledge-units
+POST /machine/knowledge-units/{id}/approve
+POST /machine/knowledge-units/{id}/reject
+```
+
+## 事件流
+
+```text
+review_submitted
+  ↓
+memory_strength_updated
+  ↓
+mastery_score_calculated
+  ↓
+card_mastered
+  ↓
+mastery_archived
+  ↓
+machine_candidate_generated
+  ↓
+machine_candidate_reviewed
+  ↓
+machine_active_published
+```
+
+## B系统 MCP 查询
+
+```text
+documents.search
+machine_knowledge.search
+machine_knowledge.get
+machine_knowledge.rules
+machine_knowledge.procedures
+machine_knowledge.constraints
+```
+
+
+---
+
+# 11 CODEX 执行任务包
+
+## CODEX-DUAL-01 Mastery Engine
+
+文件：
+
+```text
+backend/pk_radar/learning/mastery.py
+backend/tests/test_mastery_engine.py
+```
+
+实现：
+
+```text
+mastery_score
+card_mastered 判断
+mastery_archive 写入
+```
+
+## CODEX-DUAL-02 Translation Layer
+
+文件：
+
+```text
+backend/pk_radar/translation/distiller.py
+backend/pk_radar/translation/classifier.py
+backend/pk_radar/translation/publisher.py
+backend/tests/test_translation_layer.py
+```
+
+实现：
+
+```text
+A卡片 → Canonical Summary
+Canonical Summary → Machine Knowledge Unit
+```
+
+## CODEX-DUAL-03 Conflict Detection
+
+文件：
+
+```text
+backend/pk_radar/translation/conflicts.py
+backend/tests/test_conflict_detection.py
+```
+
+## CODEX-DUAL-04 Machine Knowledge API
+
+文件：
+
+```text
+backend/pk_radar/api_machine_knowledge.py
+```
+
+## CODEX-DUAL-05 MCP 接入
+
+新增工具：
+
+```text
+machine_knowledge.search
+machine_knowledge.get
+machine_knowledge.rules
+machine_knowledge.procedures
+```
+
+## CODEX-DUAL-06 前端审核页
+
+页面：
+
+```text
+/translation
+/machine-knowledge
+```
+
+
+---
+
+# 12 DEEP 并行任务包
+
+## DEEP-DUAL-A Mastery Worker
+
+```text
+learning/mastery.py
+tests/test_mastery_engine.py
+```
+
+## DEEP-DUAL-B Distiller Worker
+
+```text
+translation/distiller.py
+tests/test_distiller.py
+```
+
+## DEEP-DUAL-C Machine Unit Worker
+
+```text
+translation/machine_units.py
+tests/test_machine_units.py
+```
+
+## DEEP-DUAL-D Conflict Worker
+
+```text
+translation/conflicts.py
+tests/test_conflicts.py
+```
+
+## DEEP-DUAL-E Frontend Worker
+
+```text
+frontend/app/translation/page.tsx
+frontend/app/machine-knowledge/page.tsx
+```
+
+
+---
+
+# 13 验收标准
+
+## 最小双系统闭环
+
+必须跑通：
+
+```text
+创建 A线卡片
+→ approve
+→ 复习三次
+→ mastery_score >= 0.78
+→ mastery_archive 生成
+→ A转B转译
+→ machine_knowledge_unit candidate
+→ 审核通过
+→ machine_active
+→ MCP 可检索
+```
+
+## 数据验收
+
+```text
+mastery_archive 有记录
+machine_knowledge_units 有记录
+knowledge_translation_events 有记录
+source_card_id 可追溯
+confidence 可计算
+risk_level 可显示
+```
+
+## 安全验收
+
+```text
+未 approved 的 A卡片不能进入 B系统
+低 mastery_score 不能转译
+private scope 不能转译
+high risk 不能自动 active
+MCP 输出必须带 evidence 和 not_instruction_notice
+```

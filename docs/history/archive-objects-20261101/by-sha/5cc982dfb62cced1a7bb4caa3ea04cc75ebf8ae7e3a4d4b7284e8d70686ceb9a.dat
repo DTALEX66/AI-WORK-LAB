@@ -1,0 +1,497 @@
+# DTALEX Codex 插件 v0.2：商业级代码质量与速度增强方案
+
+# DTALEX Codex Plugin v0.2 — Code Quality & Commercial Standard Addon
+
+## 目标
+
+给 v0.1 Guardian Plugin 增加“商业级代码规范层”。
+
+解决两个问题：
+
+```text
+1. 提高代码质量
+2. 提高 CODEX 写代码速度，但不牺牲可维护性
+```
+
+## 核心结论
+
+不要先让 AI 随便生成代码，再“翻译成人类代码”。
+
+正确方式是：
+
+```text
+规范先行
+→ AI 按规范直接生成小补丁
+→ 自动质量门修正格式/类型/测试/安全
+→ 人类/AI Review
+→ 经验回流
+```
+
+AI 可以作为 draft patch generator，但不能作为最终代码作者。
+最终代码必须像人类工程师写的商业可维护代码。
+
+
+---
+
+# 00 巨头代码规范结论
+
+## 巨头公司真正重视什么
+
+```text
+一致性
+可读性
+可维护性
+小变更
+代码审查
+自动化测试
+安全生命周期
+依赖治理
+可观测性
+回滚能力
+长期代码健康
+```
+
+## 不是追求“看起来高级”
+
+不要：
+
+```text
+过度抽象
+过度设计
+大而全重构
+AI模板注释
+万能工具函数
+全局状态乱飞
+无测试快速合并
+```
+
+## 正确策略
+
+```text
+先建立项目规范
+再让 AI 在规范内生成
+再用工具自动校验
+再人工/AI review
+最后进入主线
+```
+
+## 核心原则
+
+```text
+Style Guide 是硬规则
+Code Review 看整体代码健康
+Security 从设计、代码、构建、运行全链路进入
+AI Review 只能辅助，不等于审批
+```
+
+
+---
+
+# 01 AI 代码生成策略
+
+## 不推荐：AI自由生成 → 再人工翻译
+
+这种方式会导致：
+
+```text
+结构漂移
+命名漂移
+过度封装
+空壳文件
+测试伪通过
+隐藏安全问题
+```
+
+## 推荐：规范约束下直接生成
+
+```text
+1. 先写 task contract
+2. 明确文件 ownership
+3. 明确禁止改哪些文件
+4. 给出代码风格和架构边界
+5. 让 AI 只生成小 patch
+6. 自动跑 quality gate
+7. 不通过就修，不允许扩大范围
+```
+
+## AI 输出等级
+
+```text
+draft_patch       AI草稿补丁
+candidate_patch   通过基本检查
+reviewed_patch    通过review
+accepted_patch    可进入主线
+```
+
+## 禁止 AI 做
+
+```text
+无范围重构
+自动改 README 当前状态
+自动改 CI
+自动改数据库迁移
+自动引入新依赖
+自动安装插件
+自动删除文件
+```
+
+
+---
+
+# 02 商业级代码规范矩阵
+
+| 层级 | 规范 | 工具 |
+|---|---|---|
+| 代码风格 | formatter + linter | ruff / eslint / biome |
+| 类型安全 | 强类型 / 类型检查 | pyright / mypy / tsc |
+| 架构边界 | 模块依赖约束 | import-linter / eslint-boundaries |
+| 测试 | 单测 / 集成 / E2E | pytest / vitest / playwright |
+| 安全 | SAST / secrets / deps | bandit / semgrep / gitleaks / pip-audit / npm audit |
+| 依赖治理 | 锁版本 / 最小依赖 | deptry / pip-tools / npm lock |
+| 复杂度 | 函数复杂度 / 文件长度 | radon / eslint complexity |
+| 死代码 | 未使用代码检测 | vulture / ts-prune |
+| API契约 | OpenAPI / schema | pydantic / openapi / zod |
+| 数据库 | migrations + rollback | alembic / custom migration |
+| 可观测性 | log / trace / metrics | structlog / OpenTelemetry |
+| 文档 | README / current scope / ADR | markdownlint / project_guard |
+
+
+---
+
+# 03 Definition of Done
+
+任何 CODEX 代码任务完成前，必须满足：
+
+## 基础
+
+```text
+代码能运行
+测试能跑
+没有空壳文件
+没有旧项目名污染
+没有无关重构
+没有未授权依赖
+```
+
+## 代码
+
+```text
+lint pass
+format pass
+typecheck pass
+unit tests pass
+security scan pass
+no placeholder implementation
+```
+
+## 业务
+
+```text
+满足验收标准
+边界条件处理
+失败路径处理
+错误信息可理解
+不会破坏现有功能
+```
+
+## 工程
+
+```text
+变更范围小
+可回滚
+有必要文档
+有测试记录
+有风险说明
+```
+
+
+---
+
+# 04 CODEX 高速度开发规则
+
+## 真正提速的方法
+
+```text
+小任务
+小文件
+小补丁
+明确 ownership
+changed-files-only 检查
+预设脚手架
+复用模板
+缓存依赖
+并行但不抢文件
+```
+
+## 不是提速的方法
+
+```text
+一次让 AI 改全项目
+一次生成几十个文件
+跳过测试
+默认最大并行
+自动安装一堆依赖
+自动复制开源项目
+```
+
+## CODEX 快速闭环
+
+```text
+Task Contract
+→ Small Patch
+→ Changed Files Gate
+→ Local Fast Tests
+→ Project Guard
+→ Full Tests only when needed
+```
+
+## 并行规则
+
+```text
+README / PROJECT_STATUS / AGENTS / CI：只能单Agent改
+backend/core：只能单Agent改
+frontend页面可并行，但必须不同页面
+tests可并行，但必须和实现文件绑定
+```
+
+
+---
+
+# 05 架构边界规则
+
+## Knowledge-Base 示例边界
+
+```text
+core 不能 import learning/machine/mcp
+search 只能依赖 core
+learning 可以依赖 core/search
+machine 可以依赖 core/search/learning
+mcp 可以依赖 core/search/learning/machine
+api 可以依赖所有业务模块
+```
+
+## 插件通用边界
+
+```text
+domain 不依赖 infrastructure
+core 不依赖 UI
+tests 可以依赖所有 public API
+scripts 不应被 backend core import
+experimental 不得被 active core import
+archive 永远不能被 runtime import
+```
+
+## 要加入的检查
+
+```text
+禁止 active 代码 import experimental
+禁止 runtime 代码 import archive
+禁止核心模块依赖 CLI scripts
+禁止业务模块直接读写 .env
+```
+
+
+---
+
+# 06 安全工程规则
+
+## 每个项目至少要有
+
+```text
+secret scan
+dependency audit
+SAST
+输入校验
+权限边界
+日志脱敏
+错误信息不泄密
+回滚路径
+```
+
+## AI 特别风险
+
+```text
+AI 可能生成硬编码密钥
+AI 可能绕过权限
+AI 可能拼接 SQL
+AI 可能关闭校验
+AI 可能吞掉异常
+AI 可能生成过宽 try/except
+AI 可能引入无人维护依赖
+```
+
+## 默认禁止
+
+```text
+eval
+exec
+shell=True
+硬编码 token
+明文密码
+绕过证书验证
+关闭安全扫描
+自动上传本地敏感文件
+```
+
+
+---
+
+# 07 可加入插件的新 Skill
+
+## dtalex-commercial-code-standard
+
+职责：
+
+```text
+把任何项目压到商业可交付代码标准。
+```
+
+触发：
+
+```text
+商业落地
+代码规范
+提高质量
+代码审查
+上线前检查
+```
+
+## dtalex-fast-safe-coder
+
+职责：
+
+```text
+让 CODEX 快速但安全地写小补丁。
+```
+
+触发：
+
+```text
+加速开发
+快速改代码
+小步实现
+```
+
+## dtalex-architecture-guard
+
+职责：
+
+```text
+检查模块依赖边界，防止架构腐化。
+```
+
+触发：
+
+```text
+架构混乱
+模块互相 import
+experimental 污染 core
+```
+
+## dtalex-reviewer
+
+职责：
+
+```text
+按商业级 code review checklist 审查 patch。
+```
+
+
+---
+
+# Commercial Code Standard
+
+## Golden Rules
+
+1. Code is written for future maintainers, not for the current prompt.
+2. Small patch beats clever patch.
+3. Consistency beats personal preference.
+4. Tests are part of the feature.
+5. Security is not optional.
+6. AI output is draft until verified.
+7. No placeholder enters active code.
+8. No roadmap enters current status.
+
+## Python
+
+```text
+ruff format
+ruff check
+pyright or mypy
+pytest
+bandit
+pip-audit
+```
+
+## TypeScript
+
+```text
+biome or eslint
+tsc --noEmit
+vitest
+playwright when UI is affected
+npm audit
+```
+
+## API
+
+```text
+OpenAPI
+Pydantic/Zod schemas
+explicit errors
+versioned contracts
+```
+
+## Database
+
+```text
+migration
+rollback
+seed minimal
+no destructive migration without confirmation
+```
+
+
+---
+
+# Code Review Checklist
+
+## Correctness
+
+- Does this solve the actual task?
+- Are edge cases handled?
+- Is the failure path tested?
+
+## Maintainability
+
+- Is the patch small?
+- Are names domain-specific?
+- Is the code easy to delete or rollback?
+- Is there unnecessary abstraction?
+
+## Architecture
+
+- Did this introduce illegal imports?
+- Did experimental code enter active core?
+- Did runtime import archive/reference?
+
+## Security
+
+- Any hardcoded secret?
+- Any unsafe shell/eval/exec?
+- Any new dependency?
+- Any input validation missing?
+
+## Tests
+
+- Unit tests updated?
+- Integration/E2E needed?
+- Did changed-file gate pass?
+- Did project_guard pass?
+
+## AI Pollution
+
+- Any empty shell file?
+- Any old project name?
+- Any placeholder?
+- Any roadmap-as-active statement?

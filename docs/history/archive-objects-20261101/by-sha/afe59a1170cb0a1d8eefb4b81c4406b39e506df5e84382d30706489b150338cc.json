@@ -1,0 +1,1365 @@
+{
+  "conversation_id": "6ab21baf-f5ac-83e8-a377-5fff2c36443a",
+  "conversation_template_id": "g-p-6aa0fe49c4188191a5c9e2109ffe59ed",
+  "create_time": 1790057393.33759,
+  "current_node": "4ff1e3ea-102d-4fab-9c0e-927b1830fe26",
+  "default_model_slug": "gpt-5-6-thinking",
+  "id": "6ab21baf-f5ac-83e8-a377-5fff2c36443a",
+  "is_archived": true,
+  "is_do_not_remember": false,
+  "is_read_only": null,
+  "is_starred": true,
+  "is_study_mode": false,
+  "mapping": {
+    "05d45c43-4c2e-4cdb-8a38-717aa22ec0b5": {
+      "id": "05d45c43-4c2e-4cdb-8a38-717aa22ec0b5",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content": "思考了 50s",
+          "content_type": "reasoning_recap"
+        },
+        "create_time": 1790069342.963395,
+        "id": "05d45c43-4c2e-4cdb-8a38-717aa22ec0b5",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "3be279d5-81cd-45a4-b075-68dc6e703065"
+        }
+      },
+      "parent": "3be279d5-81cd-45a4-b075-68dc6e703065"
+    },
+    "066ace3c-7e7f-41c0-a7aa-0f14c077fac4": {
+      "id": "066ace3c-7e7f-41c0-a7aa-0f14c077fac4",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "# AAOS / ArcheAxis 云端仓库重新审计结果\n\n我这次直接读取了当前 GitHub 云端仓库、`main`、今天新增的 P3 UI 分支、Actions 运行结果、失败日志、发布资产、R6 状态文件、Avalonia/Tauri/Rust/Python 结构和今天的 UI 审计文件。\n\n**结论已经比较清楚：项目不是“没做出来”，而是已经进入“多代架构收敛 + 真闭环验收”的阶段。当前最大的风险不是缺功能，而是：架构权威、发布权威、CI、前端实现和历史系统还没有完全收成一条线。**\n\n## 1. 当前云端真实快照\n\n| 项目 | 当前事实 |\n|---|---|\n| 仓库 | `DTALEX66/ArcheAxis-Knowledge-OS` |\n| `main` HEAD | `e3875db0ee6d073d37839eb7b95f7ef4ce881bbb` |\n| 当前正式版本号 | `0.6.14` |\n| 最新公开 Release | `v0.6.14`，2026-08-29 发布 |\n| R6 状态 | `IN_PROGRESS / FROZEN` |\n| 今天的新 UI 分支 | `codex/aaos-p3-ui-convergence-20260922` |\n| UI 分支 HEAD | `4525564bc11be0eb6a88ecb780d882810201a57b` |\n| 与 main 差异 | ahead 1 / behind 0 |\n| 本次 UI 分支规模 | **21 文件，+6323 / -133** |\n| 当前 PR | 没有 |\n| 当前 Issues | 没有 |\n| 我的 GitHub 权限 | 只读，未修改仓库 |\n\n今天的 P3 分支并不是小改动。核心变化集中在：\n\n`apps/ArcheAxis.Desktop/MainWindow.axaml`\n\n`apps/ArcheAxis.Desktop/MainWindow.axaml.cs`\n\n`apps/ArcheAxis.Desktop/Themes/AaosTheme.axaml`\n\n以及导航、Learning Contract、Launcher、UI 审计和 1484 行新的导航测试。\n\n也就是说，**昨天讨论的 AAOS UI 收敛已经真实进入代码，不只是设计文档。**\n\n---\n\n# 2. 最重要的新发现：今天 UI 分支云端 CI 是红的\n\n分支文档自己写的是：\n\n> `IMPLEMENTED_LOCAL / TESTED_LOCAL_STATIC / TESTED_LOCAL_BUILD`\n\n这个表述是正确的。\n\n因为我直接检查了提交 `4525564b...` 的 GitHub Actions：\n\n| 流水线 | 结果 |\n|---|---|\n| `vnext-ci` Run #152 | ❌ FAILURE |\n| 主 `CI` Run #1146 | ❌ FAILURE |\n| `desktop-vnext` | ✅ SUCCESS |\n| `green-candidate-vnext` | ✅ SUCCESS |\n| `desktop-build` | ✅ SUCCESS |\n| `desktop-fast` | ✅ SUCCESS |\n| `installer-lifecycle` | ✅ SUCCESS |\n| `workers-vnext` | ✅ SUCCESS |\n| `lint` | ✅ SUCCESS |\n| `security-targeted` | ✅ SUCCESS |\n| `a0-gates` | ❌ FAILURE |\n\n所以现在**绝对不能把 P3 分支写成“已完成、可合并”**。\n\n但也不是整体崩了。\n\n桌面构建、Green Candidate、安装生命周期、Worker、Lint、安全门都能跑通；红灯主要集中在**契约漂移、历史测试债务和一个新 Launcher 测试问题**。\n\n---\n\n# 3. 我把“旧故障”和“今天 UI 新增故障”分开了\n\n这是这次审计很重要的一点。\n\n`main` 的 2026-09-21 Nightly 本来就已经有：\n\n**4 failed / 3049 passed / 35 skipped**\n\n也就是说，以下 4 项不是今天 UI 分支造成的：\n\n| main 已存在故障 | 问题 |\n|---|---|\n| `test_bulk_schema_matrix` | 新增 Schema 没同步进入 schema coverage matrix |\n| `test_axr060_completion_audit` | Current 文档/状态中出现了未加入允许集合的 SHA |\n| `test_p0_python_worker_lifecycle` | `PluginManifest` 对象与 JSON Schema object 输入边界不一致 |\n| `test_workspace_upload...` | Converter/plugin 身份预期与实际返回发生漂移 |\n\n今天 UI 分支跑出来：\n\n**7 failed / 3090 passed / 35 skipped**\n\n多出的 3 个恰好全部是：\n\n`tests/test_desktop_launch.py`\n\n而且我已经定位到具体根因。\n\n---\n\n# 4. P3 新增的 CI 回归已经定位\n\n今天修改后的：\n\n`scripts/launch/desktop_launch.py`\n\n在 `prepare_launch()` 一开始无条件执行：\n\n`check_resource_boundaries(REPO, purpose=\"test\")`\n\n但资源索引的 canonical 路径是你的真实 Windows 环境：\n\n`D:\\All projects\\Model library`\n\n`D:\\All projects\\OS External Configuration`\n\n`D:\\All projects\\ArcheAxis.Knowledge.Green-x64`\n\n`D:\\All projects\\资料库`\n\n`D:\\All projects\\ceshi`\n\nGitHub Linux Runner 自然不存在这套 `D:\\All projects`。\n\n于是 CI 报：\n\n> `ValueError: resource index drift or missing entry: shared_models`\n\n造成三个 Desktop Launch 测试失败。\n\n这不是 AAOS 产品逻辑坏了，而是**本机资源边界验证和跨平台单元测试没有隔离干净**。\n\n正确修复方向不是取消资源保护，而是：\n\n**真实 Launcher继续 fail-closed；单元测试通过 mock/fixture 验证调用行为；专门的 Windows / machine-local integration gate 再验证真实 D:\\ 路径。**\n\n不能为了 CI 绿灯把资源安全检查删掉。\n\n---\n\n# 5. Rust 还有一个真正值得处理的失败\n\n两套 Rust CI 都在同一个测试失败：\n\n`crates/archeaxis-domain/tests/backup_safety.rs`\n\n失败用例：\n\n`verify_counts_rejects_sqlite_integrity_failure_even_when_counts_match`\n\n测试预期：\n\n> 一个 SQLite 数据库即使计数相同，只要 integrity 已损坏，`backup::verify_counts()` 就必须拒绝。\n\n但当前实际没有返回 error。\n\n结果：\n\n**5 passed / 1 failed**\n\n这个比普通测试漂移重要，因为它正好落在你最重视的：\n\n**数据库备份 → Green 替换 → 回滚 → 资料安全**\n\n链路上。\n\n因此这个不能简单删测试或改 expected。\n\n应该修 `backup::verify_counts()` 或确认 Windows SQLite 对当前构造的 corruption fixture 行为发生了变化。\n\n---\n\n# 6. Contracts 失败也是“主线已有债务”\n\n`contracts-vnext`：\n\n**65 passed / 1 failed**\n\n缺的覆盖项目非常明确：\n\n- `machine-growth.schema.json`\n- `derived-projection.schema.json`\n- `local-green-identity.schema.json`\n\n也就是已经创建了新的 v1 Contract，但：\n\n`tests/contract/test_bulk_schema_matrix.py`\n\n的审计矩阵没有更新。\n\n这属于典型的：\n\n**实现已经进了仓库 → 合同注册/审计矩阵没同步。**\n\n很好修，但必须修，不能让 Contract Truth 两套口径。\n\n---\n\n# 7. 当前最严重的架构问题：Tauri 与 Avalonia 权威冲突\n\n这是我重新审计后认为目前**比 UI 样式本身更应该先解决的问题**。\n\n现在仓库同时存在这些“权威声明”：\n\n| 位置 | 声明 |\n|---|---|\n| `README.md` | React/Tauri canonical shell |\n| `docs/truth/ARCHITECTURE_FINAL.md` | Presentation Plane = Tauri + React |\n| `M0` 新方向 | Avalonia 是 canonical desktop |\n| 今天 P3 UI Spec | `apps/ArcheAxis.Desktop` 是唯一 canonical product shell |\n| `release.yml` | 名字上验证“formal Avalonia release architecture” |\n| `release.yml` 实际打包 | **仍然从 Tauri `ArcheAxis.exe` + frontend-dist 制作 Release** |\n| `ci.yml` | Avalonia + Tauri 两套桌面链同时跑 |\n\n所以现在不是简单地“还有旧代码”。\n\n而是：\n\n> **开发权威已经切到 Avalonia，但发布权威还在 Tauri，README/Final Architecture 又停留在旧时代。**\n\n这是 P0。\n\n但我不建议现在直接把 Tauri 删掉。\n\n更合理的是明确过渡状态：\n\n**Stable Legacy Release = React/Tauri 0.6.14**\n\n**vNext Product Shell = Avalonia**\n\n**Rust Core = 新 canonical truth**\n\n**Python = Worker / Adapter / Legacy bounded runtime**\n\n等 Avalonia 的真实 GUI + Green + clean-machine + rollback 全部闭环后，再完成 release cutover。\n\n---\n\n# 8. 前端方向是对的，但出现新的“大文件耦合”\n\n今天 P3 UI 确实吸收了很多我们之前要求的东西：\n\nCapture、Library、Source Reader、Knowledge V3、Learning、Jobs、Settings、Recovery、Inspector、Activity Dock、Command Palette、响应式、状态语义、Provenance 等。\n\n而且没有把 B08/B09/B10 的静态 KPI、localStorage、假 Evidence 塞进正式产品，这一点做得对。\n\n但新的问题已经形成：\n\n`MainWindow.axaml.cs`\n\n当前分支至少已经超过 2000 行，本次单文件又是：\n\n**+2287 / -51**\n\n它现在同时承担：\n\n导航状态、HTTP Core 调用、JSON 解析、Capture 上下文、Knowledge、Learning、Jobs、Settings、Inspector、Command Palette、响应式、DeepTutor Supervisor、Activity Receipt。\n\n如果继续把：\n\nOriginal Editor、CitationPicker、Memory Graph、Research、Plugins、Models\n\n全塞进去，很快会变成新的巨型 God Window。\n\n所以**下一轮不能继续无限往 MainWindow 堆功能。**\n\n应该开始拆成：\n\n`CoreClient`\n\n`NavigationState`\n\n`WorkspaceViewModel`\n\n`LibraryViewModel`\n\n`LearningViewModel`\n\n`CaptureViewModel`\n\n`ProvenanceViewModel`\n\n`JobViewModel`\n\n以及真正的 Avalonia Component / UserControl。\n\n---\n\n# 9. AAOS 产品闭环还差的不是“更多页面”\n\nR6 当前状态已经说明得很清楚。\n\n真正没有关掉的是：\n\n**人类闭环 + 机器闭环 + 失败纠错闭环。**\n\n现在已有：\n\n`Source → Knowledge → Assessment → Answer → Review/FSRS → SQLite → Restart Readback`\n\n已经相当不错。\n\n但还缺：\n\n`真实资料 → Knowledge → 人类学习 → 机器实际使用 → 用户发现错误 → Correction → Retest → Machine Growth → Restart Readback`\n\n尤其是：\n\n**真实模型仍没有形成 P4 真执行闭环。**\n\n现在还存在 stub/local-stub，以及 Provider lifecycle authority 没完全进正式宿主。\n\n所以我认为 AAOS 接下来最重要的工作不是再接十个 RAG 项目，也不是先做 20 个页面。\n\n而是先把这一条真正跑通。\n\n---\n\n# 10. DeepTutor 的定位也要再收一次\n\n今天的 Avalonia `MainWindow` 里仍然有：\n\n`DeepTutorSupervisor`\n\n并且 Home 可以启动 DeepTutor，再打开独立学习工作台。\n\n技术上没问题。\n\n但是产品语义必须固定：\n\n**DeepTutor = 可吸收学习能力 / Sidecar / 外置参考实现**\n\n而不能变成：\n\n**AAOS 学习模块 = 点按钮跳 DeepTutor。**\n\n否则就会再次出现两个 Learning Truth / 两个 UX / 两套学习工作台。\n\n真正的 AAOS Learning 主界面应该继续收进 Avalonia；DeepTutor 的成熟算法、流程、Tutor 能力放在后端/能力层吸收。\n\n---\n\n# 11. 文档 Truth 现在也出现了明显冲突\n\n例如：\n\n`CURRENT_STATE_TRUTH.md`\n\n仍然把：\n\n`docs/current/CURRENT_REALITY_2026-09-01.md`\n\n称为唯一现场入口。\n\n但项目现在已经跑到了 9 月 20–22 日的 R6 / M0 / P3。\n\n`ARCHITECTURE_FINAL.md` 名字还是 **FINAL**，但里面还是 Tauri。\n\n今天同一个 P3 commit 内甚至也有轻微自相矛盾：\n\n`UI_IMPLEMENTATION_AUDIT.md`\n\n还说 Command Palette / Drawer 是 Missing；\n\n但同一个提交的：\n\n`AAOS-P3-UI-PUSH-SUMMARY-20260922.md`\n\n已经声明 Command Palette 和 Inspector Drawer 实现。\n\n这说明不是代码没做，而是**审计文档不是同一个 snapshot 生成的**。\n\n另外我还发现一个非常具体的小问题：\n\n`docs/current/R6-STATE.json`\n\nA10 内部有重复的：\n\n`\"evidence_level\": \"TESTED_LOCAL\"`\n\n同一个 JSON key 写了两次。\n\n虽然部分解析器会容忍，但 Truth 状态文件不应该允许 duplicate key。\n\n---\n\n# 12. 本次审计后的优先执行顺序\n\n我建议现在按这个顺序收口，而不是继续扩功能：\n\n1. **P0-CI 修复**：解决 3 个 desktop-launch 新回归、Rust backup integrity、Contract matrix；同时清掉 main 已有 4 个 Nightly 红灯。\n2. **P0-Authority 收敛**：明确 `Stable=Tauri 0.6.14 / vNext=Avalonia / Core=Rust / Python=bounded worker`，同步 README、Truth、Architecture、Release 口径。\n3. **P0-P3 真实 GUI 验证**：原生 Avalonia 窗口、真实 Core HTTP、鼠标/键盘、5 档窗口、DPI、restart readback，而不是只做 source-level contract。\n4. **P1 前端解耦**：立刻拆 `MainWindow.axaml.cs`，再做 Original/Citation/Memory，不能继续向一个窗口塞几千行。\n5. **P1 真闭环**：完成 `Capture → Evidence → Knowledge → Learning → Machine Use → Error → Correction → Retest → Growth → Restart`。\n6. **最后再处理 Green 切换**：clean-machine、真实资料、备份、workspace identity、rollback、再进入 Owner Gate；当前不应该发新版本。\n\n### 当前判定\n\n**后端基础：强，已经不是原型。**\n\n**Rust Core：已经进入真正的产品内核阶段，但备份安全门有一个必须解决的红灯。**\n\n**Avalonia 前端：今天进展非常大，方向基本正确，但目前是“P3 可构建候选”，不是“已完成产品 UI”。**\n\n**双向学习：人类学习闭环已有较强基础，机器真实使用→纠错→复测仍未闭合。**\n\n**Green：候选可以构建，不能等同于现有绿色版已安全替换。**\n\n**云端总体状态：`NOT_READY TO MERGE P3 / NOT_READY TO RELEASE`，但距离真正可用版本已经主要是“收口问题”，不是重新做系统。**\n\n这次重新审计以后，我认为**现在最应该停止的是继续横向加模块，开始做「权威统一 + CI 全绿 + P3 真 GUI + 人机双闭环」四件事。**"
+          ]
+        },
+        "create_time": 1790057840.221628,
+        "id": "066ace3c-7e7f-41c0-a7aa-0f14c077fac4",
+        "metadata": {
+          "content_references": [],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "e836e0f9-ab37-4e06-a112-2f17be67bfff"
+        }
+      },
+      "parent": "e836e0f9-ab37-4e06-a112-2f17be67bfff"
+    },
+    "0c0011e6-a538-4f0d-9c76-2d91d0f10913": {
+      "id": "0c0011e6-a538-4f0d-9c76-2d91d0f10913",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "从结构上看，仓库现在已经不是“小型原型”了：Python 主运行时、Rust crates、Tauri、独立 frontend、知识库子系统、workspace/BFF、插件/能力契约、研究→知识→学习链路、machine growth、DeepTutor bridge，以及大量回归测试都同时存在。下一步重点不是“有没有模块”，而是查**权威路径是否唯一、实际入口是否统一、前端是否接到真实后端、双运行时是否重复、测试是否掩盖未接线功能**。"
+          ]
+        },
+        "create_time": 1790057468.24263,
+        "id": "0c0011e6-a538-4f0d-9c76-2d91d0f10913",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "ef692a19-9fdc-4e31-9ca0-37bace296567"
+        }
+      },
+      "parent": "ef692a19-9fdc-4e31-9ca0-37bace296567"
+    },
+    "11237949-8b54-4381-b358-93fb341c0a04": {
+      "id": "11237949-8b54-4381-b358-93fb341c0a04",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "有个漂移的问题是，我前几天在本地项目仓库内部发现PDF的学习资料了，这个是不是漂移，没有按照规定的好库放入文件啊"
+          ]
+        },
+        "create_time": 1790069289.82,
+        "id": "11237949-8b54-4381-b358-93fb341c0a04",
+        "metadata": {
+          "serialization_metadata": {
+            "custom_symbol_offsets": []
+          }
+        }
+      },
+      "parent": "35c4a0e0-7cbf-45c0-892d-8952bbd451c0"
+    },
+    "13af9185-1c33-493e-8e50-6c028ba1b28f": {
+      "id": "13af9185-1c33-493e-8e50-6c028ba1b28f",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "我按**当前项目 AAOS / ArcheAxis-Knowledge-OS** 来重新审计云端仓库，这次不只看 README，而是核对：仓库结构、分支/提交、前后端实现、Agent/知识库链路、配置与部署、TODO/未完成项、重复模块、历史规划是否真正落地，以及当前最短闭环。"
+          ]
+        },
+        "create_time": 1790057394.832702,
+        "id": "13af9185-1c33-493e-8e50-6c028ba1b28f",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "55dcd355-6521-4402-a48e-9b5dea7d1ed5"
+        }
+      },
+      "parent": "ee8bcb54-98a7-4a79-8195-edc257c303ec"
+    },
+    "260301ae-1eb9-419c-8b1b-de0b4e0c3d4a": {
+      "id": "260301ae-1eb9-419c-8b1b-de0b4e0c3d4a",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "第一轮已经确认：仓库仍是 `DTALEX66/ArcheAxis-Knowledge-OS`，默认分支 `main`，当前连接是**只读权限**，因此这轮只做真实审计，不会改仓库。仓库已经明显从“文档规划”进入了“运行时/验证收口”阶段：最近提交里出现 Rust runtime、machine growth 持久化、知识契约校验、绿色候选验证与仓库清理记录；但我还要继续核对这些是否真正形成可运行闭环，而不是只写在审计文档里。"
+          ]
+        },
+        "create_time": 1790057417.601286,
+        "id": "260301ae-1eb9-419c-8b1b-de0b4e0c3d4a",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "f0ed2081-705a-4a2f-b3eb-9d3003837bfa"
+        }
+      },
+      "parent": "f0ed2081-705a-4a2f-b3eb-9d3003837bfa"
+    },
+    "314ff02e-ffa9-4af1-b20a-1c658e87289f": {
+      "id": "314ff02e-ffa9-4af1-b20a-1c658e87289f",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content": "思考了 7s",
+          "content_type": "reasoning_recap"
+        },
+        "create_time": 1790069100.429072,
+        "id": "314ff02e-ffa9-4af1-b20a-1c658e87289f",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "bc1f38a6-f9b5-4639-8863-9c8db081c72f"
+        }
+      },
+      "parent": "f0ad2d76-6b86-4b41-b093-69b816a49f7c"
+    },
+    "35c4a0e0-7cbf-45c0-892d-8952bbd451c0": {
+      "id": "35c4a0e0-7cbf-45c0-892d-8952bbd451c0",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "下面这份直接发给 **GPT Codex**。我已经把刚才云端真实审计发现的 **CI 红灯、Avalonia/Tauri 权威冲突、P3 UI、Rust Backup、Contract Matrix、MainWindow 巨型化、人机双闭环、Green/Release 禁区** 全部压进任务约束里。\n\n:::writing{variant=\"document\" id=\"58314\" title=\"AAOS 云端审计后 Codex 深度执行任务包\"}\n# AAOS / ArcheAxis-Knowledge-OS 云端审计后深度修复与收敛任务\n\n你现在接手项目：\n\n- 项目：AAOS / ArcheAxis Knowledge / 星环知识平台\n- GitHub：`DTALEX66/ArcheAxis-Knowledge-OS`\n- 默认分支：`main`\n- 当前 main 审计基点：`e3875db0ee6d073d37839eb7b95f7ef4ce881bbb`\n- 当前 P3 UI 分支：`codex/aaos-p3-ui-convergence-20260922`\n- 当前 P3 UI 分支审计基点：`4525564bc11be0eb6a88ecb780d882810201a57b`\n- 当前公开稳定版本：`v0.6.14`\n- 当前开发策略：**不发布新版本、不创建 tag、不覆盖现有 Green，优先本地绿色版/开发主线修复与收敛。**\n\n本任务不是继续堆功能。\n\n本任务的核心目标是：\n\n> **把当前 AAOS 从“多套实现并存、局部闭环、CI 部分红灯”收敛成一条明确的 canonical 产品链：Rust Core + Avalonia vNext Shell + bounded Python Workers + 单一 Truth/Contract/Release Authority，并完成当前 P3 UI 的真实可合并闭环。**\n\n---\n\n# 一、最高级执行原则\n\n必须严格遵守以下规则。\n\n## 1. 不得重新设计项目方向\n\n当前方向已经确定：\n\n```text\nArcheAxis Knowledge / AAOS\n=\nLocal-first\n+ Evidence-driven\n+ Human–AI Bidirectional Learning\n+ Trusted Knowledge Governance\n```\n\n不是：\n\n- 通用操作系统\n- 通用 Agent OS\n- 多 Agent 平台\n- 工作流编排平台\n- 第二个 WORK-LAB\n- 第二个 DESIGN-LAB\n\nWORK-LAB 负责治理/编排。\n\nDESIGN-LAB 负责设计软件执行。\n\nAAOS 负责：\n\n```text\nResearch\n→ Evidence\n→ Knowledge\n→ Human Learning\n→ Machine Use\n→ Feedback\n→ Correction\n→ Retest\n→ Machine Growth\n→ Knowledge/Learning Evolution\n```\n\n---\n\n# 二、当前架构必须立即统一\n\n目前仓库存在历史 Tauri/React 和新的 Avalonia vNext 双轨。\n\n不要粗暴删除旧实现。\n\n先建立明确过渡权威：\n\n```text\nStable Legacy Release\n= React + Tauri\n= 当前公开 v0.6.14\n= 历史稳定发布链\n\nvNext Product Shell\n= Avalonia\n= apps/ArcheAxis.Desktop\n= 当前未来正式桌面产品壳\n\nCanonical Product Core\n= Rust Core\n= crates/*\n\nPython\n= bounded worker / adapter / compatibility / migration / selected services\n≠ 第二套 Core Truth\n\nDeepTutor\n= optional learning capability / sidecar / donor\n≠ AAOS canonical UI\n≠ 第二套 Learning Truth\n```\n\n必须审计并统一：\n\n- `README.md`\n- `docs/truth/ARCHITECTURE_FINAL.md`\n- `docs/truth/CURRENT_STATE_TRUTH.md`\n- `docs/current/*`\n- `release.yml`\n- `ci.yml`\n- `vnext-ci.yml`\n- `apps/ArcheAxis.Desktop`\n- `frontend`\n- `src-tauri`\n\n不能出现：\n\n```text\nREADME 说 Tauri canonical\nP3 文档说 Avalonia canonical\nRelease 又实际只打包 Tauri\n```\n\n这种三套真相长期共存。\n\n要求给出一个明确的：\n\n`ARCHITECTURE_TRANSITION_AUTHORITY`\n\n说明：\n\n1. 当前 Stable 是什么。\n2. 当前 vNext 是什么。\n3. 哪个是未来 canonical。\n4. 旧链什么时候只读维护。\n5. 什么条件满足后完成 Tauri → Avalonia Release Cutover。\n\n---\n\n# 三、第一优先级：先让云端 CI 回到可信状态\n\n当前 P3 分支：\n\n`4525564bc11be0eb6a88ecb780d882810201a57b`\n\n云端实际结果：\n\n```text\nvnext-ci = FAILURE\nCI        = FAILURE\n```\n\n不能把本地 Build PASS 写成“可合并”。\n\n必须先修复和重新验证。\n\n---\n\n# 四、区分 main 既有故障与 P3 新增故障\n\n不要把所有红灯归因到本轮 UI。\n\n当前 main Nightly 已存在 4 个故障：\n\n## Existing Failure 1\n\n```text\ntests/contract/test_bulk_schema_matrix.py\n::test_schema_matrix_coverage_status_is_explicit\n```\n\n当前漏登记：\n\n```text\nmachine-growth.schema.json\nderived-projection.schema.json\nlocal-green-identity.schema.json\n```\n\n处理原则：\n\n- 新 Contract 已进入仓库，则必须进入 Schema Matrix。\n- 补齐 positive/negative coverage。\n- 不得通过删除 Schema 或放宽测试解决。\n- Contract Registry / Test Matrix 必须同步。\n\n---\n\n## Existing Failure 2\n\n```text\ntests/test_axr060_completion_audit.py\n::test_tracked_current_surfaces_only_reference_declared_release_delta_or_source_objects\n```\n\n存在 Current 文档引用 SHA 集合和 allowlist 不一致。\n\n要求：\n\n- 找出所有超出 `allowed_shas` 的 SHA。\n- 判断是合法新 evidence 还是历史污染。\n- 合法 evidence 更新 authority。\n- 过期/错误 evidence 降级到 history。\n- 禁止简单扩大 allowlist 掩盖污染。\n\n---\n\n## Existing Failure 3\n\n```text\ntests/test_p0_python_worker_lifecycle.py\n::test_real_text_worker_health_execute_failure_disable_and_enable\n```\n\n问题表现：\n\n`PluginManifest(...) is not of type 'object'`\n\n说明当前：\n\n```text\nPython domain object\n→ JSON Schema validator\n```\n\n边界不一致。\n\n必须选择唯一正确契约：\n\n```text\nPluginManifest domain object\n→ canonical serialized payload\n→ JSON Schema validation\n```\n\n不要：\n\n- 让 validator 接受任意 Python class。\n- 修改 Schema 为无约束。\n- 删除生命周期测试。\n\n---\n\n## Existing Failure 4\n\n```text\ntests/test_workspace_api.py\n::test_workspace_upload_keeps_distinct_raw_assets_when_conversion_text_matches\n```\n\n当前 converter/provider identity 返回发生变化。\n\n要求：\n\n- 查明 `plugin:...` 与原预期 engine/provider identity 为什么发生漂移。\n- 建立统一 Provider Identity。\n- 区分：\n\n```text\nprovider\nplugin\nengine\nmodel\nfallback\n```\n\n禁止不同层复用同一字段造成语义漂移。\n\n---\n\n# 五、P3 分支新增的 Desktop Launch 回归\n\n当前新增失败：\n\n```text\ntests/test_desktop_launch.py\n```\n\n至少三个测试失败。\n\n根因已经定位：\n\n`scripts/launch/desktop_launch.py`\n\n无条件执行：\n\n```python\ncheck_resource_boundaries(REPO, purpose=\"test\")\n```\n\n真实资源索引绑定：\n\n```text\nD:\\All projects\\Model library\nD:\\All projects\\OS External Configuration\nD:\\All projects\\ArcheAxis.Knowledge.Green-x64\nD:\\All projects\\资料库\nD:\\All projects\\ceshi\n```\n\nGitHub Linux Runner 不存在这些目录。\n\n导致：\n\n```text\nValueError:\nresource index drift or missing entry: shared_models\n```\n\n## 正确修复原则\n\n不能删除 Resource Boundary。\n\n不能把 Windows 本机真实目录硬编码到 CI。\n\n应拆成两层：\n\n### Unit Contract\n\n验证：\n\n- Launcher 必须调用 Resource Boundary。\n- purpose 必须正确。\n- failure 必须 fail-closed。\n- 使用 mock / injected resolver。\n- 不依赖真实 `D:\\All projects`。\n\n### Machine-local / Windows Integration\n\n真实验证：\n\n```text\nD:\\All projects\\Model library\nD:\\All projects\\OS External Configuration\nD:\\All projects\\ArcheAxis.Knowledge.Green-x64\nD:\\All projects\\资料库\nD:\\All projects\\ceshi\n```\n\n仅在有对应本机环境时执行。\n\n### GitHub CI\n\n不能因为没有用户本机 D 盘目录而失败。\n\n但也不能自动 fallback：\n\n```text\n~/models\nC:\\Users\\...\nrepo/model\n```\n\n禁止猜路径。\n\n---\n\n# 六、Rust Backup Safety 是真正的 P0\n\n当前 Rust 两套 CI 都失败于：\n\n```text\ncrates/archeaxis-domain/tests/backup_safety.rs\n\nverify_counts_rejects_sqlite_integrity_failure_even_when_counts_match\n```\n\n测试表现：\n\n```text\nassertion failed:\nbackup::verify_counts(&source_db, &other_db).is_err()\n```\n\n必须修复。\n\n这是数据安全门，不允许改测试绕过。\n\n必须确认：\n\n1. 当前 corruption fixture 是否真的破坏 SQLite。\n2. `PRAGMA integrity_check` / equivalent 是否运行。\n3. 是否只验证 count，而遗漏：\n   - integrity\n   - FK\n   - schema version\n   - source object hash\n   - referential integrity\n4. Windows SQLite 行为是否与原假设不同。\n5. Backup Verify 是否必须 fail-closed。\n\n最终要求：\n\n```text\nsame counts\n≠ valid backup\n```\n\n必须至少验证：\n\n```text\nSQLite integrity\nschema identity\nforeign keys\nsource object hashes\nrequired tables\nworkspace identity\nrecord counts\n```\n\n其中任何关键项失败：\n\n```text\nrestore/publish/replace = BLOCKED\n```\n\n---\n\n# 七、Wheel Smoke 同样必须定位并修复\n\n当前：\n\n```text\nwheel-smoke = FAILURE\n```\n\n失败发生在：\n\n```text\nSmoke-test installed runtime outside repository\n```\n\n不能只看最终 `AssertionError`。\n\n必须逐步拆解 smoke script 每个 assert，确定具体是哪条安装后 contract 不一致。\n\n重点核查：\n\n- 安装后的 TaskPack Contract。\n- `TaskPackV1` schema `$id`。\n- legacy adapter roundtrip。\n- runtime package content。\n- package data。\n- installed import 是否错误读取 repo 源码。\n- build wheel 是否带入错误/漏掉必须资产。\n\n要求：\n\n> wheel smoke 必须真正在 repository 外执行并证明安装包独立运行。\n\n---\n\n# 八、P3 UI 不得继续堆进 MainWindow\n\n当前：\n\n```text\napps/ArcheAxis.Desktop/MainWindow.axaml.cs\n```\n\n已经演变成巨型控制器。\n\n本次 P3 又增加约 2287 行。\n\n现在它承担：\n\n- Navigation\n- HTTP\n- Core calls\n- JSON parsing\n- Capture\n- Library\n- Source Reader\n- Knowledge\n- Learning\n- Jobs\n- Settings\n- Inspector\n- Provenance\n- Activity Dock\n- Command Palette\n- Responsive\n- DeepTutor\n- state handling\n\n必须开始拆。\n\n目标结构可以根据实际代码调整，但至少需要形成：\n\n```text\nApplication Shell\n├─ Navigation\n├─ Core Client\n├─ ViewModels\n├─ Views\n├─ Components\n└─ Services\n```\n\n建议：\n\n```text\nServices/\n  CoreClient.cs\n  WorkspaceService.cs\n  LearningService.cs\n  LibraryService.cs\n  JobService.cs\n\nViewModels/\n  ShellViewModel.cs\n  HomeViewModel.cs\n  CaptureViewModel.cs\n  LibraryViewModel.cs\n  SourceReaderViewModel.cs\n  KnowledgeViewModel.cs\n  LearningViewModel.cs\n  JobsViewModel.cs\n  SettingsViewModel.cs\n  ProvenanceViewModel.cs\n\nViews/\n  HomeView.axaml\n  CaptureView.axaml\n  LibraryView.axaml\n  SourceReaderView.axaml\n  KnowledgeView.axaml\n  LearningView.axaml\n  JobsView.axaml\n  SettingsView.axaml\n\nComponents/\n  AaosCard\n  AaosStatus\n  AaosEmptyState\n  AaosProvenanceTag\n  EvidenceBadge\n  SourceChain\n  ReviewCard\n  CommandPalette\n  InspectorDrawer\n  ActivityDock\n```\n\n不要为了“架构漂亮”一次性大重写。\n\n采用渐进拆分：\n\n```text\nExtract\n→ preserve behavior\n→ test\n→ next extraction\n```\n\n---\n\n# 九、继续完成 AAOS UI，但禁止假数据\n\n当前 UI 参考权威仍采用：\n\n```text\nB10 > B09 > B08 > B07 > B06 > B05 > B04 > B03 > B02 > B01\n```\n\n当前视觉方向：\n\n```text\nbackground  #061118\nsidebar     #091821\nsurface     #0C1C26\nsurface-2   #102630\nborder      #1D5055\n\nprimary     #1FC8C5\nsecondary   #E6BE73\n\ntext        #F3EFE6\nmuted       #96AAB4\n\nsuccess     #37C99A\nerror       #E56464\ninfo        #3B82F6\n```\n\n保持：\n\n- 深空蓝黑。\n- Aurora Teal 主交互。\n- 星辉金只用于 Evidence / Trust / critical highlight。\n- 不回归旧 Indigo。\n- 不回归橙黑 WORK-LAB。\n- 不做星空海报式装饰。\n- 信息密度高但整洁。\n- 圆角控制。\n- Segoe UI / Inter。\n- Fluent + AAOS 独立 Design System。\n\n---\n\n# 十、P3 页面继续收敛优先级\n\n不要一次性把 13 个页面全部做成假完成。\n\n顺序：\n\n```text\n1 Capture Inbox\n2 Evidence / Library\n3 Evidence Detail\n4 Source Reader\n5 Knowledge Detail\n6 Learning / Assessment\n7 Review / FSRS\n8 Jobs / Activity Receipt\n9 Provenance Inspector\n10 Original Editor + Citation Picker\n11 Memory Graph\n12 Research\n13 Plugins / Models\n```\n\n前 9 个必须 Core-backed。\n\n后 4 个没有真实 Core Projection 就必须显示：\n\n```text\nUnavailable\nNot wired\nNo authoritative projection\n```\n\n禁止生成：\n\n- 假模型列表\n- 假研究项目\n- 假 Memory Nodes\n- 假 KPI\n- 假 Evidence 数量\n- 假成功状态\n\n---\n\n# 十一、统一数据语义\n\nUI 必须明确区分：\n\n```text\nOriginal\nEvidence\nAccepted Knowledge\nCandidate Knowledge\nHuman Observation\nMachine-derived\nProjection\nAuthoritative Core State\nNeeds Review\nDeprecated\nUnavailable\nUnknown\n```\n\n特别禁止：\n\n```text\nUNKNOWN → 0\nUNKNOWN → success\nprojection → truth\nmachine-derived → evidence\ntransform → accepted knowledge\n```\n\nInspector 最终应成为真正的：\n\n`Provenance Drawer`\n\n至少显示：\n\n```text\nsource_id\nsource revision\nknowledge_id\nknowledge version\nevidence refs\nproducer\nprovider\nengine/model\ntimestamp\nstatus\nreview state\nlinked task\nprojection type\nauthority level\n```\n\n---\n\n# 十二、人类学习闭环必须继续使用 Rust Core 权威\n\n必须保持：\n\n```text\nAssessment\n→ User Answer\n→ Learning Event\n→ Review\n→ FSRS scheduling\n→ Persistence\n→ Restart Readback\n```\n\n规则：\n\n```text\nMastery != Truth\nLearning Progress != Evidence correctness\nFSRS != Knowledge verification\n```\n\nAvalonia UI 不能直接写：\n\n- Mastery truth\n- Knowledge truth\n- Evidence truth\n\n所有状态经 Core contract。\n\n---\n\n# 十三、Machine Learning 闭环是下一条真正产品主线\n\n不要再增加大量模型/Agent 功能。\n\n优先完成一个真实模型的最小闭环：\n\n```text\nAccepted Knowledge\n+ Personal Knowledge\n\n↓\nReal Model Task\n\n↓\nModel Output\n\n↓\nUser observes a real mistake\n\n↓\nCorrection\n\n↓\nHuman Review\n\n↓\nRetest with same/controlled task\n\n↓\nCompare before/after\n\n↓\nMachine Growth Candidate\n\n↓\nReview / Reuse eligibility\n\n↓\nRestart Readback\n```\n\n禁止：\n\n- `local-stub`\n- fake correct=true\n- synthetic success\n- 模型自己判断自己正确\n- 预先写 correction\n- mock 当最终产品证据\n\n允许测试使用 mock。\n\n但 A14 / P4 最终 PASS 必须真实模型。\n\n---\n\n# 十四、Provider / Plugin Architecture 必须收敛\n\n当前 Provider Lifecycle 仍不够统一。\n\n必须明确：\n\n```text\nPluginManifest\nPluginRegistry\nCapabilityRegistry\nProviderRegistry\nCapabilityResolver\nDefault Provider\nFallback Provider\nHealth\nEnable\nDisable\nExecution\nReceipt\n```\n\n必须保证：\n\n```text\nPlugin\n≠ Provider\n≠ Model\n≠ Engine\n≠ Capability\n```\n\n关系可以是：\n\n```text\nCapability\n  └─ Provider\n       ├─ Plugin Provider\n       ├─ Builtin Provider\n       └─ External Provider\n```\n\n运行时选择必须 Core-owned。\n\n插件不能直接成为 Canonical Truth Writer。\n\n---\n\n# 十五、DeepTutor 重新定位\n\nDeepTutor 不得成为第二套 AAOS 前端。\n\n正确定位：\n\n```text\nDeepTutor\n= donor\n+ optional sidecar\n+ tutoring capability provider\n```\n\n可以吸收：\n\n- Tutor planning\n- teaching flow\n- adaptive teaching\n- explanation strategy\n- exercise generation\n- learner interaction pattern\n\n不能：\n\n```text\n点击 AAOS 学习\n→ 永久跳到 DeepTutor\n```\n\n作为最终 AAOS 产品结构。\n\nAAOS Learning 应逐步回到 Avalonia canonical UI。\n\n---\n\n# 十六、Truth 文档必须清理\n\n重点检查：\n\n```text\ndocs/truth/CURRENT_STATE_TRUTH.md\ndocs/truth/ARCHITECTURE_FINAL.md\ndocs/current/R6-STATE.json\ndocs/current/*\nREADME.md\n```\n\n发现并处理：\n\n### 问题 1\n\n`CURRENT_STATE_TRUTH.md`\n\n仍把：\n\n```text\ndocs/current/CURRENT_REALITY_2026-09-01.md\n```\n\n称为唯一 Current Reality。\n\n但现在已经是 R6/M0/P3。\n\n需要建立新 Current Authority，而不是继续让 9 月 1 日文档冒充实时真相。\n\n### 问题 2\n\n`ARCHITECTURE_FINAL.md`\n\n名字是 FINAL，但实际描述的是旧 Tauri 架构。\n\n要么：\n\n- 更新为当前 Transition Architecture。\n\n要么：\n\n- 降级为 historical architecture。\n\n不要让旧“FINAL”压过当前设计。\n\n### 问题 3\n\n`R6-STATE.json`\n\n存在重复 JSON key：\n\n```json\n\"evidence_level\": \"TESTED_LOCAL\"\n```\n\nA10 出现两次。\n\n必须修。\n\n并新增 duplicate-key validation。\n\n### 问题 4\n\n同一 P3 commit 的不同 UI 审计文档有 snapshot 不一致。\n\n例如一份还写：\n\n```text\nCommand Palette = MISSING\nDrawer = MISSING\n```\n\n另一份已经写实现完成。\n\n以后 Current Audit 应绑定：\n\n```text\nsubject_sha\ngenerated_at\nevidence_level\n```\n\n避免文档跨 snapshot 混用。\n\n---\n\n# 十七、Release Authority 暂时冻结\n\n当前：\n\n```text\nv0.6.14 = 当前公开稳定版\n```\n\n保持不变。\n\n禁止：\n\n- bump version\n- tag\n- release\n- 重发 0.6.14\n- 创建 0.6.15\n- 覆盖 Release assets\n- 覆盖真实 Green\n- 修改历史 tag\n\n直到用户明确授权。\n\n当前源码可继续：\n\n```text\n0.6.14 development maintenance\n```\n\n但必须把：\n\n```text\napp/release-manifest.json\nrelease.public\npublic_installer\n```\n\n等字段与“历史已有公开 Release”区别表达。\n\n例如：\n\n```text\ncurrent source tree release status = unreleased development\nhistorical stable public release = v0.6.14\n```\n\n不要把：\n\n```text\npublic_installer = not_implemented\n```\n\n错误解释成历史从未有 installer。\n\n---\n\n# 十八、Green 策略\n\n现有 Green：\n\n```text\nD:\\All projects\\ArcheAxis.Knowledge.Green-x64\n```\n\n属于用户真实运行目录。\n\n当前任务：\n\n**禁止覆盖。**\n\n必须先完成：\n\n```text\nExact SHA candidate\n→ manifest verify\n→ worker verify\n→ Core verify\n→ Avalonia GUI first-use\n→ clean-machine test\n→ backup\n→ isolated migration\n→ semantic diff\n→ workspace identity\n→ replace simulation\n→ rollback simulation\n→ independent audit\n→ Owner approval\n```\n\n只有用户明确授权后才允许：\n\n```text\n原位替换 Green Runtime\n```\n\n而且必须遵守：\n\n> 检测已有安装位置；用户已有固定位置时就在原位置维护，不得擅自改到 C 盘或其他目录。\n\n---\n\n# 十九、不要新增大量外部开源项目\n\n当前阶段停止“收藏项目式开发”。\n\nOpenMAIC、H5P、LearningMAP、OpenTutor、DeepTutor、Graphiti、MemOS、LightRAG 等均不能因为看起来成熟就直接并入。\n\n要求：\n\n```text\nCapability Gap\n→ search existing internal capability\n→ donor comparison\n→ license\n→ runtime\n→ exact pin\n→ benchmark\n→ absorption decision\n```\n\n决策只能是：\n\n```text\nABSORB\nADAPT\nSIDECAR\nREFERENCE\nDEFER\nREJECT\n```\n\nM0 之外能力全部推迟。\n\n---\n\n# 二十、必须建立新的执行顺序\n\n严格执行：\n\n## P0-A：CI Truth\n\n修：\n\n- desktop_launch\n- Rust backup safety\n- Contract Matrix\n- AXR SHA audit\n- PluginManifest validation\n- Workspace provider identity\n- Wheel smoke\n\n目标：\n\n```text\nmain equivalent full suite = GREEN\nP3 branch CI = GREEN\nvnext-ci = GREEN\na0-gates = GREEN\n```\n\n---\n\n## P0-B：Authority Truth\n\n统一：\n\n```text\nStable=Tauri 0.6.14\nvNext=Avalonia\nCore=Rust\nPython=bounded workers\nDeepTutor=sidecar/donor\n```\n\n输出单一 authority document。\n\n---\n\n## P0-C：P3 Native GUI\n\n验证真实：\n\n- Avalonia native window\n- startup\n- Core connection\n- Capture\n- Library\n- Source Reader\n- Knowledge\n- Learning\n- Review\n- Job receipt\n- Inspector\n- Command Palette\n- keyboard\n- mouse\n- restart readback\n\n窗口至少：\n\n```text\n1920\n1440\n1280\n1024\ncompact/narrow\n```\n\n验证：\n\n- DPI\n- no clipping\n- inspector drawer\n- Activity Dock\n- focus\n- reduced motion\n- 44px target\n- contrast\n\n禁止用 source-test 替代 GUI evidence。\n\n---\n\n## P1-A：Frontend Decomposition\n\n开始拆 MainWindow。\n\n不改变行为。\n\n每抽一个模块：\n\n```text\ntests before\n→ extract\n→ tests after\n```\n\n---\n\n## P1-B：Full Human Learning Loop\n\n把真正 first-use learning 闭合。\n\n---\n\n## P1-C：Machine Correction Loop\n\n使用真实模型完成 A14。\n\n---\n\n## P2：Green Candidate\n\n只有 P0/P1 完成后再继续。\n\n---\n\n# 二十一、每次修改必须提供证据等级\n\n统一：\n\n```text\nSTRUCTURAL\nTESTED_LOCAL\nTESTED_LOCAL_RUNTIME\nCI_VERIFIED\nGUI_VERIFIED\nCLEAN_MACHINE_VERIFIED\nGREEN_INSTALLED_VERIFIED\nPUBLICATION_VERIFIED\n```\n\n不要使用模糊：\n\n```text\ndone\ncompleted\nworking\nready\n```\n\n除非说明证据级别。\n\n---\n\n# 二十二、禁止行为\n\n严禁：\n\n1. 为了 CI 绿删除安全测试。\n2. 为了 CI 绿关闭 Resource Boundary。\n3. 随机修改 D:\\ 路径。\n4. 扫描用户真实资料库正文。\n5. 修改真实 Green。\n6. 创建新 Release。\n7. 自动下载安装大型模型。\n8. 把静态 UI Demo 当产品数据。\n9. 新建第二个 SQLite Truth Store。\n10. 新建第二套 Learning Truth。\n11. 让 DeepTutor 变成主产品。\n12. 继续无限扩大 MainWindow。\n13. 把 Synthetic Smoke 写成真实用户旅程。\n14. 把构建成功写成产品闭环。\n15. 删除历史证据以隐藏回归。\n16. 为了“架构统一”一次性重写所有系统。\n17. 修改 WORK-LAB / DESIGN-LAB 仓库。\n18. 未经授权发布。\n\n---\n\n# 二十三、本轮最终验收条件\n\n本轮不是要求完成所有 AAOS。\n\n本轮目标是让：\n\n`codex/aaos-p3-ui-convergence-20260922`\n\n成为真正可信的可合并候选。\n\n最低条件：\n\n```text\n[ ] main 既有 CI debt 已处理或有明确独立 issue/evidence\n[ ] P3 新增 regression = 0\n[ ] vnext-ci PASS\n[ ] CI PASS\n[ ] a0-gates PASS\n[ ] Rust backup safety PASS\n[ ] contracts-vnext PASS\n[ ] wheel-smoke PASS\n[ ] desktop-vnext PASS\n[ ] green-candidate-vnext PASS\n[ ] desktop-build PASS\n[ ] installer-lifecycle PASS\n[ ] Authority Transition 文档完成\n[ ] R6 State duplicate key 修复\n[ ] Current Truth 不再指向过期 2026-09-01 作为唯一现场真相\n[ ] MainWindow 拆分方案落地第一批\n[ ] P3 GUI evidence 至少完成 native first-use 核心链\n```\n\n在这些没完成前：\n\n```text\nDO NOT MERGE TO MAIN\nDO NOT RELEASE\nDO NOT REPLACE GREEN\n```\n\n---\n\n# 二十四、执行方式\n\n不要只给我分析报告。\n\n请直接：\n\n1. 重新拉取/核对云端当前 branch SHA。\n2. 确认工作树状态。\n3. 读取项目 Authority。\n4. 重放当前失败 CI。\n5. 按根因逐项修复。\n6. 每完成一个独立问题就跑对应最小测试。\n7. 最后跑组合 Gate。\n8. 输出 Exact SHA。\n9. 输出 CI Run ID。\n10. 输出失败/通过明细。\n11. 输出 remaining gaps。\n12. 输出是否满足 merge 条件。\n\n不要一次修改几百个无关文件。\n\n采用：\n\n```text\nsmall patch\n→ focused tests\n→ readback\n→ next patch\n```\n\n---\n\n# 二十五、最终交付格式\n\n完成后给我：\n\n## A. EXECUTIVE SUMMARY\n\n当前是否：\n\n```text\nMERGE_READY\nNOT_MERGE_READY\n```\n\n只按证据判断。\n\n## B. FIXED\n\n逐条列：\n\n```text\n问题\n根因\n修改文件\n测试\n证据级别\n```\n\n## C. STILL BLOCKED\n\n不能隐藏未完成项。\n\n## D. ARCHITECTURE AUTHORITY\n\n明确：\n\n```text\nStable\nvNext Shell\nCore\nPython\nDeepTutor\nTauri\nRelease\nGreen\n```\n\n当前各自角色。\n\n## E. CI RECEIPTS\n\n列：\n\n```text\ncommit SHA\ntree SHA\nCI run\nvnext-ci run\na0-gates\ndesktop\nrust\ncontracts\nwheel\ngreen candidate\n```\n\n## F. UI STATUS\n\n分别说明：\n\n```text\nImplemented\nStatic-tested\nBuild-tested\nRuntime-tested\nGUI-tested\nRestart-tested\n```\n\n## G. NEXT TASKS\n\n只给剩余高优先任务。\n\n不要重新生成长远 90/180 天路线图。\n\n---\n\n# 最核心目标\n\n这次不要再扩张 AAOS。\n\n要完成的是：\n\n> **让 AAOS 从“代码很多、能力很多、历史很多”转成“一个权威架构、一条运行主链、一套真实 UI、一组可信 CI、一条真正的人机双向学习闭环”。**\n\n优先级永远是：\n\n```text\nTruth\n> Safety\n> Closed Loop\n> CI\n> Runtime\n> UX\n> Capability Count\n```\n\n立即从云端当前状态开始执行。\n:::\n\n这版适合直接交给 **Codex 深度执行**，重点不是让它再写一轮报告，而是让它按 **“审计 → 修复 → 测试 → 云端回读 → 收敛”** 继续做。"
+          ]
+        },
+        "create_time": 1790069092.583898,
+        "id": "35c4a0e0-7cbf-45c0-892d-8952bbd451c0",
+        "metadata": {
+          "code_blocks": {
+            "0": {
+              "edited": false,
+              "id": "c659x5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "1": {
+              "edited": false,
+              "id": "rkujjy",
+              "preview_language": null,
+              "previewable": false
+            },
+            "10": {
+              "edited": false,
+              "id": "843rjz",
+              "preview_language": null,
+              "previewable": false
+            },
+            "11": {
+              "edited": false,
+              "id": "u9eth9",
+              "preview_language": null,
+              "previewable": false
+            },
+            "12": {
+              "edited": false,
+              "id": "utmlei",
+              "preview_language": null,
+              "previewable": false
+            },
+            "13": {
+              "edited": false,
+              "id": "twba1v",
+              "preview_language": null,
+              "previewable": false
+            },
+            "14": {
+              "edited": false,
+              "id": "5uqthw",
+              "preview_language": null,
+              "previewable": false
+            },
+            "15": {
+              "edited": false,
+              "id": "9gn0ee",
+              "preview_language": null,
+              "previewable": false
+            },
+            "16": {
+              "edited": false,
+              "id": "clr0x1",
+              "preview_language": null,
+              "previewable": false
+            },
+            "17": {
+              "edited": false,
+              "id": "74j9y2",
+              "preview_language": null,
+              "previewable": false
+            },
+            "18": {
+              "edited": false,
+              "id": "2m126y",
+              "preview_language": null,
+              "previewable": false
+            },
+            "19": {
+              "edited": false,
+              "id": "nwui5n",
+              "preview_language": null,
+              "previewable": false
+            },
+            "2": {
+              "edited": false,
+              "id": "v3plb5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "20": {
+              "edited": false,
+              "id": "lin54b",
+              "preview_language": null,
+              "previewable": false
+            },
+            "21": {
+              "edited": false,
+              "id": "0ddbbf",
+              "preview_language": null,
+              "previewable": false
+            },
+            "22": {
+              "edited": false,
+              "id": "dvx20a",
+              "preview_language": null,
+              "previewable": false
+            },
+            "23": {
+              "edited": false,
+              "id": "k9gzpg",
+              "preview_language": null,
+              "previewable": false
+            },
+            "24": {
+              "edited": false,
+              "id": "gelab7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "25": {
+              "edited": false,
+              "id": "y28oj5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "26": {
+              "edited": false,
+              "id": "hpjvr6",
+              "preview_language": null,
+              "previewable": false
+            },
+            "27": {
+              "edited": false,
+              "id": "8gtzus",
+              "preview_language": null,
+              "previewable": false
+            },
+            "28": {
+              "edited": false,
+              "id": "lfs7bd",
+              "preview_language": null,
+              "previewable": false
+            },
+            "29": {
+              "edited": false,
+              "id": "ebphpm",
+              "preview_language": null,
+              "previewable": false
+            },
+            "3": {
+              "edited": false,
+              "id": "gs2dvh",
+              "preview_language": null,
+              "previewable": false
+            },
+            "30": {
+              "edited": false,
+              "id": "0zskjx",
+              "preview_language": null,
+              "previewable": false
+            },
+            "31": {
+              "edited": false,
+              "id": "yalz8t",
+              "preview_language": null,
+              "previewable": false
+            },
+            "32": {
+              "edited": false,
+              "id": "jwltfr",
+              "preview_language": null,
+              "previewable": false
+            },
+            "33": {
+              "edited": false,
+              "id": "f3dlb1",
+              "preview_language": null,
+              "previewable": false
+            },
+            "34": {
+              "edited": false,
+              "id": "yqdzwl",
+              "preview_language": null,
+              "previewable": false
+            },
+            "35": {
+              "edited": false,
+              "id": "gn03c0",
+              "preview_language": null,
+              "previewable": false
+            },
+            "36": {
+              "edited": false,
+              "id": "q265vy",
+              "preview_language": null,
+              "previewable": false
+            },
+            "37": {
+              "edited": false,
+              "id": "ozvt8r",
+              "preview_language": null,
+              "previewable": false
+            },
+            "38": {
+              "edited": false,
+              "id": "tha3zi",
+              "preview_language": null,
+              "previewable": false
+            },
+            "39": {
+              "edited": false,
+              "id": "wj051x",
+              "preview_language": null,
+              "previewable": false
+            },
+            "4": {
+              "edited": false,
+              "id": "oycy0r",
+              "preview_language": null,
+              "previewable": false
+            },
+            "40": {
+              "edited": false,
+              "id": "8nel4t",
+              "preview_language": null,
+              "previewable": false
+            },
+            "41": {
+              "edited": false,
+              "id": "grkzye",
+              "preview_language": null,
+              "previewable": false
+            },
+            "42": {
+              "edited": false,
+              "id": "k6tj0r",
+              "preview_language": null,
+              "previewable": false
+            },
+            "43": {
+              "edited": false,
+              "id": "8xpfj5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "44": {
+              "edited": false,
+              "id": "d9xz1w",
+              "preview_language": null,
+              "previewable": false
+            },
+            "45": {
+              "edited": false,
+              "id": "9xkmpe",
+              "preview_language": null,
+              "previewable": false
+            },
+            "46": {
+              "edited": false,
+              "id": "w4elat",
+              "preview_language": null,
+              "previewable": false
+            },
+            "47": {
+              "edited": false,
+              "id": "jzptme",
+              "preview_language": null,
+              "previewable": false
+            },
+            "48": {
+              "edited": false,
+              "id": "67hq62",
+              "preview_language": null,
+              "previewable": false
+            },
+            "49": {
+              "edited": false,
+              "id": "9ot3kq",
+              "preview_language": null,
+              "previewable": false
+            },
+            "5": {
+              "edited": false,
+              "id": "nfwwi9",
+              "preview_language": null,
+              "previewable": false
+            },
+            "50": {
+              "edited": false,
+              "id": "2c9jne",
+              "preview_language": null,
+              "previewable": false
+            },
+            "51": {
+              "edited": false,
+              "id": "aqibil",
+              "preview_language": null,
+              "previewable": false
+            },
+            "52": {
+              "edited": false,
+              "id": "um9tm3",
+              "preview_language": null,
+              "previewable": false
+            },
+            "53": {
+              "edited": false,
+              "id": "d57t0q",
+              "preview_language": null,
+              "previewable": false
+            },
+            "54": {
+              "edited": false,
+              "id": "ddakhl",
+              "preview_language": null,
+              "previewable": false
+            },
+            "55": {
+              "edited": false,
+              "id": "tupu3l",
+              "preview_language": null,
+              "previewable": false
+            },
+            "56": {
+              "edited": false,
+              "id": "jyzpix",
+              "preview_language": null,
+              "previewable": false
+            },
+            "57": {
+              "edited": false,
+              "id": "2gvxts",
+              "preview_language": null,
+              "previewable": false
+            },
+            "58": {
+              "edited": false,
+              "id": "2pp70w",
+              "preview_language": null,
+              "previewable": false
+            },
+            "59": {
+              "edited": false,
+              "id": "frqdxc",
+              "preview_language": null,
+              "previewable": false
+            },
+            "6": {
+              "edited": false,
+              "id": "22fh5i",
+              "preview_language": null,
+              "previewable": false
+            },
+            "60": {
+              "edited": false,
+              "id": "yrc2gq",
+              "preview_language": null,
+              "previewable": false
+            },
+            "61": {
+              "edited": false,
+              "id": "l5lzlo",
+              "preview_language": null,
+              "previewable": false
+            },
+            "62": {
+              "edited": false,
+              "id": "57k2uj",
+              "preview_language": null,
+              "previewable": false
+            },
+            "63": {
+              "edited": false,
+              "id": "865o52",
+              "preview_language": null,
+              "previewable": false
+            },
+            "64": {
+              "edited": false,
+              "id": "c51842",
+              "preview_language": null,
+              "previewable": false
+            },
+            "65": {
+              "edited": false,
+              "id": "lkc92w",
+              "preview_language": null,
+              "previewable": false
+            },
+            "66": {
+              "edited": false,
+              "id": "q58uml",
+              "preview_language": null,
+              "previewable": false
+            },
+            "67": {
+              "edited": false,
+              "id": "r7mpix",
+              "preview_language": null,
+              "previewable": false
+            },
+            "68": {
+              "edited": false,
+              "id": "mr0k3y",
+              "preview_language": null,
+              "previewable": false
+            },
+            "69": {
+              "edited": false,
+              "id": "ovglj6",
+              "preview_language": null,
+              "previewable": false
+            },
+            "7": {
+              "edited": false,
+              "id": "djb5e5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "70": {
+              "edited": false,
+              "id": "hd1xcv",
+              "preview_language": null,
+              "previewable": false
+            },
+            "71": {
+              "edited": false,
+              "id": "k6s71m",
+              "preview_language": null,
+              "previewable": false
+            },
+            "72": {
+              "edited": false,
+              "id": "svd4re",
+              "preview_language": null,
+              "previewable": false
+            },
+            "73": {
+              "edited": false,
+              "id": "c3h78j",
+              "preview_language": null,
+              "previewable": false
+            },
+            "74": {
+              "edited": false,
+              "id": "1d5mhv",
+              "preview_language": null,
+              "previewable": false
+            },
+            "8": {
+              "edited": false,
+              "id": "81a5wx",
+              "preview_language": null,
+              "previewable": false
+            },
+            "9": {
+              "edited": false,
+              "id": "b0590d",
+              "preview_language": null,
+              "previewable": false
+            }
+          },
+          "content_references": [],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "314ff02e-ffa9-4af1-b20a-1c658e87289f"
+        }
+      },
+      "parent": "314ff02e-ffa9-4af1-b20a-1c658e87289f"
+    },
+    "3be279d5-81cd-45a4-b075-68dc6e703065": {
+      "id": "3be279d5-81cd-45a4-b075-68dc6e703065",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "7915cfc1-4475-47b7-845b-5878821fbecd",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "审计仓库PDF学习资料及资料库漂移情况"
+            }
+          ]
+        },
+        "create_time": 1790069342.958306,
+        "id": "3be279d5-81cd-45a4-b075-68dc6e703065",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "56e460e7-f68c-44a3-9668-7fd2ef96dce0",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "56e460e7-f68c-44a3-9668-7fd2ef96dce0"
+    },
+    "4be60bec-5f4f-4bbf-b57a-a62175521bef": {
+      "id": "4be60bec-5f4f-4bbf-b57a-a62175521bef",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "76491bae-99e8-45ae-a723-436dcd2cc138",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "获取分支提交及CI检查状态"
+            }
+          ]
+        },
+        "create_time": 1790057749.162133,
+        "id": "4be60bec-5f4f-4bbf-b57a-a62175521bef",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "82fdc9dc-466e-4996-bf9c-55302e6806a5",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "6857917b-5212-46b1-861e-9461a5c77ca1"
+    },
+    "4ff1e3ea-102d-4fab-9c0e-927b1830fe26": {
+      "id": "4ff1e3ea-102d-4fab-9c0e-927b1830fe26",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "对，**你前几天在 `D:\\All projects\\ArcheAxis-Knowledge-OS` 项目仓库内部发现的如果是“真实学习资料 PDF”，那按现在已经确定的路径规则，属于明显的资料路径漂移。** memcite\n\n当前 AAOS 的资料边界其实已经规定得很清楚：\n\n| 数据类型 | 正确位置 | 是否允许放源码仓库 |\n|---|---|---:|\n| 真实 Green 用户学习资料 | `D:\\All projects\\资料库` | ❌ |\n| AAOS 项目测试学习资料 | `D:\\All projects\\ceshi` | ❌ 原件不应复制进 Git |\n| 项目源码/契约/测试代码 | `D:\\All projects\\ArcheAxis-Knowledge-OS` | ✅ |\n| 临时转换/运行/测试产物 | `<repo>\\.project-local\\...` | ✅，但必须 Git Ignore |\n| 小型人工合成测试 fixture | `tests/fixtures/...` | ✅，但必须明确是测试资产 |\n| 真实 PDF、教材、论文、课程文件 | 外置资料库 | **❌ 不应长期驻留项目源码树** |\n\n我刚才又检查了云端几个重点区域：`verified-knowledge/ceshi-2026-08-18` 目前上传的是 README、转换报告、crosscheck、receipts、scripts，并没有直接把测试学习 PDF 上传进去；`knowledge_base/documents` 也没有真实资料。云端搜索也没有发现明显被 Git 跟踪的 `.pdf` 学习资料。因此你当时看到的那些 PDF **更可能是本地工作树污染、未跟踪文件、历史迁移残留，或者某条导入流程把原件错误复制进了仓库。** 不过 GitHub 对二进制文件搜索并不完全可靠，所以仍应以本地 `git ls-files` + 磁盘盘点为最终依据。\n\n### 但有三个例外，不要直接删\n\n如果 PDF 位于：\n\n- `.project-local\\runs\\...`\n- `.project-local\\task-runtime\\...`\n- `.project-local\\build\\...`\n\n并且只是一次任务的 staging/cache/转换输入副本，同时整个 `.project-local` 被 Git 忽略，那么它**不一定是漂移**。它可以是运行期临时资产，但不能成为知识库的长期资料真相源。\n\n第二种允许情况是 `tests/fixtures` 里**专门人工生成的小型测试 PDF**，例如为了测试页码、OCR、表格提取而制作的几 KB/几十 KB fixture。这种可以进 Git，但必须明确是 synthetic fixture，不能拿真实教材/论文直接充当 fixture。\n\n第三种是项目自身说明书、架构附件等“项目文档 PDF”，它和“学习资料 PDF”不是一回事。\n\n### 所以你发现的情况很可能暴露了更深一层问题\n\n真正的问题可能不是“有人手工放错了几个 PDF”，而是某条历史流程把：\n\n> `import / ingest → copy source into repo`\n\n错误地当成了：\n\n> `import / ingest → register external source + preserve source identity`\n\nAAOS 正确的数据流应该是：\n\n```text\nD:\\All projects\\资料库\n        │\n        ├─ 真实用户学习资料\n        │\n        ↓\nSource Registration / Hash / Provenance\n        │\n        ↓\nCore / Workspace DB\n        │\n        ├─ source_id\n        ├─ original path/ref\n        ├─ hash\n        ├─ anchors\n        └─ versions\n        │\n        ↓\n.project-local\n只允许缓存、staging、转换结果、运行证据\n```\n\n而不是：\n\n```text\n资料库\n   ↓\n把 PDF 复制进\nArcheAxis-Knowledge-OS/\n   ↓\n再从仓库学习\n```\n\n后者会造成非常严重的几个后果：**源码仓库越来越大、Git 历史永久携带用户资料、源码与用户数据耦合、Green/Dev/Test 边界混乱、真实资料可能被错误上传 GitHub、迁移/删除源码时误伤知识资产。**\n\n### 我建议把它直接升成刚才 Codex 任务里的一个 P0\n\n你可以把下面这一段**追加到我刚才给你的 Codex 提示词后面**：\n\n:::writing{variant=\"document\" id=\"58314\" title=\"AAOS 云端审计后 Codex 深度执行任务包\"}\n## P0-D：真实学习资料路径漂移与 Repository Data Boundary 审计\n\n追加一项最高优先级审计。\n\n用户此前已经在本地项目源码仓库：\n\n`D:\\All projects\\ArcheAxis-Knowledge-OS`\n\n内部发现过真实 PDF 学习资料。\n\n按照当前权威资源边界：\n\n```text\n真实 Green 用户资料：\nD:\\All projects\\资料库\n\nAAOS 项目测试学习资料：\nD:\\All projects\\ceshi\n\n源码：\nD:\\All projects\\ArcheAxis-Knowledge-OS\n\n运行/转换/缓存：\n<repo>\\.project-local\n```\n\n因此必须审计是否存在“资料原件被错误复制/写入源码仓库”的路径漂移。\n\n### 1. 只读全量盘点\n\n先只读，不删除、不移动。\n\n递归检查项目仓库中的资料型文件，至少包括：\n\n```text\n*.pdf\n*.doc\n*.docx\n*.ppt\n*.pptx\n*.xls\n*.xlsx\n*.epub\n*.mobi\n*.txt\n*.md\n*.rtf\n*.html\n*.htm\n*.png\n*.jpg\n*.jpeg\n*.tif\n*.tiff\n*.mp3\n*.wav\n*.mp4\n*.mkv\n```\n\n但必须分类，不能把源码中的普通 Markdown、UI 图片等全部误判为用户资料。\n\n对每个疑似资料文件输出：\n\n```text\npath\nextension\nsize\nsha256\ngit_tracked\ngit_ignored\nlast_modified\nclassification\nprobable_origin\nreferenced_by_code\nreferenced_by_test\nreferenced_by_receipt\naction_recommendation\n```\n\n### 2. 必须分类为\n\n```text\nA. SOURCE_CODE_ASSET\nB. PROJECT_DOCUMENTATION\nC. SYNTHETIC_TEST_FIXTURE\nD. GENERATED_TEST_FIXTURE\nE. PROJECT_LOCAL_RUNTIME_ARTIFACT\nF. REAL_TEST_CORPUS_MATERIAL\nG. REAL_USER/GREEN_LIBRARY_MATERIAL\nH. LEGACY_MIGRATION_RESIDUE\nI. UNKNOWN_REQUIRES_REVIEW\n```\n\n### 3. 判定规则\n\n#### 合法\n\n```text\ntests/fixtures/\n```\n\n中明确人工构造、体积受控、用于固定回归的 synthetic fixture 可以保留。\n\n`.project-local/**`\n\n中的临时运行副本、缓存、staging、转换产物可以保留，但必须：\n\n- Git ignored\n- 非 canonical source\n- 可清理/重建\n- 有来源 receipt/provenance 时优先保留引用关系\n\n#### 漂移\n\n真实教材、论文、课程、学习 PDF、用户上传资料、ceshi 原件、Green 资料如果长期存在于：\n\n```text\nrepo root\napp/\napps/\ncrates/\nfrontend/\nworkspace/\nknowledge_base/\nverified-knowledge/\ndocs/\nshared/\npackages/\n```\n\n等源码/跟踪区域，原则上视为 `DATA_PATH_DRIFT`。\n\n尤其如果被 Git 跟踪：\n\n```text\nseverity = P0\n```\n\n### 4. 必须查清来源\n\n不要只把文件搬走。\n\n追踪是谁产生它：\n\n- Import pipeline\n- Workspace upload\n- ingestion\n- migration\n- test\n- conversion\n- legacy script\n- manual copy\n- research import\n- DeepTutor/OpenTutor donor\n- Green migration\n\n重点搜索所有：\n\n```text\ncopy\ncopy2\ncopyfile\nshutil.copy*\nFile.Copy\nfs::copy\nwrite_bytes\nsave/upload\npersist original\nsource archive\nworkspace import\n```\n\n查明是否存在：\n\n```text\nexternal learning material\n→ copied into repository\n```\n\n的生产代码路径。\n\n如果存在，必须修代码根因。\n\n### 5. 正确目标架构\n\n真实原件必须保持在外置资料域：\n\n```text\nD:\\All projects\\资料库\n```\n\n测试原件必须保持在：\n\n```text\nD:\\All projects\\ceshi\n```\n\nCore 只保存：\n\n```text\nsource_id\nexternal/source reference\nsha256\nmetadata\nanchors\nversions\nprovenance\n```\n\n除受控 Archive 设计明确要求外，不得把真实资料复制进源码 Git 工作树。\n\n运行期需要副本时只允许：\n\n```text\n.project-local/runs/**\n.project-local/task-runtime/**\n.project-local/cache/**\n```\n\n并确保 Git ignored。\n\n### 6. 禁止直接处理用户文件\n\n本轮先：\n\n```text\nINVENTORY\n→ CLASSIFY\n→ TRACE PRODUCER\n→ PROPOSE MOVE\n```\n\n未经 Owner 明确批准：\n\n```text\nDO NOT DELETE\nDO NOT MOVE\nDO NOT MODIFY\n```\n\n任何疑似真实 PDF/教材/资料。\n\n特别禁止直接修改：\n\n```text\nD:\\All projects\\资料库\nD:\\All projects\\ceshi\nD:\\All projects\\ArcheAxis.Knowledge.Green-x64\n```\n\n### 7. Git 泄漏检查\n\n必须运行并报告：\n\n```text\ngit ls-files\ngit status --short\ngit check-ignore\n```\n\n针对所有疑似学习资料。\n\n同时检查：\n\n- 当前 HEAD 是否跟踪。\n- 历史 commit 是否曾跟踪真实学习资料。\n- 当前 `.gitignore` 是否足以阻止再次进入。\n- 大文件是否已进入 Git history。\n\n若历史 Git 中存在真实用户资料，只报告：\n\n```text\nHISTORICAL_DATA_LEAK_CANDIDATE\n```\n\n不得擅自 rewrite Git history。\n\n### 8. 建立永久门禁\n\n增加 Repository Data Boundary Gate：\n\n禁止真实资料扩展名在未经 allowlist 的源码位置进入 Git。\n\n例如：\n\n```text\nPDF / DOCX / PPTX / XLSX / EPUB / media\n```\n\n默认 fail closed。\n\n允许范围必须明确：\n\n```text\ntests/fixtures/approved/**\ndocs/approved-project-assets/**\n```\n\n且测试 fixture 要有 manifest：\n\n```text\nfixture_id\npurpose\nsynthetic=true\ncontains_user_data=false\nsha256\nsize\nowner\n```\n\n### 9. 最终报告\n\n输出：\n\n```text\nREPOSITORY_DATA_BOUNDARY_AUDIT.md\n```\n\n至少包含：\n\n1. 共发现多少资料型文件。\n2. Git tracked 数。\n3. untracked 数。\n4. `.project-local` runtime 数。\n5. synthetic fixture 数。\n6. 疑似真实测试资料数。\n7. 疑似真实用户资料数。\n8. 每个漂移文件当前路径。\n9. 应迁往哪个权威库。\n10. 哪段代码造成该漂移。\n11. 是否存在 Git 泄漏。\n12. 是否需要 Owner 移动/删除授权。\n13. 新防漂移 Gate 是否通过。\n\n在本项完成前，不得宣称 Repository Data Boundary 完全闭合。\n:::\n\n**这项我认为应该加，而且优先级很高。**\n\n因为如果你已经亲眼在源码项目里看到过真实 PDF 学习资料，那么说明目前所谓的“资料库外置、源码与用户数据分离”至少历史上**没有完全执行到运行层**。这比单纯 UI 漂移更危险：UI 漂移最多是不好看，**资料路径漂移有可能把真实学习资产带进 Git、备份、候选包甚至发布包。** memcite"
+          ]
+        },
+        "create_time": 1790069326.487606,
+        "id": "4ff1e3ea-102d-4fab-9c0e-927b1830fe26",
+        "metadata": {
+          "code_blocks": {
+            "0": {
+              "edited": false,
+              "id": "f01gq6",
+              "preview_language": null,
+              "previewable": false
+            },
+            "1": {
+              "edited": false,
+              "id": "qbmams",
+              "preview_language": null,
+              "previewable": false
+            },
+            "10": {
+              "edited": false,
+              "id": "mw7vqn",
+              "preview_language": null,
+              "previewable": false
+            },
+            "11": {
+              "edited": false,
+              "id": "wakexi",
+              "preview_language": null,
+              "previewable": false
+            },
+            "12": {
+              "edited": false,
+              "id": "sd62oz",
+              "preview_language": null,
+              "previewable": false
+            },
+            "13": {
+              "edited": false,
+              "id": "htg1a0",
+              "preview_language": null,
+              "previewable": false
+            },
+            "14": {
+              "edited": false,
+              "id": "53uxxf",
+              "preview_language": null,
+              "previewable": false
+            },
+            "15": {
+              "edited": false,
+              "id": "u5l28r",
+              "preview_language": null,
+              "previewable": false
+            },
+            "16": {
+              "edited": false,
+              "id": "lcwn5x",
+              "preview_language": null,
+              "previewable": false
+            },
+            "17": {
+              "edited": false,
+              "id": "ahszjz",
+              "preview_language": null,
+              "previewable": false
+            },
+            "18": {
+              "edited": false,
+              "id": "yi3rsl",
+              "preview_language": null,
+              "previewable": false
+            },
+            "19": {
+              "edited": false,
+              "id": "z3ffrx",
+              "preview_language": null,
+              "previewable": false
+            },
+            "2": {
+              "edited": false,
+              "id": "7arby8",
+              "preview_language": null,
+              "previewable": false
+            },
+            "20": {
+              "edited": false,
+              "id": "flu1qp",
+              "preview_language": null,
+              "previewable": false
+            },
+            "21": {
+              "edited": false,
+              "id": "oule28",
+              "preview_language": null,
+              "previewable": false
+            },
+            "22": {
+              "edited": false,
+              "id": "uhv3ng",
+              "preview_language": null,
+              "previewable": false
+            },
+            "23": {
+              "edited": false,
+              "id": "3laiaj",
+              "preview_language": null,
+              "previewable": false
+            },
+            "3": {
+              "edited": false,
+              "id": "d55c4q",
+              "preview_language": null,
+              "previewable": false
+            },
+            "4": {
+              "edited": false,
+              "id": "lycvj4",
+              "preview_language": null,
+              "previewable": false
+            },
+            "5": {
+              "edited": false,
+              "id": "8jv9w5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "6": {
+              "edited": false,
+              "id": "wpscoq",
+              "preview_language": null,
+              "previewable": false
+            },
+            "7": {
+              "edited": false,
+              "id": "8ltfxp",
+              "preview_language": null,
+              "previewable": false
+            },
+            "8": {
+              "edited": false,
+              "id": "g0xsw6",
+              "preview_language": null,
+              "previewable": false
+            },
+            "9": {
+              "edited": false,
+              "id": "uv37ms",
+              "preview_language": null,
+              "previewable": false
+            }
+          },
+          "content_references": [
+            {
+              "alt": null,
+              "prefix": null,
+              "prompt_text": null,
+              "type": "hidden"
+            },
+            {
+              "alt": null,
+              "prefix": null,
+              "prompt_text": null,
+              "type": "hidden"
+            }
+          ],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "05d45c43-4c2e-4cdb-8a38-717aa22ec0b5"
+        }
+      },
+      "parent": "05d45c43-4c2e-4cdb-8a38-717aa22ec0b5"
+    },
+    "56e460e7-f68c-44a3-9668-7fd2ef96dce0": {
+      "id": "56e460e7-f68c-44a3-9668-7fd2ef96dce0",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "50a55ad0-67eb-4a6a-916e-41f4edc4c3e6",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "是的，如果 PDF 是真实学习材料并被提交到仓库，就属于边界漂移；应放入 `资料库` 或 `ceshi`。只有小型合成测试夹具、临时 `.project-local` 文件可留在项目中。",
+              "finished": true,
+              "summary": "判断仓库漂移"
+            },
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "判断了仓库漂移"
+            }
+          ]
+        },
+        "create_time": 1790069341.289443,
+        "id": "56e460e7-f68c-44a3-9668-7fd2ef96dce0",
+        "metadata": {
+          "content_references": [],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "50a55ad0-67eb-4a6a-916e-41f4edc4c3e6",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "6b7b3725-d9f3-475c-a726-e032dc29dd63"
+    },
+    "6280e3b8-4ef3-4dab-a726-860818c6da27": {
+      "id": "6280e3b8-4ef3-4dab-a726-860818c6da27",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "7bfcb03f-7dad-4d1c-9bfd-36ff7a8bfe86",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "检查了verified-knowledge目录内容"
+            }
+          ]
+        },
+        "create_time": 1790057476.773345,
+        "id": "6280e3b8-4ef3-4dab-a726-860818c6da27",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "0c0011e6-a538-4f0d-9c76-2d91d0f10913",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "0c0011e6-a538-4f0d-9c76-2d91d0f10913"
+    },
+    "6857917b-5212-46b1-861e-9461a5c77ca1": {
+      "id": "6857917b-5212-46b1-861e-9461a5c77ca1",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "c4da6f9c-2181-4d44-89bb-ede82c39e956",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "审计仓库架构、分支实现、文档契约与CI发布状态"
+            }
+          ]
+        },
+        "create_time": 1790057727.762624,
+        "id": "6857917b-5212-46b1-861e-9461a5c77ca1",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "012d9c56-3832-4e76-8873-c5ceb56169c6",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "a712882c-4d3f-43fa-b655-55fe34067792"
+    },
+    "6b7b3725-d9f3-475c-a726-e032dc29dd63": {
+      "id": "6b7b3725-d9f3-475c-a726-e032dc29dd63",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "是，**如果你发现的是“真实学习资料 PDF”被直接放进 AAOS 项目源码仓库目录里，而不是测试夹具/许可证/文档附件，那基本可以判定为路径漂移**。我再顺手核一下云端有没有同类 PDF 被跟踪，区分“本地未跟踪污染”和“已经上传进 Git”。"
+          ]
+        },
+        "create_time": 1790069292.921194,
+        "id": "6b7b3725-d9f3-475c-a726-e032dc29dd63",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "cd043815-58e8-4a4b-9906-9616ecaf9c7f"
+        }
+      },
+      "parent": "cd043815-58e8-4a4b-9906-9616ecaf9c7f"
+    },
+    "86fd7f4e-2b12-4efe-b8b7-20cb6740aa5a": {
+      "id": "86fd7f4e-2b12-4efe-b8b7-20cb6740aa5a",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "a6e31ce4-d859-4a6c-b50b-bf553537fc92",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "我会继续核对项目结构、界面架构、测试与持续集成配置，重点确认当前桌面外壳、旧前端和后端之间的实际关系，并避免仅凭单个文件下结论。",
+              "finished": true,
+              "summary": "规划代码审查"
+            },
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "规划了代码审查"
+            }
+          ]
+        },
+        "create_time": 1790057537.328702,
+        "id": "86fd7f4e-2b12-4efe-b8b7-20cb6740aa5a",
+        "metadata": {
+          "content_references": [],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "a6e31ce4-d859-4a6c-b50b-bf553537fc92",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "98f6f5b5-2196-4ff8-a49f-39bc031f05cd"
+    },
+    "917f23a6-92a9-405b-9c35-2046fbf89ea2": {
+      "id": "917f23a6-92a9-405b-9c35-2046fbf89ea2",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "b88026b7-e6a4-43cf-aee5-65292ba1ecef",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "分析并汇总CI工作流及Python测试失败日志"
+            }
+          ]
+        },
+        "create_time": 1790057797.171572,
+        "id": "917f23a6-92a9-405b-9c35-2046fbf89ea2",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "7e69094f-5dc7-44f7-8acb-e418793733b4",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "4be60bec-5f4f-4bbf-b57a-a62175521bef"
+    },
+    "98f6f5b5-2196-4ff8-a49f-39bc031f05cd": {
+      "id": "98f6f5b5-2196-4ff8-a49f-39bc031f05cd",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "cb7161b7-b0a5-46b0-ae9a-1817adde21b1",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "Calculating最新提交时间并检查分支"
+            }
+          ]
+        },
+        "create_time": 1790057508.967427,
+        "id": "98f6f5b5-2196-4ff8-a49f-39bc031f05cd",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "021811d2-cd83-4326-baae-bdb97042d02c",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "6280e3b8-4ef3-4dab-a726-860818c6da27"
+    },
+    "a712882c-4d3f-43fa-b655-55fe34067792": {
+      "id": "a712882c-4d3f-43fa-b655-55fe34067792",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "2700dd53-c8eb-48c9-9393-aa43f7d6caab",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "我会基于当前云端代码重新检查项目结构、桌面端、前端、后端、契约、测试与交付配置，并特别核对并行目录和遗留路径，避免把声明误判为真实实现。",
+              "finished": true,
+              "summary": "重新审计仓库"
+            },
+            {
+              "chunks": [],
+              "content": "我发现仓库存在多套并行实现与文档体系：Python 单体、Rust vNext、React/Tauri、多个契约和任务包目录。下一步我会核对权威路径、测试覆盖与发布状态。",
+              "finished": true,
+              "summary": "梳理仓库现状"
+            },
+            {
+              "chunks": [],
+              "content": "我会把最新界面分支视为独立候选版本：它已实现本地导航与构建验证，但尚未完成真实核心服务、原生视觉回归、安装运行和发布确认；我也会区分已证实与未验证内容。",
+              "finished": true,
+              "summary": "核验界面分支"
+            },
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "完成仓库重新审计并梳理现状"
+            }
+          ]
+        },
+        "create_time": 1790057715.086026,
+        "id": "a712882c-4d3f-43fa-b655-55fe34067792",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "3694134a-7405-4356-91f5-62a0200c93b1",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "86fd7f4e-2b12-4efe-b8b7-20cb6740aa5a"
+    },
+    "c172cec5-f6c3-4eb6-9105-f342f2091450": {
+      "id": "c172cec5-f6c3-4eb6-9105-f342f2091450",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "9f26d55d-d030-4ccb-bc60-393ed7521918",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "核查夜间构建失败并诊断资源索引与路径问题"
+            }
+          ]
+        },
+        "create_time": 1790057875.122714,
+        "id": "c172cec5-f6c3-4eb6-9105-f342f2091450",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "e1688471-6356-4ffc-ac1c-efd1e5e43cf6",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "917f23a6-92a9-405b-9c35-2046fbf89ea2"
+    },
+    "cd043815-58e8-4a4b-9906-9616ecaf9c7f": {
+      "id": "cd043815-58e8-4a4b-9906-9616ecaf9c7f",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "37f00fef-211b-45dd-b839-ec15f164a39d",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "我会把云端仓库中的 PDF 分成源码文档、测试夹具和真实学习材料。若它们属于后者，且不在约定资料库或测试目录中，我会判定为仓库边界漂移，而非正常项目资产。",
+              "finished": true,
+              "summary": "界定仓库边界"
+            },
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "界定了仓库边界"
+            }
+          ]
+        },
+        "create_time": 1790069304.891218,
+        "id": "cd043815-58e8-4a4b-9906-9616ecaf9c7f",
+        "metadata": {
+          "content_references": [],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "37f00fef-211b-45dd-b839-ec15f164a39d",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "11237949-8b54-4381-b358-93fb341c0a04"
+    },
+    "client-created-root": {
+      "id": "client-created-root",
+      "message": null,
+      "parent": null
+    },
+    "e836e0f9-ab37-4e06-a112-2f17be67bfff": {
+      "id": "e836e0f9-ab37-4e06-a112-2f17be67bfff",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content": "思考了 8m",
+          "content_type": "reasoning_recap"
+        },
+        "create_time": 1790057875.1656,
+        "id": "e836e0f9-ab37-4e06-a112-2f17be67bfff",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "c172cec5-f6c3-4eb6-9105-f342f2091450"
+        }
+      },
+      "parent": "c172cec5-f6c3-4eb6-9105-f342f2091450"
+    },
+    "ee8bcb54-98a7-4a79-8195-edc257c303ec": {
+      "id": "ee8bcb54-98a7-4a79-8195-edc257c303ec",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "重新审计云端仓库"
+          ]
+        },
+        "create_time": 1790057390.116,
+        "id": "ee8bcb54-98a7-4a79-8195-edc257c303ec",
+        "metadata": {
+          "serialization_metadata": {
+            "custom_symbol_offsets": []
+          }
+        }
+      },
+      "parent": "client-created-root"
+    },
+    "ef692a19-9fdc-4e31-9ca0-37bace296567": {
+      "id": "ef692a19-9fdc-4e31-9ca0-37bace296567",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "bcc86f03-e94f-49e6-a670-e0935cad7e7f",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "审计ArcheAxis知识库与代码仓库核心目录结构"
+            }
+          ]
+        },
+        "create_time": 1790057474.906292,
+        "id": "ef692a19-9fdc-4e31-9ca0-37bace296567",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "a820ded0-e52f-443b-a54c-1ccfb71bb0f5",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "260301ae-1eb9-419c-8b1b-de0b4e0c3d4a"
+    },
+    "f0ad2d76-6b86-4b41-b093-69b816a49f7c": {
+      "id": "f0ad2d76-6b86-4b41-b093-69b816a49f7c",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "给出提示词，我发给CODEX"
+          ]
+        },
+        "create_time": 1790069089.907,
+        "id": "f0ad2d76-6b86-4b41-b093-69b816a49f7c",
+        "metadata": {
+          "serialization_metadata": {
+            "custom_symbol_offsets": []
+          }
+        }
+      },
+      "parent": "066ace3c-7e7f-41c0-a7aa-0f14c077fac4"
+    },
+    "f0ed2081-705a-4a2f-b3eb-9d3003837bfa": {
+      "id": "f0ed2081-705a-4a2f-b3eb-9d3003837bfa",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "dd096acc-6bea-499e-a3b0-6fe8452de0a1",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "检查并检索 ArcheAxis 知识库仓库状态与提交"
+            }
+          ]
+        },
+        "create_time": 1790057421.523885,
+        "id": "f0ed2081-705a-4a2f-b3eb-9d3003837bfa",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "b8334956-9984-420f-83c4-83d7aab7f955",
+          "tool_icons": [
+            "/images/ecosystem/apps/github/icon.png"
+          ]
+        }
+      },
+      "parent": "13af9185-1c33-493e-8e50-6c028ba1b28f"
+    }
+  },
+  "memory_scope": "global_enabled",
+  "pinned_time": 1790069057.087883,
+  "plugin_ids": null,
+  "title": "重新审计云端仓库",
+  "update_time": 1790069668.726843,
+  "voice": null
+}

@@ -1,0 +1,1217 @@
+# ArcheAxis Knowledge “一切皆插件”架构改造深度研究报告
+
+## 执行摘要
+
+**结论：可行，而且与你现有蓝图高度一致，但不建议字面意义上的“一切皆插件”。** 更合适的目标是 **“极小可信内核 + 一切能力插件化”**：证据身份、资产身份、权限、事务、审计、插件生命周期与数据契约留在 Kernel；导入、转换、编辑器、搜索、学习、AI、外部互操作、Agent Runtime、未来 LER/3D/VR 全部逐步插件化。当前仓库已经具备 Facade、Adapter、独立包、Migration Owner、Architecture Guard 等前置条件，适合渐进改造，而不是推倒重写。 fileciteturn6file0L2-L2 fileciteturn9file0L2-L2
+
+## 仓库审计与真正的问题判断
+
+### 先纠正一个关键前提：这次不是“假设架构”，而是已经审计了当前云端仓库
+
+本次通过 GitHub 读取了你当前公开仓库 `DTALEX66/ArcheAxis-Knowledge-OS` 的 `main`，重点检查了根目录、README、当前产品计划、系统总蓝图、项目状态以及主运行入口 `app/main.py`。因此以下判断以**当前代码和权威文档**为主，而不是前面对项目的泛化理解。仓库本身已经存在 `.worklab`、`AGENTS.md`、`HERMES_HANDOFF.md`、`OSUI` 等工程资产，说明它已经处于被工作流/Agent 工具持续驱动的开发形态。 fileciteturn5file0L1-L2
+
+更重要的是，你现在给 ArcheAxis Knowledge 定下来的产品定位非常明确：
+
+> 本地优先、原件保全、证据可追溯、开放互操作的人机双向学习与可信知识治理工作台。
+
+而仓库明确写着：它**不等于通用操作系统、通用 Agent Runtime、自治工作流平台或多 Agent 产品**。这条边界极其重要，因为它决定插件化之后，ArcheAxis 仍然应该是“可信知识与学习系统”，而不能被 DSH、Hermes、WORK-LAB 或未来各种 Agent 能力反客为主。 fileciteturn6file0L2-L2
+
+你的长期蓝图已经覆盖 P0–P10：原件与文档理解、证据与研究、学习系统、AI 学习资产、LER、空间记忆、研究/课程工作空间、开放互操作、搜索/图谱/模型治理、桌面扩展和长期探索。特别是 P7 已经明确写成 **“开放互操作与生态适配器”**，而 Obsidian、Zotero、Anki、Joplin、Logseq、SiYuan、Readwise 等都被定义为 Adapter，并要求每个 Adapter 独立记录版本、许可、读写范围、损失、fixture、往返、升级、回滚和 kill switch。换句话说，**你的蓝图本身事实上已经在向插件架构靠近，只是当前代码组织还没有把这种思想提升为统一的平台级插件协议。** fileciteturn7file0L2-L2
+
+### 现在真正的臃肿来自哪里
+
+当前实现不是一个完全失控的“巨型单体”。README 对架构的描述是 **FastAPI + SQLite 模块化单体**，并且仓库已经建立 Runtime、Knowledge、Research、Enhancement、Contracts 五个 Facade；`inspiration_research` 已经成为可安装包，`knowledge_base` 也是可安装包；Architecture Guard 已经用于阻止新的反向依赖、路径注入和绝对路径硬编码。 fileciteturn6file0L2-L2 fileciteturn9file0L2-L2
+
+所以我认为你的问题已经从：
+
+> “怎么把一个乱七八糟的单体拆干净？”
+
+变成了：
+
+> **“怎么把一个已经模块化到一定程度的单体，从代码目录级模块化，升级为运行时可组合、权限隔离、生命周期受控的插件平台？”**
+
+这是两个完全不同的问题。
+
+当前最明显的架构压力集中在**Composition Root / 主运行入口**。`app/main.py` 同时承担全局 FastAPI 构建、安全中间件、Rate Limiter、认证授权、Research/KB 子应用挂载、Workspace Router、health/diagnostics，以及直接导入 ingestion、core compiler/router/trace、evaluation、runtime facade、memory、RAG、tools、storage 等多个领域。也就是说，你已经拥有很多模块，但系统装配仍然是**编译期/源码级硬连接**。 fileciteturn11file0L2-L2
+
+这正是应该做插件化的地方。
+
+另一个非常重要的信号是：项目状态里已经明确承认 `knowledge_base/api.py` 仍包含遗留领域路由，旧细粒度 API 仍公开，路由面尚未真正缩减；与此同时九个 migration owner 已统一注册进 Migration Operator。说明**数据边界已经开始治理，但 API 与运行时边界还没有完全跟上。** fileciteturn9file0L2-L2
+
+### 我的可行性评分
+
+| 维度 | 当前基础 | 插件化可行性 | 判断 |
+|---|---|---:|---|
+| 领域模块边界 | 已有 `app/*`、KB、Research 等模块 | 很高 | 不需要从零拆领域 |
+| Facade | 已有五个 Facade | 很高 | 可直接作为插件 API 演进起点 |
+| 数据迁移治理 | 已有多个 migration owner + operator | 很高 | 天然适合插件自有 migration |
+| Adapter 思维 | 蓝图 P7 已明确 Adapter | 很高 | 与长期定位完全一致 |
+| Architecture Guard | 已存在 | 很高 | 可升级为 Plugin Boundary Guard |
+| 权限治理 | 已有 auth、safe HTTP、approved roots、rate limit | 高 | 可演进为 capability permission |
+| 审计/Receipt/Outbox | 已有 Job/Outbox/Receipt/SSE/审计基础 | 很高 | 非常适合事件型插件体系 |
+| UI 插件性 | 当前仍是产品工作台导向 | 中高 | 需要建立 Slot/View/Command Contribution |
+| 热插拔 | 尚无统一 lifecycle/runtime | 中 | 需要新增 Plugin Host |
+| 第三方插件安全 | 尚未形成正式 sandbox | 中低 | 第一阶段只能“可信插件” |
+| 独立部署 | 部分包已可安装 | 中高 | 先做到独立包，再做到进程级隔离 |
+| Agent Runtime | 目前只是受限 tracer / exploration | 高但不应进核心 | 应作为外部适配能力 |
+
+**综合判断：架构可行性约 8.5/10；现在开始做比几年后再拆更合适。**
+
+原因不是“插件架构很时髦”，而是你的蓝图从 H0 一直延伸到 H10。如果未来 PDF、DOCX、网页、OCR、ASR、Zotero、Anki、学习算法、LLM、图数据库、LER、3D、VR、Agent 都继续进入同一个 Python 应用的 import graph，**主项目一定会再次膨胀。** 而系统蓝图明确要求未来表现引擎可替代，并且互操作 Adapter 可升级、回滚、kill switch；这与插件模型天然匹配。 fileciteturn7file0L2-L2
+
+### 但绝对不要照搬 DeepSeek Harness 的“一切皆插件”
+
+DeepSeek Harness 官方当前明确采用 Cordis 驱动的 “Everything is a Plugin” 架构，并把自身定义为 agent harness；官方也明确说明目前仍属于 developer preview，并存在破坏兼容性的变更。 citeturn13view0
+
+这套思想值得吸收，但**不能照搬产品边界**。
+
+DSH 的中心对象是 Agent Runtime。
+
+ArcheAxis 的中心对象是：
+
+```text
+原件
+  ↓
+来源
+  ↓
+Evidence
+  ↓
+Knowledge
+  ↓
+Human Learning / AI Asset
+  ↓
+Review / Correction / Version
+  ↓
+重新进入可信知识循环
+```
+
+你的系统总蓝图甚至明确规定，人类学习结果和 AI 学习结果不能自动修改正式知识，两者都必须重新经过 Candidate Review。 fileciteturn7file0L2-L2
+
+因此，对于你：
+
+> **插件自由度永远必须低于知识可信度。**
+
+这是整个改造的最高原则。
+
+## 目标架构：不是“一切皆插件”，而是“Kernel 之外皆插件”
+
+### 应该冻结的最小可信内核
+
+我建议把未来 ArcheAxis Kernel 控制在六类能力之内：
+
+```text
+ArcheAxis Trusted Kernel
+
+Identity
+资产、Workspace、Evidence、Knowledge 的稳定身份
+
+Contracts
+版本化 Schema 与兼容规则
+
+Plugin Host
+插件发现、依赖解析、激活、停用、升级
+
+Capability Security
+权限、Secrets、网络、文件、模型与进程访问
+
+Transaction / Event Backbone
+事务、Event Bus、Outbox、Receipt
+
+Audit / Provenance
+审计、Evidence provenance、版本、恢复与 migration
+```
+
+这里有一个非常重要的设计决定：
+
+**Evidence 不能整体变成普通插件。**
+
+因为“证据可信”就是产品定位。允许普通插件重新定义什么叫 verified truth，等于允许主题插件重新定义银行账本。
+
+正确做法是：
+
+```text
+Evidence Kernel
+├── EvidenceIdentity
+├── Provenance Contract
+├── Review State Machine
+├── Audit Ledger
+└── Integrity Rules
+        ↑
+        │
+Evidence Plugins
+├── PDF Anchor Provider
+├── Web Citation Provider
+├── Crossref Connector
+├── DataCite Connector
+├── OpenAlex Connector
+├── Wikidata Connector
+└── Future Evidence Verifier
+```
+
+也就是说：
+
+> **“证据制度”属于 Kernel；“产生/展示/验证某一种证据的方法”属于插件。**
+
+同理：
+
+> **Knowledge identity 属于 Kernel；知识视图、图谱、搜索、AI 使用方法属于插件。**
+
+> **版本/事务规则属于 Kernel；Git 作为一种版本实现可以是插件。**
+
+> **权限制度属于 Kernel；具体 Agent/模型能申请什么权限属于插件 Manifest。**
+
+### 模块化候选清单
+
+下表中的工作量是**相对工程量**，以现有测试与兼容合同必须保留为前提，而不是重新实现功能。
+
+| 候选模块 | 主要职责 | 对核心依赖 | 当前耦合判断 | 拆分级别 | 2–4人工作量 |
+|---|---|---|---|---|---:|
+| 外部 Evidence Connectors | Crossref/DataCite/OpenAlex/Wikidata | HTTP、Evidence contract | 低 | **P0** | 1–2周 |
+| OCR Engine | Tesseract/RapidOCR/未来 PaddleOCR | RawAsset、ConversionResult | 低 | **P0** | 1–2周 |
+| ASR Engine | faster-whisper/whisper.cpp 等 | Media Asset | 低 | **P0** | 1–2周 |
+| 文档格式 Adapter | PDF/DOCX/Office/Canvas | RawAsset、EvidenceAnchor | 中 | **P0** | 2–4周 |
+| Import/Export Adapter | Vault、Markdown、Canvas | Workspace、File capability | 中 | **P0** | 2–3周 |
+| AI Model Provider | LiteLLM、本地模型、云模型 | Secrets、Model API | 低 | **P0** | 1–2周 |
+| Search Provider | FTS、Vector、Hybrid | Knowledge read API | 中 | **P1** | 2–3周 |
+| Embedding Provider | 模型→向量 | Model、Vector Store | 低 | **P1** | 1–2周 |
+| RAG / Answer | 检索、引用问答 | Search + Evidence | 中高 | **P1** | 3–4周 |
+| Learning Scheduler | FSRS/SM-2 等 | Learning Contract | 中 | **P1** | 2–3周 |
+| Research Provider | GitHub/Web/未来其他源 | Research Contract | 中 | **P1** | 2–4周 |
+| Git Version Provider | diff/commit/revert/history | Workspace + FS | 中 | **P1** | 2–3周 |
+| Graph Provider | entity/relation/network | Knowledge Contract | 中 | **P1** | 2–4周 |
+| Editor | Markdown/editor extension | Document Contract | 高 | **P2** | 4–6周 |
+| Canvas | JSON Canvas/未来绘图 | Asset/Link Contract | 中 | **P2** | 2–4周 |
+| UI Views | Reader、Search、Learning、Evidence panes | UI SDK | 高 | **P2** | 4–8周 |
+| Knowledge Governance | Candidate→review→approve | Evidence/Knowledge Kernel | **极高** | **Kernel/P3** | 不宜整体拆 |
+| Provenance/Audit | 来源、Receipt、审计账本 | 全系统 | **极高** | **Kernel** | 不插件化 |
+| Workspace Identity | workspace/root/path boundary | 全系统 | **极高** | **Kernel** | 不插件化 |
+| Migration Operator | schema、rollback | 所有持久化插件 | **极高** | **Kernel** | 不插件化 |
+| Agent Runtime Adapter | Hermes/DSH/MCP/未来 Runtime | Capability Gateway | 低至中 | **P1** | 2–4周/adapter |
+| LER | Visual/Teaching/Route | Learning/Evidence | 未来模块 | **P2** | 后续 |
+| Spatial Memory | 2D/3D/WebXR | Spatial contract | 未来模块 | **P2** | 后续 |
+| Collaboration | 多设备/协作 | Identity/Event | 尚未实现 | **P3** | 长期 |
+
+这也与当前 Release Spine 相符：现阶段首先必须保证“真实材料 → 原件 → 转换 → 阅读编辑 → Evidence → Vault 往返 → 双向学习 → 稳定桌面版”，所以插件改造不能打断这个主线。 fileciteturn8file0L2-L2
+
+### 最终目录应该从“模块目录”升级到“平台 + 插件”
+
+建议长期演进到类似：
+
+```text
+archeaxis/
+│
+├─ kernel/
+│  ├─ identity/
+│  ├─ contracts/
+│  ├─ capabilities/
+│  ├─ plugins/
+│  ├─ events/
+│  ├─ transactions/
+│  ├─ provenance/
+│  └─ migrations/
+│
+├─ sdk/
+│  ├─ python/
+│  ├─ typescript/
+│  ├─ schemas/
+│  └─ testkit/
+│
+├─ plugins/
+│  ├─ builtin/
+│  │  ├─ pdf/
+│  │  ├─ docx/
+│  │  ├─ markdown/
+│  │  ├─ canvas/
+│  │  ├─ search-fts/
+│  │  ├─ search-vector/
+│  │  ├─ learning-fsrs/
+│  │  ├─ evidence-crossref/
+│  │  ├─ research-github/
+│  │  └─ version-git/
+│  │
+│  └─ optional/
+│
+├─ hosts/
+│  ├─ server/
+│  ├─ desktop/
+│  ├─ worker/
+│  └─ cli/
+│
+└─ apps/
+   └─ workspace/
+```
+
+注意 `builtin`。
+
+插件化**不等于马上第三方化**。
+
+第一阶段全部插件仍然可以跟主仓库一起发布：
+
+> **Built-in Plugin = 架构插件，不等于第三方插件。**
+
+这是安全迁移的关键。
+
+### 插件接口规范草案
+
+VS Code 是非常值得参考的成熟范式：扩展通过 Manifest 声明 ID、引擎版本、Activation Events 和 Contribution Points，真正需要时才激活；扩展 Host 又把插件执行与核心 UI 隔开，以降低插件对启动性能和稳定性的影响。 citeturn12search0turn12search1turn12search2
+
+ArcheAxis 可以吸收这个思想，但加入你自己最重要的 Evidence/Permission/Data Governance。
+
+| 接口层 | 建议规范 | 示例 |
+|---|---|---|
+| Identity | `id` 全球唯一、publisher、version | `archeaxis.pdf` |
+| Engine | 声明 Kernel API 兼容范围 | `>=1.0 <2.0` |
+| Kind | 插件类别 | importer/search/model/ui/runtime |
+| Contributions | 静态声明能力 | commands/views/readers/connectors |
+| Activation | 按事件懒加载 | `onFormat:pdf` |
+| Dependencies | 显式依赖插件/服务 | `archeaxis.evidence >=1` |
+| Lifecycle | install→activate→suspend→deactivate→uninstall | 标准化 |
+| API | 只能通过 `PluginContext` 访问 Kernel | 禁止任意 import 内核内部 |
+| Events | versioned namespace | `knowledge.approved.v1` |
+| Command | versioned command | `document.convert.v1` |
+| Storage | plugin-owned namespace | `plugin://search-vector/*` |
+| Migration | 插件持有自己的 migration owner | install/update 时执行 |
+| Permissions | Capability Manifest | `fs.read`, `network.fetch` |
+| Secrets | 只申请 named secret | 不暴露全局环境变量 |
+| Audit | 所有高权限调用生成 Receipt | plugin/action/result/hash |
+| Data | Schema version + validator | JSON Schema/Pydantic |
+| UI | View/Panel/Command Contribution | Reader、Inspector、Tool Pane |
+| Health | `health()` / diagnostics | degraded/healthy/disabled |
+| Kill Switch | Kernel 强制停用 | 安全/兼容失败 |
+| Upgrade | migration + compatibility gate | upgrade transaction |
+| Isolation | trusted/in-process；restricted/process | 分级执行 |
+
+一个 Python 插件可以长成：
+
+```python
+class ArcheAxisPlugin:
+    manifest = PluginManifest(
+        id="archeaxis.search.fts",
+        version="1.0.0",
+        engine=">=1.0,<2.0",
+        capabilities=["knowledge.read", "storage.plugin.write"],
+        activates_on=["onSearch"],
+    )
+
+    async def activate(self, ctx: PluginContext):
+        self.registration = ctx.search.register_provider(
+            provider_id="fts",
+            search=self.search,
+        )
+
+    async def deactivate(self):
+        await self.registration.dispose()
+```
+
+**关键不是这段代码，而是插件绝不能直接这样做：**
+
+```python
+from shared.storage import connection
+from app.knowledge.internal import ...
+```
+
+一旦允许直接碰内部 DB/私有模块，你得到的只是“很多 package”，而不是真插件架构。
+
+Architecture Guard 应升级成硬规则：
+
+```text
+plugin
+  ↓ 允许
+SDK / Contract / Capability API
+
+plugin
+  ✕ 禁止
+kernel internal
+other plugin internal
+shared raw database
+unapproved filesystem
+process environment
+```
+
+这会比“目录分好了”重要得多。
+
+## 数据、权限与 Agent Runtime 如何打通
+
+### 数据不要跟着插件无限碎裂
+
+你现在已经有 SQLite、本地优先、migration owner、Outbox/Receipt 等基础设施，并且项目状态明确说明 Workspace、Research、Knowledge 等存储边界已开始实施迁移 owner 和严格 readback。 fileciteturn9file0L2-L2
+
+因此不应该因为插件化立刻把每个插件变成一个微服务数据库。
+
+#### 数据策略对比
+
+| 模式 | 一致性 | 插件隔离 | 运维 | 本地桌面适配 | 独立部署 | 建议 |
+|---|---:|---:|---:|---:|---:|---|
+| 所有插件共用单体 DB/表 | ★★★★★ | ★ | ★★★★★ | ★★★★★ | ★ | 仅过渡 |
+| 单 SQLite + schema/owner 隔离 | ★★★★★ | ★★★ | ★★★★ | ★★★★★ | ★★ | **近期推荐** |
+| Core DB + plugin DB | ★★★★ | ★★★★ | ★★★ | ★★★★★ | ★★★★ | **中期推荐** |
+| 每插件独立服务存储 | ★★ | ★★★★★ | ★ | ★★ | ★★★★★ | 长期可选 |
+| 全面微服务 | ★★ | ★★★★★ | ★ | ★ | ★★★★★ | 当前不推荐 |
+
+### 推荐最终模型：Canonical Core + Plugin-Owned Projection
+
+```text
+                 Canonical Core DB
+              ┌─────────────────────┐
+              │ Asset Identity      │
+              │ Source              │
+              │ Evidence            │
+              │ Knowledge Identity  │
+              │ Learning Identity   │
+              │ Provenance          │
+              │ Review State        │
+              │ Audit / Receipt     │
+              └──────────┬──────────┘
+                         │ Events
+          ┌──────────────┼──────────────┐
+          ↓              ↓              ↓
+      Search DB       Graph DB       AI Cache
+      / Index         / Index        / Embedding
+          ↑              ↑              ↑
+        plugin         plugin         plugin
+```
+
+也就是说：
+
+**事实只有一个 authoritative owner，但 projection 可以有很多。**
+
+例如：
+
+```text
+KnowledgeUnit
+```
+
+是 Kernel/Cognitive Domain 的权威资产。
+
+而：
+
+```text
+FTS row
+vector embedding
+graph node
+AI context cache
+search ranking features
+```
+
+全部只是可重建 projection。
+
+于是你未来可以：
+
+```text
+卸载 sqlite-vec
+↓
+安装 Qdrant Plugin
+↓
+rebuild index
+```
+
+而不会动一条正式知识。
+
+这是“一切皆插件”真正对你的项目有价值的地方。
+
+### 权限系统应该升级成 Capability Security
+
+你已经具备 auth、角色授权、Safe HTTP、approved roots、Rate Limiter、外部 source candidate-only 等安全边界。 fileciteturn9file0L2-L2
+
+下一步不要给插件“用户权限”，而是给插件**能力权限**。
+
+例如：
+
+```yaml
+permissions:
+  filesystem:
+    read:
+      - workspace://assets/**
+    write:
+      - plugin-data://archeaxis.pdf/**
+  network:
+    origins:
+      - api.crossref.org
+  knowledge:
+    read: true
+    propose: true
+    approve: false
+  model:
+    invoke:
+      - local
+      - configured
+  process:
+    spawn: false
+  secrets:
+    - crossref_api_key
+```
+
+尤其关键的是：
+
+```text
+knowledge.propose ≠ knowledge.approve
+```
+
+一个 AI 插件可以：
+
+```text
+阅读资料
+→ 提取 Claim
+→ 建议 Evidence
+→ 提议 Knowledge
+```
+
+但是不能：
+
+```text
+自己生成
+→ 自己验证
+→ 自己批准
+→ 自己成为 trusted truth
+```
+
+这正好继承你目前 candidate-only Research 的治理逻辑，而不是插件化后把它毁掉。当前仓库已经明确要求外部 Research candidate 不能自动成为 verified truth。 fileciteturn6file0L2-L2
+
+### WORK-LAB 与各种 Agent 应该从这里接，而不是进入 OS 内核
+
+这一次根据你仓库本身的定位重新判断：
+
+**ArcheAxis 不应该拥有“通用 Agent Runtime”。**
+
+仓库已经明确说通用 Agent / 自治演化仍是 exploration，UI 也规定必须保持以阅读、编辑、Canvas、课程、证据与 AI 资产为中央主工作区，而不是以聊天/Agent 为中心。 fileciteturn8file0L2-L2
+
+所以正确结构应该是：
+
+```mermaid
+flowchart LR
+    USER["ArcheAxis Workspace"]
+
+    subgraph AX["ArcheAxis Knowledge"]
+        UI["Workspace UI"]
+        GW["Capability Gateway"]
+        CMD["Command Bus"]
+        EVT["Event / Outbox Bus"]
+
+        subgraph K["Trusted Kernel"]
+            ID["Asset / Knowledge Identity"]
+            CONTRACT["Versioned Contracts"]
+            AUTH["Capability Security"]
+            PM["Plugin Manager"]
+            AUDIT["Provenance / Audit / Receipt"]
+            MIG["Migration Operator"]
+        end
+
+        subgraph PLUG["Capability Plugins"]
+            DOC["Document / Import"]
+            SEARCH["Search / Vector / Graph"]
+            LEARN["Learning"]
+            AI["Model / RAG"]
+            INTEROP["Obsidian / Zotero / Anki"]
+            UIEXT["Views / Editors"]
+        end
+
+        UI --> GW
+        GW --> CMD
+        CMD --> K
+        K --> PLUG
+        PLUG --> EVT
+        EVT --> AUDIT
+    end
+
+    subgraph ADAPTER["Runtime Adapter Layer"]
+        RA["Agent Runtime Adapter API"]
+        MCP["MCP Adapter"]
+        DSH["DeepSeek Harness Adapter"]
+        HERMES["Hermes Adapter"]
+        OTHER["Other Runtime"]
+    end
+
+    WORK["WORK-LAB"] --> RA
+    RA --> GW
+    MCP --> RA
+    DSH --> RA
+    HERMES --> RA
+    OTHER --> RA
+
+    USER --> UI
+```
+
+关键关系不是：
+
+```text
+ArcheAxis
+└── DSH
+    └── everything
+```
+
+也不是：
+
+```text
+WORK-LAB
+└── ArcheAxis 内部数据库
+```
+
+而是：
+
+```text
+WORK-LAB / Agent Runtime
+        │
+        ▼
+Runtime Adapter
+        │
+        ▼
+ArcheAxis Capability Gateway
+        │
+        ▼
+Permission / Contract / Audit
+        │
+        ▼
+Plugins
+```
+
+这会产生一个非常漂亮的闭环：
+
+```text
+外部 Agent
+   ↓
+提出 Knowledge 操作请求
+   ↓
+ArcheAxis Capability Gateway
+   ↓
+权限检查
+   ↓
+读取 Evidence / Knowledge
+   ↓
+Agent 生成结果
+   ↓
+Candidate
+   ↓
+Evidence + Trace + Receipt
+   ↓
+Review
+   ↓
+正式 Knowledge / Learning / AI Asset
+```
+
+于是 **WORK-LAB 负责任务治理，Agent Runtime 负责执行，ArcheAxis 负责知识可信治理。**
+
+没有谁吞掉谁。
+
+### Agent Runtime Adapter 草案
+
+```typescript
+// TypeScript contract example
+
+export interface AgentRuntimeAdapter {
+  readonly id: string;
+  readonly version: string;
+
+  capabilities(): Promise<RuntimeCapabilities>;
+
+  createRun(input: AgentRunRequest): Promise<AgentRunHandle>;
+
+  cancel(runId: string): Promise<void>;
+
+  resume(runId: string): Promise<AgentRunHandle>;
+
+  dispose(): Promise<void>;
+}
+
+export interface AgentRunRequest {
+  taskId: string;
+  workspaceId: string;
+
+  requestedCapabilities: CapabilityRequest[];
+
+  context: {
+    knowledgeRefs?: string[];
+    evidenceRefs?: string[];
+    assetRefs?: string[];
+  };
+
+  policy: {
+    allowWrite: boolean;
+    allowNetwork: boolean;
+    requireHumanApproval: boolean;
+  };
+}
+```
+
+ArcheAxis 不应该要求：
+
+```text
+Hermes API
+DeepSeek Harness API
+未来某个 Codex API
+```
+
+出现在业务模块里。
+
+Kernel 只认识：
+
+```text
+AgentRuntimeAdapter
+```
+
+这样未来某个 Runtime 消失，删掉插件即可。
+
+DeepSeek Harness 官方已经证明“运行时内部一切皆插件”是可以成立的；但它自身还处于快速变化的 developer preview，所以尤其适合放在 Adapter 后，而不是变成 ArcheAxis 的结构性依赖。 citeturn13view0
+
+## 迁移路线、资源与风险控制
+
+### 最重要的原则：不重写
+
+你的系统现在已经有真实 PDF、Evidence Anchor、多格式 ingestion、Research candidate 治理、Workspace Job/Outbox/Receipt、发布资产和大量门禁。把它推倒重写成插件框架，风险远大于收益。 fileciteturn8file0L2-L2 fileciteturn9file0L2-L2
+
+正确方法是：
+
+> **Strangler Migration：先包住，再替换。**
+
+也就是：
+
+```text
+Current Implementation
+        │
+        ▼
+Legacy Adapter
+        │
+        ▼
+New Plugin Contract
+        │
+        ▼
+逐个替换为真正 Plugin
+```
+
+因此第一批迁移完成时，用户甚至不应该感觉产品发生了什么变化。
+
+### 迁移时间线
+
+以下是以 **2–4 人小团队**为基准的工程估算；这不是市场事实，而是基于你当前仓库已有模块化基础的规划区间。
+
+```mermaid
+timeline
+    title ArcheAxis Plugin Architecture 渐进迁移基线
+    2026-08 : Architecture ADR
+            : Dependency Graph
+            : Plugin Contract v0
+            : Baseline Benchmark
+    2026-09 : Kernel Plugin Host
+            : Manifest / Registry
+            : Lifecycle / Event Bus
+            : Capability API
+    2026-10 : Evidence Connectors 插件化
+            : OCR / ASR Provider
+            : Format / Import Adapter
+    2026-11 : Search / Vector Provider
+            : Model Provider
+            : Learning Scheduler
+            : Research Provider
+    2026-12 : UI Contribution API
+            : Editor / View 插件试点
+            : Plugin-owned Storage
+    2027-01 : Agent Runtime Adapter
+            : WORK-LAB Integration Contract
+            : MCP / Runtime Prototype
+    2027-02 : Failure Isolation
+            : Compatibility Matrix
+            : Migration / Rollback Hardening
+            : Plugin SDK v1 Candidate
+```
+
+### 实际阶段目标
+
+**架构基线期**不要拆任何业务。先自动生成 import/dependency graph，冻结当前 API/DB/性能基线，定义 ADR：
+
+```text
+ADR-Plugin-001 Kernel Boundary
+ADR-Plugin-002 Data Ownership
+ADR-Plugin-003 Capability Permission
+ADR-Plugin-004 Event Contract
+ADR-Plugin-005 Plugin Lifecycle
+ADR-Plugin-006 Isolation Level
+ADR-Plugin-007 UI Contributions
+ADR-Plugin-008 Runtime Adapter
+```
+
+**插件宿主期**只建立基础设施：
+
+```text
+PluginManifest
+PluginRegistry
+PluginContext
+CapabilityRegistry
+CommandRegistry
+EventBus
+ContributionRegistry
+PluginStorage
+PluginDiagnostics
+```
+
+这个阶段仍允许所有功能跑 Legacy Mode。
+
+**低耦合拆分期**优先拿最安全的东西验证架构：
+
+```text
+Crossref
+DataCite
+OpenAlex
+Wikidata
+
+Tesseract
+RapidOCR
+
+FSRS/SM-2
+Model Provider
+```
+
+为什么不是先拆 Knowledge？
+
+因为插件架构是否成功，应该先在**叶子节点**上验证，而不是先动你的心脏。
+
+**数据插件期**再迁移 Search、Vector、Graph、Research，并验证：
+
+```text
+disable plugin
+→ core still works
+
+reinstall plugin
+→ rebuild projection
+→ same canonical knowledge
+```
+
+**UI 插件期**建立类似 VS Code 的 `contributes`。VS Code 的成熟扩展模型正是把 command、view、custom editor 等作为 Manifest Contribution，并通过 Activation Events 做懒激活；这种机制非常适合你的 Reader、Evidence Inspector、Learning View、Canvas、Search View。 citeturn12search0turn12search2
+
+例如：
+
+```json
+{
+  "contributes": {
+    "views": [
+      {
+        "id": "archeaxis.learning.review",
+        "location": "right-panel"
+      }
+    ],
+    "commands": [
+      {
+        "id": "learning.create-card",
+        "title": "生成学习卡片"
+      }
+    ],
+    "readers": [
+      {
+        "mime": "application/pdf",
+        "component": "pdf-reader"
+      }
+    ]
+  }
+}
+```
+
+到了这里，你之前研究的 dock/tab/tile 工作台才真正有架构基础：
+
+```text
+Dock UI
+  ↓
+View Registry
+  ↓
+Contribution
+  ↓
+Plugin View
+
+而不是
+
+Dock UI
+  ↓
+import 所有业务 React component
+```
+
+这两种写法表面上都能拖拽 Tab，长期可维护性却完全不同。
+
+### 热插拔要分等级，而不是承诺“全部热插拔”
+
+这是我非常建议你在产品协议里提前定死的：
+
+| 等级 | 能力 | 示例 | 是否无重启 |
+|---|---|---|---:|
+| Hot-A | 纯 UI/View/Command | Evidence Panel、主题、Dashboard | ✅ |
+| Hot-B | 无状态 Provider | Search Ranking、Model Provider | ✅ |
+| Hot-C | Worker/外部进程 | OCR、ASR、Agent Runtime | ✅/受控重启 |
+| Warm | 持久化插件 | Vector、Graph、Learning Engine | 通常需 drain |
+| Cold | Schema/Native/Kernel 扩展 | Native library、核心 migration | ❌ |
+
+**“插件化”和“热插拔”是两个概念。**
+
+不要为了营销上的“热插拔”强行让数据库 migration、Rust native plugin、核心安全组件动态卸载。
+
+### 小团队与中团队资源估算
+
+| 工作流 | 2–4人团队 | 6–10人团队 |
+|---|---:|---:|
+| 架构审计 + ADR | 1–2周 | 1周 |
+| Kernel/Plugin Host | 3–5周 | 2–3周 |
+| 第一批 Provider | 3–5周 | 2–3周 |
+| Search/AI/Learning | 4–6周 | 2–4周 |
+| UI Contributions | 4–6周 | 2–4周 |
+| Agent Adapter | 2–4周 | 1–3周 |
+| Hardening/Compatibility | 3–4周 | 2–3周 |
+| **合理总周期（考虑并行）** | **约18–26周** | **约10–15周** |
+
+这里值得特别强调：
+
+中团队不会线性快两倍，因为最关键的：
+
+```text
+Contract
+Kernel boundary
+Data ownership
+Security semantics
+```
+
+这些是高度串行的架构工作。
+
+### 需要的技能组合
+
+2–4 人最合理的组合不是“四个全栈”，而是：
+
+| 角色 | 重点能力 |
+|---|---|
+| 架构/后端负责人 | Python/FastAPI、DDD、插件 API、事件模型 |
+| 数据/可信治理 | SQLite、migration、事务、Outbox、provenance |
+| Desktop/UI | TS/React/Tauri、动态模块、View/Command Registry |
+| 测试/安全可由前三者兼任 | contract testing、sandbox、capability permission |
+
+6–10 人时再独立增加：
+
+```text
+Plugin SDK / DevEx
+Agent/Runtime Integration
+QA / Performance
+Security
+UI Platform
+```
+
+而不是先增加更多功能开发人员。
+
+### 风险矩阵
+
+| 风险 | 概率 | 影响 | 风险级别 | 缓解 |
+|---|---:|---:|---:|---|
+| 为插件化而重写系统 | 中 | 极高 | 🔴 | 只做渐进 strangler migration |
+| Plugin API 冻结过早 | 高 | 高 | 🔴 | v0.x internal SDK，经过≥5种插件后再 v1 |
+| Evidence 治理被插件绕过 | 中 | 极高 | 🔴 | Evidence Kernel + mandatory capability gateway |
+| 插件直接访问共享 DB | 高 | 高 | 🔴 | DB owner + architecture guard |
+| 跨插件循环依赖 | 高 | 高 | 🔴 | DAG 验证，禁止 plugin→plugin internal import |
+| Migration 导致数据损坏 | 中 | 极高 | 🔴 | backup + dry-run + fixture + rollback gate |
+| 第三方插件读取隐私数据 | 中 | 极高 | 🔴 | Capability Manifest + deny by default |
+| 一个插件拖垮主进程 | 中 | 高 | 🟠 | 高风险插件 Worker/Process isolation |
+| 插件增加启动时间 | 高 | 中 | 🟠 | lazy activation；不要 `activate:*` |
+| UI 插件泄漏状态/资源 | 中 | 中 | 🟠 | dispose contract + lifecycle test |
+| 版本组合爆炸 | 高 | 高 | 🔴 | engine compatibility + lockfile + compatibility matrix |
+| 所有插件都有自己的 DB | 中 | 高 | 🟠 | canonical/projection 数据所有权制度 |
+| Runtime Adapter 侵入产品 | 中 | 高 | 🟠 | Agent 能力只能从 Gateway 进入 |
+| DSH/Hermes 等 API 变化 | 高 | 中 | 🟠 | Adapter anti-corruption layer |
+| 插件数量很多但没人维护 | 高 | 中 | 🟠 | 内置插件 ownership + maturity level |
+| 架构工程拖慢当前 Release Spine | 中 | 极高 | 🔴 | 每阶段都要求产品功能保持 green |
+
+VS Code 把扩展放在 Extension Host，并通过延迟激活减少坏扩展对启动和 UI 的影响，这个原则尤其值得你的桌面端借鉴。 citeturn12search1turn12search2
+
+## 验收基准与最终路线选择
+
+### 不要以“我们有 PluginManager 了”作为成功标准
+
+真正的 Benchmark 应该验证：
+
+> **是否能换掉一个能力，而不会破坏 ArcheAxis 的可信知识闭环。**
+
+### 功能 Benchmark
+
+| Benchmark | 验收条件 |
+|---|---|
+| Plugin Install | 安装插件不修改 Kernel 源码 |
+| Activation | 能按事件懒激活，而不是全部随启动加载 |
+| Disable | 禁用插件后核心仍可启动 |
+| Uninstall | 删除插件后 canonical data 不损坏 |
+| Upgrade | 旧版→新版有 migration + compatibility check |
+| Rollback | 升级失败可恢复到升级前状态 |
+| Provider Swap | FTS/Vector/Model 可替换 |
+| Import Roundtrip | 插件化前后同一 fixture 输出语义一致 |
+| Evidence Integrity | 插件不能自行把 candidate 升级为 verified |
+| Workspace Restart | 插件任务状态可在重启后正确 readback |
+| Kill Switch | Kernel 可强制禁用异常插件 |
+| Offline | 本地核心功能在无网络时仍成立 |
+| Runtime Swap | 替换 Agent Runtime 不改变 Knowledge Contract |
+
+### 性能 Benchmark
+
+由于仓库目前没有在本次审计数据中提供统一的插件化前性能基线，我不建议现在虚构绝对毫秒数。正确门禁是**先测 baseline，再要求插件框架不得显著退化**。
+
+建议设：
+
+| 指标 | 初始验收目标 |
+|---|---:|
+| 无插件额外启动开销 | p95 相比 baseline ≤ +10% |
+| 未激活插件内存 | 接近 manifest/metadata 成本 |
+| In-process command dispatch | p95 < 5 ms 的框架开销目标 |
+| 本地 IPC dispatch | p95 < 20 ms 的框架开销目标 |
+| Plugin disable | 不丢 canonical transaction |
+| Search Provider swap | 业务正确性保持，性能单独 benchmark |
+| Crash recovery | 插件失败后 Kernel 可继续读核心资产 |
+
+这些是**项目验收阈值建议，不是当前实测结果**。
+
+### 安全 Benchmark
+
+```text
+Unauthorized Capability Test
+100% deny
+
+Direct DB Access Guard
+100% CI blocked
+
+Unapproved FS Path
+100% deny
+
+Unapproved Network Origin
+100% deny
+
+Secret Access
+only named capability
+
+Plugin Crash
+cannot mutate trusted state after failed transaction
+
+Candidate Promotion
+plugin cannot bypass review
+
+Audit
+every privileged mutation has actor/plugin/version/action/receipt
+```
+
+这里的 Candidate Promotion 特别重要，因为你当前项目已经把“外部来源不能自动提升为 verified truth”作为正式安全边界；插件架构不能让它倒退。 fileciteturn6file0L2-L2
+
+### 可维护性 Benchmark
+
+建议 Architecture Guard 最终做到以下全部自动化：
+
+```text
+0 direct cross-plugin internal imports
+
+0 plugin → kernel/internal imports
+
+0 plugin → foreign database table writes
+
+0 circular plugin dependencies
+
+100% plugin manifest schema validation
+
+100% plugin migration ownership
+
+100% public command/event versioning
+
+100% capability declarations for privileged IO
+```
+
+此外要求：
+
+```text
+至少一套 Plugin Test Kit
+至少一套 Compatibility Test
+至少一套 Failure Injection Test
+至少一套 Reference Plugin
+```
+
+在 SDK v1 之前，至少用以下不同性质插件把接口“打磨过”：
+
+```text
+PDF Adapter
+Crossref Connector
+FTS Provider
+Learning Scheduler
+UI View
+Agent Runtime Adapter
+```
+
+六类全部舒服了，再宣布 `Plugin SDK v1`。
+
+这比先设计一个巨大完美 Manifest 再逼业务适应可靠得多。
+
+### 最重要的闭环验收
+
+你的产品最核心 Benchmark 不应该变。
+
+当前仓库明确把成功定义为“真实闭环 + 回滚证据”，而不是文件数量、接口数量或测试数量。 fileciteturn6file0L2-L2
+
+所以插件化后的最终验收应该是：
+
+```mermaid
+flowchart LR
+    A["真实 PDF / Web / File"] --> B["Importer Plugin"]
+    B --> C["RawAsset 保全"]
+    C --> D["Conversion Plugin"]
+    D --> E["Reader / Editor Plugin"]
+    E --> F["Evidence Kernel"]
+    F --> G["Knowledge Governance"]
+    G --> H["Learning Plugin"]
+    G --> I["AI Asset Plugin"]
+
+    H --> J["Human Output / Correction"]
+    I --> K["AI Observation / Result"]
+
+    J --> L["Candidate Review"]
+    K --> L
+
+    L --> F
+
+    M["Agent Runtime Plugin"] --> N["Capability Gateway"]
+    N --> G
+
+    O["WORK-LAB"] --> M
+
+    P["Audit / Receipt"] -.记录.-> B
+    P -.记录.-> D
+    P -.记录.-> G
+    P -.记录.-> N
+```
+
+只要这个环里：
+
+```text
+换 PDF Provider
+换 OCR
+换 Search
+换 Learning Engine
+换 LLM
+换 Agent Runtime
+换 UI View
+```
+
+都不会改变：
+
+```text
+Evidence identity
+Knowledge identity
+Review semantics
+Provenance
+Audit
+Rollback
+```
+
+那么你的“一切皆插件”才算真正成功。
+
+### 三条可选路线
+
+| 路线 | 做法 | 优点 | 缺点 | 判断 |
+|---|---|---|---|---|
+| **保守** | 保持模块化单体，只继续 Facade/Adapter | 风险最低、开发最快 | H6-H10 后再次膨胀概率高；难形成插件生态 | ⭐⭐⭐ |
+| **渐进** | 微内核 + Built-in Plugin；逐步抽离能力 | 保留现有成果；风险可控；支持未来生态 | 要持续做架构纪律；前几个月“用户看不到新功能” | **⭐⭐⭐⭐⭐** |
+| **激进** | 直接重构为插件 OS，多进程、独立 DB、第三方 Marketplace | 架构纯粹、理论扩展性最高 | 极高迁移风险；会严重干扰当前 Release Spine | ⭐⭐ |
+
+## 最终结论
+
+**我明确推荐第二条：渐进式“可信微内核 + Built-in Plugins + 外部 Adapter”路线。**
+
+而且经过这次实际仓库审计后，我的判断比单纯看项目描述更坚定：
+
+> **ArcheAxis 不是“需要插件化才能救活的臃肿单体”；它实际上已经完成了插件化之前最难的一半——领域边界、Facade、Adapter、Migration Owner、Architecture Guard、可信数据治理、Receipt/Outbox 和长期 Capability Atlas 都已经存在。现在缺的是把这些分散的边界统一提升为正式的 Plugin Contract 与 Plugin Host。** fileciteturn9file0L2-L2
+
+因此，不应该做：
+
+```text
+现在的 ArcheAxis
+        ↓
+推倒
+        ↓
+重新写一个 Everything-is-a-Plugin OS
+```
+
+应该做：
+
+```text
+              ArcheAxis Knowledge
+
+        ┌─────────────────────┐
+        │    Trusted Kernel   │
+        │                     │
+        │ Identity            │
+        │ Contracts           │
+        │ Permission          │
+        │ Evidence Governance │
+        │ Provenance          │
+        │ Transaction/Audit   │
+        │ Plugin Host         │
+        └──────────┬──────────┘
+                   │
+     ┌─────────────┼─────────────────┐
+     │             │                 │
+ Documents      Learning           Search
+ Plugins        Plugins            Plugins
+     │             │                 │
+ Research       AI Assets          Graph
+ Plugins        Plugins            Plugins
+     │             │                 │
+ Interop         LER             Spatial
+ Plugins        Plugins            Plugins
+                   │
+            Runtime Adapters
+          ┌────────┼─────────┐
+          │        │         │
+        DSH     Hermes      MCP ...
+          └────────┬─────────┘
+                   │
+               WORK-LAB
+```
+
+这里最关键的边界是：
+
+**ArcheAxis 的 Kernel 不是传统技术意义上“功能最多的核心”，而应该是“可信制度最集中的核心”。**
+
+功能越多，越应该往插件移动。
+
+但以下六样东西越重要，越不能插件化出去：
+
+**身份、合同、权限、证据治理、事务、审计。**
+
+这会让你的长期 P0–P10 蓝图第一次拥有一个能够承载十年扩张、又不会把主项目重新变成巨型单体的结构。你的总蓝图已经要求未来开放格式 Adapter、可替换表现引擎、多种学习与 AI 资产、LER、空间记忆和生态扩展长期共存；插件架构正好提供这个物理载体。 fileciteturn7file0L2-L2
+
+而对于 WORK-LAB/Agent 生态，最优解也随之清晰：
+
+> **Agent 不是 ArcheAxis 的中心；Agent 是 ArcheAxis 的一种受权限控制的消费者与生产者。WORK-LAB 也不应该操作 ArcheAxis 内部实现，而应该通过 Runtime Adapter → Capability Gateway → Evidence/Knowledge Contract 进入。**
+
+这样最终形成的不是三个互相重叠的大系统，而是三个职责清楚的层：
+
+```text
+WORK-LAB
+任务、规则、工程工作流与外部编排
+        │
+        ▼
+Agent Runtime Ecosystem
+DSH / Hermes / MCP / Future Runtime
+        │
+        ▼
+ArcheAxis Capability Gateway
+        │
+        ▼
+ArcheAxis Knowledge
+可信资料、Evidence、Knowledge、
+Human Learning、AI Assets
+```
+
+而 ArcheAxis 内部则变成：
+
+> **“可信 Kernel 很小，能力世界很大。”**
+
+这比字面意义上的 **Everything is a Plugin** 更适合你的项目。
+
+我会把这个目标正式命名为：
+
+> **ArcheAxis Trusted Microkernel Architecture — Trusted Core, Everything Else Pluggable**
+
+而不是照搬 DSH 的：
+
+> Everything is a Plugin.
+
+因为 DeepSeek Harness 可以让 Agent Runtime 自身成为插件组合；官方当前正是以 Cordis 驱动的一切皆插件 Harness 架构实现这一点。 citeturn13view0
+
+但 ArcheAxis 最终需要解决的是更难的一件事：
+
+> **让功能可以自由替换，而“什么是真实、什么是证据、什么能被 AI 使用、谁修改过什么、能不能撤销”永远不能随插件一起漂移。**
+
+这才是与你当前产品定位、Release Spine 和 P0–P10 长期蓝图真正一致的插件化方向。 fileciteturn6file0L2-L2 fileciteturn7file0L2-L2
+
+**研究边界说明：**本次已经直接审计当前 GitHub `main` 的核心入口及权威蓝图/状态文档，因此对现状、边界和迁移方向的判断有仓库依据；但没有逐文件生成完整静态依赖图、数据库表级写入图和前端组件 import graph，所以表中的模块“耦合度/工作量”属于架构级工程估算，下一步真正开工时应以自动依赖扫描得到的 baseline 替代估值。当前 DSH 官方资料和 VS Code 官方 Extension API 用于验证插件生命周期、Contribution、懒激活与隔离设计；DSH 自身仍明确处于 developer preview，不应成为 ArcheAxis Kernel 的结构性依赖。 citeturn13view0turn12search0turn12search1turn12search2

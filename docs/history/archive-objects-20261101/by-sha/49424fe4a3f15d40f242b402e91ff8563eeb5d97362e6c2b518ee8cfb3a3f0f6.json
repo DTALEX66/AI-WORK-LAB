@@ -1,0 +1,1497 @@
+{
+  "conversation_id": "6ab249b5-d568-83e8-a6ce-56d6b2d44cde",
+  "conversation_template_id": "g-p-6aa0fe8ecef88191bbfb41e9b2f71b7c",
+  "create_time": 1790069174.772929,
+  "current_node": "af73a372-5527-4107-82a5-2fefb6075068",
+  "default_model_slug": "gpt-5-6-thinking",
+  "id": "6ab249b5-d568-83e8-a6ce-56d6b2d44cde",
+  "is_archived": true,
+  "is_do_not_remember": false,
+  "is_read_only": null,
+  "is_starred": true,
+  "is_study_mode": false,
+  "mapping": {
+    "14a84cbd-aee6-405b-81e9-1c1f20f5e316": {
+      "id": "14a84cbd-aee6-405b-81e9-1c1f20f5e316",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "梳理下本项目历史和对话，按照新规划，审计WORK-LAB云端仓库"
+          ]
+        },
+        "create_time": 1790069198.637,
+        "id": "14a84cbd-aee6-405b-81e9-1c1f20f5e316",
+        "metadata": {
+          "serialization_metadata": {
+            "custom_symbol_offsets": []
+          }
+        }
+      },
+      "parent": "client-created-root"
+    },
+    "2c74b05f-a6c3-4377-8559-19970c2bbd71": {
+      "id": "2c74b05f-a6c3-4377-8559-19970c2bbd71",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "我会把这次审计分成两层：先把 **WORK-LAB 的历史定位、最近几轮规划变化和与 DESIGN-LAB / ArcheAxis 的边界**梳理成“新基线”，再按这套基线直接审计 GitHub 云端仓库，重点看目录、治理层、编排、记忆/知识、插件适配、Agent/工具接入、重复建设和当前可落地缺口。最后我会给你一份**现状判断 + 新规划差距 + 应删/应合并/应新增 + 下一轮 CODEX 执行任务**。"
+          ]
+        },
+        "create_time": 1790069200.428031,
+        "id": "2c74b05f-a6c3-4377-8559-19970c2bbd71",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "ad4489d4-a737-4888-8371-1563af834547"
+        }
+      },
+      "parent": "14a84cbd-aee6-405b-81e9-1c1f20f5e316"
+    },
+    "79ad4ea9-3f5c-4433-ac1c-bbe39d665aa7": {
+      "id": "79ad4ea9-3f5c-4433-ac1c-bbe39d665aa7",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "审计完成。这一轮我不是按旧 README 或旧 TaskPack 做判断，而是把**项目历史、最近几轮规划变化、当前 `main`、未合并分支、PR、CI、Authority、Knowledge/Memory/Evolution 实现**重新对了一遍。\n\n## 一、先给结论\n\n按照你现在的新规划，**WORK-LAB 应正式从早期“能力越做越多”的形态，收缩为整个体系的「跨软件 / 跨项目执行与治理控制面」**：\n\n> **WORK-LAB = Policy + Config + Adapter + Orchestration + Execution Federation + Task/Receipt + Session Federation + Observer + Security/CI/Release Governance**\n\n而不是知识库，不是长期 Memory 系统，不是第二套 Agent Runtime，也不是 DESIGN-LAB 或 ArcheAxis 的上位“大一统平台”。\n\n云端仓库已经朝这个方向走了很大一步，但现在还不能说“新规划已经落地”。\n\n**当前真实状态是：**\n\n| 项目 | 云端事实 | 审计判断 |\n|---|---|---|\n| `main` | `803268d`，2026-09-18 后基本停住 | 仍是当前正式主线，但不是最新产品形态 |\n| 新规划实现 | `u17/global-agent-policy-20260918` | 大量新架构都堆在这里 |\n| PR | #127，HEAD `09a2d64` | **52 commits / 210 files / +18,739 / -3,467** |\n| PR Review | 无 requested reviewer、无 review | 大改造但尚无独立审查 |\n| `wlr-060-production-gates` | PASS | 基础生产门禁正常 |\n| `work-lab-gate` | **FAIL** | 不能按当前证据合并 |\n| 失败点 | Observer `U19 real-WebView E2E` | Windows/Tauri/WebView2 真实闭环未完成 |\n| aggregate | FAIL | 正确地被 U19 拉红 |\n| main Rulesets | `[]` | 没有 Repository Ruleset |\n| main required status summary | enforcement=`off`，checks=`[]` | **A01 仍未真正闭环** |\n| 完整 Branch Protection API | 当前 GitHub App 返回 403 | review/force-push 等完整配置无法从本连接复核 |\n\n所以我对现在 WORK-LAB 的定义是：\n\n**“架构方向已经基本收敛，但 canonical main、三项目职责边界、真实 Windows 产品闭环、GitHub 主分支强制门禁仍未收官。”**\n\n---\n\n# 二、WORK-LAB 历史重新梳理\n\nWORK-LAB 其实经历了四次明显的形态变化。\n\n| 阶段 | 发生了什么 | 问题/价值 |\n|---|---|---|\n| 2026-08 上旬 | Workflow Assistance、Rules、Skills、Task Ledger、恢复、CI、配置治理逐步进入 WORK-LAB | 正确建立了“全局工作流治理基座” |\n| 2026-08 中下旬 | DSH、模型控制、Observer、Session、Memory、Knowledge、Evolution、Radar 等不断加入 | 能力增长很快，但职责开始膨胀 |\n| 2026-09 上中旬 | 目录大迁移、`.project-local`、Runtime Boundary、Observer 重构、分支治理、R4 recovery | 开始偿还早期架构债 |\n| 2026-09-17～22 | PR #124 完成旧分支收敛；UPC-20260918；PR #127 建立 V2 Authority、Global Agent Policy、React/Tauri、并行执行、软件身份等 | 已经开始真正向“控制面产品”收敛 |\n\n其中 **9 月 17 日是一个很重要的分水岭**。\n\nPR #124 把原来的：\n\n`10-workflow / 30-observer / 40-knowledge / 50-taskpacks / 90-archive ...`\n\n大规模迁到了：\n\n`packages / services / integrations / apps / config / .project / taskpacks / docs`\n\n并且把运行时逐步统一到了：\n\n`.project-local/`\n\n这一步是正确的。\n\n然后 9 月 18 日开始的 V2 又进一步明确：\n\n> WORK-LAB 不拥有 ArcheAxis knowledge truth  \n> WORK-LAB 不拥有 DESIGN-LAB design-domain truth  \n> WORK-LAB 不建立第二套 Agent Runtime  \n> WORK-LAB 负责 Agent Operations / Governance / Federation / Control Plane\n\n这已经和我们最近确定的三项目新关系基本一致。memcite\n\n---\n\n# 三、三项目新规划应该正式定型成这样\n\n现在应该把三者从“互相重叠”彻底改成**三个平级产品 + 明确协议协作**。\n\n| 项目 | 唯一核心职责 | 不应该再拥有 |\n|---|---|---|\n| **WORK-LAB** | 执行、编排、配置、权限、调度、恢复、审计、软件适配、任务生命周期、Observer | 长期知识库、长期 Memory、设计领域真相 |\n| **ArcheAxis** | Knowledge OS、长期 Memory、知识摄取、蒸馏、验证、索引、检索、学习反馈、知识演化 | 软件调度、客户端配置、跨软件执行控制 |\n| **DESIGN-LAB** | 设计领域知识、设计 Agent、Adobe/设计软件执行、资产、视觉规范、生成质量 | 全局 Agent 治理、通用知识系统 |\n\n三者以后不要共享“数据库所有权”。\n\n应该共享的是：\n\n**Contract / ID / Capsule / Event / Receipt / Knowledge Pointer**\n\n而不是互相复制内部状态。\n\n这也是现在 WORK-LAB 云端最需要继续做减法的地方。\n\n---\n\n# 四、V2 Authority：方向已经基本正确\n\nPR #127 中新增的：\n\n`WORK-LAB-AUTHORITY.md`\n\n是这轮我认为最重要的一项改造。\n\n它已经把 WORK-LAB 定义成：\n\n> client-neutral AI workflow / Agent Operations / governance / federation control plane\n\n并明确 WORK-LAB 拥有：\n\n跨软件编排、Rules、Skills、MCP/plugin capability policy、Task protocol、Task Ledger、receipt、checkpoint、lease、configuration transaction、权限、风险、预算、Telemetry、Adapter、Universal Workflow、Radar、Security、Cleanup 等。\n\n同时明确**不拥有**：\n\nArcheAxis knowledge truth、DESIGN-LAB design truth、另一个 Agent runtime、credential store、一般聊天产品。\n\n### 这个定位我认为应作为后续唯一方向\n\n不应该再推翻。\n\n后续应做的是：\n\n**让代码服从这个定位。**\n\n而不是再讨论 WORK-LAB 到底是什么。\n\n---\n\n# 五、真正的大问题：代码还没有完全服从新定位\n\n这是本轮最值得处理的部分。\n\n## 1. `services/memory` 已经明显越界\n\n目前里面有：\n\n`provider.py`  \n`hermes_builtin.py`  \n`hindsight_poc.py`  \n`tencent_poc.py`  \n`bakeoff.py`  \n`session_memory_boundary.py`\n\n其中 `provider.py` 定义的是完整 Memory Provider：\n\n> retain / recall / reflect / import_session / import_repo / import_docs / export / revoke / health\n\n这已经不是 WORK-LAB 所需要的“上下文转交”。\n\n这是一个真正的**记忆后端抽象层**。\n\n甚至还有：\n\n- Hermes Memory\n- Hindsight\n- Tencent Memory\n- Memory bakeoff\n- Memory / Knowledge record\n- recall\n- reflect\n- docs/repo 导入\n\n### 新规划下应迁移\n\n这些能力应该进入：\n\n**ArcheAxis → memory/providers/**\n\nWORK-LAB 只留下：\n\n> Session Context Boundary  \n> Context Capsule  \n> Handoff Contract  \n> Provenance  \n> Privacy / Permission Gate  \n> Memory Query Adapter\n\n即：\n\n**WORK-LAB 可以“调用 Memory”，不能“成为 Memory”。**\n\n---\n\n# 六、`services/knowledge/promotion_gate.py` 边界也有问题\n\n这个文件写得非常直白：\n\n> final content gate before anything crosses into the ArcheAxis knowledge store\n\n它甚至定义了：\n\n- verified lesson\n- accepted decision\n- stable workflow\n- benchmark result\n- failure taxonomy\n- provider reliability\n- approved skill\n- architecture knowledge\n\n哪些可以成为 Knowledge。\n\n还定义：\n\nraw bash、all-chat、secrets、unverified candidate、temp logs 等不得进入。\n\n技术实现本身不错。\n\n但从新架构上看：\n\n**“什么东西能够晋升成长期知识”应该由 ArcheAxis 决定。**\n\n否则就会发生：\n\n> WORK-LAB 定义 Knowledge  \n> ArcheAxis 又定义 Knowledge\n\n最后又形成两个知识治理中心。\n\n### 正确拆法\n\nWORK-LAB 可以保留：\n\n`knowledge_export_guard`\n\n负责：\n\n**脱敏 + 来源 + evidence + provenance + payload contract + 安全出口**\n\n但：\n\n`Promotion / Classification / Knowledge Acceptance / Long-term Storage`\n\n应该属于 ArcheAxis。\n\n也就是：\n\n```text\nWORK-LAB\nruntime/session/task evidence\n        ↓\nCandidateArtifact\n        ↓\n安全出口 / provenance / receipt\n        ↓\n----------------------------\n       ArcheAxis\n        ↓\ndistill\n        ↓\nvalidate\n        ↓\npromote\n        ↓\nKnowledge Truth\n```\n\n这个边界非常重要。\n\n---\n\n# 七、`knowledge-staging/` 也应该退出 WORK-LAB 的知识所有权\n\n目前根目录仍然存在：\n\n`knowledge-staging/`\n\n下面还有：\n\n`catalog/knowledge-index.json`  \n`catalog/inventory.json`  \n`candidates/`  \n`research/`  \n`asset-provenance/`  \n`migration/`  \n`troubleshooting/`  \n`workflow/`\n\n虽然它的 README 已经写成“stable provenance-aware indexes and cross-module references”，但从目录语义上仍然是在构建第二套 Knowledge staging。\n\n### 新规划建议\n\n最终不要保留：\n\n`WORK-LAB/knowledge-staging`\n\n长期形态建议变成：\n\n```text\nintegrations/\n  archeaxis/\n    contracts/\n    exporter/\n    client/\n    schemas/\n```\n\nWORK-LAB 只保留：\n\n**指针、协议、接口、Receipt。**\n\nKnowledge 本身全部进入 ArcheAxis。\n\n---\n\n# 八、`session_memory_boundary.py` 不需要整块删除\n\n这个文件需要**拆，而不是直接删**。\n\n里面有两种能力混在了一起：\n\n一部分是正确属于 WORK-LAB 的：\n\n> raw session 不得直接变成长期 memory  \n> 私有 session 不能被随便读取  \n> Session Store 与 Knowledge Store 必须隔离  \n> provenance 必须存在\n\n这些是：\n\n**执行层 / 隐私层 / 数据边界。**\n\n应该保留。\n\n但是其中：\n\n> distill session into memory  \n> promote memory to knowledge\n\n应该移交 ArcheAxis。\n\n以后最好变成：\n\n```text\nWORK-LAB:\nSessionPrivacyBoundary\nContextExportBoundary\nArcheAxisHandoff\n\nArcheAxis:\nSessionDistiller\nMemoryProvider\nMemoryPromotion\nKnowledgePromotion\n```\n\n这样就干净了。\n\n---\n\n# 九、Evolution 不应该整体搬走\n\n这部分和 Memory 不一样。\n\n`services/evolution/mutation_policy.py`\n\n目前管理：\n\n```text\nM1 Prompt\nM2 Skill\nM3 Workflow\nM4 Tool / Runtime\nM5 Governance\n```\n\n并且规定：\n\nM1/M2 可实验  \nM3 必须 Sandbox  \nM4 需要 Security + Eval + Approval  \nM5 不得自己修改后自己批准\n\n### 这个应该留在 WORK-LAB\n\n因为：\n\nPrompt / Skill / Workflow / Tool / Governance\n\n本身就是 WORK-LAB 的管理对象。\n\n尤其是：\n\n> 修改者不能自己接受 Governance Mutation\n\n这是非常正确的控制面原则。\n\n所以 Evolution 要做的是**切边界**：\n\n```text\nWORK-LAB Evolution\n= workflow/config/skill/prompt/runtime optimization governance\n\nArcheAxis Evolution\n= knowledge learning / memory consolidation /\n  human-machine learning / knowledge feedback\n```\n\n而当前 `provider.py` 里出现的：\n\n> continual learning  \n> skills self-improvement\n\n以后需要重新定义，避免它继续向“知识成长系统”扩张。\n\n---\n\n# 十、Global Agent Policy 是这轮非常值得保留的东西\n\n`config/global-agent-policy.yaml`\n\n我建议正式成为 WORK-LAB 最核心资产之一。\n\n它已经把跨软件规则收敛成一个真正的 SSOT：\n\n```text\nGlobal Agent Policy\n        ↓\nCodex projection\nHermes projection\nDSH projection\nFuture client projection\n```\n\n而不是：\n\nCodex 一份规则  \nHermes 一份规则  \nDSH 一份规则  \n然后慢慢全部漂移。\n\n它现在覆盖：\n\n权限、Workspace boundary、Credential、Session privacy、网络、Git、依赖、Evidence、Verification、Parallelism、Skills、Model neutrality、历史记录等。\n\n这正是 WORK-LAB 应该做的事情。\n\n### 所以未来 WORK-LAB 的中心不应该是 Memory\n\n而应该逐渐变成：\n\n> **Policy SSOT + Adapter Contract + Runtime Governance**\n\n这条线是对的。\n\n---\n\n# 十一、Execution Federation 也已经走在正确路上\n\nPR #127 新增：\n\n`services/execution-federation/parallel_dispatch.py`\n\n以及 parallel dispatch contract、receipt evidence 等。\n\n这比过去：\n\n“WORK-LAB 自己搞一个 Agent”\n\n正确得多。\n\n以后应该继续坚持：\n\n```text\nWORK-LAB\n     ↓\nExecution Contract\n     ↓\nCodex / Hermes / DSH / future runtime\n     ↓\nReceipt\n     ↓\nWORK-LAB\n```\n\n而不是：\n\n```text\nWORK-LAB\n  ↓\n内部再造一个超级 Agent Runtime\n```\n\n这也是新规划里最应该坚持的原则之一。\n\n---\n\n# 十二、Observer 已经从“演示面板”接近真正产品，但还差最后闭环\n\n现在 PR #127 的 Observer 已经做了很多实质工作：\n\nReact + TypeScript + Vite  \nTauri 2 / Rust  \nView Registry  \nFull / Compact  \nDark / Light  \nRuntime Descriptor  \nSnapshot  \nSSE  \nUNKNOWN truth  \nSoftware projection  \nUsage contract  \nWindows binary build\n\n这已经不是之前那个简单静态 Dashboard。\n\n但最新 exact-SHA CI：\n\n`09a2d64`\n\n依然是：\n\n**observer → FAIL**\n\n具体失败步骤：\n\n`U19 real-WebView E2E readback (WINDOWS_TAURI_E2E)`\n\nTauri binary 本身已经：\n\n**build PASS**\n\n前端 typecheck：\n\n**PASS**\n\nRust test：\n\n**PASS**\n\n问题集中在：\n\n> Tauri 内真实 WebView2 DOM / CDP readback\n\n所以现在没有必要再重构 Observer 架构。\n\n### 应该停止继续做 UI 大改\n\n优先只关 U19。\n\n这是一个很典型的：\n\n**最后 10% 产品闭环问题。**\n\n---\n\n# 十三、PR #127 本身现在已经成为治理风险\n\n这一点必须处理。\n\nPR #127 的标题还是：\n\n> U17: Global Agent Policy SSOT + native projection...\n\nPR body 还写：\n\n> 5 commits, gate-verified\n\n但现在真实情况是：\n\n**52 commits**\n\n**210 changed files**\n\n**+18,739 / -3,467**\n\n而且已经包含：\n\nAuthority  \nGlobal Agent Policy  \nObserver UI  \nContracts  \nParallel Dispatcher  \nSoftware identity  \nUpdate postflight  \nTaskpack cleanup  \nKnowledge-related changes  \nU19 E2E  \nProtected-drive convergence  \nCurrent-state migration\n\n这已经远远不是一个 U17 PR。\n\n而最新 gate 还是红的。\n\n### 这意味着 PR 元信息已经不是真相\n\n这会严重影响未来审计。\n\n应该至少把 PR #127 重新定义成：\n\n> WORK-LAB V2 / Unified Product Convergence Integration\n\n而不是继续伪装成 U17 Policy PR。\n\n不建议现在破坏性重写这 52 个 commits。\n\n但必须更新：\n\nPR title  \nPR body  \nscope  \nacceptance  \nhead SHA  \nCI state  \nremaining blockers\n\n---\n\n# 十四、Main 的保护仍然是 P0\n\n我又额外检查了 GitHub 两套保护机制。\n\nRepository Rulesets：\n\n```text\n[]\n```\n\n没有 Ruleset。\n\n`branches/main` 可读取摘要里显示：\n\n```text\nprotected = true\n\nrequired_status_checks:\n  enforcement_level = off\n  contexts = []\n  checks = []\n```\n\n完整 `/branches/main/protection` 因 GitHub App 权限返回 403，所以：\n\n**review requirement、force-push 等完整字段我不能从当前连接重新验证。**\n\n但是至少可以确定：\n\n> 当前可读取信息并不能证明 `aggregate` 是 main 的强制 required check。\n\n而 `OPEN-TASK-REGISTER` 自己也仍然把：\n\n**A01 — Restore/verify PR-first main protection and required aggregate exact-SHA gate**\n\n标记为 OPEN。\n\n### 这个必须排在合并 PR #127 之前\n\n否则会出现一个非常危险的状态：\n\n> WORK-LAB 自己强调 exact-SHA / fail-closed / evidence truth，  \n> 但保护 WORK-LAB 自己 main 的 GitHub gate 却没有机器强制。\n\n这和项目自己的治理理念是冲突的。\n\n---\n\n# 十五、Authority 体系还有一些“当前真相漂移”\n\n这次还发现几个具体残留。\n\n`docs/decisions/PROJECT_POSITIONING.md` 仍然写：\n\n> project data stays inside ignored `.hermes/` boundary\n\n但现在规范已经是：\n\n`.project-local/`\n\n这是旧事实。\n\n它还指向：\n\n`taskpacks/current/TASKPACK_SUMMARY.md`\n\n但 PR #127 已经把这个文件从 current 移走。\n\n另外：\n\n`.project/governance/taskpack-authority-index.json`\n\n里仍有：\n\n> no unmerged lane\n\n之类早期 baseline revalidation 内容。\n\n但现在明明存在：\n\nPR #127 / unmerged branch。\n\n还有一处仍提：\n\n`OPEN-TASK-REGISTER-20260917.md`\n\n而现在真正的 register 是：\n\n`OPEN-TASK-REGISTER.md`\n\n### 这些不是代码 Bug\n\n但对于 WORK-LAB 这种把：\n\n> Authority / Evidence / Current Truth\n\n当产品核心的系统来说，它们就是**产品 Bug**。\n\n必须清零。\n\n---\n\n# 十六、`90-archive`：不是 verifier 漏洞，但 A02 确实没完成\n\n我专门核了这个。\n\n目前根目录仍有：\n\n`90-archive/reports-history`\n\n而 machine authority 里列：\n\n`90-archive`\n\n为 forbidden active root。\n\n乍看像是 verifier 没管住。\n\n但我继续读了：\n\n`scripts/ci/verify_project_authority_reference.py`\n\n它明确写了：\n\n> 目前只禁止把 legacy root 重新声明成 live module；历史 tracked file 暂时允许存在，等待 A02 physical cleanup。\n\n所以这里不是 verifier 假绿。\n\n是：\n\n**A02 被明确延期，尚未完成。**\n\n这属于合理的迁移兼容，但现在到了新规划收口阶段，应该把它清掉。\n\n不要继续让 root 同时存在：\n\n`docs/history/...`\n\n和：\n\n`90-archive/...`\n\n两套历史体系。\n\n---\n\n# 十七、当前 WORK-LAB 推荐的最终目录职责\n\n这轮审计后，我建议目标状态直接冻结成下面这样：\n\n| 目录/能力 | 处理 |\n|---|---|\n| `config/global-agent-policy.yaml` | **核心保留** |\n| `config/adapter-registry.json` | **核心保留** |\n| `packages/contracts` | **核心保留** |\n| `packages/client-neutral-core` | 保留，但继续去知识化 |\n| `services/orchestration` | **核心保留** |\n| `services/execution-federation` | **核心保留** |\n| `services/session-federation` | **核心保留** |\n| `services/policy` | **核心保留** |\n| `services/task-governance` | **核心保留** |\n| `services/task-graph` | 保留 |\n| `services/receipts` | **核心保留** |\n| `services/security` | **核心保留** |\n| `services/radar` | 保留，负责软件/模型/版本影响 |\n| `services/evolution/mutation_policy` | 保留 |\n| `services/evolution` | 缩成 workflow/runtime evolution |\n| `apps/observer` | **核心保留** |\n| `apps/token-monitor` | 暂保留 specialist helper，禁止第二套 cost truth |\n| `integrations/executors` | **核心保留** |\n| `services/memory/*` | **迁移 ArcheAxis / 历史冻结** |\n| `services/knowledge/promotion_gate.py` | Knowledge 决策迁 ArcheAxis；WORK-LAB 仅保留 export safety |\n| `knowledge-staging/*` | **迁移 ArcheAxis / 删除 WORK-LAB 长期知识所有权** |\n| `90-archive/*` | A02 后迁 `docs/history` / Git history |\n| 设计领域能力 | 全归 DESIGN-LAB |\n\n---\n\n# 十八、这次审计后的优先级\n\n现在不要继续给 WORK-LAB 添加新 Agent、新 Memory backend、新 Knowledge feature、新 UI 页面。\n\n建议下一轮严格按这个顺序：\n\n1. **P0 — 刷新 PR #127 的事实状态。** 把 title/body/scope 从“U17 5 commits”改成真实 V2 convergence，更新 HEAD `09a2d64`、52 commits、210 files、最新 CI 红点和当前剩余工作；OPEN-TASK-REGISTER 同步到最新 HEAD。\n\n2. **P0 — 关闭 A01。** 用有 admin 权限的 GitHub 身份建立真正的 main merge gate：至少把 `aggregate` exact-SHA check 变成 required，验证 direct push、force push、review 规则；不能再只靠文档声明。\n\n3. **P0 — 执行三项目职责切割。** `services/memory`、Knowledge Promotion、`knowledge-staging` 从 WORK-LAB 迁出；但先做 contract + caller audit + compatibility adapter，不做粗暴删除。WORK-LAB 最终只保留 ArcheAxis API/contract/export/readback。\n\n4. **P0 — 关闭 U19。** 不再扩 Observer 功能，只解决真实 Tauri → WebView2 → React → backend truth 的 E2E readback。只有 GitHub Windows exact-SHA 真正 PASS 才接受。\n\n5. **P1 — Current Truth 清理。** 修正 `.hermes`→`.project-local`、删除失效的 `TASKPACK_SUMMARY` 引用、清理 stale open-register/path/baseline 描述，执行 A02，移除 `90-archive` legacy root。\n\n6. **最终 Acceptance。** PR HEAD 全绿 → review/readback → merge main → main exact-SHA 再跑 → Authority/Open Register 更新为 ACCEPTED → 删除短分支。此时才可以使用 `WORK_LAB_PRODUCT_CONVERGED`；U18 的外部真实 Universal Workflow 验证仍可以作为更高一级能力单独继续。\n\n---\n\n# 十九、我建议现在冻结的新 WORK-LAB 一句话定义\n\n以后所有 CODEX / Hermes / DSH 都以这一句为准：\n\n> **WORK-LAB 是跨项目、跨软件、跨 Agent Runtime 的客户端中立执行与治理控制面；它拥有策略、配置、能力适配、任务协议、编排、执行联邦、上下文交接、权限、证据、恢复、可观测性和交付治理，但不拥有领域知识真相、长期 Memory、设计领域真相，也不自建第二套 Agent Runtime。**\n\n这样一来三项目关系就彻底清楚了：\n\n```text\n                 ArcheAxis\n          Knowledge / Memory / Learning\n                    ↑ ↓\n              contract / pointer\n                    ↑ ↓\nDESIGN-LAB  ←→   WORK-LAB   ←→  Codex / Hermes / DSH / ...\nDesign Truth      Control Plane\nDesign Agents     Execution / Governance\n```\n\n### 最终审计判断\n\n**WORK-LAB 已经不是需要推倒重来的项目。**\n\n现在最大问题也已经不是“缺功能”。\n\n而是：\n\n**功能已经太多，需要完成最后一次职责切割 + 主线收敛 + 产品真实 E2E。**\n\n尤其现在最不应该做的是继续往里面加 Memory、Knowledge、Agent Runtime 和新的治理系统。下一阶段应该进入真正的 **Convergence / Reduction / Acceptance** 阶段，而不是继续 Expansion。"
+          ]
+        },
+        "create_time": 1790069662.222339,
+        "id": "79ad4ea9-3f5c-4433-ac1c-bbe39d665aa7",
+        "metadata": {
+          "code_blocks": {
+            "0": {
+              "edited": false,
+              "id": "vvsfr1",
+              "preview_language": null,
+              "previewable": false
+            },
+            "1": {
+              "edited": false,
+              "id": "9f8dt6",
+              "preview_language": null,
+              "previewable": false
+            },
+            "10": {
+              "edited": false,
+              "id": "6xb6m9",
+              "preview_language": null,
+              "previewable": false
+            },
+            "2": {
+              "edited": false,
+              "id": "b7mtt7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "3": {
+              "edited": false,
+              "id": "dx6hph",
+              "preview_language": null,
+              "previewable": false
+            },
+            "4": {
+              "edited": false,
+              "id": "wo98c8",
+              "preview_language": null,
+              "previewable": false
+            },
+            "5": {
+              "edited": false,
+              "id": "v4z181",
+              "preview_language": null,
+              "previewable": false
+            },
+            "6": {
+              "edited": false,
+              "id": "a42ajk",
+              "preview_language": null,
+              "previewable": false
+            },
+            "7": {
+              "edited": false,
+              "id": "ry65g7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "8": {
+              "edited": false,
+              "id": "9wkpxn",
+              "preview_language": null,
+              "previewable": false
+            },
+            "9": {
+              "edited": false,
+              "id": "yauf1t",
+              "preview_language": null,
+              "previewable": false
+            }
+          },
+          "content_references": [
+            {
+              "alt": null,
+              "prefix": null,
+              "prompt_text": null,
+              "type": "hidden"
+            }
+          ],
+          "conversation_context_citation_metadata": [
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "|\n\n核心源码证据：\n[配置编译器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_compiler.py)、\n[控制面](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_control_plane.py)、\n[三方配置协调器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_coordinator.py)、\n[Observer live server](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03",
+                "start_idx": 0,
+                "title": "WORK-LAB-HERMES-MASTER-TASKPACK-2026-09-07.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_0000000046e081fd9242aefe8aaf6fac"
+              },
+              "citation_uuid": "8d0fdea8-e1b4-4ee1-a768-e3a31ebfcfb3",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "GitHub 已明确声明 \"NOT an Agent OS\"。ArcheAxis 不拥有 Agent Runtime、不调度任务、不调用外部工具。它只负责：知识进来 → 治理 → 存好 → 被检索 → 收到反馈 → 进化。\n\n执行和调度是 WORK\\-LAB 的职责，专业判断是 DESIGN\\-LAB 的职责。ArcheAxis 专注于知识治理与经验积累。\n\n## ArcheAxis vs 普通数据库的本质区别\n\n|维度|普通数据库 / RAG|ArcheAxis Knowledge OS|\n|---|---|---|\n|定位|被动存储，被调用就返回数据|主动系统，有自己的输入、治理、输出、进化闭环|\n|知识进入|直接写入，AI 说什么存什么|quarantine → candidate → 人工审核 → verified truth|\n|知识结构|文本块 \\+ 向量|Source / Claim / Evidence / Knowledge Unit / Learning Artifact / Machine Knowledge / Lesson|\n|反馈进化|没有，存进去就不动了|",
+                "start_idx": 0,
+                "title": "三项目联动分层架构决策文档：ArcheAxis _ WORK-LAB _ DESIGN-LAB.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000014881fd96564780229a18de"
+              },
+              "citation_uuid": "46025cf2-a222-4424-ba07-402333f7dbce",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "\\n  - `30-observer/work-lab-observer`：严格只读。\\n- Git 保存期望状态；Workflow-owned SQLite WAL 保存运行事实；Observer 只读 Snapshot + SSE。\\n- WORK-LAB 管理 Rules、Skills、插件声明、配置覆盖、执行边界、Task Ledger、恢复、Git/CI/Token/质量采集和上下文效率治理。\\n- WORK-LAB 不是 Agent、聊天软件、模型网关、第二数据库或多用户平台。\\n- DESIGN-LAB、ArcheAxis Knowledge/OS 都是独立外部项目，只能作为协议关系或获批 canary，不能吸收进 WORK-LAB。\\n- MINIGAME 不属于 WORK-LAB。\\n- 今天误贴的 OS Agent 架构内容只归档，不进入任务、Skill、Memory 或实施主线。\\n- 未经批准不修改全局配置、不写外部项目、不安装依赖、不 commit/push/PR/merge/release。\\n\\n刚才生成的两份文档也都在沙箱外置工作区，尚未写入 WORK-",
+                "start_idx": 0,
+                "title": "WORK-LAB完整项目对话与时间线汇报.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000b7c481fd9a42aa4fd032b943"
+              },
+              "citation_uuid": "72239dea-2574-4553-a4ed-874c70ac4e00",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "md)\n- [taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md)\n- [taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md)\n- [taskpacks/current/WORK-LAB-HANDOFF-2026-08-19.md](https://githu",
+                "start_idx": 0,
+                "title": "WORK-LAB-CLOUD-BRANCH-HANDOFF-AUDIT-2026-09-15.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000e8d081fd80f515cd59d87326"
+              },
+              "citation_uuid": "60544ddc-f202-4373-8734-4e224838958c",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "py)。\n[^R09]: WORK-LAB，durable_worker.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/orchestration/durable_worker.py)。\n[^R10]: WORK-LAB，context_control_plane.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/packages/client-neutral-core/scripts/context_control_plane.py)。\n[^R11]: WORK-LAB，run_quality_gate.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/serv",
+                "start_idx": 0,
+                "title": "WORK-LAB-DEVELOPMENT-RESEARCH.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000793081f59e2c8ee75bf73842"
+              },
+              "citation_uuid": "e39b6707-2faf-4083-aa33-bfb33ea2b884",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            }
+          ],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "c4ff2cbd-bc82-4ce7-a805-49377c3c88e4"
+        }
+      },
+      "parent": "c4ff2cbd-bc82-4ce7-a805-49377c3c88e4"
+    },
+    "7ee683b6-ab1c-4780-829e-3d4cce4b1af4": {
+      "id": "7ee683b6-ab1c-4780-829e-3d4cce4b1af4",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "现在可以确认，“新规划”其实已经在这个未合并分支里形成了相当完整的一套 **V2 权威体系**：它把 WORK-LAB 明确定义为 **client-neutral workflow / Agent Operations / governance / federation control plane**，并且明确不再承担 ArcheAxis 的知识真相、DESIGN-LAB 的设计领域真相，也不再自建第二套 Agent runtime。这个方向与我们最近的三项目分层是一致的。接下来我要检查的是：这套“说法”是否真的被机器权威、配置、代码、测试和 CI 同步落实，而不是只停留在 README/Authority 文档。"
+          ]
+        },
+        "create_time": 1790069270.848836,
+        "id": "7ee683b6-ab1c-4780-829e-3d4cce4b1af4",
+        "metadata": {
+          "conversation_context_citation_metadata": [
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "|\n\n核心源码证据：\n[配置编译器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_compiler.py)、\n[控制面](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_control_plane.py)、\n[三方配置协调器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_coordinator.py)、\n[Observer live server](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03",
+                "start_idx": 0,
+                "title": "WORK-LAB-HERMES-MASTER-TASKPACK-2026-09-07.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_0000000046e081fd9242aefe8aaf6fac"
+              },
+              "citation_uuid": "62eed76d-4069-47a9-8f65-70b8043e6e6e",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "GitHub 已明确声明 \"NOT an Agent OS\"。ArcheAxis 不拥有 Agent Runtime、不调度任务、不调用外部工具。它只负责：知识进来 → 治理 → 存好 → 被检索 → 收到反馈 → 进化。\n\n执行和调度是 WORK\\-LAB 的职责，专业判断是 DESIGN\\-LAB 的职责。ArcheAxis 专注于知识治理与经验积累。\n\n## ArcheAxis vs 普通数据库的本质区别\n\n|维度|普通数据库 / RAG|ArcheAxis Knowledge OS|\n|---|---|---|\n|定位|被动存储，被调用就返回数据|主动系统，有自己的输入、治理、输出、进化闭环|\n|知识进入|直接写入，AI 说什么存什么|quarantine → candidate → 人工审核 → verified truth|\n|知识结构|文本块 \\+ 向量|Source / Claim / Evidence / Knowledge Unit / Learning Artifact / Machine Knowledge / Lesson|\n|反馈进化|没有，存进去就不动了|",
+                "start_idx": 0,
+                "title": "三项目联动分层架构决策文档：ArcheAxis _ WORK-LAB _ DESIGN-LAB.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000014881fd96564780229a18de"
+              },
+              "citation_uuid": "c30bf745-9445-4665-ab8a-b5db96fbd5a4",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "\\n  - `30-observer/work-lab-observer`：严格只读。\\n- Git 保存期望状态；Workflow-owned SQLite WAL 保存运行事实；Observer 只读 Snapshot + SSE。\\n- WORK-LAB 管理 Rules、Skills、插件声明、配置覆盖、执行边界、Task Ledger、恢复、Git/CI/Token/质量采集和上下文效率治理。\\n- WORK-LAB 不是 Agent、聊天软件、模型网关、第二数据库或多用户平台。\\n- DESIGN-LAB、ArcheAxis Knowledge/OS 都是独立外部项目，只能作为协议关系或获批 canary，不能吸收进 WORK-LAB。\\n- MINIGAME 不属于 WORK-LAB。\\n- 今天误贴的 OS Agent 架构内容只归档，不进入任务、Skill、Memory 或实施主线。\\n- 未经批准不修改全局配置、不写外部项目、不安装依赖、不 commit/push/PR/merge/release。\\n\\n刚才生成的两份文档也都在沙箱外置工作区，尚未写入 WORK-",
+                "start_idx": 0,
+                "title": "WORK-LAB完整项目对话与时间线汇报.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000b7c481fd9a42aa4fd032b943"
+              },
+              "citation_uuid": "4f794b4a-f1a3-479c-b9c5-11460d2b0f6d",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "md)\n- [taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md)\n- [taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md)\n- [taskpacks/current/WORK-LAB-HANDOFF-2026-08-19.md](https://githu",
+                "start_idx": 0,
+                "title": "WORK-LAB-CLOUD-BRANCH-HANDOFF-AUDIT-2026-09-15.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000e8d081fd80f515cd59d87326"
+              },
+              "citation_uuid": "4055ac9a-4aca-4225-9109-c6b218783958",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "py)。\n[^R09]: WORK-LAB，durable_worker.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/orchestration/durable_worker.py)。\n[^R10]: WORK-LAB，context_control_plane.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/packages/client-neutral-core/scripts/context_control_plane.py)。\n[^R11]: WORK-LAB，run_quality_gate.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/serv",
+                "start_idx": 0,
+                "title": "WORK-LAB-DEVELOPMENT-RESEARCH.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000793081f59e2c8ee75bf73842"
+              },
+              "citation_uuid": "d4135784-9e2c-49e9-838f-a031b9408250",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            }
+          ],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "5ba00511-1435-4368-b716-8cfc08665304"
+        }
+      },
+      "parent": "99f538b3-a20a-48c5-8809-b423d3015513"
+    },
+    "948c2dd0-6bd3-4763-a292-22923eb8afcb": {
+      "id": "948c2dd0-6bd3-4763-a292-22923eb8afcb",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "a1f71d71-e2fa-4230-b316-188c627c1a51",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "梳理并审计 WORK-LAB 演进、规划与分层边界"
+            }
+          ]
+        },
+        "create_time": 1790069252.088602,
+        "id": "948c2dd0-6bd3-4763-a292-22923eb8afcb",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "4f2620b0-0f09-4ac7-a308-20a06e5e7b0d",
+          "tool_icons": [
+            "book-open"
+          ]
+        }
+      },
+      "parent": "2c74b05f-a6c3-4377-8559-19970c2bbd71"
+    },
+    "9675a547-f368-4675-a8e4-5e64c0cdc9ce": {
+      "id": "9675a547-f368-4675-a8e4-5e64c0cdc9ce",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "242c78be-ee79-4aa9-9b73-a42465ca20bf",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "我会先整合项目历史与三项目边界，再对云端仓库核查目录、治理、编排、记忆、插件和测试证据，重点识别重复建设、过时文档及新规划下的迁移缺口。",
+              "finished": true,
+              "summary": "审计项目基线"
+            },
+            {
+              "chunks": [],
+              "content": "我已确认最新收敛提交的主要功能与治理结果：生产门禁通过，但工作流总门禁因 Windows Tauri WebView 的 U19 读回测试失败而未通过，其余集成检查基本正常。",
+              "finished": true,
+              "summary": "核验分支现状"
+            },
+            {
+              "chunks": [],
+              "content": "我正在对照权威文档检查目录和职责边界。目前发现活动模块定义略有不一致，README 对“Memory”的表述可能与新规划冲突，且历史归档目录仍需确认是否已彻底退出活动范围。",
+              "finished": true,
+              "summary": "收敛治理边界"
+            },
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "完成项目基线审计、分支核验与治理边界收敛"
+            }
+          ]
+        },
+        "create_time": 1790069591.342381,
+        "id": "9675a547-f368-4675-a8e4-5e64c0cdc9ce",
+        "metadata": {
+          "conversation_context_citation_metadata": [
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "|\n\n核心源码证据：\n[配置编译器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_compiler.py)、\n[控制面](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_control_plane.py)、\n[三方配置协调器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_coordinator.py)、\n[Observer live server](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03",
+                "start_idx": 0,
+                "title": "WORK-LAB-HERMES-MASTER-TASKPACK-2026-09-07.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_0000000046e081fd9242aefe8aaf6fac"
+              },
+              "citation_uuid": "4c83fdd3-a6b6-488f-b127-61b09134e7d6",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "GitHub 已明确声明 \"NOT an Agent OS\"。ArcheAxis 不拥有 Agent Runtime、不调度任务、不调用外部工具。它只负责：知识进来 → 治理 → 存好 → 被检索 → 收到反馈 → 进化。\n\n执行和调度是 WORK\\-LAB 的职责，专业判断是 DESIGN\\-LAB 的职责。ArcheAxis 专注于知识治理与经验积累。\n\n## ArcheAxis vs 普通数据库的本质区别\n\n|维度|普通数据库 / RAG|ArcheAxis Knowledge OS|\n|---|---|---|\n|定位|被动存储，被调用就返回数据|主动系统，有自己的输入、治理、输出、进化闭环|\n|知识进入|直接写入，AI 说什么存什么|quarantine → candidate → 人工审核 → verified truth|\n|知识结构|文本块 \\+ 向量|Source / Claim / Evidence / Knowledge Unit / Learning Artifact / Machine Knowledge / Lesson|\n|反馈进化|没有，存进去就不动了|",
+                "start_idx": 0,
+                "title": "三项目联动分层架构决策文档：ArcheAxis _ WORK-LAB _ DESIGN-LAB.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000014881fd96564780229a18de"
+              },
+              "citation_uuid": "3186994a-b8e8-4038-9d95-ca0a7239c0a6",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "\\n  - `30-observer/work-lab-observer`：严格只读。\\n- Git 保存期望状态；Workflow-owned SQLite WAL 保存运行事实；Observer 只读 Snapshot + SSE。\\n- WORK-LAB 管理 Rules、Skills、插件声明、配置覆盖、执行边界、Task Ledger、恢复、Git/CI/Token/质量采集和上下文效率治理。\\n- WORK-LAB 不是 Agent、聊天软件、模型网关、第二数据库或多用户平台。\\n- DESIGN-LAB、ArcheAxis Knowledge/OS 都是独立外部项目，只能作为协议关系或获批 canary，不能吸收进 WORK-LAB。\\n- MINIGAME 不属于 WORK-LAB。\\n- 今天误贴的 OS Agent 架构内容只归档，不进入任务、Skill、Memory 或实施主线。\\n- 未经批准不修改全局配置、不写外部项目、不安装依赖、不 commit/push/PR/merge/release。\\n\\n刚才生成的两份文档也都在沙箱外置工作区，尚未写入 WORK-",
+                "start_idx": 0,
+                "title": "WORK-LAB完整项目对话与时间线汇报.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000b7c481fd9a42aa4fd032b943"
+              },
+              "citation_uuid": "d0dbb5f5-6e17-42b5-966e-a94c4677dbfa",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "md)\n- [taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md)\n- [taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md)\n- [taskpacks/current/WORK-LAB-HANDOFF-2026-08-19.md](https://githu",
+                "start_idx": 0,
+                "title": "WORK-LAB-CLOUD-BRANCH-HANDOFF-AUDIT-2026-09-15.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000e8d081fd80f515cd59d87326"
+              },
+              "citation_uuid": "d5f7972d-0997-4ba1-af78-e5d24c380692",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "py)。\n[^R09]: WORK-LAB，durable_worker.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/orchestration/durable_worker.py)。\n[^R10]: WORK-LAB，context_control_plane.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/packages/client-neutral-core/scripts/context_control_plane.py)。\n[^R11]: WORK-LAB，run_quality_gate.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/serv",
+                "start_idx": 0,
+                "title": "WORK-LAB-DEVELOPMENT-RESEARCH.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000793081f59e2c8ee75bf73842"
+              },
+              "citation_uuid": "02fb36e4-c5bd-47c7-bd6e-921cfb3190da",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            }
+          ],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "ad31a5d2-45d6-41e1-b272-0683772048b5",
+          "tool_icons": []
+        }
+      },
+      "parent": "cc75f02e-4c4c-4664-824f-e8091a488f4b"
+    },
+    "99f538b3-a20a-48c5-8809-b423d3015513": {
+      "id": "99f538b3-a20a-48c5-8809-b423d3015513",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "第一轮云端核对已经发现一个很关键的变化：**9 月 17 日主分支做过一次大规模“目录与权威收敛”切换**，把旧的 `10-workflow / 30-observer / 40-knowledge / 50-taskpacks` 等布局整体迁到了新的 `services / packages / apps / integrations / .project` 结构；9 月 18 日又把权威基线切到了 `UPC-20260918`。所以这次不能再沿用 9 月上旬的旧审计结论，我会以 **main@803268d** 作为当前事实基线，同时单独检查尚未并入 main 的 `u17/global-agent-policy-20260918`。"
+          ]
+        },
+        "create_time": 1790069245.571769,
+        "id": "99f538b3-a20a-48c5-8809-b423d3015513",
+        "metadata": {
+          "conversation_context_citation_metadata": [
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "|\n\n核心源码证据：\n[配置编译器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_compiler.py)、\n[控制面](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_control_plane.py)、\n[三方配置协调器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_coordinator.py)、\n[Observer live server](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03",
+                "start_idx": 0,
+                "title": "WORK-LAB-HERMES-MASTER-TASKPACK-2026-09-07.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_0000000046e081fd9242aefe8aaf6fac"
+              },
+              "citation_uuid": "58eb1143-8d25-4670-8c88-b7158146d417",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "GitHub 已明确声明 \"NOT an Agent OS\"。ArcheAxis 不拥有 Agent Runtime、不调度任务、不调用外部工具。它只负责：知识进来 → 治理 → 存好 → 被检索 → 收到反馈 → 进化。\n\n执行和调度是 WORK\\-LAB 的职责，专业判断是 DESIGN\\-LAB 的职责。ArcheAxis 专注于知识治理与经验积累。\n\n## ArcheAxis vs 普通数据库的本质区别\n\n|维度|普通数据库 / RAG|ArcheAxis Knowledge OS|\n|---|---|---|\n|定位|被动存储，被调用就返回数据|主动系统，有自己的输入、治理、输出、进化闭环|\n|知识进入|直接写入，AI 说什么存什么|quarantine → candidate → 人工审核 → verified truth|\n|知识结构|文本块 \\+ 向量|Source / Claim / Evidence / Knowledge Unit / Learning Artifact / Machine Knowledge / Lesson|\n|反馈进化|没有，存进去就不动了|",
+                "start_idx": 0,
+                "title": "三项目联动分层架构决策文档：ArcheAxis _ WORK-LAB _ DESIGN-LAB.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000014881fd96564780229a18de"
+              },
+              "citation_uuid": "d7059854-2d8e-49dd-9e08-0e227b769298",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "\\n  - `30-observer/work-lab-observer`：严格只读。\\n- Git 保存期望状态；Workflow-owned SQLite WAL 保存运行事实；Observer 只读 Snapshot + SSE。\\n- WORK-LAB 管理 Rules、Skills、插件声明、配置覆盖、执行边界、Task Ledger、恢复、Git/CI/Token/质量采集和上下文效率治理。\\n- WORK-LAB 不是 Agent、聊天软件、模型网关、第二数据库或多用户平台。\\n- DESIGN-LAB、ArcheAxis Knowledge/OS 都是独立外部项目，只能作为协议关系或获批 canary，不能吸收进 WORK-LAB。\\n- MINIGAME 不属于 WORK-LAB。\\n- 今天误贴的 OS Agent 架构内容只归档，不进入任务、Skill、Memory 或实施主线。\\n- 未经批准不修改全局配置、不写外部项目、不安装依赖、不 commit/push/PR/merge/release。\\n\\n刚才生成的两份文档也都在沙箱外置工作区，尚未写入 WORK-",
+                "start_idx": 0,
+                "title": "WORK-LAB完整项目对话与时间线汇报.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000b7c481fd9a42aa4fd032b943"
+              },
+              "citation_uuid": "61ef17d4-4233-48c0-acea-0e4a5900cb51",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "md)\n- [taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md)\n- [taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md)\n- [taskpacks/current/WORK-LAB-HANDOFF-2026-08-19.md](https://githu",
+                "start_idx": 0,
+                "title": "WORK-LAB-CLOUD-BRANCH-HANDOFF-AUDIT-2026-09-15.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000e8d081fd80f515cd59d87326"
+              },
+              "citation_uuid": "0384c9a4-2a33-4123-934f-ce32b0af5692",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "py)。\n[^R09]: WORK-LAB，durable_worker.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/orchestration/durable_worker.py)。\n[^R10]: WORK-LAB，context_control_plane.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/packages/client-neutral-core/scripts/context_control_plane.py)。\n[^R11]: WORK-LAB，run_quality_gate.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/serv",
+                "start_idx": 0,
+                "title": "WORK-LAB-DEVELOPMENT-RESEARCH.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000793081f59e2c8ee75bf73842"
+              },
+              "citation_uuid": "c8e6177a-ec03-43bb-b49d-5ac492a0bbc8",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            }
+          ],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "948c2dd0-6bd3-4763-a292-22923eb8afcb"
+        }
+      },
+      "parent": "948c2dd0-6bd3-4763-a292-22923eb8afcb"
+    },
+    "af73a372-5527-4107-82a5-2fefb6075068": {
+      "id": "af73a372-5527-4107-82a5-2fefb6075068",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "下面这份可以直接发给 CODEX。它按刚才审计结果改成了**收敛执行任务**，不是继续扩功能。\n\n:::writing{variant=\"document\" id=\"58421\" title=\"WORK-LAB 新规划收敛执行指令\"}\n# WORK-LAB 新规划收敛执行指令\n## WORK-LAB V2 — Convergence / Boundary Split / Acceptance\n\n你现在接管仓库：\n\n`DTALEX66/WORK-LAB`\n\n本轮任务不是继续扩展功能，而是按照 WORK-LAB 最新规划完成：\n\n**职责收敛 → 主线真相统一 → 三项目边界切割 → Observer 发布闭环 → GitHub 治理闭环 → 最终验收。**\n\n---\n\n# 0. 总原则\n\n本轮唯一目标：\n\n> 把 WORK-LAB 收敛为“跨项目、跨软件、跨 Agent Runtime 的客户端中立执行与治理控制面”。\n\nWORK-LAB 应拥有：\n\n- Global Agent Policy\n- Rules / Skills / MCP / Plugin capability policy\n- Config ownership / desired state / diff / apply / readback / rollback\n- Software Adapter\n- Agent Runtime Adapter\n- Orchestration\n- Execution Federation\n- Task Protocol / Task Ledger\n- Receipt / Checkpoint / Lease\n- Session Federation\n- Context Handoff\n- Permission / Risk / Budget / Approval\n- Evidence / Provenance\n- CI / Release Governance\n- Radar / software-update impact\n- Observer / read-only control tower\n- Security / Recovery / Cleanup\n\nWORK-LAB 不再拥有：\n\n- 长期知识库\n- Knowledge Truth\n- 完整 Memory Backend\n- 长期 Memory Retrieval 系统\n- Knowledge Promotion 决策权\n- DESIGN-LAB 设计领域真相\n- ArcheAxis 学习/知识真相\n- 第二套 Agent Runtime\n- 第二套配置治理系统\n- 第二套 Task Ledger\n- 第二套 Usage/Cost Truth Engine\n\n三个项目的最终职责：\n\n```text\nWORK-LAB\n= Control Plane / Execution / Governance / Federation\n\nArcheAxis-Knowledge-OS\n= Knowledge / Long-term Memory / Learning / Distillation\n\nDESIGN-LAB\n= Design Domain / Design Agents / Design Software Execution / Assets\n```\n\n禁止重新把三个项目合并成一个“大一统系统”。\n\n---\n\n# 1. 开始前必须重新解析真实云端状态\n\n禁止直接相信本任务中的 SHA 是最新状态。\n\n第一步必须：\n\n```text\ngit fetch --all --prune\ngit status\ngit branch -vv\ngit rev-parse origin/main\ngit rev-parse origin/u17/global-agent-policy-20260918\n```\n\n并读取当前：\n\n1. `WORK-LAB-AUTHORITY.md`\n2. `.project/governance/project-authority-index.json`\n3. `AGENTS.md`\n4. `.project/governance/taskpack-authority-index.json`\n5. 当前 CURRENT TaskPack\n6. `taskpacks/current/OPEN-TASK-REGISTER.md`\n7. PR #127 当前状态\n8. PR #127 当前 HEAD\n9. 最新 GitHub Actions\n10. main 当前保护状态\n\n历史 TaskPack、旧 Handoff、旧 README 只能作为历史证据。\n\n优先级必须保持：\n\n```text\n用户最新明确指令\n>\nWORK-LAB-AUTHORITY.md\n>\nproject-authority-index\n>\nCURRENT TaskPack / OPEN register\n>\n当前机器契约\n>\n当前 exact-SHA code / CI / runtime readback\n>\n历史资料\n```\n\n禁止从旧历史重新推导一套新 Authority。\n\n---\n\n# 2. 当前工作模式：收敛，不扩张\n\n本轮禁止新增：\n\n- 新 Memory Provider\n- 新 Knowledge Store\n- 新 Agent Runtime\n- 新 Observer 页面\n- 新 Dashboard KPI\n- 新 Task Ledger\n- 新 Authority 层\n- 新全局配置系统\n- 新长期分支\n- 新影子 main\n- 新“R5/R6”\n- 新的重复 Adapter Registry\n- 新的重复 Contract Catalog\n\n除非为解决当前明确 blocker 所必需。\n\n优先原则：\n\n```text\n删重复\n> 切边界\n> 修真相\n> 接真实链路\n> 再考虑增加功能\n```\n\n---\n\n# 3. 工作分支和 Git 纪律\n\n当前正常模式：\n\n```text\norigin/main\n   ↓\n短生命周期 convergence branch\n   ↓\nPR\n   ↓\nexact-SHA CI\n   ↓\nreview/readback\n   ↓\nmerge main\n   ↓\nmain exact-SHA 再验证\n   ↓\n删除短分支\n```\n\n如果现有 PR #127 / `u17/global-agent-policy-20260918` 仍是当前有效执行分支：\n\n优先继续收敛该 PR。\n\n不要为了“干净”擅自：\n\n- rebase 52 个提交\n- squash 整个分支\n- force push\n- 重写历史\n- 新建另一个 shadow main\n\n除非有明确技术理由并记录恢复方案。\n\n---\n\n# 4. TASK A — 修正 PR #127 的事实真相\n\n首先审计 PR #127 当前真实状态。\n\n之前审计时它已经远远超过原来的：\n\n> U17 / 5 commits\n\n实际已经发展为大规模 WORK-LAB V2 convergence。\n\n必须检查：\n\n- 当前 commits 数量\n- changed files\n- additions/deletions\n- current head SHA\n- 最新 CI\n- 当前 blocker\n- 当前 open-task register\n- 当前 authority package\n\n如果 PR title/body 仍然只描述 U17，则更新为真实范围。\n\n建议语义：\n\n```text\nWORK-LAB V2 Unified Product Convergence\n```\n\nPR body 至少必须包含：\n\n```text\nAuthority\nGlobal Agent Policy\nPolicy Projection\nRepository convergence\nObserver React/Tauri\nSoftware Identity\nExecution Federation\nParallel Dispatch\nConfig transaction\nEvidence truth\nDSH update guard\nTaskpack cleanup\nProtected-drive governance\nWindows E2E\nRemaining blockers\n```\n\n禁止继续让 PR 元数据描述“5 commits”，而真实已经几十个 commits。\n\nPR 元数据也是审计真相的一部分。\n\n完成后更新 OPEN-TASK-REGISTER。\n\n---\n\n# 5. TASK B — A01：主分支保护必须真实闭环\n\n这是 P0。\n\n检查 GitHub：\n\n- Repository Rulesets\n- Branch Protection\n- required status checks\n- required `aggregate`\n- PR-first\n- review requirement\n- force push\n- branch deletion\n- direct push bypass\n\n目标：\n\n```text\nmain 必须以 exact-SHA aggregate gate 作为强制合并条件。\n```\n\n至少保证：\n\n```text\naggregate = required\n```\n\n并验证：\n\n- 一个失败 job 能导致 aggregate FAIL\n- aggregate FAIL 时 PR 不能正常合并\n- aggregate PASS 时才满足 CI 条件\n- 不允许通过 direct push 绕过正常路径\n- 不允许 force push 覆盖 main\n\n如果当前 GitHub 身份没有 admin 权限：\n\n不得绕过。\n\n记录：\n\n```text\nA01 = BLOCKED_BY_GITHUB_ADMIN_PERMISSION\n```\n\n并提供：\n\n- 缺失权限\n- 当前读取到的保护事实\n- 用户需要执行的最小操作\n- 后续机器 readback 方法\n\nA01 阻塞不应阻塞其它不依赖 admin 的代码工作。\n\n---\n\n# 6. TASK C — 三项目职责切割\n\n这是本轮最重要的架构任务。\n\n## C1. 审计 `services/memory`\n\n重点检查：\n\n```text\nservices/memory/provider.py\nservices/memory/hermes_builtin.py\nservices/memory/hindsight_poc.py\nservices/memory/tencent_poc.py\nservices/memory/bakeoff.py\nservices/memory/session_memory_boundary.py\n```\n\n识别所有属于：\n\n```text\nretain\nrecall\nreflect\nlong-term memory\nmemory backend\nrepo import\ndocs import\nmemory provider\nknowledge record\nknowledge storage\nmemory promotion\n```\n\n的实现。\n\n这些能力的最终 owner 应改为：\n\n```text\nArcheAxis-Knowledge-OS\n```\n\nWORK-LAB 最终只允许保留：\n\n```text\nSessionPrivacyBoundary\nContextExportBoundary\nContextCapsule\nMemoryQueryContract\nArcheAxisClient\nArcheAxisHandoff\nProvenance\nPermission Gate\nReceipt\n```\n\n---\n\n## C2. 不允许粗暴删除\n\n必须先执行 caller audit：\n\n```text\n谁 import services/memory/*\n哪些 tests 使用\n哪些 contracts 使用\n哪些 Observer view 使用\n哪些 taskpacks 引用\n哪些 CI gate 引用\n哪些 runtime path 调用\n```\n\n输出依赖图。\n\n然后分类：\n\n```text\nKEEP_IN_WORKLAB\nMOVE_TO_ARCHEAXIS\nCOMPATIBILITY_ADAPTER\nHISTORY_ONLY\nDELETE_AFTER_PARITY\n```\n\n如果本轮没有获得 ArcheAxis 仓库写权限：\n\n不要跨仓直接修改。\n\n应在 WORK-LAB 中：\n\n1. 标记真正 Knowledge/Memory backend 为迁移候选；\n2. 创建最小稳定 interface；\n3. 创建 migration manifest；\n4. 创建 caller replacement plan；\n5. 防止新增调用；\n6. 为未来 ArcheAxis 接口建立 compatibility seam。\n\n不得因为没有跨仓权限就保留错误 ownership。\n\n---\n\n# 7. TASK D — Knowledge ownership 切割\n\n审计：\n\n```text\nservices/knowledge/promotion_gate.py\nknowledge-staging/\n```\n\n当前存在的问题：\n\nWORK-LAB 仍在决定：\n\n```text\n什么内容属于 Knowledge\n什么可以被 Promote\nKnowledge category\nverified knowledge\nknowledge index\ncandidate lifecycle\n```\n\n这已经越过控制面职责。\n\n新边界必须是：\n\n```text\nWORK-LAB\nruntime/session/task evidence\n        ↓\nsanitization\n        ↓\nprovenance\n        ↓\nKnowledgeCandidate / Artifact\n        ↓\nArcheAxis contract\n--------------------------------\nArcheAxis\n        ↓\ndistill\nvalidate\nclassify\npromote\nstore\nrecall\nlearn\n```\n\nWORK-LAB 可以决定：\n\n> “这个数据是否允许安全地离开 WORK-LAB”\n\nWORK-LAB 不应该决定：\n\n> “这个数据是否成为长期 Knowledge Truth”\n\n---\n\n# 8. `promotion_gate.py` 处理原则\n\n不要直接丢掉它已有的安全逻辑。\n\n拆成两层：\n\n### 留在 WORK-LAB\n\n例如：\n\n```text\nknowledge_export_guard.py\n```\n\n负责：\n\n- secrets 检查\n- raw chat 检查\n- raw log 检查\n- shell transcript 检查\n- provenance 必须存在\n- evidence level\n- source identity\n- export permission\n- payload integrity\n\n### 迁移 ArcheAxis 语义\n\n例如：\n\n```text\nKnowledgeCategory\nknowledge acceptance\nverified lesson\narchitecture knowledge\npromotion decision\nknowledge classification\nlong-term knowledge status\n```\n\n最终 WORK-LAB 输出的是：\n\n```text\nKnowledgeCandidate\n```\n\n不是：\n\n```text\nKnowledge Truth\n```\n\n---\n\n# 9. TASK E — `knowledge-staging/` 收敛\n\n全面审计：\n\n```text\nknowledge-staging/\n```\n\n特别是：\n\n```text\ncatalog/\nknowledge-index.json\ninventory.json\ncandidates/\nresearch/\nasset-provenance/\nmigration/\ntroubleshooting/\nworkflow/\n```\n\n目标不是保留一个 WORK-LAB Knowledge OS。\n\n目标是：\n\n如果它只是跨模块引用/迁移元数据：\n\n迁入类似：\n\n```text\nintegrations/archeaxis/\n    contracts/\n    manifests/\n    provenance/\n    exporter/\n```\n\n如果是真正长期知识：\n\n归 ArcheAxis。\n\n如果只是历史研究：\n\n归：\n\n```text\ndocs/history/\n```\n\n最终应尽量消除根级：\n\n```text\nknowledge-staging/\n```\n\n这个会误导项目所有权的长期目录。\n\n---\n\n# 10. TASK F — Evolution 切边界，但不能整体删除\n\n保留 WORK-LAB 中与治理直接相关的能力。\n\n例如：\n\n```text\nM1 Prompt mutation\nM2 Skill mutation\nM3 Workflow mutation\nM4 Tool/Runtime mutation\nM5 Governance mutation\n```\n\n以及：\n\n```text\nsandbox\nsecurity evaluation\nindependent approval\nrollback\ntrace\nreceipt\n```\n\n这些属于 WORK-LAB。\n\n但是：\n\n```text\ncontinual learning\nknowledge evolution\nmemory consolidation\nknowledge learning\nhuman learning\nlong-term cognitive growth\n```\n\n不得继续向 WORK-LAB 扩展。\n\n这些属于 ArcheAxis。\n\n重新审计：\n\n```text\nservices/evolution/provider.py\nservices/evolution/independent_eval.py\nservices/evolution/exo_sandbox.py\nservices/evolution/mutation_policy.py\n```\n\n最终需要文档和代码语义明确：\n\n```text\nWORK-LAB Evolution\n= workflow/runtime/config/skill improvement governance\n\nArcheAxis Evolution\n= knowledge/memory/learning evolution\n```\n\n---\n\n# 11. TASK G — 保住 Global Agent Policy SSOT\n\n以下结构是正确方向，不要拆掉：\n\n```text\nconfig/global-agent-policy.yaml\nservices/policy/policy_projection.py\nintegrations/executors/* policy extensions/renderers\nconfig/config-ownership.json\nconfig/adapter-registry.json\n```\n\n保持：\n\n```text\nONE semantic policy\n        ↓\nnative per-software projection\n```\n\n禁止再出现：\n\n```text\nCodex 手写一套规则\nHermes 手写一套规则\nDSH 手写一套规则\n未来软件继续复制\n```\n\n所有客户端特有差异放在：\n\n```text\nsoftware extension / renderer / adapter\n```\n\n核心 policy 不得包含：\n\n- 固定 provider\n- 固定 model\n- 固定 reasoning\n- 固定端口\n- 固定安装路径\n- 软件私有配置字段\n\n---\n\n# 12. TASK H — Observer 不再扩功能，只解决 U19\n\n当前 Observer 大方向已经确定：\n\n```text\nReact + TypeScript + Vite\n        ↓\nTauri 2 / Rust\n        ↓\nRuntime Descriptor\nSnapshot\nSSE\n        ↓\nPython control plane\n```\n\n本轮禁止：\n\n- 新页面\n- 新 Dashboard\n- 新 KPI\n- 新视觉重构\n- 新图表\n- 新假数据\n- 新 mock production state\n\n优先只修：\n\n```text\nU19 WINDOWS_TAURI_E2E\n```\n\n必须查明最新 exact-SHA CI 中：\n\n```text\nU19 real-WebView E2E readback\n```\n\n失败的真实根因。\n\n目标链：\n\n```text\nGitHub Windows runner\n    ↓\nreal MSVC Tauri binary\n    ↓\nreal WebView2\n    ↓\nReact\n    ↓\nreal RuntimeDescriptor/Snapshot\n    ↓\nreal DOM\n    ↓\nindependent readback\n```\n\n最终必须能机器证明：\n\n```text\nWINDOWS_TAURI_E2E_PASS\n```\n\n不能用：\n\n- Vite build 成功\n- Chromium standalone\n- bare exe running\n- synthetic DOM\n- mocked React\n- screenshot-only\n\n冒充真实 Tauri WebView2 E2E。\n\n如果 CDP 不是适合最终方案，可以换成更稳定的真实 readback，但必须仍然证明：\n\n**真实 Tauri WebView2 内的 React 产品已经加载真实 backend state。**\n\n---\n\n# 13. U19 测试至少覆盖\n\n最终 Windows E2E 应覆盖：\n\n```text\nnormal\nempty\nrunning\nwaiting\nblocked\nfailed\ncancelled\nunknown\nstale\n```\n\n并验证：\n\n```text\ndynamic port\nSnapshot\nSSE\nrevision\nreconnect\nsidecar restart\nTauri restart\ntwo projects\nusage quality\ncost quality\nUNKNOWN/null discipline\nCI state\n```\n\n但不要一次重写全部。\n\n先修当前最小失败链。\n\n---\n\n# 14. TASK I — A02 / Current Truth 清理\n\n系统性搜索并修复当前真相漂移。\n\n重点包括：\n\n```text\n.hermes/task-runtime\n.hermes/task-artifacts\n10-workflow\n30-observer\n40-knowledge\n50-taskpacks\n80-evidence\n90-archive\nTASKPACK_SUMMARY.md\nOPEN-TASK-REGISTER-20260917.md\nStage3 CURRENT assumptions\nr4 current assumptions\n```\n\n所有 CURRENT 文档必须统一到：\n\n```text\n.project-local/\npackages/\nservices/\nintegrations/\napps/\ntaskpacks/\ndocs/\n```\n\n重点检查：\n\n```text\ndocs/decisions/PROJECT_POSITIONING.md\nREADME.md\nAGENTS.md\n.project/governance/*\ntaskpacks/current/*\nscripts/ci/*\n```\n\n---\n\n# 15. `90-archive` 处理\n\n当前如果仍有：\n\n```text\n90-archive/\n```\n\n先做 caller audit。\n\n若只是历史：\n\n迁到：\n\n```text\ndocs/history/\n```\n\n或者仅保留 Git history retrieval anchor。\n\n不得继续让两个历史系统长期并存：\n\n```text\n90-archive/\ndocs/history/\n```\n\n完成后更新：\n\n```text\nproject-authority-index\nauthority verifier\nREADME\nOPEN register\n```\n\n---\n\n# 16. TASK J — 修正 Authority / Index / Current-State 漂移\n\n必须核对：\n\n```text\nWORK-LAB-AUTHORITY.md\nproject-authority-index.json\ntaskpack-authority-index.json\nprojects.json\nmodule-ownership.json\nconfig-ownership.json\nPROJECT_POSITIONING.md\nCURRENT_STATE\nOPEN-TASK-REGISTER\n```\n\n它们之间不得出现：\n\n- 已删除路径\n- stale baseline\n- stale branch statement\n- stale taskpack\n- stale current register\n- 已经存在 PR，却写“no unmerged lane”\n- `.hermes` 与 `.project-local` 混用\n- current/historical 状态冲突\n- 固定 skill 数量\n- 固定 contract 数量\n\nCURRENT_STATE 必须动态生成。\n\n---\n\n# 17. TASK K — Observer / Token Monitor 单一 Truth\n\n继续执行：\n\n```text\nONE canonical usage observation contract\nONE canonical cost truth\n```\n\n`apps/token-monitor` 若保留：\n\n只能是 specialist helper / specialist UI。\n\n禁止拥有第二套：\n\n```text\nusage database\nprice database\ncost engine\nprovider truth\nbilling truth\n```\n\n最终 Observer 和 Token Monitor 都读取同一个 canonical backend contract。\n\n---\n\n# 18. TASK L — DESIGN-LAB 边界确认\n\n全仓搜索：\n\n```text\nDESIGN-LAB\nOPEN-DESIGN-Assistance\nOpen Design\ndesign capability\ndesign assets\ndesign model\ndesign workflow\nAdobe\n```\n\n必须继续区分：\n\n```text\nOpen Design\n= external software/client\n\nDESIGN-LAB\n= independent project\n```\n\nWORK-LAB 可以管理 Open Design 的：\n\n```text\nclient rules\nskills\nplugins\ncapability discovery\nworkflow policy\nadapter\nsoftware state\n```\n\nWORK-LAB 不拥有：\n\n```text\ndesign knowledge\ndesign prompt truth\ndesign assets\ndesign generation strategy\ndesign quality system\nAdobe domain logic\n```\n\n这些全部归 DESIGN-LAB。\n\n---\n\n# 19. TASK M — ArcheAxis Integration Contract\n\n在不侵占 ArcheAxis 的前提下，为未来联动定义最小合同。\n\n建议最低支持：\n\n```text\nproject_id\ntask_id\nexecution_id\nartifact_id\nsource_sha\nsource_project\nartifact_type\nevidence_level\nprovenance\ncreated_at\ncontent_digest\nclassification_hint\nprivacy_level\nexport_permission\nreceipt_digest\n```\n\nWORK-LAB 可以：\n\n```text\nemit candidate\nquery knowledge\nreceive result\nrecord provenance\nrecord receipt\n```\n\n但不能：\n\n```text\n直接写 Knowledge Truth\n直接决定最终 Knowledge category\n直接管理 ArcheAxis DB\n直接绕过 ArcheAxis promotion pipeline\n```\n\n如果 ArcheAxis 当前 API 未完成：\n\n只建立 contract + adapter seam。\n\n禁止 WORK-LAB 再造临时 Knowledge DB 代替它。\n\n---\n\n# 20. 测试要求\n\n每个任务至少提供：\n\n```text\nbefore\nafter\npositive test\nnegative test\ncaller audit\nrollback\nevidence level\n```\n\n完整 gate：\n\n```text\npython services/orchestration/run_quality_gate.py verify\n```\n\n并运行当前仓库要求的：\n\n- governance tests\n- workflow-assistance tests\n- contract tests\n- Observer TS tests\n- Observer Rust tests\n- policy projection tests\n- authority tests\n- usage convergence\n- supply chain/security\n- mandatory nf*.py discovery\n\n不得将：\n\n```text\nlocal PASS\n```\n\n写成：\n\n```text\nCI PASS\n```\n\n只有 GitHub exact-SHA 才是 CI 证据。\n\n---\n\n# 21. 禁止伪造完成状态\n\n以下等式全部禁止：\n\n```text\nbuild PASS = runtime PASS\nunit PASS = integration PASS\nhandler returned = effect completed\napply returned = verified applied\nbinary launched = UI loaded\nChromium loaded = Tauri loaded\nlocal PASS = GitHub CI PASS\nsynthetic = REAL\nmerge = installed\nunknown = zero\nmissing = success\n```\n\nEvidence 继续使用：\n\n```text\nNO_EVIDENCE\nSIMULATED\nSYNTHETIC\nINTEGRATED\nREAL\n```\n\n---\n\n# 22. 本轮完成后的目标代码边界\n\n理想状态：\n\n```text\nWORK-LAB/\n├─ WORK-LAB-AUTHORITY.md\n├─ .project/\n├─ config/\n│  ├─ global-agent-policy.yaml\n│  ├─ adapter-registry.json\n│  └─ config-ownership.json\n├─ packages/\n│  ├─ client-neutral-core/\n│  └─ contracts/\n├─ services/\n│  ├─ orchestration/\n│  ├─ execution-federation/\n│  ├─ session-federation/\n│  ├─ policy/\n│  ├─ task-governance/\n│  ├─ task-graph/\n│  ├─ receipts/\n│  ├─ security/\n│  ├─ radar/\n│  ├─ cleanup/\n│  └─ evolution/      # only control-plane evolution\n├─ integrations/\n│  ├─ executors/\n│  ├─ protocols/\n│  └─ archeaxis/      # contract/client only\n├─ apps/\n│  ├─ observer/\n│  └─ token-monitor/\n├─ scripts/\n├─ tests/\n├─ taskpacks/\n└─ docs/\n```\n\n不应该继续作为长期 active owner 的：\n\n```text\nservices/memory   # full memory system\nservices/knowledge promotion truth\nknowledge-staging\n90-archive\n```\n\n---\n\n# 23. 合并前最终门禁\n\n只有以下全部满足，才能考虑 PR merge：\n\n```text\nAUTHORITY_SINGLE_CURRENT\nAUTHORITY_REFERENCE_INTEGRITY\nMAIN_CI_ENFORCEMENT\nMANDATORY_TEST_TRUTH\nREPO_STANDARD\nTHREE_PROJECT_BOUNDARY_CONVERGED\nMEMORY_OWNERSHIP_CONVERGED\nKNOWLEDGE_OWNERSHIP_CONVERGED\nGLOBAL_POLICY_SSOT\nFRONTEND_SSOT\nCONFIG_TRANSACTION_TRUTH\nREAL_EVIDENCE_BINDING\nDURABLE_INBOX_TRUTH\nPROJECT_ISOLATION\nSESSION_EXECUTION_TRUTH\nUSAGE_COST_SINGLE_TRUTH\nWINDOWS_TAURI_E2E\nEXACT_SHA_CI\nZERO_NEW_SPILL\n```\n\n其中任意 required 项失败：\n\n```text\nDO NOT MERGE\n```\n\n---\n\n# 24. 合并生命周期\n\n禁止以：\n\n```text\n代码写完\n```\n\n作为 DONE。\n\n正确生命周期：\n\n```text\nIMPLEMENTED\n↓\nLOCAL VERIFIED\n↓\nEXACT-SHA CI VERIFIED\n↓\nREVIEWED\n↓\nMERGED\n↓\nMAIN READBACK\n↓\nACCEPTED\n```\n\n只有：\n\n```text\nACCEPTED\n```\n\n才允许 OPEN-TASK-REGISTER 标记 DONE。\n\n---\n\n# 25. 合并后必须再验证 main\n\nPR 合并后重新：\n\n```text\ngit fetch origin\ngit checkout main\ngit pull --ff-only\ngit rev-parse HEAD\n```\n\n然后针对 main exact SHA：\n\n- GitHub CI\n- aggregate\n- authority verifier\n- current-state\n- Observer E2E\n- policy projection\n- contracts\n- project boundary\n- zero spill\n\n重新 readback。\n\n禁止拿 PR branch CI 当 main release evidence。\n\n---\n\n# 26. 最终状态标签\n\n只有核心产品全部闭环后：\n\n```text\nWORK_LAB_PRODUCT_CONVERGED\n```\n\n才允许成立。\n\n注意：\n\n```text\nUNIVERSAL_WORKFLOW_VERIFIED\n```\n\n仍是一个更高等级标签。\n\n需要真正：\n\n- external project\n- second executor\n- publish/readback\n- revision\n- cancel\n- restart\n- receipt\n\n等 REAL slice。\n\n不要因为 WORK-LAB 产品收敛完成，就伪造 Universal Workflow 已完成。\n\n---\n\n# 27. 输出要求\n\n执行结束必须提交一份：\n\n```text\nWORK-LAB-CONVERGENCE-EXECUTION-REPORT-20260922.md\n```\n\n报告必须包含：\n\n## A. Baseline\n\n```text\nmain SHA\nbranch SHA\ntree SHA\nPR number\nCI run IDs\n```\n\n## B. Changed\n\n逐项列出：\n\n```text\npath\nbefore\nafter\nreason\nowner\n```\n\n## C. 三项目边界\n\n分别列：\n\n```text\nWORK-LAB owns\nArcheAxis owns\nDESIGN-LAB owns\nShared contract only\n```\n\n## D. Migration\n\n列出：\n\n```text\nmoved\ndeprecated\ncompatibility\nhistory\npending external authorization\n```\n\n## E. Gates\n\n逐项：\n\n```text\nPASS\nFAIL\nBLOCKED\nNOT_EXECUTED\n```\n\n严禁用总的“测试通过”代替逐层证据。\n\n## F. Remaining Blockers\n\n每个 blocker：\n\n```text\nID\nexact reason\nrequired authority\nrequired action\nblocking / non-blocking\n```\n\n## G. Merge Verdict\n\n只能输出：\n\n```text\nREADY_FOR_MERGE\n```\n\n或者：\n\n```text\nDO_NOT_MERGE\n```\n\n并附机器证据。\n\n---\n\n# 28. 最重要的执行原则\n\n本轮不是继续把 WORK-LAB 做“大”。\n\n而是把它做“准”。\n\n最终必须做到：\n\n```text\nArcheAxis 负责知道什么\nDESIGN-LAB 负责怎么设计\nWORK-LAB 负责谁、何时、以什么权限、通过什么软件、怎样执行、怎样验证、怎样恢复\n```\n\n从这一原则出发进行所有代码、目录、合同和治理决策。\n\n开始执行。\n:::\n\n这版可以直接交给 CODEX，重点已经从“继续开发 WORK-LAB”切成了**收敛、去重、三项目职责切割和真实发布闭环**。"
+          ]
+        },
+        "create_time": 1790070560.02683,
+        "id": "af73a372-5527-4107-82a5-2fefb6075068",
+        "metadata": {
+          "code_blocks": {
+            "0": {
+              "edited": false,
+              "id": "yfadvl",
+              "preview_language": null,
+              "previewable": false
+            },
+            "1": {
+              "edited": false,
+              "id": "whbnm1",
+              "preview_language": null,
+              "previewable": false
+            },
+            "10": {
+              "edited": false,
+              "id": "eqljks",
+              "preview_language": null,
+              "previewable": false
+            },
+            "11": {
+              "edited": false,
+              "id": "din6v7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "12": {
+              "edited": false,
+              "id": "jjvpuw",
+              "preview_language": null,
+              "previewable": false
+            },
+            "13": {
+              "edited": false,
+              "id": "ot6x9m",
+              "preview_language": null,
+              "previewable": false
+            },
+            "14": {
+              "edited": false,
+              "id": "4vwqgi",
+              "preview_language": null,
+              "previewable": false
+            },
+            "15": {
+              "edited": false,
+              "id": "8w4w12",
+              "preview_language": null,
+              "previewable": false
+            },
+            "16": {
+              "edited": false,
+              "id": "56qz16",
+              "preview_language": null,
+              "previewable": false
+            },
+            "17": {
+              "edited": false,
+              "id": "ehl58k",
+              "preview_language": null,
+              "previewable": false
+            },
+            "18": {
+              "edited": false,
+              "id": "67f619",
+              "preview_language": null,
+              "previewable": false
+            },
+            "19": {
+              "edited": false,
+              "id": "bgp2j8",
+              "preview_language": null,
+              "previewable": false
+            },
+            "2": {
+              "edited": false,
+              "id": "qg6o0k",
+              "preview_language": null,
+              "previewable": false
+            },
+            "20": {
+              "edited": false,
+              "id": "05kwo4",
+              "preview_language": null,
+              "previewable": false
+            },
+            "21": {
+              "edited": false,
+              "id": "1qeny8",
+              "preview_language": null,
+              "previewable": false
+            },
+            "22": {
+              "edited": false,
+              "id": "qcjuig",
+              "preview_language": null,
+              "previewable": false
+            },
+            "23": {
+              "edited": false,
+              "id": "4xf22h",
+              "preview_language": null,
+              "previewable": false
+            },
+            "24": {
+              "edited": false,
+              "id": "xzkt9n",
+              "preview_language": null,
+              "previewable": false
+            },
+            "25": {
+              "edited": false,
+              "id": "vcx23x",
+              "preview_language": null,
+              "previewable": false
+            },
+            "26": {
+              "edited": false,
+              "id": "g5zyrf",
+              "preview_language": null,
+              "previewable": false
+            },
+            "27": {
+              "edited": false,
+              "id": "5oc3ja",
+              "preview_language": null,
+              "previewable": false
+            },
+            "28": {
+              "edited": false,
+              "id": "jskfwj",
+              "preview_language": null,
+              "previewable": false
+            },
+            "29": {
+              "edited": false,
+              "id": "3iu42f",
+              "preview_language": null,
+              "previewable": false
+            },
+            "3": {
+              "edited": false,
+              "id": "pwliun",
+              "preview_language": null,
+              "previewable": false
+            },
+            "30": {
+              "edited": false,
+              "id": "xnznag",
+              "preview_language": null,
+              "previewable": false
+            },
+            "31": {
+              "edited": false,
+              "id": "gbufz0",
+              "preview_language": null,
+              "previewable": false
+            },
+            "32": {
+              "edited": false,
+              "id": "mgudf7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "33": {
+              "edited": false,
+              "id": "rpo9d2",
+              "preview_language": null,
+              "previewable": false
+            },
+            "34": {
+              "edited": false,
+              "id": "oxk4a7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "35": {
+              "edited": false,
+              "id": "dyb32h",
+              "preview_language": null,
+              "previewable": false
+            },
+            "36": {
+              "edited": false,
+              "id": "nu5p0o",
+              "preview_language": null,
+              "previewable": false
+            },
+            "37": {
+              "edited": false,
+              "id": "o6sqi8",
+              "preview_language": null,
+              "previewable": false
+            },
+            "38": {
+              "edited": false,
+              "id": "j4jtr8",
+              "preview_language": null,
+              "previewable": false
+            },
+            "39": {
+              "edited": false,
+              "id": "0fg771",
+              "preview_language": null,
+              "previewable": false
+            },
+            "4": {
+              "edited": false,
+              "id": "o2eufz",
+              "preview_language": null,
+              "previewable": false
+            },
+            "40": {
+              "edited": false,
+              "id": "ibjbgx",
+              "preview_language": null,
+              "previewable": false
+            },
+            "41": {
+              "edited": false,
+              "id": "vptddu",
+              "preview_language": null,
+              "previewable": false
+            },
+            "42": {
+              "edited": false,
+              "id": "1gn0ws",
+              "preview_language": null,
+              "previewable": false
+            },
+            "43": {
+              "edited": false,
+              "id": "ifo50f",
+              "preview_language": null,
+              "previewable": false
+            },
+            "44": {
+              "edited": false,
+              "id": "7hs7y3",
+              "preview_language": null,
+              "previewable": false
+            },
+            "45": {
+              "edited": false,
+              "id": "lp0kc5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "46": {
+              "edited": false,
+              "id": "9f8d57",
+              "preview_language": null,
+              "previewable": false
+            },
+            "47": {
+              "edited": false,
+              "id": "g69wm0",
+              "preview_language": null,
+              "previewable": false
+            },
+            "48": {
+              "edited": false,
+              "id": "zz5zdz",
+              "preview_language": null,
+              "previewable": false
+            },
+            "49": {
+              "edited": false,
+              "id": "rjcajk",
+              "preview_language": null,
+              "previewable": false
+            },
+            "5": {
+              "edited": false,
+              "id": "6v19hc",
+              "preview_language": null,
+              "previewable": false
+            },
+            "50": {
+              "edited": false,
+              "id": "k1lia6",
+              "preview_language": null,
+              "previewable": false
+            },
+            "51": {
+              "edited": false,
+              "id": "thzwqb",
+              "preview_language": null,
+              "previewable": false
+            },
+            "52": {
+              "edited": false,
+              "id": "yq5ozn",
+              "preview_language": null,
+              "previewable": false
+            },
+            "53": {
+              "edited": false,
+              "id": "3q5z2k",
+              "preview_language": null,
+              "previewable": false
+            },
+            "54": {
+              "edited": false,
+              "id": "aqgagh",
+              "preview_language": null,
+              "previewable": false
+            },
+            "55": {
+              "edited": false,
+              "id": "6hhukn",
+              "preview_language": null,
+              "previewable": false
+            },
+            "56": {
+              "edited": false,
+              "id": "x3dgoj",
+              "preview_language": null,
+              "previewable": false
+            },
+            "57": {
+              "edited": false,
+              "id": "5qty5n",
+              "preview_language": null,
+              "previewable": false
+            },
+            "58": {
+              "edited": false,
+              "id": "wy7yiq",
+              "preview_language": null,
+              "previewable": false
+            },
+            "59": {
+              "edited": false,
+              "id": "0dwfgm",
+              "preview_language": null,
+              "previewable": false
+            },
+            "6": {
+              "edited": false,
+              "id": "5pwsba",
+              "preview_language": null,
+              "previewable": false
+            },
+            "60": {
+              "edited": false,
+              "id": "5hft1a",
+              "preview_language": null,
+              "previewable": false
+            },
+            "61": {
+              "edited": false,
+              "id": "w777c7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "62": {
+              "edited": false,
+              "id": "t492v4",
+              "preview_language": null,
+              "previewable": false
+            },
+            "63": {
+              "edited": false,
+              "id": "w6a7ap",
+              "preview_language": null,
+              "previewable": false
+            },
+            "64": {
+              "edited": false,
+              "id": "5718ns",
+              "preview_language": null,
+              "previewable": false
+            },
+            "65": {
+              "edited": false,
+              "id": "ar7iin",
+              "preview_language": null,
+              "previewable": false
+            },
+            "66": {
+              "edited": false,
+              "id": "55d25z",
+              "preview_language": null,
+              "previewable": false
+            },
+            "67": {
+              "edited": false,
+              "id": "bi5t0k",
+              "preview_language": null,
+              "previewable": false
+            },
+            "68": {
+              "edited": false,
+              "id": "bl9gzj",
+              "preview_language": null,
+              "previewable": false
+            },
+            "69": {
+              "edited": false,
+              "id": "jcx4zg",
+              "preview_language": null,
+              "previewable": false
+            },
+            "7": {
+              "edited": false,
+              "id": "ud4gjd",
+              "preview_language": null,
+              "previewable": false
+            },
+            "70": {
+              "edited": false,
+              "id": "8gnrf8",
+              "preview_language": null,
+              "previewable": false
+            },
+            "71": {
+              "edited": false,
+              "id": "5ofxwr",
+              "preview_language": null,
+              "previewable": false
+            },
+            "72": {
+              "edited": false,
+              "id": "tyu5vv",
+              "preview_language": null,
+              "previewable": false
+            },
+            "73": {
+              "edited": false,
+              "id": "8sqwa5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "74": {
+              "edited": false,
+              "id": "n4n7cm",
+              "preview_language": null,
+              "previewable": false
+            },
+            "75": {
+              "edited": false,
+              "id": "6edcdz",
+              "preview_language": null,
+              "previewable": false
+            },
+            "76": {
+              "edited": false,
+              "id": "xhslzo",
+              "preview_language": null,
+              "previewable": false
+            },
+            "77": {
+              "edited": false,
+              "id": "2w0lux",
+              "preview_language": null,
+              "previewable": false
+            },
+            "78": {
+              "edited": false,
+              "id": "0fewlz",
+              "preview_language": null,
+              "previewable": false
+            },
+            "79": {
+              "edited": false,
+              "id": "gwp46h",
+              "preview_language": null,
+              "previewable": false
+            },
+            "8": {
+              "edited": false,
+              "id": "jnk0wx",
+              "preview_language": null,
+              "previewable": false
+            },
+            "80": {
+              "edited": false,
+              "id": "6uwaer",
+              "preview_language": null,
+              "previewable": false
+            },
+            "81": {
+              "edited": false,
+              "id": "hb8ilo",
+              "preview_language": null,
+              "previewable": false
+            },
+            "82": {
+              "edited": false,
+              "id": "myr0h7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "83": {
+              "edited": false,
+              "id": "a2kjb9",
+              "preview_language": null,
+              "previewable": false
+            },
+            "84": {
+              "edited": false,
+              "id": "gr9l39",
+              "preview_language": null,
+              "previewable": false
+            },
+            "85": {
+              "edited": false,
+              "id": "r0z1yp",
+              "preview_language": null,
+              "previewable": false
+            },
+            "86": {
+              "edited": false,
+              "id": "qlofrj",
+              "preview_language": null,
+              "previewable": false
+            },
+            "9": {
+              "edited": false,
+              "id": "rkwndk",
+              "preview_language": null,
+              "previewable": false
+            }
+          },
+          "content_references": [],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "f2b5e96d-2756-4d82-9454-80e5823b9d71"
+        }
+      },
+      "parent": "f2b5e96d-2756-4d82-9454-80e5823b9d71"
+    },
+    "c4ff2cbd-bc82-4ce7-a805-49377c3c88e4": {
+      "id": "c4ff2cbd-bc82-4ce7-a805-49377c3c88e4",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content": "思考了 8m 53s",
+          "content_type": "reasoning_recap"
+        },
+        "create_time": 1790069734.147214,
+        "id": "c4ff2cbd-bc82-4ce7-a805-49377c3c88e4",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "10710948-0de3-4448-bdea-a61e726a8fef"
+        }
+      },
+      "parent": "9675a547-f368-4675-a8e4-5e64c0cdc9ce"
+    },
+    "cc75f02e-4c4c-4664-824f-e8091a488f4b": {
+      "id": "cc75f02e-4c4c-4664-824f-e8091a488f4b",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "62616d40-d174-4a59-8d64-52f68884fa74",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "我正在核查项目定位、文档权威来源、代码测试和分支状态。当前发现配置路径与文档引用存在不一致，部分旧文档似乎仍未清理；我需要继续确认最新提交和实际测试证据。",
+              "finished": true,
+              "summary": "核对项目证据"
+            },
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "核对项目证据"
+            }
+          ]
+        },
+        "create_time": 1790069300.344059,
+        "id": "cc75f02e-4c4c-4664-824f-e8091a488f4b",
+        "metadata": {
+          "content_references": [],
+          "conversation_context_citation_metadata": [
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "|\n\n核心源码证据：\n[配置编译器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_compiler.py)、\n[控制面](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_control_plane.py)、\n[三方配置协调器](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_coordinator.py)、\n[Observer live server](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03",
+                "start_idx": 0,
+                "title": "WORK-LAB-HERMES-MASTER-TASKPACK-2026-09-07.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_0000000046e081fd9242aefe8aaf6fac"
+              },
+              "citation_uuid": "be66ef10-32a7-46f1-a9b1-f7de6c3d9830",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "GitHub 已明确声明 \"NOT an Agent OS\"。ArcheAxis 不拥有 Agent Runtime、不调度任务、不调用外部工具。它只负责：知识进来 → 治理 → 存好 → 被检索 → 收到反馈 → 进化。\n\n执行和调度是 WORK\\-LAB 的职责，专业判断是 DESIGN\\-LAB 的职责。ArcheAxis 专注于知识治理与经验积累。\n\n## ArcheAxis vs 普通数据库的本质区别\n\n|维度|普通数据库 / RAG|ArcheAxis Knowledge OS|\n|---|---|---|\n|定位|被动存储，被调用就返回数据|主动系统，有自己的输入、治理、输出、进化闭环|\n|知识进入|直接写入，AI 说什么存什么|quarantine → candidate → 人工审核 → verified truth|\n|知识结构|文本块 \\+ 向量|Source / Claim / Evidence / Knowledge Unit / Learning Artifact / Machine Knowledge / Lesson|\n|反馈进化|没有，存进去就不动了|",
+                "start_idx": 0,
+                "title": "三项目联动分层架构决策文档：ArcheAxis _ WORK-LAB _ DESIGN-LAB.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000014881fd96564780229a18de"
+              },
+              "citation_uuid": "75579a16-5c2f-4341-ab25-6fdc75334c6c",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "\\n  - `30-observer/work-lab-observer`：严格只读。\\n- Git 保存期望状态；Workflow-owned SQLite WAL 保存运行事实；Observer 只读 Snapshot + SSE。\\n- WORK-LAB 管理 Rules、Skills、插件声明、配置覆盖、执行边界、Task Ledger、恢复、Git/CI/Token/质量采集和上下文效率治理。\\n- WORK-LAB 不是 Agent、聊天软件、模型网关、第二数据库或多用户平台。\\n- DESIGN-LAB、ArcheAxis Knowledge/OS 都是独立外部项目，只能作为协议关系或获批 canary，不能吸收进 WORK-LAB。\\n- MINIGAME 不属于 WORK-LAB。\\n- 今天误贴的 OS Agent 架构内容只归档，不进入任务、Skill、Memory 或实施主线。\\n- 未经批准不修改全局配置、不写外部项目、不安装依赖、不 commit/push/PR/merge/release。\\n\\n刚才生成的两份文档也都在沙箱外置工作区，尚未写入 WORK-",
+                "start_idx": 0,
+                "title": "WORK-LAB完整项目对话与时间线汇报.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000b7c481fd9a42aa4fd032b943"
+              },
+              "citation_uuid": "14d525b3-f7b4-4389-ad9b-43384f6c98b8",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "md)\n- [taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-DSH-HANDOFF-SUMMARY-2026-08-15.md)\n- [taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md](https://github.com/DTALEX66/WORK-LAB/blob/294058680fcf898b137e160550187f272157e8de/taskpacks/current/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md)\n- [taskpacks/current/WORK-LAB-HANDOFF-2026-08-19.md](https://githu",
+                "start_idx": 0,
+                "title": "WORK-LAB-CLOUD-BRANCH-HANDOFF-AUDIT-2026-09-15.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000e8d081fd80f515cd59d87326"
+              },
+              "citation_uuid": "2978d636-7317-48d9-9049-2864f8354886",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            },
+            {
+              "citation": {
+                "alt": "",
+                "attribution": "Files",
+                "category": "files",
+                "end_idx": 0,
+                "matched_text": "",
+                "prompt_text": null,
+                "pub_date": null,
+                "refs": [],
+                "retrieval_origin": "pca",
+                "snippet": "py)。\n[^R09]: WORK-LAB，durable_worker.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/orchestration/durable_worker.py)。\n[^R10]: WORK-LAB，context_control_plane.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/packages/client-neutral-core/scripts/context_control_plane.py)。\n[^R11]: WORK-LAB，run_quality_gate.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/serv",
+                "start_idx": 0,
+                "title": "WORK-LAB-DEVELOPMENT-RESEARCH.md",
+                "type": "grouped_webpages",
+                "url": "file://my_files/file_00000000793081f59e2c8ee75bf73842"
+              },
+              "citation_uuid": "51f2421f-e0ae-41ad-90db-06d19de9319c",
+              "deleted": false,
+              "feedback": null,
+              "retrieval_origin": "pca"
+            }
+          ],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "62616d40-d174-4a59-8d64-52f68884fa74",
+          "tool_icons": []
+        }
+      },
+      "parent": "7ee683b6-ab1c-4780-829e-3d4cce4b1af4"
+    },
+    "client-created-root": {
+      "id": "client-created-root",
+      "message": null,
+      "parent": null
+    },
+    "df980c5b-0f24-47ee-a210-0f2236da147b": {
+      "id": "df980c5b-0f24-47ee-a210-0f2236da147b",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "给出执行指令"
+          ]
+        },
+        "create_time": 1790070556.076,
+        "id": "df980c5b-0f24-47ee-a210-0f2236da147b",
+        "metadata": {
+          "serialization_metadata": {
+            "custom_symbol_offsets": []
+          }
+        }
+      },
+      "parent": "79ad4ea9-3f5c-4433-ac1c-bbe39d665aa7"
+    },
+    "f2b5e96d-2756-4d82-9454-80e5823b9d71": {
+      "id": "f2b5e96d-2756-4d82-9454-80e5823b9d71",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content": "思考了 13s",
+          "content_type": "reasoning_recap"
+        },
+        "create_time": 1790070573.724909,
+        "id": "f2b5e96d-2756-4d82-9454-80e5823b9d71",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "d0ececc0-4ec8-4c22-9bcf-a9da2efe6883"
+        }
+      },
+      "parent": "df980c5b-0f24-47ee-a210-0f2236da147b"
+    }
+  },
+  "memory_scope": "global_enabled",
+  "pinned_time": 1790069385.29745,
+  "plugin_ids": null,
+  "title": "审计WORK-LAB云端仓库",
+  "update_time": 1790080623.543289,
+  "voice": null
+}

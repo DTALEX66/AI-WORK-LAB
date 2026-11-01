@@ -1,0 +1,83 @@
+# 双仓工作流增强完整任务包 v4.0
+
+生成日期：2026-08-05
+
+## 最终决策
+
+本任务采用 **1 + 2 + 1** 结构：
+
+1. 一个 HERMES 总控任务包；
+2. 两个独立仓库执行包；
+3. 一个跨仓集成与验收包。
+
+不是把两个仓库合并成一个任务，也不是让两个仓库完全各做各的。
+
+```text
+01_MASTER_HERMES_TASKPACK.md
+  ├─ 02_WORKFLOW_ASSISTANCE_TASKPACK.md
+  ├─ 03_OPEN_DESIGN_ASSISTANCE_TASKPACK.md
+  └─ 04_CROSS_REPO_INTEGRATION_TASKPACK.md
+```
+
+## 目标仓库
+
+| 角色 | 本地仓库 | GitHub |
+|---|---|---|
+| 通用工作流治理层 | `D:\All projects\Workflow-assistance` | `DTALEX66/Workflow-assistance` |
+| Open Design 设计领域增强包 | `D:\All projects\OPEN-DESIGN-Assistance` | `DTALEX66/OPEN-DESIGN-Assistance` |
+
+## 两个项目不是什么关系
+
+- 不是前端仓库与后端仓库；
+- 不是两个智能体；
+- 不是两个需要同时启动的服务；
+- 不互相复制整仓代码；
+- 不共享同一 Git 工作树；
+- 不由 Open Design 仓库管理 Codex/Hermes/Cursor 的用户级配置。
+
+正确关系：
+
+- `Workflow-assistance` 是横向控制、治理、任务、边界、交付和监控层；
+- `OPEN-DESIGN-Assistance` 是纵向设计领域 Domain Pack；
+- Hermes 是当前任务包执行入口；未来 Workflow 核心必须允许 Cursor、WorkBuddy 等替换入口；
+- Open Design 软件继续负责自己的 UI、daemon、插件运行、预览和导出；
+- Codex 负责代码 writer 和高风险 exact-tree reviewer；
+- GitHub 负责远端事实源、CI 和交付证据。
+
+## 首次使用
+
+1. 完整阅读本文件和 `01_MASTER_HERMES_TASKPACK.md`；
+2. 按 `05_LOCAL_AND_GITHUB_RUNBOOK.md` 先做两个本地仓库的只读检查；
+3. Hermes 从 `GLOBAL-001` 开始，不得直接写代码；
+4. 默认只审计和本地实现，不执行 live apply、commit、push、PR、ruleset、merge 或 release；
+5. 每次只允许一个 writer；两个仓库必须分别冻结、验证和复审；
+6. 两库各自达到本地验收后，才执行跨仓桥接任务。
+
+## 绝对禁止
+
+- 禁止访问、枚举、读取或修改 `E:\`；
+- 禁止读取 `.env`、`auth.json`、OAuth、API Key、Cookie、私钥、认证数据库；
+- 禁止读取 CC Switch/Codex/Hermes 私有认证内容；
+- 禁止默认写项目外目录或给整个 `D:\All projects` 授权；
+- 禁止未授权 commit、push、PR、merge、ruleset、release；
+- 禁止用静态文件、合成测试或模型自评分冒充真实运行；
+- 禁止把项目扩建成新的 Agent、聊天软件、模型路由器或 Prompt 网关。
+
+## 当前审计基线
+
+以下 SHA 只是 2026-08-05 审计时的历史基线，Hermes 启动时必须重新读取现场 HEAD：
+
+- Workflow-assistance：`aee5d72c47d05eb88c77c41fdb69c485f6c192ee`
+- OPEN-DESIGN-Assistance：`c8212401e891e7c3f0e4a6f36cdb11dbcca24e27`
+
+## 文件索引
+
+- `01_MASTER_HERMES_TASKPACK.md`：唯一总控任务书；
+- `02_WORKFLOW_ASSISTANCE_TASKPACK.md`：Workflow 仓库改造；
+- `03_OPEN_DESIGN_ASSISTANCE_TASKPACK.md`：Open Design 仓库改造；
+- `04_CROSS_REPO_INTEGRATION_TASKPACK.md`：Domain Pack 和真实黄金链路；
+- `05_LOCAL_AND_GITHUB_RUNBOOK.md`：现在及改造后如何运行本地和云端仓库；
+- `06_ACCEPTANCE_AND_EVIDENCE.md`：证据、完成定义和发布边界；
+- `07_HERMES_START_COMMAND.md`：可直接发送给 Hermes 的启动指令；
+- `taskpack-manifest.yaml`：机器可读任务顺序和默认参数。
+

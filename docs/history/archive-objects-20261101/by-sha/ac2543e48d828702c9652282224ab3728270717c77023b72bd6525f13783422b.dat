@@ -1,0 +1,206 @@
+# WORK-LAB 云端复审与后续任务深化
+审计日期：2026-09-14（UTC）
+审计对象：DTALEX66/WORK-LAB
+候选 SHA：c1c6a16454c06f4b90acf7e7913cc7dc62be3802
+性质：只读云端审计 + 下载源码副本上的合成反例验证；后续任务为待纳入仓库权威入口的建议，不构成 mutation authority。
+
+## 结论
+当前 r4 有真实进展，但不应按“全部治理能力已完成、修完 AGENTS 即可合并”放行。
+12 个 checks 成功是真实事实；本次在相同 SHA 的源码副本上复现了验收、晋级、权限、执行能力和回滚问题。应先封闭虚假成功和权限误判，再收敛主线。
+本报告不是 GitHub 正式审批，不执行 PR 创建/关闭/合并、全局配置修改或外部资源扫描。
+
+## 1. 云端基线与覆盖
+| 对象 | 本轮观察 |
+|---|---|
+| main | e5231f0f605d1515ed12958267b394c9de1da20c |
+| r4-recovery-exec | c1c6a16454c06f4b90acf7e7913cc7dc62be3802 |
+| r4 对 main | ahead 92 / behind 0 |
+| PR #123 | open；head c6b7e8f6468281325d26524e3762607c6fa7a4ce |
+| r4 对 #123 head | ahead 50 / behind 0 |
+| 当前开放 PR | 本轮列表仅 #123，未见 r4 新 PR |
+| r4 checks | 12/12 success，来自两个 workflow run |
+| 实机验收 | 本轮未执行 Windows/真实 Agent/真实 Provider/外置资源库验收 |
+
+来源：[候选树](https://github.com/DTALEX66/WORK-LAB/tree/c1c6a16454c06f4b90acf7e7913cc7dc62be3802)、[分支比较](https://github.com/DTALEX66/WORK-LAB/compare/e5231f0f605d1515ed12958267b394c9de1da20c...c1c6a16454c06f4b90acf7e7913cc7dc62be3802)、[PR #123](https://github.com/DTALEX66/WORK-LAB/pull/123)、[work-lab-gate](https://github.com/DTALEX66/WORK-LAB/actions/runs/34785724546)、[另一组检查](https://github.com/DTALEX66/WORK-LAB/actions/runs/34785724515)。
+
+检查名称：aggregate、integration、token-monitor、observer、supply-chain-security、workflow-assistance、wlr060-aggregate、schema-fixtures、gate-plan、config-compiler、capsule-cli、observer-readonly。
+读取完整树索引 1370 项，定向读取 34 个文件。比较接口的文件列表达到 300 项，本报告未用该列表声称覆盖全部差异。未审计所有历史分支、所有实现、所有测试，也未执行全仓测试。
+以下严重性主要指“作为生产治理门禁启用前”的阻塞；没有证据证明这些缺陷已在用户实机触发。
+
+## 2. 已确认的修复，不重复派工
+- run_quality_gate.py 的主要运行根已经改为 .project-local/runs、artifacts、kanban，并设置多种缓存和临时目录变量。不能继续套用旧 #123 的主要路径结论。
+- generate_current_state.py 的 CI/运行时证据默认输出已进入 .project-local/artifacts。
+- config_compiler.py 的 apply 已拒绝无 adapter 的假应用，返回 UNSUPPORTED_APPLY；旧 applied 状态显示 APPLIED_UNVERIFIED_LEGACY。原来的无条件 applied 缺陷已修复。原生配置应用闭环仍须另验。
+- CURRENT_STATE 明确标识 RUNTIME_REQUIRED、技能 live_readback=not-run，以及实机/付费 Provider 等未验证能力。
+- Hindsight 无 backend、Penguin 无 handle 时有部分 unavailable 分支，说明已注意区分环境缺失；但不能据此推断真实接入已完成。
+
+证据：[quality gate](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/orchestration/run_quality_gate.py)、[state generator](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/scripts/ci/generate_current_state.py)、[config compiler](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/policy/config_compiler.py)、[CURRENT_STATE](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/generated/CURRENT_STATE.json)。
+
+## 3. 新发现与反例
+### A01 — P0：顶层权威仍冲突，且不只 AGENTS
+AGENTS 仍将 10-workflow/workflow-assistance 和 30-observer/work-lab-observer 作为仅有的 active roots；Manifest 与 CURRENT_STATE 已采用新布局。
+taskpacks/current/README.md 仍要求 .hermes/task-artifacts，并引用 50-taskpacks、00-governance。
+taskpack-authority-index.json current 仍指向 2026-08-25 WLR，且 release=FROZEN；CURRENT_EXECUTION_BASELINE 指向 R4-20260904、短 SHA bf52df0、tree=pending-refresh；CURRENT_STATE 的 stage3.taskpack_id 又指向 FINAL-MASTER-CONTROL-PLANE。
+R4 原文指针落在 .project-local/artifacts/task-artifacts/r4/taskpack-r4.md，不能从当前被跟踪树复核该原文。
+影响：Agent 无法可靠判断当前授权、任务完成状态与归属。不能以日期最大或聊天摘要直接选权威。
+证据：[AGENTS](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/AGENTS.md)、[任务入口](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/taskpacks/current/README.md)、[任务索引](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/taskpack-authority-index.json)、[执行基线](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/generated/CURRENT_EXECUTION_BASELINE.json)。
+
+### A02 — P0：完成验收可由同一执行者自签
+CompletionAuthority.evaluate 使用集合检查链类型，未验证顺序；只要求任意 claim 的 level=INDEPENDENT，没有绑定 independent_check 的级别、审核人与执行者差异或可信身份。
+artifacts_present/extras_present 只是调用方提供的名称集合，不读取或校验真实证据；receipt hash 是内容摘要，不是授权身份认证。
+本地合成反例：同一 producer 反序提交 independent_check、verification、output；只有 output 标为 INDEPENDENT；approver 仍为该 producer；native 模式返回 PASSED。
+修复：验证角色及可信来源、必需顺序、证据与 task/run/SHA 绑定；拒绝缺失/空 approver，不把任意字符串当审批凭据。
+证据：[completion_authority.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/task-governance/completion_authority.py)、[task_protocol.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/task-governance/task_protocol.py)。
+
+### A03 — P0：Evolution 晋级可接受空评测和错误候选
+_all_ok 对空列表执行 all，结果为 True；promote 不核验 receipt.candidate_id 与候选是否一致，不重新核验 producer/evaluator 独立性，也不要求完整且唯一的六类评测。
+本地反例：candidate=A，receipt 属于不同 candidate、producer=evaluator、axes=[]；提供调用方 by 字符串及 allow_worklab=True 后返回 PASS。
+修复：必需轴精确覆盖、有限数值及范围检查、候选内容 hash、基线/数据集版本/评测身份绑定；拒绝空项、重复项、过期和跨候选回执。调用方布尔值不能替代受信批准。
+证据：[independent_eval.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/evolution/independent_eval.py)。
+
+### A04 — P0：PermissionGate.readonly 不实现只读权限
+ActionKind.FILESYSTEM 不区分 read/write。默认 policy scope 包括所有类型，普通文件目标自动允许；readonly() 只限制类型，不能拒绝普通文件写入。
+本地反例：readonly policy 对合成项目外路径、scope=write 返回 allowed。测试没有访问该路径。
+forbidden_paths 是字符串前缀比较，未实现统一规范化、大小写/分隔符语义、符号链接与实际操作边界。forbidden_hosts 使用调用方 scope 精确比较，不能视作网络执行边界。
+修复：显式 operation、task scope、允许根和禁止根、授权来源；默认不授予未声明资源；实际文件/进程/网络入口必须消费可信决策。
+证据：[permission_gate.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/task-governance/permission_gate.py)。
+
+### A05 — P0：Executor 把可发现性当成成功执行
+HermesAdapter 发现 CLI 后宣告 launch/resume/fork/cancel/stream/persist。继承的基类方法仅返回字典，不发送原生调用；没有实际 stream 方法。policy 等枚举声明也不证明执行链已经强制接入。
+本地反例：hermes_bin 指向本地源码目录而非可执行文件，is_launchable=True；cancel("never-created") 返回 OK。
+同项目 new 的 universal_session_id 固定为 hermes:<project_id>，存在多会话关联冲突风险。
+修复：拆分 discovered/implemented/verified，未接线方法一律 NOT_IMPLEMENTED；成功须有原生响应；支持唯一 native session/run 映射与失败状态。先只打通一个现用执行器。
+证据：[Hermes adapter](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/execution-federation/hermes_adapter.py)、[基类](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/execution-federation/acp_adapter.py)、[路由](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/execution-federation/federation.py)。
+
+### A06 — P0（启用前）：Exo sandbox 是内存模型，回滚也有别名缺陷
+ExoSandbox 的 state/snapshot/history 在内存中，write 只写字典，不能限制外部 Exo 进程。normpath 字符串判断不构成 OS 沙箱；没有持久化“不可擦除历史”的证明。
+rollback 令 _state 直接引用 snapshot，随后 write 修改 snapshot 本体。
+本地反例：original → snapshot → rollback → changed → 再次 rollback，得到 changed 而非 original。
+修复：将本模块明确降级为模拟器；快照深复制。真实运行须复用已有隔离后端并验证目录/网络/子进程约束；先禁用自动自修改及晋级。
+证据：[exo_sandbox.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/evolution/exo_sandbox.py)。
+
+### A07 — P1：Session 保留率不是目标接收效果
+continues.retention_metric 将源计数与源计数相除，乘 loss 参数；默认情况下容易得到 1。run_continues 没有目标执行器实际接收/续跑验收，因而 ADOPT/ABSORB 只能是方案建议。
+SessionProvider.export/handoff 与 run_continues 直接向调用方目录写入；已读方法内没有强制 .project-local 包含关系。完整外层限制覆盖尚未证明。
+修复：分别记录源可导出率、目标接收率、任务续跑成功率、UNKNOWN；在每个对外写入口校验授权根与文件名，不依赖注释。
+证据：[continues.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/session-federation/continues.py)、[provider.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/session-federation/provider.py)。
+
+### A08 — P1：Memory/Penguin provider 仍主要是 POC
+HindsightPoc 仅从 backend.items() 拷贝到本地 _store，继承的 retain/recall/reflect 操作本地字典与关键词匹配，没有看到 Hindsight 服务调用。
+PenguinProvider 有 handle 时 benchmark 仅返回 engine/candidate 元数据，不执行外部 benchmark；create_candidate/mutate 本地构建对象，无 handle 也可生成对象。
+修复：标注 SIMULATED/CONTRACT_ONLY；真实适配须提供服务调用、重启后读回、不可用/超时/权限撤销证据。禁止将这套内存算法的结果当作外部 Provider 排名。
+证据：[Hindsight POC](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/memory/hindsight_poc.py)、[memory 基类](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/memory/provider.py)、[Penguin provider](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/evolution/provider.py)。
+
+### A09 — P1：Zero-Spill 仍有旧根回退和遗漏入口
+hermes-project-data.py 优先 .project-local，但在未 ignore 时仍回退 .hermes；terminal guard 的错误引导仍推荐 .hermes/task-runtime。
+SpillGovernor 将 .hermes/ 纳入无条件 sanctioned prefixes，不会把旧根作为待迁移项。
+config_compiler 默认意图目录为 config/pending-approvals；需明确它属于可跟踪声明还是应迁入本地的动态审批状态。
+修复应以 Manifest 规定根为准；旧根只允许明确迁移读取，不再静默恢复。未归属文件返回 UNKNOWN/REVIEW，不凭扩展名或路径词语断言可清理。
+本轮仅确认源码路径设置，未宣称用户机器已零外溢。
+证据：[runtime helper](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/packages/client-neutral-core/bin/hermes-project-data.py)、[guard](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/packages/client-neutral-core/bin/hermes-project-terminal-guard.py)、[spill cleanup](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/cleanup/spill_cleanup.py)。
+
+### A10 — P1：资源预检仍是待补的实际能力
+external-libraries-index 是 8 月资源清单，有外置工具链入口与 DESIGN-LAB 只读归属，但尚非任务级资源授权解析器。已有 execution_preflight 主要检查 Git/Python/Markdown。
+复用现有入口扩展，不重建第二 Doctor。registry 的路径存在不等于访问授权；先检查授权再探测，不在本轮扫描 D/E 或其他项目。
+证据：[资源清单](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/external-libraries-index.json)、[现有预检](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/packages/client-neutral-core/scripts/execution_preflight.py)。
+
+### A11 — P1：绿 CI 与能力完备之间缺少负向测试
+当前 workflow 确实运行 task-governance、execution-federation、evolution 等测试，不应说这些模块没有 CI。问题是测试未覆盖本轮反例。
+FinalAudit 按调用方 pass 字段布尔值决定通过，不能单独视作可信验收引擎；例如字符串的布尔语义也需要严格类型校验。
+证据：[workflow](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.github/workflows/work-lab-gate.yml)、[task tests](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/tests/workflow-assistance/test_task_governance.py)、[evolution tests](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/tests/workflow-assistance/test_evolution.py)、[FinalAudit](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/cleanup/final_audit.py)。
+
+## 4. 后续任务卡（建议，需先进入有效 TaskPack）
+状态统一为 PROPOSED；不得直接修改仓库当前状态为 DONE。优先级表示发布阻塞或后续价值，不等于可绕过授权。
+
+| ID | 优先级 | 具体交付与验收 | 依赖 |
+|---|---|---|---|
+| WL-AUD-00 | P0 | 固定最新 refs、当前 TaskPack 原文及 hash；核对 R4、WLR、FINAL-MASTER 的 supersession；原文缺失记 BLOCKED_AUTHORITY | 无 |
+| WL-AUD-01 | P0 | 修 AGENTS/任务入口/索引/Manifest；新根一致，旧根只列历史；CI 注入冲突必须失败 | 00 |
+| WL-AUD-02 | P0 | 修 CompletionAuthority；同人审核、反序链、伪 artifact、错 SHA、空 approver 均拒绝 | 00 |
+| WL-AUD-03 | P0 | 修 Evolution 晋级；空/重复/缺轴、错候选、非有限分数、伪身份、过期回执均拒绝 | 00 |
+| WL-AUD-04 | P0 | PermissionGate 细分 read/write/execute/network；无授权默认拒绝，readonly 写入负向测试；绑定实际副作用入口 | 00 |
+| WL-AUD-05 | P0 | 所有适配器诚实降级；不存在的会话不能 cancel OK；只读探测不宣告执行已验证；唯一会话 ID | 00 |
+| WL-AUD-06 | P0 | Exo 默认模拟/禁用；修快照别名；证明两次回滚恢复相同内容；真实进程隔离另列验收 | 03、04 |
+| WL-AUD-07 | P1/对外写入前必需 | 统一所有运行数据 writer，移除静默 .hermes 回退；Session 导出权限根约束；Windows 子进程/缓存 canary | 01、04 |
+| WL-AUD-08 | P1 | Session 的导出与目标接收证据分开，未知能力标 UNKNOWN；合成任务跨 Agent handoff、取消、失败和重启验证 | 05、07 |
+| WL-AUD-09 | P1 | Hindsight/Penguin 等按 contract/simulated/live 分级；仅接通一个有需求的真实后端，其他保持 POC | 03、04、07 |
+| WL-AUD-10 | P1 | Resource requirements required/optional/forbidden + resolver；扩展现有 preflight 为任务 Doctor；权限检查先于探测 | 01、04 |
+| WL-AUD-11 | P1 | 体积与外溢清单：tracked/worktree/Git历史/本地运行/外置资源分开；未知资产保留，获准迁移后 hash/读回/回退；不改写历史 | 07、10 |
+| WL-AUD-12 | P1 | 语言与重复实现清单：Python治理、TS界面、Rust壳分别列 owner/build/test/状态；核对正式 ADR；不新增全面语言迁移 | 01 |
+| WL-AUD-13 | P0 放行前 | 同一候选 SHA 的 CI + 上述负向用例 + 权威一致性 + 适用的实机证据；独立审计明确未通过项 | 01–07 |
+| WL-AUD-14 | P0 收敛 | 准备 r4 后续修复分支的审查材料；获授权后新 PR、标 #123 superseded、合并；合并后 main SHA/CI 回查 | 13 |
+| WL-AUD-15 | P2 | 在真实执行闭环成立后再做 Prompt/Skill 评测、Memory bakeoff、Radar；每个新 provider 有预算、退出条件与复用裁决 | 08–10 |
+
+任务深化：
+- 00：仓内 current baseline 不必把自己的最终 commit SHA 嵌入自身，避免生成文件循环变更；以 source/tree digest 描述被跟踪内容，以外部/忽略目录 attestation 绑定 exact run SHA。
+- 04/10：工具链“已登记、权限不足、当前环境不可见、版本不匹配、真正缺失”必须区分，禁止一律提示安装。Doctor 本地离线、默认不调用模型、不自动安装或申请权限。
+- 05：优先修所有未接线方法的诚实失败；然后只对现用 Hermes 打通一条原生会话闭环。Codex/DSH/OpenHands/Pi 依据证据逐步验收，不凑满适配器数量。
+- 06/09：若不打算近期真实运行 Exo/Penguin，允许将其移入明确 experimental 状态而非扩展实现；必须让生产可达入口不可误晋级。
+- 07：Zero-Spill 只约束运行数据等受治理产物；源码变更写授权源码目录。既有软件全局 home 和跨项目共享缓存不能被本仓库自动迁走。
+- 10：资源 schema 拥有 resource_id、owner、consumer、allowed_operations、location_ref、version、health、provenance；机器私密路径用本地 overlay。注册表只保存必要元数据，不导入模型/设计资产或其他项目数据库。
+- 11：.log/.jsonl 可能需要保留，也可能过期；应以用途与保留策略决定，不能永久保留全部日志导致无限增长。清理前先分类与范围授权。
+- 12：树中已经同时有 apps/observer/src-tauri 和 apps/token-monitor/src-tauri，不能只用“Rust候选”概括全项目，也不能凭文件存在宣布 Rust 迁移完成。本轮未读到足以冻结最终语言决策的完整 ADR。
+- 13：六项反例输出应转为拒绝/未实现/恢复 original，补进当前真正运行的 CI；不是新建一套无人调用的“审计脚本”就算完成。
+- 14：92 个提交只能提示主线积压，不能自动批准合并。新 PR 的最终 head 将是修复后的新 SHA，禁止继续沿用 c1c6a164 的绿 CI。
+- 15：优先复用现有原生 CLI/SDK/协议；不用 Agent 自己写的“测试全通过”文本替代结果，不从真实用户聊天自动构造 CI 样本。
+
+## 5. 与接续摘要 WL-CLOUD-001～005 的关系
+- 001（#123 superseded）→ 14；已核对祖先关系，但本轮没有关闭或修改 PR。
+- 002（根 AGENTS）→ 01，并扩大到 taskpacks/current/README 和任务索引。
+- 003（migration/current state）→ 00、01、13；保留当前 state 的 RUNTIME_REQUIRED 诚实设计。
+- 004（Zero-Spill）→ 07、11；关键默认根已修复，剩余 fallback/Session writers/实机验证。
+- 005（r4 新 PR）→ 13、14；新增验收/权限/执行/晋级阻塞必须先处理。
+资源协议与 Doctor → 10；分支清理安排在 main 合并与 refs 验证之后，分类 ACTIVE/MERGED/SUPERSEDED/HISTORICAL_KEEP/SAFE_TO_DELETE/UNKNOWN，不自动删除。
+旧 NF 方向继续保留“原生优先、精简治理、真实读回”；已经修复的 compiler 假 apply 不重新开发。当前新增 POC 先验真，再决定保留或吸收。
+
+## 6. 本地合成反例输出
+以下运行只调用下载副本中的类，使用合成 ID/路径；没有读取真实会话、写外部路径或启动真实 Agent。
+```json
+{
+  "same_worker_reversed_chain": "PASSED",
+  "empty_axes_wrong_candidate_promotion": "PASS",
+  "readonly_write_classification": "allowed",
+  "directory_mistaken_for_cli": true,
+  "nonexistent_session_cancel": {"ok": true, "status": "OK"},
+  "repeated_snapshot_restore": "changed"
+}
+```
+执行成功代表反例复现成功，不代表项目测试通过。完整输出和已下载的七个原始模块已留在本轮审计工作目录；本报告的源码链接均固定到审计 SHA。
+
+## 7. 来源清单
+以下为本轮实际读取的 34 个文件，不含仅从树索引看见的模块。未读文件不做完成结论。
+- [.github/workflows/work-lab-gate.yml](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.github/workflows/work-lab-gate.yml)
+- [.project/governance/external-libraries-index.json](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/external-libraries-index.json)
+- [.project/governance/generated/CURRENT_EXECUTION_BASELINE.json](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/generated/CURRENT_EXECUTION_BASELINE.json)
+- [.project/governance/generated/CURRENT_STATE.json](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/generated/CURRENT_STATE.json)
+- [.project/governance/migration-status.json](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/migration-status.json)
+- [.project/governance/taskpack-authority-index.json](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/governance/taskpack-authority-index.json)
+- [.project/manifest.yaml](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/.project/manifest.yaml)
+- [AGENTS.md](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/AGENTS.md)
+- [packages/client-neutral-core/bin/hermes-project-data.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/packages/client-neutral-core/bin/hermes-project-data.py)
+- [packages/client-neutral-core/bin/hermes-project-terminal-guard.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/packages/client-neutral-core/bin/hermes-project-terminal-guard.py)
+- [packages/client-neutral-core/scripts/execution_preflight.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/packages/client-neutral-core/scripts/execution_preflight.py)
+- [scripts/ci/generate_current_state.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/scripts/ci/generate_current_state.py)
+- [services/cleanup/final_audit.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/cleanup/final_audit.py)
+- [services/cleanup/spill_cleanup.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/cleanup/spill_cleanup.py)
+- [services/evolution/exo_sandbox.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/evolution/exo_sandbox.py)
+- [services/evolution/independent_eval.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/evolution/independent_eval.py)
+- [services/evolution/provider.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/evolution/provider.py)
+- [services/execution-federation/acp_adapter.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/execution-federation/acp_adapter.py)
+- [services/execution-federation/federation.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/execution-federation/federation.py)
+- [services/execution-federation/hermes_adapter.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/execution-federation/hermes_adapter.py)
+- [services/memory/hindsight_poc.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/memory/hindsight_poc.py)
+- [services/memory/provider.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/memory/provider.py)
+- [services/orchestration/run_quality_gate.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/orchestration/run_quality_gate.py)
+- [services/policy/config_compiler.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/policy/config_compiler.py)
+- [services/session-federation/continues.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/session-federation/continues.py)
+- [services/session-federation/provider.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/session-federation/provider.py)
+- [services/task-governance/completion_authority.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/task-governance/completion_authority.py)
+- [services/task-governance/permission_gate.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/task-governance/permission_gate.py)
+- [services/task-governance/task_protocol.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/services/task-governance/task_protocol.py)
+- [taskpacks/current/README.md](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/taskpacks/current/README.md)
+- [tests/ci/test_root_governance_contracts.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/tests/ci/test_root_governance_contracts.py)
+- [tests/workflow-assistance/test_evolution.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/tests/workflow-assistance/test_evolution.py)
+- [tests/workflow-assistance/test_federation_e2e.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/tests/workflow-assistance/test_federation_e2e.py)
+- [tests/workflow-assistance/test_task_governance.py](https://github.com/DTALEX66/WORK-LAB/blob/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/tests/workflow-assistance/test_task_governance.py)
+

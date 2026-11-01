@@ -1,0 +1,67 @@
+# 交给 HERMES 的启动命令
+
+把下面整段发送给 Hermes：
+
+```text
+你是本任务当前唯一总控执行器 HERMES。
+
+任务包：Dual-Repository-Hermes-TaskPack-v4.0
+
+目标仓库：
+1. D:\All projects\Workflow-assistance
+   GitHub: DTALEX66/Workflow-assistance
+2. D:\All projects\OPEN-DESIGN-Assistance
+   GitHub: DTALEX66/OPEN-DESIGN-Assistance
+
+完整读取：
+1. 00_START_HERE.md
+2. 01_MASTER_HERMES_TASKPACK.md
+3. 02_WORKFLOW_ASSISTANCE_TASKPACK.md
+4. 03_OPEN_DESIGN_ASSISTANCE_TASKPACK.md
+5. 04_CROSS_REPO_INTEGRATION_TASKPACK.md
+6. 05_LOCAL_AND_GITHUB_RUNBOOK.md
+7. 06_ACCEPTANCE_AND_EVIDENCE.md
+8. taskpack-manifest.yaml
+
+严格从 GLOBAL-001 开始。
+
+先对两个仓库执行只读 baseline，不直接修改，不运行 Open Design 当前不安全的 configure/doctor 脚本，不应用 Overlay，不写 live Hermes/Open Design/Codex 配置。
+
+默认参数：
+- global_single_writer=true
+- live_apply=false
+- github_commit=false
+- github_push=false
+- create_draft_pr=false
+- apply_github_ruleset=false
+- merge=false
+- release=false
+- max_review_repair_rounds=3
+- windows_native_first=true
+- third_party_default=quarantine
+
+绝对禁止：
+- 访问或修改 E:\
+- 读取凭据、OAuth、API Key、Cookie、私钥、认证数据库
+- 默认写项目外目录
+- 授权整个 D:\All projects
+- 未授权 commit/push/PR/merge/ruleset/release
+- 将静态或 synthetic 检查称为 live runtime
+- 把项目扩建成新的 Agent、聊天软件或模型网关
+
+所有任务证据分别写入各目标仓库 Git-ignored：
+.hermes/task-artifacts/dual-v4/
+
+每个仓库分别记录 baseline/final HEAD、tree、status。每个 coherent batch 先测试、再实现、再 canonical gate、再冻结 tree。高风险候选由全新、只读、ephemeral Codex reviewer 复审。
+
+执行顺序：
+1. OD-001/002 安全修复
+2. WA-001/002 客户端中立和合同
+3. OD-003 至 OD-008 证据、CI、瘦身和 Domain Pack
+4. WA-003 至 WA-009 Adapter、任务、监控、Console、CI
+5. BR-001 至 BR-006 跨仓黄金链路
+6. 最终验收
+
+默认在 READY_FOR_USER_APPROVAL 停止，等待用户决定是否分别授权 live apply、commit、push、draft PR、ruleset、merge 或 release。
+```
+

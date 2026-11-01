@@ -1,0 +1,1371 @@
+# Knowledge-Base A线知识宫殿算法深化包
+
+## 核心修正
+
+A线不是只有卡片、复习和训练。
+
+真正完整的 A线应该至少有三大核心：
+
+```text
+1. 卡片系统：把知识变成可复习单元
+2. 宫殿系统：把知识变成空间、路径、场景和联想锚点
+3. 输出系统：把知识变成可表达、可应用、可迁移能力
+```
+
+其中“知识宫殿”不是漂亮图谱，而是人的长期记忆结构化系统。
+
+## 宫殿系统目标
+
+```text
+把抽象知识变成可定位、可游走、可联想、可回忆、可复习的空间结构。
+```
+
+## 本包内容
+
+```text
+00_宫殿系统总控.md
+01_宫殿不是图谱.md
+02_宫殿数据结构.md
+03_知识入宫算法.md
+04_房间分配算法.md
+05_节点摆放算法.md
+06_路径与游走算法.md
+07_联想锚点算法.md
+08_宫殿复习算法.md
+09_宫殿冲突与重排算法.md
+10_宫殿掌握度算法.md
+11_宫殿前端交互设计.md
+12_数据库SQL.md
+13_API设计.md
+14_CODEX任务包.md
+15_DEEP并行任务包.md
+16_验收标准.md
+
+dropin/backend/pk_radar/learning_palace/
+```
+
+
+---
+
+# 00 宫殿系统总控
+
+## 宫殿系统在 A线中的位置
+
+A线完整闭环应该是：
+
+```text
+知识摄入
+  ↓
+知识结构化
+  ↓
+学习路线
+  ↓
+卡片复习
+  ↓
+知识宫殿
+  ↓
+主动回忆
+  ↓
+输出报告
+  ↓
+长期能力
+```
+
+卡片解决“记住某个点”。  
+宫殿解决“知识之间的位置、关系、场景、路线、联想和整体结构”。
+
+## 宫殿系统不是
+
+```text
+不是普通知识图谱
+不是节点随便拖拽
+不是好看的白板
+不是把卡片贴到画布上
+不是 Obsidian Graph 的复制
+```
+
+## 宫殿系统是
+
+```text
+面向人的空间记忆引擎。
+```
+
+它要解决：
+
+```text
+这个知识放在哪？
+和哪些知识相邻？
+从哪个入口进入？
+沿什么路线复习？
+用什么图像/场景锚定？
+哪些区域拥挤了？
+哪些节点长期想不起来？
+哪些知识需要换房间？
+```
+
+## 宫殿系统四层
+
+```text
+Palace      宫殿：一个知识领域
+Room        房间：一个主题/模块
+Locus       记忆点：一个稳定空间位置
+Object      知识物件：卡片、概念、项目、错误、流程
+Route       游走路径：复习和回忆顺序
+```
+
+## 宫殿与卡片关系
+
+```text
+卡片 = 知识原子
+宫殿 = 知识空间
+路线 = 学习顺序
+图谱 = 语义关系
+报告 = 输出结果
+```
+
+
+---
+
+# 01 宫殿不是图谱
+
+## 知识图谱
+
+知识图谱回答：
+
+```text
+A 和 B 有什么关系？
+谁依赖谁？
+哪个概念属于哪个主题？
+```
+
+适合机器和人共同使用。
+
+## 知识宫殿
+
+知识宫殿回答：
+
+```text
+我怎么记住它？
+我从哪里进入？
+我沿什么路径回忆？
+它在脑海中是什么画面？
+它和哪个空间/物件绑定？
+```
+
+主要服务人的记忆。
+
+## 二者区别
+
+| 维度 | 知识图谱 | 知识宫殿 |
+|---|---|---|
+| 目标 | 表达关系 | 辅助记忆 |
+| 结构 | 节点-边 | 空间-房间-路径-物件 |
+| 排列 | 语义布局 | 空间稳定布局 |
+| 使用者 | 人 + AI | 主要是人 |
+| 算法 | 图聚类、中心性、关系推理 | 空间分配、路径优化、锚点生成 |
+| 复习方式 | 查关系 | 沿路径游走回忆 |
+| 稳定性 | 可动态变化 | 应尽量稳定 |
+
+## 宫殿的关键原则
+
+```text
+空间位置要稳定
+节点数量不能过载
+相似知识要相邻但可区分
+高频知识靠近入口
+薄弱知识放到显眼位置
+抽象概念要转成视觉锚点
+路线要可重复游走
+```
+
+
+---
+
+# 02 宫殿数据结构
+
+## 核心对象
+
+```text
+palace_spaces
+palace_rooms
+palace_loci
+palace_objects
+palace_links
+palace_routes
+palace_walk_events
+palace_object_reviews
+```
+
+## PalaceSpace
+
+```text
+id
+title
+domain
+description
+layout_type
+created_at
+```
+
+示例：
+
+```text
+AI项目开发宫殿
+设计行业知识宫殿
+学校文化设计宫殿
+```
+
+## PalaceRoom
+
+```text
+id
+space_id
+title
+room_type
+theme
+order_index
+capacity
+x
+y
+width
+height
+```
+
+示例：
+
+```text
+文档解析室
+检索系统室
+MCP工具室
+安全隔离室
+A线学习室
+B线机器知识室
+```
+
+## PalaceLocus
+
+Locus 是稳定记忆点。
+
+```text
+id
+room_id
+title
+position_x
+position_y
+position_z
+anchor_type
+capacity
+stability_score
+```
+
+示例：
+
+```text
+门口
+左墙
+书桌
+窗户
+地毯
+灯
+白板
+书架
+```
+
+## PalaceObject
+
+Object 是被放进去的知识物件。
+
+```text
+id
+locus_id
+object_type
+source_card_id
+source_entity_id
+source_unit_id
+title
+visual_anchor
+memory_hook
+importance
+mastery_level
+review_status
+```
+
+object_type：
+
+```text
+concept
+fact
+procedure
+decision
+mistake
+tool
+project
+case
+route
+```
+
+## PalaceRoute
+
+```text
+id
+space_id
+title
+purpose
+route_type
+ordered_loci_json
+```
+
+route_type：
+
+```text
+review
+learning
+weakness
+project
+exam
+output
+```
+
+
+---
+
+# 03 知识入宫算法
+
+## 输入
+
+知识宫殿的输入不是原始文档，而是经过 A线加工后的对象：
+
+```text
+approved knowledge_card
+learning_unit
+entity
+fact
+mistake_record
+observation
+project_decision
+```
+
+## 入宫判断
+
+不是所有知识都应该进入宫殿。
+
+进入条件：
+
+```text
+importance >= 0.6
+或者 mastery_level < 3 需要辅助记忆
+或者 mistake_count > 0
+或者属于当前学习路线
+或者是关键决策/流程/概念
+```
+
+## 入宫评分
+
+```text
+palace_entry_score =
+  0.25 * importance
++ 0.20 * route_relevance
++ 0.20 * weakness_score
++ 0.15 * visualizability
++ 0.10 * relationship_density
++ 0.10 * future_usefulness
+```
+
+超过 0.65 进入宫殿候选。
+
+## 伪代码
+
+```python
+def should_enter_palace(item):
+    score = (
+        0.25 * item.importance
+        + 0.20 * item.route_relevance
+        + 0.20 * item.weakness_score
+        + 0.15 * item.visualizability
+        + 0.10 * item.relationship_density
+        + 0.10 * item.future_usefulness
+    )
+    return score >= 0.65
+```
+
+## 进入方式
+
+```text
+自动候选
+  ↓
+人确认
+  ↓
+分配房间
+  ↓
+分配 locus
+  ↓
+生成 visual_anchor
+  ↓
+生成 memory_hook
+```
+
+
+---
+
+# 04 房间分配算法
+
+## 目标
+
+决定一个知识物件应该放在哪个房间。
+
+## 房间分配依据
+
+```text
+主题相似度
+学习路线归属
+知识类型
+项目归属
+难度
+使用频率
+薄弱程度
+```
+
+## 房间分配算法
+
+```text
+room_score =
+  0.35 * topic_similarity
++ 0.20 * route_match
++ 0.15 * object_type_match
++ 0.10 * project_match
++ 0.10 * capacity_score
++ 0.10 * spatial_balance
+```
+
+选择最高分房间。
+
+## 房间容量
+
+一个房间不能无限放节点。
+
+建议：
+
+```text
+新手房间：7 ± 2 个主要物件
+普通房间：12-20 个物件
+高级房间：可分区，不超过 30 个
+```
+
+超过容量后：
+
+```text
+1. 新建子房间
+2. 把低频对象移入归档房间
+3. 把相似对象合并为组合物件
+```
+
+## 房间类型
+
+```text
+concept_room      概念室
+procedure_room    流程室
+mistake_room      错题室
+project_room      项目室
+tool_room         工具室
+decision_room     决策室
+review_room       复习室
+```
+
+## 示例
+
+知识点：
+
+```text
+“AI生成内容不能直接进入长期记忆”
+```
+
+分配：
+
+```text
+安全隔离室 / 决策室
+```
+
+原因：
+
+```text
+属于隔离层原则
+属于决策规则
+未来 B系统调用高频
+```
+
+
+---
+
+# 05 节点摆放算法
+
+## 目标
+
+决定知识物件在房间里的具体位置。
+
+## 空间摆放原则
+
+```text
+入口附近：高频、核心、总纲
+左侧：前置知识
+右侧：后续应用
+中心：核心概念
+角落：易错点、警告、反模式
+墙面：流程、时间线、步骤
+桌面：当前正在学习的内容
+书架：已掌握和归档内容
+```
+
+## 位置评分
+
+```text
+locus_score =
+  0.25 * semantic_fit
++ 0.20 * frequency_fit
++ 0.15 * weakness_visibility
++ 0.15 * relation_proximity
++ 0.10 * collision_avoidance
++ 0.10 * stability
++ 0.05 * novelty
+```
+
+## 冲突避免
+
+不能把太相似又容易混淆的概念放得太近。
+
+例如：
+
+```text
+FTS5
+sqlite-vec
+Qdrant
+Chroma
+```
+
+它们应该在同一房间，但不同区域。
+
+规则：
+
+```text
+相似但易混淆 → 同房间不同 locus
+强依赖关系 → 相邻 locus
+流程顺序 → 沿路径排列
+高风险反模式 → 角落/警示区
+```
+
+## 摆放模式
+
+### 1. 路径型
+
+适合：
+
+```text
+流程、步骤、项目执行
+```
+
+### 2. 分区型
+
+适合：
+
+```text
+主题分类、工具分类
+```
+
+### 3. 中心辐射型
+
+适合：
+
+```text
+核心概念和周边关联
+```
+
+### 4. 时间线型
+
+适合：
+
+```text
+项目演进、学习阶段、决策历史
+```
+
+
+---
+
+# 06 路径与游走算法
+
+## 目标
+
+宫殿不是静态图，而是可以“走”的。
+
+路径解决：
+
+```text
+我按什么顺序回忆？
+今天复习哪条路线？
+薄弱点怎么串起来？
+项目复盘怎么走一遍？
+```
+
+## 路径类型
+
+```text
+learning_path     学习路径
+review_path       复习路径
+weakness_path     薄弱点路径
+project_path      项目复盘路径
+exam_path         考前路径
+output_path       输出报告路径
+```
+
+## 路径生成算法
+
+```text
+path_priority =
+  0.30 * due_score
++ 0.25 * weakness_score
++ 0.20 * route_relevance
++ 0.15 * importance
++ 0.10 * spatial_distance_inverse
+```
+
+## 路径优化目标
+
+```text
+尽量短
+覆盖到期节点
+覆盖薄弱节点
+避免认知过载
+保持空间稳定
+```
+
+## 路径长度
+
+建议：
+
+```text
+快速复习：5-7 个 loci
+普通复习：10-15 个 loci
+深度复盘：20-30 个 loci
+```
+
+## 游走事件
+
+每次走宫殿记录：
+
+```text
+route_id
+locus_id
+object_id
+recall_success
+elapsed_ms
+confidence
+created_at
+```
+
+## 路径反馈
+
+如果某节点连续 recall_failed：
+
+```text
+1. 加入薄弱路径
+2. 提升显眼程度
+3. 生成更多联想锚点
+4. 必要时换位置
+```
+
+
+---
+
+# 07 联想锚点算法
+
+## 目标
+
+抽象知识很难记，需要转成视觉、动作、情绪、故事、对比。
+
+## 锚点类型
+
+```text
+visual_anchor      视觉锚点
+spatial_anchor     空间锚点
+story_anchor       故事锚点
+contrast_anchor    对比锚点
+emotion_anchor     情绪锚点
+action_anchor      动作锚点
+symbol_anchor      符号锚点
+```
+
+## 锚点生成原则
+
+好的锚点：
+
+```text
+具体
+夸张
+可视化
+与位置绑定
+与概念有逻辑关系
+不容易和其他锚点混淆
+```
+
+## 锚点生成算法
+
+```text
+anchor_score =
+  0.25 * concreteness
++ 0.20 * distinctiveness
++ 0.20 * semantic_link
++ 0.15 * emotional_strength
++ 0.10 * spatial_fit
++ 0.10 * simplicity
+```
+
+## 示例
+
+知识点：
+
+```text
+隔离层
+```
+
+视觉锚点：
+
+```text
+一扇透明防火门，门外是网页/PDF/GitHub，门内是长期记忆库。
+```
+
+知识点：
+
+```text
+AI 不能直接写长期记忆
+```
+
+视觉锚点：
+
+```text
+一个机器人拿着笔被挡在玻璃门外，必须把纸条递给人审核。
+```
+
+## 锚点复用规则
+
+```text
+同一概念可有多个锚点
+同一房间不要重复相似锚点
+错误知识用强烈警示锚点
+流程知识用动作锚点
+```
+
+
+---
+
+# 08 宫殿复习算法
+
+## 宫殿复习不是卡片复习
+
+卡片复习：
+
+```text
+看问题 → 想答案
+```
+
+宫殿复习：
+
+```text
+进入空间 → 沿路径走 → 看到位置 → 回忆物件 → 解释关系
+```
+
+## 宫殿复习评分
+
+```text
+palace_recall_score =
+  0.30 * object_recall
++ 0.20 * location_recall
++ 0.20 * relation_recall
++ 0.15 * explanation_quality
++ 0.15 * route_completion
+```
+
+## 复习类型
+
+```text
+location_recall    看到知识，想起位置
+object_recall      看到位置，想起知识
+route_recall       从入口走完整条路径
+relation_recall    解释相邻节点关系
+story_recall       复述锚点故事
+```
+
+## 宫殿调度
+
+宫殿节点的 due_at 由两部分决定：
+
+```text
+card_due_at
+palace_due_at
+```
+
+如果卡片熟但宫殿位置想不起来：
+
+```text
+只复习宫殿定位
+```
+
+如果宫殿位置熟但知识答不出来：
+
+```text
+进入卡片复习
+```
+
+## 宫殿复习间隔
+
+```text
+失败：1天
+定位成功但解释失败：3天
+位置+知识都成功：7天
+连续成功：14/30天
+```
+
+
+---
+
+# 09 宫殿冲突与重排算法
+
+## 为什么需要重排
+
+宫殿必须稳定，但不是永远不变。
+
+需要重排的情况：
+
+```text
+房间过载
+节点混淆
+路径太长
+知识体系升级
+错误知识纠正
+某些节点长期想不起来
+```
+
+## 冲突类型
+
+```text
+semantic_collision    语义太近导致混淆
+spatial_collision     空间位置太近
+capacity_overload     房间过载
+route_overload        路径太长
+anchor_conflict       锚点太相似
+wrong_room            放错房间
+```
+
+## 重排原则
+
+```text
+只小范围重排
+高掌握节点尽量不动
+低掌握/混淆节点优先调整
+每次重排记录迁移事件
+重排后安排一次定位复习
+```
+
+## 重排评分
+
+```text
+move_score =
+  0.30 * conflict_severity
++ 0.20 * recall_failure_rate
++ 0.20 * room_overload
++ 0.15 * low_stability
++ 0.15 * better_locus_available
+```
+
+超过 0.7 建议移动。
+
+## 迁移记录
+
+```text
+object_id
+from_locus_id
+to_locus_id
+reason
+created_at
+```
+
+
+---
+
+# 10 宫殿掌握度算法
+
+## 宫殿掌握度和卡片掌握度不同
+
+卡片掌握度：
+
+```text
+我能不能答出这个知识点？
+```
+
+宫殿掌握度：
+
+```text
+我能不能在空间中找到它、解释它、连接它？
+```
+
+## 宫殿对象掌握度
+
+```text
+palace_object_mastery =
+  0.30 * card_mastery
++ 0.20 * location_recall_score
++ 0.20 * relation_recall_score
++ 0.15 * route_success_rate
++ 0.15 * anchor_strength
+```
+
+## 房间掌握度
+
+```text
+room_mastery =
+  average(object_mastery)
+  - overload_penalty
+  - conflict_penalty
+```
+
+## 宫殿整体掌握度
+
+```text
+palace_mastery =
+  0.40 * room_mastery_avg
++ 0.25 * route_completion_rate
++ 0.20 * weak_node_inverse
++ 0.15 * output_report_score
+```
+
+## 掌握标准
+
+一个宫殿不是“建完”就完成。
+
+应该满足：
+
+```text
+80% 核心节点 object_mastery >= 0.75
+主路径可无提示走完
+关键节点能解释关系
+薄弱节点数量持续下降
+能输出一份完整报告
+```
+
+
+---
+
+# 11 宫殿前端交互设计
+
+## 页面
+
+```text
+/palace
+```
+
+## 主视图
+
+```text
+左侧：宫殿列表 / 房间列表
+中间：空间画布
+右侧：节点详情 / 卡片 / 锚点 / 复习记录
+底部：游走路径 / 今日宫殿复习
+```
+
+## 模式
+
+```text
+编辑模式
+复习模式
+游走模式
+薄弱点模式
+路线模式
+输出模式
+```
+
+## 关键交互
+
+```text
+拖拽节点
+创建房间
+创建 locus
+绑定卡片
+生成视觉锚点
+开始游走复习
+查看薄弱节点
+建议重排
+导出宫殿报告
+```
+
+## 组件
+
+```text
+PalaceCanvas
+RoomPanel
+LocusNode
+PalaceObjectCard
+MemoryAnchorPanel
+RouteWalker
+PalaceReviewPanel
+RearrangeSuggestionPanel
+```
+
+## 前端技术建议
+
+```text
+React Flow：流程和路径型宫殿
+Cytoscape.js：大规模关系图
+D3：自定义空间和统计
+Canvas/SVG：后期宫殿视觉化
+```
+
+
+---
+
+# 12 数据库 SQL
+
+```sql
+CREATE TABLE IF NOT EXISTS palace_spaces (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  domain TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  layout_type TEXT NOT NULL DEFAULT 'room_path',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS palace_rooms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  room_type TEXT NOT NULL DEFAULT 'concept_room',
+  theme TEXT NOT NULL DEFAULT '',
+  order_index INTEGER NOT NULL DEFAULT 0,
+  capacity INTEGER NOT NULL DEFAULT 12,
+  x REAL NOT NULL DEFAULT 0,
+  y REAL NOT NULL DEFAULT 0,
+  width REAL NOT NULL DEFAULT 400,
+  height REAL NOT NULL DEFAULT 300,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(space_id) REFERENCES palace_spaces(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS palace_loci (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  position_x REAL NOT NULL DEFAULT 0,
+  position_y REAL NOT NULL DEFAULT 0,
+  position_z REAL NOT NULL DEFAULT 0,
+  anchor_type TEXT NOT NULL DEFAULT 'object',
+  capacity INTEGER NOT NULL DEFAULT 1,
+  stability_score REAL NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(room_id) REFERENCES palace_rooms(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS palace_objects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  locus_id INTEGER NOT NULL,
+  object_type TEXT NOT NULL,
+  source_card_id INTEGER,
+  source_entity_id INTEGER,
+  source_unit_id INTEGER,
+  title TEXT NOT NULL,
+  visual_anchor TEXT NOT NULL DEFAULT '',
+  memory_hook TEXT NOT NULL DEFAULT '',
+  importance REAL NOT NULL DEFAULT 0.5,
+  mastery_level INTEGER NOT NULL DEFAULT 0,
+  review_status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(locus_id) REFERENCES palace_loci(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS palace_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_object_id INTEGER NOT NULL,
+  to_object_id INTEGER NOT NULL,
+  link_type TEXT NOT NULL DEFAULT 'related_to',
+  strength REAL NOT NULL DEFAULT 0.5,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS palace_routes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  space_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  purpose TEXT NOT NULL DEFAULT '',
+  route_type TEXT NOT NULL DEFAULT 'review',
+  ordered_loci_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS palace_walk_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  route_id INTEGER,
+  locus_id INTEGER,
+  object_id INTEGER,
+  recall_success INTEGER NOT NULL DEFAULT 0,
+  elapsed_ms INTEGER NOT NULL DEFAULT 0,
+  confidence INTEGER NOT NULL DEFAULT 3,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS palace_moves (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  object_id INTEGER NOT NULL,
+  from_locus_id INTEGER,
+  to_locus_id INTEGER,
+  reason TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+```
+
+
+---
+
+# 13 API 设计
+
+## 宫殿空间
+
+```text
+GET    /learning/palace/spaces
+POST   /learning/palace/spaces
+GET    /learning/palace/spaces/{id}
+PATCH  /learning/palace/spaces/{id}
+```
+
+## 房间
+
+```text
+POST /learning/palace/spaces/{id}/rooms
+GET  /learning/palace/rooms/{id}
+PATCH /learning/palace/rooms/{id}
+```
+
+## 记忆点
+
+```text
+POST /learning/palace/rooms/{id}/loci
+PATCH /learning/palace/loci/{id}
+```
+
+## 知识物件
+
+```text
+POST /learning/palace/loci/{id}/objects
+PATCH /learning/palace/objects/{id}
+POST /learning/palace/objects/{id}/move
+```
+
+## 路径游走
+
+```text
+POST /learning/palace/routes
+GET  /learning/palace/routes/{id}
+POST /learning/palace/routes/{id}/walk
+POST /learning/palace/walk-events
+```
+
+## 算法建议
+
+```text
+POST /learning/palace/suggest-room
+POST /learning/palace/suggest-locus
+POST /learning/palace/suggest-anchor
+POST /learning/palace/suggest-route
+POST /learning/palace/suggest-rearrange
+```
+
+
+---
+
+# 14 CODEX 任务包
+
+## CODEX-PALACE-01 数据模型
+
+新增 SQL 和 store 方法：
+
+```text
+palace_spaces
+palace_rooms
+palace_loci
+palace_objects
+palace_links
+palace_routes
+palace_walk_events
+palace_moves
+```
+
+## CODEX-PALACE-02 入宫算法
+
+文件：
+
+```text
+backend/pk_radar/learning/palace_entry.py
+```
+
+## CODEX-PALACE-03 房间与位置算法
+
+文件：
+
+```text
+backend/pk_radar/learning/palace_layout.py
+```
+
+## CODEX-PALACE-04 路径与游走
+
+文件：
+
+```text
+backend/pk_radar/learning/palace_routes.py
+backend/pk_radar/learning/palace_review.py
+```
+
+## CODEX-PALACE-05 锚点算法
+
+文件：
+
+```text
+backend/pk_radar/learning/palace_anchor.py
+```
+
+## CODEX-PALACE-06 前端页面
+
+页面：
+
+```text
+frontend/app/palace/page.tsx
+```
+
+组件：
+
+```text
+PalaceCanvas
+RoomPanel
+LocusNode
+RouteWalker
+MemoryAnchorPanel
+```
+
+## CODEX-PALACE-07 验收
+
+跑通：
+
+```text
+卡片进入宫殿候选
+选择房间
+选择 locus
+生成锚点
+创建路径
+完成一次宫殿游走复习
+记录 walk_event
+生成重排建议
+```
+
+
+---
+
+# 15 DEEP 并行任务包
+
+## DEEP-P1 Entry Worker
+
+```text
+palace_entry.py
+test_palace_entry.py
+```
+
+## DEEP-P2 Room Worker
+
+```text
+palace_rooms.py
+test_palace_rooms.py
+```
+
+## DEEP-P3 Layout Worker
+
+```text
+palace_layout.py
+test_palace_layout.py
+```
+
+## DEEP-P4 Anchor Worker
+
+```text
+palace_anchor.py
+test_palace_anchor.py
+```
+
+## DEEP-P5 Route Worker
+
+```text
+palace_routes.py
+test_palace_routes.py
+```
+
+## DEEP-P6 Review Worker
+
+```text
+palace_review.py
+test_palace_review.py
+```
+
+## DEEP-P7 Frontend Worker
+
+```text
+frontend/app/palace/page.tsx
+frontend/components/palace/*
+```
+
+
+---
+
+# 16 验收标准
+
+## 最小宫殿闭环
+
+```text
+创建 palace_space
+创建 room
+创建 locus
+把 approved card 放入 locus
+生成 visual_anchor
+生成 review_path
+完成一次 walk
+记录 palace_walk_event
+计算 palace_object_mastery
+```
+
+## 算法验收
+
+```text
+entry_score 可计算
+room_score 可计算
+locus_score 可计算
+anchor_score 可计算
+path_priority 可计算
+move_score 可计算
+palace_mastery 可计算
+```
+
+## 产品验收
+
+```text
+用户能看到宫殿
+用户能看到房间
+用户能拖拽/移动节点
+用户能沿路径复习
+用户能看到薄弱节点
+系统能建议重排
+```
+
+## 与卡片系统联动验收
+
+```text
+卡片掌握度影响宫殿掌握度
+宫殿 recall_failed 能生成复习任务
+宫殿节点可回溯原卡片
+错题可进入警示区
+```

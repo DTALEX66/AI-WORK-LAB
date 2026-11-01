@@ -1,0 +1,317 @@
+# DTALEX Codex 集成插件总方案
+
+# DTALEX Codex Integrated Guardian Plugin
+
+## 一句话定位
+
+这是一个可复用的 Codex 集成插件包，用于任何项目：
+
+```text
+项目理解
++ 任务拆解
++ AI污染拦截
++ 代码质量门
++ Token节省
++ 长期经验沉淀
++ CODEX/DEEP任务包生成
+```
+
+## 整合来源
+
+```text
+Knowledge-Base：项目治理、A/B线边界、AI空壳污染治理、Context Pack / TaskPack
+Skill-Integration：swarm-dev 多Agent任务拆解 + code-guardian 质量防线
+AI-Enhancement-Package：Codex启动体系、AGENTS规则、插件核验、Token节省、长期记忆
+```
+
+## 插件最终形态
+
+```text
+DTALEX Codex Guardian
+= Project Context Keeper
++ AI Pollution Guard
++ Quality Gate
++ Swarm Lite
++ TaskPack Builder
++ Memory Keeper
+```
+
+## 安装位置
+
+推荐安装到：
+
+```text
+~/.codex/skills/dtalex-project-guardian/
+~/.codex/skills/dtalex-swarm-lite/
+~/.codex/skills/dtalex-quality-gate/
+~/.codex/skills/dtalex-context-keeper/
+```
+
+也可以把本包放进任何项目根目录：
+
+```text
+.codex/plugins/dtalex-guardian/
+```
+
+## 适合场景
+
+```text
+让 CODEX 接手新项目
+精简旧项目
+阻止 AI 生成空壳文件
+治理旧项目名污染
+多Agent任务拆解但不失控
+生成给 CODEX / DEEP 的任务包
+沉淀错误经验和常用命令
+```
+
+## 不适合场景
+
+```text
+完全自动替你执行高风险命令
+自动安装未知插件
+自动联网抓取并合并开源项目
+无人工确认直接改 README / CI / 核心代码
+```
+
+
+---
+
+# 发送给 CODEX 的总提示词
+
+你现在要启用 DTALEX Codex Integrated Guardian Plugin。
+
+你的工作方式必须变为：
+
+```text
+先理解项目
+→ 读取 AGENTS.md / CURRENT_SCOPE / PROJECT_STATUS
+→ 生成 Context Pack
+→ 拆分任务
+→ 小步修改
+→ 运行质量门
+→ 运行 AI污染扫描
+→ 生成验证报告
+→ 记录经验
+```
+
+## 强制规则
+
+1. 不允许直接创建空壳文档。
+2. 不允许把 roadmap 写成 active。
+3. 不允许在主线文件中保留旧项目名。
+4. 不允许把 AI 生成内容直接写入 README / PROJECT_STATUS / AGENTS / CI。
+5. 不允许无确认安装第三方插件。
+6. 不允许修改自己不拥有的文件范围。
+7. 所有输出必须包含：改了什么、为什么、验证方式、风险、下一步。
+
+## 每次开工前必须读取
+
+```text
+AGENTS.md
+docs/00_CURRENT_SCOPE.md
+docs/LESSONS_LEARNED.md
+docs/DO_NOT_REPEAT.md
+docs/COMMANDS.md
+```
+
+## 每次提交前必须运行
+
+```powershell
+python .codex/plugins/dtalex-guardian/scripts/project_guard.py --root . --fail-on error
+python scripts/health_check.py
+```
+
+如果项目没有 `scripts/health_check.py`，至少运行：
+
+```powershell
+git diff
+git status
+```
+
+并输出手动验证清单。
+
+
+---
+
+# Plugin Architecture
+
+## Three source projects
+
+| Source | Keep as | Purpose |
+|---|---|---|
+| Knowledge-Base | Main product / target project | Local-first knowledge base, learning loop, Context Pack / TaskPack |
+| Skill-Integration | Codex governance skill source | Swarm Lite + Quality Gate |
+| AI-Enhancement-Package | Codex ops playbook | AGENTS, startup checks, plugin verification, token/memory strategy |
+
+## Final plugin layers
+
+```text
+1. Startup / Environment Check
+2. Context Keeper
+3. Project Guardian
+4. Swarm Lite
+5. Quality Gate
+6. Memory Keeper
+7. TaskPack Builder
+```
+
+## Why not merge into Knowledge-Base
+
+Knowledge-Base should stay clean.
+
+This plugin is cross-project infrastructure.
+It should be installed once and reused across projects.
+
+
+---
+
+# Installation
+
+## Option A: Install to global Codex skills directory
+
+PowerShell:
+
+```powershell
+$CodexSkills = "$HOME\.codex\skills"
+New-Item -ItemType Directory -Force -Path $CodexSkills | Out-Null
+
+Copy-Item -Recurse -Force ".\skills\dtalex-project-guardian" "$CodexSkills\dtalex-project-guardian"
+Copy-Item -Recurse -Force ".\skills\dtalex-quality-gate" "$CodexSkills\dtalex-quality-gate"
+Copy-Item -Recurse -Force ".\skills\dtalex-swarm-lite" "$CodexSkills\dtalex-swarm-lite"
+Copy-Item -Recurse -Force ".\skills\dtalex-context-keeper" "$CodexSkills\dtalex-context-keeper"
+```
+
+## Option B: Install per project
+
+```powershell
+New-Item -ItemType Directory -Force -Path ".codex\plugins" | Out-Null
+Copy-Item -Recurse -Force ".\." ".codex\plugins\dtalex-guardian"
+```
+
+## Verify
+
+```powershell
+python .codex\plugins\dtalex-guardian\scripts\project_guard.py --root . --fail-on error
+```
+
+
+---
+
+# Usage
+
+## Start a new repo
+
+```text
+Use dtalex-context-keeper to build a context pack.
+Use dtalex-project-guardian to scan for pollution.
+Use dtalex-swarm-lite only after scope is clear.
+Use dtalex-quality-gate before accepting changes.
+```
+
+## Clean an AI-polluted repo
+
+```bash
+python .codex/plugins/dtalex-guardian/scripts/project_guard.py --root . --fail-on never
+```
+
+Read:
+
+```text
+outputs/guardian_report.md
+outputs/guardian_report.json
+```
+
+Fix error-level findings first.
+
+## Generate task pack
+
+```bash
+python .codex/plugins/dtalex-guardian/scripts/taskpack_builder.py --root . --goal "simplify project" --out outputs/taskpack.md
+```
+
+
+---
+
+# Integrate with Knowledge-Base
+
+## Use this plugin as C-line
+
+```text
+A-line: human learning
+B-line: machine knowledge / task assistance
+C-line: Codex governance / AI pollution guard
+```
+
+## What to copy into Knowledge-Base
+
+Copy only:
+
+```text
+scripts/project_guard.py
+scripts/run_project_guard.ps1
+.github/workflows/project-guardian.yml
+docs/CODEX_WORKFLOW.md
+```
+
+Do not copy the entire plugin into backend/frontend source.
+
+## Recommended Knowledge-Base flow
+
+```text
+docs/00_CURRENT_SCOPE.md
+→ context pack
+→ taskpack
+→ small CODEX change
+→ project_guard
+→ tests
+→ lessons learned
+```
+
+
+---
+
+# Roadmap
+
+## v0.1 MVP
+
+```text
+project_guard.py
+context_pack_builder.py
+taskpack_builder.py
+AGENTS template
+4 Codex skills
+install script
+```
+
+## v0.2
+
+```text
+Integrate Skill-Integration code-guardian scripts as optional layer
+Fix encoding artifacts in imported Skill docs
+Add markdown empty-shell scanner to code-guardian
+```
+
+## v0.3
+
+```text
+Swarm Lite DAG planner
+File ownership lock
+Agent conflict detector
+```
+
+## v0.4
+
+```text
+Cross-project memory SQLite
+Known-error retrieval
+Do-not-repeat auto-injection
+```
+
+## v1.0
+
+```text
+Global Codex governance plugin
+Project onboarding wizard
+CI template generator
+```

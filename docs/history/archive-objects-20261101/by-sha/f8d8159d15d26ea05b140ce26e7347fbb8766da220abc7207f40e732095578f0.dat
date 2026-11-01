@@ -1,0 +1,59 @@
+# CI 原始日志关键摘录与判读
+
+读取日期：2026-09-23。来源：GitHub connector 的 `fetch_workflow_job_logs`。
+Run：35801327360；Job：106992155375（observer）。
+来源地址：`https://github.com/DTALEX66/WORK-LAB/actions/runs/35801327360/job/106992155375`。
+
+以下是已经读取的日志中的不连续原文片段，不是完整原始日志，不是本轮重新运行测试生成的结果。时间戳、SHA及异常来自源日志；解释写在代码块之外。没有原生私人会话、凭据值或推理正文。
+
+## 1. 实际被测试的提交
+
+```text
+2026-09-23T00:16:53.9995567Z HEAD is now at ca4c2ce Merge 9f57ca34faea94c6accb521b1799a9e31767cb5c into 803268da9dc356fe63f26b3b5405f724bc06b5b9
+2026-09-23T00:16:54.0523210Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-09-23T00:16:54.0807603Z ca4c2cecc7792cc1efa3d47be47c90fd0d748fd2
+```
+
+判读：工作流元数据关联PR head 9f57ca3，但Observer实际checkout为PR临时合并提交ca4c2ce。记录 `requested_head_sha/tested_commit_sha/tested_tree_sha`，必要时比较tree证明代码等价。PR临时合并测试并非错误；错误是把这些身份混写，或当成已经合并main的证据。本轮未回读实际checkout tree。
+
+## 2. 同一成功步骤中出现前置测试异常
+
+```text
+2026-09-23T00:16:56.3660967Z   File "D:\a\WORK-LAB\WORK-LAB\apps\observer\tests\test_observer_runtime.py", line 9, in <module>
+2026-09-23T00:16:56.3757294Z ModuleNotFoundError: No module named 'jsonschema'
+2026-09-23T00:16:56.4686062Z   File "D:\a\WORK-LAB\WORK-LAB\apps\observer\tests\test_observer_evidence.py", line 9, in <module>
+2026-09-23T00:16:56.4696247Z ModuleNotFoundError: No module named 'jsonschema'
+2026-09-23T00:16:56.6942012Z   File "D:\a\WORK-LAB\WORK-LAB\apps\observer\tests\test_observer_store.py", line 16, in <module>
+2026-09-23T00:16:56.6946230Z ModuleNotFoundError: No module named 'jsonschema'
+```
+
+对应job steps接口：`Verify Observer read-only skeleton` 为 success。候选workflow中这些Python命令处于同一Windows命令块，后面仍运行其他测试。
+
+已证实的是“子测试异常与步骤success共存”。高置信修复方向是补齐该job依赖与逐个原生命令的非零退出传播；在完整复现前，不把所有CI结果都宣布无效，也不凭猜测扩大重构。应增加“前一命令失败、后一命令成功，整个required组仍必须失败”的负控。仅设置一般错误偏好而不验证原生退出码，不是验收证明。
+
+## 3. U19 的真实判定不是PASS
+
+```text
+2026-09-23T00:31:05.0108218Z [U19] backend v3 @ http://127.0.0.1:59043 rev=0 projects=1 execs=0
+2026-09-23T00:31:05.0111348Z [U19] launched real app.exe pid=8012 cdp=: 59042
+2026-09-23T00:31:05.0114344Z [U19] CDP readback FAILED: RuntimeError('no CDP page target on 127.0.0.1:59042')
+2026-09-23T00:31:05.0115186Z [U19] GDI render proof: unavailable (windows=0)
+2026-09-23T00:31:05.0116186Z [U19] probe window status: probe=ok pid=8012 visible=false cdpPort=59042
+2026-09-23T00:31:05.0128492Z [U19] VERDICT: SKIPPED_HEADLESS
+2026-09-23T00:31:05.0129568Z   "backend": "PASS",
+2026-09-23T00:31:05.0129903Z   "tauri_launch": "RUNNING",
+2026-09-23T00:31:05.0130310Z   "webview_readback": "FAIL",
+2026-09-23T00:31:05.0130741Z   "process_liveness": "ALIVE",
+2026-09-23T00:31:05.0131221Z   "gdi_render_proof": "unavailable"
+2026-09-23T00:31:05.0132123Z evidence: D:\a\WORK-LAB\WORK-LAB\.project-local\runs\u19_webview_readback.json
+```
+
+日志随后明确输出 `exit 0 (SKIPPED_HEADLESS, ... real-WebView layer owed to desktop runner)`。
+
+判读：后端与进程存活是已有证据；应用内WebView非空渲染仍缺。脚本把这种情形分类为headless边界，但“唯一根因必然是runner”不能仅凭脚本注释认定。保留桌面runner实测义务；不要盲目重试同一headless环境，也不要把skip改成product PASS。
+
+## 4. 前版交付的定点更正
+
+前版 `WORK-LAB_20260923_Integrated_Report.md`、总提示词和提示词00中，关于“U19步骤success”的元数据描述仍成立；任何由此推导“真实WebView验收已成功、PARTIAL仅是过时文案”的结论不成立。
+
+以后同时保存：工作流结论、每条必须命令退出码、语义verdict、实际测试提交/tree、产物引用、授权和接受状态。不得只看绿色图标。

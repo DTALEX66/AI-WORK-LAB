@@ -1,0 +1,200 @@
+DSH 纠偏接管指令｜AAOS 第一包继续实施
+日期：2026-10-05
+用途：直接交给 DSH 执行；本文件是交接指令，不新建仓库任务权威。
+核对快照：PR #157 head 136c28079c7cb8222899d7af1fa5d41dd6e4937a。
+本次核对为远端源码和既有记录审查；没有在 Owner 的 Windows 候选上实跑，以下执行项均不是完成声明。
+
+一、目标与优先级
+
+Goal 保持 active。沿用两个任务包：
+第一包：最快交付可用的 Tauri 产品、最短必要完整架构和尽可能多的真实格式闭环。
+第二包：在第一包的数据、协议、组件和恢复基线上扩展长期能力。
+用户已经选择重构和成熟技术复用，不再重问桌面框架、不做新的开放式选型。
+
+现在停止「读源码—新建 AAOS01 文档—提交—等两端 CI—汇报」循环。下一次交付必须是下列任一项：PDF 候选真实结果、真实产品代码修复、Tauri→Rust Core 的可运行切片。对重复事实的解释不算交付。
+
+二、先纠正三处事实
+
+1. 第一包完整任务书的编号：
+Q03 = 类型合同与权限；
+Q04 = 原件与文档保存；
+Q12 = B 波次轻量扩展；
+Q14 = Windows 安装态资格化。
+不能再把 Q03 当文档保存，或把安装旅程写成 Q12。启动提示词是顺序摘要，完整任务书才给逐项定义。
+
+2. queued 可以直接 claim。
+crates/archeaxis-application/src/attempts.rs 的 claim() 接受 queued、failed、cancelled，并在同一事务里登记 attempt 和变为 running。
+crates/archeaxis-api/src/runtime/mod.rs 的 start() 当前把 Executor::start 的所有错误统一映射成 409 AAK-CON-003 “job cannot start in its current state”。
+因此当前 409 不是“必须先把 queued 迁走”的证明，也不是整条业务请求正确的证明。禁止手动改数据库状态、放宽状态守卫或无差别重试。
+
+3. 旧 Python 后端启动成功不满足 Q02。
+src-tauri/src/main.rs 复用了 desktop/src-tauri/src/backend.rs；后者启动的是 python -m app.runtime_entrypoint core。
+任务包要求正式 Tauri 接 Rust canonical Core。旧 Python 数据库迁移、browser-smoke 写入和 Python API 成功，只是 legacy 行为证据，不能升级为新架构通过。
+把已有 Q02 状态改成：legacy 接线可运行；Tauri→Rust canonical 接管未完成。保留历史证据，不删除或改写历史回执。
+
+三、执行口径与证据复用
+
+现有仓库稳定 task_id、CAP ID 和 current 台账身份保留。本轮执行顺序采用第一包 Q00–Q15 的交付物；W/U 是旧包任务和需求索引，作为证据来源进行多对多映射，不开第二队列。
+在已有 current 台账一次补齐映射和当前状态，不再另建十几份“发现/磨精确/撤回”的说明。
+
+Q 交付物                         可复用旧包证据与边界
+Q00 现场保护                     W00；只刷新发生变化的 SHA/dirty/writer
+Q01 重构与目录登记               W01、SUP-022；落实最小目录/写入归属 delta
+Q02 Tauri→Rust 生命周期与读桥接   W05/W07 的 Core 基础；旧 Python 宿主结果仅作参考
+Q03 类型合同与权限               W09、W15 机器守卫、既有 launch_auth；核对新桥接缺口
+Q04 原件/文档/草稿保存            W16 草稿缺口及既有 Source/CAS；不把“只读契约核对”算保存
+Q05 阅读与证据样板               W10/W11 的设计参考；仍需真实 Tauri 验收
+Q06 A 波次格式闭环               W04、E0 §38–47、既有格式 tests；逐样本补候选证据
+Q07 候选审核与纠正               W15；真实库 19 条处置仍由真人完成
+Q08 学习与 AI 资产               W06/W16；W25 已有链路证据按身份与范围复用
+Q09 搜索与能力目录               W02/W12/W13/W14；不得重建已有 routes.json
+Q10 首个互通 profile             W03/W21/W22；保留限定范围与损失
+Q11 备份与副本恢复               W18；同一集成候选重新绑定数据/程序身份
+Q12 轻量扩展                     只吸收实际重叠 profile；不整体搬入旧包长期兼容流
+Q13 性能与故障                   W08/W09 和既有测试；只补新接线改变的风险
+Q14 Windows 安装态               精确集成候选与实际旅程；旧安装包不替代新候选
+Q15 交接                         W31/W32/W33 的流程与证据格式；未完成项继续如实保留
+
+W19/W20 外部提供方、W23/W27/W28/W29 的更广平台、W30 高级 Agent、W35 雷达等不自动插入当前 PDF/Tauri 切片。按第二包对应目标保留，既有第一包所需部分继续复用。
+Code Present、Reported、Tested、Installed Qualified、Owner Accepted 分开。只有同版本、同执行路径、同数据范围的证据才能复用为对应验收。
+
+四、工程选择按下述实施，不再逐项向 Owner 重问
+
+A. 桌面与目录
+复用 frontend/ + src-tauri/ 作为本次正式 Tauri 客户端的候选实现位置；先改接线，不建立第三套壳。
+这只是实现位置选择，当前内容仍须通过 Rust 接管验收，productName 和 crate fingerprint 不证明架构正确。
+desktop/ 保持恢复/兼容角色。正式壳目前通过 #[path] 使用它的模块，所以不能现在整棵删掉或简单移走。
+apps/ArcheAxis.Desktop/ 保留迁移前行为和恢复参考；Tauri 合格接管后退出正式构建入口，转维护冻结。
+目录索引按这一角色更新，旧 R6/M0 不改写。将对应 Authority、目录所有权和构建入口的最小 delta 按已有授权落实；机器要求的 issued-envelope/grant 缺失时记录具体缺哪项，准备可审查 patch，不伪造 grant。
+
+B. canonical 数据模型
+Rust Core 的 schema/DTO/迁移和提交路径为规范来源。Python evidence_anchors 作为 legacy/worker 输入，用显式适配器映射到 Core，保留无法承载的 locator/来源版本并记录损失。
+不双写两套真值，不仅为字段名字另建表。若已有 Core 字段确实不能表达必要定位，给出具体失败样本，扩已有共享合同与 Core 迁移；这是实现缺口，不再把选名字当 Owner 产品决策。
+普通原创草稿保存已在 Q04 的范围内，通过 Rust 写入，和正式知识认可分开；不再用旧 W16 “范围未授权”永久阻塞最新重构任务。
+
+C. PRIVATE_NAMES 与依赖暂存
+不清空 PRIVATE_NAMES，不给所有 auth/.agents 全局豁免，不用手拷整个 CI venv 代替合格包。
+修复两个具体缺口：
+(1) 不递归扫描整个 --dep-source 的所有无关安装包；先依据现有锁定依赖解析本切片声明的依赖闭包，只检查实际将被带入的文件。运行时、workers、源/目标根和路径祖先仍保留既有链接/保护检查。
+(2) 使用成熟的 Python distribution metadata/RECORD 文件清单，或现有锁文件和已核验 wheel 的离线安装路径，替代“distribution 名等于目录名”的猜测。
+对命中的名字区分根位置、来源与文件角色：真实 agent state、凭据、.env、越界路径、junction/symlink 继续拒绝；上游代码中的同名模块只有在确切分发文件归属、内容和哈希核验后才能获局部例外。
+“包里有 .agents”不能直接证明安全；“目录叫 auth”也不能直接证明含秘密。
+先做 PDF 必要引擎闭包，OCR 再补所需引擎；这是独立能力包的合法范围，但不能把 PDF-only 候选说成完成全量依赖声明。
+新增有意义的反例：合法依赖同名模块能暂存；真实私有文件/越界链接仍失败且无半成品；单模块与多模块 distribution 无漏文件；传递依赖缺失明确报错。
+手动填过 312 entries、带 6 个 junction 的旧树只保留为开发探针证据，不能改名当合格发行候选。用新的 run 根经修复后的权威暂存器产生干净候选。
+
+D. Windows 工具链
+正式 Windows 候选使用 Authority 已登记的 MSVC 工具链和目标 x86_64-pc-windows-msvc。
+从登记路径调用，环境限定在当前构建进程，避免全局 PATH/注册表变更；有空格的输出路径问题先用项目允许且当前用户拥有的独立无空格构建目录。
+GNU 结果保留为开发证据，不能当正式 MSVC 资格通过。不访问别人的拒绝访问目录，不用 takeown/改 ACL 解决搜索问题。
+
+E. 权限和真人环节
+真实库 19 条知识候选逐条处置仍由真人决定。可以准备清单、证据、批注与审核 UI，不能替真人接受或借用 human token。
+新桌面写入经正式宿主的有限命令触发；令牌留在宿主。外部探针只使用自己的隔离测试 session，不截取现有桌面令牌，不把 browser-smoke bypass 当生产验收。
+一个真人环节不能阻塞 PDF、宿主接线、草稿保存、格式、恢复等独立工程工作。
+
+五、立刻完成的 PDF 切片
+
+先读既有 tests，不重复写状态机说明：
+- crates/archeaxis-application/tests/pdf_job_end_to_end.rs
+- crates/archeaxis-application/tests/attempts.rs
+- crates/archeaxis-api/tests/runtime_jobs.rs
+- tests/test_backend_runtime_safety.py
+- 既有候选探针的输入、启动和输出契约
+
+用干净、唯一 run_id 的隔离候选及新测试库。固定记录 Core 可执行文件哈希/构建 SHA、worker-profile、解释器、依赖闭包、输入原字节哈希。所有路径取自工具回执/Path/Join-Path，不切字符串，不在仓库根 glob。
+
+最小请求形状（名称与 ID 以真实响应为准，不复制旧 source_id）：
+POST /api/v1/imports
+  {"name":"document.pdf","content_base64":"<真实原字节的 base64>"}
+校验返回 sha256；取返回 source_id。
+
+POST /api/v1/jobs
+  {"job_id":"pdf-<唯一run_id>","kind":"pdf","input_ref":"<返回的source_id>"}
+注意：该 job kind 是 pdf；pdf.extract 是路由 capability，不是这张 ROUTES 表里的 job kind。
+
+POST /api/v1/jobs/<job_id>/executions
+  idempotency-key: exec-<唯一run_id>
+  {"deadline_ms":120000}
+
+若仍 409：
+1. 一次采集完整请求/响应和状态，不只摘状态码；令牌脱敏。
+2. 核对 jobs.kind、来源 original_name 的 .pdf 与 MIME、input_ref、job/request ID、capability 设置、候选 schema/二进制身份。
+3. 从 claim 失败的真实错误判断原因。优先在隔离 run 中取脱敏错误；若必须改产品，保留 JobError 的类型并正确映射 404/输入错误/真实状态冲突/存储故障，不再统一报“状态不允许”。不给用户输出内部 SQL、秘密或任意路径。
+4. 修请求或修真实代码缺口，复用既有测试并只为新错误分类补必要反例。禁止手工 UPDATE jobs.state。
+当前根因尚未确定；“kind 误用”“文件名/MIME 不匹配”等只是检查项，不能预写成事实。
+
+执行接受后有界轮询 GET /api/v1/jobs/<job_id>，直到真实终态，再读 outputs/result、transform 和相关锚点/损失回执。
+PASS 必须同时有：正确原件、succeeded、可读且匹配样本的正文、真实引擎身份、有效定位与损失记录、退出重启后同一结果可读。
+只完成提取可以记 PDF 提取切片通过，不能记完整产品或全部 PDF 能力通过。
+OCR 后续独立验证；不把“无引擎且正确拒绝”升级为 OCR 支持。
+
+保留每次运行的 JSON/日志到自己的 run 目录，机器先从完整文件解析，终端仅输出摘要。最多一次完整复现加一次修复后的验证；若同一前置失败仍未变化，报告具体错误/最小缺口/已准备 patch 并继续可独立任务，不再发一篇新考古文档。
+
+六、PDF 后立即开始真实迁移、合并、删除清理、冻结
+
+迁移：
+修改正式 Tauri 的 supervisor/资源布局，使它启动已有 archeaxis-api，沿用 Core launch 契约和实际 bind 0 就绪身份。令牌不进入前端；前端通过有限类型命令读取真实资料与证据。
+不要只把 Python app/main 换名字叫 Core。第一验收是实际 Tauri 进程驱动的 Rust Core 生命周期、真实资料列表、退出清理和重启读回。
+接着通过已有 Core 接口完成一种原件→阅读定位→引用笔记/草稿保存切片；已有 Document/Block 不足时在 Q04 补最小实现。
+
+合并：
+先列具体重复实现及消费者，把可复用的 launcher/DTO/路径解析/worker manifest 逐项收敛到一个实现；恢复壳改为使用共享实现。
+合并行为与重复代码，不把恢复能力扔掉，不把 legacy Python writer 合入正式 Rust writer。
+本分支与其他 PR 的集成顺序先查实际 diff/owner/dependencies，准备明确集成候选；源码收敛不等于获得合并远端 PR 的授权。
+
+删除清理：
+先处理自己本轮创建且确认可再生成的精确临时路径。正式源码的冗余文件只有在消费者归零、替代实现通过、哈希和回滚点可核验后才进入删除清单。
+既有目录权威要求受影响路径、owner/data class/consumer scan/rollback/精确删除授权状态；先把清单准备为可审查结果。未获对应授权只停删除动作，继续迁移与测试。
+不能用“都不删”逃避清理任务，也不能用“用户说重构”删除未知他人工作树、运行证据、Green/真实资料、共享工具或私有状态。
+历史文档的整理不能成为新的连续提交队列，更不能删掉错误撤回与已测 SHA 的审计证据。
+
+冻结：
+恢复壳维持必要维护；Tauri 尚未接管前保留 Avalonia 的恢复资格。
+新 Tauri 与 Rust、格式及副本恢复通过后，在既有构建/入口登记中明确唯一正式路径，Avalonia 和旧 Python 产品启动面转为行为/迁移参考，停止新增正式功能。
+冻结不等于删除源代码或把失败项标 PASS；Release 继续按现有边界冻结。
+
+七、安装旅程与真正需要 Owner 的事项
+
+继续准备当前 Tauri+Rust 候选包、独立数据根、旅程、安装/卸载回滚和恢复证据。不得拿旧 Avalonia 候选或旧 Python 宿主安装包冒充。
+复用既有 Tauri sidecar/打包能力；先做便携候选和独立副本旅程。有系统安装、注册表写入、同 identifier 的旧产品升级或真实库切换影响时，给出具体产物和精确影响范围，再按有效授权执行；未实装保持 Q14 NOT_RUN。
+Owner 的真实知识认可、正式库切换、发布/Release，以及规则要求的未授权精确删除仍单独保留。其余已经由重构目标决定的工程选择不要重复请示。
+
+八、停止空转的执行规则
+
+- 一次读完当前切片的既有测试、当前状态和必要源码，随后修复/运行；不以“还差读一次”拆成连续交接。
+- 文档只随一个真实切片收尾更新已有台账。没有产品改动时，必要的状态更正可以一次完成，禁止连续 doc-only 提交触发全套 CI。
+- 实现改动运行相关检查；集成候选完成后跑规定门禁。纯只读核对不会改变已测 SHA，不逐轮重跑无关全套测试。
+- 每次汇报只给：改变的产品行为；改动文件或运行命令；真实结果；未完成边界；下一项已开始的工程动作。
+- 已知事实标来源；新推断标“推断”；失败先判断是否由自己的输入/装配造成。
+- 文本抽取、capability 注册、格式支持、完整闭环是不同口径。text.extract 是内置文本路线，routes.json 的 13 条是另一组声明；分母从本次实际 profile/路由角色计算，不延用 4/13 或旧 15/15。
+- 不在产品 UI 放代理轮次、治理台账、内部源码解释来代替用户功能。
+- 第二包继续绑定第一包的 Core schema/合同与恢复基线。新格式/供体优先适配成熟实现；不为了可持续性提前建设通用 Agent 平台、多个权威数据库或完整服务群。
+
+下一次交付：
+PDF 候选的真实结果与回执；若失败则给出准确根因和可审查最小修复。
+随后继续正式 Tauri→Rust Core 的实现与真实窗口验证。
+不得以“Goal active、双端 CI 绿、TREE-CLEAN”代替上述产品结果。
+
+核对依据（均针对本次读取快照；本机执行前刷新）：
+1. 第一包完整任务书
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/136c28079c7cb8222899d7af1fa5d41dd6e4937a/docs/authority/taskpack-1004-aaos01/01_完整执行任务书.md
+2. E0 已有现场回执（尤其 §10、§38–47）
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/136c28079c7cb8222899d7af1fa5d41dd6e4937a/docs/current/AAOS-20261004-E0-SCENE-RECEIPT.md
+3. attempt claim 与 kind/capability 对照
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/136c28079c7cb8222899d7af1fa5d41dd6e4937a/crates/archeaxis-application/src/attempts.rs
+4. execute 错误统一映射位置
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/136c28079c7cb8222899d7af1fa5d41dd6e4937a/crates/archeaxis-api/src/runtime/mod.rs
+5. 现有 Tauri 宿主 backend
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/136c28079c7cb8222899d7af1fa5d41dd6e4937a/desktop/src-tauri/src/backend.rs
+6. 暂存器的路径保护、全目录扫描与复制方式
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/136c28079c7cb8222899d7af1fa5d41dd6e4937a/scripts/release/stage_backend_runtime.py
+7. 目录分类及精确移动/删除前置条件
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/136c28079c7cb8222899d7af1fa5d41dd6e4937a/docs/DIRECTORY_AUTHORITY_INDEX.md
+8. 成熟实现参考：Python distribution files/metadata（分发包名与 import 包名不保证一一对应）
+https://docs.python.org/3/library/importlib.metadata.html
+9. 成熟实现参考：pip hash-checking，锁定并覆盖传递依赖
+https://pip.pypa.io/en/stable/topics/secure-installs/
+10. 成熟实现参考：Tauri external binary/sidecar 打包
+https://v2.tauri.app/develop/sidecar/
+

@@ -1,0 +1,117 @@
+# 直接发给 HERMES 的总命令
+
+你现在是 `ArcheAxis OS / Cognitive-Loop-OS` 的唯一 Writer。
+
+## 仓库与基线
+
+- Repository：`DTALEX66/Cognitive-Loop-OS`
+- 任务包生成时可见 main：`34936f1363d504515141299149e07592de446706`
+- 已发布 Tag：`v0.4.0` → `5369ae6cfa1e97632cde52850669815c45d1e156`
+- 当前工作目录必须是用户指定的 Cognitive-Loop-OS 项目目录。
+- 禁止访问、扫描、修改或删除项目目录外的任何文件和目录。
+- 禁止访问个人 Obsidian Vault、E 盘资料、其他项目或外部数据目录。
+
+## 第一动作：只读预检
+
+先执行并报告，不要立刻修改：
+
+```powershell
+git status --short --branch
+git remote -v
+git fetch --all --prune
+git rev-parse HEAD
+git rev-parse origin/main
+git log -5 --oneline --decorate
+```
+
+要求：
+
+1. 工作树必须 clean；
+2. 读取真实 `origin/main`；
+3. 若不等于 `34936f1363d504515141299149e07592de446706`，以新 SHA 为准重新审查相关文件；
+4. 不允许 reset、force push 或覆盖云端新提交；
+5. 检查当前 required CI、开放 PR 和 Release 状态；
+6. 报告后等待或继续执行用户明确指定的一个 TaskPack。
+
+## 单次只执行一个 TaskPack
+
+默认从 `TP-R01` 开始。完成并合并前，不得自动开始下一包。
+
+任务索引：
+
+- `04_TP_R01_RELEASE_0.4.1.md`
+- `05_TP_UI01_NAV_AND_SHELL.md`
+- `06_TP_BE01_WORKSPACE_BFF.md`
+- `07_TP_UI02_HOME_AND_INSPECTOR.md`
+- `08_TP_UI03_SETTINGS_CENTER.md`
+- `09_TP_UI04_ACTIVITY_DOCK.md`
+- `10_TP_V05_TRANSFORMATION_DESIGN.md`
+- `11_TP_REGISTRY_V3.md`
+
+## 通用开发规则
+
+- 单 Writer：HERMES；
+- Codex 只读审查，不得双写；
+- 先定向 RED，再 GREEN；
+- 开发中只跑受影响测试；
+- 高风险变更使用独立 frozen tree、完整门禁和 exact-SHA CI；
+- 不用测试数量、文件数量或 Star 数证明完成；
+- 无真实 API 时显示诚实空状态，不得静态伪造成功；
+- 不暴露内部 `package_id/job_id/command_id/event_id`；
+- 保持 Candidate、Approved、Deprecated 的治理语义；
+- 保持 Tauri Loopback、导航限制、捆绑 Python 与项目边界；
+- 不改变数据库 Schema，除非独立 TaskPack 明确授权；
+- 不将 UI 视觉改造夹带 Runtime、Planner、ASR、多 Agent 或生产部署。
+
+## UI 最终方向
+
+主导航只保留：
+
+```text
+首页
+资料与知识
+学习
+AI
+
+左下角：系统
+```
+
+顶部只保留：
+
+```text
+空间切换｜全局搜索/命令｜＋新建｜审核收件箱｜用户
+```
+
+默认隐藏 Planned / Experimental 功能。
+
+转化状态采用：
+
+```text
+底部活动坞
+→ 活动抽屉
+→ 对象检查器
+```
+
+首页只回答：
+
+1. 继续做什么；
+2. 今天学什么；
+3. 哪里需要人工处理；
+4. 后台正在做什么。
+
+## 强制真相边界
+
+- 蓝：处理中；
+- 绿：已完成/已通过；
+- 黄：需关注/等待人工；
+- 红：失败/阻断；
+- 紫：品牌与主操作；
+- 灰：排队/未开始。
+
+只在有真实可计量单位时显示百分比，例如页数、文件数、阶段数和门禁数。
+禁止“知识理解 87%”和虚构 ETA。
+
+## 完成报告格式
+
+按 `14_HERMES_COMPLETION_TEMPLATE.md` 输出。
+没有远端 exact-SHA CI 证据时必须写“未验证”，不能写“已完成”。

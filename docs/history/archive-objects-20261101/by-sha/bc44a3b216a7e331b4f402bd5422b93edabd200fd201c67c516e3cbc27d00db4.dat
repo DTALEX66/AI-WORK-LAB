@@ -1,0 +1,444 @@
+# WORK-LAB｜2026-09-23 今日对话与两份研究报告整合
+
+**交付性质：研究整合 + 状态纠偏 + 后续执行提示词。**
+不是新的 CURRENT，不自动覆盖 2026-09-18 任务包，不是派工/安装/提交/发布授权，不创建第二套任务总账。
+
+## 1. 整合后的主结论
+
+今天讨论的并不是三个互不相关的方向，而是同一个目标的三个层面：
+
+- 体验层：一个容易使用的入口，把真实网页版 ChatGPT 的调研、规划和审计结果交给原生软件。
+- 执行层：Codex、Hermes、DSH 保持各自 Harness、会话、工具与内部并行能力，不改造成简单模型 API 节点。
+- 可信层：WORK-LAB 保证任务、权限、上下文、外部资源位置、执行收据和完成状态可恢复、可验证、不漂移。
+
+AAOS 继续负责可信知识与学习，DESIGN-LAB 继续负责设计领域方法与交付。WORK-LAB 有自己的工作流规则、技能与可迁移经验资产，但不因此成为第二个 AAOS 业务知识库。[S1][S2][S3][G6]
+
+**本次最重要的纠偏：先完成正在进行的 V2 收敛，再按差集补桥接和恢复能力；不是照上一轮 main-only 审计再重建一遍。**
+
+## 2. 今日材料分别提供了什么
+
+| 材料/对话 | 必须保留 | 不能擅自推导 |
+|---|---|---|
+| 提示词助手、软件越来越多、统一入口 | 要减少切换与重复交接，不只是装更多软件 | 已决定重做一个聊天产品 |
+| 原生执行器总控需求 | 真网页 GPT 做规划，真 Codex/Hermes/DSH 执行 | OAuth 登录 = 操纵网页对话；模型同名 = Harness 相同 |
+| 首份开源增强报告 | 先看已有能力差集；Beacon/SoL/Jev 等按层吸收 | 全部安装；四件套成为公共主架构 |
+| WORK-LAB 初步代码审计 | 路径、Context、Gate、配置与 Adapter 漂移值得核验 | 只读 main 就能判定其他开发线没有实现 |
+| 全量审计要求 | 最新9月权威、历史对账、防失忆、防重复下载、剩余工作提示词 | 全部历史已读、全部代码已运行 |
+| 新统一总控报告 | ChatGPT 主动调用 Remote MCP；原生执行器独立自治；Job ID和阶段结果回传 | 网页会话可以被外部服务任意自动续写；n8n/Omnigent 必须新增为主控 |
+
+本轮检索的是当天 WORK-LAB 相关记录，不混入无关设计渲染任务；历史来源只作为需求与决策证据，不能反向覆盖当前代码与授权。[S1][S2][S3]
+
+## 3. 本轮实时核验：必须分开 main、候选分支与本机
+
+### 3.1 精确基线
+
+- `main = 803268da9dc356fe63f26b3b5405f724bc06b5b9`，提交时间为2026-09-18 UTC。
+- `main tree = 606db598abd3724baf6a45ffcfb319f9b0a4d550`。
+- PR #127 为 OPEN，候选分支 `u17/global-agent-policy-20260918`，本轮 head 为 `9f57ca34faea94c6accb521b1799a9e31767cb5c`。
+- 用户 Windows 主机、当前绿色版与实际部署状态：本轮没有访问，不能从云端 SHA 推断已经部署。[G1][G5]
+
+### 3.2 最新9月权威并非“再创建一个索引”
+
+main 已有 `.project/governance/taskpack-authority-index.json`，其中 CURRENT 指向 `WORK-LAB-UNIFIED-PRODUCT-CONVERGENCE-TASKPACK-20260918`；旧 WLR 20260825 已被取代。main 也已经有 `config-authority-index.json`。[G2][G3]
+
+本轮按 main 索引指定路径读取统一收敛任务包正文返回404；同一路径在 PR 精确 head 可以读到。PR 还包含 `WORK-LAB-AUTHORITY.md`、新的无日期 `OPEN-TASK-REGISTER.md`。[G2][G6][G7][G8]
+
+因此问题应表述为：**权威指针、正文、候选实现与落地主干的阶段不一致，需要核验并完成落地。** 不能说没有权威体系，也不能把未合并正文直接宣称为已发布基线。
+
+### 3.3 旧失败记录已经被更新证据部分取代
+
+本轮按 PR head 查询得到：
+
+| 证据 | 实时结果 | 不能推导 |
+|---|---|---|
+| work-lab-gate，run `35801327360` | SUCCESS | main已经包含这些修改 |
+| wlr-060-production-gates，run `35801327365` | SUCCESS | 用户本机绿色版已通过 |
+| Observer job `106992155375` | SUCCESS | 所有运行场景都已独立复验 |
+| Observer步骤8：U19 real-WebView E2E readback | SUCCESS | 已检查全部原始E2E工件、已完成最终产品验收 |
+
+PR 正文仍写 Observer/U19 导致 CI 失败，OPEN register 仍包含 U19 PARTIAL。它们应与新运行证据对账，而不是继续被复制进“当前故障”。[G5][G7][G9][G10][G11]
+
+### 3.4 A01也不能照旧重做
+
+本轮读取 ruleset `23825562`：`enforcement=active`，目标 `refs/heads/main`，要求 `aggregate`，strict策略为true，当前连接身份 `current_user_can_bypass=never`。[G12]
+
+不能只看到旧式 branch protection 的 contexts 为空就断言 main 无 required CI。A01应转为有效规则综合核验，不再以“完全没配置”为前提重配。本轮并未完成所有继承规则、管理员身份和其他绕过面的完整审查。
+
+### 3.5 这要求修正上一轮判断
+
+上一轮 main 抽样发现不作废，但应降格为“该 main 快照的发现/假设”。PR 总账已经把配置事务、REAL证据绑定、Inbox/ACK、项目隔离、原生效果、软件安装身份、并行派发和更新后检查列为 IMPLEMENTED。[G7]
+
+这些项目应先验证现有代码、回归证据及合并/部署状态，不应重新写一套。总账宣称 IMPLEMENTED 本身仍不是本轮全代码实测证明。
+
+## 4. 新报告与本项目必须显式解决的冲突
+
+### 4.1 入口方向改变，不能偷换原目标
+
+原始目标是“外部原生软件 → 网页 ChatGPT → 原生执行器”。新报告可行路线是“ChatGPT网页 → Remote MCP → 原生执行器”。报告本身已明确二者不同。[S2 L53–91]
+
+整合建议保留两个验收目标：
+
+1. 首个闭环：真正 ChatGPT 网页主动使用受控工具，派单/查询结果/在有交互的会话中复核。
+2. 外部统一入口：作为长期体验目标；在官方可用接口未验证前，只提供跳转、状态与获准材料交接，不宣称能控制任意网页会话。
+
+官方资料确认网页 Developer Mode 支持读写 MCP 工具；具体账号和工作区权限仍应现场检查，不能由附件套餐描述推断用户已经可用。[E1][E2]
+
+### 4.2 MCP回传不等于后台自动唤醒网页GPT
+
+`dispatch` 返回 job_id，后台服务保存任务，后续用户/会话调用 `status/result`，是合理的工程方案。它不证明任意后台 job 完成后可以主动注入原网页对话、自动开始下一轮模型推理。
+
+PoC要分别记录“同一活动会话回传”“关闭网页后服务恢复”“重新打开/换会话后恢复”和“服务端主动触发网页模型”。最后一项在没有官方支持与实测证据前必须标为未验证，而不是默认具备。[S2 L760–810][E1]
+
+### 4.3 不再加第二控制面或第二账本
+
+新报告的 n8n/Omnigent + Job DB 是面向一般起点的建议；WORK-LAB 已有控制面与正在收敛的 federation/receipt 能力。因此建议第一条候选实现是：**薄 MCP 接口映射既有任务/审批/回执服务**。
+
+n8n作为独立对照PoC；Omnigent作为可替换原生编排后端候选；Orca作为外部桌面体验候选。不能同时把三者全部堆进生产路径，也不能让 Gateway DB、n8n execution DB、Omnigent session DB 各自决定 WORK-LAB 的任务完成状态。[S2][G6][G7][E4][E5][E6]
+
+### 4.4 不扩权Observer
+
+新报告提到“WORK-LAB审批中心/Executor Router”，但当前项目方向明确 Observer 始终只读。主动命令应经既有有权限的服务接口和原生客户端；未来若设计独立命令界面，必须有独立的权限合同与用户决策。
+
+不能把审批、重试、取消、安装、回滚按钮直接加到 `apps/observer`，再声称“因为调用后端所以仍然只读”。[G6][G8]
+
+### 4.5 规划记忆不能只留网页
+
+采用新报告的 Planner / Executor / Control Context 分层，但补上项目持久恢复层。网页规划窗口可替换，当前项目目标、已批准决策、基线、未完成任务和外部位置应有可核验的项目材料，不依赖任何一次聊天的记忆容量。[S2 L555–617]
+
+### 4.6 “GPT认为通过”不等于发布授权
+
+模型复审可以提出通过建议；完成、合并、部署和发布必须分别有证据与授权。新报告图中的“通过→PR/Release”不能成为自动批准路径。原生子Agent、自我修复、模型档位也不能越过任务写集、权限和用户原生选择。[S2 L619–669][G6][G8]
+
+### 4.7 不复制全文会话/Trajectory到遥测
+
+结构化输出、DSH trajectory、Hermes session、Codex thread 不自动成为可外发的数据源。只允许经授权的业务任务材料、产物引用、验收摘要与最小元数据；不得用“防失忆”名义同步私人对话、推理文本、Cookie或凭据。[S1 L112–132][G6]
+
+### 4.8 fallback必须防止重复执行
+
+不能把“App Server连接断开”直接解释为任务失败并另启 CLI。先查 job / native run / lease / receipt，区分传输中断与执行停止。无法确认时保持 UNKNOWN/WAITING_RECONCILIATION；恢复或启动新attempt必须经过幂等与所有权校验。该项是根据报告fallback建议做出的工程风险分析，不是本轮已确认故障。
+
+## 5. 整合目标架构
+
+```text
+用户 / 真正 ChatGPT Web / 可替换原生入口
+                    │
+        获准任务材料、查询、显式操作意图
+                    │
+      薄 Remote MCP / 现有入口适配（新增候选）
+                    │
+       WORK-LAB 既有权威、配置、任务与服务
+       Task / Lease / Checkpoint / Inbox-Outbox
+       Capability / Approval / Receipt / Evidence
+                    │
+           原生执行生命周期适配
+              ┌─────┼─────┐
+            Codex Hermes  DSH
+              └─────┼─────┘
+                    │
+          验证结果与获准产物引用
+                    │
+      Canonical projection → Observer只读
+                    │
+       网页后续status/result调用与复核
+```
+
+Omnigent、n8n、Orca属于可替换边界组件，是否引入以净增收益试点为准，不是新增必选主链。
+AAOS拥有审核后的知识与学习对象；DESIGN-LAB拥有设计领域能力与产物规范；WORK-LAB拥有任务协调、工作流规则和证据权威。三个项目不相互批量复制原始记忆。[S1][G6]
+
+## 6. 防失忆、防幻觉与防漂移：以恢复协议取代长提示词
+
+### 6.1 入口恢复顺序（建议映射现有Context与Federation）
+
+每个新会话/接力执行器先解析精确项目身份，读取当前权威链，确认 main/候选/工作树/本机部署四种身份，再按需恢复任务：
+
+```text
+project identity
+→ authority refs + baseline SHA/tree + active lane
+→ approved goal/non-goals/data boundary
+→ current task/owner/lease/revision
+→ decisions + known failures + unresolved questions
+→ last-good receipt + artifacts/digests
+→ resource IDs + this-machine location resolution
+→ capability freshness + next smallest authorized action
+```
+
+历史全文不全量塞入启动包；建立完整来源索引，在发现具体缺口时定向读取。资料缺失写 `SOURCE_UNAVAILABLE`，未经验证写 `UNVERIFIED`，过期写 `STALE`，不能由模型补写为事实。
+
+### 6.2 轻摘要+重证据
+
+摘要保留9个已定义的 drift-preserve字段并对齐现行schema；具体字段以仓库定义为准，不在新提示词写第二套。
+大日志、diff与工具输出采用授权ArtifactHandle：artifact_id、digest、revision/sha、范围、敏感级别、过期条件。原始材料不可读时说明，不能伪造行号与摘要。
+
+跨会话复用的是公开业务工件和可回读证据，不是秘密会话镜像。技能清单、合同数、gate数量动态发现；**禁止固定13个Skill、38个Gate作为永久正确答案**。[G8]
+
+### 6.3 双重核验，而非一条权威优先级覆盖一切
+
+规范轴：用户最新明确决定 → 被正式采纳的权威/合同 → 派工边界。
+事实轴：精确SHA代码、当前运行/CI证据、目标机器回读 → 历史观察。
+
+规范说“必须通过”，不能把失败改成通过；旧文档说“已完成”，不能覆盖当前失败；候选分支说“已实现”，不能代表主干已落地。
+
+### 6.4 必测的恢复反例
+
+换一个全新会话，制造旧路径诱导、旧分支“CURRENT”、缺失外部盘、过期工具版本、重复任务、迟到收据与已取消任务。系统必须回到真正来源，不靠复述上一轮摘要通过。
+
+建议观察：正确恢复率、错读历史次数、重复派单次数、未检索即下载次数、证据回读成功率、治理耗时。不给未做实验编造改善百分比。
+
+## 7. 外置库与工具链：先发现，后批准副作用
+
+这条要求应复用 U17 安装身份、U21 更新检查与现有外部库索引，不再建一个互不相认的工具链总库。[G7]
+
+### 7.1 身份与位置分离
+
+```text
+resource_id / installation_id（稳定）
+        ↓
+机器身份与声明的候选位置
+        ↓
+探测、版本/完整性/兼容性证据
+        ↓
+允许使用的位置
+```
+
+不要把 `D:\...` 当跨机器全局事实；也不要找不到某盘符就默认改成C盘。保留用户固定原安装位置，UPDATE ≠ RELOCATION。
+
+### 7.2 分层发现，不是全盘乱扫
+
+按已授权范围核查：项目锁文件与配置 → 外部库索引及宿主资源登记 → 明确声明的安装位置与只读原生命令 → 必要时PATH/官方发现接口 → 已登记共享缓存与模型库。
+
+文件系统存在、PATH能找到、二进制能运行、版本兼容、获准用于当前任务，是不同判断。发现信息不可访问时不能假装已穷尽检查。E盘以及候选分支列出的F盘等受保护根，未明确授权不得借发现流程扫描。
+
+### 7.3 缺失不能只用true/false
+
+建议状态语义（名称优先沿用已有schema）：
+`FOUND_COMPATIBLE`、`FOUND_INCOMPATIBLE`、`VOLUME_OFFLINE`、`ACCESS_DENIED`、`PATH_STALE`、`NOT_SEARCHED`、`NOT_FOUND_AFTER_AUTHORIZED_SEARCH`、`CORRUPT`、`UNKNOWN`。
+
+`ACCESS_DENIED`、`NOT_SEARCHED`、`VOLUME_OFFLINE`绝不能自动转换成“未安装”。
+
+### 7.4 安装/下载许可必须绑定查找证据
+
+下载前给出：查过的来源及结果、证据时效、缺失或不兼容原因、官方来源、固定版本/摘要、许可、大小与落点、与已有安装重复的风险、回滚方案、是否更改系统/用户目录及网络/费用副作用。
+
+只有批准覆盖该副作用才执行。禁止上游bootstrap、包管理器、浏览器自动安装、首次运行自动下载模型成为绕过入口；需要配置缓存/离线/禁下载模式，或使用执行和网络边界限制。客户端无法有效限制的，标为不支持，不能只靠提示词承诺。
+
+不把每次命中缓存的运行都改成逐次人工审批；已批准、未过期的安装计划与允许范围可以复用。这是治理轻量化，不是减弱安全检查。
+
+## 8. 开源候选的整合位置
+
+| 候选 | 整合后的用途 | 不采用的方式 | 准入依据 |
+|---|---|---|---|
+| 官方ChatGPT MCP能力 | 网页规划端的受控接入 | 当成外部操纵网页API | 真账号、真工具回传、权限、长任务恢复 |
+| Omnigent | 原生Harness编排候选/对照 | 默认成为第二控制面与知识库 | 与U14/U20差集、持久状态所有权、Windows实测、隐私与安装行为 |
+| Orca（stablyai） | 外部桌面驾驶舱/人工接管候选 | 改写Observer只读边界 | CLI生命周期、worktree所有权、取消/恢复、配置保留 |
+| n8n | 独立低风险MCP桥接对照 | 全局任意shell、默认新增主账本 | 既有环境、审批、最小工具与移除路径 |
+| Beacon | 已有Collector不足时补数据源 | 全会话采集、新数据库升级成真相源 | 字段净增量、源端不采敏感正文、来源质量 |
+| SoL-Pi方法 | 大结果引用/日志精确切片 | 换掉Codex/Hermes/DSH底座 | 可回读、摘要不丢失败、总成本和完成率 |
+| OpenAI规则/Skills方法 | 精确触发与按需加载 | 删除硬边界、重复添加全局规则 | 当前索引与规则投影差集 |
+| Oh-My-Hermes | 固定来源版本的少量Hermes专用技能 | 三项目公共调度权威 | 不覆盖原生选择，不重复治理 |
+| OpenMausBot | 次级统一入口候选 | 已有Omnigent/Orca评估后仍无差别全装 | 与上述候选净差别 |
+| Jev | 按需辅助语义评分 | 代替确定性门禁和最终授权 | 独立标注建议评分与可验证事实 |
+| Prompts.chat / GEP / ChatCut | AAOS候选资料/经验，DESIGN-LAB视频适配 | 全塞进WORK-LAB核心 | 跨项目引用/合同与各项目自身验收 |
+
+外部资料用于候选筛选，不构成部署批准。Omnigent和Orca的原生支持与共享会话只是上游声明，需要在用户环境验证；n8n传输对接成功也不是整条Agent链路成功。[S1][S2][E4][E5][E6][E7]
+
+## 9. 后续工作按现有任务ID对账，而不是另建总计划
+
+| 整合任务 | 现行映射 | 本轮可支持的状态 | 下一步 |
+|---|---|---|---|
+| 双基线与authority落地 | A00/A03/A04/U02/U17a | main/PR有差异；PR有已有实现 | 比较、复核、准备授权合并；不要重建索引 |
+| main CI保护 | A01 | ruleset实读active | 综合有效规则回读，更新过期OPEN描述 |
+| 历史与迁移 | A02/A05/U02 | 仍需逐项差集 | 先查引用与生成器，再迁移；不得重开已完成分支收敛 |
+| Context恢复 | U14/U17a/U18及现有Context合同 | 已有机制，跨会话不足需量测 | 复用胶囊/交接与工件引用，做新会话恢复反例 |
+| 外置库/安装发现 | U17/U21/U02 | 安装身份和更新后检查已有实现声明 | 只补discover-before-download覆盖缺口 |
+| Gate/测试 | U01/U08/U16/U19 | 当前head CI成功 | 验证必须测试是否真跑及结果/工件，不重跑旧故障循环 |
+| 配置事务 | U10/U17/U21 | 分支总账IMPLEMENTED | 核验既有冲突/写集/回读、部署授权与本机状态 |
+| 证据与用量 | U09/U11/U12/U13/U14 | 分支总账IMPLEMENTED | 端到端隐私/ACK/幂等/未知值反例；不建新账本 |
+| 原生并行调度 | U20 | 分支总账IMPLEMENTED | 核验既有dispatcher并接薄MCP，不重新设计调度器 |
+| 网页Remote MCP桥 | U18/U20上的候选增量 | 材料方案，未在本机实测 | 只读status→获准最小Codex任务→结果回传→恢复 |
+| Observer完整体验 | U03–U09/U19 | 部分实现；新CI步骤成功 | 原始E2E证据与功能覆盖核验；parity后退役旧web |
+| 通用真实外部片 | U18 | 基础设施声明绿，真实片仍授权限制 | 第二执行器/第二项目/修订取消重启回执按授权做 |
+| 候选吸收 | U17扩展 | 可选研究 | 先compare已有candidate/provenance，无收益不接 |
+
+过期状态的修正应保存旧证据，不直接覆写历史。完成阶段分别记录 `IMPLEMENTED → CI_VERIFIED → MERGED → READBACK → ACCEPTED`，同时保留 `DEFERRED / BLOCKED_AUTH / BLOCKED_ENV / SOURCE_UNAVAILABLE / SUPERSEDED`，不要把所有PENDING变成研发任务。[G7][G8]
+
+## 10. 第一条闭环的验收边界
+
+建议PoC只接一个已安装且获准使用的Codex执行器；不为了PoC先安装n8n、Omnigent、Orca三套软件。
+
+最小工具面建议映射现有接口：`project_context`、`capability_status`、`task_submit`、`task_status`、`task_result`、`artifact_read`、`task_resume`、`task_cancel`。这是接口意图，不是宣称仓库已经存在这些函数名。
+
+必须验证：
+
+- 规划真的发生在ChatGPT网页，不由隐藏OpenAI API supervisor替代；网页产品与API计费分开。[E3]
+- 重复派单只对应一份活动执行；过期revision不得继续写。
+- 能读取获准任务材料，不读取私人会话与凭据；不暴露任意shell或路径。
+- 原生执行器保留内部自治和用户模型选择；请求子Agent不等于子Agent确已创建。
+- 工具返回、进程退出、测试通过、任务接受、Git合并各是独立事实。
+- 服务重启/网络中断不重复副作用；取消成功必须核验原生进程/线程效果。
+- 网页会话丢失后仍可从项目任务材料恢复；不以全日志回灌替代恢复协议。
+- `readOnlyHint`、JSON里的授权布尔值不是权限证明；服务端鉴权、沙箱、写集和审批绑定必须落实。[E8]
+
+## 11. 提示词包如何使用
+
+`MASTER_PROMPT.md` 是总执行入口；`prompts/00` 先做只读对账。之后按差集选择专题，不顺序无脑执行所有文件。每份专题都附有完整公共边界，可独立交给Codex/Hermes/DSH。
+
+所有文件是本轮静态派工参考，没有自行成为CURRENT，没有上传仓库或更新任何云端任务。真实执行前再次读取main和PR head，以防本包生成后状态变化。
+
+**建议主线：现有V2收口 → 持久上下文与资源发现的最小缺口 → 网页MCP真实闭环 → 按净收益吸收可替换组件。**
+
+## 12. 本轮边界
+
+完成：两份附件整合、当天相关对话需求归并、main/PR/权威/当前总账/CI与ruleset关键状态核验、差集任务设计及独立提示词包。
+
+未完成：用户所有历史的逐条导出、全仓逐行代码审计、全部同类产品全面测试、所有CI工件核验、用户Windows实机闭环、任何部署/提交/合并/发布。未完成的验证没有被编造成通过。
+
+来源索引见 `SOURCES.md`；观察快照见 `evidence/OBSERVATIONS.json`。
+
+
+---
+
+# 来源与核验边界
+
+截至2026-09-23。本包是整合审计与静态派工参考，不是新的仓库权威、执行授权或运行总账。
+
+## S1｜首份附件：三个项目增强能力开源项目报告
+
+用户上传；当前对话全文可读，504行。重点：L17–23 职责；L83–134 Beacon；L138–163 SoL；L342–387 公共组件；L434–504 总体架构。
+
+## S2｜本次附件：原生 Agent 执行器 + 网页版 ChatGPT 规划端
+
+用户上传；当前对话全文可读，1115行。重点：L53–91 四种支持与入口方向；L511–617 总架构及三类上下文；L673–869 PoC与风险；L876–900 验收。
+
+## S3｜2026-09-23 WORK-LAB 相关对话
+
+当前会话及当天相关对话的可检索摘要。包括提示词助手/统一入口、原生执行器、项目审计、防失忆/漂移/重复下载、后续提示词。不是全部历史对话的完整导出。
+
+## G1｜main 精确提交及树
+
+本轮 GitHub 只读读取；main 与 PR 候选分开。
+
+来源：`https://api.github.com/repos/DTALEX66/WORK-LAB/branches/main`
+
+## G2｜main 任务包权威索引
+
+CURRENT 已指向 20260918；旧 WLR 包已 SUPERSEDED。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/blob/803268da9dc356fe63f26b3b5405f724bc06b5b9/.project/governance/taskpack-authority-index.json`
+
+## G3｜main 配置权威索引
+
+已经存在 config-authority-index；不应再建第二个。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/blob/803268da9dc356fe63f26b3b5405f724bc06b5b9/.project/governance/config-authority-index.json`
+
+## G4｜main 旧未完成总账
+
+OPEN-TASK-REGISTER-20260917；与 PR 无日期总账对账，不简单追加。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/blob/803268da9dc356fe63f26b3b5405f724bc06b5b9/taskpacks/current/OPEN-TASK-REGISTER-20260917.md`
+
+## G5｜PR #127
+
+本轮读取为 open，head=9f57ca34faea94c6accb521b1799a9e31767cb5c；正文中 CI 失败、A01 OPEN 等描述不能覆盖后续实时结果。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/pull/127`
+
+## G6｜PR 候选顶层权威
+
+WORK-LAB-AUTHORITY-20260918-V2，尚不可冒称已落到 main。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/blob/9f57ca34faea94c6accb521b1799a9e31767cb5c/WORK-LAB-AUTHORITY.md`
+
+## G7｜PR 当前未完成总账
+
+包含 A00–A05、U01–U21 与旧项映射；IMPLEMENTED 不等于 MERGED/READBACK/ACCEPTED。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/blob/9f57ca34faea94c6accb521b1799a9e31767cb5c/taskpacks/current/OPEN-TASK-REGISTER.md`
+
+## G8｜PR 当前收敛任务包
+
+本轮读取前240行；不要声称全文件逐行审完。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/blob/9f57ca34faea94c6accb521b1799a9e31767cb5c/taskpacks/current/WORK-LAB-UNIFIED-PRODUCT-CONVERGENCE-TASKPACK-20260918.md`
+
+## G9｜work-lab-gate 当前执行
+
+GitHub 专用接口按 HEAD 查询：run 35801327360，completed/success。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/actions/runs/35801327360`
+
+## G10｜Observer CI job / U19 step
+
+job 106992155375：Observer success；步骤8 U19 real-WebView E2E readback success。未在本轮下载与检验全部原始产物。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/actions/runs/35801327360/job/106992155375`
+
+## G11｜wlr-060-production-gates 当前执行
+
+GitHub 专用接口按 HEAD 查询：run 35801327365，completed/success。
+
+来源：`https://github.com/DTALEX66/WORK-LAB/actions/runs/35801327365`
+
+## G12｜main ruleset 23825562
+
+本轮读取 active；main 要求 aggregate；strict_required_status_checks_policy=true；current_user_can_bypass=never。不是所有权限/管理员绕过面的完整审计。
+
+来源：`https://api.github.com/repos/DTALEX66/WORK-LAB/rulesets/23825562`
+
+## E1｜OpenAI ChatGPT Developer Mode
+
+官方原始文档；网页 MCP 读写、OAuth、SSE/streaming HTTP、确认与注入风险。
+
+来源：`https://developers.openai.com/api/docs/guides/developer-mode`
+
+## E2｜OpenAI Developer mode and MCP apps
+
+官方 Help Center；工作区权限与发布受角色控制。账号现场可用性仍需检查。
+
+来源：`https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt`
+
+## E3｜OpenAI ChatGPT / API 计费分离
+
+不能将 API 调用等同网页订阅用量。
+
+来源：`https://help.openai.com/en/articles/9039756-managing-billing-for-chatgpt-and-the-api-platform`
+
+## E4｜Omnigent 官方仓库
+
+保留真实 Harness 的 meta-harness；共享会话与策略；默认 telemetry 和安装脚本须单独审查。
+
+来源：`https://github.com/omnigent-ai/omnigent`
+
+## E5｜Orca 官方仓库
+
+本报告特指 stablyai/orca；原生 CLI / worktree 桌面；非同名其他项目。
+
+来源：`https://github.com/stablyai/orca`
+
+## E6｜n8n MCP Server Trigger
+
+远程 MCP 工作流接入能力，不能推导原生执行器全过程已接通。
+
+来源：`https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger`
+
+## E7｜n8n Execute Command
+
+原生命令执行边界、禁用/云环境限制需在固定版本按官方文档回读。
+
+来源：`https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand`
+
+## E8｜MCP 官方：工具注解不是强制权限
+
+readOnlyHint 等为提示，不代替实际沙箱与网络控制。
+
+来源：`https://blog.modelcontextprotocol.io/posts/2026-03-16-tool-annotations/`
+
+## 未完成的验证
+
+本轮没有全仓逐行安全审计，没有在用户 Windows 主机运行测试，没有读取完整私有会话库，没有下载所有 CI 工件，也没有执行安装、配置写入、commit、push、merge、发布。本轮对上游项目只核验了支撑整合方向的主要官方来源，不代表所有候选均已完成供应链与实机验证。
+
+附件内原有 web 引用编号不能直接当作本轮重新核验。未核实细节仍标为“报告记载 / 候选 / 待验证”。没有把短视频、Star 数、README 支持列表当作生产验收。
+
+## 日期与事实的使用方法
+
+“9月权威基线”不是选择日期最大的文件；必须检查分支、SHA、权威登记、supersedes 和合并/部署状态。规则权威说明应该怎样做，代码与运行证据说明实际做了什么；规则不能覆盖真实失败，历史成功也不能覆盖新 SHA 的结果。

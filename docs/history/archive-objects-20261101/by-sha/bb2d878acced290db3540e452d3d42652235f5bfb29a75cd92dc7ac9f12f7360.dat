@@ -1,0 +1,163 @@
+# GPT CODEX UI 开发任务包｜WORK-LAB
+
+你现在负责 **WORK-LAB** 的正式 UI/前端设计开发。请把当前仓库真实代码作为执行对象，把本资料包作为视觉/交互/工程规范来源。你的目标不是“做一张效果图”或“另起一个 Demo”，而是把 WORK-LAB 当前前端真正升级成可持续开发、可运行、可测试的正式产品界面。
+
+## 0. 先做仓库审计，不要直接重写
+
+第一步必须读取当前 WORK-LAB 仓库真实结构并输出 `UI_IMPLEMENTATION_AUDIT.md`：
+- 当前前端技术栈、构建工具、入口文件、路由、状态管理、组件库、CSS方案。
+- 已存在的页面、API、后端契约、数据结构、WebSocket/事件流、权限与审计逻辑。
+- 当前 UI 与任务包参考之间的差距。
+- 哪些模块可以复用，哪些需要重构，哪些只需要换皮/补交互。
+- 不得删除现有业务能力，不得为了视觉重构破坏后端、Agent、工作流、安装路径或现有配置。
+- 如果仓库已有成熟框架，**在现有栈内实现**；只有在没有前端基础时才参考 B08 的 Vite + React + TypeScript 作为基线。
+
+审计后直接继续实施，不要因为普通 UI 细节停下来问我；遇到参考冲突按本文的优先级自动决策，并在 `UI_DECISIONS.md` 中记录。
+
+## 1. 本项目资料读取顺序（包内路径）
+
+按以下顺序解压/读取，建议放在 `.ui-reference/` 并加入 `.gitignore`：
+
+1. `10_B10_最终版高保真可部署UI/work-lab_最终版_高保真可部署UI.zip`
+   - **最终视觉与交互最高权威**。
+   - 深黑/深海军蓝、Electric Blue/Cyan、玻璃/细边框控制台、光效、动效、Command Palette、Modal/Drawer、可交互页面。
+2. `09_B09_交互式真实Demo/work-lab_L9_交互式真实Demo.zip`
+   - 交互行为：Workflow 筛选、节点拖拽与本地状态、审批、审计、Command Palette 等。
+3. `08_B08_ReactTypeScript可运行原型/work-lab_L8_React_TypeScript_可运行原型.zip`
+   - React/TS 页面骨架和 Shared UI Core 参考。
+4. `07_B07_前端开发规范/WORK-LAB_L7_前端开发规范工程包.zip`
+   - 路由、权限、状态机、Design Token、组件契约、治理规则。
+5. `06_B06_交互状态系统/WORK-LAB_L6_18张交互状态+Tokens.zip`
+   - Hover、Focus、Selected、Modal、Drawer、Toast、Error、Permission、Approval、Responsive。
+6. `05_B05_高保真产品页面/WORK-LAB_L5_12张高保真产品页面.zip`
+   - 页面信息架构、页面内容和模块组合。
+7. `04_B04_组件系统与DesignTokens/WORK-LAB_L4_组件系统_16张+Tokens.zip`
+   - Buttons/Input/Table/Graph/Timeline/Cards/Token 等组件规范。
+8. `03_B03_页面级UI与AAOS配色纠正_L3/WORK-LAB_10张页面级UI_统一体系.zip`
+   - 页面结构和母版关系参考。
+9. `02_B02_深度细节_L2/WORK-LAB_L2_VI+UI_36张细节图.zip`
+10. `01_B01_基础视觉拆图_L1/WORK-LAB_VI+UI_24张全套.zip`
+11. `01_B01_基础视觉拆图_L1/WORK-LAB_VI_12张独立图.zip`
+12. `01_B01_基础视觉拆图_L1/WORK-LAB_UI_12张独立图.zip`
+   - B01/B02 用于 Logo、品牌图形、图标、VI 细节；与后续批次冲突时以后续为准。
+
+## 2. WORK-LAB 产品定位——不可做偏
+
+WORK-LAB 是 **Execution Control Plane / 全局工作流控制与治理基座**，不是通用聊天机器人，也不是普通项目管理器。
+
+核心认知：
+- 执行控制：Workflows / Task Packs / Executions。
+- 全局治理：Rules & Policy / Approval / Permissions。
+- 连接层：Integrations / MCP / Models / Tools。
+- 可观察：Observer / Timeline / Health / Alerts。
+- 可审计：Audit Trail / Evidence / Event records。
+- 可携带记忆：Memory Registry，但不要把它做成 AAOS 的知识库界面。
+
+## 3. 视觉硬约束
+
+必须严格保持：
+- `#050D16` 级别深黑蓝背景。
+- 主交互色约 `#2A91FF` Electric Blue。
+- Cyan 约 `#20CDE1` 只用于信号、连线、辅助高亮。
+- Surface 深蓝黑，细蓝灰边框，高信息密度企业级控制台。
+- 状态色仅用于 Success/Warning/Error/Info。
+- 光效应该“像控制平面信号和执行轨迹”，不是霓虹夜店。
+- 禁止橙色主色、米白/金色、暖色杂志风。
+- 禁止把三个项目的视觉合并。
+
+动画：
+- hover 120–180ms；Modal 220ms；Drawer 280ms。
+- Workflow/Observer 连线可以有慢速虚线流动/脉冲。
+- KPI 数字进入时可轻量 count-up。
+- 卡片 hover 只抬升 1–2px + 边框/光晕变化。
+- 尊重 `prefers-reduced-motion`。
+
+## 4. 正式信息架构与页面
+
+至少实现并接入真实路由：
+1. Overview / 总览
+2. Workflows / 工作流列表
+3. Workflow Detail
+4. Workflow Editor（节点画布）
+5. Task Packs
+6. Execution Detail
+7. Observer（只读拓扑/指标/依赖）
+8. Rules & Policy
+9. Integrations / MCP
+10. Memory Registry
+11. Audit Trail
+12. Approvals
+13. Settings
+
+全局框架：
+- 260px 左侧栏（可折叠到 72px；移动端转 Sheet）。
+- 72px Top Bar：全局搜索、状态、通知、账户。
+- `Ctrl/Cmd + K` Command Palette。
+- 页面 Header + 主操作 + 二级操作。
+- 大数据表格支持筛选、排序、密度切换、虚拟化（数据量大时）。
+
+## 5. 重点交互必须真实可用
+
+### Workflow Editor
+- 节点拖拽、选择、连线、缩放、Fit View、属性 Drawer。
+- 节点类型至少：Trigger / Validate / Agent / Tool / Approval / Deploy / Verify。
+- 连线动画只做视觉反馈，不影响性能。
+- 保存/发布、版本、失败重试、审批门。
+- 如果后端 Schema 已存在，必须使用真实 Schema，不要另造一套不可兼容数据结构。
+
+### Observer
+- 只读关系图。
+- 依赖节点、服务健康、P95、错误率、吞吐。
+- 点击节点展示 Drawer；不能误导用户认为 Observer 可以直接修改执行状态。
+
+### Audit / Approval
+- Audit 必须是只读、可筛选、可导出。
+- Approvals 显示风险、上下文、策略命中、变更影响、可回滚性。
+- 危险操作必须 Confirm Dialog。
+
+## 6. 组件/Token 实施要求
+
+请从 L4/L7 提炼为源码中的单一 Design Token 来源，不要散落硬编码：
+- colors
+- spacing 4/8/12/16/24/32/48/64
+- typography
+- radius
+- motion
+- elevation/border
+- status semantic tokens
+
+组件至少：Button/IconButton/Input/Search/Select/Tag/Badge/Card/KPI/Table/List/Tree/Timeline/Graph/Toast/Modal/Drawer/Tooltip/ContextMenu/Empty/Loading/Error/PermissionGate/VersionCompare。
+
+## 7. 工程策略
+
+- 优先 TypeScript。
+- API 与 UI 解耦：建立 `api/adapters`，允许 `real -> mock fallback`，但正式路径优先真实 API。
+- 对页面 loading/empty/error/permission/readonly 五类状态全部覆盖。
+- 不把业务逻辑塞进大页面组件。
+- 大表格与 Graph 注意性能。
+- 禁止把参考 zip、图片资产直接散落进业务源码；建立 `design-reference`（gitignored）与真正产品 `assets` 的边界。
+
+## 8. 响应式与可访问性
+
+- Desktop ≥1200：完整 Sidebar + 多列。
+- Tablet 768–1199：Sidebar 折叠/Overlay，2列。
+- Mobile ≤767：单列，复杂 Graph 只显示摘要 + 全屏查看入口。
+- 点击面积 ≥44px。
+- 文本对比度 ≥4.5:1。
+- 焦点可见；键盘可以访问主流程。
+- 不允许仅靠颜色表达错误/成功。
+
+## 9. 验收
+
+实施完成后必须：
+- `npm/pnpm build` 成功。
+- lint/typecheck/test 成功（若仓库已有）。
+- 为主要路由添加至少 smoke 测试。
+- 提供 `UI_IMPLEMENTATION_REPORT.md`：完成页面、组件、API接入、已知差距、下一步。
+- 提供 `VISUAL_QA.md`：逐项对照 B10/B06/B05，说明视觉与交互是否吻合。
+- 检查没有引入 AAOS 金青体系或 DESIGN-LAB 紫/蓝创意体系。
+- 不允许只交一个新 demo 目录而不接入真实项目。
+
+## 10. 执行原则
+
+你是实现者，不是只写方案。先审计 → 建 Design Token → 改 App Shell → 建核心组件 → 落页面 → 接交互 → 接真实/Mock Adapter → 测试 → 视觉 QA。普通设计决策自行完成，不要频繁停下来问我。

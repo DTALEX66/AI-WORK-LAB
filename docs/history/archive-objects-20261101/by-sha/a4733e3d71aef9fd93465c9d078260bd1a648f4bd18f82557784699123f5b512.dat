@@ -1,0 +1,1453 @@
+# Knowledge-Base B线完整循环推演总包 v1
+
+## B线最终定位
+
+B线不是“给 AI 查资料的 MCP 层”，而是：
+
+```text
+Machine Knowledge & Agent Execution OS
+机器知识与 Agent 执行操作系统
+```
+
+它负责把 Knowledge-Base 中已确认、已掌握、已审核的知识，转成机器能检索、能判断、能调用、能拆解、能执行、能验证、能复盘的结构。
+
+## B线核心闭环
+
+```text
+A线已掌握知识 / 外部项目 / GitHub仓库 / 文档资料
+        ↓
+隔离层
+        ↓
+机器知识单元 Machine Knowledge Unit
+        ↓
+机器路线系统 Machine Route
+        ↓
+MCP工具系统
+        ↓
+Agent角色编排
+        ↓
+CODEX/DEEP任务包
+        ↓
+执行沙盒 / 权限控制
+        ↓
+测试验证 / 评估审计
+        ↓
+经验回流 A线/B线
+```
+
+## 本包按 A线思路循环了一遍
+
+```text
+1. B线基础架构
+2. B线路线系统
+3. 机器知识系统
+4. MCP工具系统
+5. Agent角色系统
+6. 项目研究系统
+7. CODEX/DEEP任务生成系统
+8. 多模型与Prompt治理
+9. 执行沙盒与权限隔离
+10. 评估审计与证据链
+11. B线算法体系
+12. 高热度开源项目对标
+13. 缺口审查与补强
+14. 极限增强最终版
+15. CODEX执行包
+16. DEEP并行包
+```
+
+
+---
+
+# 00 B线总控说明
+
+## 原始误区
+
+之前容易把 B线理解成：
+
+```text
+MCP工具 + AI调用知识库
+```
+
+这是不够的。
+
+## 正确理解
+
+B线应该是机器侧完整系统：
+
+```text
+机器知识
+机器路线
+工具调用
+Agent角色
+任务拆解
+模型选择
+执行隔离
+测试验证
+审计追踪
+经验回流
+```
+
+## B线和A线区别
+
+| 维度 | A线 | B线 |
+|---|---|---|
+| 面向对象 | 人 | AI / Agent / CODEX / DEEP |
+| 目标 | 学会、记住、会用 | 检索、判断、调用、执行 |
+| 主要输出 | 长期记忆、报告、能力 | 任务包、工具调用、执行结果 |
+| 核心风险 | 记忆污染 | 越权执行、错误执行、幻觉调用 |
+| 关键层 | 学习系统、宫殿、复习 | MCP、Agent、沙盒、评估 |
+
+## B线最终目标
+
+```text
+让机器不是“会聊天”，而是能基于可靠知识安全执行任务。
+```
+
+## B线硬规则
+
+```text
+机器知识必须有来源
+机器执行必须有权限
+机器结论必须有证据
+机器任务必须可验收
+机器错误必须回流
+机器不能直接污染A线长期记忆
+```
+
+
+---
+
+# 01 B线整体架构
+
+## 架构图
+
+```text
+A线 mastered knowledge
+外部 GitHub / 文档 / API / 网页
+        ↓
+隔离层：trust / review / quarantine
+        ↓
+机器知识层：Machine Knowledge Units
+        ↓
+机器路线层：Machine Routes
+        ↓
+工具层：MCP / API / CLI / Local Tools
+        ↓
+Agent编排层：角色 / 计划 / 分工 / 上下文
+        ↓
+任务生成层：CODEX包 / DEEP包 / Patch / Test Plan
+        ↓
+执行层：Sandbox / Permission / Dry-run / Apply
+        ↓
+验证层：Tests / CI / Lint / Eval / Human Review
+        ↓
+记忆回流：B经验 → project_memory → A候选学习内容
+```
+
+## B线六大核心对象
+
+```text
+MachineKnowledgeUnit
+MachineRoute
+ToolSpec
+AgentRole
+TaskPack
+ExecutionTrace
+```
+
+## B线核心问题
+
+```text
+1. 机器知道什么？
+2. 机器该查什么？
+3. 机器该用什么工具？
+4. 机器该由哪个 Agent 执行？
+5. 机器能不能执行？
+6. 执行结果怎么验证？
+7. 错误如何回流？
+```
+
+
+---
+
+# 02 B线路线系统
+
+## 什么是 B线路线
+
+A线有“学习路线”，B线也需要“机器路线”。
+
+A线学习路线回答：
+
+```text
+人应该按什么顺序学？
+```
+
+B线路线回答：
+
+```text
+机器应该按什么顺序查、想、调工具、拆任务、验证？
+```
+
+## Machine Route 结构
+
+```text
+MachineRoute
+  ├── Goal
+  ├── Context Requirements
+  ├── Knowledge Requirements
+  ├── Tool Requirements
+  ├── Agent Steps
+  ├── Execution Steps
+  ├── Validation Steps
+  └── Rollback / Feedback
+```
+
+## 路线类型
+
+```text
+research_route        调研路线
+implementation_route  实现路线
+debug_route           调试路线
+refactor_route        重构路线
+review_route          审查路线
+deployment_route      部署路线
+learning_translate_route A转B路线
+```
+
+## 路线生成算法
+
+```text
+route_score =
+  0.25 * goal_match
++ 0.20 * knowledge_coverage
++ 0.15 * tool_availability
++ 0.15 * risk_fit
++ 0.10 * agent_fit
++ 0.10 * validation_strength
++ 0.05 * cost_fit
+```
+
+## 路线执行流程
+
+```text
+目标输入
+  ↓
+确认目标类型
+  ↓
+检索机器知识
+  ↓
+选择工具
+  ↓
+选择Agent角色
+  ↓
+生成任务路线
+  ↓
+权限检查
+  ↓
+执行或输出任务包
+  ↓
+验证
+  ↓
+记录经验
+```
+
+## 示例
+
+目标：
+
+```text
+把 A线宫殿算法接入现有 Knowledge-Base
+```
+
+B线路线：
+
+```text
+1. 检索 machine_knowledge: palace, learning, sqlite
+2. 读取现有 backend/frontend 结构
+3. 选择 Agent: Architect + Backend + Frontend + Tester
+4. 生成 CODEX 任务包
+5. 输出 DB migration / API / 页面 / 测试
+6. 验证 pytest + typecheck
+7. 回流执行经验
+```
+
+
+---
+
+# 03 机器知识系统
+
+## 机器知识不是人的卡片
+
+人的卡片：
+
+```text
+Q：为什么要隔离AI生成内容？
+A：避免污染长期记忆。
+```
+
+机器知识：
+
+```json
+{
+  "unit_type": "constraint",
+  "machine_statement": "AI-generated content must enter candidate state before being used as long-term memory.",
+  "preconditions": ["content_created_by_ai"],
+  "actions": ["set review_status=candidate", "require human_review"],
+  "anti_patterns": ["write ai output directly to active_memory"],
+  "risk_level": "medium",
+  "confidence": 0.91
+}
+```
+
+## 机器知识类型
+
+```text
+definition
+fact
+constraint
+decision_rule
+procedure
+tool_hint
+prompt_rule
+code_pattern
+anti_pattern
+test_rule
+security_rule
+license_rule
+deployment_rule
+project_memory
+```
+
+## 机器知识字段
+
+```text
+unit_type
+title
+machine_statement
+preconditions
+actions
+anti_patterns
+evidence
+confidence
+risk_level
+scope
+source_ids
+last_verified_at
+status
+```
+
+## 机器知识生成来源
+
+```text
+A线 mastery_archive
+项目文档
+GitHub调研
+人工规则
+执行经验
+错误复盘
+测试结果
+```
+
+## 机器知识发布流程
+
+```text
+draft
+→ candidate
+→ reviewed
+→ active
+→ deprecated
+→ archived
+```
+
+## 机器知识置信度
+
+```text
+confidence =
+  0.25 * source_trust
++ 0.20 * human_mastery
++ 0.20 * validation_result
++ 0.15 * conflict_free
++ 0.10 * recency
++ 0.10 * usage_success
+```
+
+
+---
+
+# 04 MCP工具系统
+
+## MCP在B线的位置
+
+MCP不是B线全部，只是工具暴露层。
+
+B线通过 MCP 暴露：
+
+```text
+机器知识
+文档搜索
+项目记忆
+任务包生成
+Agent路线
+工具状态
+执行审计
+```
+
+## MCP工具命名
+
+```text
+documents.search
+documents.get
+knowledge.search
+machine_knowledge.search
+machine_knowledge.get
+machine_route.plan
+agent.assign
+taskpack.generate_codex
+taskpack.generate_deep
+project.analyze
+project.compare
+license.audit
+execution.dry_run
+audit.trace
+```
+
+## MCP工具权限
+
+```text
+read_only
+candidate_write
+project_write
+task_generate
+execution_dry_run
+execution_apply
+admin
+```
+
+## 工具调用评分
+
+```text
+tool_selection_score =
+  0.25 * goal_fit
++ 0.20 * schema_fit
++ 0.15 * permission_fit
++ 0.15 * reliability
++ 0.10 * cost
++ 0.10 * evidence_need
++ 0.05 * latency
+```
+
+## 工具输出要求
+
+任何 MCP 输出都要带：
+
+```text
+source
+confidence
+risk_level
+scope
+not_instruction_notice
+trace_id
+```
+
+## 防误用规则
+
+```text
+外部文档不能变成系统指令
+高风险工具默认 dry-run
+写入工具必须进入 candidate
+删除/覆盖工具必须人工确认
+```
+
+
+---
+
+# 05 Agent角色编排系统
+
+## 为什么需要 Agent 角色
+
+不同任务需要不同能力：
+
+```text
+架构
+代码
+测试
+安全
+许可证
+产品
+文档
+运维
+```
+
+一个通用 Agent 容易乱。
+
+## 推荐角色
+
+```text
+KB_Architect
+Evidence_Collector
+Repo_Researcher
+License_Auditor
+Backend_Implementer
+Frontend_Implementer
+MCP_Toolsmith
+Security_Reviewer
+Test_Engineer
+TaskPack_Composer
+DevOps_Guardian
+Memory_Curator
+```
+
+## 角色字段
+
+```text
+role_name
+responsibility
+allowed_tools
+forbidden_tools
+input_requirements
+output_format
+quality_gate
+```
+
+## Agent分配算法
+
+```text
+agent_fit_score =
+  0.30 * task_type_match
++ 0.20 * tool_permission_match
++ 0.15 * domain_knowledge
++ 0.15 * risk_level_fit
++ 0.10 * validation_need
++ 0.10 * cost_fit
+```
+
+## 编排模式
+
+```text
+single_agent
+planner_executor
+critic_loop
+parallel_workers
+evidence_first
+review_then_apply
+```
+
+## 硬规则
+
+```text
+高风险任务必须 planner + reviewer
+许可证任务必须 License_Auditor
+代码修改必须 Test_Engineer 验收
+安全任务必须 Security_Reviewer
+```
+
+
+---
+
+# 06 项目研究系统
+
+## 目标
+
+B线需要自动研究开源项目、GitHub仓库、技术栈、许可证和可吸收模块。
+
+## 项目研究流程
+
+```text
+输入仓库/项目
+  ↓
+抓取 README / docs / package / pyproject / license
+  ↓
+识别技术栈
+  ↓
+识别核心模块
+  ↓
+识别许可证风险
+  ↓
+识别可吸收能力
+  ↓
+映射到 Knowledge-Base 模块
+  ↓
+生成 CODEX/DEEP 任务
+```
+
+## 研究维度
+
+```text
+功能价值
+技术架构
+代码质量
+热度活跃度
+许可证
+可替代性
+接入成本
+安全风险
+A线价值
+B线价值
+```
+
+## 项目评分
+
+```text
+project_absorption_score =
+  0.20 * functional_value
++ 0.15 * architecture_fit
++ 0.15 * license_fit
++ 0.15 * implementation_cost_inverse
++ 0.10 * community_health
++ 0.10 * security_fit
++ 0.10 * uniqueness
++ 0.05 * documentation_quality
+```
+
+## 输出
+
+```text
+project_report
+absorption_matrix
+risk_report
+codex_tasks
+deep_tasks
+license_notes
+```
+
+
+---
+
+# 07 CODEX / DEEP 任务包系统
+
+## 目标
+
+把机器知识和项目研究转成可执行任务包。
+
+## 任务包类型
+
+```text
+codex_patch_pack
+deep_parallel_pack
+research_pack
+test_pack
+security_pack
+frontend_pack
+backend_pack
+mcp_pack
+migration_pack
+```
+
+## 任务拆解算法
+
+```text
+task_decomposition_score =
+  0.25 * dependency_clarity
++ 0.20 * file_boundary_clarity
++ 0.15 * testability
++ 0.15 * risk_isolation
++ 0.10 * parallelizability
++ 0.10 * context_sufficiency
++ 0.05 * size_fit
+```
+
+## CODEX任务特点
+
+```text
+适合修改代码
+适合跨文件集成
+适合 UI 实现
+适合跑测试
+```
+
+## DEEP任务特点
+
+```text
+适合并行小模块
+适合生成骨架
+适合写测试
+适合做分析和文档
+```
+
+## 输出结构
+
+```text
+task_id
+goal
+context
+files_to_change
+files_not_to_touch
+acceptance_tests
+risks
+rollback
+```
+
+
+---
+
+# 08 多模型与 Prompt 治理
+
+## B线为什么需要模型治理
+
+不同模型适合不同任务：
+
+```text
+调研
+代码
+总结
+推理
+本地隐私
+低成本批处理
+高质量审查
+```
+
+## 模型选择算法
+
+```text
+model_selection_score =
+  0.25 * task_fit
++ 0.20 * context_window_fit
++ 0.15 * cost_fit
++ 0.15 * latency_fit
++ 0.10 * privacy_fit
++ 0.10 * tool_support
++ 0.05 * historical_success
+```
+
+## Prompt治理对象
+
+```text
+prompt_templates
+prompt_versions
+prompt_runs
+prompt_evaluations
+cost_records
+model_profiles
+```
+
+## Prompt版本规则
+
+```text
+任何可复用 prompt 必须版本化
+任何失败 prompt 必须记录原因
+高价值 prompt 可转为 machine_knowledge
+```
+
+## 输出要求
+
+```text
+trace_id
+model
+prompt_version
+input_hash
+output_hash
+cost
+latency
+evaluation
+```
+
+
+---
+
+# 09 执行沙盒与权限隔离
+
+## 为什么必须有
+
+B线能调用工具，也就有风险。
+
+风险包括：
+
+```text
+误删文件
+错误写库
+泄露密钥
+执行恶意命令
+污染长期记忆
+破坏项目结构
+```
+
+## 执行级别
+
+```text
+read_only
+dry_run
+write_candidate
+write_project
+execute_local
+execute_network
+admin_apply
+```
+
+## 风险评分
+
+```text
+execution_risk_score =
+  0.25 * permission_level
++ 0.20 * filesystem_write
++ 0.15 * network_access
++ 0.15 * secret_exposure
++ 0.10 * irreversible_change
++ 0.10 * dependency_install
++ 0.05 * unknown_tool
+```
+
+## 沙盒原则
+
+```text
+默认 dry-run
+默认不联网
+默认不写长期记忆
+默认不删除
+所有写入有 diff
+所有执行有 trace
+```
+
+## Apply Gate
+
+```text
+plan
+→ dry_run
+→ diff_review
+→ test
+→ human_confirm
+→ apply
+→ audit
+```
+
+
+---
+
+# 10 评估审计与证据链
+
+## B线每个结论都要可追溯
+
+必须回答：
+
+```text
+这个结论来自哪里？
+用了什么模型？
+用了哪些工具？
+执行了什么？
+测试是否通过？
+谁批准？
+```
+
+## 证据对象
+
+```text
+source_evidence
+tool_trace
+model_run
+execution_trace
+test_result
+human_review
+license_result
+security_result
+```
+
+## 评估算法
+
+```text
+execution_confidence =
+  0.25 * test_pass_rate
++ 0.20 * evidence_strength
++ 0.15 * model_confidence
++ 0.15 * human_review_score
++ 0.10 * security_pass
++ 0.10 * license_pass
++ 0.05 * historical_success
+```
+
+## 审计表
+
+```text
+audit_events
+tool_calls
+model_runs
+execution_traces
+evaluation_results
+```
+
+## 回流规则
+
+```text
+成功经验 → machine_knowledge active
+失败经验 → anti_pattern candidate
+重复错误 → A线学习卡片 candidate
+高价值决策 → project_memory
+```
+
+
+---
+
+# 11 B线算法总表
+
+| 环节 | 算法 |
+|---|---|
+| 机器知识置信度 | machine_confidence_score |
+| 机器路线规划 | route_score |
+| 工具选择 | tool_selection_score |
+| Agent分配 | agent_fit_score |
+| 项目吸收评分 | project_absorption_score |
+| 任务拆解 | task_decomposition_score |
+| 模型选择 | model_selection_score |
+| 执行风险 | execution_risk_score |
+| 执行置信度 | execution_confidence |
+| 回流优先级 | feedback_priority |
+| 许可证风险 | license_risk_score |
+| 安全风险 | security_risk_score |
+| 上下文组装 | context_pack_score |
+| 验收强度 | validation_strength |
+
+
+---
+
+# 12 B线开源项目对标
+
+## Agent / 代码执行
+
+```text
+OpenHands
+Aider
+Continue
+SWE-agent
+AutoGen
+CrewAI
+LangGraph
+agency-agents
+```
+
+吸收：
+
+```text
+代码代理
+任务分解
+角色编排
+执行反馈
+PR/patch流程
+```
+
+## RAG / 知识系统
+
+```text
+Dify
+RAGFlow
+AnythingLLM
+Open WebUI
+FastGPT
+LlamaIndex
+LangChain
+Haystack
+```
+
+吸收：
+
+```text
+知识检索
+工作流
+工具调用
+RAG流程
+多模型
+评估
+```
+
+注意：
+
+```text
+Dify/FastGPT/RAGFlow 等只参考产品和架构，注意许可证，不复制核心代码。
+```
+
+## 模型治理
+
+```text
+LiteLLM
+Langfuse
+Promptfoo
+OpenTelemetry
+```
+
+吸收：
+
+```text
+模型网关
+Prompt版本
+成本统计
+评估
+trace
+```
+
+## 安全/执行
+
+```text
+Gitleaks
+Semgrep
+Trivy
+Bandit
+pip-audit
+OSV-Scanner
+```
+
+吸收：
+
+```text
+secret scan
+依赖漏洞
+静态分析
+容器扫描
+```
+
+## MCP生态
+
+```text
+modelcontextprotocol/servers
+FastMCP
+MCP SDKs
+```
+
+吸收：
+
+```text
+工具规范
+stdio/http
+schema
+permission
+```
+
+
+---
+
+# 13 B线缺口审查
+
+## 已覆盖
+
+```text
+机器知识
+MCP
+Agent
+任务包
+模型治理
+沙盒
+审计
+```
+
+## 仍需重点补强
+
+```text
+1. 上下文组装器 Context Pack Builder
+2. 任务状态机 Task State Machine
+3. 工具权限矩阵 Tool Permission Matrix
+4. Prompt版本与回滚
+5. 执行失败恢复 Recovery Plan
+6. 人工审批工作流
+7. 多模型裁判机制
+8. 成本预算系统
+9. 项目长期经验库
+10. B转A学习回流
+```
+
+## 最重要的缺口
+
+```text
+Context Pack Builder
+```
+
+因为 AI 不是知道越多越好，而是要拿到“刚好够用且可信”的上下文。
+
+## 上下文评分
+
+```text
+context_pack_score =
+  0.25 * relevance
++ 0.20 * trust
++ 0.15 * recency
++ 0.15 * task_fit
++ 0.10 * brevity
++ 0.10 * evidence
++ 0.05 * token_cost_inverse
+```
+
+
+---
+
+# 14 B线极限增强最终版
+
+## B线十六大系统
+
+```text
+1. 机器知识系统
+2. 机器路线系统
+3. 上下文组装系统
+4. MCP工具系统
+5. Agent角色系统
+6. 项目研究系统
+7. 任务拆解系统
+8. 代码执行系统
+9. 多模型治理系统
+10. Prompt资产系统
+11. 执行沙盒系统
+12. 权限审批系统
+13. 测试评估系统
+14. 审计证据链系统
+15. 经验回流系统
+16. B转A学习反馈系统
+```
+
+## B线最终闭环
+
+```text
+目标
+→ 上下文组装
+→ 机器知识检索
+→ 路线规划
+→ 工具选择
+→ Agent分配
+→ 任务拆解
+→ 沙盒执行
+→ 测试验证
+→ 审计归档
+→ 经验回流
+```
+
+## B线不是万能自动执行
+
+B线必须坚持：
+
+```text
+低风险自动
+中风险候选
+高风险审批
+不可逆操作人工确认
+```
+
+
+---
+
+# 15 B线数据模型 SQL
+
+```sql
+CREATE TABLE IF NOT EXISTS machine_knowledge_units (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  unit_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  machine_statement TEXT NOT NULL,
+  preconditions_json TEXT NOT NULL DEFAULT '[]',
+  actions_json TEXT NOT NULL DEFAULT '[]',
+  anti_patterns_json TEXT NOT NULL DEFAULT '[]',
+  evidence_json TEXT NOT NULL DEFAULT '{}',
+  confidence REAL NOT NULL DEFAULT 0,
+  risk_level TEXT NOT NULL DEFAULT 'low',
+  scope TEXT NOT NULL DEFAULT 'project_memory',
+  status TEXT NOT NULL DEFAULT 'candidate',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS machine_routes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  route_type TEXT NOT NULL,
+  goal TEXT NOT NULL,
+  steps_json TEXT NOT NULL DEFAULT '[]',
+  required_tools_json TEXT NOT NULL DEFAULT '[]',
+  required_agents_json TEXT NOT NULL DEFAULT '[]',
+  validation_json TEXT NOT NULL DEFAULT '{}',
+  risk_level TEXT NOT NULL DEFAULT 'medium',
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mcp_tool_specs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tool_name TEXT NOT NULL UNIQUE,
+  namespace TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  input_schema_json TEXT NOT NULL DEFAULT '{}',
+  permission_scope TEXT NOT NULL DEFAULT 'read_only',
+  risk_level TEXT NOT NULL DEFAULT 'low',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_roles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  role_name TEXT NOT NULL UNIQUE,
+  responsibility TEXT NOT NULL,
+  allowed_tools_json TEXT NOT NULL DEFAULT '[]',
+  forbidden_tools_json TEXT NOT NULL DEFAULT '[]',
+  output_format TEXT NOT NULL DEFAULT '',
+  risk_level TEXT NOT NULL DEFAULT 'medium',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS task_packs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  pack_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  source_route_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'candidate',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS execution_traces (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trace_id TEXT NOT NULL,
+  route_id INTEGER,
+  task_pack_id INTEGER,
+  tool_name TEXT,
+  model TEXT,
+  status TEXT NOT NULL,
+  evidence_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS context_packs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  task_goal TEXT NOT NULL,
+  content TEXT NOT NULL,
+  source_units_json TEXT NOT NULL DEFAULT '[]',
+  score REAL NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+```
+
+
+---
+
+# 16 B线 API 与 MCP 工具表
+
+## API
+
+```text
+GET  /machine/knowledge
+POST /machine/knowledge
+POST /machine/knowledge/{id}/approve
+
+POST /machine/routes/plan
+GET  /machine/routes/{id}
+
+POST /context-packs/build
+GET  /context-packs/{id}
+
+GET  /mcp/tools
+POST /mcp/tools/{name}/call
+
+POST /agents/assign
+POST /taskpacks/generate-codex
+POST /taskpacks/generate-deep
+
+POST /execution/dry-run
+POST /execution/approve
+GET  /execution/traces
+
+POST /projects/analyze
+POST /license/audit
+```
+
+## MCP Tools
+
+```text
+machine_knowledge.search
+machine_knowledge.get
+machine_route.plan
+context_pack.build
+agent.assign
+taskpack.generate_codex
+taskpack.generate_deep
+project.analyze
+license.audit
+execution.dry_run
+audit.trace
+feedback.record
+```
+
+
+---
+
+# 17 B线前端工作台
+
+## 页面
+
+```text
+/machine-knowledge     机器知识库
+/machine-routes        机器路线
+/context-packs         上下文包
+/mcp                   MCP工具台
+/agents                Agent角色
+/projects              项目研究
+/taskpacks             任务包
+/execution             执行与审批
+/evals                 评估
+/audit                 审计
+```
+
+## Dashboard
+
+```text
+今日任务包
+待审核机器知识
+高风险执行请求
+最近失败任务
+模型成本
+工具调用趋势
+项目研究进度
+A转B候选
+B转A回流候选
+```
+
+## 关键组件
+
+```text
+MachineKnowledgeTable
+RoutePlanner
+ContextPackViewer
+MCPToolConsole
+AgentRoleMatrix
+TaskPackViewer
+ExecutionTraceTimeline
+RiskGatePanel
+EvidenceViewer
+FeedbackLoopPanel
+```
+
+
+---
+
+# 18 CODEX B线执行任务包
+
+## CODEX-B-01 机器知识系统
+
+```text
+backend/pk_radar/machine/knowledge.py
+backend/tests/test_machine_knowledge.py
+```
+
+## CODEX-B-02 机器路线系统
+
+```text
+backend/pk_radar/machine/routes.py
+backend/tests/test_machine_routes.py
+```
+
+## CODEX-B-03 上下文组装器
+
+```text
+backend/pk_radar/machine/context_pack.py
+backend/tests/test_context_pack.py
+```
+
+## CODEX-B-04 MCP工具注册
+
+```text
+backend/pk_radar/mcp/tool_registry.py
+backend/pk_radar/mcp/permissions.py
+```
+
+## CODEX-B-05 Agent角色系统
+
+```text
+backend/pk_radar/agents/roles.py
+backend/pk_radar/agents/assigner.py
+```
+
+## CODEX-B-06 任务包生成
+
+```text
+backend/pk_radar/taskpacks/codex.py
+backend/pk_radar/taskpacks/deep.py
+```
+
+## CODEX-B-07 执行沙盒
+
+```text
+backend/pk_radar/execution/sandbox.py
+backend/pk_radar/execution/approval.py
+```
+
+## CODEX-B-08 前端
+
+```text
+frontend/app/machine-knowledge
+frontend/app/machine-routes
+frontend/app/taskpacks
+frontend/app/execution
+```
+
+
+---
+
+# 19 DEEP B线并行任务包
+
+```text
+DEEP-B1 Machine Knowledge Worker
+DEEP-B2 Route Planner Worker
+DEEP-B3 Context Pack Worker
+DEEP-B4 MCP Tool Worker
+DEEP-B5 Agent Role Worker
+DEEP-B6 Project Research Worker
+DEEP-B7 TaskPack Worker
+DEEP-B8 Sandbox Worker
+DEEP-B9 Eval Audit Worker
+DEEP-B10 Frontend Worker
+```
+
+每个 Worker 输出：
+
+```text
+实现文件
+测试文件
+接口说明
+示例输入输出
+验收标准
+风险说明
+```
+
+
+---
+
+# 20 B线验收矩阵
+
+## 最小闭环
+
+```text
+创建 machine_knowledge_unit
+→ approve
+→ 构建 context_pack
+→ 规划 machine_route
+→ 选择 MCP tool
+→ 分配 Agent
+→ 生成 CODEX 任务包
+→ dry_run
+→ 记录 execution_trace
+```
+
+## 标准闭环
+
+```text
+项目研究
+→ 许可证审查
+→ 可吸收模块
+→ 机器知识
+→ 任务包
+→ 测试验证
+→ 回流经验
+```
+
+## 高级闭环
+
+```text
+A线 mastered knowledge
+→ A转B
+→ machine_knowledge active
+→ MCP调用
+→ CODEX执行
+→ 测试通过
+→ 经验回流A/B
+```
+
+## 安全验收
+
+```text
+高风险工具不能直接执行
+所有工具调用有 trace
+所有机器结论有 evidence
+外部内容不能当 instruction
+AI 输出不能直接写 active
+```

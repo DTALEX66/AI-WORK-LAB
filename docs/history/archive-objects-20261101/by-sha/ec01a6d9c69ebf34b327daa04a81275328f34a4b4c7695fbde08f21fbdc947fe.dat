@@ -1,0 +1,476 @@
+# WORK-LAB 第二阶段选择性吸收增量任务包
+
+> 本任务包从《Agent 全栈体系 22 项验真、纠错与 OS / WORK-LAB 吸收清单》中只提取 WORK-LAB 当前真实缺口。它是 `WORK-LAB-STAGE-2-ABSORPTION-INTEROP` 的从属增量，不是第三阶段、不是新总包，也不授权 HERMES 提前启动第二写入者。
+
+## 0. 任务元数据
+
+```yaml
+taskpack_id: WORK-LAB-STAGE-2-SELECTIVE-ABSORPTION-DELTA-22
+snapshot_date: 2026-08-07
+status: QUEUED_WAITING_FOR_PARENT_NX_000
+parent_taskpack: WORK-LAB-STAGE-2-ABSORPTION-INTEROP
+predecessor_taskpack: WORK-LAB-FINAL-CONSOLIDATED
+repository: DTALEX66/WORK-LAB
+preferred_local_root: 'D:\All projects\WORK-LAB'
+execution_mode: SUBORDINATE_DELTA_SINGLE_WRITER
+writer_policy: INHERIT_PARENT_SINGLE_WRITER
+observer_policy: STRICTLY_READ_ONLY
+publication_policy: EXPLICIT_APPROVAL
+live_global_apply_policy: EXPLICIT_APPROVAL
+paid_provider_policy: EXPLICIT_APPROVAL
+new_runtime_dependency_budget: ZERO_BY_DEFAULT
+new_active_module_budget: ZERO
+new_global_skill_budget: ZERO_BY_DEFAULT
+```
+
+## 1. 给 HERMES 的直接指令
+
+1. 先读取父任务包 `WORK-LAB-STAGE-2-ABSORPTION-INTEROPERABILITY-HERMES-TASKPACK.md`，本文件只补充父包没有覆盖的净新增能力。
+2. 当前前置总包未交接、父包 Gate A 未通过或仍有活动 writer lease 时，只允许读取本文件，不得写代码、安装工具或修改配置。
+3. 父包执行 `NX-000` 后，把本文件任务并入同一个 Task Ledger；不得建立第二套 Ledger、第二个 worktree 写入者或独立执行状态机。
+4. 先执行 `NX-A22-000`。真实 tree 已有等价能力时，标记 `INHERITED_VERIFIED` 或 `SKIPPED_DUPLICATE`，只补缺失测试或来源证据，不重新实现。
+5. 本增量只允许三个必做切片和一个条件切片：
+   - OpenCodeReview 可选适配器试点；
+   - ContextLine 方法并入现有 Context Pack；
+   - Legacy Change + Large Migration 方法并入现有 Workflow Fortress；
+   - GSAP Skills 仅在存在真实 Motion 消费者时补强 Open Design。
+6. 不安装或复制 22 项中的其他软件，不把参考案例、OS 专属能力或无来源条目写入 WORK-LAB Core。
+7. 上游 commit/tag 只用于来源与许可证证据；运行兼容依赖协议、能力探测和 graceful degradation，禁止永久锁死某个软件或模型版本。
+8. 不自动 push、开 PR、merge、release、修改 GitHub Actions、全局部署、调用付费 API 或写入真实 Hermes/OS 状态。
+9. 完成后停在 `LOCAL_VERIFIED_READY_FOR_PARENT_NX_720`，由父包统一做 exact-tree 审查和发布批准。
+
+## 2. 不改变的项目定位
+
+WORK-LAB 继续只有三个活动模块：
+
+1. `workflow-assistance`：全局规则、Skills、Adapters、任务连续性、执行边界、审查、CI、证据和恢复；
+2. `open-design`：设计知识、设计质量、可编辑交付和 MINIGAME 设计包；不恢复独立游戏产品平台；
+3. `work-lab-observer`：严格只读显示任务、Token、费用、健康、质量和证据状态。
+
+本增量禁止形成：
+
+- 新 Agent Runtime；
+- 聊天客户端或模型网关；
+- 第二个任务编排平台；
+- 第二套记忆数据库；
+- Observer 操作台；
+- 第四个活动模块；
+- OS、Cherry Studio、Hermes Studio、OpenMAIC 或 MINIGAME 产品源码的镜像。
+
+## 3. 22 项最终裁剪结果
+
+| 原序号 | 项目 | 本增量决定 | 实际动作 |
+|---:|---|---|---|
+| 1 | 25 机制元 + 36 机制链 | `REJECT_SOURCE_MISSING` | 无任务，不进入活动 Source Ledger |
+| 2 | Harness Engineering | `INHERITED_PARENT` | 父包已有 Harness/证据/门禁映射，不重复 |
+| 3 | Hermes Agent | `INHERITED_PARENT` | 保持外部 Runtime + Adapter；删除永久版本范围思想 |
+| 4 | Hermes Studio | `EXTERNAL_REFERENCE_ONLY` | 不复制 GUI、凭据、Session、Profile 或 Provider 状态 |
+| 5 | 不死鸟架构 | `REJECT_SOURCE_MISSING` | 不建立第二状态机 |
+| 6 | Cherry Studio | `DEFER_NO_CURRENT_GAP` | 不复制 AGPL 客户端源码，不新增适配任务 |
+| 7 | agency-agents | `REJECT_STAGE_2_BLOAT` | 不导入角色库；避免 Skill 数量、上下文和路由膨胀 |
+| 8 | refactor-legacy-code | `SELECT_METHOD_ONLY` | 合并进 `NX-A22-300`，不新增全局 Skill |
+| 9 | ContextLine | `SELECT_METHOD_ONLY` | 合并进 `NX-A22-200`，不新增服务或记忆库 |
+| 10 | GSAP Skills | `CONDITIONAL_METHOD_ONLY` | 仅由 `NX-A22-400` 条件补强现有 Motion 体系 |
+| 11 | GPT-Image2-Skill | `REFERENCE_ONLY_NO_TASK` | 不安装 CLI、不默认调用 API、不复制提示图库 |
+| 12 | 商业接单/工作台 Skills | `REJECT_SOURCE_MISSING` | 不创建新产品工作台 |
+| 13 | Scrapling | `DEFER_TO_EXPLICIT_RESEARCH` | 本阶段不引入抓取、Browser、MCP 或后台采集 |
+| 14 | OpenCodeReview | `SELECT_ADAPTER_PILOT` | 进入 `NX-A22-100`；只读、可选、可拒绝 |
+| 15 | Obsidian + Codex/MCP | `OUT_OF_SCOPE_OS` | OS 自己实现；通用 MCP 已由父包处理 |
+| 16 | 企业 RAG | `OUT_OF_SCOPE_OS` | 不进入 WORK-LAB 控制面 |
+| 17 | EDUKG | `REJECT_LICENSE_AND_SCOPE` | 不接入 |
+| 18 | OpenMAIC | `REFERENCE_ONLY_NO_TASK` | 不吸收课堂产品和多 Agent 运行时 |
+| 19 | shapeof.world | `REFERENCE_ONLY_NO_CODE` | 不复制站点、资产或产品逻辑 |
+| 20 | ITOM 3D Portfolio | `DEFER_NO_REAL_CONSUMER` | 当前不引入 R3F、Three.js、CMS 或遥测 |
+| 21 | TRAEWork | `REJECT_SOURCE_MISSING` | 不接入 |
+| 22 | Bun Zig → Rust | `SELECT_CASE_METHOD_ONLY` | 与第 8 项合并进 `NX-A22-300`；数字不作为 SLA |
+
+裁剪后只有 **5 个来源条目、4 个能力切片、3 个必做任务、1 个条件任务**。其余内容不进入执行队列。
+
+## 4. 启动门与去重规则
+
+### 4.1 启动条件
+
+必须同时满足：
+
+- 前置总包释放 writer lease；
+- 父包 Gate A 通过；
+- 父包 `NX-000` 已根据真实 tree 生成继承/重叠矩阵；
+- 三模块边界、Task Ledger、Adapter Registry、事件合同和 Observer 只读合同可读；
+- 没有另一个 HERMES/Codex/cron/sleep worker 正在写同一 checkout。
+
+不满足时，只记录：
+
+```text
+WAITING_PARENT
+reason=<明确缺失证据或活动 writer>
+next_check=<可验证条件>
+```
+
+不得用等待时间占住 writer，也不得反复触发 GitHub Actions 证明本地任务状态。
+
+### 4.2 去重优先级
+
+1. 真实代码、测试和运行证据；
+2. 父包 Task Ledger；
+3. 当前 WORK-LAB 合同与 Registry；
+4. 本增量任务描述；
+5. 上游项目 README 或案例数据。
+
+如果现有实现已满足目标：不改名、不复制、不再建目录。只补来源、负控或缺失测试。
+
+## 5. Batch NX-A22-0 — 差异确认
+
+### NX-A22-000：净新增覆盖矩阵（P0）
+
+#### 目标
+
+确认四个切片对当前真实 tree 的净新增价值，防止把上游项目名称误当成本地缺口。
+
+#### 必须核对
+
+- `requesting-code-review`、`github-code-review`、`agent-workflow-fortress` 的现有审查链；
+- `context-pack.md`、`build_context_pack.py`、`context-budget.yaml` 的现有上下文治理；
+- Workflow Fortress、任务模板、Task Ledger、replay/恢复规则中的迁移能力；
+- Open Design 的 `motion-system.md`、`MOTION_ACCESSIBILITY.md`、Motion rubric/profile 和父包 `NX-510`；
+- 父包 Source Ledger V3 中是否已有相同来源和目标路径。
+
+#### 输出
+
+在 Git 忽略的任务证据区生成一份机器可读矩阵，每个切片只能取以下状态之一：
+
+```text
+NEW
+INHERITED_PARTIAL
+INHERITED_VERIFIED
+SKIPPED_DUPLICATE
+DEFERRED_NO_CONSUMER
+REJECTED_NO_NET_BENEFIT
+BLOCKED_BY_PARENT
+```
+
+只有 `NEW` 和 `INHERITED_PARTIAL` 可以产生后续代码修改。
+
+#### 验收
+
+- 每个切片只有一个 owner、一个父任务映射和一个目标路径集合；
+- 活动 Source Ledger 只登记最终选中的来源，不登记 17 个无执行价值条目；
+- 原 22 项文件不进入运行时、Skill 自动加载或 Context Pack allowlist。
+
+## 6. Batch NX-A22-1 — 可选代码审查加速
+
+### NX-A22-100：OpenCodeReview Adapter Pilot（P0，试点可拒绝）
+
+#### 父任务映射
+
+- 复用父包 `NX-210` 的 Adapter/Skill 合同，不修改其标准范围；
+- 作为父包 `NX-700` 的 Workflow 试点，结果供 `NX-720` exact-tree 收口使用；
+- 不建立第二套 Code Review Skill。
+
+#### 吸收内容
+
+只吸收以下能力：
+
+- Git diff/changed-file 的确定性选择与完整清单；
+- review rule 的显式来源与匹配；
+- Delegate mode 的上下文打包思路；
+- 结构化 findings、去重、超时、失败降级和覆盖度；
+- 作为现有独立 reviewer 的可选输入引擎。
+
+#### 实施边界
+
+1. 集成到现有 `requesting-code-review` / `agent-workflow-fortress` 路由；不增加第二个全局触发 Skill。
+2. 默认状态为 `external-optional`。不得自动下载二进制、全局安装、修改 PATH 或增加 GitHub Action。
+3. 只允许读取明确冻结的候选 tree/diff 和仓库内审核规则。
+4. 禁止自动修复、自动评论 PR、approve、commit、push、merge 或访问凭据。
+5. 禁止记录 Prompt、Response、完整源码正文或工具结果正文；Observer 只接收引擎、tree digest、文件数、覆盖度、findings 计数、耗时、结果和错误分类。
+6. 适配依赖 capability probe；已审计版本/commit 仅作来源证据，不作永久兼容上限。
+7. OpenCodeReview 不替代测试、安全门、exact-tree 身份和独立 reviewer。
+
+#### 一次性对照试验
+
+对同一个脱敏冻结 fixture，比较：
+
+- 现有 WORK-LAB reviewer 路径；
+- OpenCodeReview 辅助路径。
+
+至少记录：
+
+- changed-file 覆盖是否完整；
+- 规则覆盖和路径排除是否正确；
+- 已植入 Blocker/High 的命中情况；
+- 重复/噪音 findings；
+- 失败、超时和不可用降级；
+- 耗时；
+- 仅在宿主可靠提供时记录 context/token 差异。
+
+项目自述的 Token 比例不得写成 WORK-LAB 结论或 SLA。
+
+#### 路由决策
+
+- 低/中风险且试点无 Blocker/High 召回回退：允许作为单次独立 reviewer 的上下文引擎，不能再额外叠加一次相同范围的完整 reviewer。
+- 安全、权限、架构、数据库迁移、依赖、打包、发布等高风险变更：继续执行现有完整 exact-tree 审查。
+- 没有可测净收益、覆盖回退或依赖过重：标记 `REJECTED_NO_NET_BENEFIT`，不接入 Core；该结果仍算试点正确完成。
+
+#### 验收
+
+- 工具不存在、断网、未知版本时优雅返回 `unavailable`，不阻塞父任务包；
+- 所有 seeded Blocker/High 不低于现有基线；
+- 没有新增默认网络、凭据、GitHub 写入或 CI job；
+- 若接入，只有一个审查结果合同和一个 exact-tree 身份；
+- 若拒绝，有完整对照证据和零残留依赖。
+
+## 7. Batch NX-A22-2 — 上下文治理小补丁
+
+### NX-A22-200：ContextLine 方法并入 Context Pack（P0）
+
+#### 父任务映射
+
+- 作为父包 `NX-400` 的子任务；
+- 复用现有 Context Pack、Task Ledger、Handoff、context budget 和 memory quarantine；
+- 不增加第二记忆系统。
+
+#### 只吸收的结构
+
+在现有 Context Pack 的任务状态摘要中统一以下最小字段：
+
+```text
+goal
+current_state
+decisions
+constraints
+evidence_refs
+blockers
+next_action
+```
+
+允许附加 `project_id`、`task_id`、`generated_at`、`source_digest`、`supersedes` 和 `freshness`，但不得把完整会话、Prompt、Response、日志、工具正文或环境变量放入摘要。
+
+#### 实施要求
+
+1. 修改现有 `build_context_pack.py`、Context Pack 文档、预算配置或父包已经建立的同等实现；不新增后台服务、数据库、Watcher 或独立 Skill。
+2. 保持 tracked allowlist、项目内 Git-ignored 输出、字符预算和 Secret 脱敏。
+3. 达到 warning budget 时生成 handoff 建议；不得声称能替宿主平台自动压缩当前会话。
+4. 相同事实重复摘要必须幂等；新明确决定可以 `supersede` 旧决定，但保留来源引用和撤回路径。
+5. 项目 A 的状态不得进入项目 B；无来源推断不得升级成用户事实或全局规则。
+6. Observer 只显示生成时间、大小、预算占用、压缩原因、fresh/stale、冲突数和结果，不显示摘要正文。
+
+#### 负控
+
+- 重复压缩三次不产生三份同义决定；
+- 旧规则被新明确规则替代后不再注入为当前规则；
+- 跨项目路径、Secret 和会话正文被阻断；
+- evidence 引用缺失时事实降级为 `unverified`；
+- 超预算时保留 Goal、Constraint、Blocker、Next Action 和证据路径，丢弃低价值展开内容；
+- 损坏或旧 Schema 不得静默覆盖 last-good handoff。
+
+#### 验收
+
+- 没有新服务、新数据库、新全局 Skill 和新默认依赖；
+- 现有 Context Pack CLI 和安全边界保持兼容；
+- 测试覆盖幂等、supersede、预算、脱敏、跨项目隔离和损坏输入；
+- Context Pack 仍只是恢复/交接证据，不能冒充实际项目任务完成。
+
+## 8. Batch NX-A22-3 — 遗留改造和大迁移
+
+### NX-A22-300：Legacy Change + Large Migration Domain Pack（P0）
+
+#### 父任务映射
+
+- 扩展现有 `agent-workflow-fortress`，与父包 `NX-410` replay/副作用一致性共用 Task Ledger；
+- 不新增全局 Skill，不建立第二个迁移 Runtime。
+
+#### 最小交付形式
+
+优先只新增或补强：
+
+- Workflow Fortress 的一个来源明确的 reference；
+- 一个 `legacy-change` Task Ticket 模板；
+- 对模板必填字段和恢复语义的测试。
+
+只有真实调用频率和触发歧义证明需要独立 Skill 时，才进入后续提案；本增量不创建它。
+
+#### Domain Pack 必须覆盖
+
+1. **行为冻结**：现有测试、characterization tests、输入输出、兼容接口和已知残余风险；
+2. **影响面**：入口、依赖、seam、pinch point、数据/权限/打包/平台边界；
+3. **分块计划**：批次依赖、最大变更面、每批完成合同和停止条件；
+4. **验证账本**：每批 changed-file/定向测试，风险边界单独关闭，阶段末再跑完整门；
+5. **恢复**：checkpoint、intent/readback/reconcile、幂等副作用、writer lease 和崩溃续跑；
+6. **审查**：低风险批次窄审查；跨安全/架构/迁移边界时独立审查；最终候选只做一次完整 exact-tree 审查；
+7. **自动循环边界**：cycle/time/token 预算、连续失败上限、无进展上限、外部等待释放 writer；
+8. **回滚与交接**：可恢复点、未迁移清单、兼容窗口、残余风险和人工批准项。
+
+#### 效率约束
+
+- 不在每个机械批次重复全量 CI、全量审计和 exact-SHA GitHub 证明；
+- 普通低风险批次运行受影响测试和 changed-file gate；
+- 安全、权限、Schema、依赖、打包、部署和发布边界单独闭合；
+- 一个 Release Train 批量运行一次完整本地门、冻结 tree、独立审查；
+- 修复后只复审 findings 与直接回归面；
+- GitHub exact-SHA CI 只在用户批准发布时运行，不作为本地每轮循环条件；
+- CI 无 job、限流或网络等待进入 deferred waitpoint，释放 writer，不得空等数小时。
+
+#### 明确不吸收
+
+- 不复制 Bun 源码、PORTING 文件或内部工作流；
+- 不照搬“约 50 个动态工作流”、代码行数、11 天、Token 或成本数据；
+- 不默认双 Reviewer + Fixer 全程并发；根据风险只在边界使用独立 reviewer；
+- 不承诺无人值守完成未知规模迁移。
+
+#### Fixture 验收
+
+使用一个小型、脱敏、可回滚 fixture 验证：
+
+1. 缺测试时先生成 characterization baseline；
+2. 两个有依赖关系的批次按顺序执行；
+3. 中途崩溃后从 Task Ledger 恢复，不重复已确认副作用；
+4. 连续失败或无进展达到阈值后停止并产生 Blocker；
+5. 外部 CI 等待不会占住 writer；
+6. 最终完整门和 frozen-tree reviewer 只运行一次；
+7. rollback/readback 能回到已记录检查点。
+
+## 9. Batch NX-A22-4 — Open Design 条件补强
+
+### NX-A22-400：GSAP Skills 方法补丁（P1，条件任务）
+
+#### 启动条件
+
+只有同时满足以下条件才实施：
+
+- 父包 `NX-510` 或 `NX-700` 已选择一个真实、合法、需要 Motion 的现有 fixture；
+- 当前 Motion template/rubric/profile 缺少可由 GSAP Skills 方法明确补足的生命周期或性能规则；
+- 不需要为了完成任务单独引入 GSAP Runtime。
+
+否则标记 `DEFERRED_NO_CONSUMER`，不创建占位目录或空文档。
+
+#### 可吸收内容
+
+- timeline/animation context 的创建、取消、清理和重复挂载防护；
+- ScrollTrigger 类滚动触发的生命周期、刷新和 responsive 边界；
+- reduced-motion、interrupt/cancel、隐藏页面和路由切换处理；
+- transform/opacity 优先、布局抖动和长任务预算；
+- React 或其他宿主中的作用域清理原则；
+- 开发/测试中的资源泄漏和重复 listener 检查。
+
+#### 实施方式
+
+优先补强现有：
+
+- `templates/motion/motion-system.md`；
+- `knowledge/standards/MOTION_ACCESSIBILITY.md`；
+- Motion rubric/profile；
+- 父包已经采用的 Playwright/视觉/无障碍 fixture。
+
+不复制整个 GSAP Skills 仓库，不新建第二套 Motion Skill，不复制示例资产。GSAP Skills 仓库许可证与 GSAP Runtime/插件许可证必须分别登记；没有真实 Runtime 消费者时不得增加 `gsap` 依赖。
+
+#### 验收
+
+- reduced-motion 下信息不丢失；
+- 重复 mount/unmount、路由切换和 resize 后没有重复 listener/timeline；
+- Motion fixture 满足现有 performance、interruptible、loop-safety 和 accessibility gate；
+- Observer 只显示 Motion QA 结果和证据引用，不增加播放控制或修改入口；
+- 没有真实消费者时，零代码、零依赖、诚实延期即为正确结果。
+
+## 10. 允许与禁止修改范围
+
+### 默认允许
+
+- 父包建立的 Source Ledger 中本增量选中的 5 个来源记录；
+- `10-workflow/workflow-assistance/skills/software-development/agent-workflow-fortress/**`；
+- `10-workflow/workflow-assistance/skills/software-development/requesting-code-review/**`；
+- `10-workflow/workflow-assistance/skills/github/github-code-review/**`，仅在去重需要时；
+- `10-workflow/workflow-assistance/docs/workflow/context-pack.md`；
+- `10-workflow/workflow-assistance/scripts/workflow/build_context_pack.py`；
+- `10-workflow/workflow-assistance/config/context-budget.yaml`；
+- `10-workflow/workflow-assistance/templates/task-tickets/**`；
+- 对应的 Workflow tests/fixtures；
+- 条件任务启动后，现有 Open Design Motion template、standard、rubric、profile 和父包测试 fixture。
+
+实际仓库结构变化时，由 `NX-A22-000` 映射到父包 canonical path，禁止为了匹配本文件复制一套目录。
+
+### 默认禁止
+
+- Hermes credentials、sessions、profiles、provider/model 配置、auth 文件和状态数据库；
+- 用户 Home、全局 Hermes/Codex/CC Switch 配置和真实 OS 仓库；
+- `30-products/minigame` 产品 Runtime；
+- Observer 写接口、控制按钮、执行入口或凭据读取；
+- `.github/workflows/**` 新增 OpenCodeReview job；
+- 自动下载的二进制、完整上游仓库、示例资产、数据库快照、缓存和 `node_modules`；
+- 新 Agent、Server、Daemon、Memory DB、Crawler、Browser MCP、模型网关或设计平台；
+- 未经批准的 lockfile/依赖变化、外部 API 调用和付费 smoke。
+
+## 11. 验证与门禁策略
+
+### 每个切片
+
+只运行：
+
+- 受影响单测/fixture；
+- 相关 Schema/Skill/frontmatter/security 检查；
+- changed-file gate；
+- 本地 readback。
+
+### 本增量收口
+
+所有已选择切片完成后：
+
+1. 运行一次 canonical local quality gate；
+2. 记录 candidate tree digest；
+3. 交给父包 `NX-720` 做一次独立 exact-tree 审查；
+4. 若发现 Blocker/High，修复后只复审 findings 和直接回归面；
+5. tree 未变化时不得重复审计；
+6. 未经用户批准不触发 GitHub CI、push、PR 或 release。
+
+本增量不以“创建了文档”“登记了 URL”“安装成功”作为完成证据。
+
+## 12. 最终验收条件
+
+全部满足后，本增量才可交给父包收口：
+
+1. 仍然只有 Workflow Assistance、Open Design、Observer 三个活动模块；
+2. 原 22 项只留下 5 个来源条目，其他项目没有运行时、依赖、Skill 或占位目录；
+3. 现有 13 个 repo-managed Skills 一个不少，本增量默认不增加全局 Skill；
+4. OpenCodeReview 只有可选适配试点；无净收益时被干净拒绝，不影响完成；
+5. ContextLine 只表现为现有 Context Pack 的结构、幂等和负控增强；
+6. Legacy/Large Migration 只表现为 Workflow Fortress reference、Task Ticket 和测试，不形成新 Runtime；
+7. GSAP 只有在真实消费者存在时才补强现有 Motion 体系；否则零实现延期；
+8. 默认新增运行依赖为 0，默认新增后台进程、数据库、端口和网络出口均为 0；
+9. Observer 没有写能力，不接收 Prompt、Response、完整会话或凭据；
+10. 所有兼容性依赖能力探测、协议和降级，不硬锁软件、模型或 API 版本；
+11. 每个变更有定向测试和 readback，整包只做一次完整门和一次 frozen-tree review；
+12. `SKIPPED_DUPLICATE`、`DEFERRED_NO_CONSUMER` 和 `REJECTED_NO_NET_BENEFIT` 有真实证据，不被包装成“全部吸收成功”。
+
+## 13. HERMES 最终汇报格式
+
+只提交一份增量收口报告：
+
+1. 前置 tree、父包任务状态和 writer lease；
+2. 四个切片的 `NEW/PARTIAL/VERIFIED/SKIPPED/DEFERRED/REJECTED` 状态；
+3. 实际修改路径和未修改原因；
+4. 新增依赖、进程、端口、网络、凭据和仓库体积差异；
+5. 定向测试、fixture、readback、完整本地门和 candidate tree digest；
+6. OpenCodeReview 对照结果及最终采用/拒绝决定；
+7. Context Pack 幂等、脱敏、预算和污染负控；
+8. Legacy Change 崩溃恢复、停止条件和审查批处理证据；
+9. GSAP 条件是否成立及其证据；
+10. 交给父包 `NX-720` 的 exact-tree 审查清单；
+11. 仍需用户批准的 publish/live/paid/global 项。
+
+## 14. 来源入口
+
+- OpenCodeReview：<https://github.com/alibaba/open-code-review>
+- refactor-legacy-code：<https://github.com/peizh/refactor-legacy-code>
+- ContextLine：<https://github.com/happiness9527/contextline-skill>
+- GSAP Skills：<https://github.com/greensock/gsap-skills>
+- GSAP Runtime：<https://github.com/greensock/GSAP>
+- Bun 迁移案例：<https://bun.com/blog/bun-in-rust>
+
+执行时重新核验当前仓库、许可证、默认分支、维护状态、网络/遥测、安装脚本和接口。来源快照用于证据，不是自动安装清单。
+
+---
+
+## 最终执行判定
+
+本文件现在可以交给 HERMES 登记，但不能独立启动。它必须等待前置总包交接和父包 `NX-000`，随后以同一 writer、同一 Task Ledger 并入第二阶段。
+
+这个增量的成功标准不是“把 22 项都吸收”，而是：只用少量上游方法补上 WORK-LAB 的真实缺口，同时让代码审查更轻、上下文更干净、大迁移更可恢复，并在有真实需求时提升 Open Design Motion 质量；没有净收益的项目必须被拒绝或延期。

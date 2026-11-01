@@ -1,0 +1,249 @@
+# WORK-LAB 工作流软件更新审计与适配任务包
+
+## 1. 结论与适用范围
+
+需要更新，但不是把所有配置推倒重来。当前最值得投入的是：撤回过时操作指令、消除重复配置写入、利用原生技能发现和执行能力、补齐版本与实际生效证据。模型能力增强，不改变权限、项目边界和完成验收要求。
+
+本包遵循用户实际分工：
+
+| 工作流 | 主要模型选择 | 本次适配方向 |
+| --- | --- | --- |
+| Codex | GPT-6 | 跟随 Codex 原生模型与客户端支持；精简旧技能和重复流程 |
+| DSH | DeepSeek | 核对官方 Harness 与社区桌面版组合、会话迁移及技能接口 |
+| Hermes | DeepSeek 或用户选择的免费旗舰/免费额度模型 | 约束主模型、辅助任务和回退成本；保留模型可替换性 |
+
+不统一切换到 GPT-6，不默认开通付费 API，不把免费模型名称当作永久免费承诺。Codex 的产品使用方式与 API 计费是不同维度。
+
+本包是此前《WORK-LAB-INTEGRATED-NORMALIZATION-TASKPACK-2026-09-14》的适配补充。进入仓库前，由有效 AGENTS、Manifest、current TaskPack 接纳；不能以本报告覆盖现行授权。WORK-LAB 负责跨软件治理与联邦协议，不接管原生运行时。ComfyUI-MCP、Open Design 创作业务和产物仍归 DESIGN-LAB；ArcheAxis 知识与学习状态不归 WORK-LAB。
+
+## 2. 证据基线
+
+本轮检索时间：2026-09-14 UTC。仓库核对基线为 r4-recovery-exec：
+
+`c1c6a16454c06f4b90acf7e7913cc7dc62be3802`
+
+[固定版本仓库](https://github.com/DTALEX66/WORK-LAB/tree/c1c6a16454c06f4b90acf7e7913cc7dc62be3802)
+
+核对内容包括软件/适配器/模型/插件/技能注册表、配置所有权、Codex 全局指引及全部 14 个相关 SKILL.md、两个配置同步实现、DSH 适配信息、MCP 治理文件，以及各软件官方发布和配置说明。
+
+**这些是源代码和公开资料证据，不是用户电脑安装清单。** 本轮没有读取用户凭据、私有会话或 Windows 全局配置，没有执行安装、升级或付费模型调用。仓库登记、适配器存在、最新发布、已安装版本、实机验证分别记录，不能互相替代。之前摘要中的 CI 结论不能自动延伸至未来修改后的 SHA。
+
+## 3. 软件清单与版本裁决
+
+| 软件 | 仓库/使用定位 | 本轮核对版本 | 决策 |
+| --- | --- | --- | --- |
+| Codex | 用户主用；注册表仍有隔离状态待协调 | 稳定版 0.154.0；另有 0.155 alpha | 按稳定通道验证 GPT-6；不因 alpha 更新自动切换 |
+| Hermes Agent | 用户主用；当前适配范围仍 <0.21 | 0.21.2，标签 v2026.9.11 | 修正上游和兼容范围；先验证配置迁移及实际运行 |
+| DeepSeek Harness | 用户主用 | 0.1.5-rc.2，预发布 | 单列预发布风险，重点测试 Session V3 与插件接口 |
+| DSH Desktop | 社区桌面封装 | 2.0.10，内含上述 RC | 分开记录桌面版与内核版，不把桌面稳定标签当内核稳定 |
+| CC Switch | 已登记、观察模式 | 3.20.3 | 保持配置所有权单一；不自动代理用户的 Codex GPT-6 |
+| OpenHuman | 已登记、隔离/实验 | 0.63.12 | 只读核对，未发现必须扩张接入的证据 |
+| Open Design | 已登记、外部项目业务 | 0.22.2 | 更新元数据与边界；业务升级交给 DESIGN-LAB |
+| GitHub / gh | 平台与交付工具 | gh 2.100.0 | 原生能力优先，不重复实现客户端 |
+| OpenHands | 联邦适配代码存在 | 1.18.0 | 按需后端；不据代码存在宣布已部署 |
+| Pi | 联邦适配代码存在 | 0.85.1 | 使用已支持的接口；不为了 GPT-6 新增第二套日常工具 |
+| OpenCode | 集成清单存在 | 1.18.30 | 与 OpenCode Go 服务分开登记；按需验证 |
+| Cursor | manifest-only / blocked | 官方更新页已核对；本机版本未知 | 观察原生 Projects 能力，不新增部署 |
+| Claude Code | manifest-only / blocked | 官方配置/技能说明已核对；本轮未确认最新二进制版本 | 保持条件性适配，不伪报当前已用 |
+| WorkBuddy | manifest-only / blocked | 官方更新页显示 4.22.15；发布日期未确认 | 观察技能/MCP 管理，不升级为已验收 |
+| Penguin / Exo 等 | 实验或候选 | 本轮未重新核对版本 | 维持隔离，不加入三条主用工作流默认依赖 |
+
+版本来源：[Codex](https://github.com/openai/codex/releases/tag/rust-v0.154.0)、[Hermes](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11)、[DSH](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2)、[DSH Desktop](https://github.com/anywhere-labs/dsh-desktop/releases/tag/v2.0.10)、[CC Switch](https://github.com/farion1231/cc-switch/releases/tag/v3.20.3)、[OpenHuman](https://github.com/tinyhumansai/openhuman/releases/tag/v0.63.12)、[Open Design](https://github.com/nexu-io/open-design/releases/tag/open-design-v0.22.2)、[gh](https://github.com/cli/cli/releases/tag/v2.100.0)、[OpenHands](https://github.com/OpenHands/OpenHands/releases/tag/v1.18.0)、[Pi](https://github.com/earendil-works/pi/releases/tag/v0.85.1)、[OpenCode](https://github.com/anomalyco/opencode/releases/tag/v1.18.30)。
+
+## 4. 仓库中已确认需要处理的内容
+
+下列路径均相对固定基线，不能据此假定未来分支仍未修复。
+
+| 发现 | 影响 | 处置 |
+| --- | --- | --- |
+| config/software-registry.json 将 Hermes 上游记为 anthropics/hermes | 更新雷达和来源可信度错误 | 改为 NousResearch/hermes-agent，登记来源证据 |
+| Hermes 兼容区间 >=0.19,<0.21 | 当前新版被排除，或被绕过检测误用 | 测试后更新能力区间，不直接放宽为任意版本 |
+| 模型表主要停留在 8 月，缺少当前 Codex 分工；部分服务价格直接为 0 | 混淆上游模型、聚合商别名与实际免费额度 | 分离模型、路由、计费产品及观测时间 |
+| Codex 指引及 4 个技能仍写 .hermes/task-runtime 等旧根 | 重新引入已经修复的目录漂移 | 以当前 Manifest 为准，删除活动指令中的旧根 |
+| 指引要求维护 .hermes/skill-call-index.json | 与原生技能发现重复，增加写入与上下文 | 移除强制步骤，必要审计只记录实际技能来源 |
+| codex_config_sync.py 与现有用户配置结构不匹配 | 读取不存在的 fields；第二写入器可能损坏 TOML | 停用其写入入口，收敛到现有受管字段同步实现 |
+| update-safety 技能指示复制 Store codex.exe 到插件/桥接位置 | 干扰原生安装和升级责任 | 撤回通用修复配方，改为原生通道诊断 |
+| verification-hardening 技能提出连续三次批准后免确认 | 历史批准被错误升级为持续授权 | 删除次数规则，以明确范围和有效授权判断 |
+| data-boundary 含预写“边界正常”结论、mtime 清理推断 | 用模板代替证据，误删风险 | 改为观测结果及资产归属判定 |
+| DSH 适配硬编码旧版本和 app.asar.unpacked 路径 | 2.0.10 包装结构变化后检测失真 | 原生元数据读回，版本与包装路径解耦 |
+| 插件 inventory 中 PASSED 但 commit/hash 为空 | 安全判断无法绑定版本 | 降为缺少版本证据，补 SHA 和适用扫描结果 |
+| skills inventory 仅覆盖 14 个 Codex 技能 | 不能作为所有软件技能总量 | 按客户端和作用域汇总元数据，不复制技能正文 |
+
+对应代码入口：[config](https://github.com/DTALEX66/WORK-LAB/tree/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/config)、[Codex 集成](https://github.com/DTALEX66/WORK-LAB/tree/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/integrations/executors/codex)、[执行器集成](https://github.com/DTALEX66/WORK-LAB/tree/c1c6a16454c06f4b90acf7e7913cc7dc62be3802/integrations/executors)。
+
+### 配置损坏的最小验证
+
+仅抽取旧脚本的字符串处理函数，在合成数据上运行；未执行脚本主入口，未读写用户配置。
+
+输入 language = "en"，拟改为 zh，结果为：
+
+```toml
+[display]
+language = "zh" "en"
+```
+
+TOML 解析失败；同时当前 profile 不含旧脚本要求的 fields。这个结果支持停用第二写入器，不代表已全面验证另一同步器。建议复用 sync_codex_global_assets.py 的受管字段与锁定机制，补未拥有字段保留、重复执行幂等和失败回退验证。
+
+## 5. Codex + GPT-6：减少旧流程，保留约束
+
+GPT-6 的适配重点是指令冲突和过度流程。官方迁移指南强调对指令更敏感，以及授权范围内的持续执行、适量验证和明确的协作要求。项目应删除旧路径、重复确认和机械流程，而不是提高所有任务的推理强度。[模型指南](https://developers.openai.com/api/docs/guides/latest-model)
+
+具体裁决：
+
+- 保留项目身份、权限、原始修改保护、证据和验收条件。
+- approval_policy、sandbox_mode 属于客户端配置；模型更换本身不证明这些字段失效。先对实际客户端版本验证，不能仅因“GPT-6 更强”移除。
+- 模型选择由用户和 Codex 原生配置管理。WORK-LAB 不改写用户 Provider，不默认引入 CC Switch 路由。
+- 技能使用原生渐进加载；长 Windows 故障手册移入按需引用。14 个技能存在不等于正文每轮全部注入，减量应测量触发与输入，而非只数文件。
+- 原生工作树、更新、插件刷新和权限继承优先复用，不额外建立平行实现。0.154.0 已包含相关更新，并移除了 codex mcp-server；若项目仍引用该入口，必须替换或标记不兼容。[发布说明](https://github.com/openai/codex/releases/tag/rust-v0.154.0)
+- 不把“多个安装目录的二进制哈希相同”当普遍健康条件。记录渠道、版本、路径及实际协议兼容性。
+- Hook 必须按当前事件返回格式测试。官方说明中的部分不支持返回字段不会阻断工具；同时并非所有工具都经过相同钩子。不能把提示词或通用 Hook 配方当完整沙箱。[Hooks](https://learn.chatgpt.com/docs/hooks)
+- 网络域名配置的效果取决于代理/管理方式，也不覆盖所有 Web、Apps、MCP 通道。边界验证需要逐通道说明。[配置参考](https://learn.chatgpt.com/docs/config-file/config-reference)
+
+仅当项目自行接入 GPT-6 API 时，才额外处理 Responses 工具调用与不支持参数；不要把这套 API 迁移工作强加给用户日常 Codex 使用。也不因升级模型就把文档预算填满或统一调到最高推理档。
+
+## 6. DSH + DeepSeek：重点在接口和会话兼容
+
+DSH 官方 0.1.5 RC 涉及 Session V3、模型发现、插件接口及生命周期变化。升级不能简化为修改模型名称。[RC 变更](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.1)
+
+必须分别记录：官方 Harness 版本、社区 Desktop 版本、内嵌依赖、用户实际启动入口。新会话格式应在合成/获准副本验证；保留旧版本可使用的原始数据，不让升级后的会话直接承担降级验证。
+
+DeepSeek 官方当前 deepseek-flash 对应 V4.1-Flash；旧别名可能解析到新模型。官方上下文能力和计费表也与仓库旧记录不同。聚合商同名路由不保证完全相同的上下文、能力和价格。[官方模型与价格](https://api-docs.deepseek.com/quick_start/pricing/)
+
+建议字段为 requested_model、resolved_model、provider、endpoint_class、observed_at、context_limit、billing_source。最大上下文不是默认目标；按任务实际需要设预算。
+
+DSH 技能有原生来源优先级和目录结构约束，不支持任意递归目录自动发现。不能把 WORK-LAB 深层技能树整树复制后宣布生效。针对当前版本验证列举、触发、正文加载和缓存刷新。[技能规范](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.5-rc.2/docs/subsystems/skills.zh.md)
+
+PTC、标准模式及工具并发按原生能力和具体任务测试，不把一种模式写成永久全局优选。不额外安装其已经内嵌的运行时来制造双层路由。[配置目录](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.5-rc.2/docs/config-catalog.zh.md)
+
+## 7. Hermes + 免费/低成本模型：治理实际费用路径
+
+新版 Hermes 提供原生配置迁移、按需技能、插件目录和脚本定时能力。旧 custom_providers 与当前 providers 结构需要通过对应版本的原生迁移核对，不能直接文本覆盖。[模型配置](https://github.com/NousResearch/hermes-agent/blob/v2026.9.11/website/docs/user-guide/configuring-models.md)
+
+关键不是“主模型免费”四个字，而是确认：
+
+1. 主模型、辅助任务、压缩、视觉、标题等分别使用哪个路由。
+2. 配额耗尽时停止、等待或切换到哪条已批准路由。
+3. 不因免费额度不足自动转为未授权付费服务。
+4. 价格状态区分 FREE、CREDIT、PAID、UNKNOWN，记录来源和时间。
+5. 统计一次验收通过任务的全部调用，而非只计算主对话。
+6. 避免无必要频繁切换模型破坏缓存；输出限制、重试和任务范围共同受预算约束。
+
+本轮没有验证用户 TokenRouter 账户、额度或实时模型映射。OpenRouter 的账户限额说明也不能用于替 TokenRouter 承诺免费条件。[OpenRouter 限额说明](https://openrouter.ai/docs/api/reference/limits)
+
+### 用原生零模型定时能力简化 Radar
+
+Hermes 已提供 script-only cron（no-agent）运行脚本而不调用模型。WORK-LAB 的 Release/API/RSS 条件请求、去重和差分可以优先验证这个入口，不必先造调度器。[官方说明](https://github.com/NousResearch/hermes-agent/blob/v2026.9.11/website/docs/guides/cron-script-only.md)
+
+但其脚本和输出有 HERMES_HOME 下的原生位置要求。必须区分软件自己的合法运行目录与 WORK-LAB 项目运行资产；若现行边界不允许，采用获准的原生部署映射或保留已有项目调度方式，不能用符号链接绕过约束。文档路径规则还需对固定版本实测。
+
+Hermes 原生 /plan 使用项目 .hermes/plans，这与本项目要求的运行根可能冲突。未确认重定向能力前，不将该命令写入项目默认流程。[技能说明](https://github.com/NousResearch/hermes-agent/blob/v2026.9.11/website/docs/user-guide/features/skills.md)
+
+因此修订原集成包：先比较已有调度器与 Hermes 原生脚本任务，再决定是否采用其他监测后端。所有权保持一个；关闭模型后，基础监测仍完整运行。
+
+## 8. 14 个 Codex 技能的逐项裁决
+
+以下均为 workflow-assistance- 前缀，执行时回查当前文件。裁决针对正文和触发范围，不以名称自动删除。
+
+| 技能 | 裁决 | 具体变化 |
+| --- | --- | --- |
+| evidence-verification | 保留、精简 | 保留本地/CI/实机区分，合并重复交付条款 |
+| github-delivery | 保留、改写 | 删除每次 squash 后机械追加刷新 PR 的循环配方；绑定来源树和外部验收证据 |
+| observer-delivery | 改写 | 更新目录、命令和实际 UI 验证；不以进程/文件存在替代可用性 |
+| open-design-integration | 限定作用域 | 只在跨项目边界任务触发，不默认加载创作业务 |
+| openhuman-integration | 限定作用域 | 保留只读和私有数据边界，细节下沉到引用 |
+| project-data-boundary | 保留、重写 | 清除旧根、预写结论和 mtime 自动清理推断 |
+| python-testing | 合并/限定 | 仅 Python 相关任务触发；验证按风险，不要求所有小改都机械完整 RED 流程 |
+| safe-project-execution | 合并 | 通用约束归项目入口，专项隔离步骤按需加载 |
+| self-improvement | 大幅收缩 | 移除桌面快捷方式数量、满血推理等健康判断；不广扫私密配置后才脱敏 |
+| single-writer-delivery | 保留、精简 | 保留单写者和候选绑定；不把未改变源码的任何重建都自动等同审计失效 |
+| systematic-debugging | 保留、精简 | 以新证据与预算决定重试，不死守固定尝试次数 |
+| update-safety | 重写 | 移除跨渠道覆盖二进制；保留升级前后版本、生效与回退验证 |
+| verification-hardening | 重写/拆分 | 删除三次批准豁免；不把有效的不确定说明判成失败；二次模型审查按需 |
+| windows-development | 下沉引用 | 保留实际 Windows 差异，清除旧路径和不再通用的历史故障配方 |
+
+原生技能渐进加载应成为默认机制。[Codex Skills](https://learn.chatgpt.com/docs/build-skills)
+
+## 9. 插件、MCP 与其他软件配置
+
+| 对象 | 本次决定 | 验收要求 |
+| --- | --- | --- |
+| Context7 | 当前基线 3.2.2；4.1.0 仅升级候选 | 完整 major 差异、协议与任务收益验证后再采用 |
+| GitHub MCP | 不因 1.12.1 存在就新增 | gh/现有连接器不能满足的明确缺口才接入 |
+| chrome-profiles | 有实际多浏览器需求才保留 | 固定 commit；浏览器权限和实际工具暴露读回 |
+| security-guidance / web-ddgs | 与原生能力比对 | 记录 bundled 来源与宿主版本；按需启用 |
+| hermes-media-studio | 保持隔离 | 旧扫描不代表当前版本事实，必须版本绑定复核 |
+| hermes-telegram-business | 不因官方目录收录自动解禁 | 本项目需求、权限和固定版本评审均满足才采用 |
+| hermes-snapcompact | 观察，不默认启用 | 视觉能力、上下文损失、实际费用和验收质量实测 |
+| 顺序思考/文件系统/通用记忆 MCP | 默认不新增 | 原生工具已有能力时避免重复 schema |
+| Codex 原生官方文档技能 | 随原生更新优先复用 | 确认当前会话可发现与实际版本 |
+
+Hermes 官方插件目录以精确 SHA 审阅和兼容信息为基础，但目录审核不是完整安全证明，安装也不等于启用。[插件目录](https://github.com/NousResearch/hermes-agent/blob/v2026.9.11/website/docs/user-guide/features/plugin-catalog.md)
+
+Context7 新版加入 HTTP 模式观测相关能力，不足以单独证明项目必须跨大版本升级。[Context7 4.1.0](https://github.com/upstash/context7/releases/tag/%40upstash%2Fcontext7-mcp%404.1.0) GitHub MCP 更新涉及 OAuth scope 修复，也不意味着需要和 gh 双重常驻。[GitHub MCP](https://github.com/github/github-mcp-server/releases/tag/v1.12.1)
+
+CC Switch 的模型预设与转换链有变化；如果用户没有选它承载 Codex 路由，WORK-LAB 应维持观察模式。OpenHands、Cursor 的原生自动化与管理能力是减少自研重复实现的依据，不能反过来作为扩大 WORK-LAB 调度器的理由。OpenHuman、WorkBuddy、Claude Code 按当前隔离等级管理，未实际采用的能力不形成安装任务。
+
+## 10. 应保留的最小治理结构
+
+共同规则只保留：项目身份、授权和数据边界、当前权威入口、修改保护、完成标准、证据与交付。软件差异放在原生适配层，专题技巧放按需技能。
+
+以下是候选语义，不是可直接覆盖原生配置的通用文件：
+
+```text
+共同：
+依据当前项目权威和本轮授权执行；不扩大项目与写入范围。
+复用已有实现与已读且未变的证据。
+验证与改动风险相称；不能以未执行、模拟或文件存在宣称完成。
+保留真实来源、版本、失败与未验收项。
+
+Codex：
+模型选择遵循用户的 Codex 原生设置。
+技能按需加载；获准任务持续完成，遇真实权限缺口再暂停。
+
+DSH：
+遵循当前 Harness 的配置 schema、技能来源和会话协议。
+模型别名、内核版本与桌面封装分别记录。
+
+Hermes：
+主模型、辅助调用及回退都在用户批准的预算范围内。
+可确定性完成的采集不调用模型；未批准付费回退必须停止。
+```
+
+WORK-LAB 自己新增的价值应是跨软件一致的“版本—能力—所有权—验证结果”，而不是另一份完整模型配置、技能引擎、安装器或会话运行时。
+
+## 11. 后续任务卡：接入原任务图
+
+所有任务当前为 NOT-STARTED；本报告中的资料核验和合成复现不等于部署完成。
+
+| ID | 优先级/归并 | 输出 | 验收与回退 |
+| --- | --- | --- | --- |
+| WL-ADAPT-00 | P0 / WL-NORM-00、01 | 当前 SHA、权威入口与本包接纳记录 | 不覆盖用户决定；冲突列出来源，由既有权限流程解决 |
+| WL-ADAPT-01 | P0/启用前 / 04 | 单一 Codex 配置写入入口 | 旧入口不再写；TOML 可解析；未拥有字段不变；失败可恢复受管字段 |
+| WL-ADAPT-02 | P0/分发前 / 01、04 | 修订高风险技能和旧路径 | 三次批准、复制原生二进制、预写结论不再被活动流程触发；保留历史来源 |
+| WL-ADAPT-03 | P1 / 03、05 | 软件/模型/插件统一元数据 | 来源、精确版本、渠道、安装未知状态和兼容等级可区分；不是扩大 active 清单 |
+| WL-ADAPT-04 | P1 / 03、04 | Codex GPT-6 兼容档案 | 原生启动/技能/权限验证；不变更用户模型路由；回退仅针对获准受管配置 |
+| WL-ADAPT-05 | P1/升级前 / 03、04 | DSH 内核与 Desktop 组合适配 | 合成会话升级/恢复/取消，技能发现及包装探测通过；原始会话副本保留 |
+| WL-ADAPT-06 | P1 / 04、10 | Hermes 原生配置与预算闭环 | 主/辅助/回退都有归属；模拟额度耗尽不触发未授权付费；取消和完成有原生回执 |
+| WL-ADAPT-07 | P1 / 04 | 技能/MCP 精简与 provenance | 逐项去留有任务依据，版本与加载证据一致；未用工具不常驻 |
+| WL-ADAPT-08 | P1 / 05–09 | 原生 script-only Radar 试点 | 无变更/变更/失败/重启均验证；模型调用为零；调度唯一、路径获准 |
+| WL-ADAPT-09 | P1 / 10、11 | 三条工作流回归与成本比较 | 相同任务与候选基线，可重放证据；质量不降，费用未知明确标注 |
+| WL-ADAPT-10 | P0/合并前 / 11、12 | 当前 SHA 验收材料与状态收敛 | 来源、代码、配置和实机证据分开；按单独授权进行 PR/合并 |
+
+每项只修改相关文件组；不一次性把所有软件更新到最新。先收敛危险旧指令和重复 writer，再完成一个 Hermes 原生闭环，然后分别验证 DSH 和 Codex 的实际组合。实验性自进化和额外 Provider 仍服从 WL-NORM-14，不插队扩大范围。
+
+## 12. 衡量是否真的更省 Token
+
+采用当前方案与精简方案对照，固定同一仓库状态、执行器版本、模型路由和验收标准。最小任务集覆盖：小修复、配置修复、定位失败、跨会话接续、额度耗尽、越界拒绝。优先使用合成数据。
+
+记录输入/输出及缓存 Token、辅助调用、工具轮数、耗时、重试、验收结果和费用来源。免费额度也记录用量；未知费用不能填写 0。先做小规模对照；结果有波动时才追加样本，不宣称未经测量的节省百分比。
+
+硬性条件：权限和验收不退化、无额外写入、无未授权付费回退。只有满足这些条件，才比较效率收益。二次模型审查不能替代测试，也不天然构成独立验收。
+
+## 13. 本次完成与限制
+
+已完成：当前仓库配置与技能源码核对、官方版本和关键接口调研、旧配置函数的合成损坏复现、软件分工修正、适配裁决和任务归并。
+
+未完成：用户设备安装版本读回、真实软件配置迁移、账户额度核验、付费/免费模型回归、Windows 运行验证、修改后 CI、部署和 PR。没有把这些事项写成 DONE。
+
+这是选择性更新方案：加强所有权、版本证据、费用回退和真实验收；减少重复规则、旧修复配方、常驻工具及自研原生能力。是否采用某个新版，由具体缺口与兼容验证决定。
+

@@ -1,0 +1,308 @@
+# ArcheAxis Knowledge 项目上下文交接文档
+
+> 用途：重开新对话时作为项目唯一启动上下文。  
+> 更新时间：2026-08-18  
+> 使用规则：先读取本文件，再审计云端事实；不得凭历史对话或规划内容宣称已完成。
+
+---
+
+## 0. 新对话必须先记住的结论
+
+1. 当前唯一的 OS 项目是 `DTALEX66/ArcheAxis-Knowledge-OS`。
+2. 产品正式名称是 `ArcheAxis Knowledge｜星环知识平台`。
+3. 内部工作台名称是 `ArcheAxis Learning Workspace`。
+4. 技术标识为 `archeaxis-workspace`，Python 根包目标为 `archeaxis`。
+5. `Cognitive-Loop-OS` 只能作为历史迁移名称，不得重新作为当前项目名。
+6. `WORK-LAB`、`DESIGN-LAB` 与 ArcheAxis 是三个独立项目，不是 ArcheAxis 的子模块，也不共享事实源、数据库或运行时依赖。
+7. 当前目标是完成“最短真实闭环”，不是一次性实现全部未来蓝图。
+8. 审计必须区分：已验证事实、源码存在、设计规划、历史记录、未执行和阻塞项。
+
+## 1. 项目身份与产品定位
+
+### 1.1 正式身份
+
+| 类型 | 固定值 |
+|---|---|
+| 云端仓库 | `DTALEX66/ArcheAxis-Knowledge-OS` |
+| 本地目标目录 | `D:\All projects\ArcheAxis-Knowledge-OS` |
+| 对外产品 | `ArcheAxis Knowledge｜星环知识平台` |
+| 内部工作台 | `ArcheAxis Learning Workspace` |
+| 技术 ID | `archeaxis-workspace` |
+| Python 根包目标 | `archeaxis` |
+| 历史名称 | `Cognitive-Loop-OS`，仅用于迁移说明 |
+
+### 1.2 一句话定位
+
+ArcheAxis Knowledge 是一个本地优先、原件永久保全、证据驱动、开放互操作、同时服务人类与 AI 的学习与可信知识治理系统。
+
+### 1.3 产品口号
+
+> 同一份可信知识，人学得更深，AI 用得更准。
+
+### 1.4 明确不是什么
+
+ArcheAxis 不是：
+
+- 通用 Agent OS；
+- Agent Runtime 或模型管理平台；
+- 聊天工具；
+- 单纯阅读器；
+- 文件管理器；
+- Obsidian 克隆；
+- WORK-LAB 或 DESIGN-LAB 的运行时依赖。
+
+## 2. 三个项目的边界
+
+### 2.1 WORK-LAB
+
+- 仓库：`DTALEX66/WORK-LAB`
+- 本地目录：`D:\All projects\WORK-LAB`
+- 职责：全局工作流控制面、Desired State、规则、技能、插件、门禁、CI、审计、调度和只读 Observer。
+- 不负责：ArcheAxis 的 Knowledge、Evidence、Learning、格式转换或业务数据库。
+- Observer 必须直连真实事实源，不建立第二套状态数据库，不干扰正在执行的项目。
+- 当前关注：真实数据驱动的黑白高质量观测仪表盘、跨项目任务/Agent/CI/队列/TOKEN/流量/错误/延迟/哈希/签名观测，以及 `deepseek-harness` 和本地模型库接入。
+
+### 2.2 ArcheAxis Knowledge
+
+- 职责：管理 Knowledge、Evidence、Memory 的可信语义和生命周期。
+- 核心原则：原件保全、证据可追溯、候选内容不得自动变成可信知识、所有关键写入可审计。
+- 当前优先：常规格式摄取、转换、追踪、证据候选、人工复核、人类学习库和 AI 资产库写入、导出与重启回读。
+
+### 2.3 DESIGN-LAB
+
+- 仓库：`DTALEX66/DESIGN-LAB`
+- 本地目录：`D:\All projects\DESIGN-LAB`
+- 中文名：设计实验室。
+- 职责：AI 原生职业设计、视觉质量、专业创意工具链和可编辑生产交付。
+- 典型链路：`Agent → DESIGN-LAB → Tool Adapter/MCP → Adobe/Figma/Blender/ComfyUI/FFmpeg → 可编辑交付 → Evidence`。
+- 公司客户设计项目必须与三个个人项目严格隔离，不得把客户内容写入 ArcheAxis 或其他项目上下文。
+
+## 3. 核心架构
+
+```text
+可信产品内核
+├─ Identity / Source / RawAsset / Document
+├─ Evidence / Knowledge / Human Learning / AI Assets
+├─ 权限 / 事务 / 迁移 / 审计 / Job / Outbox / Receipt
+└─ Candidate → Review → Approved / Rejected / Revoked
+
+独立前端壳：Tauri + React
+可切换后端运行时：bundled / external-dev
+Capability Gateway
+└─ OCR / ASR / 文档解析 / 网页 / 搜索 / 模型 / 编辑器 / 外部适配器
+```
+
+### 3.1 不可替换部分
+
+以下内容属于可信产品内核，不能被插件绕过：
+
+- 可信语义；
+- 资产身份；
+- Evidence 状态机；
+- 权限；
+- 事务；
+- 审计；
+- 数据契约；
+- Candidate 到 Approved/Rejected/Revoked 的状态转换。
+
+### 3.2 可替换部分
+
+以下内容应通过能力网关或插件接口接入：
+
+- OCR、ASR、文档解析和网页解析引擎；
+- 模型与推理后端；
+- 格式适配器；
+- 搜索器；
+- 编辑器；
+- 学习工具；
+- 外部连接器；
+- Agent Runtime；
+- UI 视图。
+
+### 3.3 插件铁则
+
+插件不得：
+
+- 直接写入核心表；
+- 绕过 Evidence、权限或审计；
+- 将低可信候选自动升级为 Approved Knowledge 或 AI Asset；
+- 取代核心身份、事务和证据语义。
+
+“一切皆插件”必须准确理解为：
+
+> 极小可信内核 + 能力插件化，而不是所有东西都可以任意替换。
+
+## 4. 用户资产库与系统区
+
+首次启动必须让用户选择、校验并持久化以下路径：
+
+| 区域 | 内容 |
+|---|---|
+| Source Archive | 原始文件、录屏、截图、媒体和其他原件，永久保全 |
+| Evidence & Knowledge Ledger | SQLite 事务真相源、Claim、EvidenceBundle、来源和锚点 |
+| Human Learning Vault | Markdown、Canvas、课程、练习、复习和 Teach Back |
+| AI Asset Vault | memory、rule、skill、standard、context、evaluation |
+| Capability Store | 插件、引擎、模型及依赖 |
+| Derived & Cache | 可重建派生物和缓存 |
+| Backup & Recovery | 备份、恢复和灾备材料 |
+
+开发机外置依赖根：`D:\All projects\OS External Configuration`。
+
+四个用户资产域必须和系统能力资源区、派生缓存区、备份恢复区分开；不能把缓存或模型输出冒充原件、证据或知识真相。
+
+## 5. 摄取、识别、验证与转化链路
+
+```text
+原件 / URL / 用户导出 / 授权 API / 用户辅助采集
+→ PolicyGate
+→ SourceRouter
+→ RawAsset / WebSnapshot / CaptureBundle
+→ OCR / ASR / 文档解析 / 关键帧 / DOM / UI 结构
+→ Document + LossReport + Anchors
+→ Candidate Claim / Evidence
+→ 人工复核 + 权威来源交叉核验
+→ Human Learning / AI Asset
+```
+
+### 5.1 两层验证必须分离
+
+1. 识别层：验证 OCR、ASR、版面、时间轴、结构提取的准确度，可使用 CER/WER 或人工 truth。
+2. 事实层：验证内容是否真实，必须使用权威来源、多个来源或人工复核。
+
+模型置信度、OCR/ASR 置信度、单一网页内容都不能直接代表事实正确。
+
+### 5.2 常规格式支持方向
+
+- PDF、Office、HTML、Markdown、Canvas；
+- 图片和扫描件；
+- 音频、视频和字幕；
+- 网页、GitHub 和平台导出；
+- 视频优先字幕，其次 ASR，再进行关键帧/OCR；
+- 音频使用 VAD、ASR 和时间锚点；
+- 图片保留 OCR、版面信息和坐标；
+- 网页按静态、动态、结构化层级处理。
+
+### 5.3 平台采集边界
+
+微信小程序、抖音、小红书、B 站、YouTube、X 等不应被设计为无边界自动爬取目标。
+
+允许的研究型路径是：用户正常登录并手动完成授权，系统只采集用户明确范围内的可见截图、录屏、DOM/无障碍树、字幕和交互路径。
+
+明确禁止：
+
+- 读取密码、Cookie 或 Token；
+- 绕过验证码、登录墙、付费墙、DRM 或访问控制；
+- 把抓取结果直接写入 Approved Knowledge 或 AI Asset；
+- 将平台内容默认视为可信事实。
+
+所有网页和平台输出默认进入 `candidate` 状态，并保留来源、时间、采集方式、损失报告和证据锚点。
+
+当前 Web 任务包：`AXW_WEB_CAPTURE_INGESTION_HARDENING_TaskPack_v3_2026-08-15.md`。
+
+## 6. 最近一次云端审计基线
+
+最近已审计基线：`main@16f3f4548d21d6baa1dd72de26de43280a9a3013`。
+
+已知事实与未完成项：
+
+- Nightly 在该 SHA 上全绿，包含全量测试、浏览器 smoke、Windows runtime 和 Python 3.11/3.13；
+- Push CI 对文档变更执行选择性门禁，不等于 Release 全资格；
+- main/tag ruleset active；
+- 公开 v0.5.0 仍是旧四资产，不能代表新版 Setup/Green/Portable 已公开；
+- React 仍是骨架，Tauri 打包仍存在 Recovery Shell 与正式 React 接线债务；
+- 首次启动四库路径 API/UI 与生产运行时接管仍需真实闭环验证；
+- external-dev 后端重启、热重载与数据隔离仍需 Tauri 真实接线验证；
+- `app/ingestion/web.py` 仍为 stub，`convert_url()` 尚未真实调用 Crawl4AI；
+- Scrapling 仍属于可选实验适配，不能宣称已具备生产支持；
+- 主链测试中仍需排查测试代码手写 Human Learning/AI Asset 的情况，必须改为验证生产写入器真实写入。
+
+新对话开始时，必须先核对云端最新 HEAD，再判断以上状态是否仍然成立。
+
+## 7. 当前执行优先级
+
+当前只追求最短真实闭环：
+
+```text
+R0 真相 / 命名 / 门禁
+→ R1 Workspace Context / 四库
+→ R2 多格式原件摄取 / OCR / ASR
+→ R3 Evidence + Human Learning / AI Asset 写入器
+→ R4 React 正式 UI
+→ R5 Tauri Supervisor / external-dev
+→ R6 Setup / Green / Portable
+→ R7 Web / 平台采集增强
+```
+
+常规格式必须先做到：
+
+```text
+可导入 → 可转换 → 可追踪 → 形成证据候选 → 人工复核
+→ 写入人类学习库 / AI 资产库 → 可导出 → 可重启回读
+```
+
+以下内容保留在未来蓝图，但暂不进入当前关键路径：
+
+- 3D 和视觉课件；
+- 动画、模拟；
+- 2D/2.5D/3D 记忆宫殿；
+- VR/AR；
+- 通用 Agent；
+- Marketplace。
+
+## 8. 验证、审计与提速规则
+
+- 普通修改只运行受影响测试、lint 和 diff-check；
+- 每个大批次集中运行一次阶段集成验证；
+- Nightly、完整哈希、SBOM、安装器、下载回读和 exact-SHA 放到里程碑、RC 或 Release；
+- 失败时只重跑受影响门禁；HEAD、tree 和失败证据未变化时不得重复审计；
+- 哈希和幂等只用于原件、Job/Outbox、迁移、证据来源、导出和 Release；
+- 不给查询、UI 或普通转换重复增加无必要的认证与哈希成本；
+- 不使用 mock、文件名、模型输出或“代码存在”宣称功能完成；
+- 每项结果必须标记为 `PASS / PARTIAL / FAIL / NOT EXECUTED / BLOCKED`；
+- 每项结果附 SHA、命令、证据路径和验证范围。
+
+## 9. 新对话启动指令
+
+将本文件放入新对话后，使用以下启动语句：
+
+```text
+请先完整读取并遵循 ArcheAxis_Project_Context_Handoff_2026-08-18.md。
+
+当前唯一云端 OS 项目是 DTALEX66/ArcheAxis-Knowledge-OS；产品名是
+ArcheAxis Knowledge｜星环知识平台；内部工作台是 ArcheAxis Learning Workspace。
+技术标识为 archeaxis-workspace，Python 根包目标为 archeaxis。
+
+WORK-LAB 与 DESIGN-LAB 是独立项目，不得被当作 ArcheAxis 子模块、运行时依赖或共享事实源。
+先读取项目定位、架构、当前云端 HEAD、真相文档和未完成项，再开始任何修改。
+
+审计时必须区分：已验证事实、源码存在、规划、历史、未执行和阻塞。
+当前只优先最短真实闭环；未来蓝图保留但延期。
+不得重新发明命名体系，不得虚报完成，不得用 mock 或代码存在代替真实闭环证据。
+只有在我明确指定项目和操作范围后，才进行对应审计或修改。
+```
+
+## 10. 第一条执行任务
+
+新对话的第一步不是修改代码，而是：
+
+1. 核对 `DTALEX66/ArcheAxis-Knowledge-OS` 当前云端 HEAD；
+2. 读取 README、架构/真相文档、CI 状态和当前未完成任务；
+3. 对照本交接文档标记哪些事实已变化；
+4. 输出一份基于当前 HEAD 的审计矩阵；
+5. 在用户指定前，不擅自修改项目。
+
+## 11. 最终边界结论
+
+ArcheAxis 的核心不是“把所有 AI 能力堆在一起”，而是建立一条可信链：
+
+```text
+原件永久保全
+→ 可追踪提取
+→ 证据候选
+→ 人工/权威复核
+→ 人类学习知识
+→ AI 可复用资产
+→ 可审计、可导出、可回读
+```
+
+所有后续功能、模型、插件、Agent、网页采集和视觉能力，都必须服务于这条可信链，并服从核心身份、证据、权限、事务和审计边界。

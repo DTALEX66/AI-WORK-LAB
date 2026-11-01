@@ -1,0 +1,113 @@
+# ArcheAxis 人机双向学习：核心算法与开源适配调研
+
+日期：2026-09-07。目标不是做通用 Agent 平台，而是服务既定闭环：原件/来源 → 候选知识 → 全网交叉核验与人工复核 → 人类学习与机器可调用资产。
+
+## 结论：采用“四层算法核”
+
+| 层 | 采用 | 解决的问题 | 当前优先级 |
+|---|---|---|---|
+| 检索 | SQLite FTS5/BM25 + 向量召回 + cross-encoder 重排 | 人与机器都能找回原文、证据和相关知识 | v0.1 |
+| 证据 | 原子主张分解 + 支持/反驳/不足分类 + 来源独立性/时间性 | 全网对比不再只返回“模型自信分” | v0.1 |
+| 人类学习 | FSRS 间隔重复；之后才加 BKT 掌握度 | 把已确认知识转成可记住、可复习的学习路径 | FSRS v0.1，BKT v0.2 |
+| 机器学习 | 多模型/规则分歧采样 + 人工 gold 回流 + 数据质量审计 | 让识别、抽取、核验逐步变准，而不让模型自说自话 | v0.1 最小版 |
+
+这四层共享 Source、RawAsset、Document、Claim、Evidence、LearningEvent、ModelRun 等对象，但**不共享语义状态**：人的掌握度不等于事实为真；模型置信度不等于证据充分；个人定义可保存但不自动升格为已验证知识。
+
+## 1. 检索：混合检索，而非纯向量或普通 RAG
+
+首版使用 SQLite FTS5/BM25 做精确词、数字、专名和可解释的原文检索；Python sidecar 再提供多语言 embedding 召回；最后以 cross-encoder reranker 重排 top-k。BGE/FlagEmbedding 包含 embedding 和 reranker 工具链，官方明确将 cross-encoder reranker 定位为提高向量 top-k 排序质量的手段。
+
+- 采用：`FlagEmbedding` 的 embedding/reranker 作为可替换 Python capability；每次模型、版本、分块策略和得分都记录。
+- 暂不采用：ColBERT。它的 late-interaction 对大语料精排很强，但会引入专用索引和显著资源成本；仅在本地语料规模/多跳查询的 benchmark 证明 FTS+reranker 不足后评估。
+- 不采用：已归档的 Contriever 作为新核心依赖。
+
+验收指标：Recall@k、nDCG@k、MRR、原文锚点命中率、中文/中英混合查询集；不能用“回答看起来对”替代。
+
+## 2. 证据交叉核验：原子主张 + 可追溯立场，而非真假总分
+
+采用两项算法思路：
+
+1. FActScore 的**原子事实分解**：把一段生成/转换文本拆成可单独检查的 Claim；每一 Claim 都要有可定位的来源片段。
+2. SAFE 的**搜索增强事实评估**：对每个 Claim 检索来源后评价其是否被支持。ArcheAxis 必须保留检索到的原文、URL/出版信息、抓取时间和判定理由，不能只保存 LLM 结论。
+
+ArcheAxis 自己的判定不是简单二元 truth，而是：`supported | contradicted | insufficient | contested | personal_definition | forecast | untested`。再分别显示：
+
+- 来源权威度（由来源类型/发布者等可解释规则产生）；
+- 独立性（转载链、同源稿、同一数据集不能算多份独立证据）；
+- 时效性与版本冲突；
+- 覆盖率（主张中多少原子成分有证据）；
+- 模型分歧和人工复核状态。
+
+这些是“证据充分度/风险”而非现实世界真值概率。原始来源定位、反驳证据和未知状态必须可见。
+
+## 3. 人类侧学习：FSRS 现在上，BKT 后上
+
+`fsrs-rs` 是 Rust 实现的 FSRS，可训练参数并进行调度，正好放入 Rust authoritative Core；它依据遗忘/稳定性安排复习，不需要先建立巨大知识图谱。首版只需把 Accepted 或 Personal Definition 的知识生成卡片/问答/teach-back，记录 review event 后由 FSRS 排期。
+
+`pyBKT` 是 BKT 的成熟开源实现，可由练习对错序列估计技能掌握度。它适合 v0.2 的**离线模型拟合/参数研究**，不应成为 Python 对主数据的实时写入者；在线 posterior 更新应由 Rust core 实现或由 Rust 调用受控计算。没有足够的题目、技能标签和人工/自动评分质量时，BKT 的“掌握度”必须显示为未测量。
+
+OpenTutor 可借鉴其 FSRS+BKT、学习路线、题目与本地优先产品结构；DeepTutor 可借鉴阅读、问答、测验、可视化的学习体验。两者都不是 ArcheAxis 的产品底座，避免把本项目变成另一套 Agent/RAG 应用。
+
+## 4. 机器侧学习：主动复核闭环，而不是自动自训练
+
+机器改进的最小算法：对同一 RawAsset 的 OCR/解析/抽取/核验结果，计算模型间分歧、低置信、结构异常、与 gold 的误差；优先把最高风险样本送人类复核。人类的修正进入版本化 gold set，下一次 worker 或 prompt/模型 benchmark 才可使用。
+
+`cleanlab` 可在已有模型预测与人工标签后发现疑似错误/低质量标签，适合作为 gold set 审计工具；它不能证明外部主张为真，不能取代检索证据或人类裁决。
+
+当确有多个可解释的弱信号（例如规则、OCR 引擎、来源元数据分类器）需要合并时，可评估 Snorkel 的 LabelModel；但其公开实现假设 labeling functions 在真实标签条件下独立，转载/同源网页天然违反这一前提，因此不把它用于“多网页独立证据”计数。
+
+## 5. 推荐吸收顺序
+
+1. Rust：接入 FSRS；SQLite FTS5/BM25；学习事件和卡片的可追溯表。
+2. Python capability：BGE embedding + reranker，固定基准集与版本 receipt。
+3. Rust/Python：Claim/Evidence schema，原子 Claim、来源锚点、支持/反驳/不足输出。
+4. Python evaluation：抽取 CER/WER、字段 F1、检索 Recall/nDCG、Claim 覆盖率；引入 FActScore/SAFE 的思想和可替换实现，而非直接信任其总体分。
+5. 人工界面：显示原件、差异、来源、模型分歧；再加 FSRS 卡片和 teach-back。
+6. 仅在有真实 learning events 后：BKT 拟合与自适应练习。
+7. 仅在 benchmark 证明需要后：ColBERT、时间图谱/Graphiti 类能力。
+
+## 5A. 各种内容“转化为知识”的算法链
+
+转化不等于“文件转 Markdown 再让 LLM 总结”。应保留以下不可跳过的层：
+
+`RawAsset → 结构化 Document → 可定位 Segment → Claim / Entity / Event 候选 → Evidence 对齐 → Knowledge Unit → 人类学习资产 / 机器调用资产`
+
+| 环节 | 算法/规则 | 推荐实现 | 产物与约束 |
+|---|---|---|---|
+| 原件保全 | SHA-256、MIME/来源/时间记录 | Rust CAS | 原件永不被 Markdown 或摘要覆盖 |
+| 多格式理解 | layout、reading order、table/formula/OCR、字幕时间轴 | Docling 主适配器 | 输出结构化文档及 page/box/time anchor |
+| 快速降级转换 | 格式路由到 Markdown | MarkItDown fallback | 仅作为文本分析输入，不作为版面事实 |
+| 切分 | 标题/段落/表格/页码/时间轴优先的结构切分；token 上限只作二次切分 | Rust 规则 + Python worker | 每段保留原件锚点、转换版本和 loss receipt |
+| 去重与转载识别 | exact SHA；SimHash/MinHash/LSH 近重复候选；URL canonicalization | `datasketch` 仅作候选发现 | 同源转载不得被当作多份独立证据 |
+| 语义抽取 | schema-constrained Claim、Entity、Event、Quote extraction | 受控 LLM/本地模型 worker | 输出永远是 candidate，附原文 span 与置信/损失 |
+| 规范化/合并 | 规则别名 + 字符/日期/单位规范化 + embedding 候选 + 人工确认 | Rust authority 做最终决定 | 不自动把同名实体或相似句合并 |
+| 知识派生 | claim cluster、冲突簇、前置概念、问答/卡片/teach-back | Rust 记录谱系，模型生成派生物 | 每个学习卡/机器摘要可追到 Claim 和 RawAsset |
+
+Docling 可处理 PDF、Office、HTML、EPUB、图像、音频/视频等，并保留布局、阅读顺序、表格和公式等结构；这比纯 Markdown 转换更适合作为主能力包。MarkItDown 适合轻量、快速的 Markdown 降级路径，但不应承担像素级布局或证据锚点的权威职责。MinHash/LSH 只估计相似度，会有近似误差，所以只进入“疑似重复/同源”队列，不能自动删原件或合并知识。
+
+**最重要的派生规则**：一份摘要、脑图、卡片、课程、机器 API 答案都是 `DerivedAsset`，不是新的事实源；它必须记录所用的 Claim、Evidence、模型版本、提示词/参数、生成时间和已知 loss。这样发现原文错误或来源更新时，可以逆向撤销并重算所有衍生知识。
+
+## 6. 不建议现在直接吸收的项目
+
+- Cognee：定位是 agent 长期记忆和知识图谱；会引入 Python/graph DB/Agent 中心，和本项目 Rust+SQLite 唯一写入、非 Agent 产品定位冲突。只参考其“会话→受控沉淀”的思想。
+- Ragas：适合生成评测集和辅助性 RAG 指标，不是事实裁决器；其 LLM 指标存在波动，必须配人类 gold 和重复运行。
+- Snorkel：可选弱监督工具，不用于来源独立性。
+- Contriever：仓库已归档。
+
+## 一句架构定义
+
+ArcheAxis 的算法核心是：**用混合检索找到可定位原文，用原子主张和独立来源比较证据，用人工反馈校准机器，用 FSRS/BKT 让人真正学会；每一层都输出可复算的测量与不确定性，而不是一个看似权威的总分。**
+
+## 主要来源
+
+- FSRS Rust：https://github.com/open-spaced-repetition/fsrs-rs
+- pyBKT：https://github.com/CAHLR/pyBKT
+- FlagEmbedding：https://github.com/FlagOpen/FlagEmbedding
+- FActScore：https://github.com/shmsw25/factscore
+- SAFE / Long-form factuality：https://github.com/google-deepmind/long-form-factuality
+- Cleanlab：https://github.com/cleanlab/cleanlab
+- OpenTutor：https://github.com/zijinz456/OpenTutor
+- DeepTutor：https://github.com/HKUDS/DeepTutor
+- Docling：https://github.com/docling-project/docling
+- MarkItDown：https://github.com/microsoft/markitdown
+- datasketch / MinHash LSH：https://github.com/ekzhu/datasketch

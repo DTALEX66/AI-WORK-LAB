@@ -1,0 +1,177 @@
+# ArcheAxis Knowledge 深化优化独立任务包
+
+- TaskPack ID：`AA-DEEPEN-20260825-V1`
+- 目标仓库：[DTALEX66/ArcheAxis-Knowledge-OS](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS)
+- 状态：`READY_FOR_EXECUTION`
+- 产品名：`ArcheAxis Knowledge｜星环知识平台`
+
+## 1. 不变的项目核心
+
+ArcheAxis 是本地优先、证据驱动的人机双向重型学习与可信知识系统。真正产品核心不是“多个 Agent 一起工作”，而是：
+
+```text
+同一知识对象
+  ├─ 来源/主张/证据/版本
+  ├─ 人类学习状态与长期掌握度
+  ├─ 机器知识与可验证能力状态
+  └─ 人→AI 蒸馏、AI→人教学、共同实践、反馈纠错
+```
+
+Agent、DeepTutor、MemOS、Hermes、DSH 等都只能是教师、执行者、sidecar 或投影。ArcheAxis 自己拥有知识、证据、学习事件和双向状态机；不是通用 Agent OS、模型网关或多 Agent 产品。
+
+## 2. 审计快照与已完成基线
+
+本轮本地审计副本为干净 `main`，HEAD `bf0c48396c751647ac76ee4578bc38f44888a23e`，源码版本 `0.6.11` candidate。公开发布与 CI 必须在执行时重新从 GitHub 读回。
+
+以下属于 `DONE_BASELINE`，不得重复导入或重写：
+
+- Obsidian-compatible Workspace foundation、Markdown/JSON Canvas 首条高保真纵切；
+- Source/Claim/Evidence/ResearchPackage/KnowledgeUnit/LearningArtifact/MasterySignal/MachineKnowledgeUnit V1 合同；
+- SQLite migration owners、Outbox、Receipt、retry、readback、lease-fenced worker；
+- GitHub Research candidate 闭环和外部内容禁止自动升为 verified truth；
+- BKT、FSRS、teach-back、quiz、learning path、temporal graph、long-term/reasoning memory、capability registry；
+- DeepTutor 路由思想、Graphiti 双时态思想、Cognee grounding 等已有选择性吸收；
+- OCR/文档/媒体的多轮历史管线验证、v0.6.x Windows 分发链。
+
+这些“存在”不等于双向学习产品闭环正确；当前 P0 是修复语义、安全和持久化证据。
+
+## 3. 已确认的关键缺陷
+
+| 缺陷 | 位置/表现 | 风险 |
+|---|---|---|
+| 机器掌握等级 off-by-one | `app/knowledge/dual_mastery.py::machine_mastery_level` 返回“下一个尚未达到的等级” | 机器能力被系统性高估 |
+| 无原始来源仍显示 K0_RAW | `MachineEvidence()` → `K0_RAW` | 状态语义自相矛盾 |
+| sqlite3.Row 使用 `.get()` | `app/api/learning.py::get_mastery` | 真实 GET 路径可能 400 |
+| 客户端自报证据 | `/api/v1/learning/tick` 接受 human/machine/evidence_verified，且 verified 默认 true | 可伪造掌握、验证和路由 |
+| 人掌握被当作机器已学会 | `learning_outcome.py` 自动创建占位 MachineKnowledge candidate | 把“人会了”误当“AI 已获得可用能力” |
+| E2E 证明不足 | 现有 E2E 将自报 machine evidence 传给 `/tick`，未证明服务端持久状态重启后驱动闭环 | 测试编码了错误语义 |
+
+## 4. 任务 DAG
+
+### AA-000 — 当前事实与来源矩阵冻结
+
+- 优先级/状态：`P0 / TODO`
+- 动作：记录 SHA/branch/dirty/CI/release；运行当前权威状态生成/验证；把历史 `14/14 ASR`、视频/VLM demo 与当前安装版产品结论分开。
+- 输出：`Current Reality Matrix`，按 structural/local runtime/exact-SHA CI/publication/live installed 分层。
+- 验收：旧 handoff 不覆盖 `docs/PROJECT_STATUS.md`；所有相互冲突的完成声明都有来源、时间和裁决。
+
+### AA-010 — 双掌握语义与 API 安全 P0 修复
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：AA-000。
+- 修改 1：设计 `MachineCompetenceStateV2`。缺少 raw source 必须为 `NONE/INELIGIBLE`；K0–K8 表示已达到的最高能力，不是下一个缺口。为 V1 提供显式兼容投影和迁移。
+- 修改 2：把 sqlite Row 先转 `dict`，为真实 GET 增加数据库 fixture 和 200/404/损坏库测试。
+- 修改 3：`/tick` 不再接受可决定状态的 human/machine/evidence_verified；只接受 node/learner/请求意图，从服务端 append-only receipts 推导三轴状态。无 verified receipt 默认 unverified。
+- 修改 4：加入幂等、鉴权、learner subject、时序和来源校验；客户端字段注入必须 4xx。
+- 修改 5：重写现有单测，不得继续把 off-by-one 当期望值。
+- 验收：每个等级有正/反例；伪造 K8/M7/verified 被拒；重启后从同一 DB 读回相同状态；V1 迁移无静默升级。
+
+### AA-020 — 非 Agent 双向学习内核 V2
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：AA-010。
+- 在现有 V1 合同上演进，不复制一套平行模型。
+- 核心对象：Source、Claim、Evidence、KnowledgeUnit、HumanLearningState、MachineCompetenceState、LearningEvent、DistillationCandidate、SkillCandidate、EvaluationReceipt。
+- 状态机：candidate → reviewed → verified/contested/superseded；人类掌握和机器能力分别推进；任何晋级要求定义好的 receipt 类型。
+- 必须支持：事实有效期、冲突、回退、撤销、重放、学习者隔离、来源独立性、rights、模型/教师可替换。
+- 验收：确定性状态机属性测试；乱序/重复/冲突事件；升级和降级；数据库迁移/回滚；无 Agent runtime 依赖。
+
+### AA-030 — 人类学习主界面黄金纵切
+
+- 优先级/状态：`P0 / TODO`
+- 依赖：AA-020。
+- 真实用户流程：导入资料 → 带页码/锚点阅读 → 笔记/批注 → 问答 → quiz/teach-back → FSRS 复习队列 → 掌握图 → 先决学习路径 → 迁移/项目实践 → 反思。
+- UI 必须把 Source、Evidence、Knowledge、Learning、Mastery 分清；不能只有聊天框和 Agent 面板。
+- [DeepTutor](https://github.com/HKUDS/DeepTutor) 只作为教学 capability sidecar 和 UI/交互供体；不得把其 Agent runtime、知识库或账号系统变成 ArcheAxis 内核。
+- OpenTutor/Cortex 仅吸收学习科学和桌面 UX 的缺口；现有 FSRS/BKT 不重复实现。
+- 验收：浏览器 + Tauri WebView 点击级 E2E，关闭重开后学习进度/批注/复习/证据锚点仍一致；键盘、焦点、分页、高 DPI、reduced motion 有矩阵。
+
+### AA-040 — 人→AI 证据化蒸馏闭环
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AA-020。
+- 输入：人的文档、访谈、聊天纠错、案例判断、项目复盘和 teach-back；输出只能先是 candidate。
+- 流程：提取主张 → 绑定原文/时间/主体 → 跨案例验证 → 冲突/rights 检查 → 规则/Persona/Skill 候选 → 沙箱评估 → 人工批准 → 版本化发布。
+- [Distilly](https://github.com/titanwings/distilly) 先做许可证和代码级 bake-off；通过才作为提炼 adapter，不托管最终状态。
+- 修复：`signal.is_mastered` 不再直接生成“机器已学会”占位内容；最多产生 `DistillationCandidate`，且必须含可回读 evidence bundle。
+- 验收：一个真实专家判断至少跨 3 个案例；负例会阻止晋级；批准前不能被 Hermes/DSH 调用；撤销后投影失效。
+
+### AA-050 — AI→人教学闭环
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AA-020、AA-030。
+- 从 verified knowledge 和真实 machine competence 生成引用可追溯的教学计划、例题、quiz、teach-back rubric 和迁移任务。
+- 教师可替换：DeepTutor/任意 LLM/本地模型只实现 `TeachingCapability`；不能写学习真值。
+- 验收：引用必须定位原始证据；错误/过期/冲突知识优先进入 evidence review；教学后只由用户作答和评估收据更新 HumanLearningState。
+
+### AA-060 — 机器学习、记忆与技能进化投影
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AA-020、AA-040。
+- [MemOS](https://github.com/MemTensor/MemOS)：作为 Hermes/DSH 的外部运行记忆投影首选 PoC，消费经批准的 MachineKnowledge/Skill，并把成功/失败轨迹回传 candidate receipt；不成为第二知识库。
+- OpenViking：只作为 MemOS 替代 bake-off，不同时部署两套生产记忆。
+- Graphiti：后期时序图 projection；现有 SQLite/NetworkX 真值未出现瓶颈前不引入 Neo4j/FalkorDB。
+- Hermes Agent Self-Evolution：通过 WORK-LAB 外部 runner 执行候选 skill 评估；任何自我改写必须在沙箱、固定数据集、人工批准和 rollback 后发布。
+- 验收：删除投影数据库后可从 ArcheAxis 重建；投影写入不能反向自动验证知识；skill 新版在真实任务 eval 上优于旧版且无安全回归。
+
+### AA-070 — 多格式、桌面与发布债务闭环
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AA-000。
+- ASR：区分历史 mp3 批处理与当前产品入口，完成安装版上传→转写→时间戳 Evidence→人工真值 WER→重启读回。
+- 媒体：处理/明确延后 64 个 mp4 音轨；Ollama 已在 WORK-LAB 修复后，重新验证 ArcheAxis 产品路径的 VLM scene description。
+- 文档：为 2 个 legacy `.doc` 给出转换 adapter 或明确 unsupported UX；不得静默失败。
+- Workspace：完整失败→retry→replay UI/CI、SSE 审计时间线、交互式 Job Center、真实取消合同。
+- 发布：干净 Windows Golden Journey、备份/恢复/升级/卸载保留/重装读回；签名若无证书则诚实 `BLOCKED_SIGNING`。
+
+### AA-080 — DESIGN-LAB 双向学习真实试点
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AA-040、AA-050、AA-060；DESIGN-LAB 的 DL-050/DL-080。
+- 场景：用户教会系统一条可证据化设计判断 → ArcheAxis 形成候选并批准 → DESIGN-LAB 在真实 brief 中调用 → 输出 artifact/quality/production receipt → ArcheAxis 更新 MachineCompetence，并据失败给用户生成学习建议。
+- WORK-LAB 只传 ExecutionEnvelope/ContextCapsule/RuntimeReceipt，不参与知识或设计裁决。
+- 验收：同一知识 ID 可追踪人类学习、AI 使用、失败、修订和 supersedes；删除任何 sidecar 不丢核心记录；整个流程可重放。
+
+### AA-090 — 开源项目全量减法审计
+
+- 优先级/状态：`P1 / TODO`
+- 依赖：AA-000。
+- 对当前 supply-chain ledger、历史 101 项登记、vendored code、optional dependency 和研究文档统一盘点。
+- 状态仅允许：`ABSORBED`、`ADAPTER`、`SIDECAR`、`REFERENCE`、`QUARANTINE`、`REMOVE`。
+- 已吸收的 BKT/FSRS/Graphiti 思想/DeepTutor 路由不得重复引入；Studyield 因 AGPL 保持 research-only，除非另行完成法律/架构隔离；重型 Agent runtime 默认排除。
+- 每项核对：正确上游、commit/tag、许可证、活跃度、实际消费者、重复功能、依赖重量、数据边界、更新和退出策略。
+- 验收：无消费者 vendored 代码移除或隔离；引用类不装依赖；所有许可和 SBOM 可追溯；审计结果生成而非散落在聊天里。
+
+### AA-100 — 核心闭环发布门
+
+- 优先级/状态：`P2 / TODO`
+- 依赖：AA-010 至 AA-090 中的本期批准范围。
+- 发布前必须证明：证据→知识、人类学习、AI 教学、人→AI 蒸馏、机器能力评估五个环是持久化同一状态机，不是五个演示脚本。
+- 运行 OS、knowledge_base、integration、frontend、Tauri/Windows、migration/rollback 和 security gates；绑定 exact SHA。
+- 3D/VR/AR、动画、仿真、空间记忆/记忆宫殿保留长期蓝图，但不阻塞本轮核心发布。
+
+## 5. 开源融合裁决
+
+| 项目 | 本轮角色 | 禁止事项 |
+|---|---|---|
+| DeepTutor | 教学 sidecar、UI/交互供体 | 不做内核/SSOT，不复制 Agent OS |
+| OpenTutor | 学习科学模块供体 | 不重复 FSRS/BKT，不整仓并入 |
+| Studyield | Teach-Back/考试研究参考 | AGPL 代码不进入核心 |
+| Cortex | Tauri 学习 UX/统计参考 | 不因技术栈差异重写整套前端 |
+| Distilly | 人→AI 提炼 adapter 候选 | 不绕过 evidence/review gate |
+| MemOS | 机器运行记忆投影 | 不成为知识真值，不直接晋级技能 |
+| OpenViking | MemOS 替代候选 | 不与 MemOS 双生产运行 |
+| Graphiti | 后期时序图 projection | 不在无瓶颈时引入重基础设施 |
+| Hermes Self-Evolution | 外部 skill eval runner | 不允许无人审查自我改写 |
+
+## 6. 最终交付物
+
+- 双掌握 V2 语义、迁移与安全 API
+- 非 Agent 双向学习事件/状态内核
+- 人类学习主界面黄金纵切
+- 人→AI 与 AI→人两条证据化闭环
+- MemOS/外部执行器可删除重建的投影 adapter
+- 多格式/Tauri/Windows 真实产品证据
+- DESIGN-LAB 真实双向试点
+- 当前开源供应链减法台账和 exact-SHA 发布收据
+

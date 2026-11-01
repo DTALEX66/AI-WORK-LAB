@@ -1,0 +1,285 @@
+# WORK-LAB 更新增量审计｜2026-09-05
+
+**结论：PARTIAL_WITH_BLOCKERS。恢复分支有实质修复，但“R4 全部完成”不成立，当前不满足合并或发布条件。**
+
+本报告对照 2026-09-04 R4 原报告和历史来源清单，审查最新恢复分支的全部 28 个变更文件，并追查关联消费者、云端 CI 与关键运行行为。只读审计；未修改业务源码，未 push、开 PR、合并、发布或改动用户软件配置。测试输出限定在隔离仓库的 `.project-local/runs/audit-20260905/`。
+
+## 1. 精确审计对象
+
+| 对象 | 本轮固定值 | 与上次关系 |
+|---|---|---|
+| main | `e5231f0f605d1515ed12958267b394c9de1da20c` | 未变 |
+| PR #123 | OPEN；`c6b7e8f6468281325d26524e3762607c6fa7a4ce` | 未变 |
+| 最新恢复分支 | `r4-recovery-exec` | 本次更新所在 |
+| 恢复分支 HEAD | `a8ed987ed616da56d4835fd09a29c899259fe02f` | 本轮审计版本 |
+| HEAD tree | `36562af396abea4c7c69e584331f18d8168fd748` | 固定代码内容 |
+| 增量范围 | `c6b7e8f..a8ed987` | 16 次提交，28 文件，+1028 / -258 |
+
+16 次提交包含最终交接提交；交接中的“15 commits”可以理解为交接提交前的数量，不能单独据此指控记录造假。真正的问题是完成状态与当前证据矛盾。
+
+来源：[恢复分支提交](https://github.com/DTALEX66/WORK-LAB/commit/a8ed987ed616da56d4835fd09a29c899259fe02f)、[完整增量](https://github.com/DTALEX66/WORK-LAB/compare/c6b7e8f6468281325d26524e3762607c6fa7a4ce...a8ed987ed616da56d4835fd09a29c899259fe02f)、[PR #123](https://github.com/DTALEX66/WORK-LAB/pull/123)。
+
+### 历史连续性
+
+本次成功恢复并实际读取以下原始交付件，未凭记忆重建：
+- `WORK-LAB-DEEP-RESEARCH-OPTIMIZATION-AND-TODAY-TASKPACK-2026-09-04.md`，55,669 bytes，SHA-256：`f60d551997c868427f8e87d242f1bc6db88229cc739b95ddbe0ae88fd1b71169`。
+- `WORK-LAB-HISTORY-SOURCE-MANIFEST-2026-09-04.json`，4,901 bytes，SHA-256：`8693aa58484a150cac87de8bbf1a1dffc05eadb996df5a6f535914c5f1d77dd4`。
+
+这证明本轮接续了原 R4 报告和来源索引；不等于重新下载并逐项重验了索引中每份历史原件。当前 Git 获取范围足以覆盖上述提交差异，本轮也没有重新证明远端所有分支和所有历史对话的完整性。发现的实际问题是：**仓库的当前入口指向未纳入 Git 的本地文件，新克隆无法从入口取得它们；不能据此说原归档已经丢失。**
+
+## 2. 当前 CI：两条工作流均失败
+
+| 工作流 / 作业 | 结果 | 真正失败点 |
+|---|---|---|
+| work-lab-gate / workflow-assistance | FAIL | `CURRENT_STATE_FRESHNESS_FAIL source-digest-mismatch` |
+| work-lab-gate / integration | FAIL | 同一 current-state 摘要失效 |
+| work-lab-gate / token-monitor（Windows） | FAIL | `npm error Missing script: "typecheck"`；后续 Cargo 检查被跳过 |
+| work-lab-gate / observer | PASS | 跑的是已有 Python/旧 JS 检查，不能证明 React 生产线已覆盖 |
+| work-lab-gate / supply-chain-security | PASS | 不抵消上述失败 |
+| work-lab-gate / aggregate | FAIL | 正确反映依赖失败 |
+| wlr-060-production-gates / capsule-cli | FAIL | `FAIL: schema version mismatch` |
+| wlr-060-production-gates / 其余三个检查 | PASS | 其中 schema 仅 JSON 解析、compiler 仅语法、readonly 为弱源码检查 |
+| wlr-060-production-gates / aggregate | FAIL | 正确反映 capsule 失败 |
+
+直接证据：[work-lab-gate 33931897450](https://github.com/DTALEX66/WORK-LAB/actions/runs/33931897450)、[wlr-060-production-gates 33931897417](https://github.com/DTALEX66/WORK-LAB/actions/runs/33931897417)，均对应本轮 HEAD。
+
+云端日志确实包含“Ran 944 tests”、另一组“Ran 254 tests”等成功测试输出；不能简单相加，测试范围可能重叠。交接中“981 passed + 62 subtests”可能来自另一条本地命令，但本轮未取得它对应的完整、可复现、绑定当前 tree 的报告。即使该次本地测试真实通过，也不能推出当前两条 required 工作流全绿或 T00–T60 完成。日志中的部分预期负向测试错误也未被误算为真实失败。
+
+## 3. 已确认修好的部分
+
+| 修改 | 本轮判断 | 仍需区分的边界 |
+|---|---|---|
+| codex_config_sync 字符串语法及迁移后的 profile 路径 | 语法缺陷已修；全部 324 个 tracked Python 文件内存编译成功 | 不代表运行时配置同步已做端到端验证 |
+| WLR 门禁移除吞错 | 改动正确，Capsule 的真实失败开始暴露 | 命令和验证内容还要修 |
+| tsconfig.tsbuildinfo 取消跟踪并加入 ignore | 已落地 | 尚未证明两次 React 构建无其他目录污染 |
+| get_agents 不再编造版本和在线状态 | 局部修复有效，返回 UNKNOWN / null | build_snapshot 又将其投影为 INACTIVE，并继续生成假 LIVE |
+| FieldRule 扩展、12 个字段增加 safety 元数据 | schema / 数据层已修改 | 不是运行时权限阻断已经实现 |
+| 新增四个 executor manifest | 文件已存在；Codex/Hermes/DSH adapter 路径实际存在 | OpenCode 仍 pending，客户端适配闭环未完成 |
+| software registry 写入个人研究目的；Observer Cargo 删除 MIT 并禁止 publish | 局部完成 | 原创 skills 和生成器仍有 MIT 默认值 |
+| WAL checkpoint、部分测试路径修改 | 确有改动 | Windows 清理、只读连接和并发边界未完成验收 |
+
+## 4. 问题与修复验收
+
+这里的“阻塞”指项目自身的合并/发布条件，不是通用漏洞评级。
+
+### A01｜阻塞：Python 3.12 严格依赖安装仍失败，CI 被预装依赖掩盖
+
+**证据。** 新建空 venv，Python 3.12.13，执行：
+```bash
+python -m pip install --require-hashes -r packages/client-neutral-core/requirements.lock
+```
+失败于 `referencing==0.37.0` 引入的 `typing-extensions>=4.4.0` 没有精确版本和哈希。
+
+云端同一命令成功的日志同时写明：`Requirement already satisfied: typing-extensions>=4.4.0 in /usr/lib/python3/dist-packages ... (4.10.0)`。因此成功依赖 runner 的既有环境，不能证明锁完整。
+
+**修复。** 从受控输入重新生成完整传递依赖锁，记录 Python/平台/生成器版本；CI 固定解释器并创建不继承系统包的空 venv，在该环境安装和测试。不要删掉 `--require-hashes` 或靠预装包消除红灯。
+
+**验收。** 支持矩阵中的干净环境全部严格安装成功；缓存关闭时也通过。
+
+代码：[requirements.lock](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/packages/client-neutral-core/requirements.lock)。
+
+### A02｜新增回归、阻塞：React typecheck 加到了 token-monitor
+
+**证据。** `.github/workflows/work-lab-gate.yml:115–128` 的工作目录是 `apps/token-monitor`，新增步骤却运行 `npm run typecheck`。脚本只加在 `apps/observer/frontend/package.json`。Windows 作业因此失败，随后 Rust test/check 被跳过。
+
+**修复。** 在 Observer 的 React 工作目录建立与其锁文件一致的 frozen install → typecheck → test → build 步骤；恢复 token-monitor 现有技术栈所需检查。不要添加空的 typecheck 脚本应付门禁。
+
+**验收。** 故意引入 React 类型错误会使 Observer required job 失败；修复后该 job 和 Windows Cargo 检查真实执行并通过。
+
+代码：[工作流](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/.github/workflows/work-lab-gate.yml#L115)、[React package](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/apps/observer/frontend/package.json)。
+
+### A03｜阻塞：当前摘要失效，执行基线仍是占位内容
+
+**证据。** 本地与两个云端作业均复现 `generate_current_state.py --check-current` 返回摘要不匹配。另一个文件 `CURRENT_EXECUTION_BASELINE.json:6–8` 仍写短 SHA `bf52df0` 和 `tree: pending-refresh`。
+
+**修复。** 从权威输入重新生成 current-state；将执行基线绑定到可验证的源版本或 manifest digest。运行证明放在独立 receipt，避免“提交包含自身最终 SHA”的循环依赖。生成工具必须有无写入的 `--check`。
+
+**验收。** 新克隆无需人工补文件即可检查通过；改动任何输入后摘要检查置红；占位 tree 被拒绝。
+
+代码：[执行基线](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/.project/governance/generated/CURRENT_EXECUTION_BASELINE.json)、[生成器](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/scripts/ci/generate_current_state.py)。
+
+### A04｜阻塞：Capsule 检查对象错误，WLR 验证强度仍不足
+
+**证据。** `wlr-060-gates.yml:50` 把 **JSON Schema 文件** 作为 **Capsule 实例** 传入 verify，自然缺少实例级 `schemaVersion`。此外 CLI 使用 `schemaVersion: work-lab/context-capsule/v1`，合同使用 `schema_version`，还存在格式对齐问题。schema-fixtures 作业只有 `json.load`，没有验证 schema 元模型或业务 fixture；compiler 作业只做 py_compile。工作流 path filter 也遗漏 `config/**`、`scripts/ci/**` 和工作流自身的变化。
+
+**修复。** 分开 schema 自身合法性、有效/无效实例验证、CLI export/verify/import round-trip；统一规范格式并明确迁移。增加篡改 hash、过期、未知版本、导入前验证、脱敏字符串/嵌套内容等负例。调整触发范围，确保修改门禁或权威配置会触发检查。
+
+**验收。** 有效实例通过；错误版本/内容篡改/过期实例失败；schema 文件不能冒充实例。修改 verifier 自身或 config 也运行对应门禁。
+
+代码：[WLR 工作流](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/.github/workflows/wlr-060-gates.yml)、[Capsule CLI](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/packages/client-neutral-core/scripts/capsule.py)。
+
+### A05｜阻塞：Observer 仍产生没有来源的在线事实
+
+**证据。** `observer_live_server.py:97–118` 继续固定 LIVE、fresh、eventStreamConnected=true、当前时间 watermark、4/4 coverage 和 Git SHA `221083e`。新 UNKNOWN 在第 111 行被映射成 INACTIVE。隔离提取原 get_agents/build_snapshot 函数、将数据源替换为空返回后，实际得到：
+```json
+{
+  "transportState": "LIVE",
+  "freshnessState": "fresh",
+  "eventStreamConnected": true,
+  "coverage": {"numerator": 4, "denominator": 4},
+  "activityState": "INACTIVE",
+  "localSha": "221083e",
+  "matchState": "MATCH"
+}
+```
+这是函数级负例，不是完整服务端到端启动；它直接验证了无来源时的投影逻辑。React `App.tsx` 仍在取得响应后设置 live，不能仅修 get_agents。
+
+**修复。** 优先隔离这个错误 live 入口；正式入口只消费带来源、观测时间、失效时间和质量状态的 projection。区分“HTTP 可达”“数据新鲜”“Agent 正在运行”。真实零值保留 0，未知值保持 null/UNKNOWN；不要用 truthiness 把真实 0 成本又变成未知。
+
+**验收。** 无源、断线、陈旧、空账本、真实零值、未知 Agent 状态均有 API 与 UI 一致的负向/边界测试；无来源不得呈现 LIVE/MATCH/100%。
+
+代码：[live server](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/apps/observer/observer_live_server.py#L97)、[React App](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/apps/observer/frontend/src/App.tsx)。
+
+### A06｜阻塞：Observer 的 Home 读取与隐式依赖并未删除
+
+**证据。** 同一文件第 17–21 行仍默认指向 Home 下 Hermes 数据库、Dagu 目录，以及仓库外兄弟目录 tokentelemetry；第 28 行 SQLite 未用只读 URI。第 134 行 SSE 返回 stub JSON，第 142 行 CORS 为 *，第 148 行返回原始异常。第 157 行启动日志无法处理缺失 totals 或 null 数字。交接中“删 home-scan”的说法只适用于 get_agents 的局部变更。
+
+**修复。** 外部软件发现由受授权 Adapter 完成，并只向 Observer 提供脱敏投影。去掉默认 Home 能力和隐式兄弟目录 import；实现明确的 loopback/origin 策略、稳定错误码。SSE 未实现就标记不可用。旧 web 和 React 生产入口需要明确唯一归属。
+
+**验收。** 干净安装可启动；无 Home 读取；不可写数据库；缺源启动正常；事件连接状态来自实际连接；默认打包入口唯一。
+
+代码：[live server 依赖及路由](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/apps/observer/observer_live_server.py)。
+
+### A07｜新增验证缺陷、阻塞：“只读”门禁能被可写实现通过
+
+**证据。** 新 verifier 只查源码是否出现三个字符串，以及是否存在两个特定名称的 Python 文件。隔离样例仅包含：
+```python
+# ObserverInputError raise Observer is read-only
+def append(path, value):
+    path.write_text(value)
+```
+将 verifier 的仓库根切换到这个测试目录后，结果仍为 exit 0、`OBSERVER_READONLY_PASS`。实际源文件未被修改。
+
+**修复。** 保留静态扫描作为辅助，核心改成行为测试：append 拒绝；mutation 路由/IPC 不可用；数据库以只读方式打开；构建产物没有写权限。加入上述负向控制，确保可写样例会使门禁失败。
+
+**验收。** 任一写入能力注入都会置红；只读检查覆盖实际生产入口，而非只检查 observer_store.py 的文本。
+
+代码：[只读 verifier](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/scripts/ci/verify_observer_readonly.py#L16)。
+
+### A08｜阻塞：配置编译器仍是假 apply，新增 safety 字段未形成闭环
+
+**证据。** `services/policy/config_compiler.py:39–82` 的 plan/apply 文档字符串明确标记 stub。apply 仅把 intent JSON 的 status 改为 applied；readback 只是读取同一 JSON。隔离试验对未知客户端走 plan → approve → apply → readback，最终 **target_exists=false、reported_status=applied**。
+
+本轮新增 FieldRule 元数据未在这条执行链中触发客户端支持检查、字段权限合并、真实目标写入或原生读回。单纯 schema 允许 `safety`，不能作为“高风险配置运行时已阻断”的证明。
+
+**修复。** 在真实适配器尚未实现时返回 `BLOCKED_NOT_IMPLEMENTED`。随后逐层实现：客户端版本/能力 → 字段 Authority → 原生配置差异 → 绑定计划摘要的授权 → 原子写入 → 原生读回 → receipt/回滚。审批后的内容改变必须使审批失效。
+
+**验收。** 未知客户端、未知高风险字段、无授权、计划被改、读回不一致均失败；只有目标实际落地且读回一致才允许 applied。
+
+代码：[配置编译器](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/services/policy/config_compiler.py#L39)。
+
+### A09｜未完成：Skills inventory 漏范围、跨平台摘要不稳定
+
+**证据。** 生成器只扫描 executor skills 和根 `skills/`，遗漏 `packages/client-neutral-core/skills`。实际为 inventory 14 条，core 存在 13 个 SKILL.md，但 inventory 的 core 条目为 0；提交的 14 个路径全部带 Windows 反斜杠。代码对 `str(relative_path)` 和这些条目算摘要，Linux/Windows 不一致；只 hash SKILL.md，未覆盖引用脚本或资源；没有 --check。
+
+这里不是要求把数量简单改成 27：source package 与 materialized copy 可能是不同范围，必须先声明身份和映射。
+
+**修复。** 根集合来自 registry；路径用 as_posix；身份含 scope/client/package；hash 覆盖完整受控技能包；排序稳定，时间戳不参与内容摘要；增加 --check 并接入 CI。
+
+**验收。** 同一 tree 两个平台摘要相同；改资源文件、增删任一 scope 的技能都会触发漂移；未知根显式报告。
+
+代码：[inventory generator](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/scripts/ci/generate_skills_inventory.py#L23)。
+
+### A10｜未完成：新 manifest 与 Adapter 实际描述冲突
+
+**证据。** DSH manifest 写“2.0.4 (official)”和端口 3080；同次更新的 adapter 写社区版 2.0.5、端口 43120、source_equivalence/eligibility 为 UNVERIFIED。其 describe 仍出现 COMMUNITY_DESKTOP_VERIFIED。OpenCode adapter 为 pending；四份 manifest 不构成原任务要求的五客户端往返验证，Claude Code 未在这批新增 manifest 中落地。
+
+Codex/Hermes/DSH 的 adapter 路径确实存在，本报告不将其误报为缺文件。
+
+**修复。** manifest 从同一软件 registry 生成；分离 detected、source-verified、config-readable、plan-supported、apply-verified 等状态。明确“社区封装”与“官方上游”的各自身份。没有 native readback 的客户端只声明 registry/observe 等已证实能力。
+
+**验收。** 版本、端口、上游、包摘要一致；schema/路径检查与 round-trip fixtures 通过；能力等级能追溯到实际证据。
+
+代码：[DSH manifest](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/integrations/executors/dsh/manifest.json)、[DSH adapter](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/integrations/executors/dsh/deepseek_harness_adapter.py)、[OpenCode manifest](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/integrations/executors/opencode/manifest.json)。
+
+### A11｜阻塞：完成声明与仓库可取证内容不一致
+
+**证据。** `50-taskpacks/WORK-LAB-HANDOFF-2026-09-05.md` 声明 T00–T60 完成，但当前 CI 失败且上述功能未闭环。`CURRENT_EXECUTION_BASELINE.json:21–22` 指向被忽略的两个本地文件，本轮新克隆均不存在。交接引用的 R4-COMPLETE/R4-HANDOFF 也放在本地运行区。另有 active README/AGENTS 仍引用已迁移的数字目录，新交接又进入根 `50-taskpacks`，使规范化入口继续分裂。
+
+**修复。** 当前状态改为 PARTIAL_WITH_BLOCKERS；保留旧记录原文作为历史。提交去敏的来源索引、历史覆盖说明、当前任务表及内容 hash；大原件可用稳定归档定位，不强制全部放 Git。唯一 current 入口只指向可检索且已校验的内容。机械更新 active 路径，历史正文不批量替换。
+
+**验收。** 新克隆能逐项定位当前任务、来源和证据；所有未完成项仍可见；current loader 拒绝占位、缺失、过期或摘要不匹配内容。
+
+代码：[当前交接](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/50-taskpacks/WORK-LAB-HANDOFF-2026-09-05.md)、[AGENTS](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/AGENTS.md)。
+
+### A12｜未完成：插件来源与个人研究用途元数据仍不一致
+
+**证据。** `config/plugin-inventory.json` 仍有 3 个 enabled 条目缺 commit/hash。13 个 core SKILL.md 仍写 MIT；`canonical_skill.py` 多处默认 MIT，`mcp_candidate_audit.py` 也存在 MIT 默认值。本次只清理了 Observer Cargo 的局部声明。
+
+**修复。** 尊重已确认的“本项目个人研究、非商业使用”定位，统一第一方项目用途与发布元数据。逐项确认权利来源后处理第一方声明；不要覆盖第三方原许可证，不把未知许可证默认成 MIT。插件补齐不可变版本/摘要/权限/来源，不完整项降为待验证或隔离。
+
+**验收。** 原创包和生成器不再产生未经确认的许可证声明；第三方 notice 保留；enabled 集合 provenance 完整。此处审计的是仓库声明一致性，没有作许可证法律效力裁定。
+
+代码：[插件 inventory](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/config/plugin-inventory.json)、[skill generator](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/packages/client-neutral-core/scripts/canonical_skill.py)。
+
+### A13｜改动风险：close 无条件 checkpoint 并吞掉所有异常
+
+**证据。** `canonical_store.py:1046–1056` 在只读、可写连接 close 时都执行 `PRAGMA wal_checkpoint(TRUNCATE)`，并 `except Exception: pass`；也未检查 checkpoint 返回的 busy 状态。这与 readonly 初始化时避免写类 PRAGMA 的意图不一致。
+
+**修复。** readonly close 不 checkpoint；需要 checkpoint 的 writer 在明确生命周期执行，处理 busy/锁竞争并只捕获预期异常。Windows 临时目录清理通过连接生命周期和句柄释放验收。
+
+**验收。** Windows 删除临时目录成功；并发 reader/writer 不被不必要地阻塞；readonly 不尝试 checkpoint；失败可观测。本轮仅确认代码风险，未声称已复现数据损坏或 Windows 死锁。
+
+代码：[CanonicalStore.close](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/packages/client-neutral-core/scripts/canonical_store.py#L1046)。
+
+### A14｜新增验证放宽：secret 豁免应限定路径与类型
+
+**证据。** 为允许 FieldRule 的布尔 secret 元数据，`verify_core_schemas.py` 将 secret 从全局禁用键集合移除。当前做法对所有被扫描 schema 生效，而不是仅允许指定 FieldRule 路径的 boolean。
+
+**修复。** 改为具有路径和类型判断的规则，仅豁免该布尔声明；增加其他位置 secret 字符串字段的负例。此问题指静态防护范围扩大，不等于已发现真实密钥泄漏。
+
+**验收。** 合法 boolean metadata 通过，其他违规 schema 失败。
+
+代码：[schema verifier](https://github.com/DTALEX66/WORK-LAB/blob/a8ed987ed616da56d4835fd09a29c899259fe02f/packages/client-neutral-core/scripts/verify_core_schemas.py)。
+
+## 5. 原 R4 任务状态应如何校正
+
+以下为审计建议状态，未直接改动仓库。
+
+| 原任务 | 当前应记状态 | 未满足条件 |
+|---|---|---|
+| T00 事实冻结 | 本轮审计已完成；仓库基线待刷新 | A03 占位基线 |
+| T01 历史权威 | PARTIAL | A11 当前入口不能从新克隆取得来源 |
+| T10 bootstrap | PARTIAL | 语法已修，A01 严格锁仍失败 |
+| T11 hermetic tests | PARTIAL / 待矩阵证明 | 部分路径已改，空环境和 Windows/worktree 证据不全，A13 |
+| T20 CI 真值 | PARTIAL | 吞错减少，但 A04/A07 验证内容不足 |
+| T21 React required CI | BLOCKED | A02 job 放错、React 仍未真正覆盖 |
+| T30 Observer 止血 | PARTIAL | A05/A06 假状态与 Home 能力仍存在 |
+| T31 单一前端与安全面 | 未达到验收 | 旧入口/React 未收敛，A06/A07 |
+| T40 Authority | PARTIAL | A08 实际编译执行未闭环，A09 inventory 漏范围 |
+| T41 Adapter | PARTIAL | A10 manifest 矛盾，能力和往返证据不足 |
+| T50 provenance/用途 | PARTIAL | A12 来源空值、第一方默认声明残留 |
+| T60 全门复验 | BLOCKED | 当前两条工作流失败，上述依赖未完成 |
+
+原报告的 P1/P2 架构优化、预算、成本口径、Rust 内核和发布治理等，不因这 28 个文件更新自动完成；本次未全量重跑其独立验收。上一版“13 vs 14”应按不同 source/materialized scope 处理，不能把不同范围的数量差异本身当作错误。此前关于 managed-config YAML 的冲突也应结合其 isolated-empty-home 用途逐字段核实，不能直接推断它正在覆盖真实 Home。
+
+## 6. 下一轮修复顺序
+
+| 顺序 | 工作包 | 交付 / 通过条件 |
+|---|---|---|
+| 1 | 恢复事实与交接准确性 | 修 A03/A11，去敏历史索引可取证；状态明确为部分完成 |
+| 2 | 恢复可复现基础门禁 | 修 A01/A02/A04；干净严格安装、正确 React job、Capsule fixtures |
+| 3 | 停止错误状态和错误成功回执 | 修 A05/A06/A08；未实现即 BLOCKED，未知保持未知 |
+| 4 | 让门禁能发现错误实现 | 修 A07/A14；行为负例、schema 类型/路径规则；同 SHA aggregate |
+| 5 | 统一配置与客户端能力来源 | 修 A09/A10/A12；完整技能摘要、准确 manifest、插件 provenance |
+| 6 | 生命周期和全矩阵收尾 | 修 A13；Linux/Windows、普通 checkout/worktree、无污染和故障注入 |
+| 7 | 生成真实完成证明 | 精确命令、解释器/平台、SHA/tree、结果、来源 digest；全绿后再决定发布路径 |
+
+每包应是可独立审查的提交，不再把全部问题塞进一次“R4 complete”提交。恢复分支继承 PR #123 的迁移结构，因此本轮没有依据建议直接整推 main；先修复并重新审计，再决定迁移 PR 或适配 main 的补丁路线。
+
+### 语言和前端是否需要改判
+
+本次更新没有提供支持全面重写语言的新证据。保持原路线：Python 负责治理编排和适配，TypeScript/React 负责轻量状态看板；只在合同稳定后评估将最终写入、授权边界、回滚等小型信任内核迁至 Rust。先恢复现有 Windows Cargo 检查，而不是用语言迁移替代缺失的测试。
+
+轻量看板仍有价值，但其价值依赖真实状态来源、明确 UNKNOWN、只读能力和唯一生产入口。当前优先任务是修复这些条件，尚不需要开启一轮泛化同行调研或扩大到 Agent 聊天、推理、任务执行等原生功能。客户端原生配置变更应在适配某个明确版本时再查对应官方文档。
+
+## 7. 验证范围与限制
+
+**已做：** 刷新云端 main、PR #123、恢复分支 HEAD；审查全部增量及关联源码；读取当前两条 CI 和失败作业日志；324 个 tracked Python 内存编译；Python 3.12 空 venv 严格安装；本地 current-state/Capsule 失败复现；Observer 无来源投影、只读门禁可写负例、未知客户端假 apply 三项隔离探针；历史来源和 inventory 实际路径检查。
+
+**没有冒充完成：** 严格 bootstrap 失败后未通过放宽依赖规则宣称 full pytest 通过；没有在用户 Windows 机器运行软件，没有读取真实 Home/凭据/会话，没有验证所有客户端 native readback，没有重新审计远端每个历史分支。WAL 并发风险和完整打包能力仍需对应环境证据。
+
+本轮隔离 checkout 有两处继承的换行规范化差异，涉及历史 timeline 和 Windows skill 文件；未主动编辑它们，审计差异以 Git commit/tree 为准。
+
+最终审计判定：**有进展，但恢复尚未完成。继续保留 DO_NOT_MERGE；用精确版本的行为证据逐项关闭阻塞，不能使用单一测试数量替代验收。**
+

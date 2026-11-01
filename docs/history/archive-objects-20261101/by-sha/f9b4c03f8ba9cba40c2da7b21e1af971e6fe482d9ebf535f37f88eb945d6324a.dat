@@ -1,0 +1,1233 @@
+# WORK-LAB 全套全局配置与成熟 AI 开发工作流研究报告
+
+## 执行摘要
+
+**研究时间：2026 年 9 月 23 日。**
+
+对 WORK-LAB 最合理的定位，不是“再做一个 AI 记忆库”，而是把它建设成一个 **AI Development Control Plane / Context Control Plane**：统一管理项目身份、Agent、上下文、工具、技能、权限、策略、事实、版本、审计、运行状态与交接，而把具体能力交给 OpenViking、IBM ContextForge、Graphiti、Git、Agent Runtime 等专门组件。
+
+基于目前各项目的官方文档与协议规范，我建议的目标组合是：
+
+| 层 | 推荐主组件 | WORK-LAB 中的职责 |
+|---|---|---|
+| 统一入口与协议网关 | **IBM ContextForge** | MCP/A2A/REST/gRPC 汇聚、认证、路由、Registry、限流、审计、Tracing |
+| Context Database | **OpenViking** | Resource / Memory / Skill / Session 的统一上下文存储、分层检索、Context Commit |
+| 权威事实 | **外部 Git 仓库** | 项目 Manifest、Policy、Decision、配置、技能定义、工具声明、批准后的事实 |
+| 时间事实图 | **Graphiti** | valid-from / valid-to、事实替代、关系、来源、历史状态 |
+| 长期记忆增强 | **OpenViking 为主；Supermemory 或 Mem0 二选一做实验性增强** | 个性化、长期记忆、跨 Agent Recall |
+| Agent Runtime | **Codex / Hermes / DSH 等可替换** | 推理、规划、执行，不持有唯一项目“脑子” |
+| 工具执行 | **隔离容器 / Sandbox / microVM** | Shell、代码执行、浏览器、构建、测试以及第三方工具 |
+| 可观测性 | **OpenTelemetry + Metrics/Logs/Traces** | Run、Agent、Tool、Retrieval、Memory、Token、Cost、Policy 全链追踪 |
+
+ContextForge 的官方定位已经覆盖 MCP、A2A、REST、gRPC 的联邦、Registry、认证、限流、OpenTelemetry 和多实例部署；OpenViking 则把 Memory、Resource、Skill 统一进 `viking://` 目录，并提供分层检索、Session Commit、备份、快照、加密、多租户和观测能力。两者职责非常互补。citeturn18view0turn15view3
+
+**不建议让 OpenViking、Supermemory、Mem0、Graphiti 四个组件都同时成为“事实写入源”。** 它们存在明显的功能重叠；成熟架构更应该规定每一种数据只有一个权威写入者，其余系统是索引、派生视图或实验性 Shadow Backend。Supermemory 本身提供完整 Memory API、图记忆和混合检索，Mem0 同样定位为跨 Session 的长期记忆层，而 Graphiti 专门解决时间事实和 provenance，因此同时无约束写入会把“记忆能力”变成“多主一致性问题”。citeturn21view0turn21view2turn3view12
+
+因此，我建议 WORK-LAB 的**权威性排序**设计为：
+
+> **Git 中的人类批准事实与策略 > 当前 Project Manifest > 时间有效事实 > 经过验证的资源文档 > Agent 提取记忆 > 单次 Session 推断。**
+
+Agent 可以提出新事实，但不能直接覆盖 Canonical Fact；发生矛盾时，把候选事实进入 Conflict Queue，由规则或人工批准后更新 Git，并让 OpenViking/Graphiti 重建派生状态。
+
+截至本报告日期，当前 MCP 正式规范页面为 **2026-07-28**。MCP 的核心抽象依然是 Resources、Prompts、Tools，但传输模型已经明确为 `stdio` 与 Streamable HTTP 等；受保护 MCP 服务采用 OAuth 2.1 资源服务器模型，并要求 audience 校验与最小权限。尤其值得注意的是，过去常用于工作区界定的 MCP **Roots 已在 2026-07-28 规范中弃用**，新 WORK-LAB 不应把 Roots 当安全边界，而应使用 Tool 参数、Resource URI、服务端配置和真实 Sandbox 权限控制。citeturn19view0turn19view1turn19view2turn19view4
+
+A2A 应承担“Agent 调 Agent”的职责，而不是替代 MCP。A2A 要求服务提供 Agent Card 来声明身份、能力、Skills 和交互要求；当前规范定义 JSON-RPC、gRPC、HTTP+JSON 等协议绑定，身份主要建立在 HTTP/传输层，v1.0 又增加了 Agent Card JWS、mTLS、现代 OAuth 流与 PKCE 等安全能力。citeturn20view0turn20view1turn20view2turn20view3
+
+OpenAI 当前官方 Codex 文档也明确支持连接本地或远程 MCP Server，并提供执行权限与 Sandbox 边界；Codex 的 Plugin 可以把 Skills 与 MCP Server 组合为可分发能力包。因此，WORK-LAB 没必要绑定某一个 Agent，而应把 Codex、Hermes、DSH 等视为可插拔 Runtime。citeturn13search2turn13search14turn13search23
+
+**最终建议的核心原则可以压缩成一句话：**
+
+> **Agent 可替换，Context 不可丢；Memory 可学习，Canonical Fact 不可被模型静默改写；Tool 可扩展，权限不可随 Agent 扩张。**
+
+## 研究边界、假设与目标架构
+
+用户尚未明确三个长期项目的技术栈、运行平台、预算、数据敏感等级、合规区域、并发量和可用性要求，因此报告使用“企业级但可从单机渐进演进”的基线，不假设已经有 Kubernetes、PostgreSQL、Vault、Neo4j 或某个特定云厂商。
+
+| 未知项 | 本报告默认假设 | 可替换方案 |
+|---|---|---|
+| 三个长期项目 | **项目一 / 二 / 三：未指定** | 后文提供独立 Project Manifest |
+| 主机环境 | Linux Server + Windows/桌面 Agent 均可能 | 全 Windows、WSL2、Linux、K8s 均可 |
+| 数据规模 | 中等，先单区部署 | 大规模时对象存储、Graph DB Cluster、HA |
+| 并发 | 小团队到中等 Agent 并发 | 高并发时扩展 Gateway 和执行 Worker |
+| 中文数据 | 大量 zh-CN 内容 | Embedding 必须选择多语言模型 |
+| 合规 | 未指定 | GDPR、HIPAA、企业内控等通过 Policy Profile 替换 |
+| 云预算 | 未指定 | Self-host、SaaS、Hybrid 三种模式 |
+| RPO/RTO | 尚未定义 | 后文给起始建议值 |
+| 模型供应商 | 不绑定 | OpenAI、Anthropic、本地模型等均经 Adapter |
+| Secret Manager | 未指定 | Vault、云 KMS、企业 Secrets Manager |
+| 图数据库 | 未指定 | Neo4j/FalkorDB/Neptune 等按 Graphiti 支持情况选择 |
+
+特别需要注意中文环境：Supermemory Self-host 默认本地 Embedding 是 `Xenova/bge-base-en-v1.5`，官方明确指出它是 English-only，非英语数据虽然可以写入，但 dense semantic recall 会变弱；官方建议多语言部署在大规模回填之前切换到多语言模型，例如其文档示例中的 BGE-M3 或远程多语言 Embedding。citeturn21view1
+
+**推荐目标架构如下：**
+
+```mermaid
+flowchart TB
+    U[Human / Desktop / CLI]
+    API[External API / CI/CD]
+    AG[Codex / Hermes / DSH / Other Agents]
+
+    ID[OIDC / SSO / Service Identity]
+    GW[IBM ContextForge<br/>AI Gateway + Registry]
+
+    CP[WORK-LAB Context Control Plane<br/>Project / Policy / Authority / Routing / Audit]
+
+    ORCH[Agent Orchestrator / Run Controller]
+    MCP[MCP Tool & Context Fabric]
+    A2A[A2A Agent Fabric]
+
+    SB[Sandbox / Container / microVM]
+    TOOLS[Shell / Browser / Build / Test / APIs]
+
+    OV[OpenViking<br/>Context DB]
+    GT[Graphiti<br/>Temporal Knowledge Graph]
+    MEM[Optional Memory Adapter<br/>Supermemory OR Mem0]
+    GIT[Git Canonical Repository<br/>Manifest / Decisions / Policy / Skills]
+    SEC[Vault / KMS / Secret Manager]
+
+    OTEL[OpenTelemetry<br/>Logs / Metrics / Traces / Audit]
+
+    U --> ID
+    API --> ID
+    AG --> ID
+    ID --> GW
+    GW --> CP
+    CP --> ORCH
+
+    ORCH --> MCP
+    ORCH --> A2A
+    MCP --> SB
+    A2A --> ORCH
+    SB --> TOOLS
+
+    CP --> OV
+    CP --> GT
+    CP --> MEM
+    CP --> GIT
+    CP --> SEC
+
+    OV --> ORCH
+    GT --> ORCH
+    GIT --> ORCH
+
+    GW --> OTEL
+    CP --> OTEL
+    ORCH --> OTEL
+    MCP --> OTEL
+    SB --> OTEL
+    OV --> OTEL
+```
+
+这个设计有一个很重要的边界：
+
+**ContextForge 管“连接和访问”；OpenViking 管“上下文”；Graphiti 管“时间事实关系”；Git 管“批准后的权威状态”；WORK-LAB 管“谁在什么项目里何时可以使用什么能力，以及哪份信息算真”。**
+
+OpenViking 自身已经有基于 Git 对象的 Snapshot 机制，可以为一个 Account 的资源树创建 immutable snapshots，并支持 commit/log/show/restore；但是官方明确说明该 Snapshot 不回滚当前 ACL，也不保留历史 Vector Index，且并发任意 I/O 下并不是全局原子快照。因此它适合作为 **Context Storage Versioning**，但不应替代 WORK-LAB 外部 Git 中的人类审阅式配置与治理版本控制。citeturn17view0
+
+外部 Git 作为 Canonical Configuration Repository 还可以配合受保护分支、强制 PR、Status Check 和签名 Commit。GitHub 官方支持对受保护分支要求 Signed Commits，并可通过 rulesets 叠加审批、签名和其他规则；Git 本身的对象由内容产生 Object ID，因此非常适合记录“某个决策/策略/Manifest 到底是哪一版”。citeturn13search0turn13search1turn13search7
+
+推荐的“事实权威矩阵”是：
+
+| 数据类型 | 权威存储 | 派生/检索层 | 谁可以写 |
+|---|---|---|---|
+| Project Manifest | Git | OpenViking | PR + Reviewer |
+| Policy / 权限声明 | Git | Control Plane / ContextForge | Admin/Security |
+| Approved Decision | Git | OpenViking + Graphiti | Reviewer |
+| Tool / Skill Manifest | Git | ContextForge / OpenViking | Maintainer |
+| 文档与知识资源 | OpenViking 或 Git 原文件 | OpenViking Index | Ingestion Pipeline |
+| Session | OpenViking | OpenViking | Agent Runtime |
+| Learned Memory | OpenViking 主库 | Graphiti / 可选 Memory Adapter | Memory Pipeline |
+| Temporal Fact | Graphiti | Retrieval Pipeline | Extractor + Policy |
+| Personal Memory | 用户隔离域 | OpenViking/Memory Backend | 对应用户/Agent |
+| Secret | Vault/KMS | 仅 Secret Reference | Secret Admin |
+| Runtime Task State | Orchestrator State Store | Audit/OTel | Run Controller |
+| Telemetry | OTel Backend | Dashboards | 自动采集 |
+| Canonical Code | Git | Agent Workspace | PR/CI |
+
+## 全栈分层设计与成熟工作流
+
+**入口与身份。** 人类用户应优先走企业 OIDC/SSO；CI/CD、后台 Agent、Scheduler 使用独立 Service Identity；只有本机开发或 Bootstrap 场景才优先使用静态 API Key。OpenViking 当前支持 API Key、OIDC、LDAP、Trusted、Dev 等认证模式并结合 RBAC；其多租户模型包含 Account/Team、User 隔离和 ROOT/ADMIN/USER 等角色。citeturn10view0turn10view3
+
+ContextForge 可以位于最北向入口。它目前能够把 MCP、A2A、REST/gRPC 集中到统一 Gateway，提供统一 Registry、认证、重试、Rate Limit、Admin UI、结构化日志和 OpenTelemetry；其跨 Gateway 路由还能配置 Domain Allowlist、共享 JWT/SSO 信任和 RBAC 传递，并默认在没有 Allowlist 时 fail closed。citeturn18view0turn18view1
+
+WORK-LAB 的每一个请求至少应携带：
+
+```text
+tenant_id
+user_id / service_identity
+project_id
+agent_id
+run_id
+requested_capability
+data_classification
+policy_profile
+trace_id
+```
+
+不要让 Agent 自己靠自然语言决定“这是哪个项目”。入口层应首先把请求解析为明确 Project Scope，再允许检索上下文和工具。
+
+**协议分工。** 建议固定为：
+
+```text
+Human/API → HTTPS
+Agent → Context/Tool → MCP
+Agent → Agent → A2A
+Internal service → REST/gRPC
+Observability → OTLP
+```
+
+MCP 当前把 Prompts 定义为 user-controlled、Resources 定义为 application-controlled、Tools 定义为 model-controlled，这恰好可以转换成 WORK-LAB 的治理模型：**Prompt 负责指导，Resource 负责上下文，Tool 负责动作，而 Tool 的安全级别必须最严格。** citeturn19view3
+
+本机 Agent 与本地安全 Tool 可以使用 MCP `stdio`；团队和跨机器场景采用 Streamable HTTP。远端受保护 MCP 应按 OAuth 2.1 处理，服务器验证 token audience，客户端遵守 scope 最小化原则。新的 WORK-LAB 配置不应依赖已经弃用的 Roots 作为安全限制。citeturn19view1turn19view2turn19view4
+
+Agent-to-Agent 则使用 A2A。每个长期运行或可被其他 Agent 调度的 Worker 应拥有 Agent Card，其中描述 Identity、Capabilities、Skills、Endpoint 和 Security Requirements；这可以成为 WORK-LAB Agent Registry 的标准输入。citeturn20view0turn20view1
+
+**执行层。** Agent 不应直接拥有整个宿主机。ContextForge 官方也明确警告，不可信 MCP Server 不应直接运行在本地文件系统上，而应使用 Sandbox、Container 或 microVM，并限制能力；其文档举例包括 gVisor 和 Firecracker。citeturn18view3
+
+因此建议定义四级 Tool Risk：
+
+| 等级 | 示例 | 默认行为 |
+|---|---|---|
+| Read | 搜索、读取文档、Git diff | 自动允许 |
+| Mutate | 修改 Workspace 文件、生成代码 | Sandbox 内自动或策略批准 |
+| External | 发邮件、写第三方 SaaS、部署 | Explicit Approval |
+| Privileged | 删除生产数据、Secret、管理员操作 | 人工批准 + 强身份 + 双重审计 |
+
+每个 Tool 都必须声明 `filesystem_scope`、`network_egress`、`secret_refs`、`timeout`、`risk_class` 和 `side_effects`。即使 Agent 自身声称“只访问一个文件夹”，真正的限制仍由容器 Mount、OS 权限、网络 Policy 和 Gateway Scope 执行，而不是依赖 Prompt。
+
+**成熟 Run 生命周期建议固定为：**
+
+```text
+REQUEST
+   ↓
+RESOLVE_IDENTITY
+   ↓
+LOAD_PROJECT_MANIFEST
+   ↓
+AUTHORIZE_POLICY
+   ↓
+LOAD_CANONICAL_FACTS
+   ↓
+RETRIEVE_CONTEXT
+   ↓
+LOAD_RELEVANT_SKILLS
+   ↓
+PLAN
+   ↓
+RISK_CLASSIFY
+   ↓
+APPROVE (when required)
+   ↓
+EXECUTE_IN_SANDBOX
+   ↓
+VERIFY / TEST
+   ↓
+PRODUCE_EVIDENCE
+   ↓
+GIT COMMIT / PR (when canonical state changed)
+   ↓
+SESSION COMMIT
+   ↓
+MEMORY EXTRACTION
+   ↓
+TEMPORAL GRAPH UPDATE
+   ↓
+AUDIT + TRACE + HANDOFF
+```
+
+这解决了典型的“Agent 一启动就自己猜路径、自己下载工具、自己改配置”的问题。**Agent 开工的第一步不是行动，而是解析 Identity、Project、Policy、Context。**
+
+OpenViking 的 Session 模型非常适合后半段：Session 记录消息，Commit 后归档上下文，并执行摘要和长期 Memory Extraction；其内部数据流明确为 `Messages → Compress → Archive → Memory Extraction → Storage`。citeturn15view3turn10view7turn10view8
+
+**记忆层必须分层，而不是所有内容统称 Memory。**
+
+| 类型 | 内容 | 生命周期 | 是否可覆盖 Canonical Fact |
+|---|---|---|---|
+| Working Context | 当前 Run 输入、计划、临时变量 | Run | 否 |
+| Session Memory | 本次会话与近期交互 | 天/周 | 否 |
+| Episodic Memory | “发生过什么” | 月/长期 | 否 |
+| Preference | 用户偏好 | 长期但可失效 | 否 |
+| Learned Fact | Agent 提取的候选事实 | 有有效期/置信度 | 否 |
+| Canonical Fact | 人类/规则批准事实 | 显式版本 | 是最高权威 |
+| Temporal Fact | 某事实何时成立 | valid_from/to | 辅助 Canonical |
+| Skill Experience | 成功/失败经验 | 版本化 | 否 |
+
+OpenViking 本身区分 Resource、Memory、Skill，并以统一 `viking://` 文件系统管理；其 L0/L1/L2 分层分别承担摘要、概览和完整内容，适合先低 Token 判断相关性，再逐层读取。citeturn2view0turn15view3
+
+Graphiti 的优势不是“另一套 RAG”，而是时间知识图：它面向随时间变化的事实维护 provenance、有效时间和历史关系，并支持增量更新以及语义、关键词、图关系组合检索；其设计包含 explicit bi-temporal tracking 和失效事实历史保留。citeturn3view12turn3view13
+
+例如：
+
+```text
+Fact A:
+DSH install_path = C:\old
+valid_from = 2026-05-01
+valid_to   = 2026-08-31
+
+Fact B:
+DSH install_path = D:\All projects\DSH
+valid_from = 2026-09-01
+valid_to   = null
+supersedes = Fact A
+source     = git://work-lab/project-manifest@<commit>
+```
+
+Agent 查询“DSH 现在在哪”只取当前有效事实；查询“8 月时在哪里”则可以返回历史事实。
+
+**Skill 和 Plugin 应成为一级治理对象。** ContextForge 已有 Tool、Prompt、Resource 的统一 Registry，其中 Prompt 支持 rollback/versioning，Tool 支持 validation/concurrency controls；Codex 官方当前也支持 repository、user、admin、system 等不同来源的 Skills，并可通过 Plugin 把 Skills 与 MCP Server 打包。citeturn18view0turn13search29turn13search23
+
+因此每个 Skill 不能只有一个 Markdown 文件，而应至少拥有：
+
+```text
+skill_id
+version
+owner
+description
+capabilities
+input_schema
+output_schema
+required_context
+required_tools
+allowed_projects
+risk_class
+network_policy
+secret_refs
+compatible_agents
+artifact_digest
+approval_state
+deprecation_date
+```
+
+这样“Agent 会什么”变成可查询、可授权、可版本化的 Registry，而不是依赖 Agent 自己“记得自己会什么”。
+
+## 产品对比与关键决策权衡
+
+以下比较基于截至 2026 年 9 月 23 日各项目的官方文档/官方仓库，而不是单纯依据营销 Benchmark。
+
+| 产品 | 核心定位 | 主要优势 | 主要限制/注意事项 | WORK-LAB 推荐角色 |
+|---|---|---|---|---|
+| **OpenViking** | Context Database | Resource/Memory/Skill 统一目录；L0/L1/L2；Session Commit；HTTP/SDK；多租户、ACL、Encryption、Snapshot、OVPack；官方列有 Codex/Hermes/DSH/MCP 等集成。citeturn2view0turn15view3 | 它本身不是 MCP/A2A 企业 Gateway；ACL 有重要默认配置注意事项；Snapshot 也不等于外部治理 Git。citeturn10view6turn17view0 | **主 Context DB + 主长期 Memory** |
+| **IBM ContextForge** | AI Gateway / Registry / Proxy | MCP+A2A+REST/gRPC 联邦；Registry；Auth；Rate Limit；Retries；插件；Admin UI；OTel；Docker/K8s/多 Cluster。citeturn18view0turn18view2 | 不负责完整长期记忆语义；仍要外置 Context DB；不可信 MCP Server 仍必须隔离。citeturn18view3 | **统一入口、路由、注册、治理执行点** |
+| **Supermemory** | Memory API / Graph Memory | Self-host 单 Binary；本地图引擎、混合检索、Memory API；可完全离线；Coding Agent 插件。citeturn21view0 | Self-host 与 Hosted 功能并非完全一致：官方表格显示 Connectors 和 Supermemory MCP 属于 Platform；Self-host 默认 Embedding 是 English-only。citeturn21view0turn21view1 | **可选长期记忆实验 Backend** |
+| **Mem0** | Agent Long-term Memory | 跨 Session/Tool/Run 的长期记忆；Library、Docker Self-host 和 Platform；官方提供多类 Coding Agent Integration。citeturn21view2turn3view10 | 与 OpenViking/Supermemory 记忆能力重叠；官方仓库也说明其托管平台包含 OSS 外的专有优化，因此 OSS 与 Cloud 不应视为完全等价。citeturn3view9 | **Memory Adapter 候选，不与 Supermemory 同时做主写者** |
+| **Graphiti** | Temporal Knowledge Graph | 时间有效性、provenance、关系图、增量更新、语义+关键词+Graph Retrieval。citeturn3view12turn3view13 | 不是 Gateway，也不是完整 Context Filesystem；需要图数据库和模型基础设施。citeturn3view13 | **Temporal Fact / Provenance Overlay** |
+
+这里最关键的产品决策不是“五个里面选一个”，而是**不要错误地把它们当同一层产品**。
+
+推荐关系：
+
+```text
+ContextForge ≠ OpenViking
+     Gateway      Context DB
+
+OpenViking ↔ Supermemory ↔ Mem0
+          部分竞争/重叠
+
+Graphiti
+   ↓
+补充“时间事实 + 图关系 + provenance”
+
+Git
+   ↓
+独立承担人工批准后的系统权威状态
+```
+
+**关键决策与权衡表：**
+
+| 决策 | 推荐 | 原因 | 什么时候改 |
+|---|---|---|---|
+| Gateway | ContextForge | 当前覆盖协议最完整，兼顾 Registry/Auth/OTel | 若只单机单 Agent，可先不部署 |
+| Context DB | OpenViking | 与 WORK-LAB 的 Context/Skill/Memory/Session 模型高度匹配 | 若只要纯 Memory API，可简化 |
+| Long-term Memory | 先 OpenViking | 减少重复系统与双写 | 实测 Memory Recall 不够再 A/B Supermemory/Mem0 |
+| Supermemory vs Mem0 | **先只选一个进入 Shadow** | 防止形成三主 Memory | 用本地中文 Gold Set 评测后晋升 |
+| Temporal Graph | Graphiti | 专门解决事实时效与来源问题 | 项目事实几乎不变化时可延后 |
+| Canonical Store | External Git | PR、Review、Diff、Rollback、Signed Commit | 不建议移除 |
+| OpenViking Snapshot | 开启 | Context Tree 版本恢复 | 不能替代 Git Policy Repo |
+| MCP | Tool/Resource 主协议 | 标准化 LLM↔Tool/Context | Agent-to-Agent 不用 MCP 硬模拟 |
+| A2A | Agent 间调用 | Agent Card/Skills/Task 模型更适合 Agent 网络 | 单 Agent 阶段可后置 |
+| Agent Runtime | 多适配器 | 防止锁定 Codex/Hermes/DSH | 不建议绑定某一家 |
+| Sandbox | 强制 | MCP Tool 本质能执行实际动作 | 只有纯只读工具可降级 |
+| Cloud vs Self-host | Hybrid 优先 | Context/PII 本地，模型/弹性按需云化 | 合规/预算明确后再定 |
+
+还有一个非常现实的决策：**不要用厂商自身 Benchmark 直接决定 Memory Backend。** 应对三个实际项目建立 WORK-LAB Gold Dataset，测：
+
+```text
+Recall@K
+Precision@K
+Current-Fact Accuracy
+Temporal Accuracy
+Source Citation Accuracy
+Cross-Project Leakage Rate
+Memory Contradiction Rate
+Chinese Semantic Recall
+Token Cost
+Latency
+Memory Write Amplification
+```
+
+尤其中文 Recall 必须单独测，因为不同 Embedding 的语言覆盖会直接影响检索表现；Supermemory 官方文档已经明确展示其默认 Self-host Embedding 的非英语限制。citeturn21view1
+
+## 全局治理、安全、部署与运维
+
+WORK-LAB 真正有价值的部分应当是 **Context Control Plane**。建议把以下对象变成正式资源类型：
+
+```text
+Project
+Principal
+Agent
+AgentCapability
+Tool
+Skill
+Plugin
+Policy
+ContextSource
+CanonicalFact
+CandidateFact
+Memory
+Decision
+Session
+Run
+Artifact
+SecretRef
+DataClassification
+RetentionClass
+Conflict
+Approval
+AuditEvent
+Trace
+```
+
+其中 CanonicalFact、Policy、Tool Manifest、Skill Manifest、Project Manifest 必须经过版本控制；Runtime Session 和 Learned Memory 可以动态产生，但只能“提出候选状态”。
+
+**冲突解决规则建议明确写死，而不是让模型临场判断：**
+
+| 冲突 | 默认决策 |
+|---|---|
+| Memory 与 Canonical Git Fact 冲突 | Git 胜出；Memory 标记 stale |
+| 两个 Canonical Fact 冲突 | 阻止自动执行，进入 Conflict Queue |
+| 新事实比旧事实更新且来源可信 | 旧事实 `valid_to`，新事实进入 Pending Approval |
+| Agent 推断没有 source | 不允许晋升为 Canonical |
+| 多项目同名 Tool/Path | 必须依据 `project_id` 解析，不做全局模糊匹配 |
+| Skill 两版本同时匹配 | 使用 Manifest Pin；禁止模型自行选最新版 |
+| Secret 出现在 Memory | 阻止写入并产生 Security Event |
+| 已过期 Resource 仍被 Recall | Retrieval Filter 阻止进入最终 Context |
+
+建议从以下过期策略开始，再针对三个项目修改：
+
+| 类别 | 起始建议 |
+|---|---|
+| Working Context | Run 结束即清理 |
+| Raw Session | 30–90 天 |
+| Session Summary | 180 天或项目周期 |
+| User Preference | 180 天重新验证 |
+| Learned Fact | 必须有 `last_verified_at` |
+| Infrastructure Path | 30 天检查或 Git 变更触发 |
+| Tool Capability | 每次版本升级重验证 |
+| Skill | 版本冻结，不自动替换 |
+| Canonical Decision | 不 TTL；使用 superseded 状态 |
+| Audit | 依据合规，通常长于普通 Session |
+| Secret | **永不进入 Memory/Context DB 正文** |
+
+这些是 WORK-LAB 建议值，不是任何上述产品的默认值。
+
+**OpenViking 安全配置有两个非常值得立即处理的细节。**
+
+第一，它的 ACL 主要作用于共享 `viking://resources`，用户私有区自身按用户隔离；更重要的是，官方文档说明 ACL 可以是默认关闭状态，而且在已有内容之后才启用 ACL 时，历史内容的行为必须仔细迁移。因此生产部署应从第一天就明确 ACL 策略，而不是“以后再开”。citeturn10view5turn10view6
+
+第二，OpenViking 已支持 AES-GCM 静态数据加密、Local/Vault/Volcengine KMS Key Provider 以及 Account 级独立 Key；但当前文档还特别说明 `api_key_hashing.enabled` 默认是 `false`，即 API Key 可以存在于整体 AES-GCM 加密文件中的明文字段。如果希望 Key 本身不可逆恢复，应显式开启 Argon2id Hashing。citeturn16view0
+
+所以 WORK-LAB Production Profile 应明确要求：
+
+```text
+at_rest_encryption = required
+api_key_hashing = required
+secret_manager = external
+plaintext_secret_in_git = forbidden
+plaintext_secret_in_memory = forbidden
+```
+
+ContextForge 同样要求严肃处理 Bootstrap Secrets。其当前版本要求 `JWT_SECRET_KEY` 与 `AUTH_ENCRYPTION_SECRET`，缺失时会 fail fast；后者用于加密存储的凭据。它还支持要求 JTI、Token Expiration，并默认关闭 Public Registration。citeturn18view1
+
+MCP 认证层要特别避免“Token Passthrough 架构”。当前 MCP 规范要求受保护服务验证自己的 access token audience；在第三方 OAuth 情况下，敏感凭据应由 MCP Server 与第三方直接处理，而不是经过 LLM/MCP Client。Elicitation 规范还明确禁止用普通 Form 模式索取密码、API Key、Access Token 或支付凭据，敏感授权应走 URL 模式等隔离流程。citeturn19view2turn19view5
+
+**PII 和日志。** WORK-LAB 至少应把数据分为：
+
+```text
+PUBLIC
+INTERNAL
+CONFIDENTIAL
+RESTRICTED
+SECRET
+```
+
+`SECRET` 不允许进入 Prompt、Memory、Embedding 或普通 Trace；`RESTRICTED` 默认不记录正文；`CONFIDENTIAL` 允许进入批准的内部 Context Store，但日志只记录 ID/Hash。
+
+这是非常重要的，因为 GenAI Observability 可以包含 conversation ID、Data Source、Model、Token、Tool Arguments、Tool Results、Retrieval Document 等丰富字段；这些数据对调试非常有价值，同时也可能包含敏感内容。OpenTelemetry 已定义大量 GenAI 语义字段。citeturn20view4
+
+OpenViking 自己也提供 per-request Telemetry、Prometheus `/metrics` 和 OpenTelemetry Trace；其文档特别提醒 HTTP body dump 默认关闭，因为 Request/Response Body 可能包含 Secret 和高基数内容。citeturn17view2
+
+因此推荐的 Trace 是：
+
+```text
+trace_id
+run_id
+project_id
+agent_id
+model
+tool_name
+tool_version
+policy_decision
+context_ids
+retrieval_scores
+input_token_count
+output_token_count
+latency
+status
+artifact_hash
+git_commit
+```
+
+而不是默认保存完整 Prompt、Secret、Tool Body。
+
+**部署模式建议：**
+
+| 模式 | 组件布局 | 适用 |
+|---|---|---|
+| Local Lab | ContextForge 单节点 + OpenViking Local + Git + Agent Sandbox | 单人开发/验证 |
+| Team Self-host | ContextForge 多实例 + PostgreSQL/Redis + OpenViking Server + Graph DB + OTel | WORK-LAB 主力形态 |
+| Hybrid | Gateway/Context/PII on-prem；模型或部分 Memory SaaS | 有隐私但需要云模型能力 |
+| Air-gapped | 全 Self-host + Local LLM/Embedding + Local Git/OTel | 高敏感项目 |
+| Cloud-native | Gateway replicas + managed DB/object storage + K8s | 高并发/HA |
+
+ContextForge 官方 Compose 已包含 PostgreSQL、Redis、3 个 Gateway Replica 和 Nginx 的 Full Stack，并提供 Kubernetes/OpenShift 及各主要云部署指南；不过“三副本 Compose”不等于自动获得跨可用区企业 HA，数据库、Redis、LB、Secret、证书和 Disaster Recovery 仍然需要单独设计。citeturn18view2
+
+OpenViking 可以单独作为 HTTP Server，通过 SDK 或任意 HTTP Client 使用，也提供 Docker 运行方式；其当前存储架构把内容 AGFS 与 Vector Index 分开。生产部署应把它视为 State-bearing Context Service，而不是未经验证就水平复制的普通无状态 Web Service。citeturn15view0turn15view3
+
+**备份策略尤其需要注意 OpenViking OVPack。** OVPack 可以做迁移和逻辑备份，包含内容、语义 Sidecar、可移植索引字段以及可选 Vector Snapshot；完整 Backup/Restore 可以涵盖当前 Account 的资源与用户内容，包括 Session。可是它不包含用户 Account、API Key 等认证数据，也排除了 Queue、Upload、Lock 等 Runtime 状态。更关键的是，官方明确说明 OVPack Export 会经过透明解密层，因此导出的 `.ovpack` 是普通 ZIP 中的**明文内容**，必须单独加密和保护。citeturn17view1
+
+因此完整备份实际上至少要覆盖：
+
+```text
+Git repositories
+ContextForge database
+ContextForge configuration
+OpenViking workspace
+OpenViking OVPack logical backup
+OpenViking encryption keys / KMS references
+OpenViking auth identities
+Graph database
+Control Plane metadata
+Secrets metadata
+OTel retention-required audit data
+```
+
+并执行 Restore Test，而不是只确认“Backup Job 成功”。
+
+OpenViking Snapshot 可以用于快速版本回滚，但官方说明 Snapshot 并不是任意并发 I/O 的全局原子视图；要获得确定性 Checkpoint，应在业务边界完成写入后再 Commit。citeturn17view0
+
+**初始 SLO 建议**如下。这些是 WORK-LAB 的内部起始目标，不是产品承诺：
+
+| 指标 | 起始目标 |
+|---|---:|
+| Gateway Availability | ≥ 99.9% |
+| 未授权写操作 | 0 |
+| Mutating Tool Audit Coverage | 100% |
+| Policy Decision Audit Coverage | 100% |
+| Gateway Added Latency p95 | < 100 ms |
+| Context Retrieval p95 | < 2 s，需按模型重新定标 |
+| 新 Session Memory 可检索 Freshness | < 5 min |
+| Canonical Fact 无来源率 | 0 |
+| Cross-project Leakage | 0 |
+| Backup RPO | ≤ 24 h |
+| Core Control Plane RTO | ≤ 4 h |
+| Restore Drill | 至少周期性执行 |
+| Critical Skill 未签名/未审批加载 | 0 |
+
+OpenTelemetry 可以作为跨服务统一关联层；ContextForge 已具备自动 Tool/Prompt/Resource/Gateway Tracing，OpenViking 也支持 Metrics、Trace、Operation Telemetry，因此 `trace_id / run_id / project_id` 应在 Gateway 到 Agent 到 Sandbox 到 Context Store 之间贯通。citeturn18view0turn17view2
+
+测试不能只做单元测试。建议 WORK-LAB CI 中固定包含：
+
+```text
+Schema validation
+Policy negative tests
+MCP protocol contract tests
+A2A Agent Card validation
+Tool permission tests
+Sandbox filesystem escape tests
+Network egress tests
+Secret leak tests
+Cross-project isolation tests
+Chinese retrieval golden tests
+Temporal-fact tests
+Memory contradiction tests
+Agent handoff tests
+Agent replacement tests
+Backup/restore tests
+Version rollback tests
+Prompt/skill regression evals
+```
+
+其中“Agent replacement test”非常关键：同一 Project Manifest 和 Context，分别换 Codex/Hermes/DSH，应该得到相同权限边界、相同 Canonical Fact 和大体一致的可执行环境。Agent 本身的推理结果可以不同，但**不允许基础事实和权限随 Agent 改变**。
+
+## 可执行部署清单与迁移演进
+
+不建议一次性部署 OpenViking + ContextForge + Graphiti + Supermemory + Mem0 + 多 Agent + Kubernetes。成熟演进方式应该先建立 Authority 和 Governance，再逐层增加智能能力。
+
+| 阶段 | 执行动作 | 完成标准 |
+|---|---|---|
+| 基线盘点 | 收集三个项目 Repo、路径、工具、Agent、Secret、数据源、已有记忆 | 每个项目拥有唯一 `project_id` |
+| 建立 Canonical Git | 建 `work-lab-control` 仓库；Manifest/Policy/Decision/Tool/Skill 入 Git | Main Branch 受保护、有 Review |
+| Context Control Plane v1 | 实现 Project/Agent/Tool/Skill/Policy Registry | Agent 不能绕过 Project Scope |
+| ContextForge | 接入 MCP/REST/A2A；开启 Auth、Registry、Audit | 所有 Tool Call 经过统一 Gateway |
+| Sandbox | 所有可执行工具迁入 Container/microVM | Host FS 不直接暴露给不可信 Tool |
+| OpenViking | 导入资源、Skill、Session；开启多租户、加密、ACL | 跨 Agent 可以读取相同项目 Context |
+| Memory Pipeline | Session Commit → Candidate Memory → Validation | Memory 不可覆盖 Canonical |
+| Temporal Graph | 将路径、依赖、版本、决策等变化事实同步 Graphiti | 可回答“现在”和“过去”两类查询 |
+| OTel | Gateway/Agent/Tool/Context 全链 `trace_id` | 一次 Run 可全程追踪 |
+| Shadow Memory | Supermemory **或** Mem0 只读/Shadow 测试 | 用 Gold Set 得到真实比较结果 |
+| A2A | Agent Card Registry；Agent Delegation | Agent 间任务有身份和审计 |
+| HA/DR | DB HA、对象存储、Backup、Restore Drill | 达到定义的 RPO/RTO |
+| 合规 | PII/Retention/Delete/Audit Profile | 满足项目实际法规要求 |
+
+**推荐迁移顺序是“读优先，写最后”。**
+
+第一阶段不要让新系统控制任何生产写操作。让 WORK-LAB 先从现有 Repo、Context、Tools 构建只读 Project Registry。
+
+随后让 Agent 在启动时执行：
+
+```text
+worklab resolve-project
+worklab get-manifest
+worklab get-policy
+worklab get-context
+worklab list-tools
+worklab list-skills
+```
+
+验证 Context 命中率和 Project Isolation。
+
+然后再开放 Sandbox 内的 Workspace Write，最后才逐步开放外部 API、Deploy、Delete 等 Side-effect Tool。
+
+Memory Migration 同样采用：
+
+```text
+Old memory
+   ↓
+Normalize
+   ↓
+Source attach
+   ↓
+Classification
+   ↓
+Deduplicate
+   ↓
+Temporal validation
+   ↓
+Candidate store
+   ↓
+Human/Policy review
+   ↓
+New canonical / memory store
+```
+
+而不是把旧向量库一股脑导入新系统之后直接当真。
+
+OpenViking 已提供 OVPack Import/Export 和 Full Backup/Restore，并在 Embedding 配置兼容时可以携带 Dense Vector Snapshot；不兼容时可以重新计算向量。因此未来更换 Embedding 时，应把“原始 Context 内容”视为可迁移资产，把向量索引视为可重建派生数据。citeturn17view1
+
+Supermemory 也有类似的现实限制：它明确指出不同 Embedding Model/Dimension 不能安全混用，改变模型通常需要新的 Data Directory 或完整 Re-ingestion。这个事实进一步说明 **原始内容和 Canonical Source 必须独立于 Vector DB 保存。** citeturn21view1
+
+推荐的 CI/CD Gate：
+
+```text
+Manifest change
+      ↓
+Schema Validate
+      ↓
+Policy Lint
+      ↓
+Secret Scan
+      ↓
+Tool/Skill Contract Test
+      ↓
+MCP/A2A Compatibility Test
+      ↓
+Retrieval Eval
+      ↓
+Security Negative Test
+      ↓
+Human Review
+      ↓
+Signed Merge
+      ↓
+Deploy Canary
+      ↓
+Runtime Smoke Test
+      ↓
+Promote
+```
+
+GitHub 的 Branch Protection / Rulesets 可以要求 PR Status Check、Review 和 Signed Commit；这非常适合作为 WORK-LAB Canonical Repository 的外层防护。citeturn13search4turn13search10
+
+**部署时的硬性 Checklist：**
+
+- [ ] 三个项目都有唯一 `project_id`，不存在“当前目录就是项目身份”的隐式约定。
+- [ ] Project Manifest 进入受保护 Git Branch。
+- [ ] Agent、Tool、Skill 都有稳定 ID 和显式 Version。
+- [ ] ContextForge 的 `JWT_SECRET_KEY`、`AUTH_ENCRYPTION_SECRET` 使用真实 Secret，不使用默认/示例值。citeturn18view1
+- [ ] MCP Remote Endpoint 使用 HTTPS/OAuth；验证 token audience 和 scope。citeturn19view2
+- [ ] 不再把 MCP Roots 当 Sandbox 边界。citeturn19view4
+- [ ] 未受信 MCP Server 全部进入 Sandbox/Container/microVM。citeturn18view3
+- [ ] OpenViking 从部署第一天开启正确 Tenant/ACL 策略。
+- [ ] OpenViking Static Encryption 开启，生产 Key 使用 Vault/KMS 类 Provider；API Key Hashing 是否开启被明确记录。citeturn16view0
+- [ ] Secret 不进入 Memory、Embedding、Git、普通 Prompt。
+- [ ] OpenViking `/metrics`、Operation Telemetry、Trace 或等价监控已开启。citeturn17view2
+- [ ] ContextForge 和 Agent Runtime 都向同一 OTel Collector 发送可关联 Trace。
+- [ ] Mutating Tool 必须生成 Audit Event。
+- [ ] External/Privileged Tool 有 Approval Gate。
+- [ ] 每次 Agent Run 都能回溯所使用的 Manifest Version、Skill Version、Tool Version、Git Commit 和 Context IDs。
+- [ ] Context 写入有 provenance。
+- [ ] Memory 写入有 `created_at / source / confidence / valid_from / valid_to`。
+- [ ] Canonical Fact 只能通过受控晋升流程产生。
+- [ ] Supermemory/Mem0 若加入，先使用 Shadow 模式。
+- [ ] 中文语料使用多语言 Embedding，并在迁移前跑 Gold Test。citeturn21view1
+- [ ] OpenViking Snapshot 在重大批量变更前后创建。citeturn17view0
+- [ ] OVPack Backup 二次加密，因为导出内容自身不受 OpenViking At-rest Encryption 保护。citeturn17view1
+- [ ] Encryption Key 与 Context Backup 分离备份。
+- [ ] 完成一次从空环境 Restore 的演练，而不只是生成 Backup 文件。
+- [ ] Agent 切换测试通过：Codex/Hermes/DSH 不改变 Project Authority。
+- [ ] 定义 SLO、报警、On-call/故障处理责任人。
+
+## 配置示例与三个长期项目模板
+
+下面的 `WORK-LAB` YAML 是**建议自定义的 Control Plane Schema**，不是 OpenViking 或 ContextForge 的现成配置格式。它的价值在于把不同产品上层统一成一个稳定的治理接口。
+
+```yaml
+apiVersion: worklab.io/v1alpha1
+kind: WorkLabGlobalConfig
+
+metadata:
+  name: work-lab-global
+  environment: production
+
+identity:
+  human:
+    mode: oidc
+    provider: "<OIDC_PROVIDER>"
+  machine:
+    mode: service_identity
+  default_deny: true
+
+routing:
+  required_dimensions:
+    - tenant_id
+    - project_id
+    - user_id
+    - agent_id
+    - data_classification
+  reject_unknown_project: true
+  cross_project_access: deny
+
+gateway:
+  provider: contextforge
+  protocols:
+    mcp: true
+    a2a: true
+    rest: true
+    grpc: true
+
+context:
+  primary: openviking
+  retrieval:
+    require_project_scope: true
+    require_source_metadata: true
+    max_context_items: 20
+
+memory:
+  primary: openviking
+
+  experimental_backend:
+    # supermemory | mem0 | disabled
+    provider: disabled
+    mode: shadow_read_only
+
+  candidate_fact:
+    may_override_canonical: false
+    require_source: true
+    require_timestamp: true
+
+temporal_graph:
+  provider: graphiti
+  enabled: true
+
+authority:
+  canonical_store: git
+  repository: "<WORK_LAB_CONTROL_REPO>"
+  protected_branch: main
+
+  priority:
+    - canonical_git
+    - approved_temporal_fact
+    - trusted_resource
+    - validated_memory
+    - session_memory
+    - model_inference
+
+tools:
+  execution:
+    default: sandbox
+    host_execution: deny
+
+  approval:
+    read: auto
+    mutate: policy
+    external: explicit
+    privileged: explicit
+
+skills:
+  registry: worklab
+  require_version: true
+  require_owner: true
+  require_digest: true
+  allow_unregistered: false
+
+secrets:
+  provider: "<VAULT_OR_KMS>"
+  allow_in_context: false
+  allow_in_memory: false
+  allow_in_git: false
+
+observability:
+  protocol: otlp
+  endpoint: "<OTEL_COLLECTOR>"
+  correlate_by:
+    - trace_id
+    - run_id
+    - project_id
+    - agent_id
+
+  record_prompt_body: false
+  record_secret_values: false
+
+governance:
+  conflict_policy: quarantine
+  canonical_change_requires_review: true
+  stale_memory_action: exclude_from_context
+  unknown_tool_action: deny
+
+backup:
+  logical_context_backup: true
+  encrypt_exports: true
+  restore_test_required: true
+```
+
+ContextForge 的 Bootstrap 至少应把官方要求的安全变量纳入 Secret Manager；当前仓库明确要求 `JWT_SECRET_KEY` 和 `AUTH_ENCRYPTION_SECRET`，并支持 `AUTH_REQUIRED`、Admin UI/API、PostgreSQL/Redis 等生产形态。citeturn18view1turn18view2
+
+示意：
+
+```text
+JWT_SECRET_KEY=<secret-reference>
+AUTH_ENCRYPTION_SECRET=<secret-reference>
+
+AUTH_REQUIRED=true
+
+MCPGATEWAY_UI_ENABLED=true
+MCPGATEWAY_ADMIN_API_ENABLED=true
+
+PLATFORM_ADMIN_EMAIL=<admin-email>
+PLATFORM_ADMIN_PASSWORD=<secret-reference>
+
+DATABASE_URL=<postgresql-connection>
+```
+
+不要把实际 Secret 写进项目 YAML；这里的 `<secret-reference>` 应由部署系统注入。
+
+下面的 OpenViking JSON 使用其官方当前文档中已经存在的 Server、Storage、Encryption、Git Snapshot 和 Observability 概念；生产上线前仍应针对安装的具体 Release 运行官方 `doctor`/配置校验。OpenViking 官方当前 HTTP Server 默认支持 `ov.conf`、健康检查和 SDK/HTTP 接入。citeturn15view0
+
+```json
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 1933,
+    "root_api_key": "<INJECT_FROM_SECRET_MANAGER>",
+    "cors_origins": [
+      "https://worklab.example.internal"
+    ],
+    "observability": {
+      "metrics": {
+        "enabled": true
+      },
+      "traces": {
+        "enabled": true,
+        "protocol": "grpc",
+        "endpoint": "otel-collector:4317",
+        "service_name": "openviking-server"
+      }
+    }
+  },
+
+  "storage": {
+    "workspace": "/var/lib/openviking/data",
+    "agfs": {
+      "backend": "local"
+    },
+    "vectordb": {
+      "backend": "local"
+    }
+  },
+
+  "encryption": {
+    "enabled": true,
+    "provider": "vault",
+    "api_key_hashing": {
+      "enabled": true
+    },
+    "vault": {
+      "address": "https://vault.internal:8200",
+      "token": "<INJECT_FROM_SECRET_MANAGER>",
+      "mount_point": "transit",
+      "kv_mount_point": "secret",
+      "root_key_name": "openviking-root-key",
+      "encrypted_root_key_key": "openviking-encrypted-root-key"
+    }
+  },
+
+  "git": {
+    "enabled": true,
+    "backend": "local",
+    "default_branch": "main",
+    "author_name": "worklab-context-bot",
+    "author_email": "worklab-context-bot@example.internal"
+  }
+}
+```
+
+OpenViking 的官方加密文档支持 Local、Vault 和 Volcengine KMS Provider，以及 AES-GCM 文件层加密与可选 Argon2id API Key Hash；Snapshot 文档则支持 Local/S3 Git Object Backend。citeturn16view0turn17view0
+
+Skill Manifest 建议统一成下面这种 WORK-LAB 资源：
+
+```yaml
+apiVersion: worklab.io/v1alpha1
+kind: Skill
+
+metadata:
+  id: code-review
+  version: 1.4.0
+  owner: platform-team
+  state: approved
+
+spec:
+  description: >
+    Review code changes, run static checks and produce
+    structured findings.
+
+  capabilities:
+    - source.read
+    - git.diff.read
+    - test.execute
+
+  compatibleAgents:
+    - codex
+    - hermes
+    - dsh
+
+  requiredTools:
+    - git
+    - test-runner
+
+  permissions:
+    filesystem:
+      read:
+        - "${PROJECT_WORKSPACE}"
+      write: []
+
+    network:
+      egress: deny
+
+    secrets: []
+
+  risk:
+    class: read
+    externalSideEffect: false
+
+  context:
+    required:
+      - project_manifest
+      - coding_guidelines
+      - current_diff
+
+  artifact:
+    digest: "sha256:<DIGEST>"
+
+  lifecycle:
+    deprecated: false
+    expiresAt: null
+```
+
+Codex 当前官方 Skill/Plugin 体系也强调技能可以存在于 Repository、User、Admin、System 等不同层级，Plugin 可以把 Skill 与 MCP Server 组合起来；WORK-LAB 可以把上述统一 Manifest 编译成 Codex、Hermes、DSH 各自需要的本地格式，而不把治理模型绑定在任何单一 Agent 上。citeturn13search23turn13search29
+
+三个长期项目目前全部标记为**未指定**。建议立即创建以下三个 Project Manifest，占位字段以后直接填写，不需要改 WORK-LAB 架构：
+
+```yaml
+apiVersion: worklab.io/v1alpha1
+kind: ProjectSet
+
+projects:
+
+  - id: project-01
+    displayName: "长期项目一（未指定）"
+
+    ownership:
+      owner: "<OWNER>"
+      reviewers:
+        - "<REVIEWER>"
+
+    repository:
+      url: "<GIT_REPOSITORY>"
+      canonicalBranch: main
+
+    runtime:
+      platform: "<windows|linux|container|kubernetes>"
+      workspace: "<ABSOLUTE_WORKSPACE_PATH>"
+
+    data:
+      classification: "<internal|confidential|restricted>"
+      compliance: "<UNSPECIFIED>"
+      regions:
+        - "<REGION>"
+
+    context:
+      openvikingRoot: "viking://resources/projects/project-01"
+      temporalNamespace: "project-01"
+
+    agents:
+      allowed:
+        - codex
+        - hermes
+        - dsh
+
+    memory:
+      enabled: true
+      crossProjectSharing: false
+      experimentalBackend: disabled
+
+    tools:
+      allow:
+        - git
+        - build
+        - test
+      privileged: []
+
+    reliability:
+      rpo: "<UNSPECIFIED>"
+      rto: "<UNSPECIFIED>"
+
+  - id: project-02
+    displayName: "长期项目二（未指定）"
+
+    ownership:
+      owner: "<OWNER>"
+      reviewers:
+        - "<REVIEWER>"
+
+    repository:
+      url: "<GIT_REPOSITORY>"
+      canonicalBranch: main
+
+    runtime:
+      platform: "<windows|linux|container|kubernetes>"
+      workspace: "<ABSOLUTE_WORKSPACE_PATH>"
+
+    data:
+      classification: "<internal|confidential|restricted>"
+      compliance: "<UNSPECIFIED>"
+      regions:
+        - "<REGION>"
+
+    context:
+      openvikingRoot: "viking://resources/projects/project-02"
+      temporalNamespace: "project-02"
+
+    agents:
+      allowed:
+        - codex
+        - hermes
+        - dsh
+
+    memory:
+      enabled: true
+      crossProjectSharing: false
+      experimentalBackend: disabled
+
+    tools:
+      allow:
+        - git
+        - build
+        - test
+      privileged: []
+
+    reliability:
+      rpo: "<UNSPECIFIED>"
+      rto: "<UNSPECIFIED>"
+
+  - id: project-03
+    displayName: "长期项目三（未指定）"
+
+    ownership:
+      owner: "<OWNER>"
+      reviewers:
+        - "<REVIEWER>"
+
+    repository:
+      url: "<GIT_REPOSITORY>"
+      canonicalBranch: main
+
+    runtime:
+      platform: "<windows|linux|container|kubernetes>"
+      workspace: "<ABSOLUTE_WORKSPACE_PATH>"
+
+    data:
+      classification: "<internal|confidential|restricted>"
+      compliance: "<UNSPECIFIED>"
+      regions:
+        - "<REGION>"
+
+    context:
+      openvikingRoot: "viking://resources/projects/project-03"
+      temporalNamespace: "project-03"
+
+    agents:
+      allowed:
+        - codex
+        - hermes
+        - dsh
+
+    memory:
+      enabled: true
+      crossProjectSharing: false
+      experimentalBackend: disabled
+
+    tools:
+      allow:
+        - git
+        - build
+        - test
+      privileged: []
+
+    reliability:
+      rpo: "<UNSPECIFIED>"
+      rto: "<UNSPECIFIED>"
+```
+
+同时建议三个项目都固定以下目录结构：
+
+```text
+WORK-LAB-CONTROL/
+│
+├── global/
+│   ├── worklab.yaml
+│   ├── policies/
+│   ├── agents/
+│   ├── tools/
+│   ├── skills/
+│   └── data-classification/
+│
+├── projects/
+│   ├── project-01/
+│   │   ├── project.yaml
+│   │   ├── facts/
+│   │   ├── decisions/
+│   │   ├── policies/
+│   │   ├── tools/
+│   │   ├── skills/
+│   │   └── runbooks/
+│   │
+│   ├── project-02/
+│   │   └── ...
+│   │
+│   └── project-03/
+│       └── ...
+│
+└── schemas/
+    ├── project.schema.json
+    ├── skill.schema.json
+    ├── tool.schema.json
+    ├── policy.schema.json
+    └── canonical-fact.schema.json
+```
+
+Canonical Fact 可以使用如下结构：
+
+```yaml
+apiVersion: worklab.io/v1alpha1
+kind: CanonicalFact
+
+metadata:
+  id: project-01-runtime-path
+  projectId: project-01
+
+spec:
+  subject: project-01
+  predicate: runtime.workspace
+  value: "<ABSOLUTE_PATH>"
+
+  status: approved
+
+  validity:
+    validFrom: "2026-09-23T00:00:00Z"
+    validTo: null
+
+  provenance:
+    sourceType: git
+    repository: "<CONTROL_REPO>"
+    commit: "<COMMIT_SHA>"
+    approvedBy: "<REVIEWER>"
+
+  supersedes: null
+```
+
+当路径以后迁移时，**不要删除历史 Fact**。旧 Fact 设置 `validTo`，新 Fact 设置 `supersedes`，Graphiti 保存时间关系，Git 保存批准变更，OpenViking负责检索当前相关 Context。这样才真正解决“Agent 还记得旧路径，于是继续用旧配置”的问题。Graphiti 的时间有效性和 provenance 模型正适合承担这一层。citeturn3view12turn3view13
+
+最终，一个成熟 WORK-LAB Agent 的启动协议应该非常简单且固定：
+
+```yaml
+agentBootContract:
+
+  beforePlanning:
+    - resolve_identity
+    - resolve_project
+    - load_project_manifest
+    - verify_manifest_version
+    - load_policy
+    - load_canonical_facts
+    - retrieve_context
+    - resolve_available_skills
+    - resolve_allowed_tools
+
+  beforeMutation:
+    - classify_risk
+    - check_policy
+    - acquire_sandbox
+    - create_trace
+    - snapshot_if_required
+
+  afterMutation:
+    - verify_result
+    - run_tests
+    - generate_diff
+    - attach_evidence
+    - create_pr_or_commit
+
+  afterRun:
+    - commit_session
+    - extract_candidate_memory
+    - reconcile_conflicts
+    - update_temporal_graph
+    - emit_audit
+    - generate_handoff
+```
+
+这就是最终建议的 **成熟 AI 开发工作流**：
+
+> **Git 决定“什么是真”；OpenViking决定“什么值得被带入当前上下文”；Graphiti决定“什么在什么时候是真的”；ContextForge决定“谁能访问什么以及怎么访问”；Sandbox决定“Agent 实际能做什么”；OpenTelemetry决定“发生过什么”；WORK-LAB把这些规则统一起来。**
+
+这样即使下一次把 Codex 换成 Hermes，把 Hermes 换成 DSH，或者未来再换一代 Agent，项目的 Identity、Canonical Facts、Memory、Skill、Tool、Policy、Audit 和历史都不会跟着 Agent 一起消失。Codex 当前已经能够直接连接 MCP Server，而 OpenViking 也公开列出多个 Coding Agent/MCP 集成，这使“Agent 可替换、上下文独立”在现有生态中已经具备实际可实施性。citeturn13search2turn2view0

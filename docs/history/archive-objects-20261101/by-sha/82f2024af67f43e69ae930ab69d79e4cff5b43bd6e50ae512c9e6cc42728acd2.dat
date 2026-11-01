@@ -1,0 +1,191 @@
+# DESIGN-LAB 云端更新再审计｜2026-09-17
+
+## 结论
+
+**当前候选仍不通过整体验收。此次是文档恢复与交接补充，不是上轮问题的代码修复。**
+相对旧候选，只有2次提交、5份新增Markdown、1326行新增、0行删除；关键代码、测试、配置和报告子树未变。[S02][S05][S06]
+
+前轮19个分类审计条目，本次没有一项取得足够的新修复与验收证据可以关闭。
+其中FA-01在新增提交的完整CI套件中再次出现；FA-02在最新候选CI中再次崩溃；其余主要按内容身份未变承接，**不是宣称本轮又重跑了19项验收**。
+恢复了真实历史资料是有价值的进展，不能因此清零旧实现，也不能把历史补回升级成工程修复完成。
+
+## 1. 本次审计对象与版本关系
+
+| 项目 | 观察 |
+|---|---|
+| 仓库 | DTALEX66/DESIGN-LAB |
+| 分支 | codex/deepseek-authority-r1 |
+| 原候选 | `9cc8f2aaaa8232ceabb14f1d1d2031bcce7bee86` |
+| 第一个新增提交 | `2800d7b5c554b332681d4b3d14b2d89de7e192f8` |
+| 当前候选 | `cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8` |
+| main | `c4dccd58331bc4561eb89265283d924b7630d113` |
+| 当前候选相对main | ahead 118 / behind 0 |
+| 打开的PR | 0 |
+| 最新Canonical run | 35165051116，failure |
+| 最新run的Actions artifacts | 0 |
+
+来源：[S01]–[S16]。所有比较按固定SHA进行；本文不把新增手写交接当独立机器观测。
+本次没有重新逐行审计main之外的118个历史提交，也没有操作用户本地工作区。
+
+## 2. 新增的内容
+
+`2800d7b…`补入C/D外溢记录与三份旧任务包；`cbc0463…`仅追加收尾交接。[S02][S03][S04]
+
+| 新增文件 | 新增行数 | 审计分类 |
+|---|---:|---|
+| docs/decisions/CD-SPILL-AUDIT-2026-09-16.md | 52 | 本机操作的文档声明，非本轮独立取证 |
+| docs/handoffs/DESIGN-LAB-REAUDIT-20260916-CLOSURE-HANDOFF.md | 100 | 收尾摘要，不能替代CI与任务验收 |
+| docs/taskpacks/DESIGN-LAB-DIRECTORY-MIGRATION-CLEANUP-TASKPACK-2026-09-01.md | 389 | 恢复旧任务原文 |
+| docs/taskpacks/DESIGN-LAB-FINAL-TASKPACK-2026-08-25-2.md | 370 | 恢复旧任务原文 |
+| docs/taskpacks/DESIGN-LAB-FINAL-TASKPACK-2026-08-25.md | 415 | 恢复旧任务原文 |
+
+Git对象身份对照见`evidence/TREE_IDENTITY.json`。其中src、scripts、packages、apps、integrations、design-lab、.github、reports、pyproject.toml、uv.lock等保持相同对象身份。
+**这只证明对应跟踪内容不变，并不证明时间敏感门禁、依赖服务或本机环境不会变化。**
+
+## 3. 两次新CI必须分开解读
+
+### 3.1 新增提交2800d7b：1392项确实执行，两个旧错误仍在
+
+Run `35113955035`，Python job `104854491227`，运行日期UTC 2026-09-16。
+依赖安装成功，统一结构验证49项通过；随后常规Python套件执行了1392项，2 errors，6 skipped。[S11][S12][S13]
+
+两个错误为：
+
+```text
+AttributeError: module 'reconstruction.evidence' has no attribute 'RenderError'
+AttributeError: module 'design_lab.runtime.job_store' has no attribute 'request_hash'
+```
+
+对应测试：
+`test_deterministic_replay_failure_cleans_exact_verifier_run_without_residue`、`test_request_hash_canonicalization`。
+原测试通过模块引用名称；删除模块可见导入造成兼容契约断开。不能只检查某个方法体里的局部import，便断言所有外部调用都安全。
+
+这次云端安装的uv可用，`uv sync --locked`成功。因此新交接中的“本机无uv”“13个重建包导入ERR”**不能用来解释这两个云端AttributeError**。[S13][S17]
+本轮没有取得并独立审阅那份本机13 ERR原日志，不对其全部成因作结论。
+
+### 3.2 最新cbc0463：更早被资产例外到期拦住，单元测试没有运行
+
+Run `35165051116`，Python job `105024157923`，UTC 2026-09-17。
+依赖安装成功；统一验证49项中1项失败，失败项为`verify_asset_governance.py`。
+4个二进制例外的`expiresAt`为2026-09-16，执行日已到2026-09-17，于是检查拒绝。[S08][S09][S19][S20]
+
+```text
+integrations/generators/comfyui/evidence/dl_h3_prod.mp4
+integrations/generators/comfyui/evidence/dl_h3_test_webp_00001_.webp
+integrations/generators/minimax-h3/evidence/dl_h3_prod.mp4
+integrations/generators/minimax-h3/evidence/dl_h3_test_webp_00001_.webp
+```
+
+这里到期的是**仓内二进制保留/治理例外**，不是上游模型许可证到期的结论。校验代码使用`date.today()`判断；同样代码跨日后可以给出不同结果。
+最新HEAD的后续`Python unit tests`步骤在jobs API中是`skipped`。**不能把未运行说成通过，也不能把中间提交的1392次执行写成最新HEAD的执行记录。**
+
+应逐条确认实际来源、权利依据及历史保留方式；要调整例外必须有真实裁定，不自动续期、不改时钟、不取消保护、不为求绿直接删除历史证据。
+
+### 3.3 最新authority作业仍然崩溃，旧问题没有关闭
+
+Job `105024157955`继续在`verify_authority_gates.py:90`对空标准输出取最后一行，报`IndexError`。[S10][S23]
+它与测试运行器之间的`--modules`协议仍未修正。应统一参数契约，保留原stderr、returncode及执行范围，并在异常时保存已执行门禁结果，而不是让第二个异常盖住第一个失败。
+
+最新运行是4个作业成功、2个失败。Open Design单独条件作业中的结构步骤为skipped；Python聚合器内另有结构验证记录。这些都不是本轮真实宿主运行证据。[S08][S09]
+
+## 4. 文档恢复引入一个需要更新的门禁输入
+
+### RA-02：权威链报告没有更新
+
+`scripts/deepseek_authority_chain.py`扫描`docs/taskpacks/`，计算每个候选的路径、字节数、摘要和分类。
+保存的`DEEPSEEK-AUTHORITY-CHAIN.json`仍为2026-09-13生成的38条记录。
+三份新增旧任务包不在原记录中；`--check`比较路径投影时，至少这三项会构成差异。[S21][S22][S02]
+
+这是**源码加存量报告的静态确定性对照**；本轮未整仓执行该脚本，不把它伪装成另一个已获取的CI报错。
+聚合器会先收集前几门结果，再运行测试门，最后才汇总；测试门在中间崩溃，会掩盖前面收集的失败。
+
+解决方法是保留恢复原文及来源摘要，补已有权威索引中的历史/参考关系，再重新生成检查投影。
+**不是再创建一套权威任务体系，也不是删除恢复文件躲过扫描。**
+现有分类器不会仅因这些文件写着“最终任务包”便将其升为当前执行入口；不应夸大成旧任务已经被启用。
+
+## 5. 新收尾交接不能按整体完成签收
+
+新交接写“01–10全部落地并本地实证”“F401删除安全、无回归”，同时又保留本地环境限制和云端待验收说明。[S17]
+承认限制是正确的，但无法消除前面过强的完成判断。更新后的真实云端失败必须回填原账本，而不是只在摘要末尾写一个待CI。
+
+本轮用与当前Git blob一致的pyproject字节快照进行TOML解析，确认没有声明`ci-adapters`依赖组，也没有这个可选extra。
+这只能反驳安装指导中的该组存在性，不能解释或替代本机完整环境诊断。[S25]
+
+还要区分三种测试范围：
+**普通1392项套件已在中间提交执行但失败；全量多顺序/重复压力测试仍需其独立记录；最新HEAD因前置门禁失败而未运行单测。**
+
+本地HEAD等于远端的段落列的是命令和预期，并非本轮读取到的用户本地结果。远端已存在这两个提交可以确认；用户本地是否还脏树、是否有未上传工作不在本轮可见范围。[S17]
+
+逐条声明对照见`CLAIM_RECONCILIATION.md`。
+
+## 6. C/D外溢记录：承认有用恢复，但不签“全盘干净”
+
+文档明确保留了非本项目或归属不明数据，删除集为空；这符合保守保护原件的方向。
+三份缺失任务包现在真实进入Git，可以确认恢复动作的跟踪结果。[S18][S02]
+
+但下列保证仍缺少可复核证据：
+
+- C盘一项列出有限观察根、AppData二级和“DESIGN-LAB命名产物”筛选，Windows TEMP又存在ACL缺口，不能据此证明整个卷没有项目外溢。
+- 五份原附件的源/目标摘要验证保存在`.project-local`，本轮没有该原始清单。另两份同名文件在具体记录里是“修订不同”，不能按名称相同当作字节重复后删掉。
+- 新交接自行披露，读取`D:\All` WAL库时改动了`All-shm`的mtime。因此SQL只读不等于文件系统无副作用。SQLite官方文档也区分只读WAL访问与附属文件行为。[S26]
+- 表结构相符可作为归属线索，但不能单独证明创建进程或没有活跃写者。对其他项目或不明数据库继续保留，不能据此仓库审计跨项目处置。
+
+正确结论应为“在某些明确目录、深度、匹配规则和时间内未发现指定产物，权限和未观察区域未知”。
+需要内容核验时，应先有授权及一致性快照/副本流程；不建议对未知是否活跃的原库盲用`immutable=1`，官方文档明确其跳过锁和变更检测依赖文件确实不变。[S27]
+**本轮没有读取这些本地数据库，没有证明数据损坏、数据泄漏或数据丢失。**
+
+## 7. 前轮问题复核
+
+`PREVIOUS_FINDINGS_RECHECK.md/.json`保留FA-01—FA-19原编号与验收要求。
+FA-01/02：新CI再次确认；FA-10：新交接增加了证据口径问题；FA-14：新run仍无artifact。
+其余相关代码、安装清单、入口、发布workflow与旧投影未变，没有关闭依据。
+
+19项包含产品待办和维护缺口，RA-01—04又与旧项重叠。**不要相加报告为23个独立漏洞，也不要据此虚构全项目完成百分比。**
+
+## 8. 最短修复收口
+
+1. **真实修复工程入口**：兼容名称、测试参数和错误处理；不删除原失败测试。
+2. **处理当前两个额外阻塞**：依法/依项目授权处置到期二进制例外；将恢复原文与已有权威投影对齐。异常发生时也输出逐门证据。
+3. **修正已有验收实现**：内容摘要、运行绑定、预检HTTP/资格、安装资源、远程回执及来源启用判定，按旧FA编号完成。
+4. **在同一候选上验证**：锁定安装、正常套件、受影响负向测试、所需顺序测试分开记录；保存云端失败与成功产物，不能靠重复本地SHA冒充下载读回。
+5. **回填原账本并按授权走PR**：文档主体、实现进度、当前版本验收和产品发布分别描述。真实设计宿主与人工验收继续按原边界，不变成所有修复的统一前置。
+
+更详细验收和回退见`REPAIR_ORDER.md`。本包是审计交付，不改变仓库任务权威或授权。
+
+## 9. 本轮边界
+
+完成：真实GitHub只读核验、差量与内容身份比较、新CI日志/状态检查、文档与代码对照、前轮19项状态复核，以及本报告证据整理。
+未做：仓库改写、push/PR/merge/release、触发新CI、本机盘扫描、共享宿主运行、完整仓库新测试、上轮14项隔离探针重跑。
+
+`evidence/CI_LOG_EXCERPTS.txt`是从已读日志摘出的关键片段，不是完整原始日志；各JSON是清晰标注的归一化观察，不伪装成原API文件。
+安装快照包含真实原pyproject字节并有Git blob核对；包内SHA256校验只证明本次交付文件完整，不证明用户本地曾进行某项操作。
+
+## 来源索引
+
+- [S01] 最新分支集合：https://api.github.com/repos/DTALEX66/DESIGN-LAB/branches?per_page=100
+- [S02] 上次候选至本次候选差量：https://api.github.com/repos/DTALEX66/DESIGN-LAB/compare/9cc8f2aaaa8232ceabb14f1d1d2031bcce7bee86...cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8?per_page=100
+- [S03] 中间提交：https://github.com/DTALEX66/DESIGN-LAB/commit/2800d7b5c554b332681d4b3d14b2d89de7e192f8
+- [S04] 最新提交：https://github.com/DTALEX66/DESIGN-LAB/commit/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8
+- [S05] 当前根 tree：https://api.github.com/repos/DTALEX66/DESIGN-LAB/git/trees/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8
+- [S06] 原候选根 tree：https://api.github.com/repos/DTALEX66/DESIGN-LAB/git/trees/9cc8f2aaaa8232ceabb14f1d1d2031bcce7bee86
+- [S07] 最新运行：https://api.github.com/repos/DTALEX66/DESIGN-LAB/actions/runs?head_sha=cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8&per_page=10
+- [S08] 最新运行 jobs：https://api.github.com/repos/DTALEX66/DESIGN-LAB/actions/runs/35165051116/jobs?per_page=100
+- [S09] 最新 Python 日志：https://github.com/DTALEX66/DESIGN-LAB/actions/runs/35165051116/job/105024157923
+- [S10] 最新 authority 日志：https://github.com/DTALEX66/DESIGN-LAB/actions/runs/35165051116/job/105024157955
+- [S11] 中间提交运行：https://api.github.com/repos/DTALEX66/DESIGN-LAB/actions/runs?head_sha=2800d7b5c554b332681d4b3d14b2d89de7e192f8&per_page=10
+- [S12] 中间提交 jobs：https://api.github.com/repos/DTALEX66/DESIGN-LAB/actions/runs/35113955035/jobs?per_page=100
+- [S13] 中间提交 Python 日志：https://github.com/DTALEX66/DESIGN-LAB/actions/runs/35113955035/job/104854491227
+- [S14] 最新运行 artifacts：https://api.github.com/repos/DTALEX66/DESIGN-LAB/actions/runs/35165051116/artifacts?per_page=100
+- [S15] 打开的 PR：https://api.github.com/repos/DTALEX66/DESIGN-LAB/pulls?state=open&per_page=100
+- [S16] 候选对 main 的提交关系：https://api.github.com/repos/DTALEX66/DESIGN-LAB/compare/c4dccd58331bc4561eb89265283d924b7630d113...cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8?per_page=1&page=999
+- [S17] 新收尾交接：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/docs/handoffs/DESIGN-LAB-REAUDIT-20260916-CLOSURE-HANDOFF.md
+- [S18] C/D外溢审计记录：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/docs/decisions/CD-SPILL-AUDIT-2026-09-16.md
+- [S19] 资产治理校验代码：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/design-lab/scripts/verify_asset_governance.py
+- [S20] 二进制例外样例：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/integrations/generators/comfyui/evidence/dl_h3_prod.mp4.license
+- [S21] 权威链生成与检查代码：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/scripts/deepseek_authority_chain.py
+- [S22] 未更新的权威链报告：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/reports/current/DEEPSEEK-AUTHORITY-CHAIN.json
+- [S23] 权威门禁聚合器：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/scripts/verify_authority_gates.py
+- [S24] 恢复的旧任务包示例：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/docs/taskpacks/DESIGN-LAB-FINAL-TASKPACK-2026-08-25.md
+- [S25] 当前打包与依赖配置：https://github.com/DTALEX66/DESIGN-LAB/blob/cbc0463e9e6a0faa2bcd61b9a4aee3aa4808dea8/pyproject.toml
+- [S26] SQLite WAL 官方文档：https://www.sqlite.org/wal.html
+- [S27] SQLite URI 官方文档：https://www.sqlite.org/uri.html

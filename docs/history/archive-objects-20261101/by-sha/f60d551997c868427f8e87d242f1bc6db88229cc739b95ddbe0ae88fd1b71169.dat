@@ -1,0 +1,700 @@
+# WORK-LAB 深度研究、完整优化与当日执行 TaskPack（R4）
+
+**TaskPack ID**：`WORK-LAB-DR-R4-20260904`  
+**审计时间**：2026-09-04T14:52:08Z  
+**项目**：`DTALEX66/WORK-LAB`  
+**云端 main**：`e5231f0f605d1515ed12958267b394c9de1da20c`，tree `0e25ce2bc0b7a031fce608897212bf4649d1047f`  
+**PR #123**：`migration/wl-directory-convergence-r1@c6b7e8f6468281325d26524e3762607c6fa7a4ce`，tree `f29c63ee81009c790911d56f63eb9e87ef995004`  
+**状态**：`PROPOSED / NOT_APPLIED`  
+**合并裁决**：`DO_NOT_MERGE_PR_123 / RECOVERY_REQUIRED`  
+**用途约束**：本项目是 Owner 的个人研究、非商业使用项目；这是项目用途，不是对第三方授予“非商业许可证”。  
+**继承关系**：本报告整合并深化 R3 完整修复包、当日执行包、2026-09-03 交接、完整对话时间线与云端最新 PR 审计；旧材料保留为历史证据，本报告是新的唯一候选执行入口。  
+**授权边界**：本轮完成只读审计、研究与任务包编制；未修改、提交、推送、合并或发布仓库内容，也未写入用户级 Agent 配置。
+
+---
+
+## 0. 一页结论
+
+WORK-LAB 应明确收敛为一个本地优先、项目优先、协议驱动、可审计的 **Action Authority + Configuration Governance + Workflow Control Plane**。它统一的是管理规划、配置意图、证据、权限、预算、漂移和回执，不是把所有 Agent 软件改造成同一个运行时，也不是复制每个软件的聊天、记忆、技能市场、模型路由或执行引擎。
+
+| 决策 | 最终建议 |
+|---|---|
+| PR #123 | 目录迁移方向可保留，但当前禁止合并；绿灯未覆盖确定性语法错误、锁文件失败、完整测试、React 产品线和 Observer 真值。 |
+| “全局配置统一” | 采用“一份规范化意图模型 + 多个原生 Adapter + 原生回读”，绝不采用“一份物理配置覆盖所有软件”。 |
+| 首批适配 | Codex、Claude Code、OpenCode、Hermes、DeepSeek Harness；第二批 Cursor、VS Code/Copilot；其余先 registry-only/observe-only。 |
+| 技能与插件 | 统一身份、来源、版本、hash、许可证、权限意图和启停策略；安装、Hook、凭据、沙箱与运行时仍按各客户端原生语义落地。 |
+| 语言 | 保留 Python Adapter/迁移工具；保留 TypeScript + React + Vite；使用 Tauri 2；仅把授权、路径、最终写入、单写者、回执等信任边界渐进迁到小型 Rust 内核。 |
+| 前端 | 需要独立轻量化状态前端，但它只是只读投影客户端；不提供聊天、终端、模型网关、秘密编辑器或第二套调度器。 |
+| Observer | 必须与可写 Control Surface 分进程、分命令、分凭据；Unknown/Offline/Stale 不能显示成 0、绿色或成功。 |
+| 成熟组件 | Dagu 可做可删除的外置工作流 sidecar；agentgateway 只在确有多客户端网关需求时作为可选数据面；两者都不成为 WORK-LAB 的 Authority。 |
+| 规范格式 | JSON Schema 2020-12 为合同基线；CloudEvents-compatible 事件包络；SQLite 为本地索引而非文档权威；OpenTelemetry 仅作可选导出。 |
+| 许可 | “个人研究、非商业使用”写入项目状态；在 Owner 未明确授予第三方复用权之前，原创内容保持默认版权/不授权复用，并清理错误 MIT 元数据。 |
+
+结论不是“继续调研再决定”。广泛同行检索已经饱和；接下来只需要三个有明确通过/失败标准的 PoC：Dagu Windows sidecar、agentgateway 双客户端安全性、以及 4–5 个 Agent Adapter 的 import → normalize → render → diff → native readback 往返测试。
+
+---
+
+## 1. 审计范围与历史完整性
+
+### 1.1 已固定的原始记录
+
+以下五份材料已按真实文件 ID、Library ID、字节数、行数和 SHA-256 固定。后续 Agent 必须先读取本表，不得因为只扫描当前仓库目录而再次声称“没找到原记录”。
+
+| 记录 | 固定标识 | 规模 | SHA-256 |
+|---|---|---:|---|
+| `WORK-LAB完整项目对话与时间线汇报.md` | file `file_00000000b7c481fd9a42aa4fd032b943`；Library `libfile_a680a1807a988191b1d841ce82459db0` | 432,344 行；15,558,839 bytes | `a3bf2a60c38d6457ba94279d7f7b4323543361e406822992556461109d41916c` |
+| `WORK-LAB-SUMMARY.md` | file `file_000000009dc081fd80578c9b808d8ebe`；Library `libfile_e574dfd435508191a7895e8e3d4079c6` | 2,035 个换行；164,397 bytes | `280b10be0c5f793ff9bde19504f39f7cb887ce4aa671af48e7d6a81cc3987dfd` |
+| `WORK-LAB-NEW-CHAT-HANDOFF-2026-09-03(1).md` | file citation `file_0000000057d881fb8766fd7f6eb677ca`；Library `libfile_5d00f0c201fc8191b0ecc4b7beb4f4b0` | 137 行；11,876 bytes | `dff24bed285700d2b2c873d39e1356340f4599268449bbd6ab1e74ead525afce` |
+| `WORK-LAB-COMPLETE-REPAIR-AND-LANGUAGE-MIGRATION-TASKPACK-2026-09-04.md` R3 | file `file_00000000913881fd8b04827bbfedbf21`；Library `libfile_4c2cd80092b48191b3af4f475c99b2cc`；version 3 | 858 行；70,898 bytes | `b2568bec363cd90a3c794d33e79bfefa990f80f173c043499c0bf1d5b70b2bbe` |
+| `WORK-LAB-DAILY-EXECUTION-TASKPACK-2026-09-04.md` | file `file_00000000dffc81fd9bfb28114333ba5e`；Library `libfile_3701e2db96408191af140219e090fdaf` | 447 行；27,985 bytes | `dba26125c31f94a1b4048ab92a8c16f49fa5eddd27a39a0682913d862a003e99` |
+
+### 1.2 Git 历史迁移核验
+
+PR #123 没有把历史主体“删没”，但 active/current 权威仍未收口：
+
+| 区域 | main → PR 对象级核验 |
+|---|---|
+| `40-knowledge/` | 223/223 个旧 blob 在 `knowledge-staging/` 中逐对象一致，3,038,804 bytes。 |
+| `90-archive/` | 79/79 个旧 blob 在迁移树中逐对象一致，440,005 bytes。 |
+| `reports/` | 15/15 个旧 blob 一致。 |
+| `50-taskpacks/` | 56/58 个旧 blob 一致；2 个为增量修改。旧 error ledger 的 83 个错误 ID 全部保留，并新增 ERR-084/085/086；未发现旧 ID 丢失。 |
+| 全树 | main 的 1,104 个文件中，862 个旧 blob 在 PR 树仍有完全相同对象；其余主要是重命名、路径更新或增量修改。 |
+| 迁移后数量 | `knowledge-staging` 223；`docs/history` 89；`taskpacks/current` 59；`docs/current` 57；`reports` 15。 |
+
+因此，“历史完整”的可审计口径是：当前可访问且能归属到 WORK-LAB 的 Library 原档、对话导出、交接文件、Git 所有 refs 与迁移树都已建立固定入口和对象级证据。它不声称扫描凭据、浏览器数据、未导出的私有会话库或不存在的数据。将来如 Owner 提供新导出，只能新增 source revision，不能推翻本次已登记记录，也不能再从零开始说“没找到”。
+
+### 1.3 本轮云端范围
+
+- 仓库为 public，默认分支 `main`，GitHub 未识别到根许可证。
+- main 当前 SHA 为 `e5231f0…`；PR #123 当前 head 为 `c6b7e8f…`，相对 main 为 0 behind / 42 ahead。
+- PR 有 1,087 个文件变化，+6,144 / -4,608；当前树 1,104 个 tracked files、512 个 Markdown。
+- GitHub API 将 PR 报为 mergeable/clean，但这是 Git 图与平台规则层面的状态，不等于工程质量通过。
+- 当前只有一个 open PR；分支共 54 个。可见 ruleset 为空；classic branch protection 详情因 GitHub integration 返回 403 无法读取，必须在 Owner 权限下单独确认，不能假定存在或不存在。
+- 本轮没有读取用户会话正文、OAuth、API key、浏览器数据，也没有写入 `~/.codex`、`~/.claude`、`~/.hermes`、`~/.config/opencode` 或其他用户目录。
+
+---
+
+## 2. 当前仓库可复现事实
+
+### 2.1 真实门禁结果
+
+| 检查 | 结果 | 裁决 |
+|---|---|---|
+| 全 tracked Python 编译 | `integrations/executors/codex/codex_config_sync.py:19` 为未终止字符串：`"codex".json"` | P0，确定性失败。 |
+| 严格依赖安装 | `pip install --require-hashes -r packages/client-neutral-core/requirements.lock` 因传递依赖 `typing-extensions>=4.4.0` 未 pin/hash 而失败 | P0，锁文件不可消费。 |
+| 干净 worktree 全量 pytest | 首次 40 failed / 1102 passed / 6 skipped；手工创建 `.hermes/task-runtime/tmp` 后为 4 failed / 1138 passed / 6 skipped | P0，测试依赖隐藏目录且仍有四个真实失败。 |
+| 剩余四个 pytest 失败 | exact-tree 测试错误假设 HEAD 等于 origin/main；任务 handoff 非全部 complete；测试硬编码 `D:\All projects\WORK-LAB`；linked worktree 的 `.git` 文件被误判 | P0，CI/worktree 不可复现。 |
+| WLR-060 workflow | Observer verifier 使用 `|| echo 'STUB pending'`，capsule verifier 使用 `|| true` | P0，required gate 吞错。 |
+| React Observer | `pnpm install --frozen-lockfile` 与 build 成功；主 JS 608.54 kB minified、172.93 kB gzip，有大于 500 kB 警告 | 可构建，但未进入 required CI；不能作为发布证据。 |
+| React 构建洁净度 | build 改动 tracked `apps/observer/frontend/tsconfig.tsbuildinfo` | P0，生成物污染。 |
+| Observer CI | 仅跑 Python/static JS 旧路径；没有安装、测试、构建 React Observer | P0，生产线旁路。 |
+| Observer live server | 默认扫描 Home、依赖 sibling `tokentelemetry`、硬编码 LIVE/SHA/时间/0/健康 Sidecar，`/events` 是 JSON stub，CORS `*`，回传原始异常 | P0，既不诚实也越过数据边界。 |
+| 仓库 clean checkout | 两个文本文件因 CRLF/LF 规则立即显示修改；另有 tracked tsbuildinfo 会被构建改写 | P0/P1，跨平台复现性不足。 |
+
+绿色 Actions 只能证明被 workflow 实际执行且未被吞错的那一小部分。当前不能据此宣称 PR 可合并、Observer 可用或配置管理已完成。
+
+### 2.2 规模与语言现状
+
+PR 树中约有 322 个 Python、122 个 JSON、21 个 JavaScript、19 个 YAML、12 个 TSX、6 个 Rust、5 个 TypeScript 文件。历史 R3 统计约 50k Python 行、约 1k TS/TSX 行、不到 1k Rust 行。这个比例决定了正确路线是“先修 Python 基线，再按安全边界渐进迁移”，而不是全量 Rust 重写。
+
+---
+
+## 3. 完整问题—解决方案账本
+
+### 3.1 P0：合并前必须清零
+
+| ID | 问题与证据 | 完整解决方案 | 退出证据 |
+|---|---|---|---|
+| P0-01 | `AGENTS.md`、README、锁文件注释和 active docs 仍引用已迁移的 `00-governance`、`10-workflow/workflow-assistance`、`30-observer/work-lab-observer` | 生成 old→new path map；先改唯一 Authority Index，再机械更新消费者；历史区不改正文，只加历史状态元数据；加 active-path lint。 | 非历史 active 路径扫描为 0；链接检查通过；Authority 只有一个。 |
+| P0-02 | `codex_config_sync.py` 有 SyntaxError，而当前 compile gate 漏扫 | 修正字符串；compile gate 使用 Git tracked Python 清单，不依赖手写目录；注入同类语法错误必须置红。 | 全 tracked Python `py_compile` 0 error；negative test 置红。 |
+| P0-03 | hash lock 缺 `typing-extensions` 精确版本/hash | 当日先用现有输入重新生成完整锁并空 venv 验证；下一阶段收敛到根 `pyproject.toml + uv.lock`，requirements lock 仅作为受控 export。 | Python 3.12 空环境 frozen/hash install 成功；无隐式解析；lock diff 有生成命令和解释器版本。 |
+| P0-04 | 测试要求预先存在 `.hermes/task-runtime/tmp` | 所有运行目录由 pytest fixture/应用 bootstrap 在临时 project root 创建；测试不依赖真实 Home 或历史运行状态。 | 未手工建目录的 clean clone 全量测试通过。 |
+| P0-05 | hardcoded Windows 路径、`.git` 必须为目录、HEAD 必须等于 main | 使用 temporary paths/project profile；Git root 兼容普通 checkout 和 linked worktree 的 `.git` file；exact-tree/release test 与普通 PR test 分轨。 | Linux/Windows、main checkout/linked worktree 四组合通过。 |
+| P0-06 | required CI 使用 `|| true`/STUB 吞错 | 删除吞错；可选检查必须返回 `NOT_APPLICABLE_WITH_PROOF`，required aggregate 只接受同一 SHA/tree 的真实 PASS。 | fail/cancel/skip/missing/pending 都让 aggregate 失败。 |
+| P0-07 | CI 没跑 compileall、full pytest、React 生产线 | 建立 bootstrap → contracts → Python → React → Observer security → aggregate DAG；Windows 为 release-required，Linux 为快速 required。 | exact-SHA required checks 全绿；删除任一 verifier 会红。 |
+| P0-08 | React build 会改 tracked tsbuildinfo | 删除 tracked 文件，ignore `*.tsbuildinfo`，将缓存/temp/store 固定到 `.project-local/runs/cache`；连续两次 build 验证 clean。 | 第二次 build 后 `git diff --exit-code` 与 spill scan 均通过。 |
+| P0-09 | live server 伪造 LIVE、固定 SHA、当前时间、覆盖率和 0 | 所有状态改为 `Observed<T>`：value、state、source、observedAt、freshUntil、evidenceRef、reason；无证据即 UNKNOWN/STALE/OFFLINE，不以 0 代替未知。 | 断开 sidecar/DB/网络时 API 与 UI 同时显示 UNKNOWN/OFFLINE，且 negative tests 阻止假绿。 |
+| P0-10 | Observer 默认扫描 `Path.home()` 下 Hermes/Dagu/Codex/DSH | Observer 只读 WORK-LAB projection API；所有外部发现由受授权 Adapter 生成去敏 projection；默认没有 Home capability。 | 静态扫描、Tauri capabilities、运行探针均无 Home/其他项目读取。 |
+| P0-11 | sibling import、CORS `*`、原始异常、伪 SSE | 移除隐式 sibling 依赖；loopback allowlist + session token；错误使用稳定 code；实现真实 SSE id/heartbeat/reconnect/revision fence，未完成时标 UNAVAILABLE。 | 干净包可启动；跨域/写方法被拒；Last-Event-ID 与断线恢复测试通过。 |
+| P0-12 | 旧 static web 与 React 同时被当生产入口 | 冻结旧 UI，建立功能/合同 parity 清单；React 成为唯一生产 UI 后将旧实现移到 history/examples，不保留第二启动入口。 | 启动脚本、CI、文档只指向一个 production frontend。 |
+| P0-13 | `config-ownership.json` 与 `managed-config-schema.yaml` 重复字段所有权且语义冲突 | `config/authority-index.json` 指向唯一 field authority；兼容文件只能生成且带 source hash，禁止手写字段所有权。 | 修改 authority 后生成物同步；直接改兼容文件 CI 失败。 |
+| P0-14 | Authority 写“13 Skills”，Codex integration 实际 14 个目录；client-neutral core 为 13 | 不再把数量写在说明文字；由 inventory 生成；区分 source skills、materialized skills、disabled backup 和 per-client install。 | registry 数量、文件清单和 UI 同源；增删 skill 自动更新。 |
+| P0-15 | OpenCode 缺失；Claude/Cursor 仅 manifest-only；多个“deep/active”记录仍 UNVERIFIED | 引入支持级别 `registry-only / observe / plan / apply / rollback` 与 evidence grade；无 native readback 不得标 active/deep。 | 每个 Adapter 有版本、schema、能力、往返 fixture、readback 和 lastVerifiedAt。 |
+| P0-16 | 三个 enabled plugin 的 commit/hash 为 null | 来源、版本/commit、hash、权限、许可证任一缺失即 quarantine；bundled 也必须有包版本与 digest；不自动从市场安装。 | enabled 集合不存在空 provenance；篡改 digest 会阻止 apply。 |
+| P0-17 | 根无许可证，Observer Cargo 与原创 skills/generator 又声明 MIT | 把“个人研究/非商业”写入 PROJECT_STATUS/README；原创权利保持默认版权；移除无依据的 first-party MIT，Node 用 UNLICENSED/private，Cargo publish=false；第三方许可证单独保留。 | root/包/skill/发布元数据一致；无意外公开 publish。 |
+| P0-18 | current、history、taskpack、报告混合使用完成声明 | 历史文档 immutable；`docs/current` 和 `reports/current` 只由 exact-SHA evidence 投影；一个 `CURRENT.json` 指向唯一候选计划并含 expiry。 | 过期报告不能被 loader 当 current；所有动态数字能追到 evidence。 |
+
+### 3.2 P1：0.1 可用前必须完成
+
+| ID | 问题 | 解决方案 | 验收 |
+|---|---|---|---|
+| P1-01 | “全局配置”仍倾向复制文件/通用 deep merge | 建立 normalized IR、字段级 merge strategy、lossiness 标记、secret refs 和 per-client compiler；任何 unknown safety field fail-closed。 | 五客户端 round-trip fixtures 100% 可解释；未知字段无损保留。 |
+| P1-02 | 原规则中“无成本上限/全功率”与当前治理矛盾 | 每个 WorkUnit 必须声明 hard budget、soft threshold、retry budget 和 exceed action；提示性 telemetry 可 fail-open，权限/预算/写入必须 fail-closed。 | 超限、重放、provider cost unknown 均不能自动继续。 |
+| P1-03 | `usage_estimator.py` 使用硬编码 Windows 路径和合成 token/cost | 明确分开 provider-billed、runtime-observed、local-estimated；估算不得进入 authoritative cost；费率来自带时间戳/来源的 registry。 | UI 标出数据类别与 freshness；未知费率不显示 0。 |
+| P1-04 | Python 同时承担太多授权与最终写入职责 | 先冻结合同，再将路径授权、最终写入、备份/原子替换/读回/回滚、进程监督、单写者与 receipt hash 迁入小型 Rust trust kernel。 | Python 与 Rust shadow parity；切换前只有旧 writer，切换后只有 Rust writer。 |
+| P1-05 | Observer/Control 只靠路由区分 | 同一安装可共享 UI package，但打包为 `worklab-observer.exe` 与 `worklab-control.exe` 两个安全上下文；Observer 无写命令，Control 经 broker/IPC。 | 二进制能力清单与攻击测试证明 Observer 无 mutation path。 |
+| P1-06 | schema `$id` 混用相对 ID和 `workflow-assistance.invalid` | 统一稳定命名空间、版本与兼容策略；使用 JSON Schema 2020-12；生成 TS/Rust/Python 类型和 golden fixtures。 | schema lint、兼容性、未知字段、升级/降级 negative tests 通过。 |
+| P1-07 | 54 个分支、main 保护细节不可见、release 证据弱 | Owner 权限核对 branch protection；要求 PR、signed/verified provenance、CODEOWNERS、required checks、禁止 force push；分支清理先出 inventory，不直接删。 | 规则导出归档；release 含 SBOM、checksums、source SHA、安装/卸载证据。 |
+| P1-08 | 缺根级 CONTRIBUTING/CODEOWNERS/SECURITY/SUPPORT/依赖更新策略 | 即使个人项目也建立轻量文件：Owner 单人 CODEOWNERS、漏洞私下报告路径、贡献仅经邀请、Dependabot/Renovate 二选一。 | repo-health lint 与链接检查通过。 |
+| P1-09 | `upstream-baselines.json` 仍含 PENDING/TBD，且把 Mission Control/Dagu/TokenTelemetry当既定核心 | 改为带 source URL、version/commit、digest、license、observedAt、status、decision 的可生成 registry；候选不得冒充 installed/required。 | stale TTL 触发 UNKNOWN；无版本/hash 不能升格 active。 |
+
+### 3.3 P2：优化项
+
+| ID | 优化 | 处理 |
+|---|---|---|
+| P2-01 | React 主 chunk 超 500 kB | 真值修复后做 route-level lazy load、vendor split、bundle budget；不为压体积牺牲可诊断性。 |
+| P2-02 | Git 历史仍偏大 | 先保全远端、tags、release 和历史 manifest，再经 Owner 单独批准评估 filter-repo；不在修复 PR 内重写历史。 |
+| P2-03 | policy engine 可能继续膨胀 | 0.1 使用 typed Rust policy；只有当外部作者、复杂 bundle 或独立发布需求出现时才评估 OPA/Cedar。 |
+| P2-04 | 外部 workflow/gateway 选择未实机验证 | 只做有退出条件的 Dagu/agentgateway PoC，失败即删除 Adapter，不影响核心。 |
+
+---
+
+## 4. 产品边界：管什么，不管什么
+
+| WORK-LAB 拥有 | WORK-LAB 不拥有 |
+|---|---|
+| Project/Workspace/Agent/Runtime 的注册与关系 | Agent 的对话 UI、推理循环、内存与会话正文 |
+| 官方 baseline 元数据、用户 desired config、diff/drift | 复制或分叉每个 Agent 的官方安装树 |
+| WorkUnit、预算、审批、风险、单写者与回执 | 模型代理、模型训练、Provider 账单真相 |
+| Adapter capability、计划、apply/rollback/readback | 客户端私有插件运行时、Hook 语义与凭据库 |
+| 统一技能/插件/MCP inventory 与 provenance | 自建插件市场或替代官方安装器 |
+| 只读状态投影、事件、证据与告警 | 知识库真相（ArcheAxis）与设计真相（DESIGN-LAB） |
+| 跨软件统一治理规则与安全下限 | 强迫所有客户端具有相同功能或相同配置文件 |
+
+“不抢占 Agent 功能”要落实成接口限制：
+
+1. UI 只显示状态、差异、证据、审批请求和深链；高级设置跳转原生客户端。
+2. WORK-LAB 不保存 prompt/response 正文，不接管 Agent memory，不实现聊天。
+3. Adapter 只做 discover、parse、normalize、plan、render、apply、readback、rollback；invoke 是受控启动，不改写 Agent 内部调度。
+4. MCP 是连接协议，不是统一安全模型；每个 Host 的权限、OAuth、工具过滤仍由 Host 原生实现。
+5. Agent Plugins v1 只覆盖 Skills 与 MCP，并不覆盖 commands/hooks/agents/rules/LSP，因此不能用一个“插件标准”假装解决全部客户端差异。
+
+---
+
+## 5. 全局配置的正确模型
+
+### 5.1 一份意图，多份原生实现
+
+```mermaid
+flowchart TD
+  A["Official baseline snapshot"] --> N["Normalized desired/observed IR"]
+  U["User + project intent"] --> N
+  N --> P["Plan / policy / approval"]
+  P --> C["Per-client compiler"]
+  C --> R["Native config + native readback"]
+  R --> D["Drift / evidence projection"]
+```
+
+统一层只保存可跨客户端表达的意图，不保存明文 secret，不假装客户端能力相同。每个字段都必须有：
+
+- `owner`、`scope`、`mergeStrategy`、`sensitivity`、`safetyClass`；
+- `source`、`sourceVersion`、`schemaVersion`、`observedAt`、`freshUntil`；
+- `desiredValue`、`observedValue`、`effectiveValue`、`provenance`；
+- `compatibility`：exact、mapped、lossy、unsupported、unknown；
+- `applySupport`、`readbackMethod`、`rollbackMethod`。
+
+### 5.2 配置层级
+
+| 层 | 模式 | 规则 |
+|---|---|---|
+| UPSTREAM_OFFICIAL | observe/lock | 只记录官方版本、schema、能力、digest、许可证；不复制安装树，不直接修改。 |
+| OWNER_SAFETY_BASELINE | manage | 数据边界、秘密禁采、写入审批、预算、单写者等安全下限；下层不得放宽。 |
+| USER_GLOBAL | manage | 用户语言、通用规则、技能选择、MCP 逻辑注册、偏好；按客户端编译。 |
+| PROJECT | project-owned | 仓库内 AGENTS/rules/skills/MCP；只由该项目写，global plane 可观察和提出计划。 |
+| TASK_EPHEMERAL | temporary | 本次任务覆盖，任务结束失效，不自动提升为全局。 |
+| PLATFORM_INTERNAL | observe | 客户端私有状态、cloud policy、UI state；默认不管理。 |
+| RUNTIME_EPHEMERAL | ignore | sessions、cache、logs、临时 DB；不提交、不作为 desired state。 |
+| SECRET | reference-only | 只保存 secret 名称/提供者/是否可用，绝不收集值、hash、导出或回显。 |
+
+### 5.3 生命周期
+
+统一流程固定为：
+
+`discover → parse native sources → normalize observed IR → diff → compile minimal native overlay → validate → preview → approve → apply through official interface/atomic file → native readback → attest hash/drift`
+
+任何以下情况必须阻断 apply：客户端版本未知；安全字段映射有损；配置 schema 未识别；凭据需要复制；目标路径越界；不能回读；没有备份/rollback；检测到另一个 writer。
+
+### 5.4 技能、插件、MCP 与个性化
+
+| 类型 | 可统一 | 必须保留原生 |
+|---|---|---|
+| Instructions/Rules | 规范化目的、来源、适用范围、优先级、hash | 客户端发现顺序、信任规则、长度限制、cloud/local 差异 |
+| Agent Skills | Agent Skills 核心目录结构、元数据、版本、provenance | 客户端安装位置、加载策略、Agent 可否自修改 |
+| Plugins | 身份、来源、commit/hash、license、权限意图、启停 desired state | 安装器、Hook、命令、agents、LSP、签名与运行沙箱 |
+| MCP | 逻辑 server ID、transport、capability、tool allowlist、secret ref | Host 配置位置、OAuth、批准、工具过滤、生命周期 |
+| Personalization | 语言、展示偏好、通用规则、项目模板 | memory、session、身份文件、模型选择器和 UI 私有状态 |
+
+共享 skill 不应通过一个可变目录被所有 Agent 同时写。正确方式是以 canonical source + digest 生成客户端副本；客户端若允许 Agent 修改，修改被作为 drift/import candidate 捕获，不能悄悄回写 Authority。
+
+---
+
+## 6. Agent 软件适配矩阵
+
+| 客户端 | 官方原生事实 | WORK-LAB 管理方式 | 原生回读/验证 | 阶段 |
+|---|---|---|---|---|
+| Codex | CLI override > 可信项目 `.codex/config.toml`（由根到 cwd，最近者胜）> profile > user > system > built-in；不可信项目跳过项目层。[官方配置](https://learn.chatgpt.com/docs/config-file/config-basic) | 管 user baseline 与 repo overlay 的计划；权限/沙箱作为安全字段；不覆盖凭据和不可信项目决定。 | 读取实际加载层、运行权限/沙箱 canary、配置 digest。 | 第一批 apply/rollback。 |
+| Claude Code | managed > CLI > project-local > shared project > user；大多数 list 合并，部分模型/安全字段例外。[官方设置](https://code.claude.com/docs/en/settings) | 按字段模拟真实 precedence，managed 永远只读；`CLAUDE.md` 只是指令，不是权限证明。 | `/status`、`claude doctor`、干净配置 canary。 | 第一批 plan，实测后 apply。 |
+| OpenCode | 多位置配置合并，后层仅覆盖冲突；权限 pattern 使用自身顺序语义。[官方配置](https://opencode.ai/docs/config/) | 不把通用 deep merge 强加给它；规则、skills、plugins、MCP 分别适配。 | `opencode debug config` + permission negative tests。 | 第一批，当前 registry 必须补齐。 |
+| Hermes | `~/.hermes/config.yaml` 存非秘密，`.env/auth.json` 存 secret/OAuth；CLI 与 managed scope 有原生语义；自身已有 dashboard/skills/profile。[官方配置](https://hermes-agent.nousresearch.com/docs/user-guide/configuration) | 调用 `hermes config` 等官方接口；不复制 auth/session/memory；不重建 Hermes dashboard。 | `hermes config`、get/check、isolated profile canary。 | 第一批，现有 deep 状态降级到重新验证。 |
+| DeepSeek Harness | profile/bundle/patch 是有序层；子系统插件化，后层语义不等于通用深合并。[官方参考](https://deepseek-harness.github.io/deepseek-harness/en/reference/) | 版本 pin；用官方 dump/SDK/ACP 接口；不内嵌 DSH Desktop。 | `dsh --dump-config`、profile fixture、sandbox/approval canary。 | 第一批 experimental。 |
+| Cursor | Team > Project > User rules；Hooks 有其自身企业/团队/项目/用户层级；`.cursorignore` 不是安全沙箱。[官方规则](https://cursor.com/docs/rules) | 先 observe/plan；cloud agent 与本地 IDE 分开建 capability。 | 原生 rules/hooks/MCP 诊断与 cloud canary。 | 第二批。 |
+| VS Code/Copilot | Personal、repo、organization instructions 与 workspace MCP/Agent Host 各有不同语义；兼容 Hook 不等于语义兼容。[官方指令](https://code.visualstudio.com/docs/agent-customization/custom-instructions) | 独立 Adapter，不把 Cursor/Claude 逻辑复用为“兼容”。 | Workspace/Agent Host 实际加载与安全测试。 | 第二批。 |
+| 其他软件 | 能力未知 | 先 registry-only；只有稳定官方配置和 readback 才升级 observe/plan/apply。 | 版本、schema、官方接口、fixture、rollback 全部具备。 | 按需求，不追求“全部深适配”。 |
+
+首批五个客户端覆盖本项目真实主线，已经足够验证模型。目标是“所有软件都能被注册、分级和观察”，不是“第一版就对所有软件自动写配置”。自动 apply 是高风险能力，必须按客户端逐个赚取。
+
+---
+
+## 7. 同行与同类调研结论
+
+没有一个成熟项目可以原样替代 WORK-LAB。应吸收模式、保持组件可删除：
+
+| 项目/标准 | 可借鉴 | 不应照搬 |
+|---|---|---|
+| [Crossplane Managed Resources](https://docs.crossplane.io/latest/managed-resources/managed-resources/) | desired/observed、conditions、reconcile、revision/finalizer 思路 | 不为个人 Windows 项目引入 Kubernetes 控制面。 |
+| [chezmoi](https://www.chezmoi.io/what-does-chezmoi-do/) | source state、模板、diff、apply、外部 secret、跨机器 dotfile 思路 | 不让 chezmoi 成为 Agent 权限或语义 Authority。可做导入/兼容。 |
+| [mise](https://mise.jdx.dev/configuration.html) | 工具版本、环境、任务和层级配置；适合作为开发工具链 baseline | 不接管 Agent 原生配置。 |
+| [Dagu](https://docs.dagu.sh/) | 单二进制、Windows/macOS/Linux、本地文件状态、YAML、重试/审批/日志/历史/Web UI | GPL-3.0；仅外置进程/Adapter。不要嵌入 Go API，也不要把其 UI 套进 WORK-LAB UI。 |
+| [agentgateway](https://agentgateway.dev/docs/standalone/latest/about/) | LLM/MCP/A2A 代理、认证、工具过滤、预算与 OTel 的可选数据面 | 不管理原生 instructions/skills/plugins/worktree/repo governance；无真实需求不部署。 |
+| [Backstage Catalog](https://backstage.io/docs/features/software-catalog/) | 软件目录、owner、模板、关系建模 | 对个人本地项目过重，不作为核心。 |
+| [JSON Schema 2020-12](https://json-schema.org/draft/2020-12) | 合同、验证、生成类型的当前基线 | 复杂约束达到阈值前不引入 CUE 双栈。 |
+| [Agent Skills](https://agentskills.io/specification) | 可移植 skill 的最小共同标准 | 不把客户端所有插件/Hook/权限都叫 Skill。 |
+| [Agent Plugins](https://agent-plugins.org/specification) | Skills + MCP 的便携打包边界 | v1 明确不覆盖 commands/hooks/agents/rules/LSP，不能过度承诺。 |
+| [MCP](https://modelcontextprotocol.io/specification/2026-07-28) | 工具/资源/提示交互协议 | Host 安全、配置 precedence、OAuth 与批准仍需各客户端 Adapter。 |
+| [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) / [CloudEvents](https://cloudevents.io/) | 可选导出与事件包络兼容 | 不把 OTel Collector/后端当本地 source of truth。 |
+
+### 是否还需继续调研
+
+**不需要**继续无边界搜索“更多 Agent 平台/工作流平台”。下一步只做：
+
+1. **Dagu PoC**：Windows 路径、日志、审批、取消、重试、MCP、资源占用、升级/卸载、GPL 分发边界；失败即保持 Adapter disabled。
+2. **agentgateway PoC**：Codex + Claude/OpenCode，2–3 类认证，OAuth、tool filtering、secret 隔离、context/latency 开销；没有明确收益则不采用。
+3. **Adapter round-trip PoC**：Codex、Claude、OpenCode、Hermes、DSH 五个客户端，完成 import → normalize → render → diff → import/readback；只有出现跨字段约束爆炸时才评估 CUE。
+
+---
+
+## 8. 目标架构与语言迁移
+
+### 8.1 架构
+
+```mermaid
+flowchart TD
+  I["Authority + JSON Schemas"] --> K["Rust trust kernel"]
+  C["Control Surface"] --> K
+  K --> A["Python/native adapters"]
+  A --> X["Agent / Dagu / optional gateway"]
+  X --> E["Receipts + events"]
+  E --> K
+  K --> O["Read-only projection API"]
+  O --> U["Observer UI"]
+```
+
+### 8.2 语言职责
+
+| 技术 | 决策 | 职责 |
+|---|---|---|
+| Rust | 渐进增加，不全量重写 | 路径授权、最终写入、备份/原子替换/读回/回滚、进程监督、资源限制、单写者、receipt hash、projection API、Tauri command boundary。 |
+| Python | 保留并收缩信任域 | 现有纯规划、探针、Adapter、导入/迁移、离线审计；长期不持有最终全局写权限。 |
+| TypeScript + React + Vite | 保留并统一 | 唯一生产 UI、生成 API client、状态展示、可访问性和前端测试。 |
+| Tauri 2 | 保留 | Windows 桌面封装和最小能力边界；Observer/Control 分不同二进制或至少不同 core/command set。 |
+| JSON + JSON Schema 2020-12 | 合同基线 | 版本化 IR、Adapter manifest、事件、receipt、配置与 fixture。 |
+| SQLite | 本地索引 | 严格表、迁移、WAL 适用性检测；不代替 Git/文档 Authority。 |
+| JSON-RPC 2.0 over stdio | Adapter 边界候选 | 版本握手、能力协商、取消、结构化错误；不共享可写 DB，不使用 FFI。 |
+| Go/C#/Electron | 不新增内部主线 | Dagu 等可作为外部二进制；不为本项目新增第四套 UI/运行时。 |
+
+Tauri 官方说明 core process 是 OS 能力中心，WebView 应保持最小权限；capabilities 可限定窗口/平台，但 capability 合并并不能自动限制任意 Rust core 代码。因此“Observer 只读”必须同时由二进制命令集、Rust API、IPC 凭据和路由构造保证，而不是只靠一个 capability JSON。[Tauri 进程模型](https://v2.tauri.app/concept/process-model/)；[Capabilities](https://v2.tauri.app/security/capabilities/)。
+
+### 8.3 迁移波次
+
+| 波次 | 动作 | 切换门 |
+|---|---|---|
+| M0 恢复 | 修语法、锁、测试、路径、CI 吞错、Observer 假真值；React 进入 required CI | clean clone 全门通过，Observer 断源诚实。 |
+| M1 合同 | 冻结 Authority/IR/Observed/Receipt/Adapter schemas；建立跨语言 golden fixtures | Python/TS/Rust 对同一 fixture 结果一致。 |
+| M2 影子内核 | Rust 只读旧 ledger 生成 shadow projection，不写生产状态 | 连续 parity、故障注入、资源基线通过。 |
+| M3 迁移高风险能力 | 授权、预算、路径、write broker、进程监督、receipt 迁 Rust；Python 走受限 RPC | 单写者切换；旧 writer 关闭；可回滚。 |
+| M4 产品收敛 | Control/Observer 分安全上下文；旧 live server 与旧 UI 退役 | Windows 安装、重启、休眠、离线、卸载 E4/E5 证据。 |
+
+禁止 dual-write。任何波次只允许 shadow-read + single-write；切换失败即回滚到上一个经验证 writer。
+
+---
+
+## 9. 轻量化状态看板裁决
+
+### 9.1 为什么需要
+
+Dagu 只能看到自己的 DAG，Hermes 只能看到自己的运行时，Codex/Claude/OpenCode 各自只知道自己的配置。WORK-LAB 需要跨软件、跨项目显示 Authority、desired/effective、漂移、权限、预算与证据，所以需要一个自己的轻量前端。
+
+它不是独立真值后端，也不应“界面套界面”。Dagu/Hermes 等原生 UI 通过 deep link 打开，WORK-LAB 只展示统一摘要和证据链接。
+
+### 9.2 最小页面
+
+1. **Overview**：项目、软件、运行、告警、预算的真实摘要。
+2. **Software & Adapters**：版本、官方来源、支持级别、配置来源、lastVerifiedAt、native deep link。
+3. **Projects & Workspaces**：project root、worktree、边界、当前任务包、drift。
+4. **Executions**：WorkUnit、Agent/runtime、状态、耗时、预算、receipt；不显示会话正文。
+5. **Config Drift**：desired/effective diff、兼容度、计划、审批与 rollback 证据。
+6. **Evidence & Health**：CI、schema、MCP health、missing secret names、freshness、blockers。
+
+### 9.3 禁止范围
+
+- 不做聊天、prompt 编辑、终端、文件管理器、模型路由器；
+- 不直接编辑 API key/OAuth/cookie；
+- 不复制 Agent 的技能市场、插件 UI、memory、session UI；
+- Observer 不提供 retry/approve/apply/rollback；这些只属于 Control Surface；
+- 不把未知值渲染为 0，不把目录存在渲染为 Agent active。
+
+### 9.4 安全封装
+
+推荐同一安装包、共享 React components，但不同安全上下文：
+
+- `worklab-observer.exe`：只读 projection，只有 loopback GET/SSE；
+- `worklab-control.exe`：显式写操作，经 named pipe/write broker、scope/approval/budget；
+- `worklab.exe`：headless CLI；
+- 可选 `worklabd.exe`：本地 supervisor，默认不常驻，按项目启动。
+
+---
+
+## 10. 仓库规范化
+
+### 10.1 先稳定当前收敛目录
+
+不要在 PR #123 后立即再做第二次全树搬迁。保留当前顶层 `.project / apps / config / docs / integrations / packages / projections / reports / scripts / services / taskpacks / tests`，先修语义。目标职责：
+
+| 路径 | 唯一职责 |
+|---|---|
+| `.project/` | 机器可读 Authority index、项目 profile、治理 schema；不放 runtime state。 |
+| `apps/` | Observer/Control/Token Monitor 等用户入口；每个 app 有唯一 production entry。 |
+| `config/` | desired、baselines、registries、generated compatibility；字段 Authority 只能一份。 |
+| `packages/contracts/` | JSON Schema、fixtures、generated clients；统一稳定 ID。 |
+| `packages/client-neutral-core/` | 不依赖特定 Agent 的纯模型/辅助；逐步删除用户路径假设。 |
+| `integrations/` | 按客户端/外部组件的 Adapter；每个 Adapter 自带 manifest、tests、readback、rollback。 |
+| `services/` | 过渡期 Python service；高风险写能力迁出后只保留非特权职责。 |
+| `docs/decisions/` | ADR 与不可变决策；动态状态不手写在这里。 |
+| `docs/current/` | 当前说明，由 Authority/evidence 引用或生成；不得混入旧完成声明。 |
+| `docs/history/` | 原文 immutable，只登记 provenance/supersedes。 |
+| `taskpacks/current/` | 只允许一个 CURRENT 指针；候选和历史分开。 |
+| `reports/current/` | exact-SHA evidence 投影；有 TTL；过期自动 STALE。 |
+| `projections/` | 只保留 schema/example；实际运行 projection 在 `.project-local/`，不提交。 |
+| `.project-local/` | worktrees、runs、cache、logs、receipts、downloads、SQLite；gitignored、项目内。 |
+
+### 10.2 根级标准文件
+
+补齐并机器校验：
+
+- `README.md`、`PROJECT_STATUS.md`、`RIGHTS.md`、`NOTICE.md`；
+- `CONTRIBUTING.md`（个人项目、邀请式贡献）、`CODEOWNERS`（Owner 单人也可）；
+- `SECURITY.md`、`SUPPORT.md`、issue/PR templates；
+- `.editorconfig`、`.gitattributes`、格式化/lint 配置；
+- 根 `pyproject.toml + uv.lock`、`package.json + pnpm-workspace.yaml`、`Cargo.toml` workspace（分阶段引入，不在今天混做）；
+- `mise.toml` 或等价锁定 Python/Node/pnpm/Rust 版本；不要求接管用户全局环境。
+
+### 10.3 Git/CI 标准
+
+1. main 只经 PR；required checks 必须 exact SHA。
+2. 禁止 required workflow 吞错；Action 固定完整 commit SHA。
+3. 分 fast PR、Windows integration、nightly/release 三层，不让所有昂贵检查阻塞每次编辑。
+4. build/test 连续两次后工作树干净；spill detector 检查 repo 外写入。
+5. release 包含 source SHA/tree、SBOM、第三方 NOTICE、hash、签名、安装/升级/卸载/rollback。
+6. 54 个分支先生成 owner/merged/ahead/lastActivity inventory；删除是独立、可恢复、Owner 批准的任务。
+
+### 10.4 权利与第三方依赖
+
+[GitHub 官方说明](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository)：仓库没有许可证时默认版权仍适用；public 可见不等于授予复用许可。[OSI 定义](https://opensource.org/osd)又要求不得按使用领域限制，所以“仅非商业”不是 OSI Open Source。
+
+本项目当前正确表达：
+
+- `PROJECT_STATUS.md`：Owner 的个人研究、非商业使用；
+- 原创内容：未另行授权时，默认版权/All rights reserved；
+- 包发布：`private=true`、`UNLICENSED`、`publish=false`；
+- 第三方：按各自许可证、版本、hash、分发方式和 NOTICE 单独治理；
+- 不自动创建自定义“个人研究许可证”，也不把第三方 MIT/GPL 改成项目权利声明。
+
+---
+
+## 11. 今日执行 TaskPack
+
+### 11.1 总规则
+
+- 基于 PR #123 exact head 新建 recovery worktree，不在原迁移分支堆叠噪声提交。
+- 每个任务一个 owner、一个写入范围、一个可回滚提交。
+- 任务结果只能是 `PASS / FAIL / BLOCKED / NOT_APPLICABLE_WITH_PROOF`。
+- 今天不合并、不发布、不重写 Git 历史、不安装系统服务、不读取私有会话/凭据。
+- 未获仓库写入授权前，T10 及以后保持 `BLOCKED_WRITE_AUTH`。
+
+### 11.2 看板
+
+| ID | 依赖 | 今日动作 | 主要文件/输出 | 状态 |
+|---|---|---|---|---|
+| T00 | 无 | 冻结 main/PR SHA、tree、diff、CI、分支与审计环境 | `source-freeze.json` | 本轮只读审计已完成；待写入 repo evidence。 |
+| T01 | T00 | 提交历史 source manifest、覆盖声明、唯一 CURRENT/supersedes 图 | `history-source-manifest.json`、`CURRENT.json` | 外部 manifest 已生成；repo 写入待授权。 |
+| T10 | T00 | 修 SyntaxError、strict lock、tracked Python compile gate | 代码、lock、bootstrap evidence | `BLOCKED_WRITE_AUTH` |
+| T11 | T10 | 修 runtime tmp fixture、hardcoded path、linked worktree、exact-tree 分轨 | tests/fixtures/root detection | `BLOCKED_WRITE_AUTH` |
+| T20 | T10,T11 | 删除 CI 吞错；加入 full pytest/compile/negative controls/exact-SHA aggregate | `.github/workflows`、gate runner | `BLOCKED_WRITE_AUTH` |
+| T21 | T20 | React frozen install/typecheck/unit/build/clean/spill 进入 required CI | frontend config/tests/ignore | `BLOCKED_WRITE_AUTH` |
+| T30 | T10 | 隔离或下线假 live server；Observer 改真实 projection/UNKNOWN | Observer server/contracts/tests | `BLOCKED_WRITE_AUTH` |
+| T31 | T21,T30 | React 成唯一 production UI，旧 UI 转历史；只读 capability/route 测试 | apps/observer | `BLOCKED_WRITE_AUTH` |
+| T40 | T01,T10 | Authority v3、层级、字段策略、13/14 skills 动态 inventory | config/contracts/generator | `BLOCKED_WRITE_AUTH` |
+| T41 | T40 | Codex/Claude/OpenCode/Hermes/DSH manifests 与 round-trip fixtures | integrations/executors | `BLOCKED_WRITE_AUTH` |
+| T50 | T01 | 修 plugin/upstream provenance、项目权利、publish guards、SBOM 输入 | registries/rights/package metadata | `BLOCKED_WRITE_AUTH` |
+| T60 | T20,T31,T40,T50 | 全门复验、fault injection、evidence、当日 handoff；PR 仍不合并 | `reports/current`、receipts | `WAITING_DEPENDENCIES` |
+
+### 11.3 逐任务执行卡
+
+#### T00｜事实冻结
+
+动作：
+
+1. `git fetch origin --prune`，读回 main、PR head、merge-base、tree、ahead/behind、commit time。
+2. 导出 PR files、commits、checks、open issues/PR、branches、releases。
+3. 记录 GitHub classic protection 读取 403 为 `UNVERIFIED_PERMISSION`，不猜测。
+4. 若 SHA 与本包不同，停止并只审计增量，状态 `SOURCE_DRIFT`。
+
+验收：source-freeze 同时含 commit、tree、observedAt、命令 exit code 与输出 digest；没有远程写。
+
+#### T01｜历史权威
+
+动作：
+
+1. 把本报告第 1 节 source IDs/hashes 写入机器清单。
+2. 登记 Git history/current/blob preservation 与时间覆盖。
+3. `CURRENT.json` 只指向 R4，R3/当日旧包标 `SUPERSEDED_BY_R4`，但原文不改不删。
+4. loader 遇到 missing source 必须报具体 ID/hash 与恢复路径，不能降级为扫描不到。
+
+验收：五个固定源可读；hash 一致；历史与 current loader 测试通过。
+
+#### T10｜可复现 bootstrap
+
+动作：
+
+1. 修 `codex_config_sync.py` 语法。
+2. 用 declared input 重建依赖锁，明确 Python 3.12 目标。
+3. 在空 venv 执行 strict hash install。
+4. compile gate 从 `git ls-files '*.py'` 生成输入；加入语法负控。
+
+验收：空环境安装和全 tracked Python 编译通过；删 hash/添 SyntaxError 会红。
+
+#### T11｜Hermetic tests
+
+动作：
+
+1. 将 `.hermes/task-runtime/tmp` 改为 fixture/bootstrap 创建的临时目录。
+2. 删除测试与生产逻辑中的机器固定路径；测试用 `tmp_path`。
+3. Git root 识别接受 `.git` 目录或 linked-worktree 文件。
+4. “HEAD==main”只属于 release/exact-tree gate，不属于普通 PR 全测。
+5. handoff complete 属于状态投影测试，不应让任意开发分支的单元测试永久失败。
+
+验收：无需手工目录的 clean clone 为 0 failure；主 checkout 与 worktree 均通过。
+
+#### T20｜CI 真值
+
+动作：
+
+1. 删除 WLR-060 的 `|| true`、STUB；重复 workflow 合并为一个 aggregate。
+2. aggregate 绑定同一 source SHA/tree；失败、取消、跳过、缺失、等待均非 PASS。
+3. 增加 negative controls：漏 verifier、缺 hash、语法错、Observer 写 route、UNKNOWN→0、receipt 篡改、tracked build artifact。
+4. Action 固定完整 SHA，依赖版本来自 registry。
+
+验收：每个负控都能可靠置红；不会因输出一行 PASS 而忽略子检查。
+
+#### T21｜React required CI
+
+动作：
+
+1. 统一 pnpm 与 frozen lock；补 lint、unit、typecheck。
+2. 删除 tracked tsbuildinfo 并 ignore；所有缓存写 `.project-local`。
+3. 连续两次 build，检查 Git clean 与 repo 外 spill。
+4. 保存 608.54 kB 基线；bundle split 作为 P2，不阻塞真值。
+
+验收：React 生产线无法旁路 required CI；重复构建零 tracked diff。
+
+#### T30｜Observer 止血
+
+动作：
+
+1. 在真实 projection API 完成前，禁用或隔离 `observer_live_server.py` 的 production entry。
+2. 删除 home scan、固定版本/SHA/LIVE、自动当前时间、unknown→0、无条件健康 Sidecar。
+3. API 只接受 loopback + allowlist/token；不回显 traceback。
+4. 定义 `Observed<T>` 和真实 SSE；数据断开即 UNKNOWN/OFFLINE。
+
+验收：无外部 sidecar 时页面诚实离线；Observer 不能访问 Home、不能写、不能伪造 heartbeat。
+
+#### T31｜单一前端与安全面
+
+动作：
+
+1. 以 React 为唯一 production frontend；旧 static UI 有 parity 后移入 history/examples。
+2. Observer route 只注册 GET/SSE；Control mutation 进入独立 broker。
+3. Tauri command/capability allowlist 分 Observer/Control；不只靠 React route 控制。
+4. XSS/CSRF/loopback token/跨域/写方法负控。
+
+验收：Observer 二进制、API、凭据均无 mutation path；旧入口不可被生产启动。
+
+#### T40｜统一配置 Authority
+
+动作：
+
+1. 新建唯一 `authority-index.json`，字段 ownership 只在一处维护。
+2. 建 `ConfigArtifact/ConfigLayer/FieldRule/Observed/Drift/ApplyPlan` schemas。
+3. skills/plugins/MCP 用动态 inventory，不写固定数量。
+4. 每字段声明 merge、safety、secret、compatibility；未知安全字段阻断。
+5. 兼容 YAML/JSON 由 generator 生成并含 source digest。
+
+验收：手改生成文件会红；unknown fields round-trip；safety floor 不会被下层放宽。
+
+#### T41｜首批 Adapter
+
+动作：
+
+1. Codex、Claude、OpenCode、Hermes、DSH 各建 manifest、官方 source、version range、native locations、precedence、readback、rollback。
+2. 分 `registry-only/observe/plan/apply/rollback`；现有 UNVERIFIED 状态不得升格。
+3. 运行五组 isolated-home fixture 与两组真实客户端 canary；不读会话正文/secret。
+4. Cursor/VS Code 只完成 observe manifest，进入下一批。
+
+验收：五客户端 round-trip 无静默数据损失；lossy 显式阻断；native readback hash 与计划一致。
+
+#### T50｜来源、权利、发布
+
+动作：
+
+1. enabled plugin 补 commit/version/hash/license/permissions，否则 quarantine。
+2. upstream baseline 清除 TBD/PENDING 冒充 installed 的结构。
+3. 项目状态写个人研究、非商业；不把它写成第三方 NC 许可。
+4. 清理 first-party MIT 默认生成器与包元数据；第三方 MIT/GPL 记录保留。
+5. Node/Cargo/Python 增加 private/publish guard；生成 SBOM/NOTICE 输入。
+
+验收：所有 active 外部资产可追源；所有 first-party 包不可意外 publish；权利声明一致。
+
+#### T60｜关门复验
+
+必须重跑：
+
+- strict dependency install；
+- 全 tracked Python compile；
+- full pytest clean clone + linked worktree；
+- 所有命名 gate 与 negative controls；
+- React frozen install/lint/typecheck/unit/build 两次；
+- Observer route/capability/offline/freshness/SSE/security tests；
+- config schema + 五 Adapter round-trip；
+- Git clean、spill、license/provenance、exact-SHA aggregate。
+
+若任一失败，状态只能为 `PARTIAL_WITH_BLOCKERS`。PR #123 继续不合并；push recovery branch、开新 PR 与合并均需 Owner 单独授权。
+
+### 11.4 推荐提交序列
+
+1. `fix/bootstrap-syntax-lock`
+2. `fix/hermetic-tests-worktree`
+3. `ci/remove-false-green`
+4. `fix/observer-truth-boundary`
+5. `ci/observer-react-required`
+6. `governance/authority-config-v3`
+7. `feat/adapter-manifests-roundtrip`
+8. `governance/provenance-rights`
+9. `docs/evidence-current-handoff`
+
+不要把 EOL renormalize、依赖锁、Observer、Authority 和历史标记混在一个提交。
+
+---
+
+## 12. 0.1 可用定义
+
+只有以下全部满足才能从 `RECOVERY_REQUIRED` 升为 `USABLE_0_1`：
+
+- clean clone 与 linked worktree 全门 0 failure；
+- strict/frozen dependencies 可复现，构建两次 Git clean；
+- Observer 在断源、延迟、异常、部分数据时诚实显示 UNKNOWN/STALE/OFFLINE；
+- Observer 无写 API、写 capability、控制 token、DB write handle、Home scan；
+- Control 每次写入有 scope、policy、budget、approval、backup、readback、rollback、receipt；
+- 五个首批 Adapter 至少 plan/readback 通过，其中 apply 仅对验证充分者开放；
+- 所有 active skill/plugin/MCP/upstream 有 provenance 与 secret-reference 边界；
+- Windows 实机安装、重启、休眠恢复、离线、升级、卸载完成 E4/E5 证据；
+- README/current report/CI/UI 指向同一 exact SHA/tree；
+- Owner 明确批准 recovery PR，之后才允许合并。
+
+---
+
+## 13. 30/60/90 日路线
+
+| 时间 | 目标 | 不做 |
+|---|---|---|
+| 0–7 日 | 完成 T00–T60；消除假绿；恢复诚实 Observer；Authority v3；五 Adapter fixtures | 不写完整 Rust core，不部署网关，不重写 Git 历史。 |
+| 8–30 日 | Adapter readback canary；Control plan/diff/approval；Dagu 与 agentgateway PoC；Windows E3/E4 | 不让 PoC 成为必需依赖，不扩大客户端清单。 |
+| 31–60 日 | Rust trust kernel shadow、单写者/receipt/IPC；Observer/Control 安全面分离 | 不 dual-write，不把 Python 一次性移除。 |
+| 61–90 日 | 按 parity 切换高风险能力；签名安装/升级/卸载；0.1 release qualification | 未通过 E5 不公开发布。 |
+
+停止继续架构研究的条件：五 Adapter round-trip 和两个 sidecar PoC 已给出明确结果。只有出现无法由 JSON Schema 表达的真实跨字段约束、稳定 principal/action/resource 授权域、或多用户远程控制需求，才分别重新评估 CUE、Cedar/OPA 或服务化。
+
+---
+
+## 14. 已知矛盾、限制与待实机证据
+
+1. GitHub API 的 mergeable/green 与本地 P0 失败矛盾；以后者作为工程裁决，直到 CI 覆盖修复。
+2. 历史报告中的“全部完成/全绿”只对当时 SHA/环境成立，不能覆盖当前 PR。
+3. Dagu 页面与当前仓库许可信息表明 GPL-3.0；个人使用可测试，但若打包/分发必须重新做许可审查。
+4. classic branch protection 因权限无法读取，状态是 UNKNOWN，不是假定无保护。
+5. Linux 审计不能替代 Windows Tauri、named pipe、WebView2、休眠和便携盘验证。
+6. 公开仓库没有许可证与 first-party MIT 元数据矛盾；需 Owner 确认权利后清理，不能替第三方改许可。
+7. Tauri capability 不是 Rust core 的完整沙箱；需要不同命令集/凭据/IPC，而非只改 JSON。
+8. 真实 provider 账单、Agent 版本和用户配置本轮未读取；相应状态保持 UNVERIFIED。
+
+---
+
+## 15. 核心来源
+
+### 项目证据
+
+- [WORK-LAB 仓库](https://github.com/DTALEX66/WORK-LAB)
+- [PR #123](https://github.com/DTALEX66/WORK-LAB/pull/123)
+- [问题 workflow](https://github.com/DTALEX66/WORK-LAB/blob/c6b7e8f6468281325d26524e3762607c6fa7a4ce/.github/workflows/wlr-060-gates.yml)
+- [Observer live server](https://github.com/DTALEX66/WORK-LAB/blob/c6b7e8f6468281325d26524e3762607c6fa7a4ce/apps/observer/observer_live_server.py)
+- [配置 Authority](https://github.com/DTALEX66/WORK-LAB/blob/c6b7e8f6468281325d26524e3762607c6fa7a4ce/config/config-ownership.json)
+- [Adapter registry](https://github.com/DTALEX66/WORK-LAB/blob/c6b7e8f6468281325d26524e3762607c6fa7a4ce/config/adapter-registry.json)
+
+### Agent 与配置官方文档
+
+- [Codex configuration](https://learn.chatgpt.com/docs/config-file/config-basic)
+- [Codex customization](https://learn.chatgpt.com/docs/customization/overview)
+- [Codex permissions](https://learn.chatgpt.com/docs/permissions)
+- [Claude Code settings](https://code.claude.com/docs/en/settings)
+- [Claude Code permissions](https://code.claude.com/docs/en/permissions)
+- [Claude Code skills](https://code.claude.com/docs/en/skills)
+- [Claude Code MCP](https://code.claude.com/docs/en/mcp)
+- [OpenCode config](https://opencode.ai/docs/config/)
+- [OpenCode permissions](https://opencode.ai/docs/permissions/)
+- [OpenCode skills](https://opencode.ai/docs/skills/)
+- [OpenCode plugins](https://opencode.ai/docs/plugins/)
+- [OpenCode MCP](https://opencode.ai/docs/mcp-servers/)
+- [Hermes configuration](https://hermes-agent.nousresearch.com/docs/user-guide/configuration)
+- [Hermes managed scope](https://hermes-agent.nousresearch.com/docs/user-guide/managed-scope)
+- [Hermes profiles](https://hermes-agent.nousresearch.com/docs/user-guide/profiles)
+- [Hermes skills](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)
+- [DeepSeek Harness reference](https://deepseek-harness.github.io/deepseek-harness/en/reference/)
+- [Cursor rules](https://cursor.com/docs/rules)
+- [Cursor hooks](https://cursor.com/docs/hooks)
+- [VS Code custom instructions](https://code.visualstudio.com/docs/agent-customization/custom-instructions)
+- [VS Code MCP](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
+
+### 标准、架构与同行
+
+- [Agent Skills specification](https://agentskills.io/specification)
+- [Agent Plugins specification](https://agent-plugins.org/specification)
+- [MCP 2026-07-28 specification](https://modelcontextprotocol.io/specification/2026-07-28)
+- [JSON Schema 2020-12](https://json-schema.org/draft/2020-12)
+- [Tauri process model](https://v2.tauri.app/concept/process-model/)
+- [Tauri capabilities](https://v2.tauri.app/security/capabilities/)
+- [Tauri sidecars](https://v2.tauri.app/develop/sidecar/)
+- [Dagu](https://docs.dagu.sh/)
+- [Dagu licensing](https://github.com/dagucloud/dagu/blob/main/LICENSING.md)
+- [agentgateway](https://agentgateway.dev/docs/standalone/latest/about/)
+- [Crossplane managed resources](https://docs.crossplane.io/latest/managed-resources/managed-resources/)
+- [chezmoi](https://www.chezmoi.io/what-does-chezmoi-do/)
+- [mise configuration](https://mise.jdx.dev/configuration.html)
+- [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/)
+- [CloudEvents](https://cloudevents.io/)
+- [GitHub repository licensing](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository)
+- [Open Source Definition](https://opensource.org/osd)
+
+---
+
+## 16. 给执行 Agent 的起始指令
+
+以 `WORK-LAB-DR-R4-20260904` 为唯一候选执行入口；先核对 main/PR exact SHA。若漂移，先增量审计，不直接套用补丁。未经 Owner 明确授权，只允许读取、测试隔离副本和生成 evidence；不得写用户 Home、不得修改其他项目、不得 push/merge/release。执行顺序固定为 T00 → T01 → T10/T11 → T20/T21 → T30/T31 → T40/T41/T50 → T60。任何 P0 未清零，最终状态只能是 `PARTIAL_WITH_BLOCKERS`。

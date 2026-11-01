@@ -1,0 +1,180 @@
+# 贾维斯/语音能力 → ArcheAxis Knowledge 融入交接与审计包
+
+- 整理日期：2026-10-22（Asia/Shanghai）
+- 用途：交给 GPT（或下一个工程 Agent）审计「把贾维斯式语音助手能力融入 ArcheAxis Knowledge / 星环知识系统」的方案是否成立、边界是否清楚。
+- 口径标注：**【仓库原文】**= 直接来自 DTALEX66/ArcheAxis-Knowledge-OS 权威文档或源码；**【调研】**= 本轮全网案例调研结论（详见附录 A 主报告）；**【建议】**= 综合判断，需 Owner 拍板。
+- 重要纠正：本项目内部代号 "AAOS" **不是 Android Automotive OS（安卓车机）**，是 ArcheAxis 项目自身代号；本文不包含任何车机/安卓方案。
+
+---
+
+# 第一部分 · 完整对话上下文（来龙去脉）
+
+## 1.1 触发来源：两条被参考的视频
+
+### 视频 1：Claude Code 风格 Agent + 猛禽发动机 3D 拆解（【调研】）
+- 公开页：https://www.iesdouyin.com/share/video/7699125649147583076 （2026-10-22 发布，约 1380 赞 / 113 评论；抖音短链无法直接下载转写，内容来自公开检索到的文案片段）。
+- 内容：用户对"贾维斯"式 Agent 说"帮我拆解 SpaceX 猛禽发动机"，AI 当场生成可放大缩小、360° 旋转的 3D 模型，逐一展示喷注器与主燃烧室、富氧预燃室、液氧涡轮泵；用户追加"我想看它点火是什么样子"，AI 模拟点火与关机动画；结尾贾维斯式英文对白，并提到"让 Claude Code 把登录页的 bug 修一下"。
+- 看点：**自然语言一句话，AI 即时生成可交互的 3D 拆解 + 点火演示**，重点是 Agent 的即时生成能力，不是系统工程教程。
+
+### 视频 2：Gemini 3 复刻贾维斯 HUD（【调研】）
+- 内容：蓝色全息 HUD、手势识别（捏合拖动、张手缩放）、实时语音控制、卫星地图全屏放大/飞向城市、"detailed image"一句话切彩色全景、摄像头叠加 UI；作者称约 90% 代码由 AI 产出。
+- 注意：这是**另一条独立视频**，与视频 1 不是同一个项目，用户自写总结曾把两者混淆（见 1.2）。
+
+## 1.2 用户自写总结的审核纠错（【调研】+【建议】）
+
+用户先用网页 AI 生成了一份"5 层架构 + 技术栈 + 模块 + 工作流 + 成本 + 安全"的总结，审核结论如下：
+
+| 板块 | 审核结论 |
+|---|---|
+| 5 层架构（感知/意图/逻辑/渲染/反馈） | 通用模板，任何语音助手都能套，不是视频实录 |
+| Gemini 3 视频描述（手势/卫星地图/全景） | 属于视频 2，与视频 1 不是一回事，被混写 |
+| 技术栈（Vosk+ElevenLabs、DeepSeek/GPT-4o、Three.js/Blender/Unity、树莓派+继电器） | 可选清单；两条视频实际用的是 Claude Code / Gemini 3，并未讲 DeepSeek、树莓派、智能家居 |
+| 3D 拆解（GLB+线框+辉光+关键帧位移动画） | 与视频 1 吻合 |
+| 点火模拟（粒子+火焰 Shader+音效） | 与视频 1 吻合；"可选 WebGL 物理"为额外添加 |
+| 数据面板（推力/燃烧室压力/帧同步） | 方向合理，但视频 1 面板很轻，未必有实时参数 |
+| 智能家居联动（树莓派继电器控灯/风扇） | 视频里没有，属方案补充 |
+| 工作流示例（拆解/点火/暂停） | 与视频 1 流程吻合 |
+| 离线与成本（Vosk+Ollama+Blender、200–800 元） | 自行补充的 DIY 路线，非视频内容，金额为粗估 |
+| 进阶与安全（Unity 物理/ROS/NeRF；白名单/二次确认/儿童模式） | 合理建议，与视频无关 |
+
+补充修正点：
+1. 大模型选型别写死：视频 1 用 Claude（Claude Code），视频 2 用 Gemini 3；DeepSeek/GPT-4o/Ollama 只是"自己复刻时的备选"。
+2. Vosk 胜在完全离线轻量但中文识别率一般；DIY 更常用 faster-whisper。
+3. "90% 代码 AI 产出"是作者自述，无法核验，引用应写"作者称约 90%"。
+4. 视频真正看点是 Agent 即时生成，不是完整工程方案。
+
+## 1.3 全网案例调研结论摘要（【调研】，详见附录 A）
+
+三路并行（GitHub API 复核 + HN/YouTube/PH + B站/掘金/CSDN + 廊坊本机 TCP443+TLS 实测），共 18 个代表项目：11 个开源成品、7 个国内生态/硬件、17 个基础设施零件；star/license/最后推送当日复核。
+
+**三个最成熟底座：**
+1. **isair/jarvis**（2126★，活跃，非商用）：Ollama 大脑 + faster-whisper + Piper 全本地，带记忆/知识图谱/MCP，有 Release 包，最接近"装上就能用的本地贾维斯"。
+2. **existence-master/Sentient**（711★，活跃，AGPL 倾向）：Agent 完成度最高的长任务管家，调度器/夜间记忆整理/技能自学习，适合当大脑底座再接自研 HUD。
+3. **小智 xiaozhi-esp32**（固件 31741★/后端 10989★，MIT）：国内最成熟语音生态，组件全可插拔，先连官方免费服务再逐个换本地。
+
+**vibe coding 教科书模板**：zachdoesai《Build Your Own Jarvis》——面试式 Prompt 先问人格再生成骨架，分 3 段迭代（骨架→记忆→晨间简报），报错直接粘回 AI 修，号称 15 分钟零代码。
+
+**廊坊可达性（单次时点实测）**：✅ 直连 DeepSeek/通义/火山豆包/智谱/Kimi/讯飞；🟢 全本地离线闭环（Ollama Qwen + faster-whisper/FunASR + Piper/GPT-SoVITS + openWakeWord）可行；⚠️ OpenAI/Gemini/Claude/Fish Audio 需代理；HuggingFace 主站本次被污染，模型权重改走 ModelScope。
+
+**已排除噱头**：付费社群锁成品的 Claude JARVIS 视频（12.8 万播放无仓库）、无法核验的"238K 行 Swift"营销页、Zuckerberg 2016 私人项目、star 高但无 LLM 大脑的 2020 年规则脚本（只当命令素材）。
+
+---
+
+# 第二部分 · 调研方案（可复用方法论）
+
+> 供以后自己/团队调研同类"AI 助手/贾维斯复刻"项目时复用。
+
+## 2.1 渠道与查什么
+
+| 渠道 | 查什么 | 关键词示例 |
+|---|---|---|
+| GitHub（API + README/LICENSE 原文） | 成品仓库、基础设施零件；核 star、license、最后推送、是否有 Release/可跑通 | jarvis ai、ironman assistant、jarvis HUD、voice assistant home、vibe coding jarvis |
+| Hacker News / YouTube / Product Hunt / DEV.to / 个人博客 | 有成品演示、可复现的项目与作者经验；区分"可跟做"与"引流 demo" | build your own jarvis、claude code jarvis、gemini live assistant |
+| Reddit（r/LocalLLaMA、r/homeassistant、r/ChatGPTCoding 等） | 社区反复提及的成熟案例与踩坑（本次 robots 拦截，未取得一手原帖） | local jarvis、wake word assistant、home assistant voice |
+| B站/知乎/掘金/CSDN/公众号 | 中文跟做复盘、国产模型与硬件路线 | 复刻贾维斯、小智 esp32、本地语音助手、手势 HUD |
+
+## 2.2 核验口径（成熟度分级）
+
+- **可直接跑通**：有 Release/安装器、文档完整、近期仍维护、社区有跟做成功记录。
+- **需二开**：架构可用但依赖重/无预编译包/版本更迭快。
+- **仅 demo**：只有视频或营销页、无公开仓库、不可复现。
+- 每个案例记录：项目、作者、仓库链接、star/活跃度、License、技术栈（唤醒/ASR/脑/嘴/皮/硬件）、功能清单、成熟度、成本、复现难度、国内可达、最值得抄的点、局限。
+- star 为单日快照需注明时点；查不到的数字/价格标"未披露"，不编造。
+
+## 2.3 国内可达性实测方法
+
+- 对端点做 TCP443 + TLS 单次时点探测，区分：✅ 直连 / 🟢 全本地离线 / 🔶 灰色待实测 / ⚠️ 需代理。
+- 模型权重优先 ModelScope（实测低延迟），HuggingFace 主站不可达时不走 hf-mirror 碰运气；PyPI 走清华镜像。
+- 单次网络结果不等于应用层鉴权/额度，价格以官方控制台当日公示为准。
+
+## 2.4 噱头识别清单
+
+1. 成品锁在付费社群/课程，只给免费 prompt pack 引流、无公开仓库；
+2. 营销页宣称离谱行数/工具数但 GitHub 无法独立核验；
+3. 历史私人项目（从未公开代码）被当现状宣传；
+4. star 高但无 LLM 大脑的旧规则脚本（2020 年代码停更），只能当命令清单素材；
+5. "10 分钟无代码"多为课程引流，无统一公开仓库。
+
+---
+
+# 第三部分 · 融入 ArcheAxis Knowledge 现有架构（审计重点）
+
+## 3.1 项目现状事实（【仓库原文】，附出处）
+
+### 架构与合同边界
+- 正式宿主：`frontend/`（React/TypeScript/Vite）+ `src-tauri/`（Tauri 2）；Rust Core 是 SQLite/CAS 唯一写者；Python workers 隔离运行（stdio ndjson）；UI→Core 走 loopback HTTP JSON，本地鉴权 127.0.0.1 随机端口 + 每次启动 token。出处：README.md、PROJECT_CONTRACT.yaml（architecture: existing-tauri-finite-bridge-rust-single-writer-isolated-python-workers）。
+- 数据权威：SQLite，rust-writer-actor 单写者；**禁止 ui-direct-sql / worker-direct-sql / agent-direct-sql / dual-write**。出处：PROJECT_CONTRACT.yaml data_authority。
+- 出口（egress）：local_only 禁止静默云回退；知识接纳 final_choice=human-only；普通保存不要求云核验；AI 使用状态 visible。出处：PROJECT_CONTRACT.yaml content_policy。
+- 当前支持平台：windows-11-x64；系统级平台、公开插件分发/付费市场、在线协作同步等在 V01 前排除。出处：PROJECT_CONTRACT.yaml scope。
+- 状态：RUNNING_BY_OWNER / PARTIAL；Owner 2026-10-21 改序：**后端全链路 CL-01..07 / J1..J6 闭环优先，UI 打磨延后**；V01 暂停，FT01–04 冻结。出处：AAOS-ACTIVE-EXECUTION.json execution_priority_overlay。
+
+### 现有 AI 助手「小栖」
+- 定位：智能对话、基于当前文档的上下文感知、知识点提取与解释（README.md）。
+- 当前前端实现（`frontend/src/components/XiaoqiPanel.tsx`，【仓库原文】）：纯文本输入框，POST `/api/v1/ai/chat`，带最近 5 条历史与 currentContext，状态 idle/thinking；**无语音、无唤醒、无 TTS**。后端该接口实现需现场核对（前端调用点已见，本文不臆测后端）。
+- 模型配置现状（`config/models.yaml`，【仓库原文】）：default_llm = stub/local-stub，embedding = simple/hash-embedding，即产品内模型适配器尚未接真实模型。
+- 运行时模型：LM Studio OpenAI-compatible `http://127.0.0.1:1234/v1`（`config/model-profiles/lm-studio.json`、external-resources-index.json）；**不自动探测或回退 Ollama**；候选 aaos-deep-27b-mtp 真实回答超时/无最终答案，CL-06/J4 BLOCKED；真实云端 provider 无授权，BLOCKED。出处：AAOS-AGENT-HANDOFF-CURRENT.md、AAOS-ACTIVE-EXECUTION.json。
+
+### 语音已知缺口（【仓库原文】，AAOS-AGENT-HANDOFF-CURRENT.md）
+- CL-02：中文自造 TTS 在 SAPI Language804 报 HRESULT `0x80045039`、Speak 前阻断，无中文音频/ASR 资格；仅英文时间托管 PARTIAL；视频 visual 未启用。
+- 语音整体 speech 仍 PARTIAL，不得宣称中文/视频视觉/全部识别质量合格。
+
+## 3.2 贾维斯零件 → 现有落点映射表（【建议】，结合【调研】案例）
+
+| 贾维斯能力零件 | 成熟来源（【调研】） | 在 ArcheAxis 的落点 | 改动位置 | 边界注意 |
+|---|---|---|---|---|
+| 唤醒词（"hey 小栖"） | openWakeWord（Apache-2.0，可自训）/ ESP-SR | 作为 Tauri 前端或 Rust Core 的常驻音频监听模块，触发小栖面板 | 新增音频监听 worker（Python 隔离或 Rust），不直写库 | 常驻功耗/打断（barge-in）需实测；不得绕过 Core 直存 |
+| ASR 语音识别 | faster-whisper（MIT，本地 int8）/ FunASR(SenseVoice) / sherpa-onnx | 语音转文本后送现有 `/api/v1/ai/chat` 同一条对话链 | Python 隔离 worker 或 Core 调用，结果经 Core 落库 | 模型权重走 ModelScope；识别结果按现有证据/原件保全规则存 |
+| 大脑/对话 | 现有 LM Studio `127.0.0.1:1234/v1`（本地优先）；云端默认不接 | 复用小栖对话链与 currentContext、最近历史 | 先接通真实本地模型替换 stub | **默认引入 DeepSeek/Gemini 云端违反 local_only/egress，需 Owner 单独授权**；不自动回退 Ollama |
+| TTS 语音朗读 | Piper（本地，含中文）/ GPT-SoVITS（声音克隆，MIT）/ edge-tts（灰色，别当稳定依赖） | 替换当前阻断的中文 SAPI TTS，先修 CL-02 | Python 隔离 worker；音频播放走 Tauri 前端 | 优先本地方案；GPT-SoVITS 非商用注意；edge-tts 备兜底 |
+| HUD 皮（声浪/状态） | 调研案例 P8 单页声浪、P4 RMS 包络同步、P9 Three.js orb | 扩展现有 XiaoqiPanel 的 idle/thinking 状态可视化 | frontend 现有组件内增量 | 不新建独立渲染器/能力注册中心；遵守 cosmic 默认主题与减少动画要求 |
+| 手势识别 | MediaPipe Hands（Apache-2.0，端侧离线） | 二期可选，不进当前后端闭环切片 | 前端摄像头模块 | 非首期，避免分散 CL 闭环 |
+| 3D/地图视觉 | 视频 1 的即时 3D 生成属于远期愿景，非当前闭环 | 仅记录为长期蓝图，不激活 | — | 3D/VR 属绑定长期能力，V01 前不排期 |
+
+## 3.3 建议落地切片（【建议】，服从后端 CL 优先）
+
+> 原则：不新增第二队列，语音作为现有 CL/J 闭环的增量，先修阻断再扩展。
+
+1. **切片 V1（先修阻断，对应 CL-02）**：用本地 Piper 中文 TTS 替换阻断的 SAPI 自造 TTS，跑通"文本→中文语音朗读"真实链路，留下 REAL 回执；不碰云端。
+2. **切片 V2（接通本地大脑）**：把 `/api/v1/ai/chat` 从 stub 接到现有 LM Studio 本地端点，先解决 CL-06/J4 的超时/无最终答案（模型 thinking/输出策略由 Owner 决定，不自行换 provider、不自动回 Ollama）。
+3. **切片 V3（ASR 输入）**：faster-whisper 本地转写 → 进小栖现有对话链，文本照旧经 Core 落库；先按键说话（PTT），不做免提唤醒。
+4. **切片 V4（唤醒词，可选）**：openWakeWord 自训"hey 小栖"，在 V1–V3 稳定后再加；含打断与误唤醒实测。
+5. HUD/手势/3D 全部排在后端 CL-01..07/J1..J6 闭环与 V1–V3 之后。
+
+## 3.4 与合同边界冲突点（审计必看）
+
+| 想法 | 冲突 | 处置 |
+|---|---|---|
+| 默认接 DeepSeek/GPT-4o/Gemini 云端大脑 | local_only 禁止静默云回退；云端 provider 无授权 BLOCKED | 仅本地优先；云端需 Owner 单独显式授权与 egress 同意 |
+| 前端/worker 直接写 SQLite | 违反 Rust 单写者禁令 | 一律经 Core 有限命令桥 |
+| 语音识别结果自行存库 | 数据权威归 rust-writer-actor | 结果交 Core 持久化 |
+| 把视频 2 的手势/卫星地图纳入当前版本 | 违反后端优先与冻结边界 | 记为远期蓝图，不激活 |
+| 用 edge-tts/ElevenLabs 当稳定 TTS | 灰色地带/区域限制待实测 | 仅兜底，主用本地 Piper |
+| 宣称语音闭环已完成 | speech 仍 PARTIAL、CL-02 阻断 | 按 REAL/PARTIAL/BLOCKED/UNVERIFIED 如实标注 |
+
+## 3.5 进入设计前需 Owner 确认的问题
+
+1. 模型路线：先只走 LM Studio 本地，还是允许在显式授权下接国产云端（DeepSeek/通义/豆包）兜底？
+2. 中文 TTS 首选 Piper 本地是否认可？是否需要 GPT-SoVITS 克隆专属嗓音？
+3. 第一期是否只做 PTT 按键说话，免提唤醒（openWakeWord）放第二期？
+4. 语音能力挂在当前哪个 CL/J 切片里推进，避免另起队列？
+5. 小栖现有 `/api/v1/ai/chat` 后端实现由谁核对、当前 stub 何时替换为本地模型？
+
+---
+
+# 附录 A · 调研主报告与底稿（已单独交付）
+
+- 主报告：`贾维斯复刻-成熟案例调研与选型清单.md`（18 案例对比、廊坊可达性表、入门/进阶/高配三档选型、噱头排除、来源索引）
+- 分渠道底稿：`research/01-github.md`、`research/02-en-communities.md`、`research/03-cn-communities.md`
+
+# 附录 B · 本包引用的仓库权威文档（DTALEX66/ArcheAxis-Knowledge-OS）
+
+- README.md（产品范围、架构、小栖定位、PARTIAL 状态）
+- PROJECT_CONTRACT.yaml（架构、数据权威、egress、知识接纳、平台范围）
+- AGENTS.md（安全规则、Git 规则、边界）
+- docs/current/AAOS-ACTIVE-EXECUTION.json（正式栈、CL 优先改序、冻结/暂停、模型与授权边界）
+- docs/current/AAOS-AGENT-HANDOFF-CURRENT.md（CL-02 TTS 阻断、CL-06/J4 BLOCKED、语音 PARTIAL、UI-P19 小栖适配）
+- config/models.yaml（stub 模型适配器现状）
+- config/model-profiles/lm-studio.json（LM Studio 端点）
+- frontend/src/components/XiaoqiPanel.tsx（小栖前端调用点）
+
+> 审计提示：本文所有【仓库原文】结论可在上述文件逐字复核；【调研】结论见主报告来源索引；【建议】项需 Owner 拍板后才进入实施，不得据本文宣称产品已完成某项能力。

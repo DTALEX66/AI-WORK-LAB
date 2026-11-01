@@ -1,0 +1,114 @@
+﻿# 整理 E:\服务器 原始资料盘：新建类别/具体课程，并移动顶层课程包
+# 默认 DryRun=true，只预演不移动。确认无误后，把 $DryRun 改成 $false 再运行。
+$Root = 'E:\服务器'
+$DryRun = $true
+$Mappings = @(
+    [pscustomobject]@{ Source='全媒体运营师相关政策法规复习材料.pdf'; Destination='02_运营增长_新媒体\000_零散资料\全媒体运营师相关政策法规复习材料.pdf'; Note='根目录PDF，运营考试/政策资料' }
+    [pscustomobject]@{ Source='品牌设计学习手册丨尚道设研第一版.pdf'; Destination='01_设计视觉课程\000_零散设计PDF\品牌设计学习手册丨尚道设研第一版.pdf'; Note='根目录PDF，品牌设计' }
+    [pscustomobject]@{ Source='增长黑客.pdf'; Destination='02_运营增长_新媒体\000_零散资料\增长黑客.pdf'; Note='增长/运营资料' }
+    [pscustomobject]@{ Source='大模型应用开发介绍-0715.pdf'; Destination='03_AI编程算法\000_零散资料\大模型应用开发介绍-0715.pdf'; Note='AI/大模型开发资料' }
+    [pscustomobject]@{ Source='抖音矩阵号怎么搭建，抖音矩阵运营攻略！_3_小平聊互联网推广_来自小红书网页版.jpg'; Destination='02_运营增长_新媒体\000_零散资料\抖音矩阵号怎么搭建_来自小红书网页版.jpg'; Note='抖音矩阵图文资料' }
+    [pscustomobject]@{ Source='百问百答.pdf'; Destination='00_待分类_INBOX\000_零散待识别\百问百答.pdf'; Note='名称不明确，先待分类' }
+    [pscustomobject]@{ Source='视觉传达学习手册与避坑指南.pdf'; Destination='01_设计视觉课程\000_零散设计PDF\视觉传达学习手册与避坑指南.pdf'; Note='视觉传达资料' }
+    [pscustomobject]@{ Source='165、【黑马程序员】-2024最新Photoshop+AIGC商业设计从入门到实战'; Destination='01_设计视觉课程\C0101_黑马Photoshop_AIGC商业设计'; Note='PS+AIGC商业设计课程，内部素材不拆出' }
+    [pscustomobject]@{ Source='aiki007-视觉设计实战班5期【已完结】'; Destination='01_设计视觉课程\C0102_aiki007视觉设计实战班'; Note='含大量C4D/PSD/插件/模型，保留在课程内' }
+    [pscustomobject]@{ Source='KEKE-孔晨-UI系统全能班第3期【已完结】'; Destination='01_设计视觉课程\C0103_KEKE孔晨_UI系统全能班'; Note='UI课程' }
+    [pscustomobject]@{ Source='K先生网格系统全攻略'; Destination='01_设计视觉课程\C0104_K先生网格系统全攻略'; Note='版式/网格系统' }
+    [pscustomobject]@{ Source='_清华大学_视觉传达设计思维与方法_全24讲_陈楠'; Destination='01_设计视觉课程\C0105_清华视觉传达设计思维与方法'; Note='视觉传达课程' }
+    [pscustomobject]@{ Source='中央美院美术基础教学14套'; Destination='01_设计视觉课程\C0106_中央美院美术基础教学'; Note='美术基础' }
+    [pscustomobject]@{ Source='卢帅-2025年品牌全案·AI设计实战班【已完结】'; Destination='01_设计视觉课程\C0107_卢帅品牌全案AI设计实战班'; Note='品牌全案/AI设计' }
+    [pscustomobject]@{ Source='大河-网易”视觉设计师养成计划【已完结】'; Destination='01_设计视觉课程\C0108_大河网易视觉设计师养成计划'; Note='视觉设计师养成' }
+    [pscustomobject]@{ Source='版式设计'; Destination='01_设计视觉课程\C0109_版式设计'; Note='版式设计资料' }
+    [pscustomobject]@{ Source='邢开捷-人生加速 年课设计师加速营【五期】'; Destination='01_设计视觉课程\C0110_邢开捷设计师加速营'; Note='设计师成长/接单/职业' }
+    [pscustomobject]@{ Source='全媒体'; Destination='02_运营增长_新媒体\C0201_全媒体'; Note='全媒体运营资料' }
+    [pscustomobject]@{ Source='全栈新媒体运营'; Destination='02_运营增长_新媒体\C0202_全栈新媒体运营'; Note='新媒体运营课程' }
+    [pscustomobject]@{ Source='抖音运营'; Destination='02_运营增长_新媒体\C0203_抖音运营'; Note='抖音运营' }
+    [pscustomobject]@{ Source='新媒体高阶运营&增长实战训练（完结）'; Destination='02_运营增长_新媒体\C0204_新媒体高阶运营增长实战'; Note='新媒体增长课程' }
+    [pscustomobject]@{ Source='蛋解'; Destination='02_运营增长_新媒体\C0205_蛋解实体老板获客训练营'; Note='含本地生活/获客/百业模板' }
+    [pscustomobject]@{ Source='邢开捷丨人生加速-【设计转岗运营20加速版L1L2L3番外篇含转岗面试技巧方法默认班级】-129800圆-43节'; Destination='02_运营增长_新媒体\C0206_邢开捷设计转岗运营加速版'; Note='设计转运营/面试技巧' }
+    [pscustomobject]@{ Source='t514——风变编程'; Destination='03_AI编程算法\C0301_风变编程'; Note='编程课程' }
+    [pscustomobject]@{ Source='牛客算法直通套餐'; Destination='03_AI编程算法\C0302_牛客算法直通套餐'; Note='算法课程' }
+    [pscustomobject]@{ Source='30天考霸训练营，北大博士后教你通关任何考试（完结）'; Destination='04_学习力记忆认知\C0401_30天考霸训练营\版本A_完结版'; Note='疑似重复版本，先并入同一课程' }
+    [pscustomobject]@{ Source='30天考霸训练营，北大博士后教你通关任何考试，助你高分拿下证书、岗位、考试(2)'; Destination='04_学习力记忆认知\C0401_30天考霸训练营\版本B_证书岗位考试版'; Note='疑似重复版本，先并入同一课程' }
+    [pscustomobject]@{ Source='升级你的学习力，让你成为有效学习的高手（完结）'; Destination='04_学习力记忆认知\C0402_升级你的学习力'; Note='学习力课程' }
+    [pscustomobject]@{ Source='世界记忆大师深入浅出学记忆，九节课练就你的超强大脑'; Destination='04_学习力记忆认知\C0403_世界记忆大师记忆课'; Note='记忆训练' }
+    [pscustomobject]@{ Source='大脑时代课程'; Destination='04_学习力记忆认知\C0404_大脑时代课程'; Note='大脑/学习' }
+    [pscustomobject]@{ Source='大脑训练'; Destination='04_学习力记忆认知\C0405_大脑训练'; Note='大脑训练，后续需筛选可信度' }
+    [pscustomobject]@{ Source='学习资料'; Destination='04_学习力记忆认知\C0406_学习资料_待细分'; Note='泛学习资料，后续二次分类' }
+    [pscustomobject]@{ Source='张宇'; Destination='04_学习力记忆认知\C0407_张宇考试资料'; Note='疑似考试/数学资料，先归入学习力' }
+    [pscustomobject]@{ Source='思维导图教程'; Destination='04_学习力记忆认知\C0408_思维导图教程'; Note='思维导图' }
+    [pscustomobject]@{ Source='多学科模型'; Destination='04_学习力记忆认知\C0409_多学科模型'; Note='跨学科认知模型' }
+    [pscustomobject]@{ Source='知识内化训练营：21天北大学霸科学记忆系统（完结）'; Destination='04_学习力记忆认知\C0410_知识内化训练营'; Note='知识内化/记忆系统' }
+    [pscustomobject]@{ Source='记忆圣经'; Destination='04_学习力记忆认知\C0411_记忆圣经'; Note='记忆方法资料' }
+    [pscustomobject]@{ Source='记忆宫殿'; Destination='04_学习力记忆认知\C0412_记忆宫殿'; Note='知识宫殿相关' }
+    [pscustomobject]@{ Source='万门大学-有趣有料心理学'; Destination='05_心理沟通个人成长\C0501_万门大学有趣有料心理学'; Note='心理学课程' }
+    [pscustomobject]@{ Source='用心理学戒瘾，25天过上自律人生（完结）'; Destination='05_心理沟通个人成长\C0502_用心理学戒瘾'; Note='自律/戒瘾课程' }
+    [pscustomobject]@{ Source='酒局饭桌攻略-成年人必看'; Destination='05_心理沟通个人成长\C0503_酒局饭桌攻略'; Note='社交沟通' }
+    [pscustomobject]@{ Source='KEKE-李兴兴：剪辑实战训练营【已完结】'; Destination='06_影视剪辑音视频\C0601_KEKE李兴兴剪辑实战训练营'; Note='剪辑课程，原片/音效/LUT只链接' }
+    [pscustomobject]@{ Source='Video'; Destination='06_影视剪辑音视频\C0699_Video待识别'; Note='名称不明确，先放影视待识别' }
+    [pscustomobject]@{ Source='《时间简史》（插图本）史蒂芬·霍金 [EPUB+MOBI+PDF]'; Destination='07_书籍PDF通识资料\B0701_时间简史'; Note='通识书籍' }
+    [pscustomobject]@{ Source='四库'; Destination='07_书籍PDF通识资料\B0702_四库'; Note='古籍资料' }
+    [pscustomobject]@{ Source='清华大学出版社2237册图书'; Destination='07_书籍PDF通识资料\B0703_清华大学出版社2237册图书'; Note='大量PDF，后续再按主题拆索引' }
+    [pscustomobject]@{ Source='牛津通识读本'; Destination='07_书籍PDF通识资料\B0704_牛津通识读本'; Note='通识读本' }
+    [pscustomobject]@{ Source='2018年素云vip精英班恋爱课程'; Destination='09_待审核_低可信敏感资料\R0901_素云恋爱PUA课程'; Note='PUA/操控风险，禁止直接进核心知识库' }
+    [pscustomobject]@{ Source='柯李思Chris：曼森方法'; Destination='09_待审核_低可信敏感资料\R0902_柯李思Chris曼森方法'; Note='亲密关系/方法论需审核' }
+    [pscustomobject]@{ Source='美女教你社会工程学系列教程'; Destination='09_待审核_低可信敏感资料\R0903_社会工程学系列教程'; Note='安全/伦理风险，只做安全研究索引' }
+    [pscustomobject]@{ Source='【027】潜意识巨人APE格式完美音质 5.2G'; Destination='09_待审核_低可信敏感资料\R0904_潜意识巨人'; Note='潜意识/音频资料，低可信待审核' }
+    [pscustomobject]@{ Source='七田真'; Destination='09_待审核_低可信敏感资料\R0905_七田真'; Note='全脑/速读类需审核' }
+    [pscustomobject]@{ Source='淘宝热销的全脑速读教程含赠品 视频+PDF+软件+音频'; Destination='09_待审核_低可信敏感资料\R0906_全脑速读教程'; Note='全脑速读/软件包，低可信待审核' }
+    [pscustomobject]@{ Source='术数资料'; Destination='09_待审核_低可信敏感资料\R0907_术数资料'; Note='非核心知识，待审核' }
+)
+
+function Ensure-ParentDir {
+    param([string]$Path)
+    $parent = Split-Path -Parent $Path
+    if (-not (Test-Path -LiteralPath $parent)) {
+        if ($DryRun) {
+            Write-Host "[预演] 新建目录: $parent" -ForegroundColor Cyan
+        } else {
+            New-Item -ItemType Directory -Force -Path $parent | Out-Null
+        }
+    }
+}
+
+$Log = @()
+foreach ($m in $Mappings) {
+    $src = Join-Path $Root $m.Source
+    $dst = Join-Path $Root $m.Destination
+    $status = '待处理'
+
+    if (-not (Test-Path -LiteralPath $src)) {
+        $status = '源不存在，跳过'
+        Write-Warning "源不存在，跳过: $src"
+    }
+    elseif (Test-Path -LiteralPath $dst) {
+        $status = '目标已存在，跳过，需人工合并'
+        Write-Warning "目标已存在，跳过: $dst"
+    }
+    else {
+        Ensure-ParentDir -Path $dst
+        if ($DryRun) {
+            Write-Host "[预演] 移动: $src -> $dst" -ForegroundColor Green
+            $status = '预演成功'
+        } else {
+            Move-Item -LiteralPath $src -Destination $dst
+            $status = '已移动'
+        }
+    }
+
+    $Log += [pscustomobject]@{
+        Source = $src
+        Destination = $dst
+        Status = $status
+        Note = $m.Note
+    }
+}
+
+$logPath = Join-Path $Root '_整理日志_E服务器_原始资料.csv'
+if ($DryRun) {
+    Write-Host "`n当前为预演模式，没有移动任何文件。" -ForegroundColor Yellow
+    Write-Host "确认无误后，把脚本顶部 `$DryRun = `$true 改成 `$DryRun = `$false 再运行。" -ForegroundColor Yellow
+} else {
+    $Log | Export-Csv -Path $logPath -Encoding UTF8 -NoTypeInformation
+    Write-Host "整理完成，日志已保存: $logPath" -ForegroundColor Green
+}

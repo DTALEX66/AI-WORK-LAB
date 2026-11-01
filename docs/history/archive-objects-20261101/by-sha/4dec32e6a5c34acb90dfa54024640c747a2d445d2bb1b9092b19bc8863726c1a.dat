@@ -1,0 +1,225 @@
+# WORK-LAB 云端更新复审报告
+
+审计日期：2026-09-17。对象：DTALEX66/WORK-LAB。方式：只读。
+
+## 结论
+
+当前执行分支已更新，新增通用工作流与合成验收代码，但不是上轮生产缺陷的修复完成版。
+本轮不签收“完整可用”“通用工作流已真实验证”或“可自执行部分质量100%通过”。可以确认代码与设计有增量，且交接文档更明确地区分合成范围和真实外部范围；不能把这些进展扩大为真实运行验收。[S1][S2][S3][S5]
+
+上轮保存的 18 个反例本轮重新执行，全部仍能复现。对应 6 份完整源码重新核对 Git blob 哈希；apps/services 父树未变，snapshot_api.py/handoff.py 另做最新 SHA 元数据核验。
+新增 9 个反例是在已读取的新源码关键方法摘录中隔离执行，**不是完整原模块哈希验证运行，更不是 Windows 实机或全仓 CI**。两类证据分开保存，不能相加后宣称全仓测试覆盖。
+
+## 1. 最新基线
+
+| 项目 | 本轮确认 |
+|---|---|
+| 分支 | `r4-recovery-exec` |
+| 上轮提交 | `7e19fb545c7d9af3ec08427749cd72bff7902287` |
+| 本轮提交 | `f02edd3480d1a35503663e86faab9ec10e7120e6` |
+| 本轮提交时间 | 2026-09-17 00:05:54 UTC |
+| 差异 | ahead 24 / behind 0 |
+| 根树 | `8a19802c0bd93d1e350ff37383688dde7e9c7028` |
+| 对应主 CI | `work-lab-gate` / `35165129133` / success |
+| 主 CI 观察到的 job | 7 个，均 success |
+
+最新提交说明是 CURRENT_STATE 再生成、时间戳变化；不能仅凭这一条摘要推断整个24提交都没有功能增量，也不能把时间戳更新算成功能修复。[R1][R2][R4]
+
+## 2. 新交接文档真正声称了什么
+
+`CLOSEOUT-HANDOFF-20260916.md` 声称：20 张卡、19 个新增模块、23 个 `nf*.py` 测试文件、273/273 全绿。**这是仓库执行者的收口声明，本轮没有独立重跑完整273条，不能冒充独立核验的事实。**[S5]
+
+积极变化：明确写出“设计、代码、合成测试”与真实外部副作用分开；真实第二执行器、第二设备、全局规则部署和 Observer 实时通道没有混称已经完成。durable_inbox 的代码确实引用既有 TaskLedger，方向上是在复用，不应说本轮全是登记没有代码。[S2][S5]
+
+但其“可自执行范围100%完成”的质量判断需要收窄，因为下面的签收、状态恢复与回执问题本身就能在隔离环境验证，不依赖真实付费模型或生产配置授权。
+
+## 3. 上轮哪些部分没有变化
+
+以下8个子树在两次固定提交之间 SHA 完全相同（这是内容未变的依据，不是仅看文件名）：[R3]
+
+| 路径 | 相同子树 SHA |
+|---|---|
+| `.github` | `8975cbc8ea8f66fe692b3e416f9acfe3961ffdb4` |
+| `apps` | `687a0149781cecc553863271cb0aeb40c4e87007` |
+| `services` | `b35fcdaee76c0b41be2421681c3e5a00347d2cea` |
+| `config` | `55e1ef45642754bbe35f9c854cda2eb936ecdf0c` |
+| `integrations` | `6c16bea3a22f0599cf67ee2c31b66dd7cc22d372` |
+| `scripts` | `225d1d719d7bdc7afe5dd1acffe86db2cf8df533` |
+| `projections` | `142f6a37611e2885f25f6c94a4bf011e38c8b4e9` |
+| `.agents` | `dcfbc61c6d2d68e93dd7965cba41a766e304dbf6` |
+
+另外单独核验了仍位于变化中的 packages 子树内的两个旧文件：snapshot_api.py 与 handoff.py 的最新 blob SHA 也分别与上轮保留副本相同。[S6][S7]
+
+本轮没有把 docs 或整个 packages 子树归为“未变化”。没有逐行复核所有分支全部历史，也没有把未审区域算成通过。
+
+### 重跑的主要旧缺陷
+
+| 范围 | 本轮反例仍存在 |
+|---|---|
+| 桌面快照接口 | 完整 endpoint 再追加路径，形成 `/api/v1/snapshot/api/v1/snapshot` |
+| 前端真实性 | 普通 JSON 被当快照接受；UNKNOWN/CANCELLED 显示 success；未知资源补0 |
+| 用量与费用 | 项目总量复制到每个执行；不绑定报价身份的数字金额；混合质量在项目级被抬高 |
+| 项目归属 | 无 Git 观测的项目借用别的项目 Git；过滤项目卡不自动过滤执行/用量数组 |
+| 会话真实性 | 未调用 provider 仍返回 PROMPTED/CLOSED；只取得命令返回 RESUMED |
+| 验收布尔 | 字符串 `"false"` 在 FinalAudit 中使14项通过 |
+| 配置与交接 | 空操作可 COMMITTED；回读异常无恢复终态；安全字段能降级；旧交接跨进程重复与字段值脱敏缺口 |
+
+上述是隔离原函数反例。未声称真实发生过泄露、扣费、全局配置破坏或已跑过 Windows WebView。
+完整结果见 `baseline/results/`、`baseline/previous_audit/reproduction_results.json` 和本轮 `results/*.log`。
+
+## 4. 新增缺陷与证据
+
+### N01 · 通用签收未验证证据句柄
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/universal_signoff.py`，`record_check / MatrixCell / sign_off`。[S1]
+
+用空 handle 和自报 REAL 即可生成 UNIVERSAL_WORKFLOW_VERIFIED。
+
+限定：判定器并未校验证据真实性；不等于已确认真实运行日志造假。
+
+### N02 · 关闭前提仍授予通用完成标签
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/universal_signoff.py`，`sign_off`。[S1]
+
+两个结构性前提设 False 后，没有外部项目或第二执行器仍能授予同一通用标签。
+
+限定：受限范围可以单独通过，但不得保留完整通用标签或声称缺失前提存在。
+
+### N03 · 验收缺少版本隔离与失效机制
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/universal_signoff.py`，`record_check / add_cell`。[S1]
+
+REAL 只能提升不能撤销，后续 NO_EVIDENCE 不改变最终通过标签。
+
+限定：保留历史最强证据本身可以合理；若用于当前版本签收，必须按版本分区并支持撤销，而不是跨版本继承。
+
+### N04 · 已安装被当成真实运行通过
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/universal_signoff.py`，`no_fake_live_pass_for_uninstalled`。[S1]
+
+只传 installed=True，就产生 live_pass=True；没有运行、任务或回读证据。
+
+限定：仅说明安装检测与运行验收被混淆；未在本机执行真实客户端。
+
+### N05 · 收件箱状态文件并发更新丢失
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/durable_inbox.py`，`_AtomicStateFile.read / write`。[S2]
+
+两个并发读改写从同一状态开始，分别添加订阅后，最终只保留一个。
+
+限定：反例覆盖 sibling inbox_state.json，不冒称 TaskLedger 双进程执行抢占已经复现。
+
+### N06 · 损坏临时文件覆盖正常状态
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/durable_inbox.py`，`_AtomicStateFile._recover_orphans`。[S2]
+
+非空但非法 JSON 的孤儿 tmp 覆盖正常文件，随后读取报 JSONDecodeError。
+
+限定：所有文件均为临时测试数据；未操作用户真实任务状态。
+
+### N07 · 旧临时状态回退已提交新状态
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/durable_inbox.py`，`_AtomicStateFile._recover_orphans`。[S2]
+
+恢复逻辑不比较事务/版本，旧的有效 tmp 能把 revision 2 覆盖成 revision 1。
+
+限定：revision 是测试哨兵，当前状态类没有实现版本字段校验；未推断实际线上数据已回退。
+
+### N08 · 回执摘要被忽略导致跨版本误确认
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/durable_inbox.py`，`mark_outbox_delivered`。[S2]
+
+错误 receipt_digest 仍把同 task_id 的两版待发回执全部标为 DELIVERED。
+
+限定：本地已送达状态错误被复现；没有执行真实网络传输。
+
+### N09 · 模拟证据可以用 REAL 标签升格
+
+优先级：P1。位置：`packages/client-neutral-core/scripts/acceptance_evidence.py`，`EvidenceRecord / EvidenceLedger.grade_case`。[S3]
+
+level=REAL、simulated=True、artifact为空的矛盾记录被判 COVERED。
+
+限定：需要拒绝不一致记录，不能只按 level 字符串决定是否为真实证据。
+
+### C01 · 新增测试未进入主门禁收集集合
+
+优先级：P1。位置：`services/orchestration/run_quality_gate.py`，`governance_test_files`。[S4]
+
+收集表达式为 glob("test_*.py")；交接声明的新测试是 nf*.py。
+
+限定：不否认本地手工执行过 273 条；本轮未独立取得这 273 条完整执行记录。
+
+
+### 为什么这些不只是“纯函数不负责执行”的问题
+
+签收判断器可以不联网、不启动软件，这是合理的边界；但它至少应拒绝空证据标识、互相矛盾的模拟标记，并在降低检查范围时降低结果标签。无需让纯策略层自己执行外部动作，也无需新建一个验证平台；把可验证回执由现有采集/执行入口注入即可。
+
+保留历史最佳等级也可以作为历史统计，但“历史曾通过”与“当前SHA、版本、配置与环境通过”必须是两种结果。N03 是当前版本验收能力缺口，不是否定保存历史证据。
+
+## 5. CI 成功的范围
+
+本轮确认主 CI 的 head_sha 与 f02edd3 对齐，7个 job 成功，包括 workflow-assistance、observer、token-monitor 和供应链检查。不能说云端 CI 本轮没有运行。[R4]
+
+但 `run_quality_gate.py::governance_test_files()` 仍只收集 `test_*.py`，新文档列出的23个测试文件使用 `nf*.py`。语法编译/文件存在与执行其断言不同。因此：**主门禁成功，不足以证明这273个新验收用例已进入持续回归**。[S4][S5]
+
+本轮没有可靠保存这273条完整CI执行日志或逐项结果，故不填写虚构的运行次数，也不把“未取得证据”表述成“执行者从未运行”。
+
+最小验证：采用一个显式的测试集合入口，覆盖旧 TestCase 与新 nf 测试；故意破坏一条新模块断言，远端同SHA的必需门禁必须失败；恢复后再通过。不要通过放宽断言或仅改收口文档把问题变绿。
+
+## 6. 本轮验收分层
+
+| 层次 | 判定 |
+|---|---|
+| 云端代码更新存在 | 已确认 |
+| 固定SHA主CI成功 | 已确认，不能替代所有验收层 |
+| 新工作流设计与实现增量 | 存在，可保留；未逐行认证全部19模块 |
+| 文档声称273合成测试通过 | 执行者声明；本轮未独立全量复跑 |
+| 新关键判定/恢复/回执逻辑 | 有已复现缺陷，需修复 |
+| 上轮生产缺陷修复 | 已复核的反例没有消失 |
+| 真实多项目/多设备/第二执行器闭环 | 仍未取得足够证据；文档也没有宣称完成 |
+| 整体产品/通用目标签收 | 不通过本轮签收条件 |
+
+没有新增需要购买模型套餐才能排查的前置条件。本轮所有新反例都只使用临时文件、内存记录和纯函数。真实部署与生产副作用仍需按具体范围授权。
+
+## 7. 最小修复顺序（建议，不是已经执行）
+
+### 第一批：收敛测试入口与完成声明
+先接入缺失的 nf 测试收集，对关键断言运行“故意失败”的负控。把 `273/273` 的证据补成机器可读结果，绑定运行命令、测试ID、提交、环境、失败/跳过数。保留既有测试，不做全仓测试风格迁移。
+
+### 第二批：修新签收与回执
+REAL记录必须带非空且可解析的证据引用；level与simulated矛盾必须拒绝。安装状态只输出安装状态，不输出live_pass。通用标签的结构性前提不得用可选参数关闭后仍保留完整标签。证据按项目、执行器、能力、提交/配置版本、环境、run_id分区，并提供失效/撤销，不将历史最强等级挪作当前通过。
+回执按 task_id + revision + receipt_digest + destination/来源身份精确确认；错误摘要、旧版回执、其他目的地的确认均不得改变待发状态。
+
+### 第三批：修状态文件的并发和恢复
+复用现有批准的锁或事务边界，把读—修改—写作为一个操作保护；不是只把最后一次文件替换做成原子操作。恢复孤儿文件之前验证JSON/结构、事务身份和先后关系，坏文件隔离保留，不覆盖正常已提交状态。用双进程与中途终止测试补证据；本轮线程反例不冒充双进程已验收。
+
+### 第四批：回到上轮未修生产链
+修 endpoint 只拼接一次、实例实际端口透传、快照结构验证、统一状态映射、授权筛选、项目专属Git/CI归属、真实执行级用量与报价来源。
+修旧ACP未执行报完成、配置目标值/回读/恢复终态和旧交接去重。不能只另加一个“正确示例模块”而让生产入口继续调用旧代码。
+
+### 第五批：一个授权明确的真实纵向链
+选择一个客户端、一个受控项目和一项低风险动作，完整走：发布或送达→持久化接收→一次执行→原生run/session→回执→回读→版本匹配验收。必须增加进程真实重启、重复投递、错误摘要、旧版本回传和取消测试。第二执行器、第二设备是后续范围，不阻塞当前本仓纯逻辑修复。
+
+没有授权就不碰真实Home配置或部署；同时不能把本仓逻辑缺陷笼统归因于“缺少外部授权”。
+
+## 8. 覆盖与限制
+
+本轮深入复核的是新签收、证据等级、持久化收件箱/发件箱以及现行测试收集；另通过不可变子树和逐文件blob重新绑定旧反例。没有获取所有远端分支完整可检出的工作区，没有运行完整原生跨客户端流程，没有全量重跑273用例，也没有修改远端仓库。
+
+新反例使用 **源码方法摘录**，不是byte-identical完整模块；旧反例使用 **6份Git blob校验一致的完整源码**。本包没有混淆这两种覆盖等级。对未审阅的新增模块，不作“全部安全”或“全部有问题”的判断。
+
+## 9. 来源索引
+
+- [S1] packages/client-neutral-core/scripts/universal_signoff.py: https://github.com/DTALEX66/WORK-LAB/blob/f02edd3480d1a35503663e86faab9ec10e7120e6/packages/client-neutral-core/scripts/universal_signoff.py
+- [S2] packages/client-neutral-core/scripts/durable_inbox.py: https://github.com/DTALEX66/WORK-LAB/blob/f02edd3480d1a35503663e86faab9ec10e7120e6/packages/client-neutral-core/scripts/durable_inbox.py
+- [S3] packages/client-neutral-core/scripts/acceptance_evidence.py: https://github.com/DTALEX66/WORK-LAB/blob/f02edd3480d1a35503663e86faab9ec10e7120e6/packages/client-neutral-core/scripts/acceptance_evidence.py
+- [S4] services/orchestration/run_quality_gate.py: https://github.com/DTALEX66/WORK-LAB/blob/f02edd3480d1a35503663e86faab9ec10e7120e6/services/orchestration/run_quality_gate.py
+- [S5] taskpacks/current/WORK-LAB-UNIVERSAL-WORKFLOW-TASKPACK-20260916/CLOSEOUT-HANDOFF-20260916.md: https://github.com/DTALEX66/WORK-LAB/blob/f02edd3480d1a35503663e86faab9ec10e7120e6/taskpacks/current/WORK-LAB-UNIVERSAL-WORKFLOW-TASKPACK-20260916/CLOSEOUT-HANDOFF-20260916.md
+- [S6] packages/client-neutral-core/scripts/snapshot_api.py: https://github.com/DTALEX66/WORK-LAB/blob/f02edd3480d1a35503663e86faab9ec10e7120e6/packages/client-neutral-core/scripts/snapshot_api.py
+- [S7] packages/client-neutral-core/scripts/handoff.py: https://github.com/DTALEX66/WORK-LAB/blob/f02edd3480d1a35503663e86faab9ec10e7120e6/packages/client-neutral-core/scripts/handoff.py
+- [R1] 收尾分支读取：https://github.com/DTALEX66/WORK-LAB/tree/r4-recovery-exec；固定提交 https://github.com/DTALEX66/WORK-LAB/commit/f02edd3480d1a35503663e86faab9ec10e7120e6。
+- [R2] 比较：https://github.com/DTALEX66/WORK-LAB/compare/7e19fb545c7d9af3ec08427749cd72bff7902287...f02edd3480d1a35503663e86faab9ec10e7120e6。
+- [R3] Git树：`4c78fdd4b9100efc06e627c4bc8f88f954cca9a8` 与 `8a19802c0bd93d1e350ff37383688dde7e9c7028`；筛选后元数据保存于 remote_snapshot.json，不冒称完整原始REST响应。
+- [R4] 主CI：https://github.com/DTALEX66/WORK-LAB/actions/runs/35165129133；对应job列表通过GitHub连接器读取。
+
+本报告的审计判定是基于以上源码和本包反例的技术分析，不是仓库执行者自评的改写。

@@ -1,0 +1,487 @@
+# WORK-LAB｜本次对话收敛与深度调研报告
+
+研究日期：2026-10-09。范围仅 WORK-LAB，AAOS 仅作为未来知识交换边界。
+性质：产品与技术研究建议，不是新的仓库顶层权威，不授权部署、安装、修改客户端、合并 PR 或迁移知识。
+
+## 0. 证据范围
+
+本次重新读取的云端 main 为 `cd4daa83e107afab8438c0e85f63a10e75314d5a`；PR #162 的开发头为 `a8f9fb9745e14209ff675ef23d6bbcb083f5c6ed`，仍开放。代码判断绑定开发头，不冒充 main 已交付或本机已安装。
+读取了定位、快照计量和总览等相关代码；本报告不声称全仓审计、全部 CI 复跑或 Windows 实机验收完成。第三方资料是检索时官方文档/维护者资料，不自动代表用户安装的版本。
+另执行了一个使用合成输入的函数级最小复现，见 `reproduce_usage_quality.py` 与结果 JSON；它不是仓库测试套件。
+
+## 1. 全部对话的最终解释
+
+### 1.1 用户明确提出并应保留的要求
+
+WORK-LAB 要能观察实际使用的外部 AI 软件：哪个软件的哪个会话在处理哪个项目，当前活动、等待、失败、重复报错和停止情况；观察插件、技能尤其个人能力资产的部署与实际调用；统计项目、软件、模型、会话的 Token 与可获取的缓存信息；统一用户的规则与能力配置并做原生中立适配。执行项目任务的是其他 AI 软件。
+未来可发展跨软件、跨项目、跨平台治理。知识类内容与长期知识/记忆权威归 AAOS；WORK-LAB 不建设第二知识库。当前研究不展开其他项目本体。
+
+### 1.2 本次对话里需要撤回或降级的助手建议
+
+1. 三项目全部发布和联动，不是 WORK-LAB 独立发布的前置条件。
+2. 必须由 WORK-LAB 创建、派发、审批所有业务任务，不符合本轮 clarified scope；这类能力保留未来参考。
+3. “Control Surface 完全不存在”不适用于已检查的开发分支；先前已读到薄控制壳和服务。但其存在不能证明全部业务动词已接通。
+4. 页面数、提交数、门禁数、主观 2.5/5 不作为完成率。改用真实场景与证据范围。
+5. Observer 不得改变业务事实，不等于不能搜索、复制、排序、筛选、展开、导出经授权的观测副本或调整界面偏好。
+6. 不伪造状态，不等于必须把 UNKNOWN、哈希、内部契约名铺满首屏。
+7. “八个深化能力”是场景组织，不是新建八个产品、八个服务或八个菜单。
+8. 既有资料可保留历史，不意味着每一份旧蓝图都仍是当前派工义务。
+
+### 1.3 建议身份
+
+WORK-LAB 是软件中立、本地优先的 AI 工作观测与配置治理工作台。
+对用户的承诺：不用改变在原生软件里工作的方式，也能看清工作归属、当前异常、能力使用与消耗，并可靠地管理自己的运行规则。
+不是通用 Agent Runtime、IDE、模型网关、通用任务管理器、第二知识库或所有 SaaS 的万能读取器。
+
+## 2. 用准确的概念替换容易误导开发的描述
+
+| 直观说法 | 工程上应表达为 | 不得推断 |
+|---|---|---|
+| 软件在工作 | 运行实例中的某会话/轮次有已确认活动 | 有进程就正在执行 |
+| 项目停止 | 当前被观测执行已结束，或暂未观测到活动 | 项目已取消、已完成、已放弃 |
+| 项目受阻 | 会话等待、明确失败或基于规则的疑似停滞 | 无日志=任务失败 |
+| 实时 | 区分事件发生、源端发出、接收、界面展示时间 | 每秒刷新=每秒获得真实事实 |
+| 技能被用了 | 发现、加载、激活、工具动作、结果分别记录 | 装了/读过/提到=有效使用 |
+| 插件技能 | 区分插件包、Skill、MCP Server、Tool、Hook、规则、适配器 | 用工具名替代所有资产身份 |
+| 我的能力 | 原创、定制、收藏受管、内置分别标记 | 受管=原创 |
+| 缓存命中 | 明确是提供方 Prompt Cache，还是其他缓存 | 上下文压缩率/显存KV=账单缓存命中 |
+| 中立治理 | 统一意图、原生投影、能力差异可见 | 一份提示词能强制所有模型遵守 |
+| 记忆共享 | AAOS 发布的带来源、范围、版本的知识引用 | 自动汇总所有私人会话 |
+
+## 3. 产品合理性与市场对照
+
+这个方向不是无人覆盖的空白。Langfuse 已有 coding-agent tracing，ccusage 有多客户端本地用量读取，Ruler 有规则与 MCP/技能分发，Agent Skills/skills CLI 提供格式与安装生态。[S13-S18]
+因此，不建议重建它们全部已有的通用能力。WORK-LAB 的差异应来自“同一项目关系贯穿状态、问题、个人能力、用量和配置生效”，并且在你的 Windows 原生环境里降低切换与维护成本。
+
+| 参考 | 可复用/借鉴 | 不应直接照搬 |
+|---|---|---|
+| OpenTelemetry | 遥测接入、关联、队列、标准字段 | 协议能自动识别项目或提供所有字段的假设 |
+| ccusage | 日志口径、边界用例、JSON 结果、对账基准 | 同时保留两个独立消费总账；将估算费用当真实扣款 |
+| Langfuse | 会话时间线、请求/工具钻取 | 默认采集完整会话；首版强制部署全套服务栈 |
+| Ruler | 原生配置映射、dry-run、备份思路 | 叠加第二配置写者；覆盖用户修改；用文本拼接替代权限 |
+| skills CLI/Agent Skills | 格式、包清单、兼容性与发现 | 排行榜安装量当运行次数或效果；把 allowed-tools 当跨软件强制权限 |
+| Grafana/Alertmanager | 从对象钻取、过滤、问题归并与静默 | 把大型运维平台所有页面搬入个人工作台 |
+
+Langfuse 的自托管架构含事务库、分析库、缓存和对象存储等多项基础设施。[S15] 本报告建议先做可选导出与设计参照，而不是要求其成为 WORK-LAB 的运行前置。是否复用具体代码须再核对所选版本与许可；本轮未安装任何上述项目。
+
+## 4. 客户端接入矩阵：官方可用路径 ≠ 本机完成
+
+| 软件/形态 | 本次查到的原生依据 | 重要限制 | 接入建议 |
+|---|---|---|---|
+| Codex | OTel 请求、流、工具决策和结果，部分完成事件的 Token [S01] | CLI/IDE/桌面/云端范围不能混同；导出可能批处理；工具片段可能敏感 | 现有适配优先复用，验证直接原生启动也采到 |
+| Hermes | Observer Hooks；请求、工具、子任务和辅助调用分开 [S03] | 标题、压缩等不一定走主请求事件；关联字段按 Hook 可缺 | 先采真实样本，明确主链与辅助链去重 |
+| Qoder | Qoder/CLI Hooks 覆盖会话、工具、权限、目录、配置、指令加载 [S04-S05] | Credits 是账户计量；文档没有替本机证明完整逐请求Token；async Hook 结果可能影响后续上下文 | 运行观察可以优先试点，用量按可获取单位如实显示 |
+| DSH | 类型化会话事件、状态、序列与插件扩展 [S07-S08] | 开发者预览；格式与形态须固定；fork/replay 历史不能再计为新请求 | 小型版本化观察插件，不 fork 运行时 |
+| Claude Code | OTel 会话、请求、工具和 skill_activated [S02] | 自定义技能名默认可能只报告 custom_skill；提高明细同时影响隐私 | 对照适配；未启用明细时显示身份被隐藏 |
+| Cursor | 原生 Hooks 与 workspace/session/tool 事件 [S09] | 桌面/CLI/云端须分别验收；context_tokens 不等于累计Token | 先状态与工具，完整用量另行资格验证 |
+| VS Code Copilot | 官方 OTel 请求/工具/模型计量与独立内容采集设置 [S10] | Local harness 与其他 agent-host 形态支持并不相同 | 良好的标准对照，不要求用户换软件 |
+| OpenCode | 插件提供项目/worktree，session/tool/message 事件 [S12] | 并非所有 message 更新都是新的计量事件 | 后续适配；按请求身份消除重复 |
+| Gemini CLI | OTel 与文件导出、工具与计量事件 [S11] | telemetry 总开关与 logPrompts 开关分别处理；认证形态影响可见信息 | 后续适配；先审字段再启用 |
+| 纯网页/托管软件 | 仅限经验证的官方导出/API/连接方式 | 没有通用旁观入口；MCP 接入不等于看到网页全部活动 | 可有限显示，禁止抓私密浏览器状态填空 |
+
+覆盖能力应绑定 software+version+surface+auth_mode+adapter_revision+enabled_fields。不要只有“deep support”一个总标签。用户常用的 Hermes/Codex/Qoder/DSH 应优先盘点；实现第一批只选两个已具备可用样本的客户端，其他保留有限观测。
+
+### 4.1 标准边界与更新发现
+
+OpenTelemetry 是信号传输/语义基础；ACP 是客户端与 Agent 的会话交互；MCP 是工具与上下文集成；Agent Skills 是能力包格式。它们不是相互替代的“万能协议”。[S18,S21-S25]
+MCP 2026-07-28 变更已将 Logging 等列入弃用；OTel 的 GenAI 语义资料已迁到独立仓库。[S21-S25] 因此，固定适配器版本并映射到 WORK-LAB 的小型内部事件模型；不要将已安装旧客户端强行升级为最新协议，也不要把旧 MCP Logging 作为新增主链。
+
+## 5. 当前源码已经确认的关键差距
+
+### 5.1 主线与首页不一致
+
+`apps/observer/frontend/src/views/OverviewView.tsx` 的显著操作仍是禁用的“新建执行”和“导出状态”；趋势图用空数组。对最新定位，应移走无用占位，不必先完成派发系统才能使首页成立。
+
+### 5.2 项目摘要单软件化
+
+`packages/client-neutral-core/scripts/snapshot_api.py::_live_agent_platform()` 选出一个活跃/最近软件，投影为单个 agentPlatform。底层执行列表仍在，但摘要不足以说明同项目多软件多会话。应投影关联集合与状态分布。
+
+### 5.3 用量质量不一致
+
+同文件 `_rollup_usage()` 遇到一个 EXACT 就能把项目总计置为 EXACT；总体 `_token_summary()` 按另一口径处理。最小合成反例：100 EXACT+50 ESTIMATED，两处总量都是150，但项目显示 EXACT、总体显示 ESTIMATED。EXACT+UNKNOWN 也不一致。见包内脚本与输出。
+修复应采用共同的字段级精度/完整性规则，不应只把项目标签强制改成“全部未知”而丢掉可用的精确子集。
+
+### 5.4 快照缓存出口不足
+
+当前主要 token 汇总只有 input/output/total/costQuality；未表达缓存读取、创建、计量范围及覆盖。不能据此断言全仓没有缓存采集，但此出口不能完整支持缓存面板。
+
+### 5.5 长期知识与执行资产分流需要明确
+
+本次对话已读取的 config-ownership 机制包含客户端新增技能内容折回。不能继续将“文本追加”视为可全局生效。保护变化和生成差异保留；知识候选转 AAOS；脚本/配置变更走原有资产评审。
+
+### 5.6 交付分支的范围需要控制
+
+PR #162 此次读回为453提交、1081变更文件；这不是完成率或代码质量结论，而是审查与集成批次过大的风险。冻结当前头，按可验证功能切片梳理；不可为了小PR形式任意 cherry-pick 破坏依赖，也不直接把整包视为已发布。
+
+## 6. 目标模型：一个产品，四条主线，两项保障，一个知识连接
+
+四条主线：运行观测与问题诊断；个人/第三方运行能力资产；用量缓存与效率；中立规则、配置与更新影响。
+两项保障：观测自身的可靠性；隐私、权限与字段边界。
+一个知识连接：AAOS 候选交换、发布知识引用与失效反馈。
+
+不扩展为通用任务调度、完整聊天客户端、IDE、GPU调度器、知识库或统一强制网关。
+跨项目/软件治理先做事实关联、冲突风险、配置影响与问题归并，不必立即取得所有执行器控制权。
+
+## 7. 最小关联与状态设计
+
+### 7.1 标识关系
+
+设备→软件安装实例→运行实例→会话→轮次→模型请求/工具调用；项目、工作区/worktree和能力资产通过关系关联。
+只引入当前需求必需字段，优先扩展现有 schema，不要求按每个名词创建新服务。运行实例要能避免PID复用混淆；会话ID按设备/客户端命名空间隔离。项目身份不能只凭名称或Git远端URL；非Git设计项目与多目录工作区必须可登记。
+
+关联有来源、时间、适用范围与确认状态。运行在哪个项目、访问了哪个目录、费用归给哪个项目分别表达。每条请求的费用只能记一次：默认一个明确主归属，其他项目为关联；未知放未归属。以后若分摊，份额之和必须守恒，且原始计量不改写。
+
+### 7.2 三轴状态
+
+工作：启动/运行/等待用户/空闲/本轮结束/取消/失败。
+健康：正常/重试/重复失败/疑似停滞。
+观测：实时接通/延迟/断开/有限/不支持。
+
+项目状态由子会话事实汇总：同一项目可以同时有运行与受阻会话。Stop/turn_end 是轮次边界，不代表软件退出或项目完成；窗口关闭也未必等于后台任务停止。只有原生已确认事件或用户确认才能提升相关结论。
+
+### 7.3 实时与历史
+
+记录 event_time、emitted_time（源支持时）、received_time 与 UI 显示时点。OTel批处理或结束后导出不能靠增加前端刷新率修复。[S01,S34]
+排序以来源序列和因果身份为优先，时间戳辅助；跨设备时钟差需标记。源没有序列时声明排序限度。重启、文件轮转、重试上传、fork/replay都必须避免重复计量。
+
+### 7.4 覆盖率不是猜测
+
+可显示：已登记客户端中哪些能力可见；在已观察请求中有多少包含计量字段；指定测试集的事件到达情况。
+不可显示：没有全体请求基准却声称“全局已采集98%”。未接入的活动数量可能不可知；隐私不采集也是独立原因，不与软件不支持混写。
+
+## 8. 用量合同
+
+Token、费用、Credits/订阅额度、资源占用各有单位，不相加，不相互伪造换算。来源账单、客户端报告、估算费用三者保留身份。
+
+每条可计量记录记录：原生请求/尝试身份；source_unit；request/session/account作用域；delta/cumulative模式；请求模型与实际模型；普通输入、总输入、缓存读/写、输出以及reasoning子集；精度、完整性、归属和来源版本。
+不要求源没有的字段。完整总数不能由缺失字段填零构造；不把先估算与后实报计两次。
+
+OpenAI当前文档把缓存明细作为总输入的组成部分；Anthropic普通input不含缓存读写，需要相加得到总输入。[S19-S20] 适配器按provider/API/version映射，前端不再自行解释。
+
+缓存输入占比 = 同口径范围内Σ缓存读取输入 / Σ完整总输入。
+请求命中率 = 可判断缓存的请求里，缓存读取大于0的请求数 / 可判断的请求数。
+不平均各会话百分比，不把缓存写入当命中，分母为零显示不适用。不同提供方单独可比较，汇总必须带范围。
+
+主请求与标题、压缩等辅助请求都属于可见的软件消耗，但各自分组；父会话包含子会话累计值时不能再与子项相加。[S03]
+同一请求关联多个技能不代表每个技能独占该请求成本；未知归因不强分。失败请求是否收费按来源说明，不一概计费或不计费。
+
+## 9. 能力资产与AAOS
+
+资产类型：插件包、Skill、工具、MCP服务、Hook、规则包、适配器；通过contains/depends_on/installed_as等关系关联，不混成一张“技能名”列表。
+来源标签：原创、定制、收藏受管、第三方、内置；所有权和管理权分开。
+
+生命周期：登记→发现/部署→加载→显式激活→可关联操作→结果/验收。一个证据不抵扣后一个；运行时隐藏名称就显示“身份隐藏”，不能通过读取全部会话来偷偷补齐。[S02,S18]
+
+AAOS拥有知识语义、核验、学习和长期知识状态。WORK-LAB拥有运行事实、配置发布、能力部署映射、调用反馈和交换回执；外部源码仍归原项目。混合技能包以清单和引用保持可运行，不为资产分工破坏相对路径。
+
+交换只做：候选提交、发布版本读取、修订/撤回通知、使用反馈。接收ACK不等于知识审核通过；知识发布也不是执行授权。候选暂存有界；无需等待AAOS在线才能完成监测。过期快照标记，撤回内容的后续使用按政策阻止或等待确认，不静默替换正在运行会话。
+
+## 10. 治理与安全重新分层
+
+建议区分三个动作级别：
+- 观察：读取已授权来源的必要元数据，不改变任务。
+- 建议：问题解释、变更计划、打开原生入口，由用户决定。
+- 受管执行：仅在明确范围内应用自己的规则/技能配置、恢复自己发布的版本。
+
+未来原生取消/重启/切模型等单独资格化，不能默认包含在监测授权中。
+
+规则统一意图不统一字节。需显示“生成/写入/加载/样例行为验证”，硬性限制由原生权限或可验证守卫承担，Prompt guidance不能包装成不可绕过强制治理。Agent Skills allowed-tools仍有实现差异。[S18]
+
+采集接线须证明非侵入：不使用prompt/agent Hook来做普通日志转发；不输出会注入下一轮的文本；不自动唤醒模型；不等待远端报告服务。Qoder 的 async/asyncRewake 就必须按具体语义处理，不能仅因叫异步就假定行为不变。[S05]
+
+本地loopback不等于所有请求可信。Tauri命令有细粒度能力限制，写服务校验来源、范围、版本与幂等身份；不必建立企业账户平台，但也不能取消基本鉴权。遥测是源报告事实，不是防本机所有恶意进程的不可篡改审计。[S33]
+
+元数据也可能敏感：项目路径、技能名、错误消息、工具参数。默认只保留业务所需字段；原始可识别正文不自动落盘/上传。主动诊断另设范围与保留政策。Gemini的logPrompts、Claude的工具明细、Codex工具片段应分别审查，不用一个全局“关闭prompt记录”假定全部安全。[S01-S02,S11,S28]
+
+## 11. 运行结构与部署
+
+保持现有React/TypeScript/Vite、Tauri/Rust和Python控制/适配层；不全仓换语言。[仓库定位文件]
+
+外部AI软件
+→ 原生OTel/Hooks/受支持结构化日志
+→ 本地采集适配（字段白名单、快速返回、有界缓冲）
+→ 现有WORK-LAB数据核心（身份关联、事件去重、用量、问题、能力与配置状态）
+→ 查询/详情/增量更新
+→ 一个桌面UI；同一前端可提供本地浏览器兼容入口，不再复制另一套UI。
+
+既有观测存储与受管配置事实按职责管理，可共享现有数据库或分表；“一个真源”不等于不允许缓存和查询投影。不要复制原软件的私有数据库，也不强制把观测记录变成WORK-LAB自己的业务任务。
+OTLP用成熟实现或经过验证的可选Collector，不手写半套协议；不要求同时安装Kafka/ClickHouse/Redis/向量数据库。需要外部高级分析时按同一出口导出，不能另起费用真源。
+
+窗口与采集进程解耦：关窗口可以继续采集；明确退出采集后软件照常工作。仅在有源端缓冲/可读取历史时能补齐关闭期间数据，否则显示缺口。[S26-S27]
+
+建议验证资源开销，但在本机测量前不给“只有几十MB”“绝不占CPU”等承诺。常态观测不调用LLM。记录空闲CPU、工作峰值、内存、日增长、丢弃数和查询延迟，以用户机器作为验收基准。
+
+## 12. 界面收敛
+
+五主导航：实时总览；项目与软件；插件与技能；用量与缓存；规则与适配。
+全局工具：搜索、时间范围、软件/项目筛选、观测质量、设置。问题中心、历史、证据放详情，不全部升级一级导航。
+
+### 12.1 实时总览
+
+上方：运行、待处理、异常、观测缺口四类摘要。主区：可按项目/软件切换分组的会话列表。列：项目、软件/会话、活动、原因、最近进展、能力、已报告用量、更新时间。
+右侧详情：这条会话/问题的时间线、证据与下一步。按钮主要是打开原软件、定位工作区、查看原因、处理自己的配置。不要放一直禁用的新建执行主按钮。
+
+### 12.2 必须有的产品行为
+
+首次使用：发现已授权软件→选择字段→预览将写的监测配置→触发一条低风险真实活动→确认能见到→进入日用。
+错误和离线不锁死全部页面。单适配器异常不隐藏其他软件；保留last-good并带时间。区分无数据、不支持、未连接、隐私隐藏。
+支持保存筛选、深链、键盘与正确空态。暂停实时滚动与停止采集是两个控制；新事件不抢焦点、不改变选中的记录。状态色有文字，通知归并而非刷屏。[S29-S32]
+
+### 12.3 视觉与验收
+
+保留已确认品牌与专业紧凑风格；统一实际消费的Token来源，不永久锁死原型CSS。字号、密度、对比度、DPI应在真实Windows窗口测，不以静态CSS和无溢出断言代替视觉验收。
+本次未生成或实测Windows截图；上述是交互与实现建议，不是已完成的视觉修复。
+
+## 13. 深化能力与优先级
+
+P0：外部原生启动可观测；正确项目/会话关联；三轴状态；计量守恒/缓存口径；个人资产映射；自己的规则实际生效；数据最小化；安装重启可靠。
+P1：故障归并；更新前后兼容检查；规则和技能版本影响；共享资源异常；配置漂移恢复；采集自身健康。
+P2：跨设备聚合、更多客户端；协作式交接；AAOS发布知识交换；可选外部分析导出。
+Future：通用派发/编排、重型workspace、广泛主动控制。已存在能力保留，但不拖住首版。
+
+采用“未证据支持→不声称”的原则，同时保证正向路径：已配置、已授权、原生支持的正常操作必须真实成功。不要只增加拒绝路径测试。
+
+## 14. 五个实施切片
+
+1. 范围对账：把旧任务映射为保留/调整/延期/退出首版；不新建平行权威或强制删除历史。冻结被审开发头并确认当前写者。
+2. 双软件观测切片：从Hermes/Codex/Qoder/DSH中按已安装版本与样本选择两个；真实外部启动，多项目与多会话不串。
+3. 同批会话的计量与能力切片：一套去重规则，一个用量出口；技能身份与来源绑定，隐私隐藏明示。
+4. 配置治理与界面切片：五入口收敛，一条真实受管非敏感规则变更走差异/应用/加载/回读/恢复；运行观测不需要先接业务派发。
+5. 发布验收切片：固定版本、安装态、故障与恢复、最小用户指引；通过列明的场景即可发布范围清晰版本，不等所有未来PR关闭。
+
+每片由一个主写者负责相关契约和代码；其他Agent只读审计或在隔离worktree处理无冲突范围。别让多个软件同时修改同一主检出或自行“全局修绿”。
+
+## 15. 验收原则
+
+详细用例见 `acceptance_cases.md`。必测：原生启动即观察、同软件跨项目/同项目跨软件、停止与等待区分、技能各生命周期、计量跨源守恒、缓存口径、重复/乱序/重启、配置三方冲突、客户端更新、隐私canary、采集器故障不影响外部任务、AAOS离线不阻塞。
+
+“实时”首先报告实测延迟分解。可以为受控本机测试提出“采集器收到事件到可见UI的P95≤2秒”的工程目标，但这不是跨客户端源端时延保证，也不是本轮达成的结果。源仅在结束时导出，必须标识事后可见。
+
+完成定义：你照常在外部软件工作；WORK-LAB能把活动、原因、能力和用量关联起来，并安全管理自己的运行配置。不是替你执行了一个通用任务，也不是证明所有软件和未来功能都已完成。
+
+## 16. 仍未取得的证据
+
+未取得本机各客户端当前完整事件样本、采集开销、端到端时延、费用账单对账、Qoder逐请求Token导出证据、所有客户端个人技能精确身份、Windows实际像素/DPI/IME测试及同SHA发布验收。本报告不把这些缺口写成产品必然无法实现，也不把官方文档写成用户本机已集成。
+
+## 17. 来源索引
+
+索引见 `research_sources.json`。以下为同一索引的可阅读形式；日期统一为2026-10-09检索时点。
+
+### S01｜OpenAI — Codex advanced configuration
+
+来源：https://developers.openai.com/codex/config-advanced/
+
+用途：原生 OTel 事件、异步导出、工具事件；文档能力不等于本机版本已接入。
+
+### S02｜Anthropic — Claude Code monitoring
+
+来源：https://code.claude.com/docs/en/monitoring-usage
+
+用途：会话/请求/技能事件；自定义技能名默认受隐私设置限制；缓存字段口径。
+
+### S03｜NousResearch — Hermes Observer Hooks
+
+来源：https://hermes-agent.nousresearch.com/docs/developer-guide/observer-hooks
+
+用途：轮次、请求、工具与辅助调用分开，观测与行为修改分开。
+
+### S04｜Qoder — Qoder Hooks
+
+来源：https://docs.qoder.com/qoder/hooks
+
+用途：会话、工具、权限、工作目录、配置、指令加载事件；磁盘配置不等于加载。
+
+### S05｜Qoder — CLI Hooks
+
+来源：https://docs.qoder.com/cli/hooks
+
+用途：命令/HTTP等 Hook 的输入与运行语义；异步结果可能进入后续上下文。
+
+### S06｜Qoder — CLI usage
+
+来源：https://docs.qoder.com/cli/usage
+
+用途：Credits 与账户周期信息、API/墙钟时间；未据此证明有完整 Token 导出接口。
+
+### S07｜DeepSeek — DeepSeek Harness overview
+
+来源：https://www.deepseek.com/harness/en/
+
+用途：DSH 的官方身份与开发者预览边界。
+
+### S08｜DeepSeek Harness — Session subsystem
+
+来源：https://deepseek-harness.github.io/deepseek-harness/en/reference/subsystems/session
+
+用途：类型化 session/event、序列、运行状态；失败尝试和继承历史的计量边界。
+
+### S09｜Cursor — Hooks
+
+来源：https://cursor.com/docs/hooks
+
+用途：会话/工具/工作区事件；上下文占用不是累计消费。
+
+### S10｜Microsoft — Monitor agent usage with OpenTelemetry
+
+来源：https://code.visualstudio.com/docs/agents/guides/monitoring-agents
+
+用途：Copilot 请求/工具/用量、内容与身份采集设置；harness 范围差异。
+
+### S11｜Google — Gemini CLI telemetry
+
+来源：https://geminicli.com/docs/cli/telemetry/
+
+用途：OTel、文件输出、工具数据；logPrompts 默认值需单独检查。
+
+### S12｜OpenCode — Plugins
+
+来源：https://docs.opencode.ai/docs/plugins/
+
+用途：项目与 worktree 上下文，session/tool/message 事件。
+
+### S13｜ccusage — Product and guide
+
+来源：https://ccusage.com/guide/
+
+用途：本地用量读取、JSON 输出、估算费用；适合作对账和选择性复用。
+
+### S14｜Langfuse — Coding-agent tracing
+
+来源：https://langfuse.com/resources/engineering/coding-agent-tracing
+
+用途：现有同类编码软件观测、Hook 和原生导出路径；并非市场空白。
+
+### S15｜Langfuse — Architecture
+
+来源：https://langfuse.com/handbook/product-engineering/architecture
+
+用途：自托管包含 Postgres/ClickHouse/Redis或Valkey/对象存储等。
+
+### S16｜intellectronica — Ruler
+
+来源：https://github.com/intellectronica/ruler
+
+用途：规则/MCP/技能分发、备份、dry-run；不应叠加第二写者或照搬覆盖行为。
+
+### S17｜Vercel Skills — Skills documentation
+
+来源：https://www.skills.sh/docs
+
+用途：排行榜的安装遥测不等于本机运行调用和效果。
+
+### S18｜Agent Skills — Specification
+
+来源：https://agentskills.io/specification
+
+用途：包结构、渐进加载、allowed-tools 实验性；仅元数据不是安全或效果保证。
+
+### S19｜OpenAI — Prompt caching
+
+来源：https://developers.openai.com/api/docs/guides/prompt-caching
+
+用途：总输入及缓存明细；按具体接口和模型分辨字段。
+
+### S20｜Anthropic — Prompt caching
+
+来源：https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+
+用途：普通输入+cache read+cache creation=总输入。
+
+### S21｜OpenTelemetry — GenAI semantic conventions migration
+
+来源：https://opentelemetry.io/docs/specs/semconv/gen-ai/
+
+用途：规范迁移到独立仓库，不应继续把旧页面视为维护中的唯一真源。
+
+### S22｜OpenTelemetry — GenAI semantic conventions repository
+
+来源：https://github.com/open-telemetry/semantic-conventions-genai
+
+用途：采用标准字段需绑定版本并保留适配映射。
+
+### S23｜Agent Client Protocol — Protocol overview
+
+来源：https://agentclientprotocol.com/protocol/v1/overview
+
+用途：会话交互协议；不能自动旁观所有外部已运行会话。
+
+### S24｜Model Context Protocol — Specification
+
+来源：https://modelcontextprotocol.io/specification/2026-07-28
+
+用途：工具与上下文集成，不是全软件遥测总线。
+
+### S25｜Model Context Protocol — Key changes
+
+来源：https://modelcontextprotocol.io/specification/2026-07-28/changelog
+
+用途：Logging 等功能已进入弃用状态；不应新建以它为核心的观测链。
+
+### S26｜OpenTelemetry — Collector resiliency
+
+来源：https://opentelemetry.io/docs/collector/resiliency/
+
+用途：缓冲、重试、持久化与仍可能丢失的边界。
+
+### S27｜OpenTelemetry — Collector internal telemetry
+
+来源：https://opentelemetry.io/docs/collector/internal-telemetry/
+
+用途：采集器自身接收/拒绝/积压/失败/资源指标。
+
+### S28｜OpenTelemetry — Handling sensitive data
+
+来源：https://opentelemetry.io/docs/security/handling-sensitive-data/
+
+用途：最小化采集、字段处理与隐私边界。
+
+### S29｜Prometheus — Alertmanager
+
+来源：https://prometheus.io/docs/alerting/latest/alertmanager/
+
+用途：归并、去重、静默、抑制；机制借鉴而非首版强制部署。
+
+### S30｜Grafana — Logs Drilldown
+
+来源：https://grafana.com/docs/learning-hub/explore-your-data/02-logs-drilldown/09-what-is-logs-drilldown/
+
+用途：从概览到对象到日志的渐进钻取参考。
+
+### S31｜Microsoft — Navigation basics
+
+来源：https://learn.microsoft.com/en-us/windows/apps/design/basics/navigation-basics
+
+用途：围绕用户路径和内容关系组织导航。
+
+### S32｜W3C WAI — Status messages
+
+来源：https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html
+
+用途：动态状态应可感知，不依赖强制移焦点。
+
+### S33｜Tauri — Capabilities
+
+来源：https://v2.tauri.app/security/capabilities/
+
+用途：原生能力权限边界；样式/DOM 检查不是授权控制。
+
+### S34｜OpenTelemetry — Trace SDK
+
+来源：https://opentelemetry.io/docs/specs/otel/trace/sdk/
+
+用途：Span 处理/导出时机；完成追踪与实时活动不是同一层。
+
+### S35｜LiteLLM — Spend tracking
+
+来源：https://docs.litellm.ai/docs/proxy/cost_tracking
+
+用途：网关侧计量参照；并不自动获得绕开网关的原生软件活动。
+
+## 18. 仓库证据路径
+
+仓库：DTALEX66/WORK-LAB。
+主要读取路径：WORK-LAB-AUTHORITY.md；packages/client-neutral-core/scripts/snapshot_api.py；apps/observer/frontend/src/views/OverviewView.tsx；PR #162 metadata；main ref。
+前文已读到且本报告用于上下文的路径：apps/control-surface/；services/control/control_service.py；config/adapter-registry.json；config/config-ownership.json；apps/observer/frontend/src/lib/viewRegistry.ts；相关只读边界与设计合同。
+运行资产、用户凭证、私有会话与本机文件未在本轮进行实际读取或修改。
+
+结论：把“执行统一”降为未来，把“观测与配置的关联准确性”升为主线。保留复杂底座可以，但不能继续要求用户理解全部内部治理语言才能使用软件。

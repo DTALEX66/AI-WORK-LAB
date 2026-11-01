@@ -40,7 +40,31 @@ Windows 上本仓自带解释器在 `.venv\Scripts\python.exe`；把它替换掉
 | 阻断与延期 | `config/blocker-register.json`、`migration/deferral-register.json` |
 | 逐轮实测与独立复审入口 | `docs/CODEX-AUDIT-ENTRY.md` |
 
-这些表由 `scripts/build_*.py` 生成，数字一律现算，不手抄。
+这些表由 `scripts/` 下的 `build_…` 生成器现算，数字一律现算，不手抄。
+
+## 仓库布局（顶层每个目录都在这张表里，检查器会守住这条）
+
+| 目录 | 是什么 | 属于 |
+|---|---|---|
+| `backend/` | 融合组合根：统一信封 + 兼容面委托 | 现行代码 |
+| `packages/` | 跨域公共合同与能力内核（`contracts` / `capabilities` 等） | 现行代码 |
+| `domains/` | 两个域的现行实现：`work/`（WORK 工作循环）与 `design/`（DESIGN 设计智能，含随包资源） | 现行代码 |
+| `design-lab/` | DESIGN-LAB 时期的 `config/` 与合同文件（含重建模型注册表等运行期读取的配置），不是整仓副本 | 现行配置，历史外形 |
+| `integrations/` | 外部工具与宿主 Adapter 的连接面 | 现行代码 |
+| `apps/` | `workbench` 兼容壳与品牌件（STITCH 前端**未做**） | 现行代码（壳） |
+| `scripts/` | 生成器、验收门、探测、隔离安装、顶层防漂移检查 | 现行代码 |
+| `config/` | 阻断登记、适配器注册表等机器可读配置 | 现行配置 |
+| `tests/` | 统一面套件 `tests/unified` 与迁移来的一般回归 `tests/legacy` | 现行测试 |
+| `migration/` | 全部去向/验收/能力/路由寄存器（由生成器写，不手改） | 登记 |
+| `research/` | 迁入的研究资料与 `RESEARCH-INPUTS.json` 合同 | 登记资料 |
+| `docs/` | 审计入口、当前状态、`authority-202610/` 置顶原件、`history/` 历史与归档区 | 文档 |
+| `vendor/` | 随包第三方件 | 惰性第三方 |
+| `workspace/` | 运行期工作区（被 Git 忽略，本机数据） | 运行产物 |
+| `AI-WORK-LAB_HANDOFF_20261029/` | 本轮任务包原件（逐字节入仓、逐份摘要登记） | 历史原件 |
+
+一条口径：`docs/history/sources-20261101/` 与 `docs/authority-202610/` 里的是**来源仓历史原件**，
+按字节保真保存——不补 SPDX 头、不改行尾、不重排内容；本仓自研代码（`backend/` `packages/`
+`domains/` `integrations/` `apps/` `scripts/` `tests/` `config/`）才要求 SPDX 头。
 
 ## 边界（如实，不夸大）
 

@@ -1,0 +1,449 @@
+# Knowledge-Base 开源项目吸收与多维深化总包
+
+本包整合了前面对 Knowledge-Base 的所有分析，并继续深化为可交给 CODEX 的执行方案。
+
+## 包含文件
+
+```text
+OPEN_SOURCE_MATCH_MATRIX.csv
+OPEN_SOURCE_MATCH_MATRIX.md
+ADAPTER_ARCHITECTURE.md
+MODULE_BY_MODULE_DEEPENING.md
+MULTI_DIMENSIONAL_DEEPENING.md
+PHASED_INTEGRATION_PLAN.md
+CODEX_MASTER_PROMPT.md
+```
+
+## 核心判断
+
+Knowledge-Base 应继续走：
+
+```text
+轻内核 + 强 Adapter + MCP 优先 + 本地优先
+```
+
+不应走：
+
+```text
+大平台拼接
+直接搬 Dify/Open WebUI/RAGFlow
+一开始上重型向量库
+前端空壳美化
+```
+
+
+---
+
+# OPEN_SOURCE_MATCH_MATRIX：开源项目匹配总表
+
+本表用于指导 Knowledge-Base 后续吸收开源能力。
+
+分类规则：
+
+```text
+S：优先接入，能直接补短板
+A：做 Adapter，明显增强
+B：只学习设计，暂不接入
+C：谨慎/不建议
+```
+
+详表见 `OPEN_SOURCE_MATCH_MATRIX.csv`。核心选择：
+
+```text
+直接优先：MarkItDown / Docling / Crawl4AI / sqlite-vec / LiteLLM / Langfuse / shadcn/ui / React Flow / Gitleaks / APScheduler
+后置增强：Mem0 / Graphiti / Chroma / Qdrant / MinerU / Promptfoo / Cytoscape.js
+只参考：Dify / Open WebUI / RAGFlow / AnythingLLM / LangChain / LlamaIndex / AutoGen / CrewAI / OpenHands / Khoj
+```
+
+
+---
+
+# ADAPTER_ARCHITECTURE：Adapter 化架构设计
+
+## 1. 原则
+
+Knowledge-Base 的内核必须保持轻量：
+
+```text
+SQLite + FTS5 + KG + MCP + CLI + FastAPI
+```
+
+所有外部开源项目通过 Adapter 接入，不允许直接侵入核心。
+
+## 2. 目录结构
+
+```text
+backend/pk_radar/adapters/
+├── converters/
+│   ├── base.py
+│   ├── native_text.py
+│   ├── markitdown_adapter.py
+│   ├── docling_adapter.py
+│   ├── mineru_adapter.py
+│   └── ocr_adapter.py
+├── crawlers/
+│   ├── base.py
+│   ├── httpx_adapter.py
+│   ├── scrapling_adapter.py
+│   ├── crawl4ai_adapter.py
+│   └── browser_use_adapter.py
+├── vector/
+│   ├── base.py
+│   ├── sqlite_vec_adapter.py
+│   ├── chroma_adapter.py
+│   ├── qdrant_adapter.py
+│   └── lancedb_adapter.py
+├── llm/
+│   ├── base.py
+│   ├── ollama_adapter.py
+│   ├── direct_openai_adapter.py
+│   └── litellm_adapter.py
+├── observability/
+│   ├── base.py
+│   ├── local_runs.py
+│   └── langfuse_adapter.py
+├── memory/
+│   ├── base.py
+│   ├── local_memory.py
+│   ├── mem0_adapter.py
+│   └── graphiti_style.py
+└── graph/
+    ├── base.py
+    ├── sqlite_graph.py
+    └── kuzu_adapter.py
+```
+
+## 3. 降级链
+
+```text
+Docling 不可用 → MarkItDown
+MarkItDown 不可用 → NativeText / pdfplumber
+Crawl4AI 不可用 → Scrapling / httpx
+sqlite-vec 不可用 → FTS5
+LiteLLM 不可用 → Ollama / Direct Provider
+Langfuse 不可用 → local runs
+Mem0 不可用 → local memory
+```
+
+## 4. 统一配置
+
+```env
+PKR_CONVERTER_DEFAULT=markitdown
+PKR_CONVERTER_COMPLEX=docling
+PKR_CRAWLER_DEFAULT=scrapling
+PKR_CRAWLER_COMPLEX=crawl4ai
+PKR_VECTOR_BACKEND=sqlite_vec
+PKR_LLM_BACKEND=ollama
+PKR_LLM_GATEWAY=litellm
+PKR_OBSERVABILITY=local
+PKR_MEMORY_BACKEND=local
+```
+
+
+---
+
+# MODULE_BY_MODULE_DEEPENING：按模块深化方案
+
+## 1. 文档摄入模块
+
+目标：
+
+```text
+文件 → Markdown → clean text → chunks → summary/tags → FTS5/vector/KG
+```
+
+优先：MarkItDown、Docling、ConverterRegistry、ConvertedDocument、ConversionQuality。
+
+后续：MinerU、OCR、Tika fallback、semantic chunking、duplicate detection。
+
+## 2. 网页采集模块
+
+目标：
+
+```text
+URL → 安全检查 → 抓取 → 正文抽取 → Markdown → 入库
+```
+
+优先：保留 Scrapling、新增 Crawl4AI Adapter、可选 Trafilatura 正文抽取。
+
+后续：browser-use 自动研究、Playwright 动态页面、整站抓取但限制 depth/pages/domain。
+
+## 3. 检索模块
+
+路线：
+
+```text
+P1: document_chunks + FTS5 chunk search
+P2: sqlite-vec + embeddings
+P3: Chroma/Qdrant optional backend
+```
+
+目标：
+
+```text
+FTS5 keyword
++ chunk search
++ sqlite-vec semantic
++ RRF fusion
+```
+
+## 4. 记忆与知识图谱模块
+
+当前优势：entities、relations、observations、sessions、conflicts、pin/unpin。
+
+增强方向：吸收 Graphiti / Mem0 的思想。
+
+```text
+facts
+episodes
+valid_from
+valid_to
+confidence
+source_document_id
+memory_scope: user/project/session/global
+```
+
+## 5. MCP 模块
+
+MCP 应从“附属工具”升级为主入口之一。
+
+建议工具命名：
+
+```text
+documents.search
+documents.get
+documents.list
+documents.ingest_url
+memory.remember
+memory.recall
+graph.query
+observations.save
+sessions.context
+projects.analyze
+tasks.generate_codex_pack
+```
+
+必须增强：tool schema、permission scope、audit log、source-aware output、prompt-injection 防护。
+
+## 6. AI 模型治理模块
+
+目标：模型调用可路由、可记录、可评估、可计费、可复盘。
+
+本地表先行：models、prompts、prompt_versions、runs、evaluations、cost_records。
+
+后续 Adapter：LiteLLMProvider、LangfuseAdapter、Promptfoo eval。
+
+## 7. 前端工作台
+
+页面优先级：/knowledge、/graph、/mcp、/ai、/projects、/settings。
+
+组件优先级：DocumentList、DocumentDetail、SearchBox、EntityGraph、MCPToolTable、RunTracePanel、PromptVersionList、SourceStatusCard、ProjectAnalysisPanel、CodexTaskPackPanel。
+
+推荐：shadcn/ui、TanStack Query、TanStack Table、React Flow、Cytoscape.js、D3、Monaco。
+
+## 8. 安全与运维
+
+必须接入：Gitleaks、Semgrep、Trivy、Bandit、pip-audit、OSV-Scanner。
+
+安全重点：SSRF、XSS、文件上传、Prompt injection、secret leakage、MCP tool abuse、dependency risk、crawler abuse。
+
+
+---
+
+# MULTI_DIMENSIONAL_DEEPENING：多维度深化分析
+
+## 架构师视角
+
+Knowledge-Base 是内核，其他项目都是 Adapter。MCP 是主暴露层，SQLite 是默认事实源。
+
+不允许：让 Dify/Open WebUI/RAGFlow 接管核心；让 Qdrant/Chroma 替代 SQLite 默认内核；让前端 UI 先于数据闭环膨胀。
+
+## 产品经理视角
+
+产品主线：采集 → 入库 → 搜索 → 记忆 → MCP 调用 → 项目研究 → CODEX 任务包。
+
+核心用户：个人开发者、AI 项目操盘者、使用 CODEX/DEEP/Ollama/GitHub 的高频用户、需要长期沉淀项目经验的人。
+
+## 项目经理视角
+
+开发阶段：Wave 1 输入质量，Wave 2 检索质量，Wave 3 MCP 记忆服务，Wave 4 模型治理，Wave 5 前端产品化。
+
+每个 Wave 都必须有任务清单、文件范围、验收标准、回滚方案、不做事项。
+
+## 安全工程师视角
+
+最大攻击面：网页 URL、文件上传、Markdown 渲染、MCP 工具调用、AI Provider 密钥、GitHub Repo 分析、browser-use 自动操作。
+
+原则：所有外部内容都是不可信输入；RAG 内容只能作为 evidence，不能作为 instruction；MCP tool 必须有权限边界；secret 不进入日志、导出、前端、Prompt。
+
+## 测试工程师视角
+
+测试优先级：Converter tests、Crawler tests、FTS5 search tests、MCP tool tests、Adapter fallback tests、Prompt injection tests、Secret scan tests、Frontend API integration tests。
+
+每个 Adapter 必须有：available()、convert/fetch/query()、fallback、clear error、unit test、integration smoke test。
+
+## AI Agent 视角
+
+Knowledge-Base 不应只服务人，还要服务 AI。MCP 工具应该让 Agent 能查文档、查历史观察、记住实体、查询关系、保存项目经验、读取会话上下文、生成 CODEX 任务包。
+
+未来最重要工具：projects.analyze_repo、tasks.generate_codex_pack、memory.recall_project_context、observations.save_decision。
+
+## 学者/研究员视角
+
+知识必须有证据链。每条 AI 结论应能追溯 source_document_id、source_url、chunk_id、observation_id、confidence、created_by、created_at。
+
+核心链路：Evidence → Note → Observation → Entity/Relation → Decision → Task。
+
+## 商业视角
+
+最有价值的不是普通知识库，而是 AI 项目研究自动化、CODEX 任务包生成、模型/Prompt 成本管理、长期项目经验沉淀、本地优先私有记忆。
+
+潜在产品：个人本地版、团队项目研究版、CODEX/Claude/Cursor MCP 插件版、行业知识库定制版。
+
+## 法务/许可证视角
+
+MIT/Apache/BSD 可直接依赖；Modified Apache/source-available 审查后 Adapter；AGPL/GPL 只外部调用或学习设计，不复制代码；Unknown license 禁止。
+
+必须维护 THIRD_PARTY_NOTICES.md、LICENSE_RISK_MATRIX.md、DEPENDENCY_ALLOWLIST.md。
+
+## UI/体验视角
+
+不要做普通后台。推荐：左侧库/项目/工具，中间文档/图谱/报告，右侧来源/标签/AI 建议/风险，底部当前操作链路和运行日志。
+
+
+---
+
+# PHASED_INTEGRATION_PLAN：分阶段集成路线
+
+## Wave 0：锁内核
+
+确认 SQLite + FTS5 + KG + MCP + CLI + FastAPI 是不可替代内核。
+
+不做：不上 Dify、不上 Open WebUI、不默认 Qdrant、不做复杂工作流。
+
+## Wave 1：输入质量
+
+接入：MarkItDown、Docling、Crawl4AI、ConverterRegistry、CrawlerRegistry。
+
+产出：ConvertedDocument、CrawlResult、ConversionQuality、安全白名单、失败降级。
+
+## Wave 2：检索质量
+
+接入：document_chunks、chunk FTS5、sqlite-vec、RRF fusion、source citation。
+
+产出：keyword + semantic hybrid search。
+
+## Wave 3：MCP 记忆服务
+
+增强：MCP tool schema、permission scope、audit logs、memory tools、graph tools、project tools。
+
+产出：AI Agent 可稳定调用的长期记忆层。
+
+## Wave 4：模型治理
+
+接入：LiteLLM、local runs、LangfuseAdapter、Prompt versions、cost records、evaluations。
+
+产出：模型调用可追踪、可评估、可控成本。
+
+## Wave 5：前端产品化
+
+接入：shadcn/ui、TanStack Query、TanStack Table、React Flow、Cytoscape.js、D3。
+
+页面：/knowledge、/graph、/mcp、/projects、/ai、/settings。
+
+## Wave 6：安全与发布
+
+接入：Gitleaks、Semgrep、Trivy、Bandit、pip-audit、OSV-Scanner。
+
+产出：安全门禁、许可证矩阵、发布 checklist、备份恢复流程。
+
+
+---
+
+# CODEX_MASTER_PROMPT：可直接交给 CODEX
+
+你现在接手 Knowledge-Base 的“开源项目吸收与 Adapter 化深化”任务。
+
+## 项目定位
+
+Knowledge-Base 不是普通 RAG 知识库，也不是 Dify/Open WebUI/RAGFlow 的壳。
+
+它应该是：
+
+```text
+SQLite 本地知识内核
++ FTS5 全文检索
++ 知识图谱
++ observations / sessions / AI 记忆
++ MCP 工具服务
++ CLI / FastAPI / Next.js 多入口
++ Adapter 化的文档、网页、模型、检索、观测、可视化增强系统
+```
+
+## 必须遵守
+
+1. 不替换 SQLite/FTS5/MCP/CLI 内核。
+2. 不把 Dify/Open WebUI/RAGFlow/AnythingLLM 作为核心依赖。
+3. 所有外部项目必须通过 Adapter 接入。
+4. AGPL/GPL 项目不能复制代码，只能外部调用或学习设计。
+5. 每个 Adapter 必须可关闭、可替换、可降级。
+6. 先补输入质量，再补检索，再补 MCP，再补模型治理，最后补前端。
+7. 每个任务必须有测试和验收标准。
+
+## 优先项目
+
+```text
+MarkItDown
+Docling
+Crawl4AI
+sqlite-vec
+LiteLLM
+Langfuse
+modelcontextprotocol/servers
+shadcn/ui
+React Flow / xyflow
+Cytoscape.js
+Gitleaks
+APScheduler
+Mem0
+Graphiti
+TanStack Query/Table
+```
+
+## 只参考
+
+```text
+Dify
+Open WebUI
+RAGFlow
+AnythingLLM
+FastGPT
+MaxKB
+LangChain
+LlamaIndex
+Haystack
+Flowise
+Langflow
+AutoGen
+CrewAI
+OpenHands
+Khoj
+```
+
+## 第一批任务
+
+Task 1：Adapter 基础框架。
+
+Task 2：文档转换接口，包含 ConvertedDocument、DocumentConverter、ConverterRegistry、MarkItDownAdapter stub、DoclingAdapter stub。
+
+Task 3：网页采集接口，包含 CrawlResult、CrawlerAdapter、CrawlerRegistry、Crawl4AIAdapter stub。
+
+Task 4：检索增强设计，包含 document_chunks、VectorStoreAdapter、SQLiteVecAdapter stub、HybridSearchPlan。
+
+Task 5：MCP 工具增强设计，包含 MCP tool schema、permission scope、audit log design、compat aliases。
+
+Task 6：许可证和安全，新增 THIRD_PARTY_LICENSE_RISK.md、DEPENDENCY_POLICY.md、SECURITY_ADAPTER_RULES.md。
+
+## 验收
+
+每个新增模块必须有接口、配置项、fallback 方案、测试计划、不做事项、风险说明。

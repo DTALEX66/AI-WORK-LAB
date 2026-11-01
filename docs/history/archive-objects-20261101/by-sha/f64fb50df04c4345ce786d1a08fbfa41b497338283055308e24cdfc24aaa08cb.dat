@@ -1,0 +1,88 @@
+# CODEX 执行指令 — AAOS：修复真实回归并完成 M0 增量闭环
+
+你在 DTALEX66/ArcheAxis-Knowledge-OS 项目工作。请按当前最高可用推理能力执行实施，不要停在审计报告。
+
+## 云端取证基线与必须保护的在途工作
+
+审计 main `e3875db0ee6d073d37839eb7b95f7ef4ce881bbb`；在途 `codex/aaos-p3-ui-convergence-20260922` head `4525564bc11be0eb6a88ecb780d882810201a57b`，相对main多1个提交、21个文件。先刷新并比对，不擅自合并、不覆盖本地未知修改。如果该分支已合并/已被更新，则直接基于实际继承关系接续；没有合并授权时，在隔离开发分支验证组合或准备可审阅PR，不操作main。
+
+最高当前执行入口：AGENTS.md → docs/authority/taskpack-0919-r6/EXECUTOR-START.md、TASKS.json、TASKPACK.md → docs/current/M0-DIRECTION-OVERRIDE-20260920.md → R6-EXECUTION.md / R6-STATE.json。确认当前 SUP-020/R6 仍有效。只阅读与任务相关的历史映射，不重新把R5或旧C# sole-writer路线当当前权威。
+
+正式架构：Avalonia/C#桌面，Rust Core拥有canonical数据库写入，Python workers是有界执行器。FSRS worker可以计算调度，但持久化与事实归属必须符合当前合同；UI不能写第二套Mastery/Truth，旧Python数据库不能成为vNext并行权威。
+
+## 第一阶段：四项云端回归必须实修
+
+复现 nightly35705091183 / job106671984547：4failed、3049passed、35skipped、135subtests。直接失败：
+
+1. tests/contract/test_bulk_schema_matrix.py::test_schema_matrix_coverage_status_is_explicit
+   新增9份schema未进入status映射：derived-projection、machine-growth、closed-loop、model-capability-pool、courseware-artifact、domain-pack、format-execution-receipt、local-green-identity、desktop-routes。先清点已有正反例，再补真实缺口与显式映射，禁止把所有glob结果自动叫covered。
+2. tests/test_axr060_completion_audit.py::test_tracked_current_surfaces_only_reference_declared_release_delta_or_source_objects
+   拒绝SHA：fbb630e7ff8561bb11b87577aa88716303ca888d、5d34d98c3d80e31a9174b83d78fd1707496ba279、c0ec75b605b0fc1c9d2d14411e7b4d8b208da07b。第三个在M0中是tree。用git对象与来源合同逐个证明类型、归属和可达性，修typed-provenance，不批量绕过allowlist。
+3. tests/test_p0_python_worker_lifecycle.py::test_real_text_worker_health_execute_failure_disable_and_enable
+   app/capability/store.py install_builtin 将一个PluginManifest误送入mapping/jsonschema分支。排查工厂、类身份、模块reload/import alias、测试间污染；根因必须复现，不凭猜测改接口。单独通过后再按全套组合复验，保留manifest严格验证。_TemporaryWorkerGate只是测试门，不是生产插件联动。
+4. tests/test_workspace_api.py::test_workspace_upload_keeps_distinct_raw_assets_when_conversion_text_matches
+   attempted_engines实际多出plugin:ax.builtin.converter.media。核对真实路由与provenance合同后修断言或实现，保留不同raw hash、不同package_id、两份原始资产、真实尝试链和相同文本不吞原件的测试。
+
+先运行现有runtime/CI包装器，依赖按锁文件。复刻Linux云端配置时原命令为：
+`env -u PYTHONPATH uv run --frozen --group ci --group ci-adapters pytest -q --tb=short tests/ integration-tests/ knowledge_base/tests/`
+Windows使用仓库对应包装器，不盲贴POSIX env语法。不能只跑上述四个节点就结束；再跑完整Python、Rust/桌面相关回归，云端browser/windows已跳过的链要真正获得新的运行结果。
+
+## 第二阶段：资源与正式插件边界
+
+把审计发现的本地PDF疑似漂移映射到A02及相关路径治理。只读区分tracked fixture、示例、临时开发输入、真实学习资料、原始资产、模型缓存、派生产物；先追踪实际入库/转换写入入口，再生成迁移dry-run。不得因gitignored就认定真实资料可永久放源码；不得把PDF自动搬进Model library。共享库当前Owner授权未解决时，不改根目录语义，不移动原件。
+
+沿实际Rust/Avalonia启动→插件路由→Python worker→回执→Core写入链核验。插件启停、健康检查、失败回退必须作用到生产调用路径，不只作用于测试门。M0里provider-routing.json等架构/资源决策若仍BLOCKED_BY_AUTHORITY_DECISION，不自行写入成为新事实源；继续现有批准合同内可独立实现/测试的部分，准确列出需要Owner决定的最小问题。
+
+## 第三阶段：承接新UI，跑通一条真人学习链
+
+先读候选 AAOS-P3-UI-PUSH-SUMMARY、DATA_PROVENANCE_UI_AUDIT、UI_IMPLEMENTATION_AUDIT，并检查对应代码，不把自报118个navigation静态测试当实机验收。
+
+复用现有Home/Library/SourceReader/KnowledgeV3/Learning/Jobs/Settings/Recovery、Inspector、CommandPalette与ActivityDock。读B10/B09/B07/B04的可访问参考；静态KPI、示例Evidence/localStorage不得进入正式事实层。主页面不再重复建壳。
+
+用用户已经授权的一个小型真实资料副本，从空的隔离开发工作区完成：选择资料→真实转换Job/失败显示→来源与版本/定位→可接受的Knowledge→LearningPlan/Course→学习材料→用户真实作答→Assessment→FSRS/Mastery状态读回→关闭并重启Core与桌面→再次打开同一记录。没有真实资料授权时保留夹具验证与UNVERIFIED，不伪称真人first-use。
+
+答案必须来自输入控件而不是预置correct=true。`mastery_projection.closed=false`或unavailable必须真实显示，不改标签假冒权威掌握度。知识修订后旧测评/新版本关联应可解释，原始Evidence与machine-derived区分。
+
+在实际可用GUI工具/宿主下验证导航、返回、加载、空态、失败、权限、unknown、取消、重试、键盘焦点、滚动、窗口尺寸和DPI；记录截图/操作读回。没有GUI能力则完成自动化与build并明确NativeGUI阻塞，不用XAML字符串测试代替点击。
+
+## 第四阶段：单个真实模型与机器成长
+
+按已授权注册路径/配置定位一个真实可用模型或API；某次stub/local-stub或11434不通不等于本机无模型。不擅自全盘搜索、下载新权重或产生未授权费用。
+
+绑定本次accepted/personal知识版本执行一个有限任务，保留实际输出、证据引用和失败。完成Evaluation→人工或已批准机制的Correction→Retest；必须引用原失败任务、纠错版本及重测输出，不能将一次新成功自动解释为模型自我学习。Skill/Principle仍按pending/reviewed状态，未人工批准不得自动进入已验证知识。证明该链路由正式Core持久化，而不是仅在旧Python演示SQLite中通过。
+
+M0只做一个领域、一种输入主通路、一个批准模型、一个课件方案；既定必须项（如embed/rerank/renderer）按当前M0口径补最小一套，不扩成第二平台。
+
+## 第五阶段：备份/恢复、迁移与绿色候选
+
+先在隔离工作区备份、restore到独立目录，验证schema/FK、objects哈希、workspace身份与Knowledge/Assessment/MachineTask/Review关联。迁移仅使用Owner许可的legacy副本，绝不直接改原库；对照数量、hash、引用、状态及语义差异，保留原件。
+
+现有Green位置/固定路径/启动器/用户数据先探测并记录，不默认C盘，不借用DSH的路径冒充AAOS路径。新的候选绑定本次已验证commit/tree与清单，旧452b5d0c候选不能证明新UI/main。
+
+没有原位替换授权，只准备可验证候选、备份/迁移/回滚步骤与Owner待审材料。最终仅LOCAL_GREEN_READY_FOR_OWNER_REVIEW或NOT_READY，不发版、不代签A15、不擅自关闭A16。
+
+## 本轮验收底线
+
+四个云端失败按根因消除；后续必需CI真正运行；正式UI展示真实Core状态；真人学习和机器纠错分别提供真实/未验证边界；资源不漂移；重启持久化、备份恢复和候选精确绑定；Owner动作仍显式待审。若某项在当前环境无法完成，记录证据、原因、下一条具体命令/操作，继续其余独立工作，不输出虚假100%。
+
+## 共同执行边界
+
+本指令是 2026-09-22 云端取证审计后的增量执行委托，不是另一份替代当前仓库 Authority 的活动账本。先把审计任务映射到当前任务 ID；不要重编号、覆盖冻结任务包或另建平行活动账本。
+
+这是实施任务，不要只给计划、补文档或让用户反复说“继续”。读取必要上下文后，直接在已授权开发工作区实现、测试、修复、复核；每个阶段给出短进展。已经完成且证据仍有效的能力只做回归，不重造。
+
+1. 先读取 git status --short、git remote -v、git branch --show-current、git rev-parse HEAD、已有 worktree、现有未完成 PR 和任务锁。网络允许时刷新远端引用，然后记录 origin/main 和候选分支的精确 SHA。不要覆盖未知修改，不运行 reset --hard / clean -fd，不强推、不擅自删分支或合并。需要并行时，每仓库独立 worktree、分支、测试与回退；同一文件/账本由一个集成人串行修改。
+2. 当前用户明确指令优先；仓库中冲突的历史任务通过当前 supersession/authority 索引判定，不按文件名日期或“已完成”自述直接执行。事实层以代码、锁定 SHA 的运行结果和产物读回为准。
+3. 只使用真实环境提供的工具与模型能力，不编造模型 ID、CLI 参数、API 凭证或额度。付费模型调用遵守已有授权与预算，不进行无限重试、大批基准或擅自下载大模型。缺权限只阻塞依赖该权限的动作，其余安全、独立工作继续。
+4. 禁止新 tag、Release、GitHub release asset、擅自版本递增、原安装目录迁移或重新安装。新候选不得自动覆盖现有绿色版。Owner 的人工验收、授权接受、原库迁移与原位替换不能由执行代理代签。
+5. 不访问 E:、不读取私有 .codex/.zcode/.hermes 或凭证；共享目录仅按当前已授权的精确路径和用途访问。禁止扩大到全盘扫描。工作产物遵守仓库 .project-local 规范，但 .project-local 不是任意真实用户资料的永久归档授权。
+6. 不把真实 PDF、设计原稿、模型权重、数据库、密钥、日志或工作副本提交进源码。测试夹具、合法示例与真实资料分别分类；发现疑似漂移先只读清点，列出用途、位置、跟踪状态、内容指纹和建议目的地，不自动移动/删除原件。
+7. 拒绝“删断言、加无理由 skip/xfail、降低 required checks、把 UNKNOWN 改为 PASS、手写成功 receipt”式修复。文档、结构测试、受控运行、真实宿主运行、人工验收分别记录。
+8. UI 视觉/交互按可访问的用户套件：B10 最终视觉与光效，B09 交互，B07 路由/状态，B04 tokens 等基础层；有冲突以上层指定意图为准。B08 React 原型只可吸收设计/行为，不授权改正式技术栈。两项目共享组件和交互方法，保持各自品牌，不合成一个三项目页面。缺参考图时不声称严格像素复刻。
+9. 不再开展无边界同行检索；优先复用本仓库已吸收、已许可的模块与现有 harness。真需引入依赖时，核查原始官方文档、许可、精确版本、现有锁文件及回退成本。
+
+## 统一交付要求
+
+每项给出：实际修改文件、根因、任务映射、精确 source/subject SHA、命令与退出码、失败/跳过原因、正反例、产物路径和哈希、回退办法。明确这次是 Git commit、dirty worktree、旧候选还是运行产物；commit/tree/blob 不混用。不得把旧证据改写为新 HEAD 已测试。
+
+最终至少交付一个可审阅的实施 diff、可运行回归、当前任务状态更新、用户能操作的已实现链路及剩余阻塞表。报告写到现有约定位置；动态大文件放 .project-local；公开仓库只保存许可允许的脱敏证据/摘要。独立审查人不能仅重复执行者的自述，也不能冒充 Owner E4 或 AAOS A15 的独立签署。

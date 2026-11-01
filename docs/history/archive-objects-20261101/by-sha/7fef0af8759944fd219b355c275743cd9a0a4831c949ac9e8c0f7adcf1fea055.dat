@@ -1,0 +1,158 @@
+# WORK-LAB 云端审计｜2026-09-16
+
+## 结论
+
+保留 READ_ONLY_PREVIEW / 合成验证边界；本次不予签收“16 张必做卡全部验收闭环”，不支持据此升级为真实客户端全局批量写入或无人值守管理。
+
+本轮不是没有交付：配置事务诚实状态、单字段合成闭环、交接原语、Observer 分类器、收敛审计和 Radar 离线数据变换均有实际源码。但部分测试没有进入当前 CI 的执行路径，部分声明仍超出代码能证明的范围。
+
+这是一份独立审计与证据包，不是已经执行的修复任务包。远端仓库没有被本次审计修改。
+
+## 审计范围与锚点
+
+- 仓库：DTALEX66/WORK-LAB；不包含 ArcheAxis 或 DESIGN-LAB。
+- 活动分支：r4-recovery-exec。
+- 固定提交：7e19fb545c7d9af3ec08427749cd72bff7902287。
+- 提交时间：2026-09-16 00:05:06 UTC。
+- GitHub Actions：35038477908，work-lab-gate，整体 success。
+- main：e5231f0f605d1515ed12958267b394c9de1da20c，提交时间 2026-08-30 10:27:04 UTC。不能用 main 的旧内容代表当前执行分支。
+- 对照基线：693471c01f12956ec6e95567a164edde1a7f0879；比较接口返回 ahead 12 commits、25 个变更文件。
+
+审计方法：远端分支/提交差异/CI 作业信息读取，关键源码与验收脚本审查，以及两个 Git blob 哈希与远端一致的源码副本的隔离反例运行。没有完成全仓本地检出和全部测试复跑，没有取得本轮完整逐测试 CI 日志，没有访问用户 Windows 本机真实配置、凭据、运行进程或外溢目录。
+
+报告所写“1259 passed / 8 skipped”属于执行者记录；本审计确认该 SHA 的 CI 运行成功，但不把这个测试数量冒充独立全量复验结果。
+
+## 优先修复发现
+
+### A01｜P1：必做测试未完整进入云端门禁
+
+证据：services/orchestration/run_quality_gate.py 的 governance_test_files 只读取 tests/workflow-assistance/test_*.py；gate_governance 使用 `python -m unittest -v <modules>`。当前工作流没有显式调用以下新增套件：
+
+- tests/workflow-assistance/nf05nf06_client_adapter_and_value.py
+- tests/workflow-assistance/nf07_single_field_apply_loop.py
+- tests/workflow-assistance/nf08_cross_software_handoff.py
+- tests/workflow-assistance/nf10nf11nf12_convergence_audit.py
+- tests/workflow-assistance/wl_r01_r07_radar_price_identity.py
+
+另一个独立问题：test_config_transaction.py 中的测试全部是模块级 test_* 函数，不是 unittest.TestCase，也没有 load_tests；其名称被选中不等于断言得到执行。
+
+隔离验证：给 unittest 同时传入一个会通过的 TestCase 模块和一个包含 assert False 的函数式测试模块，最终只运行 1 条 TestCase，整体返回 0。单独零用例的退出码与 Python 版本有关；本地 Python 3.13.5 的独立零用例返回 5，不能据此否认聚合执行中的静默遗漏。
+
+修复验收：统一或显式路由测试格式；必做套件明确列入当前 CI；函数式测试交由 pytest 或转换成 TestCase。不能只把 nf 文件改成 test_ 就认为函数式测试问题也解决。记录每个必做套件的实际采集数与执行结果，并用故意失败的负控验证门禁确实变红。
+
+### A02｜P1：配置事务未核验请求的目标 diff；首次回读失败也未收口
+
+文件：services/policy/config_control_plane.py。
+
+transaction 传给 apply_fn 的是 effective_before，而不是按 diff 计算的目标。成功条件是适配器返回值与 readback 一致，未独立核验 changedFields 的目标值。
+
+隔离复现：请求 model=m1→m2；apply 回调不做任何更改，返回旧配置；readback 仍返回旧配置。结果 status=COMMITTED，实际 model=m1，backupRef=null。本次适配器只是内存回调，未写入任何真实客户端。
+
+另一个隔离复现：apply 完成内存变更后，readback_fn 抛出 OSError，异常直接逃出，无终态回执，rollback_fn 未执行。不要把这种状态误写为成功或已回滚。
+
+已存在且应保留的改进：NOOP、apply 异常的 APPLY_FAILED/UNDETERMINED、模拟标签、回滚回读与 ROLLBACK_FAILED。这不是“完全没有异常处理”。
+
+修复验收：校验真实前态与 diff 前提；计算/校验目标字段；对目标、适配器结果、回读执行独立核对。真实写入需要有效恢复点。回读失败返回未验证/未知写态和恢复线索；只有实际恢复并回读一致才能声称恢复成功。
+
+### A03｜P1：不可覆盖安全项实际上可被普通用户配置削弱
+
+文件：services/policy/config_control_plane.py 的 effective。
+
+SAFETY_KEYS 包含 safety_boundary、approval_required、credential_redaction。代码却依次采用 official_baseline、compatibility、user_profile 中最后出现的值。
+
+隔离复现：official_baseline 的 approval_required=True / credential_redaction=True，被 user_profile 中两个 False 覆盖。
+
+修复验收：区分普通可覆盖偏好和安全下限；安全下限不允许普通层静默降级。确需改变安全策略时，作为明确、可审计的策略变更处理，而不是混入普通配置合并。
+
+### A04｜P1：NF-08 当前只证明同进程去重，不证明跨重启
+
+文件：packages/client-neutral-core/scripts/handoff.py；tests/workflow-assistance/nf08_cross_software_handoff.py。
+
+HandoffRelay._delivered 仅存在于内存；restart_duplicate 实际在同一对象上连续调用 deliver 两次，没有重启、序列化或接入持久台账。
+
+隔离复现：两个先后启动的独立 Python 进程，用同一 delivery_id 和同一 payload 调用当前原语，均返回 DELIVERED / side_effect_executed=True。这里的 side_effect 只是原语模拟标记，不是实际软件副作用。
+
+修复验收：复用已有 Task Ledger 的持久状态，不新建第二套台账。增加进程重启、丢确认重投、同 ID 异载荷、未知外部结果的负控。无法证明持久恢复前，把验收范围诚实收窄为同进程去重，不能保留跨重启已完成的表述。
+
+### A05｜P1（出站/交接前）：白名单筛字段不等于内容已脱敏
+
+文件：packages/client-neutral-core/scripts/handoff.py 的 sanitize_payload。
+
+它删除未列入白名单的顶层键，但原样保留 goal、verified、next_step 等值。隔离测试中的顶层 api_key 被删，verified 内嵌 token 以及 goal 中的 api_key=... 文本仍保留。
+
+全部使用 AUDIT_SYNTHETIC_NOT_A_REAL_SECRET 假标记；没有证据表明实际凭据已泄漏，本轮也没有真实对外发送。
+
+修复验收：为允许字段限定类型、深度与长度；复用已有脱敏能力处理嵌套值及自由文本；允许保留敏感原文引用，而非直接携带原文；交接前做负控测试。
+
+### A06｜P1（状态验收）：Observer 未知活动数可以被判为 LIVE
+
+文件：apps/observer/src/observer_state_classification.py。
+
+静态路径：authorized=True、freshness=fresh、quality=exact、active_tasks=None 时，跳过 active==0 分支后进入 LIVE，并通过 int(active or 0) 计为 0。缺少计数证据不能作为已证明活跃的依据。
+
+本项为源码静态确认，不包含在本包两个哈希验证模块的隔离执行范围内。
+
+修复验收：缺失、非法或负数活动数保持 UNKNOWN/明确无效；真实 0 才是 ACTUAL_ZERO；合法正整数才进入本分类契约定义的 LIVE。前端只读不等于读到的状态一定真实。
+
+## 非治理主线与次级问题
+
+services/radar/radar_reuse_loop.py 确实包含离线候选去重、版本差异、中文报告、价格身份与 UNKNOWN 传播，而不只是新增说明文档。但它是接受输入字典的纯数据变换，不能单凭 has_real_call_or_dep=True 的输入声明，就独立证明某个开源项目已被真实调用、集成或通过测试。
+
+值得补充的静态边界回归：
+
+1. _version_key 按每段开头数字提取，v1.9/v2.0 之类带 v 前缀的版本可能排序错误；应复用成熟版本解析器或明确不支持的格式。
+2. _stamp 会把 0.0 转为 UNKNOWN，并被用于 real_consumption；真实的零消费应与缺失值区分。
+3. 离线 receipt_sha256 当前只散列实体列表，不绑定完整版本/许可/证据内容。若该字段只表示候选集合身份，应明确命名与范围；若用于审计内容完整性，应纳入实际审计字段。
+
+services/policy/convergence_audit.py 的 model_version_diff 明确保留 model_behavior=UNVERIFIED；不得把它解释成“新模型已完成真实行为适配”。技能按需与依赖收敛目前审查的是审计面，不等于真实宿主已经加载了所有正确技能。
+
+## 哪些成果保留、哪些任务仍未完成
+
+- 保留 NF-04 已有的诚实状态和异常信息脱敏，不推倒重写事务系统；修补上述目标核验与首次回读异常缺口。
+- NF-07 是带磁盘状态的合成单字段闭环；real_adapter_exercised=False 与 NOT_PASSED_AWAITING_AUTHORIZATION 已写入源码，属于正确边界，不应冒充实机应用。
+- NF-08 取消终态守卫、同进程冲突识别与同进程去重可以保留；跨重启验收需重开。
+- NF-09 五态分类器有真实实现；未知计数误判与实际接线验收仍需补齐。
+- Radar/价格模块保留；需用真实候选的依赖引用、调用、测试证据完成至少一项经批准的复用验证，而不是只改变“已吸收”标签。
+- 关闭报告明确列出的真实客户端实字段授权、Hermes 退出后官方升级、hook 交互重批、Codex ACL 边界、xlsx 实体与 Excel/WPS 验证、既有 Windows 顺序相关测试债，均不能从云端 success 推导为已完成。
+- NF-13/W05/W06/W08 是可选付费卡；不要把四张全部开启当作修复上述离线缺陷的前提。
+- “零外溢”与本机 worktree clean 目前只见执行者报告；云端读取不能独立证明用户 Windows 所有盘符没有外溢文件。
+- 瘦身报告明确保留了未追踪/被忽略的可再生缓存。完成审计和隔离不等于已经删除缓存或释放磁盘空间。
+
+## 后续最小执行顺序（建议，尚未执行）
+
+1. 先修 CI 的必做套件接入与实际用例计数，保存故意失败会令 CI 失败的证据。
+2. 修 A02/A03 配置语义、目标核验、安全下限、未知结果收口；复用现有事务实现。
+3. 修 A04/A05 交接持久性与脱敏；复用已有台账与过滤能力。
+4. 修 A06 与 Radar 边界回归；区分真实 0、未知、过时、未授权。
+5. 更新同一份收口记录与任务台账，把每卡分成源码/自动测试/真实环境/授权阻塞四个事实维度；不再扩张第二套“权威文档”。
+6. 用户选定并授权一个 client/profile/field 后，完成备份→受控写入→真实回读→恢复→恢复回读。先证明一个软件的端到端价值，再扩大软件覆盖。
+
+建议继续采用“一套全局用户规则 + 项目差分 + 软件适配 + 按需技能”的用户入口。内部六层优先级可保留，不需要变成六套让用户反复维护的规则，也不需要另起一个 Agent 平台。
+
+## 复现包说明
+
+reproduce_audit.py 校验 verified_sources 中两个文件的 Git blob 哈希，再执行五个源码反例与一个 unittest 聚合发现机制探针。所有客户端回调均为合成；跨进程只运行交接原语，没有真实网络副作用。
+
+运行：`python -B reproduce_audit.py`
+
+重要：本脚本返回 0 表示“在固定历史源码中成功复现了预期缺陷”，不是“项目验收通过”。修复后对实际仓库的回归验收必须另跑；不能运行本包固定旧源码来证明新代码是否修好。
+
+唯一写入为本包本地的 reproduction_results.json 和临时探针文件；不会提交、修改远端仓库或操作真实客户端。
+
+## 来源定位
+
+所有仓库源码均定位到同一提交，避免分支 HEAD 后续变化改变证据。
+
+- 提交：https://github.com/DTALEX66/WORK-LAB/commit/7e19fb545c7d9af3ec08427749cd72bff7902287
+- CI：https://github.com/DTALEX66/WORK-LAB/actions/runs/35038477908
+- 关闭报告：taskpacks/current/WORK-LAB-INTEGRATED-TASKPACK-20260916-CLOSEOUT.md
+- 门禁：services/orchestration/run_quality_gate.py；.github/workflows/work-lab-gate.yml
+- 配置源码：services/policy/config_control_plane.py；Git blob 43014c03dd5342767161bc158b0a2e9fb4cdad2f
+- 交接源码：packages/client-neutral-core/scripts/handoff.py；Git blob 2e73b8cd6d8757e108c07706cf5702071b1ff30e
+- 配置测试：tests/workflow-assistance/test_config_transaction.py
+- 交接测试：tests/workflow-assistance/nf08_cross_software_handoff.py
+- 单字段闭环：services/policy/single_field_apply_loop.py
+- 状态分类：apps/observer/src/observer_state_classification.py
+- 收敛审计：services/policy/convergence_audit.py
+- 雷达：services/radar/radar_reuse_loop.py
+- unittest 官方机制说明：https://docs.python.org/3.12/library/unittest.html#unittest.TestLoader.loadTestsFromModule

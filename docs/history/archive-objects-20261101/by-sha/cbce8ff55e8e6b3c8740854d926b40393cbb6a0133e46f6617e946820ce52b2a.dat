@@ -1,0 +1,1164 @@
+# Knowledge-Base 双主线 + 隔离层重构整理包
+
+## 核心修正
+
+Knowledge-Base 不应该只被理解成“给 AI / CODEX / Agent 调用的知识库”。
+
+它应该是一个双主线系统：
+
+```text
+A线：人的学习与记忆系统
+B线：AI / Agent / CODEX 调用的知识与任务系统
+```
+
+同时必须加入关键隔离层：
+
+```text
+隔离层：把外部输入、AI 调用、人的学习数据、第三方 Adapter、模型输出、权限和核心知识内核分开
+```
+
+## 最终定位
+
+```text
+Knowledge-Base = 面向人的学习记忆系统 + 面向 AI 的长期知识调用系统 + 中间隔离治理层
+```
+
+## 本包内容
+
+```text
+00_总控说明.md
+01_双主线整体架构.md
+02_隔离层设计.md
+03_A线_人的学习与记忆系统.md
+04_B线_AI与Agent调用系统.md
+05_共同知识内核.md
+06_开源项目匹配大类表.md
+07_模块优先级路线.md
+08_CODEX执行任务包.md
+09_DEEP并行任务包.md
+10_数据模型补充设计.md
+11_前端产品结构.md
+12_安全许可证与边界.md
+13_最终交付口径.md
+manifest.csv
+manifest.json
+```
+
+
+---
+
+# 00 总控说明
+
+## 原判断修正
+
+前面方案偏重了 MCP / Agent / CODEX 调用能力。现在按你的判断修正：
+
+```text
+Knowledge-Base 不是单纯给机器调用的系统。
+人的学习系统、记忆系统是第一主线之一。
+```
+
+## 新增关键判断：必须有隔离层
+
+隔离层不是可选项，而是核心架构层。
+
+原因：
+
+```text
+1. 人的学习数据和 AI 调用数据不能混在一起。
+2. 外部网页、PDF、GitHub、模型输出都可能不可信。
+3. AI 不能直接改核心记忆，必须走审核/权限。
+4. 第三方开源项目不能直接污染内核。
+5. 人的长期记忆需要稳定，AI 临时推理需要可丢弃。
+6. 学习系统要保护“掌握度、复习记录、错题记录”等个人数据。
+```
+
+## 双主线
+
+```text
+A线：人的学习与记忆系统
+B线：AI / Agent / CODEX 调用系统
+```
+
+## 共同底座
+
+```text
+内容摄入
+隔离层
+本地知识内核
+检索增强
+知识图谱
+记忆数据
+安全治理
+自动化同步
+```
+
+## 新理解
+
+```text
+外部内容
+  ↓
+内容摄入
+  ↓
+隔离层
+  ↓
+共同知识内核
+  ↙              ↘
+人的学习记忆系统   AI/Agent 调用系统
+```
+
+
+---
+
+# 01 双主线整体架构
+
+## 架构图
+
+```text
+                       外部内容输入
+       文件 / 网页 / GitHub / 手动笔记 / 项目经验
+                              ↓
+                    内容摄入与解析层
+     MarkItDown / Docling / MinerU / Crawl4AI / Scrapling / OCR
+                              ↓
+                         隔离治理层
+  sandbox / quarantine / permission / review / source trust / audit
+                              ↓
+                       共同知识内核
+ SQLite / FTS5 / documents / chunks / entities / relations / facts
+ observations / sessions / tags / sources / events / audit_logs
+                  ↓                               ↓
+        A线：人的学习与记忆系统          B线：AI/Agent调用系统
+ routes / cards / review / palace       MCP / API / Agents / CODEX
+ training / report / knowledge graph    repo analyzer / task packs
+                  ↓                               ↓
+          人的长期学习与复习              AI 辅助研究、开发、执行
+```
+
+## 两条线的关系
+
+| 维度 | A线：人用 | B线：机器用 |
+|---|---|---|
+| 目标 | 学习、理解、复习、记住、输出 | 调用知识、理解项目、生成任务、辅助执行 |
+| 用户 | 人 | CODEX、DEEP、Claude、Cursor、本地模型 |
+| 入口 | 前端工作台、CLI、报告、训练系统 | MCP、API、Agent、任务包 |
+| 核心能力 | 学习路线、记忆卡片、复习、知识宫殿 | MCP 工具、项目研究、Prompt/模型治理 |
+| 输出 | 知识卡片、复习计划、报告、学习路径 | CODEX 包、DEEP 包、项目分析、任务清单 |
+| 数据 | cards、reviews、routes、notes | tools、runs、prompts、tasks、repo reports |
+| 写入权限 | 人确认后长期沉淀 | 默认临时，需审核进入长期记忆 |
+
+## 共同底座
+
+两条线不分裂数据，而是共用：
+
+```text
+documents
+document_chunks
+entities
+relations
+facts
+observations
+sessions
+sources
+events
+prompts
+runs
+```
+
+但共用不等于混用，所有写入和读取都要经过隔离层。
+
+
+---
+
+# 02 隔离层设计
+
+## 为什么必须有隔离层
+
+Knowledge-Base 同时服务人和 AI。这里有几个不同性质的数据源：
+
+```text
+人的长期学习记忆
+AI 的临时推理结果
+外部网页内容
+GitHub 仓库内容
+PDF / Office 文件
+模型输出
+第三方 Adapter 处理结果
+```
+
+这些不能直接混入核心内核。
+
+## 隔离层的核心职责
+
+| 隔离对象 | 需要隔离什么 | 处理方式 |
+|---|---|---|
+| 外部内容 | 网页、PDF、GitHub、HTML、脚本、Prompt Injection | quarantine + cleaner + source trust |
+| AI 输出 | 摘要、建议、任务包、推理结果 | draft memory，不直接写长期记忆 |
+| 人的学习数据 | 复习记录、掌握度、错题、个人笔记 | private learning scope |
+| MCP 工具 | AI 读写权限 | permission scope + audit |
+| Adapter | 第三方依赖和输出 | adapter boundary + fallback |
+| 模型调用 | API Key、Prompt、token、cost | backend only + run log |
+| 许可证风险 | AGPL/GPL/商业条款 | dependency policy + allowlist |
+| 数据同步 | 多设备/云同步 | local-first + encrypted export |
+
+## 隔离层分区
+
+```text
+1. Ingestion Quarantine
+   外部文件、网页、GitHub 内容先进入暂存区。
+
+2. Content Sanitization
+   清洗 HTML、去脚本、去恶意提示、提取纯文本和 Markdown。
+
+3. Trust & Source Layer
+   标注来源可信度、来源类型、采集方式、时间、许可证。
+
+4. Review Gate
+   AI 生成的摘要、卡片、事实、关系，默认进入待审核，不直接成为长期记忆。
+
+5. Permission Layer
+   MCP/API/Agent 工具按权限读写。
+
+6. Memory Scope Layer
+   区分 human_learning、ai_context、project_memory、global_knowledge。
+
+7. Adapter Boundary
+   第三方项目不能直接操作 store，只能返回标准对象。
+
+8. Audit Layer
+   所有重要读写、AI 调用、MCP 调用、导出、删除都记录。
+```
+
+## 数据状态流转
+
+```text
+external_raw
+  ↓
+quarantined
+  ↓
+sanitized
+  ↓
+candidate
+  ↓
+reviewed
+  ↓
+committed
+  ↓
+learned / recalled / exported
+```
+
+## 记忆状态
+
+```text
+draft_memory      AI 暂存，不可信
+candidate_memory  待人确认
+active_memory     已进入长期记忆
+archived_memory   过期/不常用
+conflicted_memory 存在冲突
+pinned_memory     人工置顶
+```
+
+## 对人和 AI 的不同规则
+
+### 人的学习系统
+
+```text
+可以创建长期记忆
+可以修改卡片和复习状态
+可以确认/拒绝 AI 生成内容
+可以置顶重要知识
+```
+
+### AI / Agent 系统
+
+```text
+默认只能读
+写入必须进入 draft/candidate
+高风险工具需要权限
+不能把外部文档内容当系统指令
+不能直接删除长期记忆
+```
+
+## 推荐新增数据字段
+
+```text
+scope: human_learning / ai_context / project_memory / global
+trust_level: unknown / low / medium / high / verified
+review_status: raw / candidate / approved / rejected / archived
+created_by: human / ai / system / adapter
+source_type: file / url / github / note / ai_output
+is_instruction: false
+```
+
+## 结论
+
+隔离层是双主线能并行的关键。
+
+没有隔离层，项目会出现：
+
+```text
+AI 污染人的长期记忆
+外部网页污染系统提示
+第三方 Adapter 污染核心数据
+学习记录和模型运行日志混乱
+权限失控
+```
+
+有隔离层，项目才能同时服务人和 AI。
+
+
+---
+
+# 03 A线：人的学习与记忆系统
+
+## 目标
+
+帮助人完成：
+
+```text
+学习
+理解
+记忆
+复习
+训练
+输出
+复盘
+长期沉淀
+```
+
+## 核心模块
+
+| 模块 | 说明 |
+|---|---|
+| 学习路线系统 | 把知识组织成路径、阶段、主题、目标 |
+| 知识卡片系统 | 把文档/chunk/fact 变成可复习卡片 |
+| 间隔重复系统 | 按遗忘曲线安排复习 |
+| 主动回忆系统 | 问答、填空、选择、解释、复述 |
+| 知识宫殿系统 | 通过空间/图谱/场景组织知识 |
+| 错题与薄弱点系统 | 记录错误、误解、不熟练内容 |
+| 输出报告系统 | 把学习结果整理成报告、文章、项目总结 |
+| 多维记忆系统 | 概念记忆、事实记忆、技能记忆、项目记忆、情境记忆 |
+
+## 人的记忆类型
+
+```text
+概念记忆：知道某个概念是什么
+事实记忆：记住具体事实
+技能记忆：会做某类任务
+过程记忆：知道步骤和流程
+项目记忆：记住某个项目的经验和决策
+错题记忆：记住曾经错在哪里
+情境记忆：知道某知识在什么场景下用
+输出记忆：能把知识讲出来、写出来、用出来
+```
+
+## 推荐数据表
+
+```text
+learning_routes
+learning_units
+knowledge_cards
+review_events
+memory_strength
+quiz_items
+mistake_records
+palace_nodes
+palace_links
+learning_reports
+```
+
+## 可吸收项目/方法
+
+| 方向 | 参考 |
+|---|---|
+| 间隔重复 | Anki、FSRS、SuperMemo、SM-2 |
+| 双链笔记 | Logseq、Obsidian、SiYuan、RemNote |
+| 知识宫殿 | Obsidian Canvas、Heptabase、AFFiNE |
+| 主动回忆 | Quizlet、Anki、Mochi |
+| 学习路径 | Khan Academy、Duolingo、Coursera |
+| 方法论 | Zettelkasten、Second Brain、PARA |
+
+## AI 在 A 线中的作用
+
+AI 不是主角，而是学习助手：
+
+```text
+生成卡片
+生成测验
+解释概念
+找薄弱点
+推荐复习
+生成路线
+生成报告
+生成知识图谱
+```
+
+AI 生成内容必须经过 Review Gate 才能进入长期学习记忆。
+
+
+---
+
+# 04 B线：AI 与 Agent 调用系统
+
+## 目标
+
+让 CODEX / DEEP / Claude / Cursor / Ollama / 本地模型能调用长期知识，辅助：
+
+```text
+项目研究
+代码开发
+开源项目分析
+任务拆分
+Prompt 复用
+经验沉淀
+自动报告
+```
+
+## 核心模块
+
+| 模块 | 说明 |
+|---|---|
+| MCP 工具服务 | AI 通过 documents.* / memory.* / graph.* 调用知识 |
+| GitHub 项目研究 | 分析仓库、技术栈、许可证、可吸收模块 |
+| CODEX/DEEP 任务包 | 把研究结果变成可执行开发任务 |
+| Agent 角色系统 | 不同角色分工：分析、测试、安全、运维、合成 |
+| 多模型治理 | Ollama / LiteLLM / Langfuse / Prompt 版本 |
+| AI 运行日志 | runs、cost_records、evaluations |
+| Prompt 资产库 | Prompt、版本、场景、效果 |
+| 工具权限系统 | AI 读写权限控制 |
+
+## AI 的记忆类型
+
+```text
+用户偏好
+项目上下文
+代码库知识
+工具调用历史
+Prompt 经验
+模型选择经验
+错误修复记录
+任务执行记录
+项目决策记录
+```
+
+## AI 写入规则
+
+```text
+AI 默认不能直接写 active_memory
+AI 输出进入 draft/candidate
+人确认后进入 active_memory
+高风险工具必须审计
+删除/覆盖长期记忆必须人确认
+```
+
+## 可吸收项目/方法
+
+| 方向 | 参考 |
+|---|---|
+| MCP | modelcontextprotocol/servers、FastMCP |
+| Agent 角色 | agency-agents、CrewAI、AutoGen |
+| 代码协作 | Aider、OpenHands、Continue |
+| 模型网关 | LiteLLM |
+| Prompt 观测 | Langfuse、Promptfoo |
+| AI 记忆 | Mem0、Graphiti、Zep |
+| Agent 流程 | LangGraph |
+
+## B线和 A线的关系
+
+AI 可以帮助人学习，但不能替代人的确认。
+
+```text
+AI 生成学习卡片 → 人确认 → A线复习
+AI 总结项目经验 → 人确认 → 项目记忆
+AI 分析 GitHub → 人确认 → 技能路线/项目任务
+```
+
+
+---
+
+# 05 共同知识内核
+
+## 内核职责
+
+共同知识内核负责保存两条线共用的事实、文档、关系、观察和会话。
+
+## 核心对象
+
+```text
+documents
+document_chunks
+entities
+relations
+facts
+observations
+sessions
+sources
+events
+tags
+audit_logs
+```
+
+## 新增隔离字段
+
+建议所有核心对象逐步支持：
+
+```text
+scope
+trust_level
+review_status
+created_by
+source_type
+source_id
+is_instruction
+visibility
+```
+
+## scope
+
+```text
+human_learning     人的学习系统
+ai_context         AI 临时上下文
+project_memory     项目经验
+global_knowledge   通用知识
+private_note       私人笔记
+```
+
+## review_status
+
+```text
+raw
+quarantined
+candidate
+approved
+rejected
+archived
+conflicted
+```
+
+## created_by
+
+```text
+human
+ai
+system
+adapter
+import
+```
+
+## 内核不做什么
+
+```text
+不直接调用大模型
+不直接执行网页脚本
+不直接信任外部输入
+不让 Adapter 改库
+不让 MCP 绕过权限
+```
+
+## 内核应该像数据库和事实源，而不是业务大杂烩
+
+业务分成：
+
+```text
+learning/
+agent/
+projects/
+tasks/
+adapters/
+mcp/
+security/
+```
+
+
+---
+
+# 06 开源项目匹配大类表
+
+| 大类 | 面向 | 代表项目 | 作用 | 建议 |
+|---|---|---|---|---|
+| 文档解析 | 共同底座 | MarkItDown、Docling、MinerU、Unstructured | 文件转 Markdown/JSON/结构化文本 | Adapter |
+| 网页采集 | 共同底座 | Crawl4AI、Scrapling、browser-use、Playwright | 网页/动态网页/自动研究 | Adapter |
+| 检索增强 | 共同底座 | sqlite-vec、Chroma、Qdrant、LanceDB | 分块、向量、混合检索 | sqlite-vec 优先 |
+| 人的学习 | A线 | Anki、FSRS、SuperMemo、Quizlet、Mochi | 复习算法、卡片、测验 | 学方法/局部实现 |
+| PKM/双链 | A线 | Logseq、Obsidian、SiYuan、RemNote | 双链、块引用、图谱、知识网络 | 参考 |
+| 知识宫殿 | A线 | Obsidian Canvas、Heptabase、AFFiNE | 空间化知识组织 | 参考/前端吸收 |
+| MCP | B线 | modelcontextprotocol/servers、FastMCP | AI 工具调用协议 | 重点吸收 |
+| Agent 编排 | B线 | agency-agents、LangGraph、CrewAI、AutoGen | 角色分工、流程编排 | 参考/局部吸收 |
+| 代码研究 | B线 | Aider、OpenHands、Continue | GitHub 项目分析、代码协作 | 参考 |
+| 模型治理 | B线/共同 | LiteLLM、Langfuse、Promptfoo | 多模型、Prompt、评估、成本 | Adapter |
+| 记忆系统 | 双线 | Mem0、Graphiti、Zep | AI 记忆、temporal facts | 数据模型参考 |
+| 前端 UI | 双线 | shadcn/ui、React Flow、Cytoscape、TanStack | 工作台、图谱、表格 | 直接吸收 |
+| 安全治理 | 共同 | Gitleaks、Semgrep、Trivy、Bandit、pip-audit | 密钥、依赖、代码安全 | 必接 |
+| 大平台参考 | 参考区 | Dify、Open WebUI、RAGFlow、AnythingLLM、FastGPT | 产品/流程/LLMOps/RAG | 不进核心 |
+
+
+---
+
+# 07 模块优先级路线
+
+## 共同底座优先级
+
+```text
+C1. 内容摄入与解析
+C2. 隔离层
+C3. 本地知识内核
+C4. 检索增强
+C5. 安全治理
+C6. 自动化调度
+```
+
+## A线优先级：人的学习系统
+
+```text
+A1. 知识卡片系统
+A2. 学习路线系统
+A3. 复习算法系统
+A4. 主动回忆/训练系统
+A5. 知识宫殿/图谱系统
+A6. 输出报告系统
+A7. 错题/薄弱点系统
+```
+
+## B线优先级：AI 调用系统
+
+```text
+B1. MCP 工具系统
+B2. GitHub 项目研究系统
+B3. CODEX/DEEP 任务包生成
+B4. 多模型/Prompt 治理
+B5. Agent 角色编排
+B6. AI 运行日志和评估
+```
+
+## 推荐并行节奏
+
+```text
+Phase 1：
+共同底座：隔离层 + 文档摄入 + chunks
+A线：卡片 + 复习记录
+B线：MCP namespace + 权限审计
+
+Phase 2：
+共同底座：sqlite-vec + RRF
+A线：学习路线 + 主动回忆
+B线：GitHub 项目研究 + CODEX任务包
+
+Phase 3：
+共同底座：自动化调度 + 安全门禁
+A线：知识宫殿 + 报告
+B线：LiteLLM + Langfuse + Agent角色
+```
+
+
+---
+
+# 08 CODEX 执行任务包
+
+## CODEX-00 架构边界
+
+输出：
+
+```text
+docs/architecture/dual_track_architecture.md
+docs/architecture/isolation_layer.md
+docs/architecture/kernel_boundary.md
+```
+
+## CODEX-01 隔离层
+
+新增：
+
+```text
+backend/pk_radar/security/
+backend/pk_radar/core/review_gate.py
+backend/pk_radar/core/trust.py
+backend/pk_radar/core/scopes.py
+```
+
+能力：
+
+```text
+quarantine
+review_status
+trust_level
+scope
+permission
+audit
+```
+
+## CODEX-02 A线学习系统骨架
+
+新增：
+
+```text
+backend/pk_radar/learning/
+frontend/app/routes/
+frontend/app/review/
+frontend/app/training/
+frontend/app/palace/
+frontend/app/report/
+```
+
+优先实现：
+
+```text
+knowledge_cards
+review_events
+learning_routes
+quiz_items
+memory_strength
+```
+
+## CODEX-03 B线 AI 调用系统骨架
+
+新增：
+
+```text
+backend/pk_radar/agent/
+backend/pk_radar/projects/
+backend/pk_radar/tasks/
+backend/pk_radar/mcp/tool_registry.py
+```
+
+优先实现：
+
+```text
+documents.*
+memory.*
+graph.*
+projects.*
+tasks.*
+```
+
+## CODEX-04 双线前端工作台
+
+页面：
+
+```text
+/knowledge
+/routes
+/review
+/training
+/palace
+/report
+/mcp
+/projects
+/ai
+/settings
+```
+
+## CODEX-05 数据库迁移
+
+新增表：
+
+```text
+learning_routes
+learning_units
+knowledge_cards
+review_events
+memory_strength
+quiz_items
+mistake_records
+palace_nodes
+palace_links
+facts
+runs
+prompts
+audit_logs
+```
+
+## CODEX-06 验收
+
+每条线至少完成：
+
+```text
+A线：创建卡片 → 复习记录 → 掌握度变化
+B线：MCP 搜索 → AI 生成 candidate memory → 人确认
+共同：外部内容进入 quarantine → review → approved
+```
+
+
+---
+
+# 09 DEEP 并行任务包
+
+## DEEP-A1 学习卡片 Worker
+
+负责：
+
+```text
+backend/pk_radar/learning/cards.py
+backend/tests/test_learning_cards.py
+```
+
+## DEEP-A2 复习算法 Worker
+
+负责：
+
+```text
+backend/pk_radar/learning/review.py
+backend/tests/test_review_scheduler.py
+```
+
+## DEEP-A3 学习路线 Worker
+
+负责：
+
+```text
+backend/pk_radar/learning/routes.py
+frontend/app/routes/page.tsx
+```
+
+## DEEP-A4 知识宫殿 Worker
+
+负责：
+
+```text
+backend/pk_radar/learning/palace.py
+frontend/app/palace/page.tsx
+```
+
+## DEEP-B1 MCP Worker
+
+负责：
+
+```text
+backend/pk_radar/mcp/tool_registry.py
+backend/pk_radar/mcp/permissions.py
+```
+
+## DEEP-B2 项目研究 Worker
+
+负责：
+
+```text
+backend/pk_radar/projects/analyzer.py
+backend/pk_radar/projects/license_auditor.py
+```
+
+## DEEP-B3 任务包 Worker
+
+负责：
+
+```text
+backend/pk_radar/tasks/codex_pack.py
+backend/pk_radar/tasks/deep_pack.py
+```
+
+## DEEP-C1 隔离层 Worker
+
+负责：
+
+```text
+backend/pk_radar/core/review_gate.py
+backend/pk_radar/security/url_guard.py
+backend/pk_radar/core/trust.py
+```
+
+## DEEP-C2 数据库 Worker
+
+负责：
+
+```text
+backend/pk_radar/core/migrations/
+backend/pk_radar/core/store.py
+```
+
+## 并行约束
+
+```text
+每个 Worker 只改自己的文件
+共同数据结构以 10_数据模型补充设计.md 为准
+AI 生成内容不能直接 approved
+外部内容必须先 quarantined
+```
+
+
+---
+
+# 10 数据模型补充设计
+
+## A线：人的学习系统表
+
+### knowledge_cards
+
+```sql
+CREATE TABLE IF NOT EXISTS knowledge_cards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_chunk_id INTEGER,
+  entity_id INTEGER,
+  front TEXT NOT NULL,
+  back TEXT NOT NULL,
+  card_type TEXT NOT NULL DEFAULT 'qa',
+  difficulty INTEGER NOT NULL DEFAULT 3,
+  scope TEXT NOT NULL DEFAULT 'human_learning',
+  review_status TEXT NOT NULL DEFAULT 'candidate',
+  created_by TEXT NOT NULL DEFAULT 'human',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+```
+
+### review_events
+
+```sql
+CREATE TABLE IF NOT EXISTS review_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id INTEGER NOT NULL,
+  rating INTEGER NOT NULL,
+  elapsed_ms INTEGER NOT NULL DEFAULT 0,
+  reviewed_at TEXT NOT NULL
+);
+```
+
+### memory_strength
+
+```sql
+CREATE TABLE IF NOT EXISTS memory_strength (
+  card_id INTEGER PRIMARY KEY,
+  stability REAL NOT NULL DEFAULT 0,
+  difficulty REAL NOT NULL DEFAULT 0,
+  due_at TEXT,
+  last_reviewed_at TEXT
+);
+```
+
+### learning_routes
+
+```sql
+CREATE TABLE IF NOT EXISTS learning_routes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  goal TEXT NOT NULL DEFAULT '',
+  scope TEXT NOT NULL DEFAULT 'human_learning',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+```
+
+### palace_nodes
+
+```sql
+CREATE TABLE IF NOT EXISTS palace_nodes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  node_type TEXT NOT NULL,
+  entity_id INTEGER,
+  card_id INTEGER,
+  x REAL NOT NULL DEFAULT 0,
+  y REAL NOT NULL DEFAULT 0,
+  metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+```
+
+## B线：AI 调用系统表
+
+### ai_candidate_memories
+
+```sql
+CREATE TABLE IF NOT EXISTS ai_candidate_memories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL,
+  source_type TEXT NOT NULL,
+  source_id INTEGER,
+  proposed_by TEXT NOT NULL DEFAULT 'ai',
+  trust_level TEXT NOT NULL DEFAULT 'unknown',
+  review_status TEXT NOT NULL DEFAULT 'candidate',
+  created_at TEXT NOT NULL
+);
+```
+
+### task_packs
+
+```sql
+CREATE TABLE IF NOT EXISTS task_packs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  pack_type TEXT NOT NULL,
+  content TEXT NOT NULL,
+  source_project_id INTEGER,
+  created_by TEXT NOT NULL DEFAULT 'ai',
+  review_status TEXT NOT NULL DEFAULT 'candidate',
+  created_at TEXT NOT NULL
+);
+```
+
+## 隔离字段建议
+
+所有核心表逐步增加：
+
+```text
+scope
+trust_level
+review_status
+created_by
+visibility
+source_type
+source_id
+```
+
+
+---
+
+# 11 前端产品结构
+
+## 前端不再只是 AI 工具台
+
+前端应该同时服务两条线：
+
+```text
+A线：学习、复习、训练、知识宫殿、报告
+B线：MCP、项目研究、模型/Prompt、任务包
+```
+
+## 页面结构
+
+```text
+/knowledge       共同知识库
+/routes          A线：学习路线
+/review          A线：复习系统
+/training        A线：主动回忆/测验
+/palace          A线：知识宫殿
+/report          A线：报告输出
+/mcp             B线：MCP 工具
+/projects        B线：GitHub 项目研究
+/tasks           B线：CODEX/DEEP 任务包
+/ai              B线：模型/Prompt/runs
+/settings        共同配置
+```
+
+## 信息架构
+
+```text
+左侧：知识库 / 学习 / AI工具 / 项目 / 设置
+中间：当前工作区
+右侧：来源、标签、AI建议、复习状态、审计记录
+底部：运行日志 / 同步状态 / 当前任务
+```
+
+## 人的学习页面优先级
+
+```text
+1. /knowledge
+2. /review
+3. /routes
+4. /training
+5. /palace
+6. /report
+```
+
+## AI 页面优先级
+
+```text
+1. /mcp
+2. /projects
+3. /tasks
+4. /ai
+```
+
+## 关键组件
+
+```text
+KnowledgeCard
+ReviewPanel
+RouteTimeline
+MemoryStrengthBadge
+QuizPanel
+PalaceGraph
+DocumentSourcePanel
+MCPToolTable
+RepoAnalysisPanel
+TaskPackViewer
+PromptVersionList
+RunTracePanel
+ReviewGatePanel
+```
+
+
+---
+
+# 12 安全许可证与边界
+
+## 隔离层安全重点
+
+```text
+外部内容不可信
+AI 输出不可信
+网页内容不能当指令
+GitHub README 不能当系统提示
+PDF/Office 可能含恶意内容
+MCP 工具必须有权限
+Adapter 输出必须标准化
+长期记忆必须经过 Review Gate
+```
+
+## 权限边界
+
+| 操作 | 人 | AI |
+|---|---|---|
+| 创建学习卡片 | 可直接创建 | candidate |
+| 修改掌握度 | 可 | 不可直接 |
+| 写 observations | 可 | candidate |
+| 写 project memory | 可 | candidate |
+| 删除长期记忆 | 可二次确认 | 不可 |
+| 调用高风险工具 | 可授权 | 需权限 |
+| 导出数据 | 可 | 不可默认 |
+
+## 许可证策略
+
+```text
+MIT / Apache / BSD：可依赖，保留 notice
+Modified Apache / source-available：审查后 Adapter
+AGPL / GPL：不复制代码，只外部调用或参考
+Unknown license：禁用
+```
+
+## 必备治理文件
+
+```text
+THIRD_PARTY_NOTICES.md
+THIRD_PARTY_LICENSE_RISK.md
+DEPENDENCY_POLICY.md
+SECURITY_POLICY.md
+DATA_SCOPE_POLICY.md
+AI_MEMORY_POLICY.md
+```
+
+
+---
+
+# 13 最终交付口径
+
+## 给 CODEX 的一句话
+
+```text
+请按双主线架构重构 Knowledge-Base：
+A线服务人的学习与记忆；
+B线服务 AI/Agent/CODEX 调用；
+两条线共用 SQLite/FTS5/KG 知识内核；
+中间必须有隔离层，隔离外部内容、AI 输出、权限、Adapter 和长期记忆。
+```
+
+## 给 DEEP 的一句话
+
+```text
+按 A线、B线、共同底座三组并行执行：
+A线做卡片、复习、路线、训练；
+B线做 MCP、项目研究、任务包；
+共同底座做隔离层、数据迁移、Adapter 和安全。
+```
+
+## 最终定位
+
+```text
+Knowledge-Base = 人的学习记忆系统 + AI 的长期知识调用系统 + 本地优先知识内核 + 隔离治理层
+```
+
+## 最终产品表达
+
+```text
+人用它学习、复习、理解、输出；
+AI 用它调用知识、分析项目、生成任务；
+隔离层保证外部内容、AI 输出和长期记忆不互相污染。
+```

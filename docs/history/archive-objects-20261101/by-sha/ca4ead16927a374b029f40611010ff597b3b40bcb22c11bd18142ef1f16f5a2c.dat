@@ -1,0 +1,284 @@
+# 本地多Agent技术栈调研材料
+
+> 本文档汇总了一系列关于本地AI Agent生态的开源工具、技术方案与工作流实践，供GPT进行系统性调研与分析。
+> 目标：评估这套"全离线本地智能体集群"技术栈的成熟度、可行性、成本收益与选型建议。
+
+---
+
+## 一、调研背景与核心命题
+
+### 1.1 核心痛点
+当前多Agent开发面临三大浪费：
+- **记忆隔离**：Hermes、Codex、Claude Code 各记各的，切换工具必须重复解释项目背景
+- **终端混乱**：同时开几十个Agent终端，人脑过载，窗口一关上下文丢失，死循环刷爆Token
+- **本地推理受限**：大模型本地部署门槛高，12GB显存跑不了大参数模型
+
+### 1.2 核心命题
+能否用**全离线本地组件**搭建一套：
+1. 多Agent共享项目记忆
+2. 12GB显存本地跑大参数MoE模型
+3. 标准化软件工程开发流程
+4. 多Agent并行编排与预算管控
+5. 可视化协作设计画布
+
+的完整智能体工作流？
+
+---
+
+## 二、技术栈全景分层
+
+```
+┌─────────────────────────────────────────────────┐
+│  应用层：God's Eye View / Obsidian创作面板 / 网页设计  │
+├─────────────────────────────────────────────────┤
+│  编排层：Paperclip / Orca IDE / Pi / Google AX     │
+├─────────────────────────────────────────────────┤
+│  协作层：Pencil共享画布（MCP）/ Hindsight共享记忆    │
+├─────────────────────────────────────────────────┤
+│  工具层：Agent-Reach联网 / Autoresearch实验迭代      │
+├─────────────────────────────────────────────────┤
+│  技能层：agent-skills / Superpowers / Caveman压缩   │
+├─────────────────────────────────────────────────┤
+│  优化层：Jev焚决（上下文筛选）+ Caveman（输出压缩）   │
+├─────────────────────────────────────────────────┤
+│  推理层：Strata引擎 + Qwen3.8-Flash-Next MoE       │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## 三、各组件详细资料
+
+### 3.1 推理层：Strata + Qwen3.8-Flash-Next
+
+**定位**：12GB显存本地跑180B MoE模型
+
+#### 三大技术前提
+1. **MoE稀疏激活**：模型总参数约180B（125B主模型 + 51B N-gram嵌入），但每个token只激活约6B参数；24576个专家，热专家常驻显存，冷专家放RAM，N-gram词表放SSD
+2. **GSQ-RCO混合精度量化**：逐个权重判断敏感度，差异化分配2/3/4bit精度，敏感层多给bit，不重要层压低bit
+3. **MTP多token草稿预测**：一次前向预测多个token，GPU一次性校验，一次循环输出2.4~3.2 token
+
+#### 实测数据（RTX 5070 12GB + 64GB内存）
+- 短对话生成速度：93 tokens/s
+- 32K长Prompt预填充：2170 tokens/s
+- 双卡实测：101K token输入读取峰值近3000 tokens/s，生成仍有86.8 token/s
+
+#### Strata引擎特点
+- 专为Qwen3.8-Flash-Next架构定制，非通用推理引擎
+- C++/CUDA编写，针对MoE专家缓存、异步预取优化
+- 网页UI监控面板，兼容OpenAI接口
+- Windows一键启动脚本
+
+#### 硬件要求
+- VRAM：≥12GB（RTX 5070/4070 Ti 12G等）
+- 系统内存：≥48GB，推荐64GB
+- 存储：NVMe固态，预留≥80GB
+
+---
+
+### 3.2 记忆层：Hindsight 共享记忆
+
+**定位**：独立于Agent的共享记忆服务，多Agent读写同一个记忆库
+
+#### 三步核心机制
+| 机制 | 功能 | 说明 |
+|------|------|------|
+| RETAIN | 保存提取 | 对话结束后，LLM自动提取事实、实体、项目约定，结构化存入 |
+| RECALL | 召回检索 | 根据当前query，多通道检索（向量+关键词+图关系+时间），注入prompt |
+| REFLECT | 反思归纳 | 跨记忆深度推理，合并零散信息，构建心智模型，校验矛盾 |
+
+#### 部署方式
+- 本地Docker自托管，内置pg0数据库
+- API地址：`http://localhost:6767`
+- 按项目/用户分隔离bank_id
+
+#### 各Agent接入方式
+- **Hermes**：`hermes memory setup` 命令，选择Hindsight作为记忆提供商
+- **Codex**：生命周期钩子（SessionStart触发Recall，Stop触发Retain）
+- **Claude Code**：`@vectorize-io/hindsight-coding-agents`插件，SessionStart/UserPromptSubmit/Stop钩子
+
+---
+
+### 3.3 优化层：Jev焚决 + Caveman
+
+#### Jev（System One快速判断模型）
+**定位**：轻量判断层，接管Agent工作流中的简单分类/校验/决策
+
+**接入方式**：通过Codex生命周期Hook嵌入：
+1. `SessionStart`：Jev快速判断任务类型，加载对应Skill
+2. `PreCompact`（核心）：上下文压缩前，Jev筛选保留关键信息，焚烧冗余
+3. `PostCodeGenerate`：Jev快速初审代码，不合格才交大模型深度审查
+
+**优势**：速度快约200倍，成本仅大模型的1/400
+
+#### Caveman
+**定位**：Agent Skill + 会话钩子，强制模型输出极简技术信息
+
+**四档压缩**：lite / full / ultra / wenyan（文言文模式）
+**节省效果**：输出token直降约65%
+
+**配合关系**：Caveman压缩输出话术，Jev控制上下文压缩策略，两层优化叠加
+
+---
+
+### 3.4 技能层：agent-skills + Superpowers
+
+#### agent-skills（Addy Osmani）
+**定位**：生产级工程技能库，20+技能覆盖完整软件工程流程
+- 需求定义 → 方案规划 → 编码实现 → 单元测试 → 代码评审 → 上线交付
+- 按需加载机制：启动只加载技能简介，匹配任务时才载入完整规则
+- 适配 Claude Code、Pi、Codex
+
+#### Superpowers（obra/superpowers，29万+star）
+**定位**：编程Agent完整开发方法论
+- 标准化7步流程：需求分析 → 架构设计 → TDD测试驱动 → 子代理并行开发 → 集成测试 → 两段式代码审查 → 部署
+- 核心原则：证据胜于口头描述、YAGNI拒绝过度设计
+
+---
+
+### 3.5 工具层：Agent-Reach + Autoresearch
+
+#### Agent-Reach（Panniantong/Agent-Reach）
+**定位**：免费本地联网能力层，不用付费搜索API
+
+**支持平台（14+）**：Twitter/X、Reddit、Youtube、B站、小红书、网页、RSS、GitHub等
+
+**工作机制**：
+1. 本地安装yt-dlp、rdt-cli等CLI工具
+2. 自动生成SKILL.md，Agent自动选择调用
+3. `agent-reach doctor` 诊断各平台可用性
+4. 多后端兜底策略
+
+#### Autoresearch（Karpathy开源）
+**定位**：单GPU上AI Agent自动跑训练实验
+
+**核心闭环（Ratchet棘轮循环）**：
+1. Agent修改`train.py`（唯一可改文件）
+2. 固定5分钟墙钟时间预算训练
+3. 读取单一指标val_bpb（越低越好）
+4. 变好 → Git commit；变差 → Git revert
+5. 无限循环通宵跑
+
+**三个核心文件**：
+- `prepare.py`：只读裁判（数据、分词、指标逻辑，Agent不可改）
+- `train.py`：Agent唯一可修改文件
+- `program.md`：人类写的研究指令（目标、约束、搜索方向）
+
+**角色变革**：人类从写代码 → 写Markdown研究指令；AI Agent负责改代码、跑实验、Git版本管理
+
+---
+
+### 3.6 编排层：四大方案对比
+
+| 工具 | 定位 | 核心特点 | 适用场景 |
+|------|------|----------|----------|
+| **Paperclip**（9.5万⭐） | AI公司组织编排 | 工单制、心跳监控、token预算硬熔断、组织架构 | 长期多角色大项目，风控优先 |
+| **Orca** | 并行Agent舰队IDE | Git worktree隔离、多Agent并行写代码、A/B对比 | 多编码Agent并行开发 |
+| **Pi** | 轻量TUI编排器 | DAG任务依赖、树状会话、内置审查Advisor | 小规模本地多Agent任务 |
+| **Google AX** | 底层调度运行时 | 千级Agent高密度调度、亚秒级暂停/恢复、K8s原生 | 企业大规模生产集群 |
+
+#### Paperclip 三大核心能力
+1. **心跳唤醒**：Agent持续上报心跳，丢失自动暂停/诊断
+2. **Token预算硬熔断**：每张工单设token上限，触达立即停止，双重预算管控（总项目+子工单）
+3. **工单对齐目标**：工单绑定目标、验收标准、失败退出条件，防止Agent发散
+
+---
+
+### 3.7 协作层：Pencil共享画布
+
+**定位**：双向共享画布，人和Agent在同一块画布协作设计
+
+**主流工具**：
+- **Pencil**：Agent友好矢量画布，MCP Server，支持导出HTML/Tailwind
+- **OpenPencil**：开源替代，本地部署，JSON格式可Git版本管理
+- **Brainy Canvas**：MCP一键接入，`npx add-mcp`
+- **Flare.design**：AI原生动态画布，支持时间轴动效，导出MP4
+- **tldraw + Agent Draw**：开源白板SDK，草图/架构图/流程图
+
+**接入原理（MCP）**：
+1. Agent调用`canvas_read`：读取画布全部元素、手绘批注、参考素材
+2. Agent调用`canvas_create/update`：新增/修改画布矢量组件
+3. 双向实时同步
+
+---
+
+### 3.8 应用层案例
+
+#### God's Eye View（原WorldView）
+- **作者**：Bilawal Sidhu，前Google 6年3D地图工程师
+- **开发模式**：一个周末，8个AI Agent并行Vibe Coding完成原型
+- **技术栈**：CesiumJS + Vite，WebGL 3D地球
+- **数据源**：ADS-B飞机、AIS船舶、卫星TLE轨道、地震/火情公开API
+- **特点**：语音Agent交互（OpenAI Realtime），28个工具控制镜头
+- **开源**：MIT协议，GitHub 4.6万star
+
+#### Obsidian节点创作面板
+- **载体**：Obsidian知识库（Vault），Markdown笔记
+- **重构成本**：Claude Opus5.5 vs 上一版GPT-6 Astra
+- **视觉**：暗色宇宙风，雪花粒子、水母发光、光纤连接线
+- **功能**：节点式笔记管理，点击展开稿件/数据/素材
+
+#### 海洋沉浸式滚动首屏
+- **效果**：滚动=下潜深度，从海面阳光逐步进入深海
+- **技术方案**：CSS scroll-timeline / GSAP ScrollTrigger
+- **多层视差**：海面、水体、海底三层图层不同速度移动
+
+---
+
+## 四、待调研分析问题清单
+
+### 4.1 技术成熟度
+1. 各组件的开源活跃度、社区规模、生产可用度如何？
+2. 组件间集成的实际复杂度？MCP协议兼容性如何？
+3. 12GB显存跑180B MoE的实际体验？专家缓存命中率影响有多大？
+
+### 4.2 成本收益
+4. 整套本地部署的硬件总成本估算？
+5. Jev焚决+Caveman叠加后，token成本能降低多少？
+6. Autoresearch通宵跑实验的LLM API成本估算？
+
+### 4.3 选型建议
+7. 个人开发者/小团队应该选哪套编排方案？（Paperclip vs Orca vs Pi）
+8. 哪些组件是必装，哪些是可选？最小可行组合是什么？
+9. 本地Strata推理 vs 云端API，成本与质量如何权衡？
+
+### 4.4 风险与局限
+10. MoE分层存储（VRAM+RAM+SSD）的实际延迟瓶颈在哪？
+11. Paperclip工单+预算熔断会不会过度约束Agent的创造性探索？
+12. Agent-Reach依赖社交平台Cookie的风控风险？
+13. 整套栈的调试复杂度？多Agent出问题如何定位？
+
+### 4.5 发展趋势
+14. 从God's Eye View的"8 Agent周末开发"模式，到Karpathy的"AI通宵做实验"，Vibe Coding范式正在发生什么变化？
+15. 这套技术栈的下一个瓶颈会是什么？（推理速度？记忆一致性？编排复杂度？）
+16. 开源生态 vs 闭源工具链的竞争格局？
+
+---
+
+## 五、组件速查表
+
+| 组件 | 类型 | 协议/许可证 | 核心功能 | 推荐优先级 |
+|------|------|-------------|----------|------------|
+| Strata + Qwen3.8-Flash-Next | 本地推理引擎 | 闭源引擎/开源模型 | 12G显存跑180B MoE | ⭐⭐⭐ |
+| Hindsight | 共享记忆服务 | - | 多Agent共享上下文 | ⭐⭐⭐ |
+| Jev焚决 | Token优化 | API/有本地替代 | 上下文筛选+预算熔断 | ⭐⭐ |
+| Caveman | Token优化 | 开源 | 输出压缩65% | ⭐⭐ |
+| agent-skills | 工程技能 | 开源 | 标准化软件工程流程 | ⭐⭐⭐ |
+| Superpowers | 开发方法论 | 开源 | TDD+代码审查流程 | ⭐⭐ |
+| Agent-Reach | 联网工具层 | 开源 | 免费多平台信息读取 | ⭐⭐ |
+| Paperclip | 编排引擎 | MIT开源 | 工单+预算+心跳 | ⭐⭐⭐ |
+| Orca IDE | 并行开发IDE | MIT开源 | 多Agent Git worktree并行 | ⭐⭐ |
+| Pi | 轻量编排 | 开源 | DAG任务依赖 | ⭐ |
+| Google AX | 底层调度 | Apache2.0 | 千级Agent高密度调度 | ⭐ |
+| Pencil/OpenPencil | 协同画布 | 商业/开源 | MCP双向画布协作 | ⭐⭐ |
+| Autoresearch | 自动实验 | 开源 | AI自主训练迭代 | ⭐ |
+
+---
+
+## 六、建议的调研方向
+
+1. **最小可行栈（MVP）**：个人开发者如何用最少的组件跑通完整工作流？
+2. **生产级栈**：团队/公司级部署需要补哪些组件？
+3. **成本模型**：本地硬件一次性投入 vs 云端API持续费用，盈亏平衡点在哪？
+4. **替代方案对比**：这套开源组合 vs LangChain/LangGraph/Dify等商业平台方案的优劣
+5. **安全与隐私**：全离线部署的实际数据隔离程度，哪些环节仍可能泄露信息

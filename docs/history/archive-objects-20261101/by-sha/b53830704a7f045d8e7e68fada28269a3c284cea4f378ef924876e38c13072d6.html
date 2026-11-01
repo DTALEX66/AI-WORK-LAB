@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI模型与API监控核验汇总 · 2026-09-15</title><style>
+:root{--ink:#173346;--teal:#176975;--muted:#64748b;--paper:#fff;--line:#dce5ea}
+*{box-sizing:border-box}body{margin:0;background:#eef3f6;color:#253744;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;font-size:16px;line-height:1.85}main{max-width:1220px;margin:34px auto;padding:46px 52px;background:var(--paper);border:1px solid var(--line);border-radius:12px}h1{font-size:32px;line-height:1.35;margin-top:0;padding-bottom:22px;border-bottom:4px solid var(--teal);color:var(--ink)}h2{font-size:23px;color:var(--ink);margin-top:38px;border-left:5px solid var(--teal);padding-left:14px}h3{font-size:18px;margin-top:28px}p{margin:14px 0}a{color:var(--teal);overflow-wrap:anywhere;text-decoration:none}a:hover{text-decoration:underline}.ref{font-size:12px;padding:0 2px;white-space:nowrap}table{border-collapse:collapse;width:100%;margin:20px 0;font-size:14px;line-height:1.7}th{background:var(--ink);color:white;text-align:left;padding:12px 14px}td{border-bottom:1px solid var(--line);padding:12px 14px;vertical-align:top}tr:nth-child(even) td{background:#f1f6f8}code{font-family:Consolas,monospace;background:#edf3f5;font-size:.92em;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{background:#edf3f5;padding:18px;overflow:auto}strong{color:var(--ink)}li{margin:8px 0}footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;margin-top:34px}@media(max-width:800px){main{margin:0;padding:24px 18px;border-radius:0}table{display:block;overflow-x:auto}h1{font-size:26px}}@media print{body{background:white}main{max-width:none;border:0;margin:0;padding:10px}a{color:inherit}h2{break-after:avoid}tr{break-inside:avoid}}
+</style></head><body><main><h1>AI 模型、API 与额度：核验汇总</h1>
+<p>核验快照：<strong>2026-09-15</strong>。范围为本对话已报告项目，并补入 NVIDIA 与 Hugging Face 官方免费计划；不把补充建档称为今日新发布。精确来源见各段的来源编号及文末索引。</p>
+<h2>一、今日最重要变化</h2>
+<p>这次交付最重要的不是再增加“新模型”数量，而是把能够据以配置、预算、测试的事实与历史待核实数字分开。优先级按预算与项目价值排序，不按厂商排列。</p>
+<p><strong>低成本执行候选：DeepSeek V4.1-Flash、Gemini 3.8 Flash。</strong> 前者的正式调用别名是 <code>deepseek-flash</code>，旧Flash别名仍可能响应，但实际已转到新模型；V4-Pro则按后续官方通知继续提供服务。后者覆盖文本、图片、音频、视频与PDF输入，输出为文本；它不是原生图像或音频生成模型。<a class="ref" href="#S10">[S10]</a><a class="ref" href="#S11">[S11]</a><a class="ref" href="#S07">[S07]</a></p>
+<p><strong>高难任务对照：GPT-6 Astra、Claude Fable 5.1。</strong> 保留为疑难代码、长任务和重要审计的对照候选，不预设高价必然更可靠。Astra超过272K输入会触发整次请求长上下文价。Fable新版本还涉及强制工具调用、思考块和编辑历史轮次的兼容性变化，不能只更换模型名称就宣称无缝迁移。<a class="ref" href="#S01">[S01]</a><a class="ref" href="#S04">[S04]</a></p>
+<p><strong>执行框架候选：Agents API。</strong> 当前官方概览涵盖托管执行、会话、沙箱、上下文管理与恢复。它适合与 WORK-LAB 的既有能力作对照，但不是新的独立大模型，也不应成为重建三套任务系统的理由。<a class="ref" href="#S03">[S03]</a></p>
+<p><strong>设计与学习专项：GPT-Image-2.5 Flare / Sunburst、GPT-Live-1。</strong> 图像模型纳入严格局部编辑测试；语音服务纳入学习者停顿、复述与指令确认测试。价格可查不等于项目效果已经通过验收。图像作品是否真正保持比例、字形、局部材质和透明通道，必须在交付前检测。<a class="ref" href="#S02">[S02]</a><a class="ref" href="#S32">[S32]</a></p>
+<h2>二、免费与低成本机会</h2>
+<table>
+<thead>
+<tr>
+  <th>方案</th>
+  <th>当前可依赖的结论</th>
+  <th>不应忽略的边界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Gemini 免费层</td>
+  <td>免费层确实存在</td>
+  <td>固定每日额度未核实；免费API层不含Google Search grounding；数据使用条款不同于付费层 <a class="ref" href="#S08">[S08]</a><a class="ref" href="#S09">[S09]</a></td>
+</tr>
+<tr>
+  <td>OpenRouter 免费池</td>
+  <td>免费套餐页面列50次/日；有零词元价模型</td>
+  <td>不保证永久容量；每分钟及充值后加额规则本次未取全 <a class="ref" href="#S21">[S21]</a><a class="ref" href="#S22">[S22]</a><a class="ref" href="#S23">[S23]</a></td>
+</tr>
+<tr>
+  <td>NVIDIA NIM开发者计划</td>
+  <td>免费原型接口及研发试验许可</td>
+  <td>不是生产免费承诺；16GPU指自备硬件的许可范围，不是赠送算力 <a class="ref" href="#S25">[S25]</a></td>
+</tr>
+<tr>
+  <td>Hugging Face</td>
+  <td>免费用户每月0.10美元且可调整</td>
+  <td>是小额试用；自带提供方Key不适用HF路由赠额 <a class="ref" href="#S26">[S26]</a></td>
+</tr>
+<tr>
+  <td>Kimi Code</td>
+  <td>官方确认K2.8 Preview全会员可用1M；支持Hermes接入</td>
+  <td>会员不是免费API；实时价格、请求数量未复核；存在5小时/周/月总量约束 <a class="ref" href="#S15">[S15]</a><a class="ref" href="#S16">[S16]</a><a class="ref" href="#S18">[S18]</a><a class="ref" href="#S19">[S19]</a></td>
+</tr>
+<tr>
+  <td>Bolt Forge</td>
+  <td>个人Pro附带最高50倍限时用量</td>
+  <td>25美元展示月价按年付；训练共享；活动至10月14日，不是无限免费 <a class="ref" href="#S20">[S20]</a></td>
+</tr>
+<tr>
+  <td>TokenRouter GLM-5.3候选</td>
+  <td>平台存在与聚合接口说明已核实</td>
+  <td>具体免费页读取失败；价格、资格、期限和限速仍待核验 <a class="ref" href="#S27">[S27]</a><a class="ref" href="#S28">[S28]</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>退出风险：</strong> OpenRouter 的 <code>dots-studio/dots-3-note-preview:free</code> 已标注 <strong>2026-09-30</strong> 退出。不要新增长期依赖；这只涉及该免费接口，不代表权重或其他提供方也退出。<a class="ref" href="#S24">[S24]</a></p>
+<h3>主要文字模型单价</h3>
+<p>单位为美元/百万词元；输入、缓存读、缓存写、输出是不同计费项。以下为本次核验快照，不含税费、网络、搜索、重试和其他工具成本。</p>
+<table>
+<thead>
+<tr>
+  <th>模型/场景</th>
+  <th style="text-align:right">普通输入</th>
+  <th style="text-align:right">缓存读取</th>
+  <th style="text-align:right">缓存写入</th>
+  <th style="text-align:right">输出</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>GPT-6 Astra，标准短上下文</td>
+  <td style="text-align:right">10</td>
+  <td style="text-align:right">1</td>
+  <td style="text-align:right">12.5</td>
+  <td style="text-align:right">50</td>
+</tr>
+<tr>
+  <td>GPT-6 Astra，标准长上下文</td>
+  <td style="text-align:right">20</td>
+  <td style="text-align:right">2</td>
+  <td style="text-align:right">25</td>
+  <td style="text-align:right">75</td>
+</tr>
+<tr>
+  <td>Claude Fable 5.1，5分钟缓存写入</td>
+  <td style="text-align:right">10</td>
+  <td style="text-align:right">0.25</td>
+  <td style="text-align:right">12.5</td>
+  <td style="text-align:right">50</td>
+</tr>
+<tr>
+  <td>Claude Fable 5.1，1小时缓存写入</td>
+  <td style="text-align:right">10</td>
+  <td style="text-align:right">0.25</td>
+  <td style="text-align:right">20</td>
+  <td style="text-align:right">50</td>
+</tr>
+<tr>
+  <td>Gemini 3.8 Flash，2026年优惠</td>
+  <td style="text-align:right">0.75</td>
+  <td style="text-align:right">0.075</td>
+  <td style="text-align:right">未单列</td>
+  <td style="text-align:right">3.75</td>
+</tr>
+<tr>
+  <td>Gemini 3.8 Flash，2027年已公告价格</td>
+  <td style="text-align:right">1.50</td>
+  <td style="text-align:right">0.15</td>
+  <td style="text-align:right">未单列</td>
+  <td style="text-align:right">7.50</td>
+</tr>
+<tr>
+  <td>DeepSeek V4.1-Flash，低峰发布价</td>
+  <td style="text-align:right">0.15</td>
+  <td style="text-align:right">0.003</td>
+  <td style="text-align:right">未单列</td>
+  <td style="text-align:right">0.60</td>
+</tr>
+<tr>
+  <td>DeepSeek V4.1-Flash，高峰发布价</td>
+  <td style="text-align:right">0.30</td>
+  <td style="text-align:right">0.006</td>
+  <td style="text-align:right">未单列</td>
+  <td style="text-align:right">1.20</td>
+</tr>
+</tbody>
+</table>
+<p>价格来源：<a class="ref" href="#S01">[S01]</a><a class="ref" href="#S02">[S02]</a><a class="ref" href="#S04">[S04]</a><a class="ref" href="#S05">[S05]</a><a class="ref" href="#S08">[S08]</a><a class="ref" href="#S12">[S12]</a>。DeepSeek实时价格页全文未成功读取，采用9月10日官方价格图与索引交叉检查，执行前再核实。<a class="ref" href="#S13">[S13]</a></p>
+<p>工作簿可试算普通输入、缓存读取、缓存创建、输出及附加费；未知缓存创建价格不能当作零费用。跨模型比较时，相同文本的实际词元数量、思考量、重试次数可能不同，单价比较不能替代“每个验收通过任务的总成本”。</p>
+<h2>三、顶级模型排名变化</h2>
+<p>可核验的独立快照来自 <strong>Artificial Analysis 2026-09-09报告</strong>：Intelligence Index中Astra与Fable 5.1均为53；对应设置下任务成本为3.26与7.63美元。Coding Agent Index中Astra/Codex与Fable/Claude Code均为62。它比较的是指定设置及执行框架，不是本包重新跑出的结果，也不是保证你的项目成本比恒定。<a class="ref" href="#S29">[S29]</a></p>
+<p>因此保留“两者作为高端对照”的结论，而不宣称所有最新榜单都已扫描、所有视觉或长任务指标都由同一模型领先。评测版本变更、推理强度、回退策略、执行框架与任务集必须随成绩保存。<a class="ref" href="#S29">[S29]</a><a class="ref" href="#S30">[S30]</a></p>
+<p>Bolt Build Index属于厂商自测；Kimi“接近K3”、DeepSeek发布图及GPT-Live历史效果数字，也不能直接升级成独立机构对你的项目验收。历史报告中的高精度适配分不是实测数据，本包统一降低这种表达的伪精确性。<a class="ref" href="#S20">[S20]</a><a class="ref" href="#S11">[S11]</a><a class="ref" href="#S17">[S17]</a></p>
+<h2>四、对三个项目的影响</h2>
+<p>下表评分是本包的需求适配判断，满分10；不是官方排名，也不代表当前账户已经具备权限。</p>
+<table>
+<thead>
+<tr>
+  <th>候选</th>
+  <th style="text-align:right">ArcheAxis</th>
+  <th style="text-align:right">WORK-LAB</th>
+  <th style="text-align:right">DESIGN-LAB</th>
+  <th>本包安排</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>DeepSeek V4.1-Flash</td>
+  <td style="text-align:right">8.5</td>
+  <td style="text-align:right">8.5</td>
+  <td style="text-align:right">7.5</td>
+  <td>低成本执行与文档理解候选</td>
+</tr>
+<tr>
+  <td>Gemini 3.8 Flash</td>
+  <td style="text-align:right">9</td>
+  <td style="text-align:right">8.5</td>
+  <td style="text-align:right">8.5</td>
+  <td>多格式理解与工具调用候选</td>
+</tr>
+<tr>
+  <td>GPT-6 Astra</td>
+  <td style="text-align:right">9</td>
+  <td style="text-align:right">9.5</td>
+  <td style="text-align:right">8</td>
+  <td>疑难任务及独立审计对照</td>
+</tr>
+<tr>
+  <td>Claude Fable 5.1</td>
+  <td style="text-align:right">9</td>
+  <td style="text-align:right">9.5</td>
+  <td style="text-align:right">8</td>
+  <td>长任务与高难推理对照</td>
+</tr>
+<tr>
+  <td>Kimi K2.8 Preview / Kimi Code</td>
+  <td style="text-align:right">7.5</td>
+  <td style="text-align:right">9</td>
+  <td style="text-align:right">6.5</td>
+  <td>先确认会员与用途，再测编程</td>
+</tr>
+<tr>
+  <td>Agents API</td>
+  <td style="text-align:right">8.5</td>
+  <td style="text-align:right">9.5</td>
+  <td style="text-align:right">8</td>
+  <td>执行框架对照，不代替核心状态</td>
+</tr>
+<tr>
+  <td>GPT-Image-2.5 Flare / Sunburst</td>
+  <td style="text-align:right">5.5</td>
+  <td style="text-align:right">4</td>
+  <td style="text-align:right">9 / 9.5</td>
+  <td>局部编辑和视觉保持专项</td>
+</tr>
+<tr>
+  <td>GPT-Live-1</td>
+  <td style="text-align:right">9</td>
+  <td style="text-align:right">6.5</td>
+  <td style="text-align:right">7</td>
+  <td>学习语音交互的小样本原型</td>
+</tr>
+<tr>
+  <td>Bolt Forge</td>
+  <td style="text-align:right">6</td>
+  <td style="text-align:right">8</td>
+  <td style="text-align:right">7.5</td>
+  <td>脱敏、隔离的Web原型测试</td>
+</tr>
+</tbody>
+</table>
+<p><strong>ArcheAxis</strong> 继续保留人类学习与机器调用两侧。个人笔记、经验与假设允许先入库；外部核验状态决定如何展示和引用，而不是决定是否允许保存。模型输出必须能回溯原文、页码或时间戳，不能把自动“验证通过”当作来源。</p>
+<p><strong>WORK-LAB</strong> 负责模型适配、任务状态、权限、重试、预算、日志与恢复；本包不另建一套重复控制面。所有候选先注册为可回退的适配器，不能因榜单领先就改掉已有执行流程。</p>
+<p><strong>DESIGN-LAB</strong> 保留设计判断、可编辑中间结构、视觉验收和交付约束。图像模型只承担具体生成或编辑步骤；严格的尺寸、布局、文字和原图保持需要工具校验，不能依赖模型口头保证。</p>
+<h2>五、建议立即测试</h2>
+<p>先做“一个任务、两个候选、一个明确验收结果”，避免一次开启全部付费模型。</p>
+<p><strong>第一阶段：无需付费调用。</strong> 核对模型ID、账户额度、接口条款、地区和密钥隔离，关闭自动充值；选定同一批脱敏测试输入。预算上限未填写时，任务包默认阻止付费执行。</p>
+<p><strong>第二阶段：小样本对照。</strong> ArcheAxis先比较DeepSeek与Gemini的原文锚点、表格提取和错误定位；WORK-LAB先比较同仓库同权限下的工具调用、跨文件修复和中断恢复；DESIGN-LAB比较Flare与Sunburst的非目标区域变化、比例保持和文字准确率。</p>
+<p><strong>第三阶段：对照审计。</strong> 仅把失败样例、证据冲突或疑难修复交给Astra/Fable。若低价方案通过验收，保留其执行角色；若失败，记录失败原因，而不是自动提高预算重试到成功。</p>
+<p><strong>第四阶段：决定是否替换。</strong> 至少经过独立复核、风险检查、成本统计与回退演练后，才允许从“测试”升级为“现有组件替换候选”。本包没有给任何候选生产批准。</p>
+<h2>来源索引</h2>
+<p>下列链接是核验入口，完整读取状态及未覆盖来源见 <code>05_来源与覆盖范围.md</code>。</p>
+<ul>
+<li id="S01"><strong>[S01]</strong> OpenAI：GPT-6 Astra 模型规格：<a href="https://developers.openai.com/api/docs/models/gpt-6-astra" rel="noreferrer">https://developers.openai.com/api/docs/models/gpt-6-astra</a></li>
+<li id="S02"><strong>[S02]</strong> OpenAI：API 价格：<a href="https://developers.openai.com/api/docs/pricing" rel="noreferrer">https://developers.openai.com/api/docs/pricing</a></li>
+<li id="S03"><strong>[S03]</strong> OpenAI：Agents API 概览：<a href="https://developers.openai.com/api/docs/guides/agents-api/overview" rel="noreferrer">https://developers.openai.com/api/docs/guides/agents-api/overview</a></li>
+<li id="S04"><strong>[S04]</strong> Anthropic：Claude Fable 5.1 模型规格：<a href="https://platform.claude.com/docs/en/models/fable-5-1/overview" rel="noreferrer">https://platform.claude.com/docs/en/models/fable-5-1/overview</a></li>
+<li id="S05"><strong>[S05]</strong> Anthropic：API 价格：<a href="https://platform.claude.com/docs/en/about-claude/pricing" rel="noreferrer">https://platform.claude.com/docs/en/about-claude/pricing</a></li>
+<li id="S06"><strong>[S06]</strong> Anthropic：Fable 与 Mythos 5.1 公告：<a href="https://www.anthropic.com/claude-fable-and-mythos-5-1" rel="noreferrer">https://www.anthropic.com/claude-fable-and-mythos-5-1</a></li>
+<li id="S07"><strong>[S07]</strong> Google：Gemini 3.8 Flash 规格：<a href="https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash" rel="noreferrer">https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash</a></li>
+<li id="S08"><strong>[S08]</strong> Google：Gemini API 价格及免费层：<a href="https://ai.google.dev/gemini-api/docs/pricing" rel="noreferrer">https://ai.google.dev/gemini-api/docs/pricing</a></li>
+<li id="S09"><strong>[S09]</strong> Google：Gemini API 速率限制：<a href="https://ai.google.dev/gemini-api/docs/rate-limits" rel="noreferrer">https://ai.google.dev/gemini-api/docs/rate-limits</a></li>
+<li id="S10"><strong>[S10]</strong> DeepSeek：当前 API 名称与 V4-Pro 保留通知：<a href="https://api-docs.deepseek.com/" rel="noreferrer">https://api-docs.deepseek.com/</a></li>
+<li id="S11"><strong>[S11]</strong> DeepSeek：V4.1-Flash 发布公告：<a href="https://www.deepseek.com/en/news/deepseek-v4-1-flash/" rel="noreferrer">https://www.deepseek.com/en/news/deepseek-v4-1-flash/</a></li>
+<li id="S12"><strong>[S12]</strong> DeepSeek：官方发布价格图：<a href="https://www.deepseek.com/images/blog/deepseek-v4-1-flash/pricing-en.jpg" rel="noreferrer">https://www.deepseek.com/images/blog/deepseek-v4-1-flash/pricing-en.jpg</a></li>
+<li id="S13"><strong>[S13]</strong> DeepSeek：实时价格页：<a href="https://api-docs.deepseek.com/quick_start/pricing" rel="noreferrer">https://api-docs.deepseek.com/quick_start/pricing</a></li>
+<li id="S14"><strong>[S14]</strong> DeepSeek：官方 Hugging Face 模型卡：<a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash" rel="noreferrer">https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash</a></li>
+<li id="S15"><strong>[S15]</strong> Kimi Code：模型与会员可用范围：<a href="https://www.kimi.com/code/docs/kimi-code/models.html" rel="noreferrer">https://www.kimi.com/code/docs/kimi-code/models.html</a></li>
+<li id="S16"><strong>[S16]</strong> Kimi Code：会员额度与额外用量：<a href="https://www.kimi.com/code/docs/kimi-code/membership.html" rel="noreferrer">https://www.kimi.com/code/docs/kimi-code/membership.html</a></li>
+<li id="S17"><strong>[S17]</strong> Kimi Code：更新日志：<a href="https://www.kimi.com/code/docs/kimi-code/whats-new.html" rel="noreferrer">https://www.kimi.com/code/docs/kimi-code/whats-new.html</a></li>
+<li id="S18"><strong>[S18]</strong> Kimi Code：Hermes 接入：<a href="https://www.kimi.com/code/docs/third-party-tools/hermes.html" rel="noreferrer">https://www.kimi.com/code/docs/third-party-tools/hermes.html</a></li>
+<li id="S19"><strong>[S19]</strong> Kimi：会员实时结算价格：<a href="https://www.kimi.com/membership/pricing?from=kfc_docs_membership" rel="noreferrer">https://www.kimi.com/membership/pricing?from=kfc_docs_membership</a></li>
+<li id="S20"><strong>[S20]</strong> Bolt：Forge 研究预览、活动与数据条款：<a href="https://bolt.new/blog/what-is-bolt-forge" rel="noreferrer">https://bolt.new/blog/what-is-bolt-forge</a></li>
+<li id="S21"><strong>[S21]</strong> OpenRouter：平台价格与免费每日额度：<a href="https://openrouter.ai/pricing" rel="noreferrer">https://openrouter.ai/pricing</a></li>
+<li id="S22"><strong>[S22]</strong> OpenRouter：免费模型集合：<a href="https://openrouter.ai/collections/free-models" rel="noreferrer">https://openrouter.ai/collections/free-models</a></li>
+<li id="S23"><strong>[S23]</strong> OpenRouter：速率限制：<a href="https://openrouter.ai/docs/api_reference/limits" rel="noreferrer">https://openrouter.ai/docs/api_reference/limits</a></li>
+<li id="S24"><strong>[S24]</strong> OpenRouter：Dots3-Note 免费接口退出日期：<a href="https://openrouter.ai/dots-studio/dots-3-note-preview:free" rel="noreferrer">https://openrouter.ai/dots-studio/dots-3-note-preview:free</a></li>
+<li id="S25"><strong>[S25]</strong> NVIDIA：NIM 开发者计划常见问题：<a href="https://docs.api.nvidia.com/nim/docs/product" rel="noreferrer">https://docs.api.nvidia.com/nim/docs/product</a></li>
+<li id="S26"><strong>[S26]</strong> Hugging Face：Inference Providers 额度与计费：<a href="https://huggingface.co/docs/inference-providers/pricing" rel="noreferrer">https://huggingface.co/docs/inference-providers/pricing</a></li>
+<li id="S27"><strong>[S27]</strong> TokenRouter：平台说明：<a href="https://www.tokenrouter.com/" rel="noreferrer">https://www.tokenrouter.com/</a></li>
+<li id="S28"><strong>[S28]</strong> TokenRouter：GLM-5.3 免费候选页面：<a href="https://www.tokenrouter.com/models/z-ai/glm-5.3-free/" rel="noreferrer">https://www.tokenrouter.com/models/z-ai/glm-5.3-free/</a></li>
+<li id="S29"><strong>[S29]</strong> Artificial Analysis：GPT-6 Astra 独立评测：<a href="https://artificialanalysis.ai/articles/benchmarking-gpt-6-astra" rel="noreferrer">https://artificialanalysis.ai/articles/benchmarking-gpt-6-astra</a></li>
+<li id="S30"><strong>[S30]</strong> Artificial Analysis：Intelligence Index v4.3 变更：<a href="https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v4-3" rel="noreferrer">https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v4-3</a></li>
+<li id="S31"><strong>[S31]</strong> Z.ai：GLM-5.3 官方公告：<a href="https://z.ai/blog/glm-5.3" rel="noreferrer">https://z.ai/blog/glm-5.3</a></li>
+<li id="S32"><strong>[S32]</strong> OpenAI：Images 2.5 安全发布记录：<a href="https://deploymentsafety.openai.com/" rel="noreferrer">https://deploymentsafety.openai.com/</a></li>
+</ul>
+<footer>核验快照：2026-09-15。完整证据状态、待核验项、费用工作簿与测试任务见同目录文件。离线报告不自动刷新。</footer></main></body></html>

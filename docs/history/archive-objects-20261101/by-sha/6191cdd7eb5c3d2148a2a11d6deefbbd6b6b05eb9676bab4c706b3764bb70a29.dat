@@ -1,0 +1,521 @@
+# Knowledge-Base 项目拆解精简与未来路线总方案
+
+# Knowledge-Base 精简重构总入口
+
+## 一句话定位
+
+Knowledge-Base 当前应收敛为：
+
+```text
+本地优先的个人知识库
++ 轻量学习复习闭环
++ 轻量机器任务辅助
+```
+
+不要再把当前版本包装成完整 Human Learning OS + Machine Agent OS。
+
+## 当前主线
+
+```text
+导入资料
+→ 清洗存储
+→ 全文搜索
+→ 生成/管理卡片
+→ 间隔复习
+→ 错题记录
+→ 日报/导出
+→ 生成 CODEX/DEEP 任务上下文
+```
+
+## 精简原则
+
+```text
+当前能跑通的留在主线
+尚未完全闭环的放入 experimental
+概念性规划放入 roadmap
+历史旧项目文档放入 archive
+```
+
+
+---
+
+# 00 项目重新定位
+
+## 原问题
+
+当前仓库文档存在三个冲突：
+
+1. README 把项目描述为 v3.2 的 A线+B线双主线大平台。
+2. deep-plan 又说第一阶段只做“采集 → 清洗 → 存储 → 搜索 → 展示 → 导出”。
+3. architecture 目录中还残留 Lumina AI / Aether Radar 等旧项目口径。
+
+## 新定位
+
+```text
+Knowledge-Base = Local-first Personal Knowledge Base
+```
+
+增强方向：
+
+```text
+轻量学习闭环
+轻量机器任务辅助
+未来可扩展为 A/B 双系统
+```
+
+## 当前版本口径
+
+建议统一为：
+
+```text
+v0.2 MVP Simplified
+```
+
+
+---
+
+# 01 三层拆解
+
+## 第一层：core_mvp 当前主线
+
+只保留必须跑通的核心：
+
+```text
+1. 文档导入
+2. 文档清洗
+3. SQLite 存储
+4. FTS5 搜索
+5. 文档查看
+6. 卡片创建
+7. 间隔复习
+8. 错题记录
+9. 日报/导出
+10. Context Pack
+11. TaskPack
+12. Trace
+```
+
+## 第二层：experimental 实验层
+
+这些可以保留代码，但不要在 README 里承诺稳定：
+
+```text
+认知负荷
+记忆编码
+技能任务
+费曼输出
+学习画像
+长期巩固
+知识宫殿
+Agent Executor
+A转B Translator
+多Agent
+沙盒执行
+```
+
+## 第三层：roadmap 未来路线
+
+这些保留方向，不作为当前开发任务：
+
+```text
+A线完整 Human Learning OS
+B线完整 Machine Agent OS
+知识宫殿空间学习
+多模型治理
+DSPy 自优化
+LangGraph 状态机
+OpenHands 式执行沙盒
+Mem0/Zep 式机器长期记忆
+社区/商业化/多用户
+```
+
+## 第四层：archive 历史归档
+
+```text
+Lumina AI 旧规范
+Aether Radar 历史说明
+过期 deep-plan
+旧版本商业化文档
+大型参考包
+重复生成报告
+```
+
+
+---
+
+# 02 MVP 功能边界
+
+## MVP 要做
+
+### 知识库核心
+
+```text
+POST /documents
+GET  /documents
+GET  /documents/{id}
+GET  /search
+GET  /sources
+GET  /tags
+```
+
+### 学习闭环
+
+```text
+POST /cards
+GET  /cards
+GET  /cards/due
+POST /reviews
+POST /mistakes
+GET  /reports/daily
+```
+
+### 机器辅助
+
+```text
+POST /machine/context-pack
+POST /machine/taskpack
+GET  /traces
+```
+
+### MCP 核心工具
+
+```text
+health.check
+documents.search
+documents.get
+cards.create
+cards.due
+reviews.submit
+context_pack.build
+taskpack.generate
+```
+
+## MVP 不做
+
+```text
+完整知识宫殿
+完整多Agent自主执行
+复杂学习画像
+复杂 LMS
+3D 宫殿
+社区系统
+支付系统
+多租户
+自动联网执行
+自动写入长期记忆
+```
+
+
+---
+
+# 03 目录精简建议
+
+## 建议目录
+
+```text
+Knowledge-Base/
+├── README.md
+├── PROJECT_STATUS.md
+├── PROJECT_MANIFEST.json
+├── AGENTS.md
+├── backend/
+│   ├── pk_radar/
+│   │   ├── core/
+│   │   ├── search/
+│   │   ├── learning/
+│   │   ├── machine/
+│   │   ├── mcp/
+│   │   ├── adapters/
+│   │   └── api.py
+│   └── tests/
+├── frontend/
+│   └── app/
+│       ├── page.tsx
+│       ├── upload/
+│       ├── knowledge/
+│       ├── search/
+│       ├── review/
+│       └── settings/
+├── docs/
+│   ├── 00_CURRENT_SCOPE.md
+│   ├── 01_ARCHITECTURE_MVP.md
+│   ├── 02_API_MVP.md
+│   ├── 03_DATABASE_MVP.md
+│   ├── 04_FRONTEND_MVP.md
+│   ├── 05_TESTING.md
+│   ├── 06_ROADMAP.md
+│   ├── 07_DECISIONS.md
+│   └── archive/
+└── reference/
+    └── archive/
+```
+
+## 模块重命名建议
+
+```text
+backend/pk_radar/learning_final/ → backend/pk_radar/experimental/learning_final/
+backend/pk_radar/b_line/agent_executor.py → backend/pk_radar/experimental/b_line/agent_executor.py
+reference/A线极限增强包_vFinal/ → reference/archive/A_line_vision/
+reference/B线线路最终合集包/ → reference/archive/B_line_vision/
+docs/architecture/00_PROJECT_SPEC_INDEX.md → docs/archive/Lumina_AI_PROJECT_SPEC_INDEX.md
+```
+
+
+---
+
+# 04 文档精简建议
+
+## 主文档只保留
+
+```text
+README.md
+PROJECT_STATUS.md
+AGENTS.md
+docs/00_CURRENT_SCOPE.md
+docs/01_ARCHITECTURE_MVP.md
+docs/02_API_MVP.md
+docs/03_DATABASE_MVP.md
+docs/04_FRONTEND_MVP.md
+docs/05_TESTING.md
+docs/06_ROADMAP.md
+docs/07_DECISIONS.md
+```
+
+## docs/STANDARDS_INDEX.md 改造
+
+由“全量标准索引”改成“当前有效文档索引”。
+
+保留：
+
+```text
+CURRENT_SCOPE
+ARCHITECTURE_MVP
+API_MVP
+DATABASE_MVP
+TESTING
+ROADMAP
+DECISIONS
+```
+
+## reference/ 改造
+
+reference 不作为当前开发入口，只作为资料库。
+
+```text
+reference/archive/A_line_vision
+reference/archive/B_line_vision
+reference/archive/open_source_benchmark
+reference/archive/fsrs_reference
+```
+
+## 文档口径统一
+
+统一用：
+
+```text
+当前稳定能力
+当前实验能力
+未来方向
+历史归档
+```
+
+不要混写“已完成”和“待实现”。
+
+
+---
+
+# 05 功能保留 / 冻结 / 归档表
+
+| 模块 | 处理 | 原因 |
+|---|---|---|
+| 文档导入 | 保留 | 核心能力 |
+| SQLite + FTS5 | 保留 | 本地优先地基 |
+| 搜索 | 保留 | 核心体验 |
+| 卡片 | 保留 | 轻量学习闭环 |
+| 复习 | 保留 | MVP学习价值 |
+| 错题 | 保留 | 学习反馈 |
+| 日报 | 保留 | 输出闭环 |
+| Context Pack | 保留 | B线轻量价值 |
+| TaskPack | 保留 | 服务 CODEX/DEEP |
+| Trace | 保留 | 证据链 |
+| 认知负荷 | 冻结 | 可作为实验，不做主线 |
+| 记忆编码 | 冻结 | 先不扩大多模态 |
+| 技能任务 | 冻结 | 等卡片复习稳定后做 |
+| 费曼输出 | 冻结 | 后续增强 |
+| 学习画像 | 冻结 | 数据不足时价值有限 |
+| 长期巩固 | 冻结 | MVP后再做 |
+| 知识宫殿 | 路线图 | 价值大但当前过重 |
+| 多Agent | 路线图 | 需要沙盒和评估先成熟 |
+| 沙盒执行 | 路线图 | 风险高，不放MVP |
+| 40+ MCP工具 | 收敛 | 只留8个核心 |
+| 17页前端 | 收敛 | 只留6个核心页面 |
+| Lumina/Aether旧文档 | 归档 | 项目名冲突 |
+
+
+---
+
+# 06 未来发展路线
+
+## Phase 0：口径统一与精简
+
+```text
+统一 README / PROJECT_STATUS / MANIFEST
+归档旧项目名文档
+冻结 experimental
+收敛 API / MCP / 前端页面
+```
+
+## Phase 1：MVP 稳定
+
+```text
+文档导入
+搜索
+卡片
+复习
+错题
+日报
+Context Pack
+TaskPack
+```
+
+## Phase 2：A线增强
+
+```text
+认知负荷
+费曼输出
+技能任务
+学习画像
+长期巩固
+```
+
+## Phase 3：知识宫殿
+
+```text
+space
+room
+locus
+object
+route walk
+visual anchor
+```
+
+## Phase 4：B线增强
+
+```text
+Machine Route
+Agent Role
+MCP 权限
+Execution Trace
+Eval Run
+Machine Lesson
+```
+
+## Phase 5：Agent OS
+
+```text
+LangGraph式状态机
+OpenHands式沙盒
+promptfoo/Ragas评估
+Langfuse观测
+Mem0/Zep机器记忆
+LiteLLM模型路由
+```
+
+## Phase 6：产品化
+
+```text
+桌面端
+浏览器插件
+移动端
+同步
+团队版
+商业化
+```
+
+
+---
+
+# 07 CODEX 精简执行提示词
+
+请对 DTALEX66/Knowledge-Base 做“项目精简重构”，不要新增大功能。
+
+## 目标
+
+把当前项目从“大而全的 A/B 双系统规划”收敛为：
+
+```text
+本地优先知识库
++ 轻量学习闭环
++ 轻量机器任务辅助
+```
+
+## 必须执行
+
+1. 统一 README、PROJECT_STATUS、PROJECT_MANIFEST、STANDARDS_INDEX、deep-plan 的项目名、版本、当前范围。
+2. 把 Lumina AI / Aether Radar 旧口径移动到 docs/archive。
+3. 把 A线16系统、B线完整Agent OS、知识宫殿、多Agent、沙盒执行等内容放入 roadmap 或 experimental。
+4. 当前主线只保留 documents、search、cards、reviews、mistakes、daily report、context pack、taskpack、trace。
+5. MCP 工具收敛到 8 个核心工具。
+6. 前端页面收敛到 dashboard/upload/knowledge/search/review/settings。
+7. 输出新的 CURRENT_SCOPE、ARCHITECTURE_MVP、API_MVP、DATABASE_MVP、ROADMAP、DECISIONS。
+
+## 不允许
+
+```text
+不要删除有价值参考资料，只归档
+不要继续新增 A/B 大系统
+不要新增复杂 Agent 自动执行
+不要把未来路线写成当前已完成
+不要保留旧项目名作为主入口
+```
+
+
+---
+
+# 08 新版 README 草案
+
+```markdown
+# Knowledge-Base
+
+本地优先的个人知识库与轻量学习复习系统。
+
+## 当前定位
+
+Knowledge-Base 当前版本专注于：
+
+- 文档导入、清洗、存储
+- SQLite + FTS5 本地全文搜索
+- 卡片与间隔复习
+- 错题记录与学习日报
+- 生成给 CODEX / DEEP 使用的上下文包和任务包
+
+## 当前不做
+
+- 不做完整多用户系统
+- 不做复杂社区
+- 不做自动执行高风险 Agent
+- 不做完整知识宫殿
+- 不做完整 Human Learning OS / Machine Agent OS
+
+这些能力保留在 roadmap 中。
+
+## MVP 功能
+
+| 模块 | 状态 |
+|---|---|
+| 文档导入 | active |
+| 本地搜索 | active |
+| 卡片复习 | active |
+| 错题记录 | active |
+| 学习日报 | active |
+| Context Pack | active |
+| TaskPack | active |
+
+## 未来方向
+
+- A线学习增强
+- 知识宫殿
+- B线机器知识系统
+- Agent 执行沙盒
+- 多模型治理
+```

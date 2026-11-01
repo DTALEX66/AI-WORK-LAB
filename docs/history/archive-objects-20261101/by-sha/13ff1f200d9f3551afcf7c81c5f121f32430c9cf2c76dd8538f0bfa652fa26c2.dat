@@ -1,0 +1,185 @@
+# GPT CODEX UI 开发任务包｜ArcheAxis Knowledge OS / AAOS
+
+你现在负责 **ArcheAxis Knowledge OS（AAOS / 星环知识平台）** 的正式 UI/前端开发。目标是把仓库现有前端升级为真正可用的“本地优先、证据驱动、人机双向学习知识操作系统”，不是做一个宇宙主题海报，也不是做普通笔记软件。
+
+## 0. 先审计现有仓库
+
+先读取真实仓库并生成 `UI_IMPLEMENTATION_AUDIT.md`：技术栈、现有路由、数据层、本地存储/数据库、搜索、学习/FSRS、AI/模型接口、证据/原文/记忆相关 Schema、已有 UI 组件。
+
+不得为了前端重写后端知识模型。优先适配真实数据结构；如果某模块尚未实现，使用明确的 Adapter + Mock fallback，而不是伪造为已完成后端。
+
+审计后直接执行，不要因普通布局/颜色决策停下来询问。冲突按下列资料优先级处理，并写入 `UI_DECISIONS.md`。
+
+## 1. 包内资料读取顺序
+
+1. `10_B10_最终版高保真可部署UI/archeaxis_最终版_高保真可部署UI.zip`
+   - 最终界面质感、光效、动画、交互最高权威。
+2. `09_B09_交互式真实Demo/archeaxis_L9_交互式真实Demo.zip`
+   - Capture → Evidence → Original → Memory → Review 基础闭环交互。
+3. `08_B08_ReactTypeScript可运行原型/archeaxis_L8_React_TypeScript_可运行原型.zip`
+4. `07_B07_前端开发规范/ArcheAxis_L7_前端开发规范工程包.zip`
+5. `06_B06_交互状态系统/ArcheAxis_L6_18张交互状态+Tokens.zip`
+6. `05_B05_高保真产品页面/ArcheAxis_L5_12张高保真产品页面.zip`
+7. `04_B04_组件系统与DesignTokens/ArcheAxis_L4_组件系统_16张+Tokens.zip`
+8. `03_B03_页面级UI与AAOS配色纠正_L3/ArcheAxis_10张页面级UI_统一体系.zip`
+9. `03_B03_页面级UI与AAOS配色纠正_L3/AAOS_配色纠正母版_v2.zip`
+   - **AAOS 色彩校正必须核对该包**。
+10. `02_B02_深度细节_L2/ArcheAxis_L2_VI+UI_36张细节图.zip`
+11. `01_B01_基础视觉拆图_L1/ArcheAxis_VI+UI_24张全套.zip`
+12. `01_B01_基础视觉拆图_L1/ArcheAxis_VI_12张独立图.zip`
+13. `01_B01_基础视觉拆图_L1/ArcheAxis_UI_12张独立图.zip`
+
+## 2. 产品定义——必须坚持
+
+AAOS 不是 Agent OS，不是模型控制台，不是 Notion 克隆。
+
+它是：
+- Local-first。
+- Evidence-driven。
+- Human Learning + Machine Learning 双向学习。
+- 原始资料（Originals）、证据（Evidence）、原创（Original）、工作区（Workspace）、记忆（Memory）和长期成长（Growth）形成闭环。
+
+主闭环：
+`Capture → Parse/Source → Evidence → Link/Understand → Original/Human Learning/Machine Learning → Memory → Review/FSRS → Growth`
+
+必须把“证据可信”和“原始来源可追溯”放在 UI 核心，而不是把 AI 对话框放在中心。
+
+## 3. AAOS 最终视觉约束
+
+**最关键：不要再回到旧版不好看的金青重配色。**
+
+正式系统色：
+- 深空黑蓝背景约 `#061118`。
+- Surface `#0C1C26 / #102630`。
+- Aurora Teal 主交互约 `#1FC8C5`。
+- Ivory 文字约 `#F3EFE6`，避免刺眼纯白。
+- 星辉金约 `#E6BE73` **只用于：证据星、关键可信节点、极少重点状态；不能大面积做按钮、Sidebar、卡片边框**。
+- 宇宙/星环只作为结构隐喻：Orbit/Axis/Constellation/Memory Trajectory，不要满屏星云、行星、金色装饰。
+
+光效：
+- Teal 柔和扩散，低饱和。
+- Memory Map 节点可有慢速呼吸。
+- Orbit 线条非常慢，不抢文字阅读。
+- 内容/阅读页面以稳定、安静为主，不要所有页面都动。
+
+## 4. 正式页面架构
+
+至少实现：
+1. Home
+2. Capture Inbox
+3. Evidence Library
+4. Evidence Detail
+5. Originals / Original Editor
+6. Human Learning
+7. Machine Learning
+8. Workspace
+9. Memory Map
+10. Search
+11. Review / FSRS
+12. Settings
+
+### Home
+不是传统 Dashboard 堆 KPI。应该同时体现：
+- 今日关注
+- 最近证据
+- 待复习
+- 学习/原创进展
+- Memory Map 摘要
+- 快速 Capture
+
+### Evidence Library
+- Evidence card/list 两种密度。
+- 来源、作者/机构、时间、可信/验证、引用次数、主题、关联 Original/Note。
+- 支持语义搜索、来源筛选、主题、时间、Verified/Needs Review。
+
+### Evidence Detail
+- 原文/摘录与证据本身分层显示。
+- Source chain 可追溯。
+- Related Evidence / Originals / Learning Cards。
+- 不允许 AI 生成内容和原始证据视觉上混在一起；必须有 provenance 标签。
+
+### Original Editor
+- 编辑器左/中主内容，右侧 Evidence Reference Drawer。
+- 插入引用时保留证据 ID/来源。
+- Auto-save + Version history。
+- AI 辅助以侧栏/命令形式存在，不压过作者。
+
+### Human Learning
+- 学习计划、学习卡片、进度、掌握度、复习入口。
+- FSRS 队列是真实状态，而不是装饰 KPI。
+
+### Machine Learning
+- 展示知识供给 AI 的状态：索引、Embedding、自动标签、实体/关系提取、模型可用性。
+- 清晰标记“机器生成/机器推断”，不要冒充证据。
+
+### Memory Map
+- Graph 性能优先；节点数量大时做聚类/Lod/Canvas/WebGL 评估。
+- 点击节点 Drawer；支持主题/时间/来源/关系强度筛选。
+- 核心交互是“从节点回到证据/原创/学习记录”。
+
+## 5. 组件与交互
+
+继承 B04/B06：Button/Input/Select/Tag/Card/Table/List/Tree/Graph/Toast/Modal/Drawer/Tooltip/Command Palette/Empty/Loading/Error/Permission/Version。
+
+AAOS 专属：
+- EvidenceBadge
+- ProvenanceTag
+- SourceChain
+- CaptureComposer
+- MemoryNode / MemoryGraph
+- ReviewCard / FSRSGradeButtons
+- CitationPicker
+- LearningProgress
+- MachineDerivedTag（明确机器生成）
+
+动画：
+- Review card 可用 3D flip，但尊重 reduced motion。
+- Memory node hover/selected 清晰，避免过度发光。
+- Capture → Saved 可用短促状态变换。
+
+## 6. Local-first 必须在工程上是真的
+
+如果当前项目已有 SQLite/IndexedDB/本地文件层，直接复用。
+若无完整层：
+- 建立 Repository/Adapter 接口。
+- UI 不直接依赖 localStorage 作为正式实现；localStorage 仅可用于 demo preference。
+- 支持离线态、同步态、冲突态。
+- 明确“本地数据”和“外部模型/API”边界。
+
+## 7. 搜索与学习
+
+Search：
+- keyword + semantic + source/time/topic filters。
+- 结果标明 Evidence / Original / Note / Workspace。
+
+Review/FSRS：
+- UI 接真实 FSRS 调度数据；如果算法模块已有，严禁另写简化版替代。
+- Again / Hard / Good / Easy。
+- 下一次 due、稳定度/难度等高级字段可放详情，不要主界面过载。
+
+## 8. 响应式与可访问性
+
+- 阅读区域最大宽度合理控制，避免超宽长行。
+- 44px 点击区域。
+- Keyboard：Cmd/Ctrl+K、Esc、Editor shortcut、Review shortcut。
+- 对比度 ≥4.5:1。
+- Mobile Graph 进入专门全屏页，不把复杂图谱强塞在窄屏。
+
+## 9. 验收要求
+
+必须输出：
+- `UI_IMPLEMENTATION_REPORT.md`
+- `AAOS_VISUAL_QA.md`
+- `DATA_PROVENANCE_UI_AUDIT.md`
+- 主要页面 smoke tests。
+- 构建/typecheck/lint 成功。
+
+视觉 QA 必须专门检查：
+- 金色是否超过“少量重点”角色。
+- 是否出现花哨宇宙海报化。
+- 是否把 AI 生成和 Evidence 混淆。
+- 是否真正体现 Local-first / Evidence-driven / Human+AI，而不是普通笔记App。
+
+## 10. 执行
+
+直接开始：仓库审计 → 解压参考 → 建 Token/Theme → App Shell → Capture/Evidence 两个核心基础模块 → Original/Human Learning → Memory/Search/Review → Machine Learning → Settings/状态 → 测试与视觉 QA。不要只写方案，不要只新增一个独立 demo。

@@ -1,0 +1,614 @@
+# 星环知识平台（ArcheAxis Knowledge）云端全量结构审计与“可信内核 + 能力插件化”改造任务包
+
+> 日期：2026-08-14  
+> 云端唯一审计对象：`DTALEX66/ArcheAxis-Knowledge-OS`  
+> 审计基线：`main@e05765e0d97978b831493eafbf650b91219b0f53`  
+> 项目边界：WORK-LAB、DESIGN-LAB 是独立项目，不是本仓库子模块，不在本任务包中改动。  
+> 用途：供 Owner 决策，并作为 Hermes 后续执行的唯一综合任务输入。  
+> 审计性质：对云端目录树、关键业务链、前端、桌面壳、依赖、文档真相源、CI、Release 和仓库治理进行全量结构扫描及高风险文件逐项语义审计；不是对 855 个 blob 逐行人工证明式复核。
+
+---
+
+## 0. 执行摘要
+
+### 0.1 独立结论
+
+项目真正需要的不是“所有东西都是插件”，而是：
+
+> **不可替换的可信知识与双向学习内核 + 可替换的能力插件 + 受控的外部运行时适配器。**
+
+这与两份输入文档中第二份“微内核 + 能力插件化”的方向一致，但必须进一步收紧。证据、主张、原件身份、知识状态、人工复核、事务一致性、来源链和插件权限不能作为普通插件被任意替换；OCR、ASR、文档解析、搜索、向量库、模型、网页验证源、学习调度器、可视化和 3D/VR 表现层才适合插件化。
+
+当前项目不是“没有东西”，而是“已经有很多可工作的纵向能力，但缺少稳定内核边界和单一真相源”。继续堆功能会进一步放大耦合；立即推倒重写则会破坏已经形成的摄取、Workspace、Outbox/Receipt、Evidence、KB、Tauri 和测试资产。最优路线是**绞杀式改造**：先恢复绿色基线与真相源，再建立插件契约，然后优先抽离转换引擎，最后迁移 UI 与未来表现能力。
+
+### 0.2 项目正式定位（本任务包采用）
+
+**星环知识平台（ArcheAxis Knowledge）**是一个本地优先、原件保全、证据可追溯、开放互操作的人机双向学习与可信知识治理系统。它将多格式原始材料转换为带物理锚点、可核验、可撤销的知识，并让同一可信证据基底同时服务于：
+
+- 人类的理解、练习、间隔复习、迁移与 Teach Back；
+- AI 的可控记忆、规则、技能、上下文与评测资产；
+- 人与 AI 之间的双向修正、冲突发现和可审计复用。
+
+它不是通用 Agent OS、Runtime 平台、聊天壳、纯阅读器、文件管理器或 Obsidian 克隆。通用 Agent、终端、浏览器自动化及第三方运行时只能通过受控适配器接入。
+
+### 0.3 对用户两点要求的校准
+
+1. “好看并且功能性、兼容性、高效率”是正确目标，但不能只做视觉重皮。需要统一信息架构、设计系统、交互状态、数据契约、性能预算和插件贡献点。建议保留 Tauri，前端渐进迁移到 React + TypeScript + Vite；没有充分理由为浏览器 Agent 改用 Electron。
+2. “一切插件化”作为灵感是有价值的，但字面执行会破坏可信性。正确说法应固定为：**强可信内核，能力默认内置但可替换，重能力按需安装，外部执行严格隔离。**
+
+---
+
+## 1. 审计基线与可验证事实
+
+### 1.1 云端仓库概况
+
+- 唯一仓库：[`DTALEX66/ArcheAxis-Knowledge-OS`](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS)
+- 默认分支：`main`
+- 审计 HEAD：[`e05765e`](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/commit/e05765e0d97978b831493eafbf650b91219b0f53)
+- 仓库公开、MIT License。
+- 云端未配置 repository ruleset；API 返回空列表。`main` 分支元数据也显示未保护。
+- 当前无开放 Issue、无开放 PR；这不代表无缺陷，而是缺陷主要埋在状态文档、任务日志和代码中，缺少可查询的实时 backlog。
+- 共扫描 1000 个目录树条目，其中 855 个 blob，当前树文件体积约 11.5 MB。
+
+### 1.2 目录体量
+
+| 目录 | 文件数 | 审计判断 |
+|---|---:|---|
+| `tests/` | 187 | 测试资产丰富，但存在异步生命周期竞态和状态文档夸绿 |
+| `docs/` | 159 | 文档量过大且多个真相源互相矛盾 |
+| `app/` | 121 | 业务主体；入口、转换、Workspace 路由/服务过重 |
+| `shared/` | 87 | 实际承担大量核心职责，已经成为“杂项核心” |
+| `OSUI/` | 56 | 与真实运行 UI 并存的独立原型树，形成第二套 UI 真相 |
+| `knowledge_base/` | 39 | 仍有大型 legacy API，尚未完全通过 facade 收敛 |
+| `shared-contracts/` | 38 | 有价值，但尚未形成统一插件 ABI/贡献点体系 |
+| `workspace/` | 35 | 与 `app/workspace` 命名和职责容易混淆 |
+| `desktop/` | 27 | Tauri Windows 壳已具备真实后端生命周期管理 |
+| `inspiration_research/` | 21 | 研究能力仍是主包的一部分，边界需收敛 |
+
+### 1.3 关键云端验证状态
+
+- 同一 HEAD 的常规 CI Run 581 通过：[`CI Run 581`](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/31752891807)。
+- 最新定时 Nightly Run 7 失败：[`Nightly Run 7`](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/31771584160)。
+- 失败用例：`tests/test_axw094_096_api.py::test_batch_pause_resume_shutdown_flow`，暂停接口预期 200、实际 404；结果为 `1 failed, 1618 passed, 5 skipped`。
+- 因此，当前项目不能标记为“全绿”或“完整闭环已稳定”。这不是靠重跑掩盖的偶发问题，而是批处理控制器的创建/可见/暂停/关闭生命周期仍存在竞态。
+
+---
+
+## 2. 两份输入文档的吸收、修改与拒绝
+
+### 2.1 第一份：三项目 AI 原生桌面工作台研究
+
+可吸收：
+
+- 专业工作台布局：左侧主导航、中央工作面、右侧 Inspector、底部任务/活动区；
+- “关闭视图不等于停止任务”的资源生命周期原则；
+- 任务状态、事件版本、Artifact 与元数据分离、背压、能力权限；
+- 实心主表面 + 局部玻璃效果，避免满屏透明；
+- 不以聊天框作为产品首页。
+
+需要修改：
+
+- Dockview 只用于确实需要拆分/停靠的阅读器、证据检查器、任务监控等区域，不能让每个页面都变成 IDE；
+- 终端、浏览器、Agent 面板只能作为可选插件视图，不是产品主骨架；
+- 共享协议可以借鉴，但不共享数据库、运行时状态或直接写入权。
+
+明确拒绝：
+
+- 不把 WORK-LAB、ArcheAxis、DESIGN-LAB 合并成共享产品或单体 monorepo；
+- 不把通用 Agent Workbench Core 置于 ArcheAxis 内核；
+- 不因浏览器 Agent 场景把现有 Tauri 主壳迁移为 Electron。
+
+### 2.2 第二份：“一切皆插件”研究
+
+可吸收：
+
+- 微内核、版本化契约、能力权限、插件生命周期、kill switch；
+- Canonical Core Data + Plugin-owned Rebuildable Projections；
+- 内置插件优先、暂不建设公开市场；
+- 以 Adapter/Contract 进行绞杀式迁移；
+- OCR/ASR、搜索、模型、学习调度、研究连接器、图谱、UI 视图和空间表现层均可逐步插件化。
+
+需要收紧：
+
+- 不是所有 Evidence 方法都能替换：证据状态机、人工复核、来源锚点、不自动覆盖冲突等规则属于内核；只有来源连接器、检索策略和评分实现可替换；
+- 插件不能直接访问核心数据库表；只能通过 Capability Gateway 和版本化命令/查询接口；
+- 插件不得自行把候选内容升级为可信知识或生效 AI 资产；
+- 时间估算不能覆盖当前仓库事实，执行以批次验收条件为准。
+
+---
+
+## 3. 当前项目最主要的问题
+
+### 3.1 P0：下一轮架构改造或发布前必须修复
+
+#### P0-1：最新 Nightly 失败，绿色基线不成立
+
+批处理暂停/恢复/关停存在竞态。此前对另一个 shutdown 用例的修复没有覆盖全部生命周期。必须用确定性的 controller readiness、状态迁移和最终清理替代依赖时间窗口的测试/实现。
+
+#### P0-2：命名真相源自相矛盾
+
+- `docs/truth/NAMING_CONTRACT_V2.md` 声称 GitHub 仓库已改名为 `DTALEX66/archeaxis-workspace`，实际云端仍是 `DTALEX66/ArcheAxis-Knowledge-OS`；
+- `config/product-naming-registry.yaml` 的当前产品名是 `ArcheAxis Knowledge`，但同一文件又把 `ArcheAxis Knowledge` 列入 `deprecated_display`；
+- 该文件指向的 `config/naming-registry.yaml` 仍把核心服务显示为 `Cognitive Runtime / 认知运行时`；
+- README 的权威命名入口仍有指向已 superseded V1 的风险；
+- 桌面 Rust 入口仍主动读取 `COGNITIVE_PORTABLE_ROOT`，而不是优先 `ARCHEAXIS_*` 后兼容回退。
+
+必须建立一份机器可读、文档可生成的单一 Naming Registry；“当前事实”和“目标状态”必须分列，禁止把未完成迁移写成 Done。
+
+#### P0-3：Release 版本硬编码
+
+`.github/workflows/release.yml` 将注入版本和回读 wheel 名写死为 `0.5.0`。如果直接打 `v0.5.1`，Release 仍会生成/校验 0.5.0 身份，导致发布失败或身份错误。版本必须从 tag 解析，并与 `pyproject.toml`、`desktop/package.json`、`tauri.conf.json` 逐一校验一致。
+
+#### P0-4：原件保全与离线承诺存在实现风险
+
+- OCR 派生图片存在写入源文件相邻目录的路径，违背“原件目录只读、派生产物隔离”的设计；
+- faster-whisper 以模型名初始化时可能在本地缓存缺失时触发下载，与“永不自动下载模型”的承诺不一致；
+- bake-off 与实际媒体适配器分别使用不同 Whisper 模型规格，缺少统一模型清单、缓存策略、哈希和授权流程。
+
+要求：所有派生临时文件进入 job-scoped 临时目录；模型只能通过显式安装/授权动作进入 Model Store，并记录版本、来源、许可证、哈希与体积。
+
+#### P0-5：Release 信任链缺少受保护入口
+
+Release 已具备 exact-SHA CI、tag==main、安装器回读和 SHA-256 校验，这部分设计很好；但 `main` 无 ruleset/保护，当前提交也未签名。对个人研究项目不强制签名可以接受，但至少应启用：禁止 force-push、PR 或明确的 Owner release checkpoint、必需 `ci-verdict`、tag 创建规则。否则“精确 SHA”仍可来自未经审查的直接推送。
+
+### 3.2 P1：完成最短闭环后立即处理
+
+#### P1-1：运行时前端与 OSUI 原型形成两套 UI 真相
+
+真实 UI 位于 `app/workspace/ui`，是大型原生 HTML/JS/CSS；`OSUI/` 又保存一套 mock/prototype、预览和压缩交付。后者应降级为设计参考/迁移样例，禁止作为第二个运行入口。
+
+#### P1-2：UI 信息架构与产品契约漂移
+
+- 当前主界面直接出现“Obsidian 兼容工作台”，违反第三方品牌只出现在适配器/设置/兼容说明中的规则；
+- Vault 页面同时写“READ-ONLY/不会写回”和“保存/安全写回”，存在事实冲突；
+- 产品契约固定的一级空间为 Workspace、Library、Evidence、Learning、AI Assets、Settings，实际导航压缩为“首页/资料与知识/学习/系统”，AI Assets 缺席；
+- 当前 UI 状态映射仍包含 agents、skills、models、workflow 等潜在 Agent-first 路由，需要严格控制为二级可选能力。
+
+#### P1-3：核心模块和入口过重
+
+- `app/main.py` 约 727 行，承担应用装配、安全、限流、摄取、运行、备份、Sleep Loop 等多域职责；
+- `app/ingestion/multi_format.py` 约 834 行，把检测、所有引擎、质量、URL、目录批处理和恢复耦合在一起；
+- `app/workspace/service.py`、`router.py`、`knowledge_base/api.py`、`shared/sleep_loop_engine.py`、`shared/migration_runner.py` 都已成为高变更风险热点；
+- 当前没有真正的 `PluginManager`、Plugin Manifest、UI Contribution Registry 或运行时插件生命周期；只有 provider/adapter contract 和若干 registry 基础。
+
+#### P1-4：默认安装依赖过重
+
+核心依赖同时包含 MarkItDown 全套、PyMuPDF、Tesseract 包装、ONNX Runtime、NetworkX、LiteLLM、FSRS、sqlite-vec 等。Nightly 还安装 faster-whisper、RapidOCR、Playwright、OpenCV/AV/ctranslate2 等大包。应拆成最小核心、内置格式包、OCR、ASR、联网验证、AI provider、开发/浏览器测试等独立依赖组。
+
+#### P1-5：状态文档与真实实现不同步
+
+`PROJECT_STATUS.md`、`CURRENT_PRODUCT_PLAN_V2.md`、README、Capability Atlas 和执行日志对 SSE、Worker、OCR/ASR、Evidence crosscheck 的完成状态互相冲突。状态应由机器生成的 capability/readiness 清单驱动；人工文档只解释，不重复声明可运行事实。
+
+### 3.3 P2：治理与维护性债务
+
+- 16 个分支中存在大量已合并/过时分支，需归档策略；
+- 无开放 Issue/PR，缺少真正可追踪的 P0/P1 backlog；
+- `docs/`、OSUI 原型、ZIP/DOCX/预览资产增加仓库噪声；大型设计归档应进入外部资料库或 Release/LFS，只在 repo 保留 manifest、hash 与必要源文件；
+- 多个同名/同义文件和实现需要判定 canonical、adapter、legacy 或 delete-after-migration，不能只按文件名机械删除。
+
+---
+
+## 4. 推荐目标架构
+
+### 4.1 总体结构
+
+```text
+ArcheAxis Knowledge Desktop (Tauri)
+  └─ ArcheAxis Learning Workspace UI
+       ├─ 固定产品空间与设计系统
+       ├─ UI Contribution Registry（受控插槽）
+       └─ 通过生成客户端调用 /api/v1
+
+ArcheAxis Trusted Knowledge Kernel（不可替换）
+  ├─ Identity：Workspace / Source / RawAsset / Document / Claim / EvidenceBundle
+  ├─ State：候选→复核→生效→冲突→失效→撤销
+  ├─ Provenance：页码/坐标/时间戳/版本/哈希/来源链
+  ├─ Transaction：Job / Outbox / Receipt / Idempotency / Migration
+  ├─ Policy：本地优先、权限、人工复核、冲突不覆盖、数据导出
+  ├─ Capability Gateway + Contract/Schema Registry
+  └─ Plugin Host：发现、安装、启用、禁用、健康、升级、回滚、kill switch
+
+Built-in Capability Plugins（默认随产品交付，可替换）
+  ├─ 格式识别与提取：PDF / Office / HTML / Markdown / Canvas
+  ├─ OCR / ASR
+  ├─ Web evidence connectors
+  ├─ FTS / vector / graph projections
+  ├─ Learning scheduler / exercise generators
+  └─ Import / Export / Vault interoperability
+
+Optional Plugins（按需安装）
+  ├─ 本地/云端模型 provider
+  ├─ Zotero / Anki / Git 等生态适配
+  ├─ 动态视觉课件 / 动画 / 模拟
+  └─ 2D / 2.5D / 3D Memory Palace / VR / AR renderers
+
+External Runtime Adapters（永不进入内核）
+  └─ WORK-LAB / Agent runtimes / MCP / Hermes / browser automation / terminal
+```
+
+### 4.2 不能插件化的核心
+
+以下能力必须由内核定义唯一语义，允许实现内部重构，但不允许第三方插件任意替换：
+
+1. 原始资产身份、哈希、版本和不可篡改引用；
+2. Document/Chunk 与页面、坐标、时间戳锚点模型；
+3. Claim、EvidenceCandidate、EvidenceBundle、Conflict、KnowledgeVersion 的状态机；
+4. 人工复核与“AI 输出不得自动转正”规则；
+5. Job/Outbox/Receipt、幂等、事务边界、迁移和审计日志；
+6. Capability 权限、数据访问、网络访问、模型下载授权；
+7. 开放导出最低格式和数据主权底线；
+8. 人类学习资产与 AI 资产必须绑定证据束的生效规则。
+
+### 4.3 插件分级
+
+| 分级 | 类型 | 示例 | 隔离要求 |
+|---|---|---|---|
+| L0 | 内核内置 | 身份、证据状态机、事务、权限 | 不可卸载 |
+| L1 | Trusted built-in | PDF/Office、OCR、ASR、FTS、基础学习调度 | 同进程可接受，必须走契约 |
+| L2 | Sandboxed local | 第三方转换器、向量引擎、可视化、空间渲染器 | 子进程/IPC，资源限额 |
+| L3 | Network provider | Web 核验源、云模型、远端搜索 | 明示授权、域名白名单、脱敏 |
+| L4 | External runtime | Agent、MCP、终端、浏览器执行 | Capability Gateway；默认禁用写权限 |
+
+### 4.4 数据所有权
+
+- 内核拥有 canonical tables：资产、文档锚点、主张、证据束、知识版本、学习记录、AI 资产批准状态、事务/审计；
+- 插件只拥有 projection/cache/index：向量、图谱、OCR 中间结果、搜索缓存、渲染缓存；
+- projection 必须能从 canonical data 重建；
+- 插件禁用或删除后，用户的核心数据仍完整可读、可导出；
+- 插件不得直接写内核表，只能提交版本化 Command，并接收 Receipt/Event。
+
+---
+
+## 5. 应作为项目护城河的核心技术与算法路线
+
+当前仓库拥有这些方向的零散基础，但尚不能声称已形成“突破性算法”。要形成有别于同类知识库、阅读器、RAG 或学习软件的核心，建议建立以下六个可测系统能力。
+
+### 5.1 Anchored Provenance Graph（锚定来源图）
+
+将每个 Claim 和 KnowledgeVersion 绑定到不可变 RawAsset 版本及页码、bbox、时间戳、DOM/Canvas 节点等物理锚点。任何摘要、课程、AI 记忆和技能都能反向追溯到原件片段。
+
+突破指标：锚点存活率、跨版本重定位准确率、引用回读成功率、派生链完整率。
+
+### 5.2 Loss-aware Conversion Router（损失感知转换路由器）
+
+先做格式指纹和风险分类，再选择成本最低的本地引擎；只有质量风险达到阈值才进行多引擎仲裁或 LLM/VLM 升级。输出不仅是文本，还包括 ConversionLossReport。
+
+门控信号不能只看 OCR 自报置信度。应组合：文本覆盖率、结构保留率、锚点完整率、乱码/重复率、语言一致性、表格/公式/阅读顺序检查、多引擎一致度；有金标准时使用 CER/WER、布局/表格指标。没有金标准时只能得到风险分，不得宣称“准确率”。
+
+突破指标：在固定 CER/WER 或人工接受率下的平均成本、时延、能耗和 LLM 调用率。
+
+### 5.3 Independent-source Evidence Engine（独立来源证据引擎）
+
+不是简单数网页数量，而是识别来源家族、转载关系、权威等级、时效、适用范围、原始/二手来源和相互独立性；保存支持、反驳和未知，不自动覆盖原文。
+
+突破指标：可查证 Claim 识别 precision/recall、证据支持/反驳分类 F1、来源独立性误判率、过期事实召回率。
+
+### 5.4 Reversible Knowledge State Machine（可撤销知识状态机）
+
+知识不是一条覆盖式笔记，而是带来源、范围、时间、争议和状态的版本链。任何 EvidenceBundle、KnowledgeVersion、HumanLearningAsset、AIAsset 都可失效、替换、回滚并解释原因。
+
+突破指标：完整回滚率、孤儿资产率、失效传播正确率、审计链闭合率。
+
+### 5.5 Dual Learning Compiler（人机双向学习编译器）
+
+同一 EvidenceBundle 编译为两类不同产物：
+
+- HumanLearningAsset：概念解释、检索练习、间隔复习、迁移任务、Teach Back；
+- GovernedAIAsset：记忆、规则、技能、上下文、评测集及适用边界。
+
+两者不得混用同一“准确率”。人类侧测保持、迁移和误区修正；AI 侧测引用正确率、执行约束和证据覆盖率。
+
+### 5.6 Learning Representation Compiler（学习表现编译器）
+
+先定义引擎无关的 `LearningRepresentation` 与 `SpatialMemoryPackage`，再由插件渲染为静态图、动态图、动画课件、交互模拟、2D/2.5D/3D 记忆宫殿、VR/AR。未来能力因此完整保留，而不会让 3D 引擎进入知识内核。
+
+突破指标：同一知识包跨渲染器一致性、锚点可回溯率、交互事件回写正确率、学习迁移效果。
+
+### 5.7 “突破”声明门槛
+
+任何核心技术只能在以下证据齐全后对外称为突破：
+
+- 公开或可复现的多格式金标准集；
+- 与单引擎、无门控、普通 RAG/笔记工作流的 baseline；
+- 消融实验，证明每个关键模块的独立贡献；
+- CER/WER、事实核验、引用、成本/时延、人类学习和 AI 复用的分层指标；
+- 失败样本、适用边界和不确定性报告。
+
+在此之前，对外表述为“核心研发方向”或“系统级差异化机制”，禁止宣传为已验证突破。
+
+---
+
+## 6. UI/UX 目标架构
+
+### 6.1 技术决策
+
+- 保留 Tauri 2 Windows 主壳和本地 FastAPI 服务；
+- 前端由当前单体 HTML/JS/CSS 渐进迁移到 React + TypeScript + Vite；
+- 从 OpenAPI 生成类型安全 API Client，禁止页面手写漂移的数据结构；
+- 先建立 design tokens 和页面壳，再按路由逐页替换，不做一次性前端重写；
+- `OSUI/` 降级为只读设计参考，最终只保留可追溯的视觉规范与被采纳资产；
+- UI 插件通过受控 contribution manifest 注册导航、命令、Inspector 卡片、Dock 面板和设置页，不允许任意注入 DOM 或覆盖顶层导航。
+
+### 6.2 固定信息架构
+
+```text
+顶部：全局搜索 / Command Palette / 当前项目 / 同步与任务状态
+
+左一：固定产品空间
+  Workspace
+  Library（资料库）
+  Evidence（证据）
+  Learning（学习）
+  AI Assets
+  Settings
+
+左二：当前空间的上下文导航、集合、筛选器
+中央：Reader / Editor / Canvas / Learning Surface / Asset Editor
+右侧：来源、证据、冲突、属性、引用、历史 Inspector
+底部：转换、索引、核验、导入导出等后台 Activity Dock
+```
+
+终端、浏览器、Agent、模型控制台不进入固定一级导航；需要时由受控插件添加二级工具视图。
+
+### 6.3 视觉原则
+
+- 风格：专业、安静、证据感强，信息密度高但不拥挤；
+- 表面：主工作面使用实色/低透明表面；玻璃只用于浮层、命令面板、短暂状态和选中强调；
+- 配色：中性底色 + 单一 ArcheAxis 主色 + 语义色（支持/冲突/未知/失效），不依赖颜色单独传义；
+- 动画：150–220ms 的状态过渡；只解释层级、任务进度和视图关系；尊重 `prefers-reduced-motion`；
+- 证据优先：任何知识/AI 资产页面都能一键打开原件锚点、证据束、冲突和版本；
+- 响应性：定义 1280×720 最低可用布局，高 DPI 和键盘全操作；大量列表虚拟化，后台任务不阻塞主线程。
+
+### 6.4 立即修复的 UI 漂移
+
+1. 把主 UI 的“Obsidian 兼容工作台”改为中性能力名；第三方品牌只在 Adapter 设置和兼容说明出现；
+2. 统一 Vault 的 read-only/write-back 真相：按真实模式显示，只读时不能展示可执行保存；
+3. 恢复六个固定产品空间，AI Assets 不再藏在“系统”里；
+4. 全局统一空态、loading、queued、running、blocked、needs-review、failed、succeeded、cancelled；
+5. 删除 mock 数据与真实 API 状态的混用；
+6. 所有“完成/已启用”文案必须由 capability/readiness API 返回，禁止硬编码。
+
+---
+
+## 7. Hermes 执行任务包
+
+### 7.0 总体执行规则
+
+1. 只操作 `DTALEX66/ArcheAxis-Knowledge-OS`；不得修改或绑定 WORK-LAB、DESIGN-LAB。
+2. 不推倒重写；所有改造都要保留现有 API/数据迁移和可回滚路径。
+3. 未来 LER、动画、模拟、空间学习、3D/VR/AR、扩展与可选协作能力不得删除，只调整为插件/表示层路线。
+4. 不建设公开插件市场；第一阶段只允许仓库内 trusted built-in plugins。
+5. 每个任务只跑目标测试；每个批次跑集成验证；每个里程碑跑 full CI；Release 才跑安装器、全平台与供应链门禁。
+6. 禁止为“过审”重复生成无意义哈希或证明。哈希只用于原件导入、插件包、模型包、迁移快照和 Release 这五个不可替代边界。
+7. 每个 PR 必须包含：变更范围、数据/契约影响、回滚方法、目标测试、未解决风险。
+
+### 批次 A：恢复可信基线（任何插件化前）
+
+#### AXW-A001 — 修复批处理生命周期竞态
+
+交付：统一 controller registry 的创建、ready、pause、resume、shutdown、expired 状态；用 condition/event 或可观察状态代替 sleep 猜测；修复 Nightly 失败。
+
+验收：失败用例连续重复 100 次无 404/竞态；Nightly full-suite 绿色；无悬挂 worker/thread。
+
+#### AXW-A002 — 建立单一命名真相源
+
+交付：合并 `product-naming-registry.yaml` 与 `naming-registry.yaml` 的职责；修正当前名被标 legacy、仓库改名假状态、Cognitive Runtime 活跃显示；从 registry 生成文档检查项。
+
+验收：机器注册表、README、V2 契约、Tauri、About、CLI、环境变量全部一致；历史名只出现在允许语境；当前云端仓库名写成事实，不替 Owner 决定重命名。
+
+#### AXW-A003 — 修复 Release 动态版本
+
+交付：tag → semver；校验四处版本一致；wheel/installer/readback 名动态派生；新增 `v0.5.1` dry-run 测试。
+
+验收：非当前版本标签不会引用 0.5.0；版本不一致 fail-fast；发布资产均为 ArcheAxis Knowledge 命名。
+
+#### AXW-A004 — 收紧原件、临时文件和模型下载策略
+
+交付：job-scoped temp/artifact store；禁止写源目录；Model Store manifest；显式安装/授权；模型 hash/license/size/readback。
+
+验收：只读源目录下 OCR/ASR 成功；离线缓存缺失时返回可解释的 `model_missing`，不联网；用户授权后才下载。
+
+#### AXW-A005 — 建立最小仓库保护
+
+交付：ruleset 建议与启用记录；`ci-verdict` 必需；禁 force-push/tag overwrite；定义 Owner checkpoint 提交流程。
+
+验收：未经门禁的 commit 不能成为公开 Release；个人项目不强制签名的决定被显式记录，而非误写为“已具备签名供应链”。
+
+### 批次 B：定义可信内核与插件 ABI（先立边界，不搬业务）
+
+#### AXW-B101 — Plugin Contract v1
+
+定义 `plugin_id`、version、contract ranges、capabilities、permissions、data ownership、network/model requirements、healthcheck、migration、rollback、kill switch、UI contributions。
+
+验收：JSON Schema + Pydantic model + fixtures + compatibility tests；未知字段和不兼容版本 fail-closed。
+
+#### AXW-B102 — Capability Gateway
+
+交付：命令/查询/事件三类接口；插件无数据库句柄；network/filesystem/model/download 权限显式授予；调用生成 receipt/audit。
+
+验收：恶意 fixture 直接访问核心表/未授权路径/网络时被拒绝；核心数据无部分写入。
+
+#### AXW-B103 — Plugin Host 生命周期
+
+交付：discover → validate → install → enable → start → health → stop → disable → rollback；L1 同进程、L2+ 子进程协议预留。
+
+验收：插件崩溃不拖垮内核；禁用后 projection 可删除重建，canonical data 不丢失。
+
+#### AXW-B104 — 架构守卫
+
+交付：依赖图规则；`app/main.py` 只保留 composition root；禁止 UI/插件反向 import 数据库实现；标记 legacy compatibility surface。
+
+验收：CI 静态检查阻止新跨层 import；现有违规有 baseline 和逐批下降目标。
+
+### 批次 C：优先抽离转换引擎并打通最短全格式闭环
+
+#### AXW-C201 — Format Fingerprint + RoutePlan
+
+统一 MIME/魔数/结构检测；区分文字 PDF、扫描 PDF、Office、图片、网页、音频、视频、Markdown、Canvas；输出确定性 RoutePlan。
+
+#### AXW-C202 — 转换 Provider 插件
+
+先把 markitdown/pdfplumber/trafilatura/Tesseract/RapidOCR/faster-whisper 包装为 built-in plugins；引擎不存在时能力诚实降级。
+
+#### AXW-C203 — LossReport 与门控升级
+
+统一 `ConversionResult{text, anchors, structure, loss_report, engine_provenance}`；无金标准时输出风险分而非准确率；只有风险超阈值才多引擎或模型升级。
+
+#### AXW-C204 — 多引擎仲裁
+
+块级对齐，保存每个候选、差异与选择原因；禁止静默覆盖；高风险进入人工队列。
+
+#### AXW-C205 — Evidence handoff
+
+转换结果进入 Claim 提取前必须保存物理锚点和引擎 provenance；内容事实验证异步、按 Claim 触发，与 CER/WER 层完全分离。
+
+批次验收：常规 PDF、扫描 PDF、DOCX、PPTX、XLSX、HTML、图片、音频、视频、Markdown、Canvas 均能完成“导入→原件保存→转换→锚点→检索/阅读→状态可见→失败可恢复”；不要求未来高难度视觉/3D 功能完成。
+
+### 批次 D：Evidence、Search、Learning 和 AI Asset 插件边界
+
+#### AXW-D301 — Evidence Connector SPI
+
+Wikipedia/API、官方文档、学术/图书馆等只作为来源插件；内核持有 Claim 和 verdict 状态机。私人记录、不可公开事实、主观内容、纯噪声必须跳过并标注原因。
+
+#### AXW-D302 — Search Projection SPI
+
+FTS5 作为默认内置；sqlite-vec、外部向量、图谱作为可重建 projection；禁用向量不影响资料库与证据阅读。
+
+#### AXW-D303 — Learning Strategy SPI
+
+FSRS、练习生成、Teach Back rubric 可替换；学习历史、目标和证据绑定归内核。
+
+#### AXW-D304 — Governed AI Asset Compiler
+
+把已核验证据编译为 memory/rule/skill/context/evaluation 候选；必须人工批准后生效；任何调用附引用、范围、版本和撤销入口。
+
+### 批次 E：UI 架构与视觉升级
+
+#### AXW-E401 — UI Truth Repair
+
+先在现有 UI 修正第三方品牌、只读/写回矛盾、六大空间、状态文案和能力来源。
+
+#### AXW-E402 — Design System v1
+
+建立 tokens、字体/层级、色彩、间距、圆角、阴影、状态、动效、响应式和无障碍规范；实现 Storybook 或等价组件目录，但不引入独立产品。
+
+#### AXW-E403 — React/TypeScript 渐进壳
+
+保留现有 API，先迁移 App Shell、Command Palette、Activity Dock、Inspector，再迁移 Library/Evidence/Learning/AI Assets 页面；旧页面可在迁移期按路由共存。
+
+#### AXW-E404 — UI Contribution Registry
+
+插件只可注册受控 `nav.secondary`、`command`、`inspector.card`、`dock.panel`、`settings.section` 和文件 renderer；固定一级产品空间不可覆盖。
+
+#### AXW-E405 — UI 性能与兼容门
+
+建立标准硬件基线后测冷启动、首屏、交互、长列表、后台任务；键盘、读屏、高 DPI、缩放、1280×720、reduced motion 全部纳入验收。
+
+批次验收：真实 API 驱动，无 mock 冒充；视觉统一；转换/证据/学习任务状态可理解；插件禁用时 UI 自动移除贡献点，无残留死入口。
+
+### 批次 F：未来蓝图能力保留但延期实现
+
+#### AXW-F501 — Learning Representation Schema
+
+定义文本、概念图、时间线、流程、动画场景、模拟参数、空间节点和证据锚点的中间表示。
+
+#### AXW-F502 — SpatialMemoryPackage
+
+定义引擎无关 2D/2.5D/3D/VR/AR 包；渲染器可替换，知识与证据不依赖具体 3D 引擎。
+
+#### AXW-F503 — Renderer Plugin SDK
+
+为动态视觉课件、动画展示、交互模拟、记忆宫殿和 VR/AR 建立只读数据输入与受控学习事件回写。
+
+本批次只冻结契约和 golden fixtures，不进入当前最短闭环关键路径。
+
+---
+
+## 8. 验证与门禁减负方案
+
+### 8.1 四级验证节奏
+
+| 时机 | 运行内容 | 目的 |
+|---|---|---|
+| 每个任务保存/本地提交 | 目标单测、类型/静态检查 | 秒到分钟级反馈 |
+| 每个批次合并前 | 相关域集成、契约兼容、迁移回读 | 验证批次闭环 |
+| 每个里程碑候选 | full suite、Nightly 相同矩阵 | 阶段性全量审计 |
+| Release 候选 | Windows 构建/安装/卸载/回读、供应链、checksums | 发布真实性 |
+
+### 8.2 必须停止的低效行为
+
+- 每改一份文档就直接 push main 触发完整流程；应在短分支/草稿 PR 中聚合一个逻辑批次；
+- 同一 commit 反复跑相同成功门禁来“增加证明”；
+- 对非发布中间产物重复生成 SHA-256；
+- 把静态文档变更误分类为运行时高风险；
+- 用重跑代替修复 flaky 生命周期；
+- 手工维护多份相同状态表。
+
+### 8.3 不能删除的门禁
+
+- 数据迁移与回滚回读；
+- 原件不变性与派生隔离；
+- Evidence 状态机和人工复核边界；
+- 插件权限/数据所有权/契约兼容；
+- Release exact-SHA、真实安装器生命周期和公开资产回读。
+
+---
+
+## 9. 完成定义
+
+只有同时满足以下条件，才能说“项目基础闭环完成并可进入未来蓝图阶段”：
+
+1. 最新 main CI 与 Nightly 均绿色，异步生命周期无已知竞态；
+2. 命名、仓库事实、版本、Capability 状态只有一个权威源；
+3. 常规多格式全部完成原件保全、转换、锚点、阅读/检索、失败恢复；
+4. 转换质量与内容事实验证严格分层；
+5. Evidence 冲突不自动覆盖，低置信进入人工队列；
+6. 人类学习与 AI 资产共享证据基底，但拥有独立状态和评测；
+7. 默认核心在断网、无云模型、无可选插件时仍可运行；
+8. OCR/ASR/搜索/模型等至少完成一类真实可替换插件验证；
+9. UI 六大空间、Activity Dock、Evidence Inspector 与真实能力状态一致；
+10. Windows 安装、启动、升级、卸载和数据回读通过；
+11. 全部数据可用开放格式导出，禁用任意非核心插件不损坏 canonical data；
+12. LER、动画、模拟、空间学习、3D/VR/AR 的 schema 和未来接口仍在蓝图中，无删除或降级。
+
+---
+
+## 10. Hermes 启动指令（可直接复制）
+
+```text
+你正在执行 ArcheAxis Knowledge（星环知识平台）仓库改造。
+
+唯一仓库：DTALEX66/ArcheAxis-Knowledge-OS。
+WORK-LAB 与 DESIGN-LAB 是独立外部项目，禁止修改、合并、建立共享数据库、共享运行时状态或直接写入依赖。
+
+先读取本任务包全部内容。执行顺序固定为 A → B → C → D → E；F 只冻结契约，不进入当前闭环实现。
+当前架构原则：Trusted Knowledge Kernel + Pluggable Capabilities + Controlled External Runtime Adapters。
+禁止字面化“一切皆插件”；证据状态机、原件身份、事务、人工复核、权限和来源链必须留在内核。
+禁止重写整个仓库，采用 Adapter/Contract 绞杀式迁移；每一步保持 API、数据迁移和回滚。
+禁止删除任何未来蓝图能力；LER、动画、模拟、2D/2.5D/3D 记忆宫殿、VR/AR 转为未来表现层插件。
+
+先执行 AXW-A001 至 AXW-A005。每完成一个任务只跑目标验证；一个批次完成后跑相关集成；里程碑才跑 full CI；Release 候选才跑安装器和供应链门禁。不要通过重复哈希、重复全审计或重跑 flaky 测试制造进度。
+
+每个任务输出：
+1. 云端 HEAD 与工作分支；
+2. 修改文件与理由；
+3. 契约/数据/兼容影响；
+4. 精确测试及结果；
+5. 回滚方法；
+6. 仍未解决的风险；
+7. 是否满足任务验收条件。
+
+若仓库事实与本文不同，先提交“事实差异报告”，不得静默覆盖本文的产品定位和边界。
+```
+
+---
+
+## 11. 最终裁决
+
+本项目应继续保留系统级长期愿景，但近期不要再扩展功能面。先把它从“包含许多能力的模块化单体”收敛成“可信内核清晰、常规全格式闭环稳定、能力可替换、UI 有统一真相”的产品。
+
+最值得保护的不是某个 OCR、向量库、LLM 或 3D 引擎，而是以下组合：
+
+> **原件与物理锚点 → 损失感知转换 → 独立来源证据与冲突 → 可撤销知识状态 → 人类学习资产与 AI 资产双向编译 → 多种视觉/空间表现。**
+
+这是 ArcheAxis Knowledge 与普通笔记、RAG、课程生成器、Agent 平台和文件阅读器真正拉开差异的方向。引擎可以换，表现层可以换，外部运行时可以换；这条可信的人机双向学习主链不能换。

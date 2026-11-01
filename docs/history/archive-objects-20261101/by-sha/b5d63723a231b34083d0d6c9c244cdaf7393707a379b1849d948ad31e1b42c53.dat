@@ -1,0 +1,494 @@
+# WORK-LAB 第二阶段：开源吸收兑现与互操作执行任务包
+
+> 本文件是 `WORK-LAB-FINAL-CONSOLIDATED` 的后继增量任务包。它不替代、不重跑当前正在由 HERMES 执行的 WL-000～WL-820，而是在前包形成可验证交接点后，把此前登记但尚未真正落地的开源能力，转化为标准、适配器、测试、证据和真实只读数据链路。
+
+## 0. 任务元数据
+
+```yaml
+taskpack_id: WORK-LAB-STAGE-2-ABSORPTION-INTEROP
+snapshot_date: 2026-08-07
+status: QUEUED_WAITING_FOR_PREDECESSOR_EVIDENCE
+predecessor_taskpack: WORK-LAB-FINAL-CONSOLIDATED
+repository: DTALEX66/WORK-LAB
+default_branch: main
+observed_remote_head: 471e90a99b4234e4f5c031c4280c2eba8b065439
+preferred_local_root: 'D:\All projects\WORK-LAB'
+execution_mode: CONTINUOUS_LOCAL_SAFE_AFTER_GATE
+writer_policy: SINGLE_WRITER
+observer_policy: STRICTLY_READ_ONLY
+publication_policy: EXPLICIT_APPROVAL
+live_global_apply_policy: EXPLICIT_APPROVAL
+paid_provider_policy: EXPLICIT_APPROVAL
+destructive_policy: FORBIDDEN_WITHOUT_EXPLICIT_APPROVAL
+```
+
+截至本任务包生成时，云端 `main` 仍停留在前包基线 SHA，且没有开放 PR。由此只能证明 HERMES 尚未把本地执行结果发布到 GitHub，不能证明本地没有进展，也不能把前包任务判为失败或完成。
+
+`observed_remote_head` 只用于阶段差异核验，禁止为了匹配它而 reset、覆盖、删除或放弃 HERMES 已产生的本地工作。
+
+## 1. 给 HERMES 的直接指令
+
+1. 现在可以读取和登记本任务包，但在前包交接门通过前，不得开始本任务包的代码写入。
+2. 如果 `WORK-LAB-FINAL-CONSOLIDATED` 仍持有活动 writer lease，本任务包状态保持 `WAITING_PREDECESSOR`；不得开启第二写入者、第二 worktree 写入或并发“顺手实现”。
+3. 前包到达一个稳定检查点后，先执行 `NX-000`，按前包 Task Ledger 和真实 tree 对照本任务包；已经完成的能力标为 `INHERITED_VERIFIED`，部分完成的标为 `INHERITED_PARTIAL`，不得重复实现。
+4. 前包未完成的 P0 安全、单写入、Task Ledger、CI watcher、事件合同或 Observer 只读边界，继续留在前包修复队列。本任务包不得用新依赖绕过这些基础缺口。
+5. 本任务包默认只做本地、可逆、离线或使用脱敏 fixture 的工作。不得自动 push、开 PR、merge、release、全局 live apply、付费模型 smoke、修改真实 OS 仓库或删除归档内容。
+6. 每个上游项目必须先完成来源、许可、目标能力、网络/遥测、安装脚本、凭据访问、体积和替代方案审计，再决定 `derive`、`adapter`、`vendor-adapt`、`external-optional`、`reference`、`defer` 或 `reject`。
+7. 不得把“链接已登记”“文档提到”“目录已创建”“吸收了思路”报告为适配器已实现。只有目标存在、测试通过、证据可读并完成 readback，才能进入实现状态。
+8. 上游精确 commit SHA 用于来源和许可证审计；WORK-LAB 的产品兼容继续依赖协议版本、能力探测和 graceful degradation，不用某个软件版本范围锁死未来兼容性。
+9. 不创建新的 Agent、聊天界面、模型网关、LLMOps 平台、任务操作平台、数据库平台或第四个活动模块。
+10. 完成后停在 `LOCAL_VERIFIED_READY_FOR_USER_APPROVAL`，一次性给出发布和可选 live 验证清单。
+
+## 2. 前包交接门：何时允许开始第二阶段
+
+### Gate A — 必须取得的前包证据
+
+至少取得以下内容：
+
+- 前包当前 tree digest/commit、工作区状态和活动 writer lease 状态；
+- WL-000～WL-820 的机器可读状态导出，至少区分完成、部分完成、未开始、阻塞和延期；
+- `CURRENT_STATE` 或同等生成事实源；
+- 当前三模块合同、Adapter Registry、事件 Schema、Observer UI/运行状态；
+- 本地门禁、独立 review、未验证 live/paid/human/device 项；
+- unresolved blocker 及其 fingerprint；
+- 前包实际新增依赖、目录和来源登记。
+
+### Gate A 判定
+
+允许启动本任务包写入必须同时满足：
+
+1. 前包没有活动写入者，或已明确把 writer lease 交接给本任务包；
+2. 当前 tree 已形成稳定 digest；
+3. 三活动模块和 Observer 只读边界未漂移；
+4. Task Ledger 能记录本任务包任务，或至少提供可靠的阶段状态与恢复点；
+5. 前包 P0 未完成项已明确归属，不会与本任务包形成双重实现。
+
+不满足时：只生成 `NX-000-PREDECESSOR-GAP-REPORT`，不进入后续写入。
+
+## 3. 本阶段目标和完成定义
+
+本阶段不是继续扩大蓝图，而是完成四个“吸收兑现”结果：
+
+1. **来源状态可信**：此前 123 个 Open Design 来源及新增跨模块来源都有真实实现状态，登记不再冒充落地。
+2. **平台互操作有标准**：ACP、Agent Skills、MCP 和 OpenTelemetry/OpenInference 成为 WORK-LAB 的兼容边界，不再为每个平台复制一套私有逻辑。
+3. **Observer 有真实、安全、跨平台数据**：Workflow 通过只读采集适配器产生脱敏事件，Observer 只消费事件；不读取凭据、Prompt、Response 或完整会话正文。
+4. **Open Design 有生产型适配器**：设计合同、Token、测试、SVG/PPT/图表输出和来源治理至少形成一个可重复的真实闭环，而不是继续堆资料名录。
+
+完成后，WORK-LAB 仍然只有：
+
+- Workflow Assistance：唯一主动控制/写入面；
+- Open Design：设计知识、质量与生产交付引擎；
+- WORK-LAB Observer：严格只读观测面。
+
+## 4. 基线吸收缺口
+
+以下是前包基线 SHA 的审计事实，执行 `NX-000` 后必须根据 HERMES 当前 tree 重算，不能把旧数字覆盖到新状态：
+
+- Open Design `SOURCE_REGISTRY.json` 有 123 个来源：33 个 `adopt-now`、54 个 `adapter-next`、12 个 `reference-now`、24 个 `review-required`。
+- 按 33 个 `adopt-now` 自己声明的目标路径严格核验：0 个目标集合完整，4 个部分存在，29 个没有任何目标路径。
+- 部分存在的是 `nexu-io/open-design`、`google-labs-code/design.md`、`Nutlope/hallmark`、`bitjaru/styleseed`；它们也不能因此自动视为完整集成。
+- Open Design 当时没有正式 `adapters/` 目录。
+- Workflow 的 Promptfoo、Grok Build、Repomix/Gitingest、Catppuccin、shadcn/assistant-ui 等大多属于方法吸收或模板，不是可运行集成。
+- Adapter Registry 当时只有 Hermes、Codex、CC Switch、GitHub、Open Design、Cursor、Claude Code、WorkBuddy；没有 ACP、Qwen Code 或标准一致性证明。
+- 当时没有 OpenTelemetry/OpenInference、WhereMyTokens、ccusage、TokenTracker、TokenTelemetry、Mem0、Graphiti 等正式来源与适配状态。
+
+## 5. 吸收方式与项目处置
+
+### 5.1 必须优先兑现
+
+| 来源 | 所属模块 | 本阶段吸收内容 | 默认方式 | 明确不吸收 |
+|---|---|---|---|---|
+| `agentclientprotocol/agent-client-protocol` | Workflow | 协议版本、能力协商、Schema、兼容 fixture、只读 observe bridge | `derive + adapter` | 不把 WORK-LAB 变成 Agent 或 IDE |
+| `agentskills/agentskills` | Workflow | `SKILL.md` 标准、progressive disclosure、官方验证语义、扩展命名空间 | `derive + validator` | 不覆盖现有 13 个技能，不自动下载未知技能 |
+| `modelcontextprotocol/modelcontextprotocol` | Workflow | 官方 Schema、capability negotiation、工具/资源/Prompt 一致性测试 | `derive + conformance` | 不默认新增 MCP Server，不读取 MCP 凭据 |
+| OpenTelemetry GenAI + `Arize-ai/openinference` | Workflow/Observer | 模型、Agent、Tool、Token、延迟、异常、评估字段映射 | `derive` | 不默认记录输入输出正文，不安装观测平台 |
+| `ryoppippi/ccusage` | Workflow producer | 多 Agent 本地 usage 读取、统一 JSON、费用/时间聚合 fixture | `external-optional + selective adapter` | 不要求全局安装，不复制整仓，不把估算当账单 |
+| `mm7894215/TokenTracker` | Workflow producer | WorkBuddy/Cursor/Kimi/Hermes 等覆盖、去重、WSL 发现、last-good、定价缓存模式 | `audit + selective vendor-adapt` | 不吸收自动钩子安装、技能同步、云排行榜、宠物和写配置 |
+| `VasiHemanth/tokentelemetry` | Workflow producer | Hermes Gateway/Cron/Skills/Memory/子任务/延迟的只读健康模型 | `audit + derive` | 不吸收 launcher、默认遥测、云服务或控制功能 |
+| `jeongwookie/WhereMyTokens` | Observer/UI + producer | Windows/Tauri quota UX、保留分层、覆盖度/置信度显示 | `audit + selective vendor-adapt` | 不读取/刷新 OAuth、auth.json、Credential Manager，不调用私有额度端点 |
+| `QwenLM/qwen-code` | Workflow | 国内平台样本、ACP/headless/skills capability fixture | `external-optional adapter` | 不并入 Qwen Agent，不自动安装或认证 |
+| DTCG + `google-labs-code/design.md` + `nexu-io/open-design` | Open Design | Token Schema、设计合同、设计输入/输出/来源适配 | `derive + adapter` | 不复制完整产品或引入第二个设计平台 |
+| Playwright + axe-core | Open Design/Observer test | 视觉、交互、无障碍证据 | `dependency/adapter` | 不作为 Agent 浏览器，不产生 UI 控制入口 |
+| SVGO + PptxGenJS + Vega-Lite | Open Design/Observer | SVG 预检、可编辑 PPT、声明式只读图表 | `dependency/adapter` | 不同时引入多套重复图表/文档引擎 |
+| OSV-Scanner + OpenSSF Scorecard + SPDX/REUSE | Governance | 漏洞、维护健康、许可证、来源和 NOTICE | `external-optional + schema` | 不自动修依赖，不执行不可信安装脚本 |
+
+### 5.2 只吸收方法和测试，不安装完整运行时
+
+| 来源 | 吸收内容 | 原因 |
+|---|---|---|
+| Mem0 | 记忆提取/检索评估、实体和时间属性 | 默认运行时会引入模型、嵌入和额外服务 |
+| Graphiti | `valid_at/invalid_at`、冲突事实和时间失效 | 默认图数据库过重 |
+| Letta Agent File | 可移植记忆块与状态清单、Secret 置空原则 | 不保存完整消息、工具参数和环境变量 |
+| Letta Context Constitution | 上下文预算和稀缺资源原则 | 方法论即可 |
+| Temporal | 事件历史、重放、幂等 Activity、确定性与副作用分离 | 不部署 Temporal Server |
+| Trigger.dev | waitpoint、任务版本、恢复元数据 | 不引入第二任务平台 |
+| Dagu | 心跳、僵尸任务、调度锁、DAG 状态 | GPL 边界及与 Task Ledger 重叠，不嵌入代码 |
+| Promptfoo/OpenSkillEval | 声明式行为评测与评估 harness | 先实现离线 fixture runner，付费 provider 后置 |
+
+### 5.3 明确延期或排除
+
+- Langfuse、Phoenix、OpenLIT：仅作为未来可选 OTLP/数据导出目标，不并入服务器、数据库和 UI。
+- LangGraph、Letta 完整平台、Mem0 服务、Graphiti 服务：不并入，避免 WORK-LAB 变成 Agent/Memory 平台。
+- Radix UI、React Aria、D3、Mermaid、多个完整 Design System：除非前包已选定且存在明确缺口，本阶段不同时扩张。
+- Lottie、glTF、OpenPBR、MaterialX、OpenUSD、Blender/FreeCAD/Speckle：保留来源和能力计划，等真实动效/3D/展厅生产任务再提升。
+- `fathah/hermes-desktop`、`NousResearch/hermes-agent`：继续作为外部软件/问询来源，不并入 WORK-LAB。
+- Snyk Agent Scan：可参考风险分类；默认不运行会启动 MCP Server 或上传元数据的扫描流程。
+
+## 6. 分批任务
+
+### Batch NX-0 — 前包交接与去重
+
+#### NX-000：前包完成度与重叠矩阵（最高 P0）
+
+实施：
+
+- 从前包 Task Ledger、当前 tree 和测试证据生成 `PREDECESSOR-COVERAGE.json` 与可读摘要。
+- 对本任务包每项标记：`NEW`、`INHERITED_VERIFIED`、`INHERITED_PARTIAL`、`BLOCKED_BY_PREDECESSOR`、`DEFERRED`。
+- 对 WL-500/510/520/530、WL-400/410/420、WL-600/610/620、WL-700 和本任务包的交叉面逐项去重。
+- 如果前包仍在执行，只登记差异和依赖，不修改其活动文件。
+
+验收：同一功能只有一个 owner、一个 task ID 和一个写入路径；不能出现两套 Observer UI、两套事件 Schema、两套 Skill Registry 或两套 Task Ledger。
+
+### Batch NX-1 — 来源注册表与吸收真实性
+
+#### NX-100：建立跨模块 Source Ledger V3（P0）
+
+保留 Open Design 自己的设计来源注册表，在 `00-governance` 增加跨模块来源索引或等价 canonical 结构。至少分离：
+
+- `decision_status`：是否决定吸收；
+- `implementation_status`：未开始、方法落地、适配器实现、fixture 验证、live 验证；
+- `integration_mode`：derive/adapter/vendor-adapt/external-optional/reference/defer/reject；
+- source URL、reviewed commit/tag、license、notice、owner module；
+- target paths、tests、runtime dependency、network/telemetry、credential access；
+- upstream freshness、last reviewed、evidence digest、rollback/removal plan。
+
+状态最低要求：
+
+```text
+DISCOVERED
+  → LICENSE_VERIFIED
+  → APPROVED
+  → PATTERN_LANDED
+  → ADAPTER_IMPLEMENTED
+  → FIXTURE_VERIFIED
+  → LIVE_VERIFIED
+```
+
+旁路状态：`REFERENCE_ONLY`、`DEFERRED`、`QUARANTINED`、`REJECTED`、`UPSTREAM_CHANGED`。
+
+验收：
+
+- verifier 检查目标路径、测试路径、source commit、license/NOTICE 和证据，不再只检查 URL/枚举值；
+- 删除任一实现目标或测试后，状态自动降级并使门禁失败；
+- 33 个历史 `adopt-now` 全部得到诚实状态，未实现项不能继续显示为已吸收。
+
+#### NX-110：来源许可、安全和体积门（P0）
+
+- 对本阶段计划使用的每个上游重新读取当前 LICENSE、NOTICE、SECURITY、安装脚本和依赖。
+- 对准备复制的文件固定来源 commit、原始路径、修改说明和许可证头；禁止整仓 vendor。
+- 扫描远程下载、postinstall、自动更新、遥测、凭据读取、shell 执行和云上传行为。
+- 输出新增源码/依赖/资产体积差异；没有明确运行路径的依赖不得加入。
+- lockfile/Action SHA 可用于供应链复现，但不能成为产品永久版本上限。
+
+验收：所有复制代码可追溯、许可允许、NOTICE 完整；无 node_modules、构建缓存、下载二进制或完整上游仓库进入 Git。
+
+### Batch NX-2 — 平台标准与客户端中立
+
+#### NX-200：ACP 兼容层（最高 P0）
+
+- 在现有 Adapter SDK 上增加 ACP protocol/capability mapping，不另建执行平台。
+- 实现初始化、protocol version、capability negotiation、unsupported feature 和 graceful degradation fixture。
+- 先支持 `detect/capabilities/observe`；`plan/apply/invoke/rollback` 继续遵守现有权限等级和批准边界。
+- 将 Hermes/Codex/Cursor/Claude Code/WorkBuddy 的现有能力映射到统一 capability model；无 ACP 的平台使用内部桥接，不伪称原生 ACP。
+- 以 Qwen Code 作为一个 ACP fixture/pilot；未安装时返回 `unavailable`，不报项目失败。
+
+验收：新增客户端主要通过 manifest、probe 和 fixture 接入；未知协议版本 fail closed 或降级，不要求修改核心 Workflow。
+
+#### NX-210：Agent Skills 与 MCP 一致性（P0）
+
+- 现有 13 个 repo-managed skill 全部通过官方 Agent Skills 基础结构验证，现有安全/来源/适用范围字段放入 WORK-LAB 扩展命名空间，不丢失能力。
+- growth inbox、隔离安装和 promotion 使用同一 skill package contract。
+- MCP 候选和已启用项按官方协议 Schema、capabilities、transport、权限和来源验证；不把连接成功等同于安全可信。
+- 增加恶意 Skill/MCP fixture：Prompt injection、工具投毒、隐藏 shell、Secret 引用、越界路径、超大上下文、递归加载。
+
+验收：13 个技能一个不少；非法 Skill/MCP 被隔离并显示原因；未知扩展可保留但不能自动获得权限。
+
+### Batch NX-3 — 真实只读观测数据
+
+#### NX-300：OpenTelemetry/OpenInference 映射（P0）
+
+- 把前包 `model-call-event`、task/tool/CI/design 事件映射到版本化语义字段。
+- 默认只记录 operation、provider、model、tokens、cache、latency、outcome、error class、task/source digest 和低基数标签。
+- `gen_ai.input.messages`、`gen_ai.output.messages`、Prompt、Response、tool arguments/result body 默认永久关闭。
+- Schema 映射记录 OTel/OpenInference 版本快照；未知字段保留在隔离扩展区，不破坏旧 Projection。
+- 只建立本地事件合同；不默认安装 Collector、Langfuse、Phoenix 或 OpenLIT。
+
+验收：同一事件可以无损生成 WORK-LAB canonical view 和标准兼容 view；隐私负控确认正文、密钥、完整路径和会话内容不会进入 Observer。
+
+#### NX-310：跨 Agent Usage Adapter Pack（最高 P1）
+
+数据流必须保持：
+
+```text
+Agent 本地公开 usage/log/结构化输出
+        ↓ 只读能力探测与增量读取
+Workflow producer（清洗、去重、脱敏、标准化）
+        ↓ versioned event
+Observer store/projection/UI（严格只读）
+```
+
+实施：
+
+- 先实现 ccusage JSON bridge 或选定 parser 的隔离 fixture，不自动全局安装 ccusage。
+- 对 Hermes、Codex、Claude Code、Cursor、WorkBuddy、Kimi、Qwen 至少建立 capability/coverage matrix；无官方安全数据源时明确 `unsupported/unknown`。
+- 从 TokenTracker 只吸收经许可确认的复合去重、WSL/native discovery、last-good 和覆盖度方法。
+- 从 TokenTelemetry 只吸收 Hermes Gateway/Cron/Skills/Memory/task/latency 的脱敏状态模型。
+- 从 WhereMyTokens 只吸收 quota/retention/coverage UI 与安全代码；凭据读取和 token refresh 代码禁止进入。
+- 所有 reader 使用 allowlist 字段、增量 cursor、文件大小/格式预算、symlink/junction 边界和损坏隔离。
+
+验收：
+
+- synthetic fixtures 覆盖重复记录、subagent、缺 request ID、文件轮转、截断、损坏行、时区、WSL/native 重复和模型重命名；
+- 不读取 Prompt/Response 正文也能得到 Token、费用、任务和健康指标；
+- Observer 无任何 Agent 控制或配置写入；
+- 缺数据显示 unknown/partial coverage，不显示虚假 0 或成功。
+
+#### NX-320：费用、保留与数据质量（P1）
+
+- 费率目录有来源、`effective_at`、币种、模型 alias 和最后确认时间；可参考 ccusage/LiteLLM 定价快照，但不引入 LiteLLM Proxy。
+- API 费用为估算并可与 provider billing reconciliation；订阅通道标记 subscription/not-metered，不制造美元成本。
+- Token、cache、reasoning、tool、task outcome 分开；不能用 token 数推断订阅 quota。
+- 实施分层保留、rollup 和可重建 Projection；原始敏感正文从不进入保留链。
+- Observer 显示 source、coverage、freshness、quality、last-good、estimated/reconciled。
+
+验收：同一 fixture 的重复摄取结果幂等；汇总可由事件重建；定价过期时费用自动降级为 stale/unknown。
+
+### Batch NX-4 — 记忆和自动循环的外部模式验真
+
+#### NX-400：记忆污染对抗评测（P1）
+
+在前包 WL-400/410/420 的实现上补充方法与测试，不增加第二记忆系统：
+
+- 借鉴 Mem0 的提取/检索评估，但候选仍进入 WORK-LAB quarantine；
+- 借鉴 Graphiti 的有效/失效时间和冲突事实，不安装图数据库；
+- 借鉴 Agent File 的可移植 memory block manifest，但不导出完整消息、工具正文、环境变量或 Secret；
+- 借鉴 Context Constitution 建立每任务 context budget、检索理由和未选入记录。
+
+必须新增负控：
+
+1. 项目 A 经验污染项目 B；
+2. 旧偏好覆盖新明确指令；
+3. 过期版本/价格继续注入；
+4. 恶意 Skill 诱导全局 promotion；
+5. 同一事实反复摘要导致权重膨胀；
+6. 压缩后丢失安全边界；
+7. 无来源推断被当作用户事实。
+
+验收：所有污染案例 fail closed 或进入 quarantine；恢复、撤回、supersede 和过期重验证可证明。
+
+#### NX-410：Task Ledger replay 与副作用一致性（P1）
+
+只吸收 Temporal/Trigger.dev/Dagu 的通用语义：
+
+- event history/replay；
+- deterministic state transition；
+- activity/side-effect 分离；
+- idempotency、intent/readback/reconcile；
+- lease、heartbeat、fencing、zombie detection；
+- waitpoint、deferred CI 和版本化任务定义。
+
+新增 replay harness，模拟进程崩溃、旧 writer 复活、push 结果未知、CI 四小时无 job、限流、重复 webhook、task definition 升级和部分事件损坏。
+
+验收：不会重复外部副作用；不会因 CI/网络等待占住 writer；旧版本任务可读取或明确迁移，不能静默错跑。
+
+### Batch NX-5 — Open Design 从来源登记到生产适配
+
+#### NX-500：设计核心合同适配（最高 P1）
+
+- DTCG：实现 design token schema/import/export/lint 和 round-trip fixture。
+- DESIGN.md：实现设计合同 parser、lint、diff、覆盖规则和交付摘要。
+- `nexu-io/open-design`：只吸收与 WORK-LAB 场景、插件、原子设计信息和来源相关的格式/接口；不复制完整应用。
+- Hallmark/Styleseed：把已部分落地的 anti-slop、design method 与真实目标、测试、来源证据闭合。
+- OpenSkillEval/Promptfoo：建立离线设计/Agent 行为 eval harness；不默认调用付费模型。
+
+验收：一份结构化 brief 能通过合同检查，生成 Token/方法/质量门选择，并在交付后完成 readback；不能只生成文档目录。
+
+#### NX-510：设计生产和质量证据适配（P1）
+
+按最小集合实现，禁止同时堆叠同类工具：
+
+- Playwright + axe-core：Observer/Open Design 可访问性和视觉回归证据；
+- SVGO：SVG 安全与生产预检；
+- PptxGenJS：生成可编辑 PPT，并验证文字、图片裁切、比例和可编辑性；
+- Vega-Lite：Observer 声明式图表；若前包已经选择并验证另一套图表库，只做能力对照，不重复引入；
+- SPDX/REUSE：设计资产、代码和第三方来源清单。
+
+至少使用两个现有合法 fixture 形成闭环：
+
+1. 品牌/平面或展厅版面：验证字体、层级、留白、比例、SVG/PPT 生产输出；
+2. MINIGAME UI：只验证 Open Design 的 HUD/图标/视觉/交互表现，不恢复游戏产品运行时。
+
+自动评分只用于一致性和回归；用户/人工未标定时继续显示 `WAITING_HUMAN_CALIBRATION`。
+
+#### NX-520：标准知识与大师证据关联（P1）
+
+将以下来源转换为有来源、可检索、可测试的 knowledge/validator，而不是复制网页：
+
+- WCAG 2.2、ARIA APG；
+- CLREQ、JLREQ；
+- Ghent 印刷标准；
+- Smithsonian/NPS 展览与无障碍；
+- GOV.UK、18F、Plain Language。
+
+把这些标准与前包大师证据卡、失败案例和质量轴建立关联。大师资料继续保留，但只有达到来源门的卡可用于 authoritative/commercial-ready 结论；最终生成指令使用可迁移方法，不复制签名风格和具体作品构图。
+
+### Batch NX-6 — 供应链与候选自动吸收
+
+#### NX-600：来源健康、漏洞和更新监控（P1）
+
+- OSV-Scanner 默认只做离线/只读 scan；禁止自动 `fix`。
+- OpenSSF Scorecard 作为来源健康信号，不以 star 数或单一评分决定吸收。
+- 定期比较已审计 commit 与上游变化；发现 license、网络、遥测、安装脚本或 API 破坏变化时标记 `UPSTREAM_CHANGED` 并停止自动升级。
+- 新项目只能进入 `DISCOVERED/QUARANTINED`，不得自动 vendor、安装、全局启用或提升规则。
+- Observer 只显示来源状态、风险、更新时间和待审项，没有安装/升级按钮。
+
+验收：模拟上游换许可证、增加 postinstall、删除 API、归档仓库和被接管包名时，系统能降级、阻止更新并保留现有可回滚版本证据。
+
+### Batch NX-7 — 集成试点、收口与交付
+
+#### NX-700：三条真实离线试点（P0/P1 收口）
+
+试点 A — Workflow/Agent：
+
+- 使用 Hermes、Codex 以及一个 ACP/Qwen fixture；
+- 验证 capability negotiation、skill conformance、task replay、usage 事件和无凭据访问。
+
+试点 B — Observer：
+
+- 混合摄取 task、CI、token/cost、skill drift、memory health、Open Design 和 data quality fixture；
+- 验证重启重建、重复摄取、损坏隔离、离线查看和严格只读。
+
+试点 C — Open Design：
+
+- 使用一个品牌/展厅 fixture 和一个 MINIGAME UI fixture；
+- 形成 brief → method/token → 生成/导入现有资产 → critique → SVG/PPT/报告 → readback 的证据链；
+- 未完成真实人工选择时不得宣称审美质量已经解决。
+
+#### NX-710：体积、性能和边界回归（P1）
+
+报告前后变化：
+
+- 新增依赖、源码、资产和仓库体积；
+- 门禁 p50/p95、cache hit、fixture 解析和 Projection 重建时间；
+- Token 去重准确性、unknown/partial coverage、费用 stale/reconciled；
+- Skill/Memory 污染负控；
+- Observer mutation surface；
+- Open Design 可编辑输出和人工标定状态。
+
+约束：
+
+- 不 vendor 完整上游仓库；
+- 不提交 node_modules、构建缓存、数据库快照或下载二进制；
+- 不增加第二 UI、第二任务运行时、第二记忆服务或默认云后端；
+- 若相关门禁耗时相对前包稳定基线显著回退，必须定位原因、利用 impact/cache 或明确记录 blocker，不能靠跳过安全门提速。
+
+#### NX-720：exact-tree 审查与批准包（P0）
+
+- writer 冻结 tree digest 后，使用新鲜、隔离、只读 reviewer 审查一次。
+- tree 未变化不重复审计；修复后只复审变化和高风险交叉面。
+- 输出来源清单、许可证/NOTICE、实际适配器、fixture/live 证据、依赖体积、已延期/排除项目和 rollback。
+- 未经批准不 commit/push/PR/live apply/付费 smoke/真实 OS profile 写入。
+
+## 7. 依赖顺序
+
+| 顺序 | 任务 | 依赖 | 可否提前只读研究 |
+|---|---|---|---|
+| 1 | NX-000 前包交接 | Gate A | 是 |
+| 2 | NX-100/110 来源与许可 | NX-000 | 是 |
+| 3 | NX-200/210 标准兼容 | NX-100/110 + 前包 Adapter/Skill 基础 | 部分 |
+| 4 | NX-300/310/320 观测数据 | 前包事件合同/Observer + NX-100/110 | 部分 |
+| 5 | NX-400/410 记忆与 replay | 前包 WL-200/400 实现 | fixture 可提前 |
+| 6 | NX-500/510/520 Open Design | 前包 WL-500/600 + NX-100/110 | 来源研究可提前 |
+| 7 | NX-600 更新监控 | NX-100/110 | 否 |
+| 8 | NX-700/710/720 收口 | 选定范围全部完成 | 否 |
+
+整个任务包仍由一个 Task Ledger 串行接力。只读来源研究可以并行，但不得有两个写入者修改同一 checkout。
+
+## 8. 最终验收
+
+满足全部条件后，第二阶段才可标为完成：
+
+1. 前包成果被继承而非重做，所有重叠项有唯一 owner/task/path。
+2. 三活动模块和五支撑区不变；没有新增 Agent、平台或第四产品。
+3. Source Ledger 能证明每个来源的许可、审计 commit、目标、测试和真实实现级别。
+4. 历史 33 个 `adopt-now` 不再把决策状态冒充实现状态。
+5. ACP、Agent Skills、MCP 和 OTel/OpenInference 至少通过离线 conformance fixtures。
+6. 现有 13 个技能完整保留，并通过标准结构和 WORK-LAB 安全扩展验证。
+7. 至少 Hermes、Codex、Claude/Cursor/WorkBuddy/Kimi/Qwen 中有多来源 usage fixtures 能进入统一事件；未支持项明确 unknown/unsupported。
+8. Usage 采集不读取凭据、Prompt/Response 或完整会话；重复、subagent、WSL/native 和损坏输入测试通过。
+9. Observer 仍严格只读，能展示 coverage/freshness/quality，不存在控制端点或隐藏 mutation。
+10. 记忆污染、恶意 Skill、过期事实、冲突和跨项目泄漏负控通过。
+11. Task replay 不重复外部副作用，CI/no-job/限流不会占住 writer。
+12. DTCG、DESIGN.md、Open Design 输入/输出合同至少形成一个 round-trip。
+13. SVG、可编辑 PPT、声明式图表和可访问性/视觉证据使用最小工具集完成，不堆叠重复引擎。
+14. 大师资料、CJK、印刷、展厅和无障碍标准有来源和质量轴关联；人工未标定时不冒充完成。
+15. 所有复制代码有来源与 NOTICE；无完整上游仓、构建缓存、下载二进制或未知许可证代码进入仓库。
+16. 未安装客户端、未知新版本、断网和缺失 provider 数据均优雅降级，不锁死软件或模型版本。
+17. 所有 live、paid、external-write、human-calibration 和 destructive 项均明确为 verified/unknown/blocked，不伪造成功。
+
+## 9. HERMES 最终汇报格式
+
+只提交一份收口报告：
+
+1. 前包交接 tree、当前 tree digest 和任务继承矩阵；
+2. 新增/修正来源及其吸收级别；
+3. 实际实现的标准、Adapter、validator、fixture 和 UI 数据链；
+4. Workflow、Open Design、Observer 各自达到的证据等级；
+5. 安全/隐私/许可证/体积/性能结果；
+6. 诚实的 deferred/rejected/blocked 清单；
+7. 一次性批准项：commit/push/PR、global apply、付费 smoke、真实 OS profile、归档清理；
+8. rollback 和上游变更监控方式。
+
+禁止以新增 README、Schema 数量、注册表条目数量、下载项目数量或“已研究”替代真实 Adapter、readback、fixture、负控和交付物。
+
+## 10. 上游参考入口
+
+- ACP：<https://github.com/agentclientprotocol/agent-client-protocol>
+- Agent Skills：<https://github.com/agentskills/agentskills>
+- MCP：<https://github.com/modelcontextprotocol/modelcontextprotocol>
+- OpenTelemetry GenAI：<https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/>
+- OpenInference：<https://github.com/Arize-ai/openinference>
+- ccusage：<https://github.com/ryoppippi/ccusage>
+- TokenTracker：<https://github.com/mm7894215/TokenTracker>
+- TokenTelemetry：<https://github.com/VasiHemanth/tokentelemetry>
+- WhereMyTokens：<https://github.com/jeongwookie/WhereMyTokens>
+- Qwen Code：<https://github.com/QwenLM/qwen-code>
+- Mem0：<https://github.com/mem0ai/mem0>
+- Graphiti：<https://github.com/getzep/graphiti>
+- Agent File：<https://github.com/letta-ai/agent-file>
+- Context Constitution：<https://github.com/letta-ai/context-constitution>
+- Temporal：<https://github.com/temporalio/temporal>
+- Trigger.dev：<https://github.com/triggerdotdev/trigger.dev>
+- Dagu：<https://github.com/dagucloud/dagu>
+- DTCG：<https://github.com/design-tokens/community-group>
+- DESIGN.md：<https://github.com/google-labs-code/design.md>
+- Open Design：<https://github.com/nexu-io/open-design>
+- Playwright：<https://github.com/microsoft/playwright>
+- axe-core：<https://github.com/dequelabs/axe-core>
+- SVGO：<https://github.com/svg/svgo>
+- PptxGenJS：<https://github.com/gitbrent/PptxGenJS>
+- Vega-Lite：<https://github.com/vega/vega-lite>
+- OSV-Scanner：<https://github.com/google/osv-scanner>
+- OpenSSF Scorecard：<https://github.com/ossf/scorecard>
+- SPDX：<https://github.com/spdx>
+- REUSE：<https://github.com/fsfe/reuse-tool>
+
+执行时必须重新核验上游当前仓库、许可证、默认分支、维护状态和接口；本列表不是自动安装清单。
+
+---
+
+## 最终执行判定
+
+本任务包可以现在交给 HERMES 作为后继队列，但状态必须保持 `QUEUED_WAITING_FOR_PREDECESSOR_EVIDENCE`。只有当前大任务包形成稳定交接证据、释放 writer lease，并完成 NX-000 去重后，才开始第二阶段写入。
+
+第二阶段的核心不是“再找更多项目”，而是把少数真正有用的开源能力吸收成可验证的标准、Adapter、测试和只读数据链，并把不适合 WORK-LAB 的完整平台明确排除。这样既能增强 WORK-LAB，又不会重新走向臃肿、重复和定位漂移。

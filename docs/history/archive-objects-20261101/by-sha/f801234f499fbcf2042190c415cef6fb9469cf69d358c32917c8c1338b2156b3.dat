@@ -1,0 +1,1326 @@
+# HERMES 深化执行包 V4：Obsidian-Assistance 工程施工图
+
+> 适用对象：HERMES / Codex / 本地执行 Agent  
+> 目标仓库：`DTALEX66/Obsidian-Assistance`  
+> 目标版本：V4 工程化落地版  
+> 核心升级：从“V3 任务包”深化为“可逐文件实施、可测试、可回滚、可验收”的工程施工图。  
+> 关键原则：**不碰正式库、不删文件、不上传隐私、先 demo、先 dry-run、先备份、再 apply。**
+
+---
+
+## 0. V4 与 V3 的区别
+
+V3 解决的是：
+
+```text
+要做什么
+为什么做
+大概新增哪些目录和文件
+HERMES 应该遵守什么边界
+```
+
+V4 解决的是：
+
+```text
+每个阶段具体改哪些文件
+每个脚本的职责是什么
+每个模板必须包含什么字段
+每个测试怎么验收
+失败后怎么回滚
+HERMES 每一步应该输出什么报告
+怎么判断它真的跑通了
+```
+
+一句话：
+
+> V3 是任务书，V4 是施工图 + 验收单 + 回滚预案。
+
+---
+
+## 1. HERMES 总执行策略
+
+HERMES 不要一次性大改。必须分 9 个批次执行。
+
+```text
+Batch 0：仓库体检
+Batch 1：文档规范层
+Batch 2：模板层
+Batch 3：CSS 视觉层
+Batch 4：安全写入层
+Batch 5：生成器层
+Batch 6：Demo 课程层
+Batch 7：测试层
+Batch 8：README 与交付报告
+```
+
+每个 Batch 都必须输出：
+
+```text
+1. 本批次目标
+2. 已新增文件
+3. 已修改文件
+4. 风险点
+5. 自测结果
+6. 下一批次建议
+```
+
+每个 Batch 完成后建议提交一次 Git commit，便于回滚。
+
+---
+
+## 2. 推荐 Git 分支与提交策略
+
+### 2.1 新建分支
+
+```powershell
+git checkout -b feature/obsidian-v4-learning-os
+```
+
+### 2.2 提交节奏
+
+```text
+commit 1: chore: add v4 planning docs
+commit 2: feat: add obsidian v4 templates
+commit 3: feat: add visual css snippets
+commit 4: feat: add safe vault writer
+commit 5: feat: add course pack generators
+commit 6: test: add v4 test suite
+commit 7: docs: update readme for v4 workflow
+```
+
+### 2.3 每次提交前必须执行
+
+```powershell
+git status
+python -m pytest tests -q
+```
+
+如果 tests 还没建好，至少执行：
+
+```powershell
+python -m py_compile scripts/*.py
+```
+
+---
+
+## 3. Batch 0：仓库体检
+
+### 3.1 目标
+
+确认仓库没有误包含用户私人 vault、原始课程、OCR/ASR 全文、密钥。
+
+### 3.2 HERMES 执行命令
+
+```powershell
+git status
+git branch --show-current
+Get-ChildItem -Force
+Get-ChildItem docs -ErrorAction SilentlyContinue
+Get-ChildItem scripts -ErrorAction SilentlyContinue
+Get-ChildItem skills -ErrorAction SilentlyContinue
+```
+
+### 3.3 新增文件
+
+```text
+reports/repo-audit-v4.md
+```
+
+### 3.4 体检清单
+
+HERMES 必须检查：
+
+```text
+[ ] 是否存在 .env
+[ ] 是否存在 token / api_key / secret
+[ ] 是否存在 .obsidian/workspace.json
+[ ] 是否存在真实课程视频/音频/PDF
+[ ] 是否存在 OCR/ASR 全文
+[ ] 是否存在用户正式 Obsidian vault 内容
+[ ] 是否有硬编码 E:\BaiduSyncdisk\Obsidian知识库
+[ ] 是否有 rm / del / Remove-Item -Recurse 等危险命令
+[ ] 是否有无备份覆盖 .obsidian 配置的脚本
+```
+
+### 3.5 repo-audit-v4.md 模板
+
+```markdown
+# Repo Audit V4
+
+## 1. 仓库状态
+
+## 2. 当前分支
+
+## 3. 已发现目录
+
+## 4. 风险扫描
+
+| 项目 | 结果 | 说明 |
+|---|---|---|
+| 私人 vault | 未发现/发现 | |
+| 原始素材 | 未发现/发现 | |
+| OCR/ASR 全文 | 未发现/发现 | |
+| token/API key | 未发现/发现 | |
+| 危险删除命令 | 未发现/发现 | |
+| 硬编码路径 | 未发现/发现 | |
+
+## 5. 建议
+
+## 6. 是否允许进入 Batch 1
+```
+
+### 3.6 退出标准
+
+```text
+[ ] 生成 reports/repo-audit-v4.md
+[ ] 没有发现严重隐私泄露
+[ ] 没有发现不可控删除脚本
+[ ] 如果有风险，必须先列出，不继续执行
+```
+
+---
+
+## 4. Batch 1：文档规范层
+
+### 4.1 目标
+
+建立 V4 的系统规范，让后续脚本、模板、CSS、测试都有统一依据。
+
+### 4.2 新增文件
+
+```text
+docs/obsidian-v4-learning-os-blueprint.md
+docs/hermes-v4-execution-protocol.md
+docs/v4-file-contracts.md
+docs/v4-yaml-schema.md
+docs/v4-output-structure.md
+docs/v4-visual-design-standard.md
+docs/v4-safe-write-and-rollback.md
+docs/v4-plugin-stack.md
+docs/v4-test-plan.md
+docs/v4-acceptance-standard.md
+```
+
+### 4.3 每个文档职责
+
+| 文件 | 职责 |
+|---|---|
+| `obsidian-v4-learning-os-blueprint.md` | V4 总架构 |
+| `hermes-v4-execution-protocol.md` | HERMES 怎么执行、怎么停、怎么报告 |
+| `v4-file-contracts.md` | 每类文件必须满足什么格式 |
+| `v4-yaml-schema.md` | YAML 字段标准 |
+| `v4-output-structure.md` | 课程包输出目录 |
+| `v4-visual-design-standard.md` | CSS、卡片、callout、首页标准 |
+| `v4-safe-write-and-rollback.md` | 安全写入与回滚 |
+| `v4-plugin-stack.md` | P0/P1/P2 插件栈 |
+| `v4-test-plan.md` | 测试计划 |
+| `v4-acceptance-standard.md` | 最终验收标准 |
+
+### 4.4 文档写作要求
+
+```text
+1. 全中文。
+2. 不写空话。
+3. 每个文档必须有“执行要求”和“验收标准”。
+4. 不依赖联网。
+5. 不把用户正式路径写死。
+6. 不包含私人资料。
+```
+
+### 4.5 退出标准
+
+```text
+[ ] docs/ 下 10 个 V4 文档全部存在
+[ ] 每个文档都有标题、目标、执行要求、验收标准
+[ ] 没有真实用户课程内容
+[ ] 没有 token/API key
+```
+
+---
+
+## 5. Batch 2：模板层
+
+### 5.1 目标
+
+建立 Obsidian 输出模板，让任何课程都可以被渲染成一套学习系统。
+
+### 5.2 新增文件
+
+```text
+templates/v4/course-home.md
+templates/v4/lesson-summary.md
+templates/v4/concept-card.md
+templates/v4/method-card.md
+templates/v4/case-card.md
+templates/v4/review-card.md
+templates/v4/action-card.md
+templates/v4/evidence-card.md
+templates/v4/pending-review.md
+templates/v4/import-report.md
+templates/v4/visual-flowchart.md
+templates/v4/visual-mindmap.md
+templates/v4/visual-timeline.md
+templates/v4/canvas-course-map.json
+```
+
+### 5.3 模板变量统一规则
+
+所有模板只允许使用以下变量格式：
+
+```text
+{{course}}
+{{lesson}}
+{{title}}
+{{date}}
+{{updated}}
+{{source_type}}
+{{source_path}}
+{{evidence_id}}
+{{confidence}}
+{{status}}
+{{tags}}
+{{course_path}}
+{{summary}}
+{{content}}
+{{pending_review}}
+```
+
+禁止混用：
+
+```text
+{course}
+$course
+<course>
+%course%
+```
+
+### 5.4 通用 YAML frontmatter
+
+所有 Markdown 模板必须包含：
+
+```yaml
+---
+type: "{{type}}"
+status: "{{status}}"
+course: "{{course}}"
+lesson: "{{lesson}}"
+source_type: "{{source_type}}"
+source_path: "{{source_path}}"
+evidence_id: "{{evidence_id}}"
+confidence: "{{confidence}}"
+review_level: new
+difficulty: 1
+priority: 1
+created: "{{date}}"
+updated: "{{updated}}"
+tags:
+  - knowledgeos
+aliases: []
+links:
+  concepts: []
+  methods: []
+  cases: []
+cssclasses:
+  - knowledgeos-v4
+---
+```
+
+### 5.5 课程主页必须包含 12 个区块
+
+```text
+1. 课程概览
+2. 今日入口
+3. 学习进度
+4. 课程地图 Canvas
+5. 核心概念
+6. 核心方法
+7. 关键案例
+8. 复习中心
+9. 项目行动
+10. 视觉图解
+11. 待人工确认
+12. 导入报告
+```
+
+### 5.6 课程主页模板建议内容
+
+```markdown
+---
+type: course
+status: "{{status}}"
+course: "{{course}}"
+lesson: ""
+source_type: "{{source_type}}"
+source_path: "{{source_path}}"
+evidence_id: "{{evidence_id}}"
+confidence: "{{confidence}}"
+review_level: new
+difficulty: 1
+priority: 1
+created: "{{date}}"
+updated: "{{updated}}"
+tags:
+  - course
+  - knowledgeos
+cssclasses:
+  - knowledgeos-v4
+  - course-home
+  - dashboard
+---
+
+# {{course}}
+
+> [!summary] 课程概览
+> - 状态：`{{status}}`
+> - 可信度：`{{confidence}}`
+> - 来源类型：`{{source_type}}`
+> - 来源路径：`{{source_path}}`
+
+## 今日入口
+
+- [ ] 处理待审核内容
+- [ ] 复习新卡片
+- [ ] 完成项目行动
+- [ ] 检查导入报告
+
+## 学习进度
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 章节,
+status AS 状态,
+confidence AS 可信度
+FROM "{{course_path}}/02_逐节总结"
+SORT file.name ASC
+```
+
+## 课程地图
+
+![[01_课程地图.canvas]]
+
+## 核心概念
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 概念,
+review_level AS 复习,
+confidence AS 可信度
+FROM "{{course_path}}/03_知识卡片"
+WHERE type = "concept"
+SORT priority ASC
+```
+
+## 核心方法
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 方法,
+difficulty AS 难度,
+status AS 状态
+FROM "{{course_path}}/03_知识卡片"
+WHERE type = "method"
+SORT priority ASC
+```
+
+## 关键案例
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 案例,
+confidence AS 可信度
+FROM "{{course_path}}/03_知识卡片"
+WHERE type = "case"
+```
+
+## 复习中心
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 复习卡,
+review_level AS 复习等级,
+difficulty AS 难度
+FROM "{{course_path}}/04_复习卡片"
+SORT updated DESC
+```
+
+## 项目行动
+
+```dataview
+TASK
+FROM "{{course_path}}/06_项目行动"
+WHERE !completed
+```
+
+## 视觉图解
+
+- [[05_视觉图解/课程流程图]]
+- [[05_视觉图解/课程思维导图]]
+- [[05_视觉图解/课程时间线]]
+
+## 待人工确认
+
+```dataview
+TABLE WITHOUT ID
+file.link AS 文件,
+confidence AS 可信度,
+pending_reason AS 原因
+FROM "{{course_path}}"
+WHERE confidence = "low" OR status = "blocked"
+```
+
+## 导入报告
+
+![[08_导入报告]]
+```
+
+### 5.7 退出标准
+
+```text
+[ ] templates/v4 下所有模板存在
+[ ] 每个 Markdown 模板都有 YAML
+[ ] 模板变量格式统一
+[ ] 课程主页包含 12 个区块
+[ ] 没有真实课程内容
+```
+
+---
+
+## 6. Batch 3：CSS 视觉层
+
+### 6.1 目标
+
+让输出的 Obsidian 页面不再像纯文字，而是像学习看板、卡片墙、复习中心。
+
+### 6.2 新增文件
+
+```text
+snippets/v4/dt-knowledgeos-v4-core.css
+snippets/v4/dt-dashboard.css
+snippets/v4/dt-cards.css
+snippets/v4/dt-callouts.css
+snippets/v4/dt-review.css
+snippets/v4/dt-status-tags.css
+```
+
+### 6.3 CSS 设计原则
+
+```text
+1. 只作用于 .knowledgeos-v4 及其子类。
+2. 不全局污染 Obsidian。
+3. 不引用外部字体。
+4. 不引用外部图片。
+5. 支持浅色/深色模式。
+6. 不破坏编辑模式。
+7. 与默认主题、Minimal Theme 兼容。
+```
+
+### 6.4 核心 CSS 类
+
+```css
+.knowledgeos-v4
+.course-home
+.dashboard
+.card-grid
+.knowledge-card
+.review-card
+.action-card
+.pending-review
+.status-inbox
+.status-processing
+.status-verified
+.status-blocked
+.status-done
+```
+
+### 6.5 CSS 最小可用示例
+
+```css
+.markdown-preview-view.knowledgeos-v4 {
+  --ko-card-radius: 14px;
+  --ko-card-border: 1px solid var(--background-modifier-border);
+  --ko-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.markdown-preview-view.knowledgeos-v4 .callout {
+  border-radius: var(--ko-card-radius);
+  border: var(--ko-card-border);
+  box-shadow: var(--ko-card-shadow);
+}
+
+.markdown-preview-view.course-home h2 {
+  margin-top: 2rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.markdown-preview-view.knowledgeos-v4 table {
+  width: 100%;
+}
+
+.markdown-preview-view.knowledgeos-v4 .dataview.table-view-table {
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+```
+
+### 6.6 退出标准
+
+```text
+[ ] snippets/v4 下 CSS 文件存在
+[ ] CSS 不含外部 URL
+[ ] CSS 不全局污染 body/html
+[ ] CSS 类与模板 cssclasses 对应
+[ ] README 或 docs 说明如何启用 snippet
+```
+
+---
+
+## 7. Batch 4：安全写入层
+
+### 7.1 目标
+
+建立所有写入操作的安全中间层，避免 HERMES 误删、误覆盖、写出 vault。
+
+### 7.2 新增文件
+
+```text
+scripts/v4/safe_vault_writer.py
+scripts/v4/backup_before_write.ps1
+scripts/v4/obsidian_v4_audit.py
+```
+
+### 7.3 safe_vault_writer.py 职责
+
+```text
+1. 校验 vault 根路径存在。
+2. 校验目标路径必须在 vault 内。
+3. 默认 dry-run，不写入。
+4. apply 模式才写入。
+5. 写入前备份已有文件。
+6. 禁止删除。
+7. 禁止覆盖未备份文件。
+8. 生成 write-plan.json。
+9. 生成 write-report.md。
+10. 支持中文路径。
+```
+
+### 7.4 safe_vault_writer.py 最小接口
+
+```python
+class SafeVaultWriter:
+    def __init__(self, vault_root, backup_root=None, dry_run=True):
+        pass
+
+    def resolve_inside_vault(self, relative_path):
+        pass
+
+    def plan_write(self, relative_path, content):
+        pass
+
+    def apply_write(self, relative_path, content):
+        pass
+
+    def backup_existing(self, target_path):
+        pass
+
+    def write_report(self):
+        pass
+```
+
+### 7.5 禁止函数
+
+脚本中不要出现：
+
+```python
+shutil.rmtree(...)
+os.remove(...)
+Path.unlink(...)
+Path.rmdir(...)
+```
+
+如果测试文件需要模拟删除，也必须在 tests 临时目录中，并用注释说明。
+
+### 7.6 退出标准
+
+```text
+[ ] safe_vault_writer.py 存在
+[ ] 默认 dry-run
+[ ] 阻止路径穿越
+[ ] apply 前备份
+[ ] 生成 write-plan.json
+[ ] 生成 write-report.md
+[ ] 不包含删除函数
+```
+
+---
+
+## 8. Batch 5：生成器层
+
+### 8.1 目标
+
+把课程结构数据生成为完整 Obsidian 学习包。
+
+### 8.2 新增文件
+
+```text
+scripts/v4/generate_course_pack.py
+scripts/v4/generate_canvas_map.py
+scripts/v4/generate_mermaid_graph.py
+scripts/v4/generate_bases_views.py
+scripts/v4/validate_yaml_schema.py
+```
+
+### 8.3 generate_course_pack.py
+
+#### 输入参数
+
+```powershell
+python scripts/v4/generate_course_pack.py `
+  --course "Demo课程" `
+  --output "examples/demo-course" `
+  --dry-run
+```
+
+或：
+
+```powershell
+python scripts/v4/generate_course_pack.py `
+  --course "Demo课程" `
+  --vault "D:\OBS-V4-DEMO" `
+  --apply
+```
+
+#### 参数要求
+
+```text
+--course 必填
+--output 和 --vault 二选一
+--dry-run 默认 true
+--apply 显式写入
+--template-dir 默认 templates/v4
+--report-dir 默认 reports
+```
+
+#### 输出文件
+
+```text
+00_课程主页.md
+01_课程地图.canvas
+02_逐节总结/第01节_示例章节.md
+03_知识卡片/概念_示例概念.md
+03_知识卡片/方法_示例方法.md
+03_知识卡片/案例_示例案例.md
+04_复习卡片/Q_示例问题.md
+05_视觉图解/课程流程图.md
+05_视觉图解/课程思维导图.md
+05_视觉图解/课程时间线.md
+06_项目行动/行动清单.md
+07_证据索引/evidence-index.md
+08_导入报告.md
+```
+
+### 8.4 generate_canvas_map.py
+
+#### 输入
+
+```json
+{
+  "course": "Demo课程",
+  "lessons": ["第01节"],
+  "concepts": ["输入箱"],
+  "methods": ["课程处理流程"],
+  "cases": ["示例案例"],
+  "tasks": ["完成复习"],
+  "reviews": ["什么是输入箱"],
+  "evidence": ["evidence-001"]
+}
+```
+
+#### 输出
+
+```json
+{
+  "nodes": [],
+  "edges": []
+}
+```
+
+必须符合 JSON Canvas 基本结构。
+
+### 8.5 generate_mermaid_graph.py
+
+必须生成：
+
+```text
+课程流程图.md
+课程思维导图.md
+课程时间线.md
+```
+
+每个文件都有 YAML，并包含 mermaid 代码块。
+
+### 8.6 validate_yaml_schema.py
+
+检查：
+
+```text
+[ ] 是否有 frontmatter
+[ ] type 是否有效
+[ ] status 是否有效
+[ ] confidence 是否有效
+[ ] created/updated 是否存在
+[ ] cssclasses 是否存在
+[ ] course 字段是否存在
+```
+
+### 8.7 退出标准
+
+```text
+[ ] 生成器全部存在
+[ ] dry-run 可运行
+[ ] demo-course 可生成
+[ ] YAML 校验通过
+[ ] Canvas JSON 可解析
+[ ] Mermaid 文件存在
+```
+
+---
+
+## 9. Batch 6：Demo 课程层
+
+### 9.1 目标
+
+给用户一个可以打开看的示例，而不是只给脚本。
+
+### 9.2 新增目录
+
+```text
+examples/v4-demo-course/
+```
+
+### 9.3 Demo 内容要求
+
+Demo 可以虚构，但必须明确标注“示例，不含用户真实课程内容”。
+
+必须包含：
+
+```text
+00_课程主页.md
+01_课程地图.canvas
+02_逐节总结/第01节_示例章节.md
+03_知识卡片/概念_输入箱.md
+03_知识卡片/方法_课程处理流程.md
+03_知识卡片/案例_示例案例.md
+04_复习卡片/Q_什么是输入箱.md
+05_视觉图解/课程流程图.md
+05_视觉图解/课程思维导图.md
+05_视觉图解/课程时间线.md
+06_项目行动/行动清单.md
+07_证据索引/evidence-index.md
+08_导入报告.md
+```
+
+### 9.4 Demo 课程主页必须能展示
+
+```text
+[ ] 课程概览 callout
+[ ] 学习进度 Dataview
+[ ] Canvas 嵌入
+[ ] 核心概念 Dataview
+[ ] 复习中心 Dataview
+[ ] 项目行动 Tasks
+[ ] 待审核区
+[ ] 导入报告
+```
+
+### 9.5 退出标准
+
+```text
+[ ] examples/v4-demo-course 存在
+[ ] 文件结构完整
+[ ] 所有 md 有 YAML
+[ ] Canvas 是合法 JSON
+[ ] Mermaid 文件可读
+[ ] 没有真实用户内容
+```
+
+---
+
+## 10. Batch 7：测试层
+
+### 10.1 目标
+
+防止 HERMES 写出 vault、误覆盖、无 YAML、Canvas 不合法。
+
+### 10.2 新增测试
+
+```text
+tests/v4/test_safe_vault_writer.py
+tests/v4/test_yaml_schema.py
+tests/v4/test_generate_course_pack.py
+tests/v4/test_canvas_map.py
+tests/v4/test_mermaid_graph.py
+tests/v4/test_no_private_data.py
+```
+
+### 10.3 必测项
+
+```text
+[ ] dry-run 不写文件
+[ ] apply 写文件
+[ ] apply 前备份已有文件
+[ ] 路径穿越被阻止
+[ ] 中文路径可用
+[ ] YAML 字段完整
+[ ] type/status/confidence 值合法
+[ ] Canvas JSON 可解析
+[ ] Mermaid 文件包含 mermaid 代码块
+[ ] 生成导入报告
+[ ] 不包含 token/API key
+[ ] 不包含真实用户路径硬编码
+```
+
+### 10.4 测试命令
+
+```powershell
+python -m pytest tests -q
+```
+
+### 10.5 退出标准
+
+```text
+[ ] 测试通过
+[ ] 如有失败，生成 reports/test-failure-v4.md
+[ ] 不允许忽略安全相关失败
+```
+
+---
+
+## 11. Batch 8：README 与最终交付报告
+
+### 11.1 README 必须新增
+
+```markdown
+## Obsidian-Assistance V4
+
+### V4 是什么
+
+### V4 能生成什么
+
+### 安全边界
+
+### 如何生成 demo 课程
+
+### 如何安装到测试 vault
+
+### 如何迁移到正式 vault
+
+### 推荐插件
+
+### 常见问题
+```
+
+### 11.2 最终交付报告
+
+新增：
+
+```text
+reports/hermes-v4-delivery-report.md
+```
+
+模板：
+
+```markdown
+# HERMES V4 交付报告
+
+## 1. 本次目标
+
+## 2. 新增文件
+
+## 3. 修改文件
+
+## 4. 已完成 Batch
+
+## 5. 安全检查
+
+## 6. 测试结果
+
+## 7. Demo 课程位置
+
+## 8. 如何运行
+
+## 9. 如何回滚
+
+## 10. 未完成事项
+
+## 11. 下一步建议
+```
+
+---
+
+## 12. HERMES 分批执行提示词
+
+下面是可以直接逐段发给 HERMES 的提示词。
+
+---
+
+### Prompt 0：仓库体检
+
+```text
+你是 HERMES。现在只执行 Batch 0：仓库体检。
+
+目标仓库：DTALEX66/Obsidian-Assistance。
+
+只读，不允许写正式 Obsidian vault，不允许删除任何文件。
+
+请完成：
+1. 检查 git 状态和目录结构。
+2. 扫描是否存在用户私人 vault、原始课程文件、OCR/ASR 全文、token、API key、危险删除命令、硬编码正式库路径。
+3. 生成 reports/repo-audit-v4.md。
+4. 如果发现高风险问题，停止后续执行，只输出风险清单。
+```
+
+---
+
+### Prompt 1：文档规范层
+
+```text
+继续执行 Batch 1：文档规范层。
+
+请在 docs/ 下新增 V4 规范文档：
+- obsidian-v4-learning-os-blueprint.md
+- hermes-v4-execution-protocol.md
+- v4-file-contracts.md
+- v4-yaml-schema.md
+- v4-output-structure.md
+- v4-visual-design-standard.md
+- v4-safe-write-and-rollback.md
+- v4-plugin-stack.md
+- v4-test-plan.md
+- v4-acceptance-standard.md
+
+要求：
+1. 全中文。
+2. 不写空话。
+3. 每个文档必须有目标、执行要求、验收标准。
+4. 不包含用户真实课程内容。
+5. 不包含 token/API key。
+6. 完成后输出本批次报告。
+```
+
+---
+
+### Prompt 2：模板层
+
+```text
+继续执行 Batch 2：模板层。
+
+请新增 templates/v4/ 目录，并创建：
+- course-home.md
+- lesson-summary.md
+- concept-card.md
+- method-card.md
+- case-card.md
+- review-card.md
+- action-card.md
+- evidence-card.md
+- pending-review.md
+- import-report.md
+- visual-flowchart.md
+- visual-mindmap.md
+- visual-timeline.md
+- canvas-course-map.json
+
+要求：
+1. Markdown 模板全部包含 YAML frontmatter。
+2. 变量格式统一为 {{variable}}。
+3. 课程主页必须包含 12 个区块。
+4. 不写入正式 Obsidian vault。
+5. 完成后输出本批次报告。
+```
+
+---
+
+### Prompt 3：CSS 视觉层
+
+```text
+继续执行 Batch 3：CSS 视觉层。
+
+请新增 snippets/v4/ 目录，并创建：
+- dt-knowledgeos-v4-core.css
+- dt-dashboard.css
+- dt-cards.css
+- dt-callouts.css
+- dt-review.css
+- dt-status-tags.css
+
+要求：
+1. CSS 只作用于 .knowledgeos-v4 和相关子类。
+2. 不引用外部字体、外部图片、外部 URL。
+3. 支持浅色和深色模式。
+4. 不污染全局 body/html。
+5. 与默认主题、Minimal Theme 兼容。
+6. 完成后输出本批次报告。
+```
+
+---
+
+### Prompt 4：安全写入层
+
+```text
+继续执行 Batch 4：安全写入层。
+
+请新增 scripts/v4/：
+- safe_vault_writer.py
+- backup_before_write.ps1
+- obsidian_v4_audit.py
+
+要求：
+1. safe_vault_writer.py 默认 dry-run。
+2. 只有显式 --apply 才允许写入。
+3. 所有写入必须确认路径在 vault 内。
+4. 必须阻止路径穿越。
+5. 覆盖已有文件前必须备份。
+6. 不允许出现删除用户文件的逻辑。
+7. 生成 write-plan.json 和 write-report.md。
+8. 完成后输出本批次报告。
+```
+
+---
+
+### Prompt 5：生成器层
+
+```text
+继续执行 Batch 5：生成器层。
+
+请新增：
+- scripts/v4/generate_course_pack.py
+- scripts/v4/generate_canvas_map.py
+- scripts/v4/generate_mermaid_graph.py
+- scripts/v4/generate_bases_views.py
+- scripts/v4/validate_yaml_schema.py
+
+要求：
+1. generate_course_pack.py 能生成完整 demo 课程包。
+2. generate_canvas_map.py 能生成合法 JSON Canvas。
+3. generate_mermaid_graph.py 能生成 flowchart、mindmap、timeline。
+4. validate_yaml_schema.py 能检查 YAML 字段。
+5. 所有写入默认 dry-run。
+6. apply 写入必须走 safe_vault_writer.py。
+7. 完成后输出本批次报告。
+```
+
+---
+
+### Prompt 6：Demo 课程层
+
+```text
+继续执行 Batch 6：Demo 课程层。
+
+请生成 examples/v4-demo-course/，包含：
+- 00_课程主页.md
+- 01_课程地图.canvas
+- 02_逐节总结/第01节_示例章节.md
+- 03_知识卡片/概念_输入箱.md
+- 03_知识卡片/方法_课程处理流程.md
+- 03_知识卡片/案例_示例案例.md
+- 04_复习卡片/Q_什么是输入箱.md
+- 05_视觉图解/课程流程图.md
+- 05_视觉图解/课程思维导图.md
+- 05_视觉图解/课程时间线.md
+- 06_项目行动/行动清单.md
+- 07_证据索引/evidence-index.md
+- 08_导入报告.md
+
+要求：
+1. Demo 内容必须标注“示例，不含用户真实课程内容”。
+2. 所有 Markdown 有 YAML。
+3. Canvas 是合法 JSON。
+4. Mermaid 文件可读。
+5. 不写入正式 Obsidian vault。
+6. 完成后输出本批次报告。
+```
+
+---
+
+### Prompt 7：测试层
+
+```text
+继续执行 Batch 7：测试层。
+
+请新增 tests/v4/：
+- test_safe_vault_writer.py
+- test_yaml_schema.py
+- test_generate_course_pack.py
+- test_canvas_map.py
+- test_mermaid_graph.py
+- test_no_private_data.py
+
+要求测试：
+1. dry-run 不写文件。
+2. apply 写文件。
+3. apply 前备份已有文件。
+4. 路径穿越被阻止。
+5. 中文路径可用。
+6. YAML 字段完整。
+7. Canvas JSON 可解析。
+8. Mermaid 文件包含 mermaid 代码块。
+9. 不包含 token/API key。
+10. 不包含硬编码正式库路径。
+
+运行 python -m pytest tests -q。
+失败时生成 reports/test-failure-v4.md。
+```
+
+---
+
+### Prompt 8：README 与交付报告
+
+```text
+继续执行 Batch 8：README 与交付报告。
+
+请更新 README.md，新增 Obsidian-Assistance V4 说明，包括：
+1. V4 是什么。
+2. V4 能生成什么。
+3. 安全边界。
+4. 如何生成 demo 课程。
+5. 如何安装到测试 vault。
+6. 如何迁移到正式 vault。
+7. 推荐插件。
+8. 常见问题。
+
+然后生成 reports/hermes-v4-delivery-report.md。
+
+要求：
+1. 明确列出新增/修改文件。
+2. 明确测试结果。
+3. 明确如何回滚。
+4. 明确哪些高风险动作没有执行。
+```
+
+---
+
+## 13. HERMES 回滚预案
+
+### 13.1 Git 回滚
+
+如果某个 Batch 做错：
+
+```powershell
+git status
+git log --oneline -5
+git restore .
+```
+
+如果已经提交：
+
+```powershell
+git revert <commit_sha>
+```
+
+### 13.2 Demo vault 回滚
+
+所有写入必须在 vault 内生成：
+
+```text
+93_导入报告/V4_备份_yyyyMMdd_HHmmss/
+```
+
+回滚方式：
+
+```powershell
+# 手动把备份目录内容复制回原位置
+```
+
+### 13.3 禁止自动回滚删除
+
+不要写自动删除式回滚脚本。回滚只允许：
+
+```text
+复制备份覆盖目标文件
+```
+
+不允许：
+
+```text
+清空目录
+删除新文件
+批量 Remove-Item
+```
+
+---
+
+## 14. 风险矩阵
+
+| 风险 | 等级 | 处理 |
+|---|---:|---|
+| 误写正式 vault | 高 | 默认 dry-run，必须 --apply |
+| 覆盖 .obsidian 配置 | 高 | 必须备份，优先 demo vault |
+| 上传私人课程内容 | 高 | Git 扫描，禁止 examples 混入真实课程 |
+| 路径穿越写到库外 | 高 | safe_vault_writer 阻止 |
+| 删除附件 | 高 | 禁止删除函数 |
+| 插件配置包含 token | 高 | 不提交插件真实 data.json |
+| CSS 污染全库 | 中 | 绑定 `.knowledgeos-v4` |
+| 模板变量混乱 | 中 | 统一 `{{variable}}` |
+| Mermaid 渲染失败 | 中 | 用最简单语法 |
+| Canvas JSON 不合法 | 中 | 测试 JSON parse |
+| Dataview 查询空 | 低 | Demo 里提供匹配 YAML |
+| Bases 格式不稳定 | 低 | 先提供示例，不强写正式库 |
+
+---
+
+## 15. 最终验收总表
+
+HERMES 完成后，必须逐项打勾：
+
+```text
+[ ] Batch 0 仓库体检完成
+[ ] reports/repo-audit-v4.md 存在
+[ ] docs/v4 文档完成
+[ ] templates/v4 模板完成
+[ ] snippets/v4 CSS 完成
+[ ] scripts/v4 安全写入层完成
+[ ] scripts/v4 生成器完成
+[ ] examples/v4-demo-course 完成
+[ ] tests/v4 完成
+[ ] README 更新
+[ ] reports/hermes-v4-delivery-report.md 完成
+[ ] python -m pytest tests -q 通过
+[ ] 没有真实课程内容
+[ ] 没有 token/API key
+[ ] 没有硬编码正式库路径
+[ ] 没有删除逻辑
+[ ] 所有写入默认 dry-run
+[ ] --apply 前会备份
+[ ] Canvas JSON 可解析
+[ ] Mermaid 文件可读
+[ ] Markdown 文件都有 YAML
+```
+
+---
+
+## 16. 给用户看的最终解释
+
+HERMES 完成后，对用户这样说明：
+
+```text
+这次不是简单美化 Obsidian，而是把 Obsidian-Assistance 升级成 V4 学习系统生成器。
+
+它现在可以把一门课程生成：
+- 课程主页
+- 课程地图 Canvas
+- 知识卡片
+- 复习卡片
+- 行动任务
+- 视觉图解
+- 待审核区
+- 导入报告
+
+并且所有写入都默认 dry-run，不会直接动正式知识库。正式迁移前建议先在 D:\OBS-V4-DEMO 测试库中打开看效果。
+```
+
+---
+
+## 17. 最终一句话
+
+V4 的目标是让 HERMES 不再“泛泛整理”，而是像工程师一样按批次、按文件、按测试、按验收，把 Obsidian-Assistance 做成真正可用的本地学习知识库生成器。

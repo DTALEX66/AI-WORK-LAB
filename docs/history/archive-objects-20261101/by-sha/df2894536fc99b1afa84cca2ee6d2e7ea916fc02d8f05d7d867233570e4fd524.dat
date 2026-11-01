@@ -1,0 +1,154 @@
+# ArcheAxis 云端漂移与完成度复审
+
+审计时间：2026-09-07 UTC。固定远端 `main`：`4ca46eaf94c486dadcf200aac6b41cd968b1ce6e`（2026-09-06 03:33 UTC，`docs: repository size audit + slimming analysis`）。
+
+## 结论
+
+**没有新的 Git 提交漂移；有严重的“计划—规范—实际运行”漂移。所有任务没有完成。**
+
+与 2026-09-06 复审所用 SHA 相同，远端代码树没有新提交；因此不应重新生成或覆盖昨天的任务包。相对上一轮完整代码审计基线 `e9a7d2db854da157138111dc1c772cee95c16647`，当前仍多 31 个提交、119 个变更文件（31,334 插入 / 182 删除）：有实际 worker、契约、清单和门禁增量，但没有将产品闭环做完。
+
+2026-09-06 的 nightly 在**当前同一 SHA**失败：全量 Python 测试为 **2173 passed、8 skipped、1 failed**。失败测试是网页截图→OCR 全链，Chromium 因 `.hermes` 路径下的 socket 路径过长而退出。该失败没有被 main 的必需检查拦住；规则集目前只要求 `a0-gates`。
+
+## 1. 漂移判定
+
+| 维度 | 判定 | 依据 |
+|---|---|---|
+| 云端提交漂移（相对2026-09-06） | 无 | `main` 仍为 `4ca46ea`；compare 结果 identical |
+| 产品实现漂移（相对上次完整审计） | 有，且未收口 | 31 个提交新增契约、12 个Python worker、legacy 台账、CI 分类/门禁；Rust/Avalonia仍是局部骨架 |
+| 目录规范漂移 | 严重 | 目标文档写 `.project-local`，根AGENTS、测试、CI、发布、脚本仍写 `.hermes` |
+| CI 真值漂移 | 严重 | push CI 绿不等于全量绿；nightly 已实测红且未成为合并前置 |
+| 任务状态漂移 | 严重 | 任务包 21 项全是 `planned`；DSH 若干 slice receipt 只能证实局部操作，不等同于任务完成 |
+| 语言架构漂移 | 无方向性漂移，实施未完成 | 仍符合 C#/Avalonia + Rust Core + Python worker 决策；旧 Python/React/Tauri 仍承担实际主线的较多部分 |
+
+## 2. 当前阻断问题（按优先级）
+
+### P0：目录规范实际失效，且已经造成全量CI失败
+
+当前仓库内有 **136 个 tracked 文本文件**含 `.hermes` 字面量。核心执行面至少包括：
+
+- 根 [AGENTS.md](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/4ca46eaf94c486dadcf200aac6b41cd968b1ce6e/AGENTS.md) 仍要求 `<repo>/.hermes/task-runtime/`；
+- [conftest.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/4ca46eaf94c486dadcf200aac6b41cd968b1ce6e/conftest.py) 与 [scripts/ci/run_tests.sh](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/4ca46eaf94c486dadcf200aac6b41cd968b1ce6e/scripts/ci/run_tests.sh) 强制 TMP/TEMP/TMPDIR 到 `.hermes`；
+- [CI](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/4ca46eaf94c486dadcf200aac6b41cd968b1ce6e/.github/workflows/ci.yml) 和 [release workflow](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/4ca46eaf94c486dadcf200aac6b41cd968b1ce6e/.github/workflows/release.yml) 写 gateplan、缓存、打包和候选件到 `.hermes`；
+- 截图实现 [web_screenshot.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/4ca46eaf94c486dadcf200aac6b41cd968b1ce6e/app/ingestion/web_screenshot.py) 用 `.hermes` 作为 Chromium profile/TMP 根；其已有单测也锁定了这个行为。
+
+反过来，`.project-local` 仅出现在 DIRECTORY_AUTHORITY 与 PROJECT_CONTRACT，根 `.gitignore` 没有它，现有执行入口没有采用它。这不是“目录名称还没改完”，而是**权威规则、脚本、测试和CI反向约束了旧目录**。
+
+[nightly run 34020295150](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34020295150) 的 `full-suite` 因 Chromium 报 `Socket path too long .../.hermes/com.google.Chrome...` 失败，后续 browser-smoke/windows-runtime 因依赖失败被跳过。说明当前 `.hermes` 规则还产生了跨平台可靠性问题。
+
+修复不能只把字符串替换为 `.project-local`：GitHub runner 的 checkout 根本身较长，浏览器 profile 还会再加路径。T19 要引入一个统一解析器：
+
+1. 普通项目运行态默认走仓库内 `.project-local`，并加入 `.gitignore`；
+2. Chromium 等有 Unix socket 限制的运行态使用**声明的短路径例外**：CI 用每次运行的短临时根并在结束时清理；本机只使用用户明确配置的受控短根，禁止悄悄落到系统TEMP、C盘或其他项目；
+3. 每个入口、测试、发布脚本和交接文档同一提交切换；旧 `.hermes` 先只读盘点，不能整体删除；
+4. 新增实际文件系统前后差分测试（包括 ignored 文件、linked worktree、失败退出和浏览器），不能只看 `git status`。
+
+### P0：权威存储/状态机尚未满足产品数据要求
+
+当前 Rust `source.rs` 仍只写 source 元数据和 SHA，不保存原始字节；`jobs.rs` 仍先把 job 改为 completed 再插入 transform，未封装为同一事务，也没有 attempt 唯一语义。重复完成会重复插入 transform；若后续外键写入失败，job 可留下 completed。archive restore 也仍未在恢复前校验 manifest 声明的全部行数/哈希和对象集合。
+
+这意味着“多格式能转换”不能直接升级为“用户原件可恢复、错误不污染知识库”。T03/T04 必须先把 CAS 原件、事务、幂等、跨进程锁、staging 恢复和篡改拒绝做成真实链。
+
+### P0：跨语言契约只冻结了局部，真实业务词汇仍不一致
+
+`archeaxis-contracts` 已定义 `USER_ACCEPTED`、`MACHINE_CANDIDATE`、`succeeded` 等词；domain knowledge 仍使用 `candidate/accepted/rejected/deprecated`，jobs 使用 `completed`。API 仍接收客户端提供的 status / created_by。因而“机器不能赋人工接受状态”目前是设计意图，尚不是已由真实入口强制的事实。
+
+质量 worker 也存在可复现契约缺口：它输出的顶层 `loss_receipt` 不在 `quality-report.schema.json` 的允许属性内；`normalize=none` 仍 `.strip()`，却声称 raw comparison。长文本锚点上限的损失也可能被 BOM 解码说明遮住。T02/T07 要以真实 worker 输出跑完整 schema 和组合反例，不以手写 JSON 示例代替。
+
+### P1：多格式能力是“组件已到位”，不是“所有格式全链可用”
+
+已有文本、canvas、字幕、静态 HTML、有限 URL、Office、ASR、视频、OCR、图像描述和 CER/WER worker。它们值得保留，不应重新造轮子。但当前边界仍清楚：动态网页渲染/截图编排、扫描或混合 PDF 的逐页 OCR、Office 内嵌图像 OCR、复杂阅读顺序、视频字幕/关键帧/事件对齐、中文与困难文档的精度测量，都没有完成产品链。
+
+网页 worker 的 `MAX_REDIRECTS` 未真正作为显式重定向链限制，读取超过上限的 chunk 后才报错；应把重定向链、总 deadline、严格字节上限、编码和不完整快照状态放入回执。F03 不只是“安装 Playwright/Chromium”，还需要 DOM、截图、滚动覆盖、原始快照与来源锚点接到 Rust job 链。
+
+### P1：CI、证据和发布资格不成立
+
+push CI 对文档改动仅运行 gateplan、lint、a0-gates；Rust/Avalonia/contracts/workers 等 job 选择性跳过。这在增量执行上合理，但当前 nightly 已红；而 main ruleset 只要求 `a0-gates`，nightly/full-suite 不阻止合入。nightly 日志还显示 setup-uv 未钉版本、临时回退安装 latest uv，包锁定不等于构建工具完全锁定。
+
+收据中大量记录没有完整 source SHA/tree、命令、退出码、环境指纹与产物哈希。过去某个 slice PASS 不应被改写为当前 HEAD 完整通过。T01/T14/T15 必须把 source_commit 与 record_commit 分开，并使关键验收生成于候选安装包。
+
+### P1：Avalonia 和双侧闭环没有完成
+
+[MainWindow.axaml](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/4ca46eaf94c486dadcf200aac6b41cd968b1ce6e/apps/ArcheAxis.Desktop/MainWindow.axaml) 仍是 `Welcome to Avalonia!`；C#目录目前只有壳、启动与 Supervisor 文件，没有收件箱、阅读、核查、学习、机器调用、设置/恢复工作台。Rust API 也只有导入、job、anchor、knowledge、search、workspace info 等少数路由，未形成研究、人类学习、MCP反馈、恢复交付路径。
+
+个人定义/笔记无证据仍然应该允许保存；要独立标明它是用户定义、观察、假说、谣传报告、预测还是有原始来源支持的事实命题。联网交叉核查评估的是外部事实支持与来源质量，不是拒绝个人知识的准入门。
+
+### P1：旧版保护台账有进展，全面吸收/迁移没有完成
+
+1246 项 legacy manifest 和 30 项抽样记录已提交。30 项抽样实际上只读取文件头片段，所有条目仍标 `INVENTORIED_NOT_SEMANTICALLY_REVIEWED`；它不能计为语义审查或吸收完成。真正的T13仍需：旧对象/附件/关系/学习记录的非空 staging 迁移、旧库哈希不变、逐项行为映射、新流程实际调用和回滚验证。忽略文件、外部用户库、模型权重和历史会话也不在该Git清单内，不能声称全都找齐。
+
+## 3. 21项任务的真实状态
+
+下表使用 2026-09-06 新任务包的完成定义，而不是收据标题。`部分`代表有可复用产物，但**不代表任务通过验收**。
+
+| 任务 | 状态 | 当前判断 |
+|---|---|---|
+| T00 决策/现场 | 部分 | 架构决策已锁，但路径规则相互冲突 |
+| T01 构建/CI | 部分 | vNext gate 已接线；nightly红、工具版本浮动、关键完整验收未必需 |
+| T02 契约 | 部分 | schemas/例子存在；真实状态、角色、输出不一致 |
+| T03 Rust Store/恢复 | 未完成 | 原件CAS、原子事务、完整恢复校验未达标 |
+| T04 worker/Supervisor | 未完成 | 壳存在；真实调度、attempt、取消和身份治理未完成 |
+| T05 文档/网页 | 部分 | worker有；F03/F06/复杂文档/真实编排缺口大 |
+| T06 视觉/媒体 | 部分 | OCR/ASR/视频组件有；困难样本、对齐和产品接线未完成 |
+| T07 质量 | 部分 | CER/WER工具有；schema、gold、分层评估、资格均未完成 |
+| T08 云端核查 | 未完成 | 未实现产品级来源分组、反证、成本/恢复闭环；凭据仍未配置 |
+| T09 知识/检索 | 未完成 | 权限、修订、锚点、中文检索和撤销传播未闭环 |
+| T10 人类学习 | 未完成 | 仍非目标→复习→重启→纠错全链 |
+| T11 机器/MCP | 未完成 | 无真实客户端、权限预算、反馈再评测闭环 |
+| T12 Avalonia工作台 | 未完成 | 仍为欢迎页，不是可用软件 |
+| T13 吸收/非空迁移 | 未完成 | 清单存在，语义映射/非空迁移/回滚未完成 |
+| T14 仓库规范 | 部分 | 分类台账有；实际写入规则冲突、历史/当前未收口 |
+| T15 资格验收 | 未完成 | 无同一Windows候选包的 G01–G20 证据 |
+| T16 发布 | 未完成 | 尚无经资格验收的同一字节发布物 |
+| T17 旧资产盘点 | 部分 | 1246项登记 + 30文件头抽样；外部资产与语义结论未完成 |
+| T18 UI重设计 | 未完成 | 无设计系统到真实Avalonia映射 |
+| T19 运行根/Agent入口 | 未完成 | `.hermes`继续被所有关键入口使用 |
+| T20 体积/保全/瘦身 | 未完成 | 56.6GB 报表算术与分类矛盾，尚无文件级可删清单 |
+
+因此，按完整验收口径为 **0/21 完成**；存在部分产物的任务必须复用并继续，不应删除或从零重做。
+
+## 4. 仓库规范化与语言结论
+
+### 仓库规范化
+
+**没有做好。** 已经有规则文件、分类器、legacy manifest 和 gate registry，但它们没有一致地控制真实运行路径，也没有让 nightly 成为合并约束。现有 `.hermes` 42.86GB 本地体积更不能按照“全部缓存”整删：同一报告承认其含历史会话/收据；六项“可再生”条目的总数 56.29GB 又与摘要 55.29GB 相矛盾。
+
+先执行 T19（止住新增写入）和 T20（文件级保全/盘点），再清理精确候选。必须保留或迁移的内容包括唯一会话总结、未合入补丁、证据原件、模型/运行时、用户知识库与有引用的日志。历史 `.hermes` 只读盘点，禁止整目录删除。
+
+### 编程语言
+
+**选择已完成，语言迁移未完成。** 继续以：
+
+- **C#/Avalonia**：唯一桌面工作台；
+- **Rust**：唯一权威写者、领域状态、事务、迁移、恢复、API/MCP；
+- **Python**：独立的解析/OCR/ASR/视觉/模型能力 worker；
+- **JSON Schema/OpenAPI**：跨语言单一协议源。
+
+这是仍适合本项目的架构，不需要为“全语言统一”把成熟 Python 文档/模型生态重写成 Rust。当前实际主线却仍混有 Python legacy、React/Tauri/desktop 等目录；它们应按行为供体和历史保留，不能继续作为第二条默认产品路线。旧版退役仍应满足两次稳定 Avalonia+Rust 发布并经明确接受。
+
+## 5. 同行对比与是否还需调研
+
+需要**小范围、接入前的验证调研**，不需要重新做一轮泛泛“从零选架构”。
+
+| 参照 | 已验证的长处 | 对本项目的结论 |
+|---|---|---|
+| [Docling](https://docling-project.github.io/docling/usage/supported_formats/) | 覆盖 PDF、Office、HTML、图像、音视频、WebVTT等，并面向布局、阅读顺序、表格、公式、OCR与统一文档表示 | 应作为复杂PDF/Office/扫描页的优先能力候选，在Python worker内试接；不要继续只靠手写轻量解析器。先用中文扫描、多栏、表格、嵌入图样本做质量/资源/许可/离线评测。 |
+| [Microsoft MarkItDown](https://github.com/microsoft/markitdown) | 覆盖PDF、Office、HTML、结构化文本、图像/音频、ZIP、EPUB等，适合迅速转换到Markdown | 适合轻量回退或统一文本投影，**不应当作原件保存、精确锚点、复杂版面忠实度的唯一引擎**。需为旧二进制Office和扫描件写明确的“不支持/转换路径”。 |
+| [Khoj](https://github.com/khoj-ai/khoj) | 本地/云模型、个人资料问答、网页与文档、跨客户端和自托管交互成熟 | 只借鉴本地知识工作台、模型选择和交互收敛；它不能替代本项目的“逐命题反证、修订锚点、准确率评测、人类学习+机器反馈”的权威数据模型。 |
+| [FSRS-rs](https://github.com/open-spaced-repetition/fsrs-rs) | Rust原生的复习间隔、状态与模拟能力 | 直接作为 T10 的调度候选，减少自写算法；但要将掌握证据、teach-back、纠错和来源失效传播保留在ArcheAxis领域层。 |
+| [Vane](https://github.com/ItzCrazyKns/Vane) | 自托管网络搜索与本地/云模型、带来源回答 | 可作为 T08 的搜索/引用用户体验和适配器边界参照；不能把“有引用的回答”当成独立来源、反证覆盖、事实已验证。 |
+
+**必须补的调研/实验**：Docling vs 当前解析器 vs MarkItDown 的固定金标对比；搜索来源独立性/原文定位与反证策略；FSRS-rs 当前版本/许可/迁移；本机模型对中英、数字、低清图、媒体的分层准确率。每项都要落为可复跑 benchmark，而非只记录 README 功能。
+
+**不必重复调研的事项**：是否把整个项目换成纯Python、纯Rust、纯Web；是否立刻引入WORK-LAB/DESIGN-LAB契约联动；是否先重做旧UI。当前障碍是存储正确性、协议一致、运行路径和产品接线，不是缺第四种语言或第四套Agent平台。
+
+## 6. 下一步的最短顺序
+
+1. T19：一次性修正入口、CI、测试、发布和旧交接中的运行根；修 nightly 的 Chromium socket 回归，并把全量CI恢复为绿。
+2. T20：只读盘点/保全 `.hermes`，修正体积算术，生成精确可删候选；不要先删除。
+3. T02 + T03 + T04：先让跨语言状态、CAS、事务、恢复、真实 worker 调度可信。
+4. T05/T06/T07：复用当前 worker，接 Docling/MarkItDown 测评，补动态网页、扫描页和困难样本。
+5. T09/T18/T12：同一Rust Core 接入真实 Avalonia 收件箱→阅读→核查→知识；先交付可操作M1，后续继续同架构。
+6. T08/T10/T11/T13：联网核查、人类学习、机器MCP、非空迁移；T15以同一Windows候选包验收，T16才交付。
+
+本次没有修改云端代码、没有访问用户的本地 `.hermes`/旧库/模型，也没有删除任何文件。结论针对当前Git树与GitHub实际CI；本机环境、私有数据与忽略文件仍需T20现场取证。

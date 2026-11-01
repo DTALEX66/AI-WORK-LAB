@@ -1,0 +1,792 @@
+# Knowledge-Base 离线调研包：给无法访问 GitHub 仓库的 AI
+
+> 使用场景：部分 AI 不能直接打开 GitHub 仓库 `DTALEX66/Knowledge-Base`，请把本文档/压缩包直接上传给对方，让它在“已有仓库快照”的基础上继续做全网搜集、整理、拆解和交叉分析。
+
+---
+
+## 0. 你的任务
+
+你是开源项目调研与产品架构分析助手。请围绕 `DTALEX66/Knowledge-Base` 做同类项目搜集、模块拆解、许可证风险筛查和可落地改造建议。
+
+你不能访问原仓库也没关系，下面已经提供当前仓库的关键快照。请基于这些信息继续搜索 GitHub / 全网同类项目，最后输出可交叉分析的结构化结果。
+
+---
+
+## 1. 当前项目一句话定位
+
+`Knowledge-Base` 当前是一个“个人四库系统”的雏形：
+
+- 知识库：网页/文件采集、清洗、SQLite 存储、搜索
+- 技能库：学习路线、记忆训练、主动训练
+- 智库：AI 工具索引、风险评分、选型报告
+- AI库：Prompt / 模型 / MCP 管理，当前仍待建
+
+建议目标定位：
+
+> DT ALEX 个人 AI 知识中枢：网页采集 + 文档入库 + GitHub 项目研究 + 模型/Prompt/MCP 管理 + CODEX 任务包生成。
+
+---
+
+## 2. 仓库基础信息快照
+
+| 字段 | 内容 |
+|---|---|
+| 仓库 | DTALEX66/Knowledge-Base |
+| 默认分支 | master |
+| 可见性 | public |
+| 当前主要模块 | backend、frontend、docs、scripts |
+| 后端定位 | Python CLI / FastAPI 预期 / SQLite / Scrapling |
+| 前端定位 | Next.js / React / TypeScript / 学习路线平台壳 |
+| 当前状态 | 有后端 CLI 和前端演示，但前后端未闭环 |
+
+---
+
+## 3. README 快照
+
+```md
+# Knowledge Base / 知库
+
+个人四库系统：知识库 · 技能库 · 智库 · AI库
+
+> 基于 Scrapling 抓取引擎，整合 PKR、Lumina AI、Aether Radar
+
+## 项目结构
+
+knowledge-base/
+├── backend/          # Python FastAPI - 知识库后端 (PKR)
+│   ├── pk_radar/     # API、采集、存储、清洗、摘要
+│   └── tests/        # 16 项测试全部通过
+├── frontend/         # Next.js - 技能库+智库前端 (Lumina + Aether)
+│   ├── app/          # 学习路线、记忆训练、工具发现
+│   ├── components/   # UI 组件
+│   ├── data/         # 路线数据、i18n、种子数据
+│   └── scripts/      # 质量门禁脚本
+├── docs/             # 共享文档
+│   ├── architecture/ # Lumina 架构文档
+│   └── research/     # PKR 研发文档
+└── scripts/          # 共享脚本
+
+## 四库映射
+
+| 四库 | 模块 | 核心能力 |
+|------|------|---------|
+| 知识库 | backend/ | Scrapling 采集 → 清洗 → SQLite 存储 → 搜索 |
+| 技能库 | frontend/ | 15 条学习路线 → 记忆编码 → 主动训练 |
+| 智库 | frontend/ | AI 工具索引 → 风险评分 → 选型报告 |
+| AI库 | 待建 | Prompt/模型/MCP 管理 + 授权 |
+
+## 快速开始
+
+### 后端
+cd backend
+pip install -e ".[all,dev]"
+scrapling install
+pkr init
+pkr serve
+
+### 前端
+cd frontend
+npm install
+npm run dev
+
+## 技术栈
+
+- 后端: Python 3.12+ / FastAPI / SQLite / Scrapling
+- 前端: Next.js 16 / React 19 / TypeScript / Tailwind
+- 引擎: Scrapling (BSD-3-Clause)
+```
+
+---
+
+## 4. 后端关键文件快照
+
+### 4.1 backend/pyproject.toml
+
+```toml
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "personal-knowledge-radar"
+version = "0.1.4"
+description = "Local-first personal knowledge base assistant with user-controlled smart capture profiles, optional Scrapling stealthy ingestion, and visual UI."
+requires-python = ">=3.10"
+dependencies = [
+  "typer>=0.12",
+  "rich>=13.7",
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "pydantic>=2.7",
+  "markdownify>=0.13",
+  "orjson>=3.10",
+  "httpx>=0.27",
+  "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+web = ["scrapling[ai]"]
+ui = ["streamlit>=1.38", "pandas>=2.2"]
+local-ai = ["ollama>=0.3"]
+dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10"]
+all = ["scrapling[ai]", "streamlit>=1.38", "pandas>=2.2", "ollama>=0.3"]
+
+[project.scripts]
+pkr = "pk_radar.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+```
+
+### 已知问题
+
+实际包在 `backend/pk_radar/`，不是 `backend/src/pk_radar/`。所以 `where = ["src"]` 很可能导致 `pip install -e` 后找不到包。第一优先级要修。
+
+推荐改法：
+
+```toml
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pk_radar*"]
+```
+
+或者迁移为标准 src 结构。
+
+---
+
+### 4.2 backend/pk_radar/config.py
+
+```python
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
+@dataclass(frozen=True)
+class Settings:
+    db_path: Path = Path(os.getenv("PKR_DB_PATH", "./data/knowledge.db"))
+    storage_dir: Path = Path(os.getenv("PKR_STORAGE_DIR", "./data/storage"))
+    default_fetch_mode: str = os.getenv("PKR_DEFAULT_FETCH_MODE", "auto")
+    ollama_base_url: str = os.getenv("PKR_OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    ollama_model: str = os.getenv("PKR_OLLAMA_MODEL", "deepseek-r1:8b")
+
+def get_settings() -> Settings:
+    settings = Settings()
+    settings.db_path.parent.mkdir(parents=True, exist_ok=True)
+    settings.storage_dir.mkdir(parents=True, exist_ok=True)
+    return settings
+```
+
+---
+
+### 4.3 backend/pk_radar/main.py 已实现 CLI 能力
+
+当前已看到命令：
+
+- `pkr init`
+- `pkr add-url`
+- `pkr add-file`
+- `pkr search`
+- `pkr recent`
+- `pkr show`
+- `pkr delete`
+- `pkr export`
+- `pkr backup`
+- `pkr rebuild-index`
+- `pkr status`
+
+README 写了 `pkr serve`，但当前主入口未看到 `serve` 命令。需要补。
+
+---
+
+### 4.4 backend/pk_radar/core/store.py 数据库设计摘要
+
+当前使用 SQLite + FTS5：
+
+```sql
+CREATE TABLE IF NOT EXISTS documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_type TEXT NOT NULL,
+    source_url TEXT,
+    title TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    summary TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '',
+    content_hash TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+    title,
+    content,
+    summary,
+    tags,
+    content='documents',
+    content_rowid='id'
+);
+
+CREATE TABLE IF NOT EXISTS sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    url TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL DEFAULT '',
+    tags TEXT NOT NULL DEFAULT '',
+    mode TEXT NOT NULL DEFAULT 'auto',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    last_document_id INTEGER,
+    last_error TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    last_checked_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL,
+    message TEXT NOT NULL DEFAULT '',
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+```
+
+已实现：
+
+- `upsert_document`
+- `search`
+- `list_recent`
+- `get_document`
+- `delete_document`
+- `count_documents`
+- `rebuild_fts_index`
+- `export_documents`
+- `add_source`
+- `list_sources`
+- `update_source_result`
+
+---
+
+### 4.5 backend/pk_radar/ingest/web.py 能力摘要
+
+当前 Web 采集支持：
+
+- `http`
+- `dynamic`
+- `stealthy`
+- `auto`
+
+核心配置：
+
+```python
+@dataclass
+class WebIngestOptions:
+    mode: str = "auto"  # auto | http | dynamic | stealthy
+    capability_profile: str = "balanced"  # safe | balanced | expanded | maximum | custom
+    tags: str = ""
+    timeout: int = 30
+    allow_stealthy: bool = False
+    confirmed_personal_right: bool = False
+    require_stealthy_confirmation: bool = False
+    stop_on_blocked: bool = True
+    save_low_quality: bool = True
+    quality_threshold: int = 55
+    prefer_dynamic: bool = False
+    headless: bool = True
+    network_idle: bool = True
+    wait_selector: str | None = None
+    block_ads: bool = True
+    disable_resources: bool = False
+    hide_canvas: bool = False
+    block_webrtc: bool = True
+    solve_cloudflare: bool = False
+    capture_xhr: bool = False
+    scroll_page: bool = False
+    screenshot_path: str | None = None
+    user_agent: str = "PersonalKnowledgeRadar/0.1.4 (+local personal research)"
+    allow_localhost: bool = False
+```
+
+采集流程：
+
+1. 校验 URL 和模式
+2. 按能力画像选择采集路线
+3. 尝试 http / dynamic / stealthy
+4. HTML 转 Markdown
+5. 质量评分
+6. 选最高质量结果
+7. 本地摘要
+8. 返回 Document
+
+---
+
+### 4.6 backend/pk_radar/core/policy.py 安全策略摘要
+
+已有策略：
+
+- 默认只支持 http/https
+- 默认阻止 localhost，除非 allow_localhost
+- 默认不允许 stealthy，必须显式开启
+- 401/403/407/429/5xx 等状态码默认停止
+- 有敏感文本脱敏规则：api_key/token/secret/password、SSN、中国手机号样式
+
+这部分设计可以保留，但需要在 README 中写清楚使用边界。
+
+---
+
+### 4.7 backend/pk_radar/core/summarizer.py
+
+当前摘要是轻量离线抽取摘要：
+
+```python
+def local_extractive_summary(text: str, max_chars: int = 700) -> str:
+    """Lightweight offline summary fallback.
+
+    This intentionally avoids cloud calls. Replace with Ollama or another local model later.
+    """
+```
+
+建议后续保留本地 fallback，并新增 Ollama / OpenAI-compatible provider 抽象。
+
+---
+
+### 4.8 backend/pk_radar/ingest/files.py
+
+当前只支持 UTF-8 文本 / Markdown 类文件：
+
+```python
+def ingest_text_file(path: Path, tags: str = "") -> Document:
+    content = path.read_text(encoding="utf-8", errors="ignore")
+    title = path.stem
+```
+
+后续建议接入 Microsoft MarkItDown，支持 PDF / DOCX / PPTX / XLSX / HTML / CSV / JSON / 图片 OCR 等。
+
+---
+
+## 5. 前端关键文件快照
+
+### 5.1 frontend/package.json
+
+```json
+{
+  "name": "lumina-ai-commercial-frontend-mvp",
+  "version": "3.6.0",
+  "private": true,
+  "description": "Lumina AI local-first learning route platform frontend MVP.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "node scripts/build-clean.mjs",
+    "start": "next start",
+    "lint": "node ./node_modules/eslint/bin/eslint.js . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/validate-i18n.mjs && node scripts/validate-routes.mjs && node scripts/validate-assets.mjs && node scripts/validate-multisubject-routes.mjs && node scripts/validate-route-cycle-fixtures.mjs && node scripts/validate-source.mjs && node scripts/validate-route-tools.mjs && node scripts/validate-learning-loop.mjs && node scripts/validate-specs.mjs && node scripts/validate-ui-completeness.mjs && node scripts/validate-responsive-readiness.mjs && node scripts/validate-storage-migration.mjs && node scripts/validate-storage-contract.mjs && node scripts/validate-version-ledger.mjs",
+    "quality:local": "npm run lint && npm run typecheck && npm run test && npm run build && npm run smoke:pages"
+  },
+  "dependencies": {
+    "@types/node": "26.0.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "next": "16.2.9",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "eslint": "9.39.2",
+    "eslint-config-next": "16.2.9"
+  }
+}
+```
+
+### 风险提醒
+
+Next 16 / React 19 / TypeScript 5.9 属于偏新的组合，其他 AI 需要联网核查当前真实可用版本，不要盲目假设。
+
+---
+
+### 5.2 frontend/app/page.tsx 摘要
+
+首页当前内容：
+
+- Lumina AI route preview
+- 上传、审查、记忆宫殿、训练、报告五步流程
+- 商业就绪度面板
+- 中国近代史演示路线
+- 明确显示：
+  - 真实后端：待接入
+  - IndexedDB：下一阶段升级
+  - AI Provider：先本地规则，后云端增强
+  - 社区审核：数据结构已预留
+
+结论：前端目前更像产品演示壳，不是已经接通真实知识库的应用。
+
+---
+
+## 6. 当前最关键问题清单
+
+### P0：必须先修
+
+1. `backend/pyproject.toml` 包路径错误
+2. README 写了 `pkr serve`，但没有 serve 命令
+3. 缺 `pk_radar/api.py`
+4. 前后端未接通
+5. 文件入库只支持纯文本，不能处理 PDF / DOCX / PPTX / XLSX
+6. AI库只是 README 概念，没有数据表和页面
+7. README 写 Python 3.12+，pyproject 实际是 >=3.10，不一致
+
+### P1：第二阶段修
+
+1. 文档解析增强
+2. 文档 chunk
+3. 标签体系
+4. 项目归属
+5. GitHub Repo 分析器
+6. CODEX 任务包生成
+7. Ollama / OpenAI-compatible provider 抽象
+
+### P2：后续做
+
+1. 向量检索
+2. Agent 自动研究
+3. 多电脑同步
+4. Prompt / 模型 / MCP 管理
+5. 成本统计
+6. 权限系统
+7. 工作流编排
+
+---
+
+## 7. 请你重点搜索的同类项目方向
+
+### A. RAG / 知识库 / AI 应用平台
+
+关键词：
+
+```text
+AI knowledge base RAG GitHub stars
+open source RAG knowledge base platform
+Dify FastGPT AnythingLLM Open WebUI Khoj
+local-first knowledge base AI assistant
+personal AI knowledge management GitHub
+```
+
+重点项目建议：
+
+- Dify
+- AnythingLLM
+- FastGPT
+- Open WebUI
+- Khoj
+- LobeChat
+- RAGFlow
+- Verba
+- Quivr
+- PrivateGPT
+- GPT Researcher
+
+---
+
+### B. 网页采集 / 爬虫 / 浏览器 Agent
+
+关键词：
+
+```text
+LLM web scraping GitHub stars
+AI web crawler markdown RAG
+Scrapling Crawl4AI Firecrawl browser-use
+Playwright AI agent browser automation
+```
+
+重点项目建议：
+
+- Scrapling
+- Crawl4AI
+- Firecrawl
+- browser-use
+- Stagehand
+- Playwright
+- Crawlee
+- trafilatura
+- newspaper4k
+
+---
+
+### C. 文档解析 / Markdown 转换
+
+关键词：
+
+```text
+document to markdown AI GitHub
+PDF to markdown LLM ready
+MarkItDown Docling Unstructured MinerU
+Office documents to markdown Python
+```
+
+重点项目建议：
+
+- Microsoft MarkItDown
+- Docling
+- Unstructured
+- MinerU
+- marker
+- pymupdf4llm
+- Apache Tika
+
+---
+
+### D. 向量数据库 / 搜索
+
+关键词：
+
+```text
+vector database local first AI knowledge base
+SQLite FTS5 vector search RAG
+Chroma LanceDB Qdrant Milvus Weaviate
+hybrid search BM25 vector search GitHub
+```
+
+重点项目建议：
+
+- Chroma
+- LanceDB
+- Qdrant
+- Milvus
+- Weaviate
+- Meilisearch
+- Tantivy
+- SQLite FTS5 + sqlite-vec
+
+---
+
+### E. Agent 记忆 / Prompt / 模型管理 / MCP
+
+关键词：
+
+```text
+AI agent memory GitHub
+Prompt management open source GitHub
+MCP server management GitHub
+LLM model router open source
+LiteLLM prompt management cost tracking
+Mem0 Langfuse Promptfoo OpenRouter LiteLLM
+```
+
+重点项目建议：
+
+- Mem0
+- LiteLLM
+- Langfuse
+- Promptfoo
+- OpenRouter SDK examples
+- MCP server registries
+- LangGraph
+- CrewAI
+- AutoGen
+
+---
+
+## 8. 每个项目必须输出的表格
+
+请对每个项目按下面格式输出：
+
+| 字段 | 内容 |
+|---|---|
+| 项目名 |  |
+| GitHub 链接 |  |
+| Star / Fork |  |
+| 最近提交时间 |  |
+| 许可证 |  |
+| 技术栈 |  |
+| 核心功能 |  |
+| 最值得借鉴的模块 |  |
+| 可直接作为依赖吗 | 是 / 否 / 谨慎 |
+| 能不能复制代码 | 是 / 否 / 只可参考 |
+| 许可证风险 | 低 / 中 / 高 |
+| 适合 Knowledge-Base 哪个模块 |  |
+| 改造建议 |  |
+| 证据链接 |  |
+
+---
+
+## 9. 模块级交叉分析模板
+
+请最终按模块汇总，不要只罗列项目。
+
+### 9.1 知识采集模块
+
+| 候选项目 | 借鉴点 | 推荐级别 | 原因 |
+|---|---|---|---|
+| Scrapling |  |  |  |
+| Crawl4AI |  |  |  |
+| Firecrawl |  |  |  |
+| browser-use |  |  |  |
+
+### 9.2 文档解析模块
+
+| 候选项目 | 借鉴点 | 推荐级别 | 原因 |
+|---|---|---|---|
+| MarkItDown |  |  |  |
+| Docling |  |  |  |
+| Unstructured |  |  |  |
+| MinerU |  |  |  |
+
+### 9.3 检索模块
+
+| 候选项目 | 借鉴点 | 推荐级别 | 原因 |
+|---|---|---|---|
+| SQLite FTS5 |  |  |  |
+| Chroma |  |  |  |
+| LanceDB |  |  |  |
+| Qdrant |  |  |  |
+
+### 9.4 AI库模块
+
+| 候选项目 | 借鉴点 | 推荐级别 | 原因 |
+|---|---|---|---|
+| LiteLLM |  |  |  |
+| Langfuse |  |  |  |
+| Mem0 |  |  |  |
+| Promptfoo |  |  |  |
+
+### 9.5 GitHub 项目研究模块
+
+| 候选项目 | 借鉴点 | 推荐级别 | 原因 |
+|---|---|---|---|
+| GPT Researcher |  |  |  |
+| Repo agents |  |  |  |
+| Sourcegraph / Cody 类项目 |  |  |  |
+| Continue / Aider / OpenHands |  |  |  |
+
+---
+
+## 10. 许可证筛查规则
+
+请必须检查 License，不要只看 star。
+
+### 可优先直接依赖
+
+- MIT
+- Apache-2.0
+- BSD-2-Clause
+- BSD-3-Clause
+
+### 谨慎使用
+
+- GPL
+- AGPL
+- SSPL
+- PolyForm
+- 自定义 Open Source License
+- Commons Clause
+- 限制 SaaS / 商用 / 竞品使用的许可证
+
+### 输出要求
+
+对每个项目必须写：
+
+```text
+许可证：
+是否允许商用：
+是否允许修改：
+是否允许闭源集成：
+是否有 SaaS / 竞品限制：
+是否建议直接引入：
+```
+
+---
+
+## 11. 最终交付物要求
+
+请输出以下内容：
+
+1. 高热项目清单，至少 30 个
+2. 每个项目的结构化表格
+3. 按模块的横向对比
+4. 许可证风险分级
+5. Knowledge-Base 可借鉴模块清单
+6. 不建议使用/不建议复制的项目清单
+7. 第一阶段 P0 开发任务
+8. 第二阶段 P1 开发任务
+9. 第三阶段 P2 开发任务
+10. 可直接交给 CODEX 的任务包
+
+---
+
+## 12. CODEX 第一阶段建议任务包
+
+请基于你的调研结果优化下面的任务包：
+
+```text
+你接手 DTALEX66/Knowledge-Base 项目。
+
+目标：修复当前项目结构，并打通知识库最小闭环。
+
+必须先做：
+1. 修复 backend/pyproject.toml 包发现路径。
+2. 新增 pk_radar/api.py。
+3. 新增 pkr serve 命令。
+4. 增加 FastAPI 接口：
+   - GET /health
+   - GET /documents
+   - GET /documents/{id}
+   - GET /search?q=
+   - POST /ingest/url
+   - POST /ingest/file
+   - POST /documents/{id}/tags
+   - DELETE /documents/{id}
+5. 前端新增 /knowledge 页面。
+6. 前端新增 lib/api.ts。
+7. 实现 URL 入库、搜索、查看详情。
+8. 保留 SQLite FTS5，不要先上向量数据库。
+9. 所有新增接口必须有测试。
+10. 更新 README，去掉不真实能力描述。
+
+验收命令：
+cd backend && pip install -e ".[all,dev]" && pytest
+cd frontend && npm install && npm run typecheck && npm run build
+```
+
+---
+
+## 13. 禁止事项
+
+请不要：
+
+1. 在无法访问仓库时假装已经看过完整代码。
+2. 只罗列 star，不分析模块。
+3. 不检查 License 就建议复制代码。
+4. 直接建议复制 AGPL/GPL/自定义限制项目代码。
+5. 把 Dify/FastGPT/Open WebUI 等项目的受限代码直接搬进 Knowledge-Base。
+6. 一开始就建议重型 Kubernetes / 多租户 / 企业级权限。
+7. 一开始就上复杂 Agent，忽略最小闭环。
+8. 忽略当前仓库已有的 SQLite FTS5 / Scrapling 基础。
+
+---
+
+## 14. 推荐最终判断口径
+
+请围绕下面问题做最终总结：
+
+1. Knowledge-Base 应该学习哪些项目？
+2. 哪些项目可以直接依赖？
+3. 哪些项目只能学习架构？
+4. 哪些项目不适合当前阶段？
+5. 当前最短可落地路径是什么？
+6. 哪些功能会把项目做复杂，应延后？
+7. 第一阶段给 CODEX 做什么最划算？
+8. 哪些模块适合 DeepSeek / 本地模型辅助开发？
+9. 哪些模块必须由更强模型审查？
+10. 最终如何形成个人 AI 知识中枢？
+
+---
+
+## 15. 精简版提示词
+
+如果你只需要复制一段话给其他 AI，用下面这段：
+
+```text
+请围绕 DTALEX66/Knowledge-Base 个人 AI 知识中枢做开源项目调研。由于你可能无法访问原仓库，我提供了仓库快照：该项目当前包含 Python 后端 PKR、SQLite FTS5、Scrapling 网页采集、Typer CLI、Next.js 前端演示壳，但缺 pkr serve、缺 FastAPI API、前后端未闭环、AI库待建。请搜索 GitHub 和全网同类高热项目，重点覆盖 RAG/知识库、网页采集、文档解析、个人知识管理、向量搜索、Agent 记忆、Prompt/模型/MCP 管理、GitHub 项目研究工具。每个项目输出 star/fork、最近活跃、许可证、技术栈、核心模块、可借鉴点、能否直接依赖、许可证风险、适配 Knowledge-Base 的方式。最后按模块做交叉分析，输出 P0/P1/P2 开发路线和可交给 CODEX 的任务包。不要直接复制 AGPL/GPL/自定义限制许可证项目代码。
+```

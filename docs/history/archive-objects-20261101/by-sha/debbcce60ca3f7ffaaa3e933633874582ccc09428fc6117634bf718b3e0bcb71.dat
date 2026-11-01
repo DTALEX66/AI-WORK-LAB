@@ -1,0 +1,1222 @@
+# DESIGN-LAB 完整历史基线、深度审计与修复迁移总方案
+
+> 版本：`v2.5-standalone-first-modular-monolith`  
+> 日期：2026-09-04  
+> 仓库：`DTALEX66/DESIGN-LAB`  
+> 云端基线：`main@2aca27f69b1909251640382ed3b4195cf9accd9b`  
+> 状态：`PROPOSED_EXECUTION_BASELINE`  
+> 项目用途：`PERSONAL_RESEARCH_NONCOMMERCIAL`（用户确认）；部署地域：`UNRESOLVED`  
+> 权限边界：本报告只完成读取、审计、验证与方案设计；没有修改、提交、推送、合并或发布云端仓库。
+
+## 0. 一句话结论
+
+DESIGN-LAB 不需要再增加一个桌面壳或再堆一套设计软件；它应收敛为**宿主中立的设计生产协议、质量/权利门与薄审查面**。默认生产组合应为 **OpenDesign + Photoshop + ComfyUI／本地 MiniMax H3**，OpenPencil、Figma、Penpot、Blender 和 MiniMax Design 按任务 Profile 三选一或按需启用，不得全部进入默认链。
+
+桌面专业软件控制现在应**纵向全部收敛到 DESIGN-LAB**：DesignIR、受限配方、宿主 Adapter、本地调度、权限、进程/GPU、会话锁、Windows UIA、回读、质量/权利证据和交付都在本仓形成独立闭环。Codex 只连接一个 Design Control MCP；CorelDRAW 走官方对象模型/COM，Photoshop 走 UXP，Illustrator 优先验证 2026 年官方 Beta 内置 MCP，Windows `winapp ui` 只做预览级语义兜底。WORK-LAB 和 ArcheAxis 当前均为**零依赖、默认关闭的未来接口**，不再阻塞 0.1，也不复制 Corel/Adobe/H3 驱动。
+
+本项目的当前用途已由用户明确为：**个人研究、非商业使用**。该用途是 DESIGN-LAB 全项目级约束，不只是 H3 的局部设置；所有软件、模型、素材、自动化、产物和发布流程都继承这一口径。当前不建设收费服务、不承接商业交付、不对外托管模型、不分发受限权重或素材。若未来用途改变，必须先新建用途变更 ADR 并重新审查全部许可证和 Rights 决策。
+
+当前仓库的目录减重是正确的，但尚不能发布：配置、文档、运行目录和 CI 仍有多套事实源；Python 全套测试在当前 SHA 上实际失败；真实宿主 executor 和 Human Jury 闭环尚未完成；H3 的本地运行能力已经有官方路径，但许可证存在严格地域限制，仓库中的旧权利批准也将在 2026-09-16 到期。
+
+与上一版方案相比，本版做七项关键纠偏：
+
+1. **撤回 Rust/Tauri 默认路线。** 完整历史明确排除 DESIGN-LAB 自建重桌面壳；当前仓库也没有 Rust/TypeScript 基线。0.1 使用 Python + 渐进式 TypeScript，不引入 Rust。
+2. **不再把 OpenDesign 降级为等待项。** 核心保持宿主中立，但 OpenDesign 作为当前默认生产 Profile；是否长期保留，由同一 Fixture 的可编辑性、回读、稳定性和维护成本决定。
+3. **H3 改为本地优先且不静默回云。** 只把 H3-Base 768p 称为完全本地；2K 完整链仍含官方托管模块，必须另设 `hybrid-2k` Profile。
+4. **把“CI 绿”降回结构证据。** 新一轮 exact-SHA 本地复验发现 3 failures + 3 errors；必须先修测试沙箱、证据原子回滚和依赖锁，再谈发布。
+5. **把桌面软件控制从“适配器愿望”升级为专项架构。** Illustrator (Beta) 已出现官方 Codex/MCP 路径；CorelDRAW 走 COM 对象模型；Photoshop 走 UXP；GUI 只兜底，并修正仓库中 generic Adobe MCP、重复 Photoshop 身份和过期 Illustrator gate。
+6. **明确 DESIGN-LAB 与 WORK-LAB 的控制边界。** Adapter、设计配方、宿主插件、资格证据以及设计域所需的本地调度、审批、运行会话和 Computer Control 都留在 DESIGN-LAB；WORK-LAB 未来只承担跨项目、非设计域的全局编排，不能成为本项目依赖。
+7. **联邦从当前架构降为未来兼容口。** 因跨项目联动尚不可用，DESIGN-LAB 先实现设计域内的完整 Local Orchestrator；跨宿主、长时、GPU 和高风险设计任务也由本项目处理。未来 WORK-LAB 只能替换外层调度 Provider，不能成为启动或发布前置条件。
+
+---
+
+## 1. 历史完整性合同
+
+### 1.1 本次实际覆盖的资料面
+
+本次不是只读取用户刚上传的两份交接文档，而是完成了以下六层取证：
+
+| 证据层 | 覆盖方式 | 结果 |
+|---|---|---:|
+| ChatGPT Library 元数据 | 递归枚举全部分页 | 3,939 项，20 页，分页无截断 |
+| DESIGN-LAB 直接命中文档 | `DESIGN-LAB`、`OPEN DESIGN`、`OPEN-DESIGN-Assistance` 等别名 | 36 个已物化文件 |
+| 跨项目与非显式标题记录 | 内容检索 `tri-project`、WORK-LAB、ArcheAxis、语言迁移、云端审计 | 25 个条目，其中 4 个为零字节传输占位，不计项目内容 |
+| 完整对话归档 | `DESIGN-LAB完整项目对话与时间线汇报.md` | 8,961,542 bytes，229,424 行，16 段完整项目对话 |
+| 历史任务包 | 6 个 ZIP 全量解包 | 473 个包内文件 |
+| Git 云端历史 | 完整 clone、fetch、refs、对象与当前工作树 | 当前 `origin/main`、全部可见远端分支与 Git 历史对象 |
+
+核心 DESIGN-LAB 历史集为 36 个直接文档 + 473 个包内文件，共 509 个物化记录，经 SHA-256 去重后为 291 个唯一内容。加入跨项目记录和当前两份附件后，机器清单共 536 行，其中 532 个真实物化文件、4 个传输占位、300 个唯一内容哈希、224 个重复哈希组。
+
+完整对话归档的 SHA-256：
+
+```text
+df78b7fe3b109f6d0fdc646147f5c37c476689acca53a816c3a58a959069c0cf
+```
+
+机器可读基线见同批交付的 `DESIGN-LAB-HISTORY-EVIDENCE-MANIFEST-2026-09-04.csv`。后续工作不得再用“只找到两份交接文档”作为起点；必须先加载本报告和该清单。
+
+### 1.2 16 段完整对话时间线
+
+| 日期 | 对话主题 | 对当前方案的约束 |
+|---|---|---|
+| 2026-07-04 | Open Design 3D 能力 | 3D 是 Profile，不应拖住 2D 主链 |
+| 2026-08-04 | OPEN DESIGN | 早期 HERMES/助手形态，只作历史来源 |
+| 2026-08-07 | DESIGN-LAB | 100 分质量体系、82 分门槛、Design Taste、Visual Jury 成为长期核心 |
+| 2026-08-13 | OpenAI AI 圈动态 | 项目身份与能力边界调整 |
+| 2026-08-13 | AI 操控 Adobe 全家桶 | 正式确定 DESIGN-LAB 与 Adobe/宿主 Adapter 方向 |
+| 2026-08-14 | 抖音项目分析与建议 | 真实内容生产、权利与发布前人工门的重要性 |
+| 2026-08-14 | DSH 对项目的影响 | H3/ComfyUI 作为生成执行器，而非项目事实源 |
+| 2026-08-15 | 项目优先级审计 | 优先闭环，不以文件数量代替能力 |
+| 2026-08-16 | 全量审计 DESIGN-LAB | 提出设计 OS 与记忆层；后续记忆所有权迁至 ArcheAxis |
+| 2026-08-17 | 最适合变成的 Agent | DESIGN-LAB 是专业设计智能，不是通用 Agent Runtime |
+| 2026-08-17 | DESIGN-LAB 项目相关开源 | 外部工具必须经过能力、接口、维护、许可资格赛 |
+| 2026-08-17 | DESIGN-LAB 开源项目探索 | 不把上游源码复制为产品本体 |
+| 2026-08-18 | AI 视觉需识别吗 | 视觉识别服务质量门，不等于用屏幕坐标点击控制软件 |
+| 2026-08-20 | 实现 Vibe Coding | 明确排除 Agent Runtime、重 Tauri 桌面、内置 Neo4j/Qdrant；允许薄审查面 |
+| 2026-08-23 | 设计三套 VI 网页 | 真实可编辑资产、回读和像素/质量对比是闭环证据 |
+| 2026-08-24 | 上下文丢失原因分析 | 建立可版本化交接、历史归档与 SSOT，避免新会话失忆 |
+
+### 1.3 仍然有效的历史决策
+
+- DESIGN-LAB 拥有 DesignIR、Domain Pack、质量评分、Visual Jury、Rights、Preflight、Adapter 能力资格和 Delivery Receipt。
+- 默认质量总分为 100，通用通过线为 82；Domain、Rights 或 Preflight blocker 不能被平均分掩盖。
+- 大师研究只能沉淀为匿名化方法卡、风格轴和谱系，生产提示不得直接复制人物名或受保护作品。
+- 证据等级必须区分声明、静态验证、真实运行、人工接受和发布级证明；历史报告不得自动升级当前能力。
+- DESIGN-LAB、WORK-LAB、ArcheAxis 只交换版本化契约，不共享私有数据库或运行目录。
+
+### 1.4 已被后续历史替代的决策
+
+| 旧决策 | 当前处理 |
+|---|---|
+| HERMES 是唯一控制器、`.hermes/` 是运行根 | 废止；运行根统一为忽略入库的 `.project-local/` |
+| DESIGN-LAB 自建完整桌面与通用 Agent Runtime | 废止；只保留 CLI、协议和薄审查面 |
+| 长期设计记忆全部内置 DESIGN-LAB | 废止；DESIGN-LAB 只保存任务证据与可晋级候选，长期知识归 ArcheAxis |
+| 将上游完整源码复制进仓库 | 废止；只保存 Source Lock、补丁、接口合同和必要 Fixture |
+| H3 云 API 为默认、本地为备 | 反转；本地为默认，云/混合路径必须显式选择 |
+| Rust/Tauri 为 0.1 默认架构 | 撤回；没有历史授权和当前证据支持 |
+
+### 1.5 完整性的诚实边界
+
+本报告可以保证的是：**在本次会话可访问的 Library、完整对话归档、历史 ZIP、个人上下文和 Git 云端历史范围内，相关资料已经系统枚举、物化、哈希和去重。** 无法保证已被删除、未共享、在其他账号/设备上或从未进入这些系统的外部记录。若未来出现新材料，应作为新增证据追加到清单并重新计算覆盖，而不是说原有基线“没找到”。
+
+---
+
+## 2. 最新云端仓库审计
+
+### 2.1 云端基线与更新
+
+2026-09-04 刷新远端后：
+
+```text
+HEAD        = 2aca27f69b1909251640382ed3b4195cf9accd9b
+origin/main = 2aca27f69b1909251640382ed3b4195cf9accd9b
+```
+
+| SHA | 日期 | 作用 |
+|---|---|---|
+| `2aca27f` | 2026-09-04 | 第三方完整源码退出 Git HEAD |
+| `52c183f` | 2026-09-04 | 补迁移完成记录 |
+| `c9cde8a` | 2026-09-04 | 迁移收敛 |
+| `33488c8` | 2026-09-04 | 仓库卫生与基线 |
+
+当前树为 1,371 个跟踪文件、约 23.46 MB；主要扩展名为 496 Markdown、432 JSON、175 Python、94 JavaScript、18 HTML、13 MJS。没有 Rust，也没有 TypeScript。完整 Git pack 约 208.33 MiB，当前可见 29 个远端 branch ref，未发现 tag。
+
+历史大对象主要来自 MiniGame GIF、曾经入库的候选前端依赖和工具脚本。它们不在当前 HEAD 并不等于从 Git 历史消失。默认不改写公共历史；如未来确需压缩，必须另做备份、协作者停写和强制迁移方案。
+
+### 2.2 exact-SHA 本地复验
+
+| 验证 | 结果 | 解释 |
+|---|---|---|
+| 仓库聚合验证器 | `49/49 PASS` | 在隔离 Python 环境并补齐依赖后通过 |
+| Node Fixture | `300/300 PASS` | 结构/Fixture 通过 |
+| Python 全套 unittest | 507 tests；3 failures、3 errors、6 skipped | **当前不是全绿** |
+| 重建证据模块单跑 | 34 tests；1 failure | 原子 promotion/rollback 测试提前在 journal hash 校验失败 |
+| 验证器内部测试整模块 | 53 tests；2 failures | 前序测试向仓库 `.hermes` 写入坏样本，后序全局扫描被污染 |
+| 清空 `.hermes` 后单跑上述两项 | `2/2 PASS` | 证实存在测试间共享状态与扫描边界缺陷 |
+| 系统 Python 直接运行 | 缺 `jsonschema` | 干净环境不可复现；依赖安装是隐含前提 |
+
+因此，先前“Python 507 passed”不能继续作为当前事实。更精确的结论是：静态聚合器和 Node Fixture 通过，但 Python 全套在 exact SHA 上失败；其中一类是测试污染，另一类是重建证据的独立回归。
+
+### 2.3 当前高优先级缺陷
+
+| ID | 严重度 | 证据 | 根因 | 修复与验收 |
+|---|---|---|---|---|
+| DL-P0-001 | P0 | product manifest 指向不存在的 `docs/PRODUCT_DEFINITION.md`、`docs/BOUNDARY_CONTRACT.md`，验证器仍通过 | 门禁没有校验实际存在性/权威性 | 所有 manifest 引用必须 realpath 到仓库内且存在；删除/移动权威文档时 CI 失败 |
+| DL-P0-002 | P0 | `.project/manifest.yaml`、AGENTS、Roadmap 的 taskpack/baseline 不一致 | 多 SSOT | `.project/manifest.yaml` 成为机器 SSOT；其他文档只引用；生成物带 `source_sha` 和 manifest hash |
+| DL-P0-003 | P0 | 活跃代码、测试、策略与 workflow 仍大量使用 `.hermes` | 迁移只完成目录表面 | 加 `forbid_legacy_runtime_path`；运行数据只进 `PROJECT_LOCAL_ROOT` 或测试 temp root |
+| DL-P0-004 | P0 | Python 全套 3F/3E；隔离后两个失败转绿 | 测试共享仓库级运行状态，验证器无显式 scope | 每个测试独立 temp root；验证器必须传 `--root/--evidence-root`；随机顺序重复 20 次全绿 |
+| DL-P0-005 | P0 | 重建证据 34 项单跑仍有 1 failure | 原子 promotion 使用过期 journal hash，错误阶段早于预期 rollback | 明确 seal→hash→promote；验证旧 bundle 恢复、无残留、错误码稳定；34/34 |
+| DL-P0-006 | P0 | 只有范围 `requirements.txt`，无 `pyproject.toml`/lock；resvg 在 CI 手装 | 依赖不完整、不可重建 | `pyproject.toml` + `uv.lock`；resvg 受版本/哈希控制；新容器一次安装后全绿 |
+| DL-P0-007 | P0 | Product Definition 写“无默认 host”，根 AGENTS 写 OpenDesign 正式主入口 | 架构中立与运行默认被混成一个字段 | ADR 定义 `core.hostNeutral=true`、`profiles.default.host=open-design` |
+| DL-P0-008 | P0 | 用户已声明整个 DESIGN-LAB 为个人研究、非商业使用；H3 sidecar 为 `redistributable=false`、`commercialUse=false`，批准 2026-09-16 到期 | 项目用途已明确，但部署地域尚未确认，旧记录也未按新官方许可证重审 | 固定项目级 `PERSONAL_RESEARCH_NONCOMMERCIAL`，禁止再分发/对外服务/商业交付；地域、披露和可接受使用仍逐项审，未通过则相关能力 fail-closed |
+| DL-P0-009 | P0 | Registry 把 `adobe/generator-app-remote-mcp-server-generic` 登记为可操作 Photoshop/Acrobat 的“Adobe Generator MCP (official)” | 把 Adobe App Builder 的通用 MCP 服务端模板误当成 Adobe 桌面软件控制器 | 立即改名为 generic template 或移出 host registry；`photoshop.operate`/`acrobat.operate` 保持 unsupported；只有真实宿主 readback 才可晋级 |
+| DL-P0-010 | P0 | `adapter-mcp` 写“未接入真实 server/E0”，但同一 registry 又写 Photoshop MCP 已连接/E1；Photoshop 同时存在两个能力身份，历史连接记录没有 artifact path | 协议、具体 server、宿主能力和历史 smoke 被混为一个状态 | 拆成 `control-plane`、`server-installation`、`host-capability` 三层；旧连接仅记 historical smoke；无 current-SHA execute/readback/rollback 不得写 supported |
+| DL-P1-001 | P1 | `scripts/generate_current_reports.py` 仍读已删除旧 registry 路径 | 目录迁移后脚本未跟随 | 改读单一 registry；CI 生成报告并 `git diff --exit-code` |
+| DL-P1-002 | P1 | CI filters 遗漏 `packages/capabilities/**`、`integrations/**`、`.project/**` 等 | 手写列表漂移 | 关键路径默认运行或由 manifest 生成 filter；每个权威目录有触发 Fixture |
+| DL-P1-003 | P1 | executors 为空，多个 Adapter 只有 manifest/`.gitkeep`，Adobe 仍有 stub | 把接口声明当成能力 | 每个 0.1 Adapter 必须有 execute/readback/rollback、真实 Fixture 和 current-SHA evidence |
+| DL-P1-004 | P1 | H3/Comfy 报告同时出现 E3、冻结、未运行、旧 SHA | 历史与当前能力未分层 | current index 只从 exact-SHA evidence 生成；历史文档强制 `historical=true` |
+| DL-P1-005 | P1 | 无 tag/release，但 manifest 写 `1.0.0` | schema 与产品成熟度混用 | 分离 `schema_version`/`product_version`；产品回到 `0.1.0-alpha.N` |
+| DL-P1-006 | P1 | 无鉴权证据读取 branch protection/ruleset | 证据不可用 | 状态保持 `UNKNOWN`；接入有权限 API 后导出 ruleset evidence |
+| DL-P1-007 | P1 | Registry 仍以第三方 Illustrator MCP 的 CC 2024+ gate 为当前结论，未记录 2026-04 发布的 Illustrator (Beta) 内置 MCP 与 Codex 官方连接路径 | 外部能力清单未随上游更新 | 增加独立 `illustrator-beta-official-mcp` 候选；保持 Beta 标记；在本机用 40 项官方能力做 current-version 资格赛，不自动替换稳定版 Illustrator |
+| DL-P1-008 | P1 | Photoshop MCP 记录仍写“90+ tools”，上游当前说明为 102 atomic + 16 recipes，且默认启用匿名分析 | Source Lock 和隐私评审过期 | 重新锁 exact commit；测试时显式 `ANALYTICS_DISABLED=1`；只吸收 recipe/state/error 架构，不把上游 Web UI、SQLite 或任意脚本执行并入产品 |
+
+### 2.4 非阻塞但应治理的债务
+
+- `reports/history`、`reports/current`、Capability Index 与 Roadmap 中存在大量同义状态；应由 SSOT 生成摘要。
+- 94 个 JavaScript 文件不应机械全转 TypeScript：保留上游/Fixture/生成物，只迁维护中的 Node、浏览器 UI 与 Adobe 代码。
+- 模型权重、软件安装包、完整第三方仓库永不进入 Git；媒体 Fixture 设尺寸上限，必要时使用 Git LFS 或发布资产。
+- 0 tag 不等于仓库不可用，但与 `1.0.0` 声明冲突；先修发布语义，不伪造历史 release。
+
+---
+
+## 3. 产品边界与三项目协作
+
+### 3.1 DESIGN-LAB 是什么
+
+DESIGN-LAB 是专业设计生产智能层，负责：Brief → DesignIR、任务 Profile 与 Adapter 选择、设计方法与质量量表、生成/编辑/导入/导出合同、Rights/Preflight/Human Jury、证据/回读/成本/产物、Delivery Receipt，以及外部宿主和本地 Provider 的资格。
+
+DESIGN-LAB 不是第二个 Photoshop/Figma/OpenDesign/ComfyUI，不是通用 Agent Runtime、模型网关、账号系统、全局调度器或长期通用知识库，也不是依赖 OCR/坐标点击的桌面 RPA。
+
+### 3.2 与 WORK-LAB、ArcheAxis 的关系
+
+| 系统 | 当前责任 | 对 DESIGN-LAB 0.1 的依赖 |
+|---|---|---|
+| DESIGN-LAB | 完整设计域：方法、DesignIR、Adapter、本地运行、自动化、质量/权利/预检、交付 | **自身闭环，唯一必需** |
+| WORK-LAB | 未来跨项目 WorkUnit、全局任务面和通用 Agent 编排 | **当前零依赖、默认关闭**；以后只消费公开接口 |
+| ArcheAxis | 未来长期知识、来源图谱和跨项目记忆 | **当前零依赖、默认关闭**；本项目先保存待晋级 Candidate |
+
+当前跨项目联动不可用，因此单宿主、跨宿主、长时、GPU 和高风险设计任务都由 DESIGN-LAB 的本地 Design Runtime 承担。WORK-LAB/ArcheAxis 不得成为安装、启动、测试、Golden Workflow、发布或恢复的前置条件。未来联动只增加外部 Adapter，不能回头拆散本项目已经成立的本地闭环。
+
+### 3.3 Standalone-first 模块化单体裁决
+
+“全部收敛到本项目”应理解为**设计域纵向闭环**，不是把 DESIGN-LAB 扩成可以控制任意软件的通用 Agent OS。以下能力现在全部由本仓实现：
+
+| 能力/资产 | DESIGN-LAB | WORK-LAB | ArcheAxis |
+|---|---|---|---|
+| DesignIR、Domain Pack、设计配方、质量/权利/预检 | **唯一 Owner** | 只引用版本与 hash | 保存经批准的长期知识 |
+| Corel/Adobe/OpenDesign/ComfyUI/H3 Adapter 源码、宿主插件、资格 Fixture | **唯一 Owner** | 不复制；按能力 ID 调用 | 不进入运行热路径 |
+| 设计软件安装清单、实际版本、进程/GPU/端口、凭据引用 | **本机 Design Runtime Owner**；凭据只进 OS store | 未来可提供外部 binding | 不保存 |
+| 设计域队列、预算、重试、超时、审批、Observer、唯一 lease | **本机 Owner** | 未来可选上级调度 | 不保存运行状态 |
+| Windows `winapp ui`/UIA、窗口与桌面会话 | **设计软件 allowlist 内的唯一实现** | 未来可替换 Provider，不是依赖 | 无 |
+| 单宿主/跨宿主/长时/GPU/高风险设计执行 | **全部可 standalone** | 当前不参与 | 无 |
+| 待晋级设计知识 | 本地 staging + rights + 人审 | 无 | 未来可接收，不可用时不阻断 |
+
+默认运行模式改为：
+
+```yaml
+runtime:
+  default_mode: standalone_full
+  lease_owner: design-lab
+  allowed: [single-host, cross-host, long-running, gpu-queued, high-risk-design]
+  local_approval_store: required
+  local_observer: required
+  windows_control_provider: design-lab-winapp
+  work_lab_required: false
+  archeaxis_required: false
+
+federation:
+  work_lab:
+    enabled: false
+    adapter_only: true
+  archeaxis:
+    enabled: false
+    outbox_only: true
+```
+
+```mermaid
+flowchart TD
+    A["Codex / OpenDesign"] --> B["DESIGN Control MCP"]
+    B --> C["Local Orchestrator"]
+    C --> D["Host / Generator Adapters"]
+    D --> E["Readback、Jury、Delivery"]
+    C -. "未来可替换外层调度" .-> F["WORK Adapter：默认关闭"]
+    E -. "获批知识候选" .-> G["ArcheAxis Outbox：默认关闭"]
+```
+
+未来唯一允许的依赖方向为 `WORK-LAB → DESIGN-LAB public capability`；DESIGN-LAB 永远不读取 WORK-LAB/ArcheAxis 数据库。WORK-LAB 以后只能提交版本化 `ExecutionEnvelope` 并接收 `ExecutionReceipt`；ArcheAxis 只能通过 outbox 接收已审查的 `KnowledgeCandidate`。
+
+#### 3.3.1 本仓最小运行内核
+
+这不是再造一套通用 Agent 平台，而是在同一 Python 进程和同一 `.project-local/` 运行根内补齐设计任务无法回避的控制能力；0.1 不新增第二个数据库、第二个桌面壳或常驻分布式服务。
+
+| 模块 | 本仓职责 | 明确不做 |
+|---|---|---|
+| `LocalOrchestrator` | 编译/执行 ActionPlan，串接多个设计宿主，管理取消、超时和恢复 | 不调度非设计项目 |
+| `JobQueue` | 本机长任务、GPU 任务、公平队列、并发与预算 | 不做组织级集群调度 |
+| `LeaseManager` | 文档/宿主/GPU 唯一 lease 与人工接管 | 不共享跨仓锁数据库 |
+| `ApprovalStore` | 本机高风险写入、发布、许可与降级批准 | 不实现企业 IAM/计费 |
+| `RuntimeRegistry` | 软件实例、进程、端口、GPU、模型和凭据引用 | 不把 secret 或绝对路径写入 Git |
+| `ProcessSupervisor` | 启停/探活本机 bridge、ComfyUI、H3 worker 和受限 helper | 不托管任意 shell |
+| `WindowsControlProvider` | 仅设计软件 allowlist 的 `winapp ui`/UIA 兜底 | 不做全桌面无边界 RPA |
+| `EvidenceRecorder` | 事件、readback、Receipt、checkpoint、rollback 证据 | 不把日志当成功证据 |
+| `federation/*` | 未来 WORK-LAB/ArcheAxis 协议 Adapter，默认关闭 | 不读取外部私有数据库 |
+
+### 3.4 项目级非商业研究边界
+
+```yaml
+project_use_class: PERSONAL_RESEARCH_NONCOMMERCIAL
+commercial_service: forbidden
+commercial_delivery: forbidden
+paid_hosting: forbidden
+restricted_asset_redistribution: forbidden
+private_local_research: allowed_subject_to_each_license
+public_research_release: rights_review_required
+use_change_requires_new_adr: true
+```
+
+“个人研究、非商业”是用途声明，不是通用许可证豁免。每个模型、软件、字体、图片、音频、插件和数据集仍按自己的许可证、地域、署名、披露、再分发和可接受使用条款执行。Golden Workflow 默认使用自有或许可清晰的研究 Fixture，不使用未授权客户资产作为测试素材。
+
+---
+
+## 4. 软件层收敛：成熟搭配方案
+
+### 4.1 默认生产组合
+
+| 组件 | 角色 | 默认性 | 保留理由 |
+|---|---|---:|---|
+| DESIGN-LAB CLI + Review Surface | 任务、证据、质量、Rights、人工批准、交付入口 | 必需，但属于项目本体 | 薄控制面，不复制画布 |
+| Codex + Design Control MCP | 自然语言规划、本地宿主调用、回读与恢复编排 | 桌面自动化 Profile 必需 | Codex 官方支持本地 STDIO/HTTP MCP；MCP 是入口，不是第二套设计画布。见[Codex MCP 文档](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) |
+| OpenDesign | 默认综合设计宿主 | 默认 Profile | 官方定位为 local-first 设计 Agent/平台，已有技能、插件、原型/幻灯/图像/视频与多格式导出能力。见[官方仓库](https://github.com/nexu-io/open-design)与[官方网站](https://open-design.ai/official/) |
+| Adobe Photoshop | 专业栅格、PSD 精修、品牌/电商后期 | 栅格 Profile 默认 | UXP 可用 DOM 和 `batchPlay` 做可审计操作；官方建议优先 DOM，缺口再用 batchPlay。见[Photoshop UXP 文档](https://developer.adobe.com/photoshop/uxp/2022/ps-reference/media/batchplay/) |
+| ComfyUI + 本地 H3 | 本地生成执行器；H3 作为 Provider | 视频/生成 Profile 默认 | ComfyUI 有本地 HTTP/WS 队列与历史接口、局部图重算和模型卸载。见[官方文档](https://docs.comfy.org/)和[Server routes](https://docs.comfy.org/development/comfyui-server/comms_routes) |
+| FFmpeg | 媒体探测、转码、封装、确定性 Preflight | 视频 Profile 必需 | 不增加一个交互式软件，只作为受控命令行工具 |
+
+用户感知上默认仍是 3 个应用：OpenDesign、Photoshop、ComfyUI；Codex 和 DESIGN-LAB 是控制入口，不再增加第四个画布。CorelDRAW/Illustrator 只在矢量或印前 Profile 中替换主矢量宿主，不要求与 OpenDesign、OpenPencil、Figma、Penpot 同时运行。
+
+### 4.2 按任务选择，不同时堆叠
+
+| Profile | 只选一个主宿主 | 适用场景 | 进入 0.1 的条件 |
+|---|---|---|---|
+| `solo-local-vector` | OpenPencil | 本地 UI/矢量、可编辑 `.fig`/结构化节点 | MCP/CLI 在真实 Fixture 上完成写入、回读、导出、撤销和路径隔离。见[官网](https://openpencil.dev/)与[仓库](https://github.com/open-pencil/open-pencil) |
+| `team-cloud-design` | Figma | 已使用 Figma 的团队协作 | 官方 MCP `use_figma` 可写 native nodes，但席位权限必须核实。见[工具文档](https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/)、[Write to canvas](https://developers.figma.com/docs/figma-mcp-server/write-to-canvas/)和[席位 FAQ](https://help.figma.com/hc/en-us/articles/39252411778583-Figma-MCP-server-FAQs) |
+| `self-host-collab` | Penpot | OSS/self-host 团队协作 | MCP server + 浏览器插件真实往返；插件执行代码能力要进入信任边界。见[Penpot MCP](https://github.com/penpot/penpot-mcp)与[官方帮助](https://help.penpot.app/mcp/) |
+| `3d` | Blender | 明确的 3D 任务 | 只通过官方 Python/命令行，完成场景回读与渲染证据。见[Blender command line](https://docs.blender.org/manual/en/latest/advanced/command_line/arguments.html) |
+| `quick-create` | MiniMax Design | 快速提案、草图、其专长明显优于本地链 | 只使用公开接口/导入导出；不逆向私有 DB/端口，不坐标点击，不成为 DesignIR SSOT |
+| `windows-print-vector` | CorelDRAW | 标识、广告、印刷、长页和既有 CDR 资产 | 官方 COM/对象模型完成 create/edit/readback/export/undo；没有官方 MCP 时由 DESIGN-LAB 薄适配，不用屏幕坐标 |
+| `adobe-vector-beta` | Illustrator (Beta) | 需要 AI 原生矢量编辑、图层/对象检查和导出 | 优先试用 Adobe 内置 MCP；必须保留 Beta 标签、版本证据和稳定版回退。见[Adobe 官方 Codex 连接说明](https://helpx.adobe.com/illustrator/desktop/connect-with-other-apps-and-tools/connect-illustrator-to-ai-tools.html) |
+| `adobe-cloud-quick` | Adobe for ChatGPT/Codex | 在线批处理、模板、快速图片/视频/PDF 任务 | 明确是云端 connector，不冒充本机 Photoshop/Illustrator 控制；需要稳定网络，目前仅英语。见[Adobe for ChatGPT](https://helpx.adobe.com/firefly/web/app-integrations/adobe-connectors/adobe-for-chatgpt.html) |
+
+**禁止默认同时要求 OpenPencil + Figma + Penpot。** 三者解决相近的结构化设计/协作问题，必须由 Profile 互斥选择。Illustrator、Premiere/Resolve、Krita、Inkscape 等只在具体交付格式或团队现有栈要求时加入，不进入全局必装列表。
+
+### 4.3 OpenDesign 与“宿主中立”不冲突
+
+仓库目前有一处文档冲突：根 AGENTS 把 OpenDesign 视为当前正式主入口，而 Product Definition 写无默认 host。正确建模是：
+
+```yaml
+core:
+  host_neutral: true
+profiles:
+  default:
+    host: open-design
+```
+
+核心协议不依赖 OpenDesign；当前默认 Profile 选择 OpenDesign。未来宿主资格赛改变时，只改 Profile/ADR，不改 DesignIR、质量或权利模型。
+
+### 4.4 宿主资格赛
+
+所有候选宿主用同一组 Fixture 评分，不能靠功能列表决定：
+
+| 维度 | 权重 | 最低线 |
+|---|---:|---:|
+| 原生可编辑结构保真 | 25 | 20 |
+| 写入后结构化回读 | 20 | 16 |
+| Undo/rollback 与幂等 | 15 | 12 |
+| 本地/权限/路径隔离 | 15 | 12 |
+| 导出与字体/颜色/资产保真 | 10 | 8 |
+| 接口稳定性与可锁版本 | 10 | 7 |
+| 人工操作负担 | 5 | 3 |
+
+总分低于 78 或回读/rollback 不达线，不进入默认链。营销演示、MCP 工具数量和 GitHub star 不计为 E3 证据。
+
+### 4.5 成熟搭配的最终答案
+
+软件可以继续收敛，而且不应把“Adobe 全家桶”整套常驻。按个人研究目标，成熟组合分三档：
+
+| 档位 | 实际安装/常驻 | 适用 | 结论 |
+|---|---|---|---|
+| 最小默认 | Codex、DESIGN-LAB、OpenDesign、Photoshop、ComfyUI/H3 | 综合创作、栅格精修、本地生成 | 保持当前默认；Design Control MCP 藏在控制层 |
+| Windows 平面/印前 | 上述 + **CorelDRAW 或 Illustrator (Beta) 二选一** | 海报、VI、标识、展板、印刷 | Corel 适合既有 CDR/印前习惯；Illustrator Beta 是当前与 Codex 最直接的官方 MCP 路径 |
+| 动效/长文档 | 任务需要时才装/启用 InDesign、Premiere、After Effects | 画册、排版、视频、动效 | 不进入通用默认链；一个 Job 只启用需要的 Adapter |
+
+不建议默认安装 Power Automate、AutoHotkey、UiPath、另一个 Agent 桌面壳和多个 Photoshop MCP。它们会形成第二套编排、第二套凭据和第二套日志。UIA/RPA 只作为没有宿主 API 的末端补丁，且不得处理账号登录、购买、许可、UAC 或发布批准。
+
+---
+
+## 5. 端到端设计工作流与自动化
+
+```mermaid
+flowchart TD
+    A["Brief + 资产摄入"] --> B["Rights Gate + DesignIR"]
+    B --> C["Profile / Host 选择"]
+    C --> D["生成或宿主编辑"]
+    D --> E["结构回读 + 自动质量"]
+    E --> F{"Human Jury"}
+    F -->|Reject| G["Critique + 新迭代"]
+    G --> D
+    F -->|Accept| H["Preflight + Delivery Receipt"]
+```
+
+### 5.1 唯一生产状态机
+
+```text
+DRAFT
+→ INTAKE_VALIDATED
+→ RIGHTS_CLEARED
+→ PLANNED
+→ RUNNING
+→ READBACK_VERIFIED
+→ AUTO_REVIEWED
+→ HUMAN_REVIEW_REQUIRED
+→ ACCEPTED | REWORK_REQUIRED | BLOCKED
+→ PREFLIGHTED
+→ DELIVERED
+```
+
+关键规则：
+
+- `RUNNING` 前必须冻结 JobSpec、输入 hash、Provider/Host 版本和权限范围。
+- `READBACK_VERIFIED` 必须来自宿主或产物本身，不能只相信 execute 返回成功。
+- 自动评分只能进入 `HUMAN_REVIEW_REQUIRED`，不能直接进入 `DELIVERED`。
+- Reject 必须生成结构化 Critique，下一迭代保存父子关系和差异；不得覆盖上一版。
+- 每个状态转移都是 append-only event，派生快照可重建。
+
+### 5.2 Adapter 统一合同
+
+```text
+probe()       -> CapabilitySnapshot
+prepare(job)  -> ExecutionPlan
+execute(plan) -> RunHandle
+observe(run)  -> Event stream
+readback(run) -> StructuredSnapshot + artifact hashes
+rollback(run) -> RollbackReceipt
+```
+
+Adapter 不得直接宣布“完成”。能力等级按证据晋级：
+
+| 等级 | 必需证据 |
+|---|---|
+| E0 | manifest/意图 |
+| E1 | 合同与静态验证 |
+| E2 | 可重复模拟或 headless Fixture |
+| E3 | 当前 SHA + 指定宿主版本的真实 execute/readback/rollback |
+| E4 | 真实 Human Jury 接受/驳回/返工闭环 |
+| E5 | 签名 release、可重放证据、运行观察期 |
+
+### 5.3 自动化权限等级
+
+| 等级 | 允许行为 | 审批 |
+|---|---|---|
+| A0 观察 | 读取文档、节点、图层、元数据和历史 | 无破坏性写入 |
+| A1 草稿 | 在隔离副本/新文档生成草稿 | 可自动，但产物标记 draft |
+| A2 受控编辑 | 对受管文件执行可回滚编辑 | 写前 checkpoint；越权字段或不可回滚操作要人工批准 |
+| A3 研究导出/公开发布 | 覆盖正式研究文件、导出研究包、上传/公开 | 必须 Human Jury + Preflight + Rights 复核 + 显式批准；不得转为商业交付 |
+
+禁止事项：
+
+- 不用 OCR + 屏幕坐标点击作为正式 Adapter；
+- 不读取/逆向软件私有数据库、内部端口或凭据；
+- 不静默从本地 H3 回退到云 API；
+- 不让 Agent 自己批准 Rights、Human Jury 或正式发布；
+- 不在日志保存原始私人/第三方素材、token、完整 prompt 私密段；
+- 不把 `execute succeeded` 当作文件已保存和可回读。
+
+### 5.4 三条 Golden Workflow
+
+| ID | 场景 | 主链 | 必须验收 |
+|---|---|---|---|
+| GW-01 | 品牌/电商栅格 | Brief → 可选 H3/Comfy 草创 → Photoshop UXP 精修 → 回读 → Jury → PSD/导出包 | 图层可编辑、字体/颜色/画布正确、两次运行幂等、Reject→返工成功 |
+| GW-02 | UI/矢量 | DesignIR → OpenDesign 或互斥结构化宿主 → token/component 回读 → 对比 → Jury | 原生节点、组件、token、响应式约束和导出 hash 可验证 |
+| GW-03 | 本地 H3 视频 | Rights → Comfy queue → H3-Base local → history/readback → FFmpeg probe → Jury | 无外网回退、模型/工作流 hash、音视频参数、失败可恢复、许可证门通过 |
+
+0.1 只需这三条闭环，不再横向铺开十几个软件。
+
+为验证桌面控制而不使用真实客户资产，另建四个小型 Golden Control Fixture；它们是同一工作流下的 Adapter 测试，不增加产品线：
+
+| ID | 贴近用户真实工作的合成任务 | 主验收 |
+|---|---|---|
+| CF-01 | 240×120 cm 合作伙伴 LOGO 墙：6 分区、44 个占位、两行三列 | Corel/AI 原生对象与文字可编辑；物理尺寸/单位/间距准确；PDF/SVG/PNG hash；一步 Undo |
+| CF-02 | 940×270 cm 文化走廊单墙：异形三层底板、主体高度 150–160 cm、公开栏 | 图层/组命名、板材厚度标注、出血/专色/字体预检；保存重开结构一致 |
+| CF-03 | 分层 PSD 商业视觉：人物蒙版、背景、装饰、智能对象和透明导出 | UXP 单一 history state；蒙版/Smart Object/alpha 回读；断桥后不重复写 |
+| CF-04 | H3-Base FL2VA 本地片段 → 首尾帧/音轨/预览 → Photoshop/AE/Premiere handoff | 断网本地、workflow/checkpoint hash、帧率/音频/色彩清单、跨软件 AssetManifest |
+
+每个 Fixture 运行 20 次正常路径、一次宿主忙、一次人工中途编辑、一次保存失败和一次取消；只在真实宿主 readback 与 rollback 都成功时升级 E3。
+
+### 5.5 “Codex 流畅控制设计软件”的真实技术路径
+
+这类演示不应理解成模型每一步都截图、找按钮、移动鼠标。可生产的路径分三层，优先级不可颠倒：
+
+1. **宿主原生接口**：MCP、UXP、COM/VBA、脚本 DOM、命令行；用于对象、图层、文字、页面、导出等绝大多数操作。
+2. **语义 UI Automation**：Windows UIA/MSAA selector；只补宿主接口无法处理的标准对话框。
+3. **视觉/坐标控制**：只用于一次性探索或人工辅助，禁止成为正式 Adapter。
+
+当前最接近用户描述的官方实例，是 Illustrator (Beta) 的内置 MCP：Adobe 明确支持在同一电脑上连接 Codex，提供 40 项工具/动作，可检查对象、创建/移动/变换、处理图层和画板、预览并导出，修改前后还有接受/拒绝流程。见[Adobe 功能说明](https://helpx.adobe.com/illustrator/desktop/connect-with-other-apps-and-tools/about-using-ai-tools-with-illustrator.html)、[连接 Codex](https://helpx.adobe.com/illustrator/desktop/connect-with-other-apps-and-tools/connect-illustrator-to-ai-tools.html)和[受支持操作](https://helpx.adobe.com/illustrator/desktop/connect-with-other-apps-and-tools/work-with-illustrator-documents-from-ai-tools.html)。它证明“Codex→本机设计宿主”路线已经成立，但目前仍是 Beta，不能把演示直接当稳定版 E3 证据。
+
+```mermaid
+flowchart TD
+    A["Codex / OpenDesign"] --> B["DESIGN：DesignIR 与配方"]
+    B --> C["DESIGN Local Orchestrator"]
+    C --> D["本地队列、审批与唯一 lease"]
+    D --> E["同一 DESIGN Host Adapter"]
+    E --> F["结构回读、Undo、Receipt"]
+    G["未来 WORK Adapter：可选"] -. "提交同一 Envelope" .-> C
+```
+
+Codex 官方可连接本地 STDIO 或 Streamable HTTP MCP，并支持项目级 `.codex/config.toml`；Skill 则负责稳定复用工作方法、配方选择和验收步骤。MCP 提供“手”，Skill 提供“操作规程”，二者不要合并成任意脚本执行器。见[Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)与[Codex Skills](https://learn.chatgpt.com/docs/build-skills)。
+
+### 5.6 单一控制面的工具合同
+
+Codex 默认只看到一个 `design-control` 命名空间，内部再代理官方 Illustrator MCP、Corel COM、Photoshop UXP 等宿主。不要把上百个原子命令全部暴露给模型；默认只给 10 个高层工具：
+
+| 工具 | 作用 | 写入性 |
+|---|---|---:|
+| `design_probe` | 检测宿主、版本、文档、Adapter 与可用能力 | 只读 |
+| `design_inspect` | 读取对象/图层/页面/色彩/字体/选择状态 | 只读 |
+| `design_plan` | 把 JobSpec 编译为确定性 ActionPlan，返回预计写入范围 | 只读 |
+| `design_execute_recipe` | 一次执行一个已登记的高层配方 | 写入 |
+| `design_observe` | 订阅进度、取消、警告和宿主事件 | 只读/取消 |
+| `design_preview` | 生成降采样预览，供视觉复核 | 只读产物 |
+| `design_readback` | 读取结构化结果并绑定文件 hash | 只读 |
+| `design_undo` | 撤销当前 run 的单一命令组或恢复 checkpoint | 写入/恢复 |
+| `design_export` | 用登记好的 preset 导出受管格式 | 写入产物 |
+| `design_handoff` | 生成下一宿主可消费的 AssetManifest | 写入清单 |
+
+每个写工具必须携带 `run_id`、`host_id`、`document_id`、`expected_state_revision`、`recipe_id`、受 schema 约束的参数、`run_root`、权限等级和 approval token。禁止暴露 `execute_js`、`run_macro_text`、`shell`、任意菜单 ID 或不受限文件路径；新能力只能以经测试的 recipe/operation 加入 allowlist。
+
+#### 5.6.1 本地五对象合同与未来联邦映射
+
+五种对象首先是 DESIGN-LAB 内部稳定合同，本地完整运行不需要 WORK-LAB 或 ArcheAxis。未来启用联邦时只复用同一对象，不共享数据库、进程对象或内部事件目录：
+
+| 对象 | 生产者 → 消费者 | 必需字段 | 用途 |
+|---|---|---|---|
+| `CapabilityRef` | DESIGN Registry → Local Orchestrator | `capability_id/version/schema_hash/evidence_level/allowed_modes` | 本地只调度当前证据支持的能力；未来 WORK 可消费公开副本 |
+| `ExecutionEnvelope` | Local Orchestrator → DESIGN executor | `design_run_id/plan_hash/idempotency_key/deadline/lease/approval_ref/runtime_binding_ref` | 本地承载单宿主、跨宿主、长时、GPU 和高风险设计任务；未来 WORK 可按同一 schema 提交 |
+| `RunEvent` | DESIGN executor → Local Observer | `sequence/state/progress/warning/retryable/evidence_ref` | 本地观察、取消和恢复；未来可向 WORK 输出脱敏事件 |
+| `ExecutionReceipt` | DESIGN executor → Local job/evidence | `result/readback_hash/artifact_hash/rollback_ref/host_and_adapter_versions` | 本地判定阶段完成；未来可返回 WORK，但外部不得自行推测设计状态 |
+| `KnowledgeCandidate` | DESIGN → local outbox | `source_refs/method_or_lesson/rights/human_approval/supersedes` | 先在本仓待审；未来 ArcheAxis 可接收，不可用时不阻断 |
+
+`runtime_binding_ref` 默认只引用 `.project-local/` 和 OS secret store 中的软件实例、GPU、端口与凭据，值本身不得写入仓库。未来 WORK-LAB 只能提供一个外部 binding/envelope；关闭或故障时由 Local Orchestrator 继续生成真实本地 Envelope、approval 和 lease，不伪造全局 WorkUnit。
+
+#### 5.6.2 会话锁、人工接管与恢复状态机
+
+```mermaid
+stateDiagram-v2
+    [*] --> READY
+    READY --> LEASED
+    LEASED --> PREPARED
+    PREPARED --> EXECUTING
+    EXECUTING --> VERIFYING
+    VERIFYING --> COMPLETED
+    EXECUTING --> PAUSED_USER_CONTROL
+    PAUSED_USER_CONTROL --> PREPARED
+    EXECUTING --> RECOVERING
+    VERIFYING --> RECOVERING
+    RECOVERING --> FAILED_SAFE
+    RECOVERING --> PREPARED
+```
+
+- 同一个 `document_id` 同时只能有一个写 lease，默认始终由 DESIGN-LAB `LeaseManager` 持有。未来外部调度只能申请委托 lease；本地核显式让渡后才能生效，不能双重持锁，也不能因 WORK-LAB 不可用而阻塞恢复。
+- 每次写前比较 `expected_state_revision`；检测到用户改动、活动文档切换、选择漂移或新模态框，立即进入 `PAUSED_USER_CONTROL`。
+- 人工接管后必须重新 `inspect` 并生成新计划；禁止从失败步骤盲目续跑。
+- `RECOVERING` 只能撤销当前 command group/history state 或恢复写前副本，不得靠反向猜测操作。
+- `FAILED_SAFE` 必须保留原文件或隔离副本、错误码、最后已确认 revision 和可人工恢复说明。
+
+#### 5.6.3 失败矩阵
+
+| 故障 | 自动动作 | 禁止动作 | 退出条件 |
+|---|---|---|---|
+| 宿主忙/COM 调用被拒绝 | 有界指数退避 + 总时限；保持同一 idempotency key | 无限重试、重新执行已确认写入 | 成功回读或 `HOST_BUSY_TIMEOUT` |
+| 用户同时编辑 | 暂停、释放输入焦点、保存冲突快照 | 覆盖用户 revision | 用户确认并重新计划 |
+| UXP/插件桥断线 | 停止派发，查询宿主/文件实际状态 | 假定上一步失败并重复写 | revision/readback 对齐 |
+| 模态框/UAC/登录/许可提示 | 转人工接管 | 自动接受条款、输入账号、降低 UAC | 人工关闭并重新 probe |
+| 保存/导出失败 | 保留原生文档和临时产物；验证磁盘/路径/格式 | 覆盖正式文件、删除唯一副本 | 新目标路径成功并校验 hash |
+| 宿主崩溃 | 启动恢复流程、检查自动恢复文件与 checkpoint | 自动把恢复文件晋升为正式交付 | 重开、结构回读和人工确认 |
+| H3/Comfy OOM | 生成显式降级计划供批准 | 静默换模型、精度、分辨率或云端 | 新计划获批或阻断 |
+| UIA selector 失效 | 重新 inspect 一次；仍不唯一则人工 | 回退到硬编码坐标 | 唯一语义元素或人工完成 |
+
+Codex 官方配置已经支持 MCP 工具 allowlist/denylist、server/tool 级 approval mode、超时和项目级配置；本项目应在受信任的 `.codex/config.toml` 只启用上述高层工具，并让所有写工具保持 `writes`/显式审批，而不是靠 prompt 约束。见[Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)与[配置参考](https://learn.chatgpt.com/docs/config-file/config-reference)。
+
+建议配置骨架（命令路径由安装器生成，不能写死用户盘符）：
+
+```toml
+[mcp_servers.design_control]
+command = "design-lab"
+args = ["mcp", "serve", "--stdio"]
+required = true
+startup_timeout_sec = 20
+tool_timeout_sec = 120
+default_tools_approval_mode = "writes"
+enabled_tools = [
+  "design_probe", "design_inspect", "design_plan", "design_execute_recipe",
+  "design_observe", "design_preview", "design_readback", "design_undo",
+  "design_export", "design_handoff"
+]
+
+[mcp_servers.design_control.tools.design_execute_recipe]
+approval_mode = "writes"
+
+[mcp_servers.design_control.tools.design_export]
+approval_mode = "writes"
+```
+
+Illustrator (Beta) 的本机 URL/key 仍由 Adobe 界面生成，不写入仓库模板；用环境变量或本机 secret helper 注入 Bearer token，并在升级/泄露/机器迁移时重新生成。
+
+### 5.7 宿主接口成熟度与推荐路线
+
+| 宿主 | 首选控制接口 | 当前判断 | 进入默认链的条件 |
+|---|---|---|---|
+| Illustrator (Beta) | Adobe 内置本地 HTTP MCP + 唯一认证 key | **官方、最短路径、Beta**；40 项动作，原生支持 Codex | 独立测试安装；20 次 Fixture 无卡死；AI/SVG/PDF/PNG 回读；Beta 升级不自动污染稳定版 |
+| CorelDRAW 2026 | 官方 COM/VGCore 对象模型；必要时 VBA/VSTA/JS | **接口成熟，无官方 MCP**；应自建薄代理 | create/edit/readback/export/undo 全走对象模型；一次 recipe 一个 undo；无坐标点击 |
+| Photoshop 当前版 | UXP Plugin/Scripts；DOM-first，`batchPlay` fallback | **官方、活跃开发** | 真实 PSD 图层写入、`executeAsModal`、单一 history state、重开回读与恢复 |
+| Illustrator 稳定版 | JavaScript/AppleScript/VBScript 或 C++ plugin | **官方但扩展栈较旧** | 只作 Beta 不可用时的兼容 Adapter；锁宿主版本与 JSX 能力 |
+| InDesign | UXP scripts/plugins | **官方、在演进** | 数据排版/样式/预检 Fixture；不复用 Photoshop plugin |
+| Premiere Pro | UXP async DOM | **官方、异步且不阻塞 UI** | 项目/序列/轨道/素材/导出回读；长任务走 observe/cancel |
+| After Effects | ExtendScript `.jsx` + `afterfx -r`；`aerender` | **官方遗留脚本 + 稳定命令行渲染** | 脚本只接受 job file；渲染用 stdout/log 取证；网络/文件权限显式关闭或收窄 |
+| Adobe for ChatGPT/Codex | Adobe 云端 connector | **官方、在线、英语优先** | 只进 `adobe-cloud-quick`，不得标成“控制本机 Adobe”或离线能力 |
+| Photoshop MCP（社区） | Node MCP → COM/ExtendScript；可选 UXP bridge | **可用候选，不是 Adobe 官方** | exact commit、遥测关闭、受控 Fixture、源审计；只作为过渡或架构参考 |
+| Windows `winapp ui` / UIA | DESIGN-LAB `WindowsControlProvider`；只允许已登记设计宿主/标准对话框 | **微软官方、Public Preview、语义兜底**；可 inspect/search/invoke/wait/read/screenshot/JSON 回执，但版本仍可能破坏性变化 | 固定 exact 版本；UIA 步数 <5%；selector 唯一；输入注入要求解锁前台桌面；失败人工接管；坐标点击 = 0 |
+
+Adobe 官方当前把 Photoshop UXP 标为活跃开发，而 ExtendScript/CEP 标为不再活跃；因此仓库现有 Photoshop MCP 的 ExtendScript/COM 方案只能作为兼容层。UXP 写操作必须在 `executeAsModal` 中运行，可用 `suspendHistory/resumeHistory` 将多步改动合并为一个历史状态；Adobe 也建议先用 DOM，缺口再用 `batchPlay`。见[Photoshop 扩展路线](https://developer.adobe.com/photoshop/)、[executeAsModal](https://developer.adobe.com/photoshop/uxp/2022/ps-reference/media/executeasmodal)和[batchPlay](https://developer.adobe.com/photoshop/uxp/2022/ps-reference/media/batchplay)。
+
+Adobe 的 `generator-app-remote-mcp-server-generic` 是在 Adobe I/O Runtime 上生成通用 MCP server 的模板，不是 Photoshop/Acrobat 控制器。仓库必须撤销该错误能力映射。Adobe 另有 Firefly Creative Production 的 hosted Run-Workflow MCP，但它是云端工作流服务，也不能代替本机 UXP/COM Adapter。见[Adobe generic MCP template](https://github.com/adobe/generator-app-remote-mcp-server-generic)与[Run-Workflow MCP](https://helpx.adobe.com/firefly/web/work-with-enterprise-features/creative-production/run-workflow-mcp-overview.html)。
+
+2026-09-04 对 Adobe 官方帮助与开发站点的复核只确认了 **Illustrator (Beta)** 的内置桌面 MCP；未找到 Photoshop、InDesign、Premiere Pro 或 After Effects 已发布同类官方本地 MCP 的一手说明。因此后四者继续采用各自官方 UXP/脚本/命令行路线；这是基于当前官方资料范围的结论，不是永久否定，后续若 Adobe 发布新接口应重新资格赛。
+
+### 5.8 CorelDRAW：最快、最稳的实现细节
+
+CorelDRAW 是 Windows 平面/印前 Profile 的高价值宿主。官方 SDK 已公开文档、页面、图层、形状、曲线、文本、导入、导出与 PDF 等对象；官方也明确宏/脚本适合重复、多步和复杂任务。第一版无需引入 C#：Python 通过 `pywin32` 调用 COM/VGCore，保持现有 Python 主栈；只有 COM 事件、位数或封送在真实压测中失败，才用 ADR 引入一个受限 C# sidecar。
+
+每个 Corel recipe 必须遵守：
+
+1. `probe` 读取 Application/automation engine 版本、活动文档和单位；不猜 ProgID。
+2. 写前保存受管副本或内存 clone，生成 state revision；原文件默认不覆盖。
+3. `BeginCommandGroup(recipe_name)` 后执行全部对象操作，保证 `EndCommandGroup()` 即使异常也被调用；官方警告中途终止会损坏 undo stack。
+4. 批量阶段临时设 `Optimization=True` 抑制重绘、必要时暂停 `EventsEnabled`，结束时无条件恢复原值并只刷新一次；这正是 Corel 官方给出的性能路径。
+5. 不逐物体跨 MCP 往返；把几十个对象的布局编译成一个 `CorelActionPlan`，在 COM 进程内循环完成。
+6. 操作后读取页尺寸、图层、对象类型/边界、颜色、文字、字体、链接与导出结果；预览只是补充，结构回读才是事实。
+7. 失败时先结束命令组并恢复应用状态，再撤销本 run 或关闭隔离副本；产生 `RollbackReceipt`。
+8. 每个 Corel 实例只绑定一个专用 STA worker/队列；禁止多个线程并发复用 COM proxy。遇到 `RPC_E_CALL_REJECTED`/宿主忙，只在未确认写入时按 100/250/500/1000 ms 有界重试，总时限 5 秒；之后转 `HOST_BUSY_TIMEOUT`，不能无限循环。
+9. 若 Python 压测持续出现 rejected-call、消息泵或事件封送故障，再用 ADR 引入最小 C# helper，并通过 `IMessageFilter::RetryRejectedCall` 处理重试/取消；微软说明该接口用于同步 COM 调用等待期间的消息过滤和 rejected-call 处置。见[Microsoft IMessageFilter](https://learn.microsoft.com/en-us/windows/win32/api/objidl/nn-objidl-imessagefilter)。
+
+推荐首批 Corel recipes：`create_print_document`、`import_brand_assets`、`layout_signage_board`、`replace_copy_from_csv`、`apply_palette_and_styles`、`preflight_print`、`export_pdf_svg_png`。不要先做 100 个原子工具。
+
+依据：[CorelDRAW Developer Area](https://community.coreldraw.com/sdk)、[对象模型 Document](https://community.coreldraw.com/sdk/api/draw/17/c/document)、[单步 Undo 分组](https://community.coreldraw.com/sdk/api/draw/27/m/document.begincommandgroup)、[Optimization](https://community.coreldraw.com/sdk/api/draw/20/p/application.optimization)和[EventsEnabled](https://community.coreldraw.com/sdk/api/draw/19/p/application.eventsenabled)。
+
+### 5.9 Adobe：按宿主拆 Adapter，不做“全家桶万能插件”
+
+- **Illustrator (Beta)**：最快先跑官方内置 MCP，DESIGN-LAB 作为 MCP client 代理它，把 Adobe 的 40 项原子能力收敛成项目 recipe；认证 key 只进本机 secret store，日志只留 key 指纹。
+- **Photoshop**：一个最小 UXP 插件只负责 outbound loopback poll/WebSocket、执行已签名 Job、回传 state/preview；网络域、文件范围与进程启动权限在 Manifest v5 明确声明。Adobe UXP 官方提供 `WebSocket` 与 `fetch`，并要求在 manifest 中列出允许域，因此“UXP 主动连接本机 loopback bridge”是有官方接口依据的实现，不需要回退到不受控 ExtendScript。bridge 只监听 `127.0.0.1`，域精确到 loopback endpoint，不使用 `domains: all`。当前仓库 `photoshop-reconstruction/index.js` 只返回 `NOT_EXECUTED` 和文档数量，尚无实际图层写入、history suspension、保存、导出或 readback，不能升 E2。见[UXP WebSocket](https://developer.adobe.com/photoshop/uxp/2022/uxp/reference-js/Global%20Members/Data%20Transfers/WebSocket/)与[Manifest v5](https://developer.adobe.com/photoshop/uxp/2022/guides/uxp-guide/uxp-misc/manifest-v5/)。
+- **Illustrator 稳定版**：现有 `reconstruction-assemble.jsx` 只校验 Job 并创建空白 RGB 文档；`REQUIRED_OPERATIONS` 列表没有实现 save/reopen/readback/export，不能用声明数组充当能力证据。若 Beta 不可用，补齐该受限 JSX Adapter，但不把任意 JSX 文本交给模型。
+- **InDesign**：独立 UXP 插件，专注模板、段落/字符样式、数据合并、链接与 preflight；不复制 Photoshop 的命令描述符。
+- **Premiere Pro**：独立 UXP Adapter，所有长任务返回 handle，通过事件观察；官方 UXP 方法异步，不阻塞 UI 线程。
+- **After Effects**：用受管 `.jsx` job runner 创建/调整项目与合成；`afterfx -r` 在现有实例执行脚本，最终批渲染交给 `aerender`。Adobe 官方说明 `aerender` 可在单机批处理或多机渲染，并可复用运行中的 AE 实例。
+
+Photoshop 的第三方 `alisaitteke/photoshop-mcp` 已证明 recipe、state-before-action、preview、capability flags、structured error 与 one-undo 的组合可行；其当前说明为 102 个原子工具 + 16 个 recipe。但它默认收集匿名使用分析，必须用 `ANALYTICS_DISABLED=1`；且其主桥仍以 ExtendScript 为主，所以 DESIGN-LAB 应吸收架构模式，不复制它的 Web UI、SQLite、LLM provider 和整个工具面。见[项目仓库](https://github.com/alisaitteke/photoshop-mcp)与[架构说明](https://github.com/alisaitteke/photoshop-mcp/blob/master/docs/architecture.md)。
+
+### 5.10 软件之间的协同：文件/清单交接，不用剪贴板接力
+
+每次跨宿主交接都生成 `AssetManifest`，包含源 run、颜色空间/ICC、尺寸/单位、DPI、出血、字体、链接、透明度、文件 hash 和下一宿主意图。软件之间不靠 Ctrl+C/Ctrl+V、屏幕坐标或“当前选中项”暗状态传递。
+
+| 上游 | 交接产物 | 下游 | 自动验收 |
+|---|---|---|---|
+| ComfyUI/H3 | PNG/TIFF/EXR/视频 + generation manifest | Photoshop / AE / Premiere | hash、尺寸、帧率、alpha、色彩空间、权利标签 |
+| Photoshop | PSD + flatten preview + 透明 PNG/TIFF | CorelDRAW / Illustrator / InDesign | PSD 可重开、图层清单、linked/embedded 策略、预览匹配 |
+| CorelDRAW 或 Illustrator | CDR/AI 原生文件 + PDF/SVG/EPS + preview | Photoshop / InDesign / 印前 | 页面/画板、字体、专色、出血、overprint、对象数、导出 preset |
+| InDesign | INDD/package + preflight + PDF/X | 发布/归档 | missing link/font 为零、profile 合规、PDF hash |
+| Illustrator/Photoshop | 分层资产、MOGRT 输入或中间帧 | After Effects / Premiere | 命名、尺寸、alpha、帧率、可替换 ID |
+| After Effects | AEP + `aerender` 输出 + render log | Premiere / delivery | composition、帧范围、codec、stdout/log、输出 hash |
+
+一个 Job 只能有一个活动主宿主写入同一主文件。多宿主并行只处理不同派生产物；交回主链时必须通过 revision compare，避免人和 Agent 同时覆盖。
+
+### 5.11 为什么会“快”：把模型往返移出内循环
+
+| 优化点 | 落地规则 |
+|---|---|
+| 一次规划 | Codex 先生成可审阅 ActionPlan；确认后一次 recipe 调用，不逐按钮聊天 |
+| 宿主内批处理 | 形状/图层循环在 Corel COM 或 Adobe plugin 内执行，不跨 MCP 往返 |
+| 单一撤销 | Corel command group、Photoshop history suspension、Illustrator 官方接受/拒绝/Undo |
+| 少截图 | 前置 state、关键里程碑 preview、最终 preview；不每一步截图 |
+| 稳定对象 ID | 优先 document/layer/object/artboard ID；名称只作显示，不作唯一定位 |
+| 能力缓存 | 启动时 probe 一次，宿主版本/文档 revision 改变才失效 |
+| 异步长任务 | render/generation/export 返回 handle；observe 事件，不阻塞 Codex 工具调用 |
+| 明确人工接管 | 发现用户修改、模态对话框、选择漂移或 revision mismatch 立即暂停 |
+
+“流畅”用可测指标而不是鼠标动画评价：
+
+| 指标 | 0.1 验收线 |
+|---|---:|
+| 本地 `probe/inspect` 调度 p95（不含宿主冷启动） | ≤ 500 ms |
+| 20 个原子编辑组成的标准配方 | Codex/MCP 往返 ≤ 3 次 |
+| 每个 recipe 的用户可见 Undo | 1 步，或一个明确 checkpoint restore |
+| UIA/视觉步骤占全部写步骤 | UIA < 5%；坐标点击 = 0 |
+| 同 Fixture 连跑 | 20 次；0 卡死、0 悬空 modal、0 越界写入 |
+| 中途故障恢复 | 100% 恢复旧 revision 或保留隔离副本 |
+| readback | 100% 绑定宿主版本、结构摘要、preview hash、native file hash |
+
+### 5.12 本地安全边界
+
+- Codex 到 Design Control MCP 优先 STDIO；需要 HTTP 时只监听 `127.0.0.1`，随机高端口 + 短期 token + 每 run nonce。
+- Illustrator Beta 的 URL/key、Adobe token、Corel automation 标识不写 Git、不进 prompt、不进事件原文；只保存来源和指纹。
+- 文件参数 realpath 后必须位于当前 `run_root` 或显式只读资产根；拒绝 UNC、设备路径、符号链接逃逸和未登记扩展名。
+- Adapter 不开放任意 JavaScript/VBA/PowerShell/shell；所有命令来自 Source Lock 对应的已签名 recipe bundle。
+- 写前校验文档 revision 与人工活动锁；写中检测 selection/document switch；冲突时暂停，不抢焦点继续执行。
+- 账号登录、2FA、付费、许可证确认、UAC、公开发布、覆盖正式文件永远人工处理。
+- UXP Manifest v5 只声明必要网络域和文件权限；Adobe 说明未声明权限默认不授予。见[Manifest v5 权限模型](https://developer.adobe.com/photoshop/uxp/2022/guides/uxp-guide/uxp-misc/manifest-v5/)。
+- UIA 优先 AutomationId/control type 等语义 selector；微软也建议现代 Windows 应用优先 UIA，以提高性能、可维护性和可靠性。见[Windows UI Automation](https://learn.microsoft.com/en-us/windows/win32/winauto/entry-uiauto-win32)与[Power Automate selector 指南](https://learn.microsoft.com/en-us/power-automate/desktop-flows/ui-elements)。
+
+#### 5.12.1 最新 `winapp ui` 的采用裁决
+
+微软在 2026-08-19 更新的官方文档中提供了 `winapp ui`：可对 WPF、WinForms、Win32、Electron 和 WinUI 3 应用执行 `inspect/search/get-property/get-value/set-value/invoke/wait-for/screenshot/record`，大部分命令通过 UIA pattern 而不是输入注入；JSON 模式有稳定的结果包、错误码和非零退出码，适合被 Agent 回读。它比自建 pywinauto/AutoHotkey 坐标脚本更适合成为统一兜底。见[UI Automation 命令](https://learn.microsoft.com/en-us/windows/apps/dev-tools/winapp-cli/ui-automation)。
+
+但 `winapp CLI` 整体仍标记为 **Public Preview**，命令和 JSON 结构可能变化；历史 release 已出现 JSON envelope 的不兼容调整。因此采用方式是：
+
+1. 实现位置在 DESIGN-LAB 的 `src/design_lab/runtime/windows_control/`，作为设计域唯一 `WindowsControlProvider`；不再等待或复制 WORK-LAB wrapper；
+2. 只登记极少量 `ComputerActionRequest`，进程、窗口标题、可执行文件 hash 和目标控件限定为已资格认证的设计宿主及标准打开/保存/导出对话框；
+3. 固定确切 winapp 版本和输出 schema adapter，升级先回放 Golden Fixture；
+4. 优先 `invoke/set-value/wait-for`，不用 `click/send-keys`；需要真实输入的动词只可在解锁、前台、同完整性级别的交互桌面运行；
+5. Provider 默认拒绝 allowlist 外进程、任意桌面探索、坐标点击、账号/许可/UAC 操作；未来若 WORK-LAB 提供同一 SPI 的 Provider，必须通过完全相同的资格 Fixture 后才能替换；
+6. 锁屏、安全桌面、UAC、最小化 RDP、目标程序提权都会触发 fail-to-human，不能通过降低系统安全策略解决。微软也明确说明 UIPI 会阻止不同完整性级别进程之间的 UI 操作。见[winapp CLI 状态与安装](https://learn.microsoft.com/en-us/windows/apps/dev-tools/winapp-cli/)和[UIPI 限制](https://learn.microsoft.com/en-us/troubleshoot/power-platform/power-automate/desktop-flows/ui-automation/uipi-issues)。
+
+#### 5.12.2 桌面设计自动化威胁模型
+
+| 威胁 | 入口 | 控制 |
+|---|---|---|
+| 文档/素材中的 prompt injection | 图层名、PDF 文本、SVG metadata、网页参考 | 一律视为不可信数据；不得生成工具授权；只进入带来源的内容字段 |
+| 任意代码执行 | JSX/VBA/UXP/MCP 的自由文本命令 | 只允许版本化 recipe ID + schema 参数；bundle hash allowlist；禁用 shell/eval/下载执行 |
+| 凭据泄露 | Illustrator key、Adobe token、模型/云 API key | secret 只在 OS 凭据存储；DESIGN Registry/事件/截图只存 opaque ref 或指纹；URL/header 日志脱敏 |
+| 路径逃逸或覆盖 | 导入/导出路径、链接资产、符号链接/UNC | realpath + run_root/只读资产根 allowlist；正式文件写前 checkpoint 和显式批准 |
+| 旧 revision 覆盖人工修改 | 人与 Agent 同时编辑 | document lease + expected revision + host event；冲突暂停并重新计划 |
+| 恶意/漂移插件 | 第三方 MCP、Comfy custom node、Adobe 插件升级 | Source Lock、hash/SBOM/NOTICE、默认关遥测和自更新；升级后证据自动降级 |
+| UIA 越权 | 提权宿主、UAC、安全桌面、其他应用窗口 | DESIGN 本地 Provider 的设计进程/窗口 allowlist；同完整性级别；安全桌面直接人工；不得开启广域 UIAccess |
+| 伪成功 | MCP 只返回 OK、导出文件为空或损坏 | 结构 readback + 重开 + native/preview hash + preflight；execute 响应不作为完成证据 |
+
+信任顺序必须是：`不可信输入 → DESIGN 编译受限计划 → 本地 ApprovalStore/LeaseManager 授权 → 宿主 Adapter 原生执行 → 独立 readback → 人工质量门`。任何一层不得把上游自然语言直接透传为代码或系统操作；未来外部调度也不能越过本地授权层。
+
+### 5.13 当前仓库的具体修复点
+
+| 路径 | 当前问题 | 修复 |
+|---|---|---|
+| `integrations/mcp/adapter.manifest.json` | 写 E0/无 server，与 Photoshop MCP 连接记录冲突 | 改为纯协议能力，不承载全局连接状态；server 实例单独登记 |
+| `integrations/adapter-registry.json` | Photoshop 有重复身份；第三方连接无 artifact path；generic Adobe template 被误标为桌面控制 | 按 control/server/host 三层重建，由 current evidence 生成 |
+| `integrations/hosts/adobe/photoshop-reconstruction/index.js` | 只返回 `NOT_EXECUTED`，无真实写入或回读 | TypeScript 化；实现 UXP job bridge、history、save/export/readback；无真机仍保持 E1 以下 |
+| `integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx` | 仅建空文档，声明的 required operations 未实现 | 优先新增官方 Beta MCP Adapter；稳定版 fallback 再补受限 JSX |
+| `design-lab/config/tool-write-authorization.schema.json` | host enum 只有 Photoshop/Illustrator/Eagle；没有 standalone/federated、lease、delegator、plan hash 或 runtime binding | 改为引用 versioned `host_id`，增加 `execution_mode/lease_owner/plan_hash/approval_ref/runtime_binding_ref/idempotency_key`；不得手改第二份 host 列表 |
+| `.project/governance/data-ownership.yaml` | 正确写了 Adapter 属于 DESIGN、runtime 属于 external，但这会错误阻断本项目完整运行 | 改为 `design_runtime_owner=DESIGN-LAB`、`external_orchestrator=optional`、`standalone_required=true`、`database_sharing=false`；同时注明通用跨项目 runtime 不属于本仓 |
+| `integrations/adapter-registry.json` 的实例字段 | Adapter 定义、宿主安装版本、历史 runtime evidence 混在同一记录，易产生多份运行真值 | 拆为 DESIGN 的 `AdapterDefinition/QualificationRecord` 与本机 `RuntimeBinding`；未来外部 binding 仍只用 opaque ref 连接 |
+| `src/design_lab/runtime/windows_control/`（新增） | 当前方案只写泛化 UIA，且曾错误等待跨仓实现 | 本仓新建受限 `winapp ui` Provider、请求 schema、版本 adapter 与资格 Fixture；只控制设计软件 allowlist，不建设通用 RPA |
+| `src/design_lab/runtime/`（新增） | 跨宿主、长时、GPU 和高风险任务没有本仓运行内核 | 实现 LocalOrchestrator、JobQueue、LeaseManager、ApprovalStore、RuntimeRegistry、ProcessSupervisor 和 EvidenceRecorder；默认单进程/本机持久化 |
+| `reports/history/2026-08-20-pre-convergence/*` | 保存旧连接事实，但容易被当 current | 保留不可改写；加 `historical=true`，current report 只链接不继承能力 |
+
+### 5.14 设计控制专项实施包
+
+| ID | 任务 | 预计 | DoD |
+|---|---|---:|---|
+| DL-CTL-000 | Standalone-first Design Runtime ADR | 1 天 | 明确 DESIGN 拥有完整设计域运行闭环；WORK/ArcheAxis 默认关闭、零启动依赖；旧文档冲突标记 superseded |
+| DL-CTL-001 | 统一 Design Control schema + Python MCP facade | 2–3 天 | 10 个高层工具；只连 Local Orchestrator；mock/replay host；路径/权限/nonce/lease/事件测试全绿 |
+| DL-CTL-002 | Illustrator (Beta) 官方 MCP 快速资格赛 | 1–2 天 | 真实 Codex 连接；创建/检查/编辑/预览/导出/Undo；20 次 Fixture；记录 Beta 版本 |
+| DL-CTL-003 | CorelDRAW COM MVP | 4–6 天 | 7 个 recipe；Optimization/Events 恢复；单步 Undo；CDR/PDF/SVG/PNG 回读 |
+| DL-CTL-004 | Photoshop UXP 真执行 | 5–8 天 | 取代 `NOT_EXECUTED`；PSD 图层、文字、Smart Object/遮罩、导出、重开与 rollback |
+| DL-CTL-005 | 跨宿主 AssetManifest | 3–5 天 | Comfy→PS→Corel/AI 一条真实链；无剪贴板；颜色/尺寸/字体/权利完整 |
+| DL-CTL-006 | DESIGN-LAB `winapp ui` 最小兜底 | 2–3 天 | Provider 代码、请求合同和 Fixture 都在本仓；仅 2 个已知对话框；设计进程 allowlist；semantic selector；Public Preview 版本锁；失败人工接管；零坐标 |
+| DL-CTL-007 | InDesign/Premiere/AE 按需 Adapter | 每个 4–7 天 | 只有对应 Golden Workflow 获批才启动，不阻塞平面设计 0.1 |
+| DL-CTL-008 | 本地 Design Runtime 内核 | 4–6 天 | 本地队列、唯一 lease、审批、进程/GPU、secret ref、取消/恢复、Evidence/Receipt；关闭 WORK/ArcheAxis 后跨宿主 Fixture 仍通过 |
+
+最快可见成果顺序是：**先冻结 Standalone-first ADR 和本地运行合同，再用 Illustrator (Beta) 官方 MCP 在本机完成 Codex 真控验证，同时补最小 Local Orchestrator；然后做 CorelDRAW COM 的平面/印前 MVP，随后把仓库 Photoshop UXP stub 补成真执行。** DESIGN-LAB 的 `winapp ui` 小范围资格赛与原生 Adapter 并行，但不阻塞主链。这样 2–3 天可验证控制边界和方向，2–3 周可形成不依赖跨仓联动的 Corel + Photoshop + Illustrator 可审计本地链。
+
+---
+
+## 6. H3 本地运行专项
+
+### 6.1 官方能力与诚实产品声明
+
+MiniMax 官方已发布 H3 模型仓库和本地部署说明。H3-Base 有 FL2VA 与 Ref2VA 两个 BF16 checkpoint，可本地生成 768p 音视频；官方列出 SGLang、vLLM、Diffusers 和 ComfyUI 路径。模型为 33B dense omni-transformer，初始开放实现使用 full attention。官方同时说明 H3-Context-IR 与 H3-Regenerate-2K 并未完整开源，因此“官方完整 2K 工作流”仍是本地 H3-Base + 托管模块的混合链。见[MiniMax H3 官方仓库](https://github.com/MiniMax-AI/MiniMax-H3)与[官方研究介绍](https://www.minimax.io/blog/minimax-h3)。
+
+产品必须分成两个明确 Profile：
+
+```yaml
+local-h3-768:
+  network_fallback: forbidden
+  local_checkpoint: required
+  hosted_context_ir: forbidden
+  hosted_regenerate_2k: forbidden
+
+hybrid-h3-2k:
+  default_enabled: false
+  explicit_user_consent: required
+  api_credentials: required
+  remote_data_disclosure: required
+```
+
+### 6.2 推荐的本地集成顺序
+
+1. 先只支持 `H3-Base-FL2VA`，覆盖 T2VA、首帧和首尾帧；Ref2VA 稳定后单独晋级。
+2. DESIGN-LAB 对接 ComfyUI 稳定 HTTP/WS 路由：提交 `/prompt`、订阅 `/ws`、读取 `/history/{prompt_id}`、管理 `/queue` 和 `/interrupt`。ComfyUI 的 Python/TS SDK v2 仍是 beta 0.1.x，不作为 0.1 核心依赖；在 Adapter 后封装现有稳定协议。见[通信概览](https://docs.comfy.org/development/comfyui-server/comms_overview)、[路由](https://docs.comfy.org/development/comfyui-server/comms_routes)和[SDK 状态](https://docs.comfy.org/development/api-development/sdks)。
+3. H3/ComfyUI Adapter、设计提示结构、Generation Manifest、质量/权利判定，以及本机安装清单、GPU 队列、端口、凭据引用和跨任务资源预算全部属于 DESIGN-LAB 的 Local Design Runtime。未来外部调度若启用，只能提供可撤销的 runtime binding，不能复制模型/Adapter，也不能成为 H3 启动条件。
+4. 模型放在仓库外的用户模型库；Registry 只存逻辑 ID、来源、版本、文件清单和 hash，不存绝对机器路径。
+5. 每次 run 记录 ComfyUI commit、custom node lock、workflow hash、checkpoint hash、输入 hash、seed、采样参数、prompt_id、输出 hash 和硬件摘要。
+6. 启动前运行硬件资格测试，不能猜固定显存门槛：先 probe GPU/driver/VRAM/disk，再跑短时 768p canary，记录 peak VRAM/RAM、时长、OOM/卸载行为。不同硬件只按真实证据晋级。
+7. 失败策略：OOM 自动降低并发/启用 offload 只能生成新计划并记录差异；不允许偷偷改 checkpoint、精度、分辨率或调用云端。
+
+### 6.3 许可证是本地 H3 的 P0 门
+
+[MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)不是 Apache/MIT。当前官方文本至少包含以下高影响条款：
+
+- Applicable Territory 明确排除美国、欧盟、英国和韩国；在这些地域部署需另行联系 MiniMax 获取许可；
+- 年营收超过 2,000 万美元的商业产品/服务需事先书面授权；
+- 商业 UI 需显著展示 “MiniMax H3”；
+- 向第三方提供产品/服务时需绑定不弱于许可证的使用限制并维持防滥用保障；
+- 不得使用 H3 Works 或其输出改进其他 AI 模型；
+- 对公开环境中的 AI 生成内容有显著披露要求。
+
+当前用户已明确：**整个 DESIGN-LAB 是个人研究、非商业使用**。H3 继承项目级用途，因此当前 Rights Profile 固定为：
+
+```yaml
+project_use_class: PERSONAL_RESEARCH_NONCOMMERCIAL
+component: MINIMAX_H3_LOCAL_RESEARCH
+commercial_delivery: forbidden
+hosted_service: forbidden
+redistribution: forbidden
+model_or_output_training_other_ai: forbidden
+local_runtime: required
+deployment_territory: unresolved
+```
+
+在该口径下，年营收超过 2,000 万美元的额外商业授权和商业 UI 标识不是当前执行阻塞项；一旦项目用途变为收费服务、商业交付、组织生产或对外托管，全部项目级许可结论必须自动失效并重新进行 Rights Review。**个人非商业研究并不能覆盖许可证的地域排除、可接受使用、公开披露和禁止训练其他模型等条款。**
+
+仓库当前三个 H3 产物 sidecar 仍标记 `redistributable=false`、`commercialUse=false`，旧人工批准到期日为 2026-09-16。修复顺序必须是：
+
+1. 保留项目级 `PERSONAL_RESEARCH_NONCOMMERCIAL` 使用类别，并确认实际部署地域；
+2. 对照 2026-08-02 版官方许可证形成该使用类别下的逐条 Rights Decision；
+3. 若在排除地域，未获书面许可前本地 Profile 保持 `BLOCKED_BY_LICENSE`；
+4. 更新三个历史产物的 sidecar，但不得把旧内部验证素材自动改成可商用/可分发；
+5. 在每次任务 Intake 记录私人/第三方参考素材授权、人物/商标/声音权利和输出披露要求。
+
+这是一项产品合规门，不是对用户主体的法律结论；最终商业部署应由有权限的人审阅。
+
+---
+
+## 7. 语言与运行时迁移
+
+### 7.1 最终语言边界
+
+| 语言 | 保留/新增范围 | 不做什么 |
+|---|---|---|
+| Python 3.12+ | DesignIR、Job/事件、Design Control MCP facade、Local Orchestrator、队列/lease/审批、进程/GPU supervisor、secret ref、Windows Control、Adapter SPI、CorelDRAW COM worker、质量/权利/Preflight、CLI、分析与验证 | 不重写为 Rust；不让 COM/宿主脚本散落成多个入口；不演变为通用 Agent OS |
+| TypeScript strict | 薄 Review Surface、维护中的浏览器/Node Adapter、Adobe UXP plugin、Figma/Penpot/OpenPencil 客户端 | 不把全部 94 个 JS 机械迁移；不把 MCP server 和宿主状态做成第二套 SSOT |
+| JavaScript/JSX | 编译后的 UXP 产物、Illustrator/After Effects 受限 legacy runner、必须保留的上游/Fixture | 不暴露任意脚本文本；不再手写新的大型通用运行时模块 |
+| JSON/YAML | 跨语言 schema、manifest、JobSpec、事件、evidence、Receipt | 不复制同一状态到多份人工文档 |
+| C#/.NET | 0.1 默认不引入；只有原生 COM 事件或 UIA 压测证明 Python 路线不可靠时，允许一个 Windows-only 受限 helper | 不建设第二个控制面；引入前必须有 ADR、基准和卸载路径 |
+| Rust | 0.1 不引入 | 只有 profiling/安全 ADR 证明 Python/TS 无法满足后才评估本仓受限 helper；不因假设中的跨项目共用提前引入 |
+
+### 7.2 为什么不采用 Rust/Tauri
+
+- 2026-08-20 历史明确排除 DESIGN-LAB 的重 Tauri 桌面与通用 Agent Runtime；
+- 当前仓库没有 Rust/TypeScript 基础，直接引入会同时新增编译、签名、桌面权限、更新器和跨平台测试面；
+- DESIGN-LAB 的高风险点是外部宿主写入、权利与证据，而不是 CPU 热路径；
+- OpenDesign/Photoshop/ComfyUI 已是交互面，再建桌面壳会增加第四套 UI。
+
+Review Surface 先做 localhost 薄 Web UI；若未来由 OpenDesign 插件承载，也只消费同一 API/事件，不保存事实。
+
+### 7.3 渐进迁移步骤
+
+1. **Python 先可复现**：建立 `pyproject.toml`、`uv.lock`、单一 `design-lab` CLI，锁 Python 版本与工具依赖。
+2. **合同先冻结**：为 JobSpec、RunEvent、CapabilityEvidence、RightsDecision、JuryDecision、DeliveryReceipt 建 JSON Schema；跨语言只靠版本化合同。
+3. **修测试与 SSOT**：在迁目录前先让 current SHA 全绿，避免用迁移噪声掩盖回归。
+4. **迁维护中的 Node/浏览器代码**：建立一个 npm workspace 和一个 lock；`strict=true`、`noImplicitAny=true`、schema 生成类型。TypeScript strict 的目标是尽早发现类型错误，见[官方 TypeScript 基础文档](https://www.typescriptlang.org/docs/handbook/2/basic-types.html)。
+5. **建立单一 Design Control MCP 与 Local Orchestrator**：Python facade 只暴露高层工具；本地运行内核处理队列、lease、审批、进程/GPU 和恢复；Corel COM、Adobe UXP/JSX、官方 Illustrator MCP 都作为内部 Adapter，不各自扩散到产品层。
+6. **Adobe 源码 TypeScript 化**：DOM-first、batchPlay fallback；构建产物进入 release bundle，源码和生成物校验 hash。Illustrator/AE 的 legacy JSX 只接受 schema 化 job file。
+7. **Corel 先用 Python COM**：以真实速度、Undo 和事件稳定性决定是否需要 C# helper，不预先增加第三种主要语言。
+8. **兼容桥**：旧 Python/JS 入口只转发并发出 deprecation event；两个 release 后删除。
+
+不使用“双写两个 registry”“新旧运行目录同时写入”的兼容方式。迁移期只允许旧路径读、单一新路径写。
+
+---
+
+## 8. 单一事实源与目标目录
+
+### 8.1 真值层级
+
+1. `.project/manifest.yaml`：项目 ID、产品/合同版本、默认 Profile、当前任务包、生成物清单；
+2. `schemas/`：跨语言合同；
+3. `integrations/registry.yaml`：Adapter/Provider/Host 的声明和资格；
+4. `.project-local/events/*.jsonl`：本地 append-only 运行事实，永不入 Git；
+5. `reports/current/`：从 1–4 生成的当前摘要；
+6. `reports/history/`：历史快照，永不提供当前能力。
+
+Roadmap、AGENTS、README 和报告不得手写当前 SHA、测试数、主 taskpack 或 Capability Level；用生成标记引用 SSOT。
+
+### 8.2 推荐目录
+
+```text
+DESIGN-LAB/
+├─ .project/
+│  ├─ manifest.yaml
+│  ├─ source-locks/
+│  └─ generated-files.json
+├─ .project-local/                 # ignored; runtime/evidence/cache/tmp
+├─ pyproject.toml
+├─ uv.lock
+├─ package.json                    # only when TS surface starts
+├─ package-lock.json
+├─ src/design_lab/
+│  ├─ core/
+│  ├─ ir/
+│  ├─ jobs/
+│  ├─ control_mcp/
+│  ├─ runtime/
+│  │  ├─ orchestrator/
+│  │  ├─ queue/
+│  │  ├─ leases/
+│  │  ├─ approvals/
+│  │  ├─ registry/
+│  │  ├─ processes/
+│  │  └─ windows_control/
+│  ├─ federation/                 # optional; disabled by default
+│  │  ├─ work_lab/
+│  │  └─ archeaxis/
+│  ├─ quality/
+│  ├─ rights/
+│  ├─ preflight/
+│  └─ cli/
+├─ packages/review-surface/        # thin TypeScript UI, no SSOT
+├─ integrations/
+│  ├─ hosts/{open-design,coreldraw,photoshop,illustrator,indesign,premiere,after-effects}/
+│  ├─ optional-hosts/{openpencil,figma,penpot,blender}/
+│  ├─ providers/{comfyui,minimax-h3}/
+│  ├─ formats/{ffmpeg,otio,ocio}/
+│  └─ registry.yaml
+├─ schemas/
+├─ domain-packs/
+├─ fixtures/
+├─ tests/{unit,contract,integration,golden}/
+├─ docs/{current,decisions,runbooks}/
+└─ reports/{current,history}/
+```
+
+不要一次性移动 1,371 个文件。先锁依赖、修 gate，再以 `git mv + compatibility import` 分 4–6 个 PR 迁移。当前 `design-lab/` 在迁完前保留，最终只留下兼容 README 或删除。
+
+### 8.3 运行根
+
+```text
+.project-local/
+├─ events/
+├─ runs/<run_id>/
+├─ evidence/<run_id>/
+├─ checkpoints/<run_id>/
+├─ approvals/
+├─ runtime-bindings/
+├─ queues/
+├─ cache/
+├─ tmp/
+└─ locks/
+```
+
+测试必须将 `PROJECT_LOCAL_ROOT` 指向 unittest/pytest 临时目录；生产启动时若路径位于 Git 跟踪树的非忽略区域则拒绝运行。`.hermes/` 只允许在历史报告文本中出现。
+
+---
+
+## 9. 仓库规范与供应链
+
+### 9.1 必需治理文件
+
+- `SECURITY.md`：漏洞报告、支持版本、凭据/私人研究素材处理；
+- `CONTRIBUTING.md`：开发环境、测试、生成物、提交规则；
+- `.github/CODEOWNERS`：至少覆盖 Rights、schemas、integrations、workflows、release；
+- `.github/dependabot.yml` 或等价依赖更新策略；
+- `docs/decisions/ADR-*.md`：宿主默认、H3 许可、运行根、语言边界等不可逆决策；
+- `RELEASE.md`：tag、签名、SBOM、provenance、回滚步骤。
+
+CODEOWNERS 只有在分支规则要求 owner review 时才产生强制效果，见[GitHub 官方说明](https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)。
+
+### 9.2 分支与发布
+
+- `main` 只接受 PR；禁止直接推送和 force push；
+- 至少 1 个审查，Rights/schema/workflow 改动要求对应 owner；
+- 必需状态：clean install、SSOT consistency、Python、Node/TS、contract、golden fixture、license/secret、generated diff；
+- 产品版本使用 SemVer，schema/contract 独立版本；
+- release 从 clean tag 构建，生成 SBOM、checksums 和 attestation；
+- GitHub artifact attestation 可把产物绑定到 workflow 与 commit，见[官方文档](https://docs.github.com/en/actions/concepts/security/artifact-attestations)。
+
+当前 branch protection 状态是 `UNKNOWN`，在获得鉴权证据前不得声称已配置。
+
+### 9.3 依赖与 Action
+
+- Python 使用 uv 项目与 `uv.lock`；uv lock 可记录跨平台解析并支持 locked/frozen 安装，见[官方项目指南](https://docs.astral.sh/uv/guides/projects/)。
+- TypeScript 只建一个 npm workspace 与一个 lock，避免 pnpm/yarn/npm 并存。
+- GitHub Actions 固定到完整 commit SHA，最小 `permissions`，第三方下载校验 SHA-256。
+- PR 启用 dependency review；官方 Action 可阻止新增高风险依赖，见[GitHub dependency review](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-dependency-review-action)。
+- 生成 SPDX SBOM；SPDX 3.0 与 ISO/IEC 5962:2021 信息见[SPDX 官方规格](https://spdx.dev/use/specifications/)。涉及模型与数据时补 CycloneDX ML-BOM，见[CycloneDX](https://cyclonedx.org/)。
+
+### 9.4 Third-party Source Lock
+
+每个外部工具/模型只保存：
+
+```yaml
+id: open-design
+upstream: https://github.com/nexu-io/open-design
+version_or_commit: <exact>
+license: <SPDX-or-custom>
+retrieved_at: <UTC>
+source_sha256: <when archived>
+patches: []
+allowed_use: <scope>
+reviewed_by: <human>
+```
+
+禁止把完整第三方仓库、`node_modules`、虚拟环境、模型权重、安装包、浏览器 profile 和私有素材提交到 Git。
+
+### 9.5 开放媒体/设计标准
+
+- Design Token 格式可参考[Design Tokens Community Group 规范](https://tr.designtokens.org/)，但应标记为社区规范，不写成正式 W3C Recommendation；
+- 视频剪辑交换采用[OpenTimelineIO](https://opentimelineio.readthedocs.io/en/latest/)，媒体本体仍外置；
+- 颜色管理采用[OpenColorIO](https://opencolorio.readthedocs.io/en/stable/)并按项目锁定配置/ACES 版本；
+- 资产管理接口可观察[OpenAssetIO](https://www.aswf.io/news/openassetio-forms-as-sandbox-project-at-academy-software-foundation/)，0.1 不强制引入；
+- 对外 AI 媒体在业务需要时增加 C2PA manifest；当前规范见[C2PA 2.4](https://spec.c2pa.org/specifications/specifications/2.4/index.html)。
+
+---
+
+## 10. CI 与证据门重构
+
+### 10.1 PR 快速门
+
+1. `uv sync --locked` / npm clean install；
+2. manifest 引用存在性、schema、生成物一致性；
+3. 禁止 `.hermes`、绝对用户路径、模型权重和大二进制；
+4. Python unit/contract；
+5. Node/TS tests；
+6. report generation 后 `git diff --exit-code`；
+7. secret、license、dependency review；
+8. 一个无宿主的黄金模拟 Fixture。
+
+### 10.2 集成门
+
+- 为 OpenDesign、Photoshop、CorelDRAW、Illustrator (Beta)、OpenPencil、ComfyUI 各自建立独立 runner/环境；只有当前 Profile 需要的宿主才安装在对应 runner；
+- 每个 run 使用全新 temp project-local root；
+- 验证 prepare→execute→readback→rollback；
+- 收集宿主/插件/模型/驱动版本与 exact SHA；
+- Windows desktop gate 额外检查：零坐标点击、一个 recipe 一个 undo、UIA 比例、宿主 flags 恢复、模态框与用户干预恢复；
+- flaky test 不能自动重跑后隐藏，先记初次失败，再允许一次诊断重跑。
+
+### 10.3 H3 自托管门
+
+H3 不应在每个 PR 下载/运行。使用有许可且已登记硬件的 self-hosted runner：
+
+- PR：只跑 workflow schema、rights policy、mock contract；
+- Nightly/手动：本地 768p canary、断网验证、失败恢复、媒体 probe；
+- Release：固定 checkpoint/workflow/Comfy commit 的 current-SHA 真实输出 + Human Jury；
+- 任何证据过期、硬件变更、模型 hash 变化或许可变更，能力自动降级。
+
+### 10.4 当前测试故障的具体修法
+
+1. 所有重建 evidence helper 的默认根从仓库 cwd 改为显式参数；测试无参数即失败。
+2. unittest `setUp` 创建唯一 temp root，`tearDown` 验证无残留；聚合验证器测试只扫描 Fixture root。
+3. journal 创建后，所有可能改变 artifact 的步骤完成再 seal/hash；promotion 只接受 sealed bundle。
+4. 失败注入点按 `before_swap`、`after_backup`、`after_promote` 划分，分别验证恢复行为。
+5. 全套以固定顺序、随机顺序、倒序各跑一遍；再重复 20 次污染敏感模块。
+6. 结束后 `git status --porcelain` 和仓库根运行目录扫描必须为空。
+
+---
+
+## 11. 唯一前向修复任务包
+
+### Phase 0：事实冻结与 P0 修复（2–4 天）
+
+| 任务 | 输出 | DoD |
+|---|---|---|
+| DL-R0-001 | 采用本报告、历史清单、决策 ledger | 旧 taskpack 标记 historical；manifest 只指向一个当前计划 |
+| DL-R0-002 | 修 product-manifest 路径与引用门 | 所有不存在/越界引用 fail-closed |
+| DL-R0-003 | 统一 `.project-local` | 活跃代码/workflow 零 `.hermes`；测试零仓库残留 |
+| DL-R0-004 | 修 reconstruction hash/rollback | 34/34；失败注入旧 bundle 恢复且无 residue |
+| DL-R0-005 | 测试隔离 | 全套 507 项至少在三种顺序全绿；不依赖现存运行目录 |
+| DL-R0-006 | 项目级 Rights Decision | 整个项目用途固定为个人研究、非商业；H3 等组件继承；地域/分发/披露有人工结论；到期审批更新或 Profile 阻断 |
+| DL-R0-007 | Adapter registry 事实纠正 | 撤销 generic Adobe MCP 的 Photoshop/Acrobat 能力；拆协议/server/host；历史 smoke 不进入 current supported |
+| DL-R0-008 | Standalone-first 所有权 / 调度 ADR | DESIGN 独占 Adapter、设计域 Local Runtime 与受限 Computer Control；WORK/ArcheAxis 只是未来可选接口；离线关闭二者仍可完成跨宿主/长时/GPU/高风险设计任务 |
+
+### Phase 1：仓库可复现与真值收敛（3–5 天）
+
+| 任务 | 输出 | DoD |
+|---|---|---|
+| DL-R1-001 | `pyproject.toml` + `uv.lock` | 新容器一条命令安装；无隐藏 resvg |
+| DL-R1-002 | 统一 manifest/registry/report generator | 报告生成后无 diff；旧路径测试失败 |
+| DL-R1-003 | CI filters 与关键路径触发测试 | 修改任一权威目录必触发 canonical gate |
+| DL-R1-004 | CODEOWNERS/SECURITY/CONTRIBUTING/ADR | 与 ruleset 证据绑定；未知项明确 UNKNOWN |
+| DL-R1-005 | 产品版本纠正 | schema 与 product version 分离；`0.1.0-alpha.1` 预发布语义 |
+
+### Phase 2：核心合同与语言迁移骨架（4–7 天）
+
+| 任务 | 输出 | DoD |
+|---|---|---|
+| DL-R2-001 | 7 个核心 JSON Schema | Python/TS contract tests；破坏性变更有版本升级 |
+| DL-R2-002 | `src/design_lab` 和单一 CLI | 旧入口只转发；核心无 UI/宿主依赖 |
+| DL-R2-003 | TypeScript strict review-surface skeleton | 只读状态/证据；无本地事实写入 |
+| DL-R2-004 | Adapter SPI | probe/prepare/execute/observe/readback/rollback 合同通过 |
+| DL-R2-005 | Design Control MCP + ActionPlan/AssetManifest | Codex 只见 10 个高层工具；任意脚本/路径/坐标调用在 schema 层被拒绝 |
+| DL-R2-006 | 本地五对象合同 + 可选联邦 mapping | `CapabilityRef/ExecutionEnvelope/RunEvent/ExecutionReceipt/KnowledgeCandidate` Python/TS 兼容；本地运行是规范路径，未来 WORK/ArcheAxis Adapter 只做 schema 映射 |
+| DL-R2-007 | Local Design Runtime 内核 | 单进程即可运行队列、lease、审批、runtime binding、进程/GPU supervisor、取消/恢复和 Evidence；不连接任何外仓也能完成跨宿主 replay |
+
+### Phase 3：真实 Adapter 与桌面控制（15–25 天）
+
+按顺序执行，避免并行扩大变量：
+
+1. Illustrator (Beta) 官方 MCP 的 1–2 天快速资格赛，先验证 Codex 真控架构；
+2. CorelDRAW COM 的平面/印前 MVP；
+3. Photoshop UXP DOM-first 真执行，替换当前 `NOT_EXECUTED` stub；
+4. ComfyUI stable HTTP/WS 与 H3-Base FL2VA local；
+5. OpenDesign default Profile；
+6. OpenPencil 只作为首个可编辑矢量候选参加资格赛。
+
+每个 Adapter 都必须拥有能力 probe、最小权限、超时/取消、幂等、回读、rollback、真实 Fixture 和 current-SHA evidence。CorelDRAW 与 Illustrator (Beta) 至少一个达到 E3 即可作为 0.1 的矢量控制宿主，另一个可在后续晋级；Figma/Penpot/Blender/MiniMax Design 在 Phase 3 后按真实需求追加，不阻塞 0.1。
+
+本阶段所有宿主控制都由 DESIGN-LAB Local Orchestrator 调度。WORK-LAB 和 ArcheAxis 必须保持未安装/禁用状态完成至少一次全量集成门，证明没有隐藏跨仓依赖。
+
+### Phase 4：三条 Golden Workflow 与 Human Jury（6–10 天）
+
+- GW-01/GW-02/GW-03 真实运行；
+- 增加 GW-04：Codex → Design Control MCP → CorelDRAW 或 Illustrator (Beta) → Photoshop/导出 → readback/Undo/Jury；
+- 每条至少一次 Accept 和一次 Reject→Rework→Accept；
+- 质量分、Rights、Preflight blocker 不能被人工“口头通过”覆盖；
+- Delivery Receipt 包含输入/输出/宿主/模型/工作流/审批/证据 hash；
+- 在另一台合规机器或全新环境重放至少一条仅含自有/许可清晰研究素材的 Fixture。
+
+### Phase 5：发布与观察（4–6 天 + 14 天）
+
+- 签名 `v0.1.0-rc.1`；
+- SBOM、checksums、artifact attestation；
+- 安装、升级、卸载、rollback；
+- 14 天观察期内无 P0/P1、无证据漂移、无许可过期；
+- 达标后 `v0.1.0`。`1.0.0` 只在至少两种生产 Profile、持续观测和升级兼容稳定后考虑。
+
+### 11.1 PR 切片顺序
+
+```text
+PR-01  manifest/doc refs + SSOT
+PR-02  project-local + test isolation
+PR-03  reconstruction atomic evidence
+PR-04  pyproject/uv.lock/resvg
+PR-05  CI filters + governance
+PR-06  schemas + Adapter SPI
+PR-07  standalone Design Runtime ADR + local contracts
+PR-08  Local Orchestrator/queue/lease/approval/process supervisor
+PR-09  Design Control MCP facade + registry truth
+PR-10  DESIGN winapp UIA provider qualification
+PR-11  Illustrator Beta official MCP qualification
+PR-12  CorelDRAW COM recipes
+PR-13  Photoshop UXP real execution
+PR-14  ComfyUI adapter
+PR-15  H3 local FL2VA + Rights gate
+PR-16  OpenDesign profile
+PR-17  OpenPencil bakeoff
+PR-18  Golden workflows + Jury
+PR-19  optional federation mock adapters
+PR-20  release provenance
+```
+
+每个 PR 单一主题、可回滚、更新 current report，不能把目录迁移、行为变更和依赖升级塞进同一个巨型 PR。
+
+---
+
+## 12. 0.1 可量化完成定义
+
+以下全部满足，才允许称为 `0.1.0`：
+
+- [ ] clean clone + locked install 成功；
+- [ ] 49/49 聚合验证、300/300 Node Fixture、Python 全套 507 tests 全绿或经正式删改后的新总数可解释；
+- [ ] 测试运行后工作树干净，仓库根没有 `.hermes`/临时证据；
+- [ ] 所有 manifest 文档/脚本/contract 引用存在且在仓库边界内；
+- [ ] OpenDesign、Photoshop、ComfyUI/H3 至少三个默认链 Adapter 达到 current-SHA E3；
+- [ ] Design Control MCP 只有高层 allowlisted tools；CorelDRAW 或 Illustrator (Beta) 至少一个矢量宿主达到 E3；20 次 Fixture 零卡死、零坐标点击、一次 recipe 一步 Undo；
+- [ ] 本地五对象合同通过兼容测试；Adapter/Runtime 只有一份本仓实现；WORK-LAB 与 ArcheAxis 未安装或关闭时，跨宿主、长时、GPU 和高风险设计任务仍由 DESIGN-LAB 持有唯一 lease 并完成；
+- [ ] GW-01/GW-02/GW-03 各有 Accept 和 Reject→Rework 证据；
+- [ ] GW-04 完成一次 Codex→矢量宿主→Photoshop/导出→readback/Undo→Jury 的真实闭环；
+- [ ] H3 本地链断网运行且无静默云回退；
+- [ ] 项目用途固定为个人研究、非商业；H3 等组件继承该口径；部署地域和许可证人工门有效；输出 sidecar 有禁止商业/再分发及披露状态；
+- [ ] Delivery Receipt 可绑定输入、输出、软件、模型、工作流和审批 hash；
+- [ ] 产品版本、tag、release notes、SBOM、checksum、attestation 一致；
+- [ ] branch ruleset 状态有鉴权证据，不再 UNKNOWN；
+- [ ] 旧任务包、历史 E3 报告和旧 SHA 不影响 current capability index。
+
+不属于 0.1 阻塞项：完整桌面壳、Rust、所有设计软件 Adapter、完全本地 2K H3、通用长期记忆、内置模型网关、全量 Git 历史瘦身。
+
+---
+
+## 13. 决策清单
+
+| 决策 | 最终建议 |
+|---|---|
+| DESIGN-LAB 定位 | 宿主中立的设计生产协议 + 质量/权利门 + 薄审查面 |
+| 项目用途 | `PERSONAL_RESEARCH_NONCOMMERCIAL`；全组件继承，改变用途必须重新审计 |
+| 默认综合宿主 | OpenDesign Profile；核心仍 host-neutral |
+| 栅格精修 | Photoshop |
+| Codex 控制入口 | 单一 Design Control MCP；Skill 只保存流程与验收，不承载任意执行 |
+| Adapter 所有权 | Corel/Adobe/OpenDesign/ComfyUI/H3 的设计 Adapter、配方、插件和资格证据只在 DESIGN-LAB；WORK-LAB 不复制 |
+| 运行调度 | 单宿主、跨宿主、长时、GPU 和高风险设计任务全部由 DESIGN Local Orchestrator/lease/本地批准处理；WORK-LAB 未来只可选接管外层跨项目排程 |
+| Windows 平面/印前 | CorelDRAW 或 Illustrator (Beta) 按 Profile 二选一；Corel 走 COM，Illustrator Beta 优先官方 MCP |
+| Adobe 全家桶 | 不做万能插件；Photoshop/InDesign/Premiere 用各自 UXP，Illustrator/AE 保留宿主专用适配 |
+| GUI/RPA | DESIGN-LAB 唯一实现设计域 `winapp ui`/UIA Provider；Public Preview 锁版本；只允许设计进程/对话框 allowlist；<5% 兜底；禁止坐标点击 |
+| 本地生成 | ComfyUI + H3-Base local，禁止静默云回退 |
+| UI/矢量/协作 | OpenPencil、Figma、Penpot 按 Profile 互斥选择 |
+| MiniMax Design | 可选快速创作宿主，不是默认，不做私有接口自动化 |
+| 3D | Blender 可选 Profile |
+| 语言 | Python + TypeScript；0.1 不用 Rust/Tauri |
+| 运行根 | `.project-local/` 唯一写入根 |
+| 长期知识 | DESIGN-LAB 本地保存任务证据和待审候选；ArcheAxis 是未来可选晋级目标，断开不影响运行 |
+| Agent/调度边界 | DESIGN-LAB 自含全部设计域调度；WORK-LAB 未来只负责非设计域/跨项目全局编排，不拥有设计运行真值 |
+| 当前发布状态 | `NOT_RELEASED`；建议 `0.1.0-alpha` |
+
+---
+
+## 14. 立即执行顺序
+
+先做以下九件事：
+
+1. 合并 SSOT：修 manifest 无效路径、taskpack/baseline/host 冲突；
+2. 把全部运行写入切到 `.project-local`，测试强制 temp root；
+3. 修重建证据的 journal hash 与 atomic rollback；
+4. 建 `pyproject.toml`/`uv.lock`，声明 resvg，跑 clean-clone 全套；
+5. 建立项目级个人研究/非商业 Rights Profile，并完成 H3 等组件的地域、再分发与披露决策；
+6. 修正 MCP/Adobe/Photoshop/Illustrator registry 的错误与过期声明；
+7. 建 Standalone-first ADR、本地五对象合同与 Local Design Runtime，明确 DESIGN 独占 Adapter、设计域调度、审批、lease、进程/GPU 和受限 UIA；
+8. 用 Illustrator (Beta) 官方 MCP 做 Codex 真控快验，再实现 DESIGN `winapp ui` 兜底、CorelDRAW COM 配方与 Photoshop UXP 真执行；
+9. 在 WORK-LAB/ArcheAxis 未安装或关闭的条件下，完成 ComfyUI→H3 local、Photoshop、OpenDesign 主链与四条 Golden Workflow。
+
+这些项未完成前，不启动 Rust/Tauri、不做第二套工作台、不默认安装整套 Adobe/多套 RPA、不把历史 E3 宣称为当前能力、不打 `1.0.0`。
+
+---
+
+## 15. 外部调研来源索引
+
+本轮技术判断优先使用官方/项目一手来源：
+
+- [OpenDesign 官方仓库](https://github.com/nexu-io/open-design)、[官方网站](https://open-design.ai/official/)
+- [OpenPencil 官网](https://openpencil.dev/)、[官方仓库](https://github.com/open-pencil/open-pencil)、[Releases](https://github.com/open-pencil/open-pencil/releases)
+- [Penpot MCP 官方仓库](https://github.com/penpot/penpot-mcp)、[Penpot MCP 帮助](https://help.penpot.app/mcp/)
+- [Figma MCP 工具](https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/)、[Write to canvas](https://developers.figma.com/docs/figma-mcp-server/write-to-canvas/)、[REST rate limits](https://developers.figma.com/docs/rest-api/rate-limits/)
+- [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)、[Codex 配置参考](https://learn.chatgpt.com/docs/config-file/config-reference)、[Codex Skills](https://learn.chatgpt.com/docs/build-skills)
+- [Illustrator (Beta) 内置 MCP 概览](https://helpx.adobe.com/illustrator/desktop/connect-with-other-apps-and-tools/about-using-ai-tools-with-illustrator.html)、[Codex 连接](https://helpx.adobe.com/illustrator/desktop/connect-with-other-apps-and-tools/connect-illustrator-to-ai-tools.html)、[支持操作](https://helpx.adobe.com/illustrator/desktop/connect-with-other-apps-and-tools/work-with-illustrator-documents-from-ai-tools.html)
+- [Adobe Photoshop 扩展路线](https://developer.adobe.com/photoshop/)、[UXP batchPlay](https://developer.adobe.com/photoshop/uxp/2022/ps-reference/media/batchplay/)、[executeAsModal](https://developer.adobe.com/photoshop/uxp/2022/ps-reference/media/executeasmodal)、[UXP WebSocket](https://developer.adobe.com/photoshop/uxp/2022/uxp/reference-js/Global%20Members/Data%20Transfers/WebSocket/)、[Manifest v5](https://developer.adobe.com/photoshop/uxp/2022/guides/uxp-guide/uxp-misc/manifest-v5/)
+- [Illustrator Developer](https://developer.adobe.com/illustrator/)、[InDesign UXP](https://developer.adobe.com/indesign/uxp/)、[Premiere Pro UXP](https://developer.adobe.com/premiere-pro/uxp/ppro-reference/)
+- [After Effects 脚本](https://helpx.adobe.com/after-effects/desktop/automate-in-after-effects/automate-animation/scripts.html)、[aerender](https://helpx.adobe.com/after-effects/desktop/render-and-export/automate-rendering/automated-rendering-network-rendering.html)
+- [Adobe for ChatGPT](https://helpx.adobe.com/firefly/web/app-integrations/adobe-connectors/adobe-for-chatgpt.html)、[Firefly Run-Workflow MCP](https://helpx.adobe.com/firefly/web/work-with-enterprise-features/creative-production/run-workflow-mcp-overview.html)、[Adobe generic MCP server template](https://github.com/adobe/generator-app-remote-mcp-server-generic)
+- [CorelDRAW SDK](https://community.coreldraw.com/sdk)、[Document 对象](https://community.coreldraw.com/sdk/api/draw/17/c/document)、[Undo command group](https://community.coreldraw.com/sdk/api/draw/27/m/document.begincommandgroup)、[Optimization](https://community.coreldraw.com/sdk/api/draw/20/p/application.optimization)、[EventsEnabled](https://community.coreldraw.com/sdk/api/draw/19/p/application.eventsenabled)、[Microsoft IMessageFilter](https://learn.microsoft.com/en-us/windows/win32/api/objidl/nn-objidl-imessagefilter)
+- [Photoshop MCP 社区项目](https://github.com/alisaitteke/photoshop-mcp)、[架构](https://github.com/alisaitteke/photoshop-mcp/blob/master/docs/architecture.md)
+- [Windows UI Automation](https://learn.microsoft.com/en-us/windows/win32/winauto/entry-uiauto-win32)、[`winapp ui`](https://learn.microsoft.com/en-us/windows/apps/dev-tools/winapp-cli/ui-automation)、[winapp CLI Public Preview](https://learn.microsoft.com/en-us/windows/apps/dev-tools/winapp-cli/)、[UIPI 限制](https://learn.microsoft.com/en-us/troubleshoot/power-platform/power-automate/desktop-flows/ui-automation/uipi-issues)、[UIA selector 指南](https://learn.microsoft.com/en-us/power-automate/desktop-flows/ui-elements)
+- [ComfyUI 文档](https://docs.comfy.org/)、[Server API routes](https://docs.comfy.org/development/comfyui-server/comms_routes)、[MCP](https://docs.comfy.org/agent-tools/mcp)
+- [MiniMax H3 官方仓库](https://github.com/MiniMax-AI/MiniMax-H3)、[官方模型许可证](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)
+- [Blender CLI](https://docs.blender.org/manual/en/latest/advanced/command_line/arguments.html)
+- [OpenTimelineIO](https://opentimelineio.readthedocs.io/en/latest/)、[OpenColorIO](https://opencolorio.readthedocs.io/en/stable/)、[OpenAssetIO](https://www.aswf.io/news/openassetio-forms-as-sandbox-project-at-academy-software-foundation/)
+- [C2PA 2.4](https://spec.c2pa.org/specifications/specifications/2.4/index.html)、[SPDX](https://spdx.dev/use/specifications/)、[CycloneDX](https://cyclonedx.org/)
+- [uv 项目与锁文件](https://docs.astral.sh/uv/guides/projects/)、[TypeScript 文档](https://www.typescriptlang.org/docs/handbook/2/basic-types.html)
+- [GitHub CODEOWNERS](https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)、[Dependency review](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-dependency-review-action)、[Artifact attestations](https://docs.github.com/en/actions/concepts/security/artifact-attestations)
+
+---
+
+## 16. 基线维护规则
+
+本报告的 `v2.5-standalone-first-modular-monolith` 替代同名旧版本作为当前前向方案，但不删除任何历史版本。后续每次云端主干、H3 许可证、默认宿主、设计软件 API/MCP、本地 Design Runtime、可选联邦合同或 Golden Workflow 状态变化时：
+
+1. 记录新 commit / 来源版本；
+2. 重跑 exact-SHA 验证；
+3. 更新历史证据清单并保留旧 hash；
+4. 只改 current decision，不改写历史记录；
+5. 若证据缺失，状态降为 `UNKNOWN/BLOCKED`，不得靠旧报告补位。
+
+这样，后续会话可以从同一历史基线继续，而不是重新猜测项目过去发生过什么。

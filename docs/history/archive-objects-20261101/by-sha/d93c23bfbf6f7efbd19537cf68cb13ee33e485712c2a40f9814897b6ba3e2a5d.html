@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArcheAxis Workspace / Cognitive-Loop-OS — 界面预览</title>
+<style>
+:root {
+  --bg: #fafaf9;
+  --surface: #ffffff;
+  --surface-raised: #f5f5f4;
+  --surface-muted: #f0f0ef;
+  --border: #e5e5e5;
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-tertiary: #78716c;
+  --text-quaternary: #a8a29e;
+  --accent: #2563eb;
+  --positive: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.axis-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px; height: 48px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+  position: sticky; top: 0; z-index: 100;
+}
+.axis-logo { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 15px; }
+.axis-divider { width: 1px; height: 20px; background: var(--border); }
+.axis-select {
+  padding: 4px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface);
+  font-size: 13px; color: var(--text-primary); cursor: pointer;
+}
+.axis-search {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-quaternary); font-size: 13px; cursor: text;
+}
+.axis-actions { display: flex; align-items: center; gap: 8px; }
+.task-badge {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: var(--radius-md);
+  background: rgba(37,99,235,0.1); color: var(--accent);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+}
+.icon-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--surface-muted); display: flex;
+  align-items: center; justify-content: center; cursor: pointer;
+  border: none; color: var(--text-secondary);
+}
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--text-primary); color: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+}
+.main { display: flex; min-height: calc(100vh - 48px); }
+.orbit-rail {
+  width: 220px; border-right: 1px solid var(--border);
+  background: var(--surface); padding: 12px;
+  overflow-y: auto; flex-shrink: 0;
+}
+.orbit-section { margin-bottom: 16px; }
+.orbit-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 6px; padding: 0 4px;
+}
+.orbit-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 13px; color: var(--text-secondary);
+  transition: background 0.15s;
+}
+.orbit-item:hover { background: var(--surface-muted); color: var(--text-primary); }
+.orbit-item.active { background: var(--text-primary); color: var(--surface); }
+.orbit-count {
+  margin-left: auto; font-size: 11px; color: var(--text-quaternary);
+  background: var(--surface-muted); padding: 1px 6px; border-radius: 10px;
+}
+.orbit-item.active .orbit-count { background: rgba(255,255,255,0.2); color: var(--surface); }
+.canvas {
+  flex: 1; padding: 16px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-weight: 500; font-size: 13px;
+}
+.panel-body { padding: 14px; }
+.tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  font-size: 11px; font-weight: 500;
+}
+.tag-candidate { background: rgba(37,99,235,0.1); color: var(--accent); }
+.tag-approved { background: rgba(5,150,105,0.12); color: var(--positive); }
+.tag-warning { background: rgba(217,119,6,0.12); color: var(--warning); }
+.tag-danger { background: rgba(220,38,38,0.1); color: var(--danger); }
+.tag-neutral { background: var(--surface-muted); color: var(--text-tertiary); }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stat-card {
+  padding: 14px; border-radius: var(--radius-lg);
+  border: 1px solid var(--border); background: var(--surface);
+  cursor: pointer; transition: box-shadow 0.15s;
+}
+.stat-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.stat-value { font-size: 24px; font-weight: 600; line-height: 1.2; }
+.stat-label { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.stat-meta { font-size: 11px; margin-top: 6px; }
+.list-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-md);
+  cursor: pointer; transition: background 0.15s;
+  border-bottom: 1px solid var(--border);
+}
+.list-item:last-child { border-bottom: none; }
+.list-item:hover { background: var(--surface-muted); }
+.list-icon { color: var(--text-quaternary); flex-shrink: 0; margin-top: 2px; }
+.list-content { flex: 1; min-width: 0; }
+.list-title { font-weight: 500; font-size: 13px; margin-bottom: 2px; }
+.list-meta { font-size: 12px; color: var(--text-tertiary); display: flex; gap: 8px; flex-wrap: wrap; }
+.list-actions { display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s; }
+.list-item:hover .list-actions { opacity: 1; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-secondary); font-size: 13px; cursor: pointer;
+  transition: all 0.15s; font-family: inherit;
+}
+.btn:hover { background: var(--surface-muted); color: var(--text-primary); }
+.btn-primary { background: var(--text-primary); color: var(--surface); border-color: var(--text-primary); }
+.btn-primary:hover { opacity: 0.9; }
+.btn-ghost { background: transparent; border-color: transparent; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.progress-track { height: 6px; background: var(--surface-muted); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+.progress-fill.success { background: var(--positive); }
+.progress-fill.warning { background: var(--warning); }
+.progress-fill.danger { background: var(--danger); }
+.timeline-item {
+  display: flex; gap: 12px; padding: 8px 0;
+  border-left: 2px solid var(--border); padding-left: 12px;
+  position: relative;
+}
+.timeline-item::before {
+  content: ""; position: absolute; left: -5px; top: 12px;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--border);
+}
+.timeline-item.active::before { background: var(--accent); }
+.timeline-time { font-size: 11px; color: var(--text-quaternary); width: 70px; flex-shrink: 0; }
+.timeline-content { font-size: 13px; }
+.evidence-box {
+  background: var(--surface-muted); border-radius: var(--radius-md);
+  padding: 10px 12px; font-size: 13px; border-left: 3px solid var(--accent);
+}
+.graph-container {
+  height: 200px; position: relative;
+  background: var(--surface-muted); border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.graph-node {
+  position: absolute; padding: 6px 12px; border-radius: var(--radius-md);
+  font-size: 11px; font-weight: 500; border: 1px solid var(--border);
+  background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.graph-node.ku { border-color: var(--positive); color: var(--positive); }
+.graph-node.claim { border-color: var(--accent); color: var(--accent); }
+.graph-node.conflict { border-color: var(--danger); color: var(--danger); }
+.graph-node.source { border-color: var(--text-quaternary); color: var(--text-tertiary); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 14px; }
+.tab {
+  padding: 8px 14px; font-size: 13px; color: var(--text-tertiary);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { color: var(--text-secondary); }
+.tab.active { color: var(--text-primary); border-bottom-color: var(--text-primary); font-weight: 500; }
+.course-tree-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer;
+}
+.course-tree-item:hover { background: var(--surface-muted); }
+.course-tree-children { padding-left: 20px; }
+.exercise-block {
+  background: var(--surface-muted); border-radius: var(--radius-md);
+  padding: 12px; margin-top: 12px;
+}
+.cap-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cap-table th, .cap-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+.cap-table th { color: var(--text-tertiary); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+.ai-response {
+  background: var(--surface-muted); border-radius: var(--radius-lg);
+  padding: 16px; border: 1px solid var(--border);
+}
+.citation {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 6px; border-radius: 4px; background: rgba(37,99,235,0.1);
+  color: var(--accent); font-size: 11px; font-weight: 500; cursor: pointer;
+  vertical-align: super; margin-left: 2px;
+}
+.citation:hover { background: rgba(37,99,235,0.2); }
+.section-title {
+  font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin: 16px 0 8px; padding: 0 2px;
+}
+@media (max-width: 900px) {
+  .orbit-rail { display: none; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- AXIS BAR -->
+<div class="axis-bar">
+  <div class="axis-logo">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
+    <span>ArcheAxis</span>
+  </div>
+  <div class="axis-divider"></div>
+  <select class="axis-select" id="wsSelect" onchange="switchSpace(this.value)">
+    <option value="research">Research Space</option>
+    <option value="studio">Studio Space</option>
+    <option value="learning">Learning Space</option>
+    <option value="system">System Space</option>
+  </select>
+  <div class="axis-search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <span>搜索来源、知识单元、主张...</span>
+  </div>
+  <div class="axis-actions">
+    <div class="task-badge" onclick="switchSpace('system')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <span>3</span>
+    </div>
+    <button class="icon-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    </button>
+    <div class="avatar">我</div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ORBIT RAIL -->
+<div class="orbit-rail" id="orbitRail">
+  <!-- Research Space Orbit -->
+  <div class="orbit-section" id="orbit-research">
+    <div class="orbit-title">研究问题</div>
+    <div class="orbit-item active">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>Transformer 演化</span><span class="orbit-count">3</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>注意力优化</span><span class="orbit-count">1</span>
+    </div>
+    <div class="orbit-title">来源库</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span>网页</span><span class="orbit-count">12</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>PDF</span><span class="orbit-count">5</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+      <span>视频</span><span class="orbit-count">2</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      <span>仓库</span><span class="orbit-count">1</span>
+    </div>
+    <div class="orbit-title">证据与主张</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>已验证</span><span class="orbit-count">8</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>待审阅</span><span class="orbit-count">4</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+      <span>冲突</span><span class="orbit-count" style="background:rgba(220,38,38,0.15);color:var(--danger)">1</span>
+    </div>
+    <div class="orbit-title">知识单元</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 11h-1.5a2.5 2.5 0 0 0-5 0 2.5 2.5 0 0 0-5 0H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Z"/><path d="M12 11V7a4 4 0 0 0-4-4 4 4 0 0 0-4 4v4"/></svg>
+      <span>已批准</span><span class="orbit-count">3</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 11h-1.5a2.5 2.5 0 0 0-5 0 2.5 2.5 0 0 0-5 0H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Z"/><path d="M12 11V7a4 4 0 0 0-4-4 4 4 0 0 0-4 4v4"/></svg>
+      <span>候选</span><span class="orbit-count">2</span>
+    </div>
+    <div class="orbit-title">工具</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <span>网页抓取</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>文件导入</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      <span>知识图谱</span>
+    </div>
+  </div>
+
+  <!-- Studio Space Orbit -->
+  <div class="orbit-section" id="orbit-studio" style="display:none">
+    <div class="orbit-title">课程</div>
+    <div class="orbit-item active">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>Transformer 从入门到精通</span>
+    </div>
+    <div class="orbit-title">章节</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>1. 基础概念</span><span class="orbit-count">3</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>2. 架构详解</span><span class="orbit-count">2</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>3. 实践应用</span><span class="orbit-count">0</span>
+    </div>
+    <div class="orbit-title">素材库</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 11h-1.5a2.5 2.5 0 0 0-5 0 2.5 2.5 0 0 0-5 0H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Z"/><path d="M12 11V7a4 4 0 0 0-4-4 4 4 0 0 0-4 4v4"/></svg>
+      <span>已批准知识</span><span class="orbit-count">5</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span>练习模板</span><span class="orbit-count">8</span>
+    </div>
+  </div>
+
+  <!-- Learning Space Orbit -->
+  <div class="orbit-section" id="orbit-learning" style="display:none">
+    <div class="orbit-title">我的课程</div>
+    <div class="orbit-item active">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>Transformer 从入门到精通</span>
+      <span class="orbit-count" style="background:rgba(5,150,105,0.15);color:var(--positive)">60%</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>深度学习优化器详解</span><span class="orbit-count">未开始</span>
+    </div>
+    <div class="orbit-title">课时</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>1.1 注意力机制概述</span>
+      <span class="orbit-count" style="background:rgba(5,150,105,0.15);color:var(--positive)">ok</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>1.2 自注意力计算</span>
+      <span class="orbit-count" style="background:rgba(5,150,105,0.15);color:var(--positive)">ok</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>1.3 多头注意力</span>
+      <span class="orbit-count" style="background:rgba(217,119,6,0.15);color:var(--warning)">~</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>2.1 Encoder-Decoder</span>
+      <span class="orbit-count">●</span>
+    </div>
+    <div class="orbit-title">待复习</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      <span>间隔重复: 自注意力</span><span class="orbit-count">3题</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      <span>Teach-Back: 位置编码</span><span class="orbit-count">待评估</span>
+    </div>
+  </div>
+
+  <!-- System Space Orbit -->
+  <div class="orbit-section" id="orbit-system" style="display:none">
+    <div class="orbit-title">监控</div>
+    <div class="orbit-item active">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <span>任务队列</span><span class="orbit-count">3</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>系统诊断</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>AI 技能管理</span>
+    </div>
+    <div class="orbit-title">日志</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>摄取日志</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>转换日志</span>
+    </div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>AI 回答日志</span>
+    </div>
+    <div class="orbit-title">设置</div>
+    <div class="orbit-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      <span>引擎配置</span>
+    </div>
+  </div>
+</div>
+
+<!-- CANVAS -->
+<div class="canvas" id="canvas">
+<!-- RESEARCH SPACE -->
+<div id="space-research">
+  <div class="panel">
+    <div class="panel-body">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h1 style="font-size:18px;font-weight:600;margin-bottom:6px">Transformer 架构的演化与优化</h1>
+          <div style="font-size:12px;color:var(--text-tertiary);display:flex;gap:12px;flex-wrap:wrap">
+            <span>创建于 2026-08-01</span>
+            <span>最后活跃 2 小时前</span>
+            <span style="display:flex;align-items:center;gap:4px">
+              <span style="width:6px;height:6px;border-radius:50%;background:var(--positive)"></span>活跃
+            </span>
+          </div>
+        </div>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          编辑
+        </button>
+      </div>
+      <div class="stats-grid" style="margin-top:16px">
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--text-primary)">14</div>
+          <div class="stat-label">来源</div>
+          <div class="stat-meta" style="color:var(--warning)">3 待审阅</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent)">8</div>
+          <div class="stat-label">证据锚点</div>
+          <div class="stat-meta" style="color:var(--warning)">2 待验证</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--positive)">5</div>
+          <div class="stat-label">知识单元</div>
+          <div class="stat-meta" style="color:var(--accent)">2 候选</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--danger)">1</div>
+          <div class="stat-label">冲突</div>
+          <div class="stat-meta" style="color:var(--danger)">待解决</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          开始发现
+        </button>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          导入文件
+        </button>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          查看知识图谱
+        </button>
+        <button class="btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          生成课程草案
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header">
+        <span>来源库 (14)</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>筛选
+          </button>
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>排序
+          </button>
+        </div>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <div class="list-item">
+          <div class="list-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="list-content">
+            <div class="list-title">Attention Is All You Need</div>
+            <div class="list-meta">
+              <span>arxiv.org</span><span>·</span><span>2026-08-09</span><span>·</span>
+              <span class="tag tag-approved">转换成功</span>
+              <span class="tag tag-approved">已验证</span>
+            </div>
+          </div>
+          <div class="list-actions">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">查看原件</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">提取证据</button>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="list-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <div class="list-content">
+            <div class="list-title">The Illustrated Transformer</div>
+            <div class="list-meta">
+              <span>jalammar.github.io</span><span>·</span><span>2026-08-08</span><span>·</span>
+              <span class="tag tag-warning">部分成功</span>
+              <span class="tag tag-candidate">待审阅</span>
+            </div>
+            <div style="font-size:11px;color:var(--warning);margin-top:4px;display:flex;align-items:center;gap:4px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+              警告：3 个代码块格式丢失
+            </div>
+          </div>
+          <div class="list-actions">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">重试转换</button>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="list-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+          </div>
+          <div class="list-content">
+            <div class="list-title">Transformer 详解视频</div>
+            <div class="list-meta">
+              <span>youtube.com</span><span>·</span><span>2026-08-07</span><span>·</span>
+              <span class="tag tag-approved">转录完成</span>
+              <span class="tag tag-candidate">候选</span>
+            </div>
+          </div>
+          <div class="list-actions">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">播放</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">查看字幕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span>证据与主张建模</span>
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">+ 新建主张</button>
+      </div>
+      <div class="panel-body">
+        <div class="section-title">证据锚点 #1</div>
+        <div class="evidence-box">
+          <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">来源: Attention Is All You Need · 第 3 页, 第 2 段</div>
+          <div style="font-size:13px;font-style:italic;color:var(--text-secondary)">"The dominant sequence transduction models are based on complex recurrent or convolutional neural networks..."</div>
+        </div>
+        <div class="section-title">关联主张</div>
+        <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;margin-bottom:8px;border-left:3px solid var(--accent)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-weight:500;font-size:13px">Claim #1</span>
+            <span class="tag tag-candidate">candidate</span>
+          </div>
+          <div style="font-size:13px;margin-bottom:6px">"Transformer 完全基于注意力机制，不含循环或卷积结构"</div>
+          <div style="font-size:11px;color:var(--text-tertiary)">
+            证据: EvidenceAnchor #1, #2 · <span style="color:var(--danger)">⚡ 与 Claim #3 部分冲突</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">查看原文</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">解决冲突</button>
+          </div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;border-left:3px solid var(--positive)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-weight:500;font-size:13px">Claim #2</span>
+            <span class="tag tag-approved">approved</span>
+          </div>
+          <div style="font-size:13px;margin-bottom:6px">"自注意力计算复杂度为 O(n²·d)"</div>
+          <div style="font-size:11px;color:var(--text-tertiary)">证据: EvidenceAnchor #3 · 无冲突</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <span>知识图谱</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">力导向布局</button>
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">筛选</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="graph-container">
+        <svg width="100%" height="200" style="position:absolute;top:0;left:0">
+          <line x1="200" y1="50" x2="100" y2="120" stroke="#e5e5e5" stroke-width="1.5"/>
+          <line x1="200" y1="50" x2="200" y2="120" stroke="#e5e5e5" stroke-width="1.5"/>
+          <line x1="200" y1="50" x2="300" y2="120" stroke="#e5e5e5" stroke-width="1.5" stroke-dasharray="4"/>
+          <line x1="100" y1="120" x2="80" y2="170" stroke="#e5e5e5" stroke-width="1"/>
+          <line x1="200" y1="120" x2="180" y2="170" stroke="#e5e5e5" stroke-width="1"/>
+          <line x1="300" y1="120" x2="320" y2="170" stroke="#e5e5e5" stroke-width="1" stroke-dasharray="3"/>
+        </svg>
+        <div class="graph-node ku" style="left:140px;top:30px">KnowledgeUnit<br>注意力机制<br><span style="font-size:10px;color:var(--text-quaternary)">[approved]</span></div>
+        <div class="graph-node claim" style="left:40px;top:100px">Claim<br>自注意力<br><span style="font-size:10px;color:var(--text-quaternary)">[approved]</span></div>
+        <div class="graph-node claim" style="left:150px;top:100px">Claim<br>多头注意力<br><span style="font-size:10px;color:var(--text-quaternary)">[approved]</span></div>
+        <div class="graph-node claim" style="left:260px;top:100px">Claim<br>位置编码<br><span style="font-size:10px;color:var(--text-quaternary)">[candidate]</span></div>
+        <div class="graph-node source" style="left:30px;top:160px">Evidence<br>Anchor #1</div>
+        <div class="graph-node source" style="left:140px;top:160px">Evidence<br>Anchor #2</div>
+        <div class="graph-node conflict" style="left:280px;top:160px">Conflict<br>位置编码必要性</div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--text-tertiary)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--positive)"></span>已批准</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span>候选</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--danger)"></span>冲突</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--text-quaternary)"></span>来源</span>
+        <span style="margin-left:auto">—— 支持 · - - 冲突</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">最近活动</div>
+    <div class="panel-body">
+      <div class="timeline-item active">
+        <div class="timeline-time">08-09 14:32</div>
+        <div class="timeline-content">
+          摄取完成: <strong>arxiv.org/abs/1706.03762</strong>
+          <button class="btn btn-ghost" style="padding:2px 8px;font-size:11px;margin-left:8px">查看</button>
+        </div>
+      </div>
+      <div class="timeline-item active">
+        <div class="timeline-time">08-09 11:15</div>
+        <div class="timeline-content">
+          新主张候选: <strong>「自注意力计算复杂度为 O(n²)」</strong>
+          <button class="btn btn-ghost" style="padding:2px 8px;font-size:11px;margin-left:8px">审阅</button>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-time">08-08 22:04</div>
+        <div class="timeline-content">
+          冲突 detected: <strong>关于「位置编码必要性」的两种观点</strong>
+          <button class="btn btn-ghost" style="padding:2px 8px;font-size:11px;margin-left:8px">查看</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- STUDIO SPACE -->
+<div id="space-studio" style="display:none">
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-header">
+        <span>课程结构</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">+ 章节</button>
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">+ 课时</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div style="margin-bottom:12px">
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">Transformer 从入门到精通</div>
+          <div style="font-size:12px;color:var(--text-tertiary)">基于研究问题: Transformer 架构的演化与优化</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <span class="tag tag-candidate">草案</span>
+            <span class="tag tag-neutral">5 知识单元</span>
+            <span class="tag tag-neutral">8 练习</span>
+          </div>
+        </div>
+        <div class="course-tree-item" style="font-weight:500">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          📘 1. 基础概念
+        </div>
+        <div class="course-tree-children">
+          <div class="course-tree-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            1.1 注意力机制概述
+            <span style="margin-left:auto;font-size:11px;color:var(--text-quaternary)">2 知识单元 · 1 练习 · 草案</span>
+          </div>
+          <div class="course-tree-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            1.2 自注意力计算
+            <span style="margin-left:auto;font-size:11px;color:var(--text-quaternary)">1 知识单元 · 草案</span>
+          </div>
+          <div class="course-tree-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            1.3 多头注意力
+            <span style="margin-left:auto;font-size:11px;color:var(--text-quaternary)">0 知识单元 · 草案</span>
+          </div>
+        </div>
+        <div class="course-tree-item" style="font-weight:500;margin-top:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          📗 2. 架构详解
+        </div>
+        <div class="course-tree-children">
+          <div class="course-tree-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            2.1 Encoder-Decoder 结构
+            <span style="margin-left:auto;font-size:11px;color:var(--text-quaternary)">1 知识单元 · 草案</span>
+          </div>
+          <div class="course-tree-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            2.2 位置编码
+            <span style="margin-left:auto;font-size:11px;color:var(--text-quaternary)">1 知识单元 · 草案</span>
+          </div>
+        </div>
+        <div class="course-tree-item" style="font-weight:500;margin-top:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          📙 3. 实践应用
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span>课时编辑: 1.1 注意力机制概述</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">保存草案</button>
+          <button class="btn btn-primary" style="padding:4px 8px;font-size:12px">提交审阅</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:6px">学习目标</div>
+          <div style="background:var(--surface-muted);border-radius:var(--radius-md);padding:10px 12px;font-size:13px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              理解注意力机制的核心思想
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              区分 Query, Key, Value 的角色
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:6px">内容</div>
+          <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;min-height:120px;font-size:13px;color:var(--text-secondary)">
+            <p style="margin-bottom:8px">注意力机制是 Transformer 的核心创新...</p>
+            <div style="background:var(--surface-muted);border-radius:var(--radius-sm);padding:8px 12px;margin:8px 0;display:flex;align-items:center;gap:8px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 11h-1.5a2.5 2.5 0 0 0-5 0 2.5 2.5 0 0 0-5 0H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Z"/><path d="M12 11V7a4 4 0 0 0-4-4 4 4 0 0 0-4 4v4"/></svg>
+              <span style="color:var(--accent)">[知识单元: 注意力机制]</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--text-quaternary)">已批准 · 可溯源</span>
+            </div>
+            <div style="background:var(--surface-muted);border-radius:var(--radius-sm);padding:8px 12px;margin:8px 0;display:flex;align-items:center;gap:8px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+              <span>[插入: 公式渲染]</span>
+            </div>
+            <div style="background:var(--surface-muted);border-radius:var(--radius-sm);padding:8px 12px;margin:8px 0;display:flex;align-items:center;gap:8px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span>[插入: 代码示例]</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:6px">练习</div>
+          <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:13px;font-weight:500">练习 1: 计算注意力权重</div>
+              <div style="font-size:11px;color:var(--text-quaternary);margin-top:2px">类型: 计算题 · 难度: 中等</div>
+            </div>
+            <span class="tag tag-candidate">candidate</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <span>练习: 计算注意力权重</span>
+      <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">返回课程</button>
+    </div>
+    <div class="panel-body">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <span class="tag tag-neutral">类型: 计算题</span>
+        <span class="tag tag-neutral">难度: 中等</span>
+        <span class="tag tag-neutral">关联: 自注意力计算</span>
+        <span class="tag tag-candidate">candidate — 此练习由 AI 生成，未经人工审阅</span>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-bottom:12px">
+        <div style="font-weight:500;margin-bottom:8px">题目</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+          给定 Query Q = [1, 0, 2], Key K = [[1, 2], [0, 1], [2, 1]]，计算缩放点积注意力权重。
+        </div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-bottom:12px">
+        <div style="font-weight:500;margin-bottom:8px">答案与解释</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+          <p>1. 计算 Q·K^T: [...]</p>
+          <p>2. 除以 √d_k: [...]</p>
+          <p>3. Softmax: [...]</p>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:500;color:var(--text-tertiary);margin-bottom:6px">证据来源</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              EvidenceAnchor #3
+            </button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 11h-1.5a2.5 2.5 0 0 0-5 0 2.5 2.5 0 0 0-5 0H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Z"/><path d="M12 11V7a4 4 0 0 0-4-4 4 4 0 0 0-4 4v4"/></svg>
+              KnowledgeUnit: 自注意力计算
+            </button>
+          </div>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:14px">
+        <div style="font-weight:500;margin-bottom:8px">迁移变体（AI 生成）</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+          <p>变体 1: 如果 Key 的维度不同，如何调整？</p>
+          <p>变体 2: 对比加性注意力与缩放点积注意力的计算复杂度。</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn">保存</button>
+        <button class="btn btn-primary">标记为已审阅</button>
+        <button class="btn btn-ghost">请求 AI 生成更多变体</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- LEARNING SPACE -->
+<div id="space-learning" style="display:none">
+  <div class="panel">
+    <div class="panel-body">
+      <div class="two-col">
+        <div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:8px">进行中</div>
+          <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px">
+            <div style="font-weight:500;margin-bottom:4px">Transformer 从入门到精通</div>
+            <div class="progress-track" style="margin:8px 0">
+              <div class="progress-fill success" style="width:60%"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-tertiary)">
+              <span>60% 完成</span>
+              <span>下一课时: 2.1 Encoder</span>
+            </div>
+            <button class="btn btn-primary" style="margin-top:10px;width:100%;justify-content:center">继续学习</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:8px">学习统计</div>
+          <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px">
+              <span>本周学习</span><span style="font-weight:500">4.5 小时</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px">
+              <span>掌握度</span>
+              <span style="font-weight:500;color:var(--positive)">72% (12/17 知识单元)</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px">
+              <span>错题</span><span style="font-weight:500;color:var(--warning)">3 (待复习)</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+              <span>迁移测试</span><span style="font-weight:500">通过 2/3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">课程列表</div>
+    <div class="panel-body" style="padding:0">
+      <div class="list-item">
+        <div class="list-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </div>
+        <div class="list-content">
+          <div class="list-title">Transformer 从入门到精通</div>
+          <div class="list-meta">
+            <span>进度: 60%</span><span>·</span><span>最后学习: 昨天</span><span>·</span><span>预计完成: 3 天后</span>
+          </div>
+        </div>
+        <div class="list-actions">
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:11px">继续</button>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">查看进度</button>
+        </div>
+      </div>
+      <div class="list-item">
+        <div class="list-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </div>
+        <div class="list-content">
+          <div class="list-title">深度学习优化器详解</div>
+          <div class="list-meta">
+            <span>未开始</span><span>·</span><span>预计学时: 8 小时</span><span>·</span><span>前置课程: 已完成</span>
+          </div>
+        </div>
+        <div class="list-actions">
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:11px">开始</button>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">查看详情</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">待复习</div>
+    <div class="panel-body" style="padding:0">
+      <div class="list-item">
+        <div class="list-icon" style="color:var(--warning)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+        </div>
+        <div class="list-content">
+          <div class="list-title">间隔重复: 自注意力计算 (3 道错题)</div>
+        </div>
+        <div class="list-actions">
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:11px">立即复习</button>
+        </div>
+      </div>
+      <div class="list-item">
+        <div class="list-icon" style="color:var(--accent)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </div>
+        <div class="list-content">
+          <div class="list-title">Teach-Back: 位置编码的必要性 (需重新评估)</div>
+        </div>
+        <div class="list-actions">
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:11px">开始</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <span>1.1 注意力机制概述</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">退出</button>
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:12px">全屏</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px">课程: Transformer 从入门到精通 · 进度: 1/12 课时</div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:13px;line-height:1.7;color:var(--text-secondary);margin-bottom:12px">
+            <p style="margin-bottom:10px">注意力机制是 Transformer 的核心创新，它允许模型在处理序列时动态地关注输入的不同部分。</p>
+            <div style="background:var(--surface-muted);border-radius:var(--radius-md);padding:10px 12px;margin:10px 0;border-left:3px solid var(--accent)">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 11h-1.5a2.5 2.5 0 0 0-5 0 2.5 2.5 0 0 0-5 0H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2Z"/><path d="M12 11V7a4 4 0 0 0-4-4 4 4 0 0 0-4 4v4"/></svg>
+                <span style="font-weight:500">知识卡片: 注意力机制</span>
+              </div>
+              <div style="font-size:12px;color:var(--text-tertiary)">
+                来源: Attention Is All You Need
+                <button class="btn btn-ghost" style="padding:2px 6px;font-size:11px;margin-left:6px">查看原文</button>
+              </div>
+            </div>
+            <div style="background:var(--surface-muted);border-radius:var(--radius-md);padding:10px 12px;margin:10px 0;font-family:monospace;font-size:12px">
+              Attention(Q, K, V) = softmax(QK^T / √d_k) V
+            </div>
+            <div style="background:var(--surface-muted);border-radius:var(--radius-md);padding:10px 12px;margin:10px 0;font-family:monospace;font-size:12px">
+              # PyTorch 示例<br>
+              import torch.nn as nn<br>
+              attn = nn.MultiheadAttention(embed_dim=512, num_heads=8)
+            </div>
+          </div>
+          <div class="exercise-block">
+            <div style="font-weight:500;margin-bottom:8px">练习 1: 选择题</div>
+            <div style="font-size:13px;margin-bottom:10px">Q: 注意力机制中，Q、K、V 分别代表？</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;font-size:13px">
+                <input type="radio" name="q1" style="accent-color:var(--text-primary)">
+                A. Query, Key, Value
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;font-size:13px">
+                <input type="radio" name="q1" style="accent-color:var(--text-primary)">
+                B. Question, Knowledge, Vector
+              </label>
+            </div>
+            <button class="btn btn-primary" style="margin-top:10px">提交答案</button>
+          </div>
+          <div class="exercise-block">
+            <div style="font-weight:500;margin-bottom:8px">Teach-Back</div>
+            <div style="font-size:13px;margin-bottom:10px">请用自己的话解释「缩放点积注意力」</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                开始录音
+              </button>
+              <button class="btn">输入文字</button>
+            </div>
+          </div>
+        </div>
+        <div style="max-width:280px">
+          <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:8px">掌握度</div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width:80%"></div>
+            </div>
+            <div style="font-size:12px;color:var(--text-tertiary);margin-top:6px">80% · 基于 2 次练习 + Teach-Back 评估</div>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:8px">笔记</div>
+            <textarea style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:13px;resize:vertical;min-height:60px;font-family:inherit" placeholder="在此输入你的理解..."></textarea>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);margin-bottom:8px">疑问</div>
+            <textarea style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:13px;resize:vertical;min-height:60px;font-family:inherit" placeholder="标记不理解的地方..."></textarea>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn" style="flex:1;justify-content:center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              请求 AI 解释
+            </button>
+            <button class="btn" style="flex:1;justify-content:center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              查看来源
+            </button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn">上一节</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn">标记为已掌握</button>
+          <button class="btn btn-ghost">报告问题</button>
+        </div>
+        <button class="btn btn-primary">下一节</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- SYSTEM SPACE -->
+<div id="space-system" style="display:none">
+  <div class="panel">
+    <div class="panel-header">任务队列与系统诊断</div>
+    <div class="panel-body" style="padding:0">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'active-tasks')">活跃任务 (3)</div>
+        <div class="tab" onclick="switchTab(this,'completed-tasks')">已完成 (47)</div>
+        <div class="tab" onclick="switchTab(this,'failed-tasks')">失败待处理 (2)</div>
+        <div class="tab" onclick="switchTab(this,'paused-tasks')">已暂停 (1)</div>
+      </div>
+      <div id="active-tasks" style="padding:14px">
+        <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-weight:500;font-size:13px">整站摄取: jalammar.github.io</div>
+            <span class="tag tag-candidate">处理中</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">
+            进度: 47/120 页面 · 已用时: 12 分钟 · 预计剩余: 8 分钟
+          </div>
+          <div class="progress-track" style="margin-bottom:8px">
+            <div class="progress-fill" style="width:39%"></div>
+          </div>
+          <div style="display:flex;gap:12px;font-size:12px;color:var(--text-tertiary);margin-bottom:10px">
+            <span style="color:var(--positive)">成功: 45</span>
+            <span style="color:var(--danger)">失败: 2</span>
+            <span style="color:var(--warning)">待重试: 3</span>
+            <span>待处理: 70</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">查看详情</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">暂停</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">取消</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">调整配置</button>
+          </div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-weight:500;font-size:13px">视频转录: Transformer 详解.mp4</div>
+            <span class="tag tag-neutral">排队中</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">
+            位置: 队列 #2 · 预计开始: 2 分钟后
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">查看详情</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">提前开始</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">取消</button>
+          </div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-weight:500;font-size:13px">PDF 批量转换 (5 文件)</div>
+            <span class="tag tag-warning">部分成功</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">3/5 完成 · 2 个失败</div>
+          <div style="font-size:12px;color:var(--danger);margin-bottom:10px;display:flex;align-items:center;gap:4px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+            失败: file3.pdf (密码保护) · file5.pdf (扫描件 OCR 失败)
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">查看日志</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">重试失败项</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">下载成功项</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">跳过失败项</button>
+          </div>
+        </div>
+      </div>
+      <div id="completed-tasks" style="padding:14px;display:none">
+        <div style="text-align:center;color:var(--text-quaternary);padding:20px">47 个已完成任务 · 最近 30 天</div>
+      </div>
+      <div id="failed-tasks" style="padding:14px;display:none">
+        <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:12px">
+          <div style="font-weight:500;font-size:13px;margin-bottom:4px">file3.pdf</div>
+          <div style="font-size:12px;color:var(--danger)">密码保护，无法解密</div>
+        </div>
+      </div>
+      <div id="paused-tasks" style="padding:14px;display:none">
+        <div style="text-align:center;color:var(--text-quaternary);padding:20px">1 个已暂停任务</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">能力状态</div>
+    <div class="panel-body" style="padding:0">
+      <table class="cap-table">
+        <thead>
+          <tr>
+            <th>能力</th>
+            <th>状态</th>
+            <th>引擎</th>
+            <th>健康</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="display:flex;align-items:center;gap:8px">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--positive)"></span>
+              网页抓取
+            </td>
+            <td><span class="tag tag-approved">implemented</span></td>
+            <td>Crawlee 3.2</td>
+            <td style="color:var(--positive)">健康</td>
+          </tr>
+          <tr>
+            <td style="display:flex;align-items:center;gap:8px">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--positive)"></span>
+              PDF 转换
+            </td>
+            <td><span class="tag tag-approved">implemented</span></td>
+            <td>Docling 2.1</td>
+            <td style="color:var(--positive)">健康</td>
+          </tr>
+          <tr>
+            <td style="display:flex;align-items:center;gap:8px">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span>
+              视频转录
+            </td>
+            <td><span class="tag tag-candidate">in progress</span></td>
+            <td>Whisper API</td>
+            <td style="color:var(--warning)">队列延迟 5 分钟</td>
+          </tr>
+          <tr>
+            <td style="display:flex;align-items:center;gap:8px">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--text-quaternary)"></span>
+              公式识别
+            </td>
+            <td><span class="tag tag-neutral">optional</span></td>
+            <td>Mathpix</td>
+            <td style="color:var(--text-quaternary)">未配置</td>
+          </tr>
+          <tr>
+            <td style="display:flex;align-items:center;gap:8px">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--warning)"></span>
+              整站爬取
+            </td>
+            <td><span class="tag tag-warning">degraded</span></td>
+            <td>Spider</td>
+            <td style="color:var(--warning)">成功率下降 15%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">AI 回答与引用追踪</div>
+    <div class="panel-body">
+      <div style="font-size:13px;color:var(--text-tertiary);margin-bottom:12px">用户: Transformer 和 RNN 的主要区别是什么？</div>
+      <div class="ai-response">
+        <div style="font-size:13px;line-height:1.7">
+          <p style="margin-bottom:10px">Transformer 和 RNN 的主要区别在于并行计算能力和长距离依赖捕捉：</p>
+          <p style="margin-bottom:10px">1. <strong>并行计算</strong>: Transformer 的自注意力机制可以并行处理序列中的所有位置，而 RNN 必须按顺序处理<sup class="citation">[1]</sup>。</p>
+          <p style="margin-bottom:10px">2. <strong>长距离依赖</strong>: 自注意力直接计算任意两个位置的关系，路径长度为 O(1)，而 RNN 的路径长度为 O(n)，容易出现梯度消失<sup class="citation">[2]</sup><sup class="citation">[3]</sup>。</p>
+          <p>3. <strong>计算复杂度</strong>: 自注意力的计算复杂度为 O(n²·d)，RNN 为 O(n·d²)，在序列较长时 Transformer 计算量更大<sup class="citation">[2]</sup>。</p>
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:500;color:var(--text-tertiary);margin-bottom:8px">引用</div>
+          <div style="font-size:12px;line-height:1.6">
+            <div style="margin-bottom:6px">
+              <span style="color:var(--accent);font-weight:500">[1]</span> Claim: "RNN 必须按时间步顺序计算" <span class="tag tag-approved" style="font-size:10px">approved</span>
+              <div style="color:var(--text-quaternary);margin-left:20px">来源: EvidenceAnchor #1 @ Attention Is All You Need, 第 1 页</div>
+            </div>
+            <div style="margin-bottom:6px">
+              <span style="color:var(--accent);font-weight:500">[2]</span> Claim: "自注意力计算复杂度为 O(n²·d)" <span class="tag tag-approved" style="font-size:10px">approved</span>
+              <div style="color:var(--text-quaternary);margin-left:20px">来源: KnowledgeUnit: 自注意力计算</div>
+            </div>
+            <div>
+              <span style="color:var(--accent);font-weight:500">[3]</span> Claim: "RNN 长距离依赖路径长度为 O(n)" <span class="tag tag-candidate" style="font-size:10px">candidate</span>
+              <div style="color:var(--warning);margin-left:20px;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                此主张为候选状态，未经完全审阅，请谨慎引用。
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-tertiary)">
+          此回答基于 3 个已批准知识单元，1 个候选主张
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+              准确
+            </button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+              部分准确
+            </button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">不准确</button>
+            <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">查看完整证据链</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+function switchSpace(space) {
+  // Hide all spaces
+  ['research','studio','learning','system'].forEach(s => {
+    document.getElementById('space-' + s).style.display = 'none';
+    document.getElementById('orbit-' + s).style.display = 'none';
+  });
+  // Show selected
+  document.getElementById('space-' + space).style.display = 'block';
+  document.getElementById('orbit-' + space).style.display = 'block';
+}
+function switchTab(tab, contentId) {
+  // Remove active from all tabs
+  tab.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  // Hide all content
+  ['active-tasks','completed-tasks','failed-tasks','paused-tasks'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  // Show selected
+  const content = document.getElementById(contentId);
+  if (content) content.style.display = 'block';
+}
+</script>
+
+</body>
+</html>

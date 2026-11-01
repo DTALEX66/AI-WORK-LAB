@@ -1,0 +1,101 @@
+# ArcheAxis｜DP 执行任务包（DeepSeek / DSH 侧）
+
+版本：2026-09-07｜起始代码基线：`4ca46eaf94c486dadcf200aac6b41cd968b1ce6e`
+
+> 本包中的 DP 指你昨天实际使用的 DeepSeek/DSH 执行侧。若 DP 是另一工具，只可替换执行器名称，不可改变本包权限与回执规则。
+
+## 0. 角色、边界与交付方式
+
+DP 是 **受限实现者和复现者**，不是项目权威、验收者或发布者。其任务是把可独立验证的 Python 能力、测试样本和旧资产事实做扎实；它不能决定架构、迁移或“项目完成”。
+
+- 先读取同批次 GPT 下发的不可变任务信封；缺少 `base_sha`、`allowed_paths`、验收命令或有效 grant，停止并报告 `BLOCKED`。
+- 开始和结束都记录 `git status --short` 与完整 `git diff`；不暂存、不合并、不推送、不改任务状态。
+- 非提交运行材料只可写入 `.project-local/runs/<task-id>/<run-id>/`，并由 ignore 保护。不得创建或继续向 `.hermes/` 写新的运行资料；不得写入 C 盘、E 盘、用户目录、系统临时目录或其他仓库。
+- 不访问/上传密钥、cookie、`.env`、私有知识库或用户文件。不得删除旧代码、旧报告或缓存。
+- 每项最多 25 个文件、16 有效小时、48 小时；超限即拆片。DP 只能输出 `proposal.json`、`evidence.json`、`limitations.md`，不得手写 `DONE`/`PASS`/发布回执。
+
+**一次跑完规则**：从 `4ca46ea` 新建独立分支/独立 worktree，例如 `agent/dp-capabilities-20260907`。DP-00～DP-05 均在此工作区连续执行，不需要中途切换 GPT。该包独占 `services/python-workers/evaluation/worker_quality.py`、`services/python-workers/web/worker_webpage.py`、`packages/contracts/v1/quality-report.schema.json` 与 `fixtures/golden/dp-capabilities/**`；不得改其他公共契约、Rust、Avalonia、根 CI 或任务状态。任何任务一旦当前 HEAD 不等于信封 `base_sha`，旧证据标 `STALE` 后重新签发。
+
+## 1. DP-00｜昨天交付的候选切片盘点（只读）
+
+**目的**：将昨天 DeepSeek/DSH 做过的工作从“可能已完成”改造成可验证的候选清单。
+
+**允许范围**：只读仓库与既有 `docs/authority/taskpack-0905/`、`reports/`、`handoffs/`；输出仅在 `.project-local/runs/DP-00/`。
+
+**步骤**：
+
+1. 每个候选切片记录原任务 ID、其声称的 SHA、实际改动文件、运行命令、产物、测试证据和缺失信息。
+2. 对比候选 SHA 与当前 `4ca46ea`；不匹配标为 `STALE`，不能补写为成功。
+3. 逐项提出唯一建议：`ADOPT`、`MODIFY` 或 `REJECT`，但不作最终判定。
+
+**验收**：输出 `candidate-slice-register.json`；每项都有 SHA 或明确 `SHA_MISSING`，没有“完成率”与未经证明的成功措辞。
+
+## 2. DP-01｜质量测量 worker 的原始比较修复
+
+**允许路径**：`services/python-workers/evaluation/worker_quality.py`、`packages/contracts/v1/quality-report.schema.json`、DP 专属测试路径；不得修改其他 `packages/contracts/**`、Rust、数据库、CI 根脚本。
+
+**要修的已知缺陷**：
+
+- `--normalize none` 仍使用 `.strip()`，与“原始比较”声明冲突；仅空 gold 判断可以宽松，指标本身不得丢失空白字符。
+- UTF-8 BOM 的剥离、不可逆转换、替换解码必须进入可机器读取的 loss/measurement 信息；不得把超限或截断伪装成“只去 BOM”。
+- 输出必须严格符合本任务同步修改后的 `quality-report` JSON Schema；不允许以 schema 外顶层字段绕过 `additionalProperties: false`。若保留 `loss_receipt`，其对象结构、版本与可重算字段必须明确写入这一个质量报告 schema。
+
+**验收**：金样本至少覆盖前后空格、BOM、非 UTF-8 替换、空 gold、大小写归一化；同一输入结果可重算；schema 校验通过；输出说明“测量的是什么、未测量什么”。
+
+## 3. DP-02｜网页采集 worker 的有界网络行为修复
+
+**允许路径**：`services/python-workers/web/worker_webpage.py`、该 worker 的专属测试/fixture 路径；不改公共运行目录解析器、CI 或产品状态机。
+
+**要修的已知缺陷**：
+
+- `MAX_REDIRECTS` 不能只是声明，必须真实限制重定向次数并保留链路/终止原因。
+- 字节上限不得多写一个字节后才报错；临界值、超限、空响应都必须有确定行为。
+- 超时必须覆盖整个请求/重定向过程；输出要区分网络失败、限制拒绝、内容不支持。
+
+**验收**：本地可控 HTTP fixture 覆盖正常、重定向链、循环/超限、精确字节边界、超时；不访问公共互联网；不把网页事实或模型判断直接写入知识库。
+
+## 4. DP-03｜Python 能力包契约一致性与负例测试
+
+**允许路径**：`services/python-workers/**` 及该信封授权的 `tests/contract/**`；除 `packages/contracts/v1/quality-report.schema.json` 外禁止修改任何公共契约，也禁止任何 SQLite/主服务路径。
+
+**工作**：为 text、HTML/web、OCR/图片、Office、音视频/字幕、quality worker 建立实际调用矩阵：输入、输出 schema 版本、失败模式、损失收据、网络声明、是否真正可用。仅针对已经存在的 worker 修复“输出与契约不一致”问题；不虚构格式支持。
+
+**验收**：每个 worker 有至少一个正例和一个负例；未知字段、错误 schema、超时、非法输入被拒绝；矩阵将“可运行”“有金样本测量”“可进入 v0.1”明确分开。
+
+## 5. DP-04｜全链路样本与准确率基准准备
+
+**允许路径**：`fixtures/golden/**`、`tests/journey/**`、授权的 worker 测试路径。样本必须为项目自有、公开许可或合成数据；不得放入任何用户私有资料。
+
+**工作**：为最快闭环准备小而真实的基准集：Markdown/TXT/JSON、原生文本 PDF、静态 HTML/网页快照、截图/图片；若 Office、音视频等 worker 尚未被实际测量，只登记为 capability pack，不得标成完成。
+
+**验收**：每个样本有来源/许可、原始 hash、预期锚点、gold 标注；精度指标与来源证据强度分开；可在断网和干净工作区复跑。
+
+## 6. DP-05｜旧资产可吸收性复核，不做删除
+
+**允许范围**：只读旧路径；输出至 `.project-local/runs/DP-05/`。`LEGACY_MANIFEST.yaml` 本身只可由 GPT 签发的迁移任务修改。
+
+**工作**：以 2026-09-05 的 1,246 项 legacy manifest 为母表，按产品能力/语言/依赖/许可/测试可用性分层抽样进行语义复核。输出“可复用模块、仅行为参考、需迁移、不可用/未知”四类建议和证据位置；`INVENTORIED_NOT_SEMANTICALLY_REVIEWED` 不得被改称“已吸收”。
+
+**验收**：每条建议都有源路径、复核方法、风险和建议目标（Rust/C#/Python capability/不吸收）；无物理删除、无对 legacy 数据库的写入。
+
+## 7. DP → GPT 交接格式（每项强制）
+
+```json
+{
+  "task_id": "DP-02",
+  "base_sha": "<40位完整SHA>",
+  "head_sha_tested": "<40位完整SHA>",
+  "changed_paths": ["..."],
+  "commands": [{"cmd": "...", "exit_code": 0}],
+  "evidence_paths": [".project-local/runs/..."],
+  "status_proposal": "IMPLEMENTED",
+  "limitations": ["..."],
+  "requires_independent_verification": true
+}
+```
+
+`status_proposal` 只是提议。GPT 集成包负责独立复跑、接受、拒绝和更新受保护状态。
+
+## 8. 本包何时算执行完成
+
+DP 只在以下条件同时满足时停止：本分支所有 DP 任务已有原始证据、允许路径没有越界、DP 专属测试全绿、没有未说明的工作区改动，并生成一份 `DP-PACK-COMPLETION.json`。这表示“DP 候选实现已完成”，**不表示已合并、产品已可用或发布合格**；后续只交给独立 GPT 审计包处理。

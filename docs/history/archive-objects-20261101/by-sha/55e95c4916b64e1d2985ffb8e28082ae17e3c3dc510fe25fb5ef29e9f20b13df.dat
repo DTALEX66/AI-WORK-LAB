@@ -1,0 +1,341 @@
+# ArcheAxis 全流程研究与审计
+
+审计日期：2026-09-15。对象：`DTALEX66/ArcheAxis-Knowledge-OS`。本报告是 R5 的审计输入和修复建议，不替换冻结任务包，不代表 Q00/Q01 通过。
+
+## 1 结论
+
+ArcheAxis 的方向可以继续，现阶段最需要解决的是默认入口的纵向接线、持久工作区、真实学习对象与数据恢复完整性。现有 Rust Core、Python workers、FSRS、部分知识修订与机器接口值得保留；继续全仓重写、再建一套任务系统，都会推迟首次可用。
+
+本轮实际取得云端 Git 仓库，核对主线和工作分支，读取全部可解码文本并做语法/关键词扫描，精读关键产品调用链，补提取历史二进制蓝图，读回当前 CI，并做隔离复现实验。结论不能简化成“所有东西都是登记”：确有已接入的底层能力，但这些能力没有共同组成用户从空库出发的默认流程。
+
+最关键的阻塞是：
+
+1. 桌面导入仅调用原件保存 API，没有接作业、解析结果、知识接受。
+2. 学习队列来自已有复习事件，空库没有第一题入口；桌面显示项目键，未呈现完整题目生命周期。
+3. 开发启动器每次生成独立数据库，不能承担长期使用入口；桌面直接启动的默认路径则相对固定，不能把两者混为一谈。
+4. 旧旅程探针会写入固定答对事件，空搜索也可返回成功。它不能证明学习闭环。
+5. 正式桌面与发布制品链未统一；发布检查能够被纯注释满足。
+6. 恢复器的应用身份校验不充分；开放归档遗漏学习来源关联、机器任务收据。
+7. 旧规则、README、历史任务台账与 R5 相互冲突。模型接手时可能读到不同的“当前真相”。
+
+因此，“先全部调研完、全仓语言迁移完、清理完，再做可用产品”不适合当前目标。应在原 R5 内先完成受控 TEST 纵切，再完成非空迁移、Windows 候选和独立验收，持续推进全格式与仓库收口。首次 TEST 试用不能冒充正式 M0 交付。
+
+## 2 审计身份和覆盖
+
+| 项目 | 本轮事实 |
+|---|---|
+| 工作分支 | `codex/full-loop-0906` |
+| 被审源码 | `0dd8ff37b670ae98fac4be35720194434e82191e` |
+| main | `1e9813ea2bd49f47d334ba6717c78d3e9feda6ce` |
+| 分歧 | 工作分支领先 main 66、落后 1 |
+| main 独有提交 | 合并提交；本轮比较 tree，确认它与第二父提交的文件树相同，不是额外一套未吸收业务代码 |
+| 远端分支 | 31 个，取得 HEAD 和 ahead/behind |
+| Git 跟踪文件 | 2,018 个，逻辑内容 32,572,338 字节，约 31.06 MiB |
+| 文本扫描 | 1,989 个 UTF-8/UTF-8 BOM 可解码文件；791 个 Python 文件语法解析无错误 |
+| 非文本 | 29 个；含模型、媒体样本、安装器、图片、DOCX、ZIP |
+| 历史蓝图补读 | 3 个 DOCX 正文；2 个 ZIP 共 71 个成员，读取其中 61 个选定文本成员 |
+| 当前活动包 | `docs/authority/taskpack-0912-r5/`，R5；计划 ID 保留 `AAK-FOLLOWUP-20260908-R3` |
+| 当前 CI | push run `34911642212`，同 SHA，completed / failure |
+| 本轮变更 | 未修改产品源码、未推送/合并、未部署 Green、未迁移或清理用户数据 |
+
+覆盖说明：全树扫描不等于逐行语义审查；Python 可解析不等于可运行。未对 31 个分支逐提交完整审查，未在 Windows 启动 GUI，未跑 Rust/C# 全量测试，未读取用户全部历史会话与私有 Agent 配置。不能把本报告称为“全环节全部验证通过”。
+
+当前容器没有从 PATH 定位到 Cargo/Rust/.NET；这是本轮执行环境的能力情况，不是用户 Windows 未安装工具链的证据。本轮没有访问用户 Windows 外置资源库。审计环境新建隔离 Python 环境；FSRS 6.3.2、PyMuPDF 1.28.2 与仓库 uv.lock 对应，测试工具及其他依赖没有完成全锁文件重建，所以定向测试结果不能替代 CI 资格化。
+
+## 3 本轮实测及证据等级
+
+证据分为：A 隔离实测；B 当前源码调用链；C 远端原始日志；D 历史记录；E 推断或尚未实测。每项结论限制在其证据范围内。
+
+| 检查 | 结果 | 能证明什么 |
+|---|---|---|
+| 当前 HEAD 的 GitHub Actions 查询 | 同 SHA CI 失败 | 当前云端状态；不是仅查 PR 触发的运行 |
+| 当前 lint 原始日志 | 缺历史提交 `b81c789…`，目录检查失败 | 历史对象不可用；后续 Ruff 未因此得到执行证据 |
+| 本地 `check_path_conventions.py` | PASS，2018/2018 路径归属 | 本 clone 的目录清单检查通过；不证明磁盘清理完成 |
+| `check_language_boundaries.py` | PASS | 当前静态语言/写者边界检查通过；不证明默认 UI 已接线 |
+| 格式状态矩阵检查 | 16 组：0 complete、14 partial、2 custody_only | 记录与路由声明一致；不证明 16 组全链可用 |
+| R5 包完整性校验 | PASS，23 任务、38 原场景、18 增补切片 | 任务包内部完整，不证明产品任务完成 |
+| 第一组定向测试 | 46 passed、4 skipped | worker、格式矩阵、FSRS、PDF 的选定测试 |
+| 第二组定向测试 | 33 passed、4 failed、4 skipped | Core client/launch、release guard、desktop launcher 的选定测试 |
+| 真实英文 OCR | `ArcheAxis learning 6371` 正确读回；空白图返回空串 | 直接 Python worker + 本机 Tesseract；不是 Core/GUI 全链 |
+| 空搜索旅程实验 | `ok=true`，`search_count=0`，`referenced_revision=null` | 用注入 HTTP 返回值检验真实编排函数；不是实际 Core E2E |
+| 无关库备份/恢复实验 | 两步均返回 0，`restored=true` | 真实临时 SQLite 被当前备份器错误认证后接受 |
+| 纯注释发布工作流实验 | `errors=[]` | 当前 guard 无法验证真实制品生产链 |
+
+第二组 4 个失败中：1 个在 Linux 调用了 Windows `tasklist`；3 个因新建 uv venv 的 Python 可执行文件为符号链接，被 `safe_path` 拒绝。后 3 个说明工具链路径校验与本次 Linux venv 形态不兼容，不能据此宣布 Windows 桌面失败。
+
+两组各出现 4 个 OCR 跳过，属于重复覆盖同一组测试，不能相加为 8 个不同缺陷。测试要求仓库 `tools/tesseract/tessdata/eng.traineddata`，本轮不存在；系统 Tesseract 实际存在，并有 eng/osd。随后直接 worker 实测成功，证明“测试资源选择失败”与“OCR 引擎不能运行”是两回事。中文 OCR 未实测，本容器没有中文语言包。
+
+## 4 从用户入口到双侧反馈的审计
+
+### 4.1 启动和持久工作区
+
+`apps/ArcheAxis.Desktop/MainWindow.axaml.cs` 会使用 `ARCHAXIS_VNEXT_DB`；未设置时落到 LocalApplicationData 下相对稳定的 vNext 工作库。`scripts/launch/desktop_launch.py` 则明确定位隔离开发启动，每次将数据库放在新 artifact 目录。
+
+问题不是所有启动都会丢数据，而是默认使用说明、TEST/GREEN 通道和持久工作区没有形成统一产品入口。开发隔离本身合理，但不能成为长期使用启动器。用户选择的工作区绑定应存于程序目录之外，绑定 workspace ID、数据库身份、通道和兼容 schema。新建工作区、恢复、迁移必须是可辨识操作；重启不可静默切空库。
+
+还需验证 Supervisor 的退出、重试、取消、进程树回收及端口身份。Windows 进程验证应在实际 Windows 做；便携逻辑应有平台适配或明确不支持结果，不能将 `tasklist` 异常解释成已安全拒绝。
+
+### 4.2 导入与作业
+
+桌面 `OnImportClick` 读取完整文件到 MemoryStream，再转换 Base64 并 POST `/api/v1/imports`，成功后只累计数量。API 的 `import_source` 保存来源对象并返回 ID/hash，没有创建转换作业。当前桌面也没有保留 source_id 接下一阶段。
+
+必修路径：选择文件 → 保存原件 → 得到 source_id → 路由到已配置能力 → 创建 job → 请求执行 → 展示状态与输出 → 查看正文/损失/出处 → 用户选择保存为个人知识或进入外部事实核查。状态文字必须准确区分“原件已保存”“等待解析”“解析完成”“需要处理”。
+
+新增容量风险：仓库锁定 axum 0.7.9，导入使用 Json extractor，未发现覆盖 DefaultBodyLimit 的配置。上游该版本源码说明默认 2MB 请求体限制；Base64 又扩大体积。由此推断原始文件接近 1.5 MiB 时就可能触及入口限制，远早于 worker 的 16 MiB 输入上限。此为源码与上游规则推断，本轮未通过实际 HTTP 请求复现 413。必须以 1/2/16 MiB 边界及真实大 PDF/音视频验收，不能直接关闭所有限额。
+
+优先改为有大小预算的流式上传或受控本地导入协议，流式计算 hash，原件只落一次；限制入口、解压、worker、输出的不同预算。取消和失败时保留可恢复原件及明确任务状态，避免 Base64 多份内存复制。
+
+### 4.3 多格式解析
+
+已存在统一传输及多种 worker，不能重新自研所有解析器。当前问题是能力入口覆盖、配置传递和转换质量的闭环不足。
+
+| 原组 | 格式 | 当前记录 | 首要缺口和承接 |
+|---|---|---|---|
+| F01 | TXT/MD/CSV/TSV/JSON/XML/代码 | partial | 先贯通默认 UI；保留结构与原始编码，不能只给摘要 |
+| F02 | 静态 HTML/URL | partial | 已保存 HTML 与实时抓取分开；保留 URL、抓取时间和原文快照 |
+| F03 | 动态/长网页 | partial | 浏览器组件及正文/截图锚定；不阻塞静态文件闭环 |
+| F04 | 截图与图片 | partial | 正式 OCR 传输固定 eng；语言/profile 需真实传入，图意描述另列候选 |
+| F05 | 文本 PDF | partial | 保留 PyMuPDF 已有路径，补默认入口、页码/区域回跳 |
+| F06 | 扫描/混合 PDF | partial | 渲染页到 OCR 的连续作业与混合阅读顺序，中文样本验收 |
+| F07 | DOCX | partial | 段落/表格/图片关联、修订与缺失提示；不是所有 ZIP XML 文本拼接都等价 |
+| F08 | PPTX | partial | 页、形状、备注和图片内容分别计覆盖 |
+| F09 | XLSX | partial | 工作表、单元格、公式/缓存值区别，不能把公式误当已计算结果 |
+| F10 | 音频 | partial | 复用现有 faster-whisper worker，正式作业接线及时间戳/语言资格 |
+| F11 | 视频 | partial | FFmpeg 音轨/关键帧 → ASR/OCR → 时间锚点；probe 元信息不等于理解视频 |
+| F12 | SRT/VTT/Canvas | partial | 结构/时间/节点身份回跳；保留双向导出边界 |
+| F13 | EPUB/邮件/开放文档等 | partial | 拆子格式验收，不能一个可读 EML 代表全部；按真实缺口选供体 |
+| F14 | 旧 Office | custody_only | 原件保留，转换能力可选外置；不得冒充有转换输出 |
+| F15 | ZIP/目录批量 | partial | 批处理脚本已有，补 UI、子作业进度、容器关系、失败续跑 |
+| F16 | PSD/AI/CDR/CAD/3D | custody_only | 先原件和可选预览；专业语义解析单独声明 |
+
+每组至少区分“可收纳”“可提取”“结构可定位”“可进入人机双侧”“可往返恢复”。格式枚举多不等于稳定支持。既有 0 complete 的口径必须保留，直到该组验收真正完成。
+
+`services/python-workers/transport/text_ndjson.py::_run_route` 在 OCR 路径写死 `module.extract(view, "eng", tessdata_arg)`。即使 profile 已记录 chi_sim 探针，默认链也没有因此使用中文。路径修复应统一资源解析，禁止文档列出语言包即宣称中文可用。
+
+### 4.4 原件 证据 知识与检索
+
+保留原件、转换、知识修订、来源定位的分层。知识是否允许保存和学习，与外部事实是否通过交叉核验是不同维度。个人经验、定义、假说应可离线保存，明确类型与来源；不应因缺联网证据而无法建立个人知识。
+
+建议在既有契约内表达：内容类型、来源版本、转换状态、核查状态、适用范围、审核状态。不要用一个 confidence 或 verified 字段合并所有含义。模型置信度、OCR 置信度、来源可靠性、识别准确率、人的掌握程度、机器任务成功率均不同。
+
+对公开事实核查，按具体主张检索原始来源，区分独立来源与转载。无网络、预算不足或服务失效时保留候选并标记未核查，不能自动认定错误，也不能自动晋升验证事实。冲突要落在主张与适用条件，而不是整份文档一票否决。
+
+中文检索应以真实查询集测命中、版本过滤和定位。机器调用默认读取现行且适用的版本；修订后旧学习材料和机器方法应标记需要重建/复测。缓存键需要包含知识版本与权限范围，不能仅按查询文本复用旧答案。
+
+锚点建议复用文本 quote/position、页/区域、时间范围、单元格/节点等选择器思想。W3C Web Annotation 可作互操作参考，但 ArcheAxis 仍需自身 hash、版本与失效语义；标准名称本身不会解决回跳。[W3C Web Annotation](https://www.w3.org/TR/annotation-model/)
+
+### 4.5 人类学习
+
+`learning::item_keys_with_latest_review` 只查询 learning_events 最新事件。它不能枚举尚未学习的题目，也未过滤到期时间。桌面以该结果构建“待复习项目”，显示 item_key；空库没有前置对象，就无法开始第一道题。
+
+应先补既有 Core 下的学习单元/题目持久化：题干、来源版本、参考答案/评分依据、题目版本、提示情况、曝光、原始回答、评分来源、复习状态。未学队列与到期复习队列分开；自评是自评，不能显示成客观判分或掌握。
+
+FSRS 现有链是 `shared/learning_scheduler.py` → scheduling worker → Rust 事件事务，可继续复用。不要重复写间隔算法。桌面当前每次点击生成新的 client_event_id 和 exposure_id，响应丢失后重试可能记录两次：曝光时建立身份，一次回答固定幂等键，重试复用 payload；提交中禁重复，失败后保留回答。
+
+教学最低要求：看题前不显示答案；本人作答；可看反馈；可讲回；保存复习；下一轮能继续。延迟、无提示及迁移题用于后续能力检验。短期同题答对不等于长期掌握。FSRS 提供复习调度，不负责证明理解或学习效果。[py-fsrs](https://github.com/open-spaced-repetition/py-fsrs)
+
+### 4.6 机器侧
+
+机器侧需要真实外部客户端调用相同知识，完成可独立验结果的方法任务，然后受修订影响重新调用。MCP 工具注册、搜索返回、机器自行报告 succeeded、数据库里有任务收据，都不够。
+
+`machine_tasks` 明确是候选/测量收据；保持这个限制。选择一个可确定验结果的本地任务，例如从已接受知识中取规则，对未见输入执行格式转换，再由独立校验器检查输出。模型和工具版本、知识版本、输入/输出摘要、评分依据必须对应同次运行。不得让模型自行发出“已验证”结论完成资格提升。
+
+人类学习与机器能力分别维护，二者都不是“知识真伪”的替代。人的纠错形成候选修订，机器失败同样只能触发复核，不能直接覆盖知识。
+
+### 4.7 备份 归档 迁移
+
+本轮实测 `scripts/launch/core_launch.py` 对只有 `foreign_table` 的 SQLite 调用 backup_database，备份器写入自身 app_id/hash 元数据；restore_database 随后成功恢复。哈希证明字节一致，不能证明该库属于 ArcheAxis 或 schema 兼容。
+
+修复应在备份入口和恢复 staging 都核验应用元数据、schema/迁移版本、必需表列、完整性与外键、原件引用；备份元数据从真实库身份读取。恢复先完整验证候选，再切换；失败保持原活动库不变，旧程序不得直接打开不兼容新库。
+
+另外 `crates/archeaxis-archive/src/lib.rs::EXPORT_TABLES` 未包含按需创建的 `card_references` 和 `machine_tasks`；两模块源码注释也明确记录此限制。由此可确定开放归档没有携带这两类表。它不等于每一种 SQLite 整库备份都丢表，但足以否决“所有导出恢复均保全人机链”的说法。
+
+将业务表纳入正式迁移与版本化归档；保留已存在 v3 多种布局的兼容读取。新归档测试必须含已学习题目、来源关联、机器收据、纠错后版本、非空附件。对表数/行数校验之外还要做 API 语义回读。
+
+SQLite WAL 支持读写并发，但同一时刻仍只有一个 writer；四库如果对应不同数据库，不能假设一个跨库事务会自动整体原子提交。建议继续维持 Rust 权威写者，用可恢复步骤表达跨库迁移。[SQLite WAL](https://sqlite.org/wal.html)
+
+## 5 语言规范的裁决
+
+维持已批准职责：C#/Avalonia 宿主，Rust 领域与唯一主库写者，Python 计算 worker，Web/TypeScript 复用成熟学习交互。这里的规范化是责任与真实调用统一，不是全仓只剩一种语言。
+
+| 选择 | 当前收益 | 当前代价 | 裁决 |
+|---|---|---|---|
+| 继续既定 Rust + C# + Python + 可复用 Web | 保留已实现边界与解析生态 | 要完成跨进程契约和交付 | 当前路径 |
+| 全仓 Rust 重写 | 减少部分语言种类 | 重做 OCR/ASR/学习生态适配，延迟可用 | 不作为本轮路线 |
+| 全部回退旧 Python/Tauri | 可借旧界面行为参考 | 再次切换权威与迁移路线 | 不重启此路线 |
+| 把全部 DeepTutor UI 重写 XAML | 视觉技术统一 | 学习工作台再次自研 | 不作为接入前提 |
+
+落实项：
+
+- C# 不直写主库、不复制审核规则；负责窗口、文件选择、进程生命周期与 UI 状态。
+- Rust 负责身份、知识生命周期、作业、事务、数据库迁移、审计与回读。
+- Python 只接受受控输入及能力参数，输出结构/文本/损失/测量；不获取主库句柄，不自判 human/verified。
+- Web UI 通过稳定 API 接 Core；DeepTutor 可持有可重建会话/索引，不能建立第二份权威知识或学习记录。
+- 错误码、枚举、幂等键、时区、取消和版本在实际跨语言请求中验收，不以三份各自通过的 schema 验收。
+- 中文用户界面与报告优先；稳定 API 字段/ID 保留英文。统一 UTF-8、换行和路径处理；不要批量重命名历史数据库/ID。
+
+## 6 仓库规范与 CI
+
+### 6.1 规范已经做到什么
+
+当前跟踪文件的静态归属检查通过，不能再笼统说“仓库完全未规范化”。但归属登记、代码复用、真实运行写入、旧入口退役是四件事。1246 个 legacy 资产被盘点不等于全部语义吸收。
+
+目录沿既有结构维护：apps 为宿主，crates 为领域核心，services/python-workers 为能力，packages/contracts 为跨语言契约，docs/current 为当前进度，冻结 taskpack 只保留原文，.project-local 为开发产物。真实资料和共享模型/工具分开。不要为显得整齐新增一套空目录。
+
+源码根在当前路径索引中为 `D:\All projects\ArcheAxis-Knowledge-OS`；历史 `D:\All projects\DSH` 不能自动当成当前源码根。工具资源沿 `docs/SHARED_RESOURCE_PATH_INDEX.md` 定位，今天交接另有 00-registry 与资源 ID 绑定方案，应核对本机实际绑定。本轮仓库没有 `.project/resources.yaml`，不能据此判定用户本机缺该配置，更不能猜测另一个工具库。
+
+### 6.2 实际冲突
+
+| 当前入口/文件 | 冲突 | 处理方式 |
+|---|---|---|
+| AGENTS 第一节 | 仍将 Obsidian 高保真纵切写成首要目标 | 按 R5 首次双侧闭环重写当前段，保留历史来源 |
+| LESSONS_LEARNED | “所有检查 fail-open” | 区分建议性治理与数据/权限/身份门；后者不得失败放行 |
+| LESSONS_LEARNED 尾部 | 仍指定 0906 为唯一进度 | 当前只指向 R5-STATE/R5-EXECUTION |
+| README | 旧 Tauri/Python 启动与旧发布口径并存 | 增加明确当前开发入口、已发布历史版本、不可用项 |
+| release.yml / CI | 正式身份 Avalonia，制品生产/消费仍为 Tauri | 分开 legacy 回归与正式候选链；验实际制品内容 |
+| `verify_release_architecture.py` | 字符串/注释即可满足 | 验真实 job/step/制品 manifest 和可执行身份 |
+| lint checkout | 需要历史测量却浅克隆 | 该 job 获取所需历史，保持 hash 校验；不关闭检查 |
+| worker reachability 默认入口 | R5 下无对应记录，要求显式历史 record | 选择真实适用记录；不把缺记录说成 worker 不存在 |
+| 工具链路径检查 | 对受控可执行文件与不可信暂存路径使用相同禁链接逻辑 | 分开策略；受控工具解析最终身份，不全局放开 symlink |
+
+`actions/checkout` 的默认浅历史行为解释了为什么 gateplan/test 的 fetch-depth:0 不能自动让独立 lint job 拿到历史；每个 job 的 checkout 独立。只修需要历史的 job 即可，不必让所有门都无限重复读取历史。[actions/checkout](https://github.com/actions/checkout)
+
+### 6.3 分支吸收
+
+main 独有 merge 的 tree 与第二父提交相同，本轮已核实；仍需在后续集成保留其历史关系，不强推 main。
+
+31 分支已盘点。重点分支相对当前 HEAD：frozen-roadmap-deepseek-v1 独有 149 个提交，recovery-shell-closed-loop 13 个，ci-release-optimization 7 个。7/13 两组已查看去除 patch 等价项后的提交列表，另精读三项历史补丁；149 项尚未逐项语义审查。
+
+历史 `63cf9eb` 展示恢复 staging→activation 的 CLI 编排，`bcc1a9d` 展示短测试路径处理，`8a25105` 区分发布与产品事实。可吸收的是适合当前缺口的行为/测试。当前已有相关功能，不能依据独有提交数直接整体 merge，尤其不能把旧 Tauri 写者重新设为正式入口。后续每项记录：旧提交、实际差异、当前等价位置、采用/已覆盖/不采用原因。
+
+### 6.4 清理与容量
+
+本轮只量到 Git 跟踪内容约 31.06 MiB；它不包含本机构建、模型、缓存、ignored/untracked、Git 全历史对象等，不能用于否定 50GB 问题。历史 13.6 GiB 缩减、ACL 拒绝等仍只是历史收据，没有本轮 Windows 复测。
+
+先追写入生产者，再执行已有精确授权范围的清理：构建缓存、浏览器、临时解码、模型、唯一原件、证据和 Agent 私有状态各自分开。不得根据同名/hash 就删除不同来源或唯一资料。未知归属、共享资源和 `.hermes` 保全。隔离到同卷不算释放磁盘。根因修复应落到真实进程的环境配置与默认输出，不能只改文档路径。
+
+## 7 防模型 任务 上下文与状态漂移
+
+无法保证任何模型永不出错，但可让漂移更难进入持久状态，并能定位、拒绝或回滚。优先整合已有指针和收据，不再建立第三套权威系统。
+
+| 漂移类型 | 本项目具体诱因 | 最小控制 | 何时拦截 |
+|---|---|---|---|
+| 项目身份漂移 | ArcheAxis 与 DSH/WORK-LAB/旧 repo 名混用 | 读取 remote、当前 root、project ID | 操作落到另一项目时停止该项 |
+| 任务漂移 | 大任务长期 PARTIAL，反复新建任务包 | 只执行 R5 子切片；明确输入、默认调用者和可见结果 | 交付不满足原验收时不标完成 |
+| 上下文漂移 | 多个旧入口都自称当前 | 单一当前指针＋明确 supersession；历史按需读取 | 当前权威解析冲突时阻止相应状态写入 |
+| 模型行为漂移 | 更换模型、路由、模板改变输出 | 固定任务/能力契约；记录实际配置、模型响应身份和模板 hash | 契约失败或权限越界时拒绝，不自动放宽 |
+| 完成状态漂移 | 历史 PASS、测试总数代替默认流程 | 收据绑定源码、构建、环境、工作区和场景 | 无匹配证据不得 DONE |
+| 知识版本漂移 | 修订后缓存/学习/机器方法仍用旧版本 | 依赖版本记录、失效与重评 | 旧版本不冒充当前有效方法 |
+| 环境漂移 | PATH 缺工具即重装、换语言 | 资源 ID→登记路径→版本/能力探针 | 仅阻塞确实缺失的能力 |
+
+每次接续的最小上下文应包括：当前 repo/root/ref/SHA、R5 revision 和 task ID、相关决策版本、当前用户约束、已确认失败、刚完成的证据、下一步可运行命令和预期结果。代码事实从 checkout 读取，不能只继承对话摘要。相关文件 hash 变化时重读相应片段；未变化的整个历史包不重复塞进上下文。
+
+模型切换后先跑小型能力探针：结构化响应、中文内容、工具调用、拒绝越权、重试和长内容恢复。使用相同输入/验收，不能因某模型不支持而暗改任务目标。代理路由若无法保证实际后端身份，只能记录“供应商声明”，不能声称固定同一个模型权重。
+
+建议把动态状态与冻结规范分开：冻结 TASKS 保持原文；R5-STATE 给出当前逐切片状态；R5-EXECUTION 记录命令/源码/收据；上下文摘要是这些信息的可重建投影。验收时检查缺失项；日常不要因为可选文档格式或分析建议重复阻塞开发。
+
+上下文工程的公开实践也强调按需检索、压缩和结构化笔记；本报告将其应用到已有 R5 指针，而不是让每次会话全文重读所有历史。[Anthropic 上下文工程](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+
+## 8 开源复用研究的具体裁决
+
+研究按“当前缺口→现有实现→上游原始来源→接入位置→真实验收”执行。以下是接入建议，不冒充已实施。
+
+| 对象 | 当前证据 | 复用方式与下一动作 | 验收 |
+|---|---|---|---|
+| DeepTutor | 本仓固定 v1.5.17，ADOPT_PRODUCT_BASE；项目文档承认 route mounting/注入未做 | 继续既定学习界面接线；先核固定版本材料/题目/回答实际接口 | 同 Core 知识进入阅读/作答，事件写回 Core；重启继续 |
+| py-fsrs | 实际 scheduling worker 调用；本轮选定测试通过 | 保留 6.3.2，补题目生命周期和 UI 幂等 | 同次回答只生成一次复习变更 |
+| PyMuPDF | 正式 PDF worker 与本轮测试 | 保留已接路径，补完整页锚点/混合扫描处理 | 实际 PDF 从默认入口到回跳和重启 |
+| Tesseract | 正式 worker；本轮英文字图/空白图真实调用 | 修资源解析及语言参数；中文不足时再比较备选 OCR | 中文/中英混排人工真值及区域定位 |
+| Docling | 当前 legacy 有调用；本轮核上游结构化多格式能力 | 针对复杂 PDF/表格/公式失败样本接 Python provider | 同一 corpus 与现有 provider 对比，保留结构 JSON 与损失 |
+| MarkItDown | 当前 README 声明 legacy 已吸收，上游是面向分析的 Markdown 转换 | 作为轻量提取/兼容 fallback；不当高保真恢复格式 | 原件和结构来源并存；不能 Markdown-only 声称无损 |
+| faster-whisper | 本仓已有 standalone worker，当前 profile 历史有英文实跑记录 | 继续该实现，接正式 job/时间戳/语言配置 | 真实人声、静音、噪声；中文字错率；重启回读 |
+| FFmpeg | 已有媒体拆分与视频 worker | 复用音轨和帧提取，不再自写解码 | 音画时间对应、取消回收、长媒体资源预算 |
+| OpenTutor | 此轮未发现正式移植调用证据 | 保持模块供体定位，只补明确算法缺口 | 固定模块/许可证/测试/当前调用者后才能称吸收 |
+| Studyield | 历史口径不同，当前许可与采用边界未复核 | 暂不引入新代码依赖，保留方法参考 | 先查固定版本和既有裁决 |
+| 历史 MCS ZIP | 已补读架构、界面/练习等材料 | 提取用户流程、事务/幂等行为与确定性验证器设计 | 不恢复其旧 SQLite 写者，不复制“填合格例三次=掌握”标准 |
+
+DeepTutor 上游已在 2026-09-14 发布 v1.6.8，变更涉及会话/阅读交互、启动和 token 预算等。本项目固定的是 v1.5.17；不能把最新版能力自动当成本项目能力，也不应无差分直接升级。先做两个固定版本的兼容性对比，只有对当前阻塞有明确收益才变更锁定版本。[DeepTutor v1.6.8 发布说明](https://github.com/HKUDS/DeepTutor/releases/tag/v1.6.8)
+
+Docling 提供 PDF、Office、HTML、图像及其他格式的结构化解析；这支持其作为复杂文档 provider 的候选定位，不意味着它能不经适配替代 ArcheAxis 的全部契约。[Docling 格式说明](https://docling-project.github.io/docling/usage/supported_formats/)
+
+MarkItDown 官方明确主要面向文本分析，不能据其格式列表宣称高保真可编辑还原；插件和云扩展需分开预算，不默认安装 all 或启用付费路由。[MarkItDown](https://github.com/microsoft/markitdown)
+
+faster-whisper 可作为既有 ASR 能力继续复用，但需核对应模型、设备、量化及本机实测。本轮没有新下载权重或运行用户机器上的模型。[faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+
+许可核查要绑定实际供体版本、代码、权重和分发方式，不能仅看到“个人研究”就认为所有再分发义务消失。当前 README 将 PyMuPDF4LLM 因 AGPL 外置，而正式 worker 使用 PyMuPDF；必须解释两者的实际采用裁决，不能沿旧表自动阻塞或自动放行。本轮核到 PyMuPDF 上游 COPYING，尚未完成整个候选包的许可证/SBOM 审计。[PyMuPDF 许可文本](https://github.com/pymupdf/PyMuPDF/blob/main/COPYING)
+
+## 9 稳定 顺畅与低成本的验收设计
+
+以用户可观察的结果测量：启动到可操作、导入到原件落盘、到首段正文、到可搜索、到可作答、保存回答延迟、退出/重启读回、失败恢复时间。记录文件数/大小/页数、CPU/GPU/内存、冷/热状态、引擎/模型版本、p50/p95 和错误率。当前没有这些产品实测数据，不承诺某个秒数或几天完成。
+
+建议首批样本包含：中文 Markdown、文本 PDF、扫描 PDF、截图、含表格 DOCX、PPTX、XLSX、静态 HTML、短真实人声、短视频、嵌套 ZIP、Unicode/空格路径、损坏文件、空白样本及超限样本。先贯通 Markdown+文本 PDF 双侧，再扩大格式；样本库外置只读，输出入隔离 TEST。
+
+失败矩阵至少覆盖：Core 未启动、worker 缺配置、模型缺失、限额、无网络、错误凭据、取消、超时、重复点击、响应丢失、进程异常退出、磁盘满、数据库占用、损坏原件、恢复失败。每种失败都应给用户准确状态与下一步，且不把未完成计成功。
+
+成本控制优先使用已下载资源和确定性转换。摘要/出题/核查按需调用模型，缓存绑定原件 hash+转换版本+模型/profile；重跑只处理变化部分。限制模型重试和单作业预算；离线可保存/检索/学习已存在材料；云端失败不清空本地工作。
+
+插件接口应包含能力、协议版本、输入类型、权限范围、截止时间、取消、输出结构、错误和损失。先用 PDF、OCR、ASR、FSRS、检索等不同能力验证接口，再宣布稳定 SDK。无需为 M0 新建插件市场、通用 Agent 平台或复杂消息基础设施。
+
+## 10 沿 R5 的最短修复顺序
+
+以下是审计发现映射，不是替代任务图。父任务依赖、原验收和 Q00/Q01 保持；允许先完成跨任务的契约/受控 TEST 切片，不把下游整项完成作为上游启动条件。
+
+| 顺序 | R5 承接 | 明确工作 | 完成证据 |
+|---|---|---|---|
+| 1 | X00/X01 | 统一当前入口；修 lint 历史获取；区分 legacy/正式 CI；修发布 guard 的真实性 | 同 SHA 必需门执行；纯注释负例失败；当前指针唯一 |
+| 2 | X01/X05/X11 | 持久 TEST workspace 绑定；启动、退出、重试与身份 | 同库两次启动，原件/题目/事件不丢；不需手开多个终端 |
+| 3 | X04/X05/X06 | 桌面导入连 job/execution/output；统一限额和取消 | Markdown+真实 PDF 从空库到正文/出处；超限明确拒绝 |
+| 4 | X07 | 个人知识保存与外部核查资格分开；候选接受、版本、检索、锚点 | 离线个人知识可用，未核查事实不伪装 verified |
+| 5 | X03/X08 | DeepTutor 既定入口接线；学习对象、题目展示、回答、幂等、FSRS | 本人第一道题可答；丢响应重试只一条事件；重启继续 |
+| 6 | X09 | 同源知识完成真实机器任务；独立验结果；修订后重评 | 真客户端输入输出与版本绑定，旧方法不再冒充现行 |
+| 7 | X05/X10 | 修无关库认证；补归档关联/收据；非空旧库 staging 迁移 | 错库拒绝，关系/附件/学习/机器状态恢复后语义一致 |
+| 8 | X11/Q00 | 同源码 Windows 候选、真实默认入口与完整收据 | 独立审核；未满足前置不自签、不宣布正式交付 |
+| 9 | X12/X13/X14/Q01 | 逐格式扩展、语义复用、容量止增与授权清理 | 每组按原验收完成；真实释放与功能回归；独立 M1 |
+
+首次完整 TEST 演示必须从空库开始：默认入口启动 → 导入真实资料 → 查看正文/出处 → 接受一项知识 → 创建题目并由人作答 → 保存复习 → 机器用同一知识完成任务 → 修订知识 → 双方后续正确使用 → 退出重启读回。禁止用手工 SQL、预灌答对事件、mock 成功返回拼装产品通过。
+
+每个修复小片保存：task ID、源码 SHA、输入样本 hash、运行环境、build/profile/模型身份、实际入口、输出、失败项、下一步和回滚。执行者按现有授权连续推进；能力缺口只影响具体项。一个包校验通过或几千单测通过，不能替代上述用户流程。
+
+## 11 历史需求如何保留
+
+本轮补读的三份 DOCX 分别为 Overview 12,307 字符、V3.0 18,019 字符、V3.1 10,632 字符，主文档无内嵌图片。两份 ZIP 分别为 37/34 成员。文本提取不是运行历史程序或验证其历史测试声明。
+
+保留：人机双链、证据可追溯、知识修订、视觉教学四层、稳定空间位置、知识宫殿、图表/动画/仿真、可编辑输出、方法迁移、开放互操作。F01—F06 冻结实现不等于删需求。
+
+被后续决策覆盖：旧品牌名称、旧 Cognitive-Loop-OS 仓库、FastAPI/Tauri 正式架构、旧任务先后次序、将演示答对次数直接称为掌握的弱验收。旧文件原样保全，通过明确映射承接能力，不能因文件标题“总蓝图”而自动覆盖 R5。
+
+Google Research/500 AI ZIP 是选择性研究和链接索引治理材料，不是数百项目已集成证据。MCS ZIP 有更完整的交互流程示例，可作为语义供体；其历史声明“2 passed”没有在本轮重新运行，不能继承成当前产品证据。
+
+## 12 尚未完成与交接边界
+
+- 未完成所有历史会话逐条需求裁决；本轮用已取得交接、当前仓库和补读蓝图。
+- 未完成 31 分支所有独有提交语义审查；完整 ahead/behind 清单随包提供。
+- 未做全部图片视觉审计、安装器/模型二进制分析；不宣称二进制全覆盖。
+- 未做 Rust/.NET 编译、Windows GUI、干净机安装/卸载/签名、用户旧库迁移、真实 Green 替换。
+- 未做中文 OCR/真实 ASR/真实机器模型端到端实跑；英文 OCR 仅为直接 worker 探针。
+- 未验证 Axum 大文件 413 的实际 HTTP 行为，也未跑性能基准。
+- 未审计 Codex/Hermes/DSH 全局私有技能、模型路由配置；没有证据把根因归咎于某个模型品牌或插件。
+- 未修改 R5 冻结原文与产品代码；本轮交付审计证据及可执行修复建议，不能说修复已落地。
+
+这些缺口不妨碍立即修复已确认的入口断点；但它们限制“完整产品已稳定可用”的声明。下一执行者应直接承接第 10 节，优先交付真实默认流程，不再把同一批候选重新登记一遍。
+
+## 13 主要项目证据入口
+
+以下链接固定到本轮审计 SHA，避免默认分支变化造成证据漂移。
+
+- [桌面入口与复习提交](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/apps/ArcheAxis.Desktop/MainWindow.axaml.cs)
+- [Core API](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/crates/archeaxis-api/src/lib.rs)
+- [开发启动](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/scripts/launch/desktop_launch.py)
+- [旧旅程函数](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/shared/core_client.py)
+- [学习领域](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/crates/archeaxis-domain/src/learning.rs)
+- [开放归档](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/crates/archeaxis-archive/src/lib.rs)
+- [备份恢复入口](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/scripts/launch/core_launch.py)
+- [worker 传输](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/services/python-workers/transport/text_ndjson.py)
+- [R5 当前状态](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/docs/current/R5-STATE.json)
+- [DeepTutor 采用与缺口](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/docs/integrations/DEEPTUTOR_PRODUCT_BASE.md)
+- [当前失败 CI](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34911642212)
+- [lint 原始失败作业](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34911642212/job/104200264784)
+- [发布架构 guard](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/0dd8ff37b670ae98fac4be35720194434e82191e/scripts/release/verify_release_architecture.py)
+- [Axum 0.7.9 上游体积限制源码](https://github.com/tokio-rs/axum/blob/axum-v0.7.9/axum-core/src/extract/default_body_limit.rs)
+
+随附证据包包含文件/分支清单、文本扫描摘要、隔离复现结果、OCR 实测结果、当前 Actions 查询和 R5 发现映射；不包含用户真实数据库、凭据、模型权重或完整源码镜像。

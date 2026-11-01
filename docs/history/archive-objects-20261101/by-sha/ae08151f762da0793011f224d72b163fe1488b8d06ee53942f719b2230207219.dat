@@ -1,0 +1,444 @@
+# ArcheAxis Apple Desktop 全套界面任务包
+
+- 项目：`DTALEX66/Cognitive-Loop-OS`
+- 产品：元枢系统 / ArcheAxis OS
+- 包版本：`v1.0`
+- 生成时间：`2026-07-28T00:13:07+00:00`
+- 本次连接可见云端基线：`2cdf11e2b85154c15cfd621c04dae8f6c90d693b`
+- 视觉方向：苹果式明亮桌面 + Human/Agent/Cognitive Governance 融合
+
+## 这不是单纯换皮
+
+本包将当前 Cognitive Workspace 逐步升级为一套完整的：
+
+> Human 入口 + Agent 任务驾驶舱 + Research/Knowledge 工作台 + 认知画布 + 证真回放 + 连接与系统控制
+
+视觉采用苹果式产品设计语言：
+
+- 明亮柔和的中性色；
+- 大面积留白；
+- 低透明磨砂玻璃；
+- 精细阴影；
+- 14–16px 中等圆角；
+- 轻量蓝紫渐变；
+- 高信息密度但不拥挤；
+- 强调真实状态和可验证数据。
+
+## 重要真相边界
+
+参考图中的以下内容只是目标视觉占位，不能直接写成静态数据：
+
+- Agent 名称、运行数量和进度；
+- GPT-5.6、其他模型名称与路由；
+- Token、费用、耗时；
+- 任务 ID；
+- 任务阶段；
+- Evidence 数量；
+- 系统资源；
+- 项目数量与知识统计。
+
+实现时必须：
+
+1. 有真实 API 就接真实 API；
+2. 无真实 API 就显示“尚未接入”；
+3. 不伪造 Agent、模型、成本和进度；
+4. 不暴露内部 `package_id/job_id/command_id/event_id`；
+5. 不降低 Loopback、CSP、Tauri 导航和数据库治理边界。
+
+## 包内内容
+
+- 全局产品与视觉规范；
+- 8 个核心页面详细拆解；
+- 组件库与 Design Tokens；
+- 当前 API 到新界面的映射；
+- 分阶段 TaskPack；
+- HERMES 单 Writer 总命令；
+- Codex 只读审查提示词；
+- 验收矩阵、风险与回滚；
+- PowerShell 基线和测试脚本；
+- 8 张全套界面参考图；
+- 一个可离线打开的桌面壳结构原型。
+
+## 推荐执行顺序
+
+1. `AXAPPLE-A0`：基线冻结与视觉合同。
+2. `AXAPPLE-A1`：苹果式统一桌面壳。
+3. `AXAPPLE-A2`：观心总览、察微、藏识真实页面。
+4. `AXAPPLE-A3`：知行任务与智体中心。
+5. `AXAPPLE-A4`：认知画布与证真回放。
+6. `AXAPPLE-A5`：连接管理与系统控制。
+7. 最后统一做 exact-SHA Windows/Tauri/NSIS 验收。
+
+先完成 A1，不要一次把 8 张图全部硬塞进仓库。
+
+
+---
+
+# 元枢桌面全套产品界面总规范
+
+## 1. 产品定位
+
+元枢桌面不是普通知识库，也不是代码 Agent IDE，而是面向个人重型使用的：
+
+> Human–Agent Cognitive Workspace
+
+核心循环：
+
+```text
+Capture / Goal
+→ Research / Source / Claim / Evidence
+→ Knowledge / Learning / Mastery
+→ Plan / Permission / Execution
+→ Trace / Evaluation / Human Review
+→ Lesson / Knowledge Promotion
+```
+
+## 2. 一级导航
+
+1. **观心总览**：对话入口、今日状态、快速任务、真实系统概览。
+2. **智体中心**：Agent 模板、实例、技能、模型、工具、权限。
+3. **知行任务**：任务收件箱、执行、审批、产出物、失败与恢复。
+4. **认知画布**：Research、Knowledge、Task、Agent、Outcome 的空间化关系。
+5. **证真回放**：任务时间线、Context、Tool、Evidence、Evaluation、Audit。
+6. **察微研究**：Source、Claim、Evidence、Conflict、Unknown、Research Package。
+7. **藏识知识**：Knowledge Unit、关系、学习、掌握度、机器知识。
+8. **流程自动化**：TaskPack、Workflow、调度、无人值守、运行记录。
+9. **连接管理**：模型、MCP、GitHub、本地目录、浏览器、Skills。
+10. **系统控制**：Job、Outbox、Receipt、Migration、Backup、安全、日志、发布。
+
+A1 可以将“连接管理/系统控制”作为两个入口；后期可在同一系统设置中合并。
+
+## 3. 桌面结构
+
+```text
+顶部全局栏
+├── 品牌与项目
+├── 全局搜索/命令
+├── 本地/远程环境
+├── 模型路由
+├── 通知
+└── 用户
+
+左侧主导航
+├── 一级模块
+└── 项目空间
+
+中央工作区
+├── Dashboard
+├── List / Table
+├── Editor
+├── Mission Control
+├── Canvas
+└── Replay
+
+右侧认知检查器
+├── Context
+├── Source
+├── Evidence
+├── Permission
+├── Trace
+├── Evaluation
+└── Audit
+
+底部状态栏
+├── Local/Core/SQLite
+├── 真实后台任务
+├── 待审批/失败
+├── 模型路由
+└── 版本
+```
+
+## 4. 四类工作模式
+
+### 普通模式
+
+适合观心首页和快速任务，留白较多，减少技术细节。
+
+### 专业模式
+
+适合 Research、Knowledge、任务详情，显示高密度表格和 Inspector。
+
+### 画布模式
+
+左右属性栏 + 中央无限画布。
+
+### 回放模式
+
+时间线 + 执行详情 + Evidence/Evaluation Inspector。
+
+## 5. 页面状态
+
+每个页面必须支持：
+
+- Loading；
+- Empty；
+- Partial；
+- Available；
+- Error；
+- Unauthorized；
+- Offline；
+- Planned。
+
+不允许只做“完美有数据”的效果图状态。
+
+
+---
+
+# 苹果式元枢设计系统
+
+## 1. 定位
+
+这是“苹果式生产力软件语言”，不是 macOS 像素复制。
+
+允许吸收：
+
+- 克制留白；
+- 清晰层级；
+- 磨砂玻璃；
+- 精细阴影；
+- 柔和渐变；
+- 圆润但不儿童化；
+- 图标简洁；
+- 文字优先；
+- 动效自然。
+
+禁止：
+
+- 使用 Apple Logo；
+- 分发 Apple 字体；
+- 复制系统应用图标；
+- 复制具体系统窗口资产；
+- 让界面看起来是未经授权的 macOS 克隆。
+
+## 2. 字体
+
+不打包字体文件。
+
+系统字体栈：
+
+```css
+font-family:
+  -apple-system,
+  BlinkMacSystemFont,
+  "Segoe UI",
+  "Microsoft YaHei UI",
+  "Noto Sans SC",
+  system-ui,
+  sans-serif;
+```
+
+## 3. 颜色
+
+### 基础
+
+- `--bg-app: #F4F7FC`
+- `--bg-panel: rgba(255,255,255,.82)`
+- `--bg-solid: #FFFFFF`
+- `--text-primary: #10162B`
+- `--text-secondary: #6F7890`
+- `--border-soft: rgba(45,61,105,.09)`
+- `--border-strong: rgba(91,82,230,.18)`
+
+### 品牌
+
+- `--accent: #5B57F1`
+- `--accent-2: #7E68FF`
+- `--accent-soft: rgba(91,87,241,.10)`
+- `--glow-blue: #59B6FF`
+- `--glow-violet: #A687FF`
+
+### 语义
+
+- Available / Success：`#21B87A`
+- Evidence / Info：`#2989F5`
+- Review / Candidate：`#F3A629`
+- Conflict / Failed：`#EF5662`
+- Planned / Disabled：`#A0A9BA`
+
+## 4. 渐变
+
+背景只使用很淡的环境光：
+
+```css
+background:
+  radial-gradient(circle at 72% 0%, rgba(125,105,255,.13), transparent 30%),
+  radial-gradient(circle at 15% 20%, rgba(79,181,255,.10), transparent 35%),
+  #F4F7FC;
+```
+
+主按钮可使用蓝紫线性渐变，但不得每张卡片都渐变。
+
+## 5. 卡片
+
+- 圆角：14–18px；
+- 内边距：16–22px；
+- 边框：1px soft border；
+- 阴影：`0 8px 28px rgba(35,52,95,.07)`；
+- 卡片间距：12–16px；
+- 面板不要过度透明；
+- 长文编辑区优先纯白。
+
+## 6. 布局
+
+- 左导航：220–248px；
+- 顶栏：60–68px；
+- Inspector：300–340px；
+- 底栏：36–44px；
+- 主内容最大宽度根据页面决定，不强制居中窄栏；
+- 960×640 为桌面最小边界；
+- 390px 仅保证核心浏览器流程可操作。
+
+## 7. 组件状态
+
+- Hover：轻微边框和阴影增强；
+- Pressed：缩放不超过 0.99；
+- Focus：2px 蓝紫 Focus Ring；
+- Disabled：降低对比，不使用透明到看不清；
+- Loading：骨架屏或小型 Spinner；
+- 不使用无法对应真实进度的进度条。
+
+## 8. 图标
+
+- 使用统一线性图标；
+- 16/18/20/24px 四档；
+- 状态图标可使用实心小圆；
+- 不混用 Emoji 作为正式导航图标；
+- 品牌轴心标志独立绘制。
+
+## 9. 动效
+
+- 120–220ms；
+- 页面切换淡入 + 轻微位移；
+- Drawer/Inspector 使用 spring-like easing；
+- 遵守 `prefers-reduced-motion`；
+- 禁止持续漂浮和高频光效。
+
+## 10. 明暗主题
+
+本轮先完成明亮主题：
+
+- `apple-light`
+
+旧主题继续兼容：
+
+- `violet-core`
+- `yaojin`
+- `deepspace`
+
+不删除现有主题，避免 localStorage 和用户偏好失效。
+
+
+---
+
+# HERMES 最终总命令
+
+你是本轮唯一 Writer。目标仓库：
+
+`D:\All projects\Cognitive-Loop-OS`
+
+远端：
+
+`DTALEX66/Cognitive-Loop-OS`
+
+本任务包可见基线：
+
+`2cdf11e2b85154c15cfd621c04dae8f6c90d693b`
+
+用户之前表示云端可能有新更新，因此你必须先：
+
+1. `git fetch --all --prune`
+2. 读取当前 HEAD、分支、upstream 和远端目标；
+3. 确认工作树 clean；
+4. 如果远端 HEAD 已变化，以新 HEAD 为基线；
+5. 禁止 hard reset 覆盖用户提交；
+6. 禁止强推；
+7. 禁止访问或修改项目目录外文件；
+8. 禁止扫描 Obsidian-Assistance、个人 Vault、E 盘资料和其他项目。
+
+## 执行规则
+
+本轮只执行：
+
+- 先 `AXAPPLE-A0`
+- 验收后再 `AXAPPLE-A1`
+
+不要直接执行 A2–A5。
+
+读取：
+
+- `00_START_HERE.md`
+- `01_PRODUCT_UI_MASTER_SPEC.md`
+- `02_APPLE_STYLE_DESIGN_SYSTEM.md`
+- `03_GLOBAL_INFORMATION_ARCHITECTURE.md`
+- `05_FRONTEND_TECHNICAL_PLAN.md`
+- `06_API_AND_DATA_MAPPING.md`
+- `07_UI_TRUTH_BOUNDARY.md`
+- `08_IMPLEMENTATION_FILE_MAP.md`
+- `09_EXECUTION_PHASES.md`
+- `11_ACCEPTANCE_MATRIX.md`
+- `12_RISK_AND_ROLLBACK.md`
+- `manifests/taskpacks/AXAPPLE-A0.json`
+- `manifests/taskpacks/AXAPPLE-A1.json`
+
+## A1 目标
+
+把现有 Workspace 升级为苹果式明亮桌面壳：
+
+- 品牌/顶部全局栏；
+- 左侧主导航；
+- 项目空间；
+- 中央工作区；
+- 右侧认知检查器；
+- 底部真实状态栏；
+- `apple-light` 默认主题；
+- 兼容旧主题；
+- 保留所有现有真实 API 和动作；
+- 保留资料导入和 closed-loop browser test。
+
+## 硬性规则
+
+- 不伪造 Agent、模型、成本、Token、任务进度、资源使用率；
+- 不复制参考图中的静态数字；
+- 不显示内部 ID；
+- 不改 SQLite Schema；
+- 不改 Planner；
+- 不降低 CSP/Loopback/Tauri 安全；
+- 不引入 CDN；
+- 不分发字体；
+- A1 不迁移 React；
+- Planned 能力必须诚实标记；
+- 先写或更新 RED，再实现 GREEN；
+- 完整门禁只对 frozen tree 运行一次；
+- 创建可回滚 commit；
+- 推送后确认 exact-SHA CI。
+
+## 分支
+
+- A0/A1 可使用：`feat/archeaxis-apple-desktop-a1`
+
+## 停止条件
+
+- 工作树存在用户未保存变更；
+- 远端分支不清晰；
+- 需要数据库迁移；
+- 需要放宽安全边界；
+- 需要伪造数据才能符合参考图；
+- Wheel/Tauri 打包策略不兼容；
+- Browser Smoke 无法保持真实 closed loop。
+
+## 最终报告
+
+输出：
+
+- 实际基线 SHA；
+- 分支；
+- 修改文件；
+- RED/GREEN；
+- 门禁；
+- 截图；
+- 当前真实能力；
+- Planned 能力；
+- 已知限制；
+- commit SHA；
+- CI URL；
+- 明确声明 A2–A5 未完成。

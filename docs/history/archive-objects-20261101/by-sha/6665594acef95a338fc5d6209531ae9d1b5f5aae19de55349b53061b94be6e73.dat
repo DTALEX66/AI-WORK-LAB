@@ -1,0 +1,784 @@
+# WORK-LAB Stage 3 最终权威执行任务包
+
+> 本文件可直接交给 HERMES 执行。它整合并取代此前尚未执行的 WORK-LAB 零散增量说明，继承历史 WL-000～WL-820 与已完成的 NX-000～NX-720 证据，新增平台实例唯一性、官方基准＋用户覆盖层、成长治理、后台自动运行、跨项目遥测、实时 Observer、UI/UX 与 CI 提速闭环。
+
+## 0. 任务元数据
+
+```yaml
+taskpack_id: WORK-LAB-STAGE-3-CANONICAL-CONTROL-PLANE
+taskpack_version: 1.0
+snapshot_date: 2026-08-08
+repository: DTALEX66/WORK-LAB
+default_branch: main
+observed_remote_head: a3a6fa63b9548dfc4e4b2390bb9c6257dfacdfa3
+preferred_local_root: 'D:\All projects\WORK-LAB'
+status: READY_FOR_CONTINUOUS_LOCAL_SAFE_EXECUTION
+writer_policy: SINGLE_WRITER
+observer_policy: STRICTLY_READ_ONLY
+publication_policy: EXPLICIT_APPROVAL
+live_global_apply_policy: EXPLICIT_APPROVAL
+paid_provider_policy: EXPLICIT_APPROVAL
+external_project_write_policy: EXPLICIT_APPROVAL
+destructive_policy: EXPLICIT_APPROVAL
+compatibility_policy: CAPABILITY_NEGOTIATION_NO_PERMANENT_VERSION_LOCK
+```
+
+`observed_remote_head` 是本任务包编写时的审计快照，不是回退目标。执行时必须读取真实 HEAD、branch、worktree、远端包含关系与活动 writer；禁止为了匹配该 SHA 执行 reset、clean、覆盖、丢弃或历史重写。
+
+## 1. 唯一权威与执行优先级
+
+从本任务包开始，WORK-LAB 的前向执行优先级固定为：
+
+1. `00-governance/PROJECT_POSITIONING.md` 与 `00-governance/projects.json` 的两活动模块边界；
+2. 本任务包及其机器可读 Stage 3 Task Graph；
+3. 当前 tree 生成的 `CURRENT_STATE`、Task Ledger、合同与运行证据；
+4. `WORK-LAB-STAGE-2-ABSORPTION-INTEROPERABILITY-HANDOFF.md` 的 NX 完成记录；
+5. 旧 WL/NX 任务包只作为历史来源、需求和回归证据。
+
+若旧 README、旧 handoff、附件、测试或历史任务包与前四项冲突，将其标记为 `SUPERSEDED` 或修正；不得恢复旧的三模块架构。
+
+本任务包不删除历史证据，但从现在起是唯一前向任务图。不得再因为某份旧附件没有 WL 编号而重新触发 `BLOCKED_TASK_GRAPH_COVERAGE`。
+
+## 2. 给 HERMES 的直接执行指令
+
+1. 这是执行任务，不是再次规划任务。按依赖顺序持续完成所有本地、可逆、离线工作，不要只生成更多 README、Schema 或任务包。
+2. 本任务包授权在当前 WORK-LAB 本地仓库允许路径内修改代码、测试、合同、文档和忽略的项目运行证据；不授权 commit、push、PR、merge、release、live/global apply、外部仓库写入、付费调用、卸载软件或删除归档。
+3. 一个 checkout 同时只允许一个 writer。只读侦察可以并行；写入、格式化和自动修复必须串行合并。
+4. dirty worktree 不再天然阻塞整个阶段。先按 `USER_OWNED`、`PREDECESSOR_OUTPUT`、`RUNTIME_EVIDENCE`、`UNKNOWN`、`FORBIDDEN_OR_SENSITIVE` 分类，并用临时 index/candidate tree 形成稳定 digest；不修改真实 index。只阻塞与未知用户改动直接重叠的任务，其余安全任务继续。
+5. commit 不是稳定 predecessor tree 的前置条件。不得要求用户为了启动本阶段先 commit 49 个 dirty/untracked 路径。
+6. Stage 2 的 tracked handoff 已明确 NX-000～NX-720 完成。旧忽略 Ledger 缺失时记录 `HISTORICAL_LEDGER_UNAVAILABLE`，不得重开旧 Gate A；只有发现活动 writer、当前 tree 证据矛盾或真实边界漂移时才阻塞相应任务。
+7. 每个任务进入同一 Task Ledger，记录 lease、heartbeat、fencing token、checkpoint、输入/输出 digest、错误 fingerprint、重试预算和恢复点。
+8. 同一失败 fingerprint 未发生输入、环境或代码变化时，不重复执行同一审计或模型分析。
+9. GitHub Actions 排队、无 job、限流或平台故障由可恢复 watcher 观察；主 writer 释放租约并继续不依赖任务，不得占用模型会话等待数小时。
+10. 不读取、复制、输出或归档凭据、OAuth、Cookie、浏览器状态、CC Switch 私有数据库、完整 Prompt/Response、完整会话正文或用户私密文件。
+11. 软件、Agent、模型、配置格式、路径和版本使用能力探测与运行快照；不得把当前模型名、版本号或安装路径写成永久产品门槛。lockfile、供应链 SHA、一次运行 exact-tree 证据可固定。
+12. 完成安全本地实现后停在 `LOCAL_VERIFIED_READY_FOR_APPROVAL`，一次性提交批准包，不反复索要零碎批准。
+
+## 3. 不得漂移的最终项目定位
+
+WORK-LAB 是面向多个 Agent、IDE、GitHub 和项目仓库的本地、客户端中立、可迁移、可审计、可恢复的工作流增强控制面。它不是另一个智能体、聊天软件、模型网关、凭据中心、LLMOps 平台或项目运行时。
+
+### 3.1 只有两个活动模块
+
+| 模块 | 职责 | 明确不做 |
+|---|---|---|
+| `10-workflow/workflow-assistance` | 唯一主动后端：配置与资产治理、平台适配、任务恢复、规则/技能/记忆候选、项目注册、CI/GitHub、唯一 Telemetry Ledger 与 Canonical Projection | 不代替 Agent 推理、不保存凭据、不成为模型网关、不接管客户端私有状态 |
+| `30-observer/work-lab-observer` | 严格只读桌面观测面：跨项目任务、平台身份、配置漂移、规则技能、记忆健康、Token/费用、CI/Gate、证据和数据质量 | 不执行、不批准、不重试、不应用、不回滚、不写 Ledger、不控制 Agent |
+
+### 3.2 已完全切割的范围
+
+- Open Design 由 `DTALEX66/OPEN-DESIGN-Assistance` 独立维护，WORK-LAB 不再拥有、执行、投影或测试设计模块。
+- MINIGAME 不属于 WORK-LAB 活动能力，不出现在 Adapter、Observer 页面、模型任务类、CI 活动 Gate 或新任务中。
+- `30-products/minigame` 若当前仍作为历史/fixture/archive 存在，只允许保留归档指针；不执行、不测试、不扩展。删除或历史重写另行批准。
+- Stage 2 中与 Open Design/MINIGAME 相关的 NX-500/510/520 结果仅作为历史交付证据，不在 WORK-LAB 继续开发。
+
+### 3.3 正确运行关系
+
+```text
+Hermes / Codex / CC Switch / GitHub / Cursor / Claude Code / WorkBuddy / future clients
+                                │
+                 read-only discovery + approved adapters
+                                │
+                 Workflow Assistance control plane
+      ┌─────────────────────────┼─────────────────────────┐
+      │                         │                         │
+Platform Identity       Config/Skill/Memory       Task/CI/Recovery
+      │                         │                         │
+      └─────────────────────────┼─────────────────────────┘
+                                │
+             canonical redacted Telemetry Ledger
+                                │
+                    Canonical Projection + SSE
+                                │
+                  Observer strictly read-only UI
+```
+
+实际编码、审批、GitHub 写入和 Agent 操作仍在对应原生软件完成。Observer 可以提供“在哪里处理”的只读说明，但不能替代执行。
+
+## 4. 当前审计基线与已知缺口
+
+截至快照：
+
+- 云端 `main`：`a3a6fa63b9548dfc4e4b2390bb9c6257dfacdfa3`。
+- Stage 2 tracked handoff 声明 NX-000～NX-720 已完成，release/live/paid/真机/人工校准仍未获授权。
+- Observer R2 已合并，具备 Full/Compact、Dark/Light 和 Tauri 壳源码；Windows 环境当时没有 Rust/Tauri toolchain，真实 portable EXE 未构建。
+- GitHub API 仓库 size 指标约 `410449 KiB`，需做非破坏性对象与历史体积审计，但不授权历史重写。
+- `CURRENT_STATE.json` 的内部 HEAD 仍停在 `f141946...`，落后于当前 `main`，必须重新生成。
+- Workflow README 首段仍提到 Open Design，后文又说明已迁出，存在定位矛盾。
+- `work-lab-gate.yml` 仍执行 `design-contract`、`production-evidence`、`standard-validators` 和历史三分支设计 pilot，属于活动范围残留与 CI 浪费。
+- managed config 仍以 `hermes-codex-github-user-overlay` 为中心，尚未形成平台中立的字段所有权模型。
+- `client-adapter/v1` 只描述基础 operations/detection，缺安装实例、配置根、所有权、能力、升级迁移和回滚。
+- memory/growth Schema 缺 TTL、冲突、supersedes、有效期、last-used、项目隔离和完整评测信息。
+- Observer README/Store 仍声称 Observer 持有持久化 event log，与“Workflow 持有唯一 Telemetry Ledger”冲突。
+- R2 前端的真实实时链路、SSE、Tauri 本地后台连接和 snapshot/LIVE 真实性仍需闭环。
+- Codex 官方用户配置目前存在，已观察到的问题更像 Desktop 外观/线程权限未继承，或双入口/双配置根；不能直接认定 WORK-LAB 覆盖了官方配置。
+
+## 5. 配置与资产的最终所有权模型
+
+WORK-LAB 必须实现下列逻辑层，而不是把所有文件复制进一个目录：
+
+```text
+官方基准
++ 用户全局覆盖层
++ 项目覆盖层
++ 当前任务临时策略
+= 当前有效配置
+
+运行时私有状态与凭据永不进入合并链
+```
+
+| 层级 | 示例 | WORK-LAB 行为 |
+|---|---|---|
+| `UPSTREAM_OFFICIAL` | 官方默认、Schema、内置资产、官方配置能力 | 只读探测、记录版本/能力/指纹，不修改 |
+| `USER_OVERLAY` | 用户规则、13 个技能、插件声明、边界、受支持偏好 | 保存差异、验证、迁移、字段级部署 |
+| `PROJECT_OVERLAY` | 项目 AGENTS、Rules、Skills、Gate/Profile | 存在项目仓库，只作用于本项目 |
+| `TASK_EPHEMERAL` | 当前任务临时指令和工作上下文 | 任务结束失效，不自动提升全局 |
+| `PLATFORM_INTERNAL` | Codex Desktop 内部状态、UI、线程数据库 | 只观察元数据/指纹，不读取敏感正文，不写入 |
+| `RUNTIME_EPHEMERAL` | session、cache、queue、lease、pending | 本机 ignored runtime，绝不提交 |
+| `SECRET` | API Key、OAuth、Cookie、auth store | 禁止采集、复制、哈希或显示正文 |
+| `COSMETIC` | 主题、窗口位置、皮肤 | 官方稳定接口存在时才可作为可选用户偏好；默认不管理 |
+
+配置资产操作模式固定为：`MANAGE`、`OBSERVE`、`IGNORE`、`FORBIDDEN`。
+
+冲突原则：官方结构和安全约束优先；用户拥有的内容必须保留。官方不再支持的用户项进入 quarantine 并保留意图，不能静默删除或强行写入。
+
+## 6. 前包完整继承矩阵
+
+### 6.1 历史 WL-000～WL-820
+
+以下 ID 全部覆盖，不再要求另找一份旧机器 Ledger：
+
+| 历史任务 | Stage 3 处置 |
+|---|---|
+| WL-000、WL-010 | 作为基线/13 Skills 证据继承；由 WL3-000、WL3-220 重新回读当前状态 |
+| WL-100、WL-110、WL-120、WL-130 | 作为 CI/impact/watcher 证据继承；由 WL3-520、WL3-800 收口 |
+| WL-200、WL-210、WL-220 | 作为 Ledger/自动循环证据继承；由 WL3-410 收口真实运行路径 |
+| WL-300、WL-310、WL-320、WL-330 | 作为模型/上下文/费用合同继承；由 WL3-310、WL3-330、WL3-510 收口 |
+| WL-400、WL-410、WL-420 | 作为记忆/成长/漂移合同继承；由 WL3-300、WL3-310、WL3-320 收口自动流水线 |
+| WL-500、WL-510、WL-520、WL-530 | 作为 Observer/usage 基础继承；由 WL3-500～WL3-620 收口唯一事实源和实时桌面端 |
+| WL-600、WL-610、WL-620、WL-630 | `TRANSFERRED_OUT_OF_SCOPE`；归属 OPEN-DESIGN-Assistance，不在 WORK-LAB 执行 |
+| WL-700、WL-710、WL-720 | 作为 Adapter/profile/体积基础继承；由 WL3-100、WL3-420、WL3-700、WL3-810 收口 |
+| WL-800、WL-810、WL-820 | 历史集成/审查/交付证据；Stage 3 使用 WL3-800、WL3-820 新 tree，不复用旧绿灯冒充新完成 |
+
+这些状态是 `CLOSED_PREDECESSOR_RECONCILED` 或 `TRANSFERRED_OUT_OF_SCOPE`，不等于所有 live 能力已经验证。
+
+### 6.2 Stage 2 NX-000～NX-720
+
+根据当前 tracked handoff：
+
+```text
+NX-000
+→ NX-100/NX-110
+→ NX-200/NX-210
+→ NX-300/NX-310/NX-320
+→ NX-400/NX-410
+→ NX-500/NX-510/NX-520
+→ NX-600
+→ NX-700/NX-710/NX-720
+= COMPLETED_PREDECESSOR
+```
+
+继承其合同、测试、来源和负控；不得重复研究或下载相同开源项目。与设计有关的结果只保留历史证据，不进入当前两模块活动链。
+
+## 7. Stage 3 机器可读任务图
+
+```yaml
+tasks:
+  - {id: WL3-000, priority: P0, depends_on: []}
+  - {id: WL3-010, priority: P0, depends_on: [WL3-000]}
+  - {id: WL3-100, priority: P0, depends_on: [WL3-000]}
+  - {id: WL3-110, priority: P0, depends_on: [WL3-100]}
+  - {id: WL3-120, priority: P0, depends_on: [WL3-100]}
+  - {id: WL3-200, priority: P0, depends_on: [WL3-100, WL3-010]}
+  - {id: WL3-210, priority: P0, depends_on: [WL3-110, WL3-200]}
+  - {id: WL3-220, priority: P0, depends_on: [WL3-200]}
+  - {id: WL3-300, priority: P0, depends_on: [WL3-220, WL3-210]}
+  - {id: WL3-310, priority: P0, depends_on: [WL3-300]}
+  - {id: WL3-320, priority: P1, depends_on: [WL3-220, WL3-300]}
+  - {id: WL3-330, priority: P1, depends_on: [WL3-200, WL3-310]}
+  - {id: WL3-400, priority: P0, depends_on: [WL3-210]}
+  - {id: WL3-410, priority: P0, depends_on: [WL3-400]}
+  - {id: WL3-420, priority: P1, depends_on: [WL3-400, WL3-410]}
+  - {id: WL3-500, priority: P0, depends_on: [WL3-400, WL3-410, WL3-420]}
+  - {id: WL3-510, priority: P0, depends_on: [WL3-500, WL3-330]}
+  - {id: WL3-520, priority: P0, depends_on: [WL3-410, WL3-500]}
+  - {id: WL3-600, priority: P0, depends_on: [WL3-500, WL3-510, WL3-520]}
+  - {id: WL3-605, priority: P1, depends_on: [WL3-010]}
+  - {id: WL3-610, priority: P1, depends_on: [WL3-600, WL3-605]}
+  - {id: WL3-620, priority: P1, depends_on: [WL3-610]}
+  - {id: WL3-700, priority: P1, depends_on: [WL3-110, WL3-200, WL3-500]}
+  - {id: WL3-710, priority: P1, depends_on: [WL3-700]}
+  - {id: WL3-720, priority: P1, depends_on: [WL3-710, WL3-600]}
+  - {id: WL3-800, priority: P0, depends_on: [WL3-010, WL3-520, WL3-610, WL3-720]}
+  - {id: WL3-810, priority: P1, depends_on: [WL3-800]}
+  - {id: WL3-820, priority: P0, depends_on: [WL3-800, WL3-810]}
+```
+
+所有任务初始状态为 `PENDING`。HERMES 必须把同一图写入项目 ignored Task Ledger 和 tracked、可审计的 Task Graph 文件；状态只由 Ledger 转移，不根据新增文件数量猜测完成。
+
+## 8. 详细实施任务
+
+### Batch A — 基线与范围收口
+
+#### WL3-000｜建立 Stage 3 权威基线
+
+实施：
+
+- 读取真实 repo root、branch、HEAD、remote、dirty paths、活动进程、writer lease、当前 CI 与 generated state。
+- 生成 Stage 3 Task Graph、前包继承矩阵、candidate tree digest 和 `STAGE3_BASELINE.json`。
+- 重新生成 `CURRENT_STATE`，不得保留落后于当前 tree 的 HEAD、合同数、技能数或 CI 证据。
+- 对旧 taskpack/handoff 标注 historical/superseded；保留可验证证据和链接。
+- 当前 dirty tree 使用临时 index 生成稳定 candidate tree；真实 Git index、HEAD、branch/ref 不修改。
+
+验收：完整覆盖全部旧 WL 和 NX ID；无旧 Gate A 循环；同一 tree 重跑 digest 稳定；活动 writer 冲突能精确阻塞而不是笼统停工。
+
+#### WL3-010｜清理 Open Design/MINIGAME 活动残留
+
+实施：
+
+- 修复 Workflow README、taskpack summary、reconciliation、contracts、adapter registry 和知识索引中的活动定位矛盾。
+- 从当前 CI 活动门禁移除设计合同、设计生产证据、设计标准和三分支设计 pilot；历史 fixture/test 可转 archive-only，不参与普通 PR。
+- 从 model task class、Observer projection/pages、usage metrics 和 Adapter deep list 中移除 Open Design/MINIGAME。
+- 合同 catalog 对历史设计合同标记 transferred/archived，不能继续声明 Workflow/Observer 所有权。
+- 不写 `OPEN-DESIGN-Assistance`，不删除 `30-products/minigame`，只输出可选归档清理提案。
+
+验收：`projects.json` 始终只有两个活动模块；普通 WORK-LAB Gate 不执行设计测试；Observer 不展示设计模块或 MINIGAME；历史指针仍可追溯。
+
+### Batch B — 平台实例唯一性
+
+#### WL3-100｜Platform Identity Resolver
+
+建立平台身份与安装实例 Schema，字段至少包括：
+
+```text
+platform_id / logical_instance_id / package_identity / publisher
+install_channel / executable_realpath / binary_digest / discovered_version
+launcher_id / launcher_target / arguments / working_directory
+effective_config_root / profile_id / user_context
+capabilities / evidence_source / observed_at / freshness / state
+```
+
+只读发现范围：Windows 安装/包记录、Desktop/Start Menu/Taskbar 快捷入口、PATH、实际进程镜像、官方 CLI 状态、启动参数、相关环境变量和有效配置根。跨平台使用适配器提供等价 probe。
+
+身份状态固定为：
+
+```text
+UNIQUE
+ALIAS_DUPLICATE
+STALE_SHORTCUT
+CONFIG_SPLIT
+VERSION_COLLISION
+DUAL_INSTALLATION
+PROFILE_SPLIT
+IDENTITY_AMBIGUOUS
+UNAVAILABLE
+```
+
+验收：能区分“两个快捷方式指向同一实例”“Desktop＋CLI 的合法双界面”“同程序两套配置”“两个版本共用配置”和“真正双安装”；不读取凭据或会话正文。
+
+#### WL3-110｜Canonical Instance/Launcher/Profile Reconciler
+
+- 每个平台形成唯一逻辑链：`package → executable → standard launcher → config root → profile → active process`。
+- 身份不是 `UNIQUE` 时，所有配置 apply fail closed；Observer 仍可显示冲突。
+- 同目标重复快捷方式、失效入口等低风险对象先生成可恢复 quarantine plan；默认不直接删除。
+- 实际卸载、有效入口移除、配置根迁移和 Profile 合并必须单独批准。
+- 官方更新改变安装路径时，以 package identity/capability 重新绑定，不把版本号或路径写死。
+- 允许 Desktop 与 CLI 同属一个逻辑实例；只要它们的配置/身份关系明确，就不强行删除合法 CLI。
+
+验收：Codex、Hermes fixture 均能得到唯一或明确冲突状态；更新迁移 fixture 可自动重绑；不可能随机选择一套配置进行同步。
+
+#### WL3-120｜Codex/Hermes 双入口与状态重置受控复现
+
+步骤：
+
+1. 记录应用版本、包身份、启动入口、进程路径、参数、有效 Home/Profile 和官方配置的非敏感字段/指纹。
+2. 对 Codex Desktop 内部 global state 只记录文件存在、大小、mtime、digest，不读取或恢复正文。
+3. 分别执行启动、新线程、重启和可控升级前后比较；Hermes 做同等 launcher/profile/config root 比较。
+4. 分类为官方配置漂移、内部 UI/线程状态重建、双入口、双配置根、Profile 分裂或未知。
+5. 输出证据到项目 ignored artifacts，并投影脱敏状态。
+
+禁止：修改 `.codex-global-state.json`、伪造主题设置、复制 OAuth、通过恢复内部状态强行“修好”外观。
+
+验收：能证明真实写入者和变化层级；如果官方配置未变，报告不得写成“WORK-LAB 覆盖配置”。
+
+### Batch C — 官方基准＋用户覆盖层
+
+#### WL3-200｜Configuration Asset & Ownership Contract
+
+- 新增平台中立配置资产 Schema、字段所有权政策和 per-adapter ownership manifest。
+- 将现有 Hermes 中心 `managed-config-schema.yaml` 迁移为兼容输入，不直接删除；输出 Hermes/Codex/CC Switch/GitHub 的字段级 ownership。
+- 官方基准只记录 Schema、默认能力、来源、版本快照和 digest，不复制应用安装树。
+- 用户覆盖层只保存用户拥有的差异；项目覆盖层留在项目仓库；内部状态、runtime 和 secret 排除。
+- preserve unknown user keys；同名 Skill/Rule 必须有 namespace/provenance，不能靠目录名猜 owner。
+- 模型、provider、主题等字段是否管理由 owner/mode 决定，不默认锁定当前选择。
+
+验收：每个已知字段都有 owner 和 mode；未知字段默认 OBSERVE/QUARANTINE，不静默删除；平台更新后可判断兼容而不是整份覆盖。
+
+#### WL3-210｜三方配置协调器
+
+实现固定流程：
+
+```text
+Discover actual
+→ Classify ownership
+→ Compare previous official baseline / new official baseline / user overlay
+→ Generate ActionPlan
+→ Approval when required
+→ Narrow apply through official interface
+→ Readback
+→ Rollback or commit evidence
+```
+
+要求：
+
+- 默认 dry-run；字段级 patch；幂等；backup、readback、rollback 完整。
+- 只有 Platform Identity 为 `UNIQUE` 且配置接口为官方稳定能力时才允许 apply。
+- 官方废弃字段保留用户意图并进入 quarantine；官方安全要求不能被用户 overlay 降级。
+- 优先官方 CLI/API；直接改文件仅限官方明确支持的用户配置文件并使用原子写。
+- Codex Desktop 私有状态、Hermes session/cache、凭据永远没有 apply adapter。
+
+验收：官方升级无冲突自动 rebase；冲突不丢用户资产；重复 apply 不产生 diff；readback 失败自动回滚。
+
+#### WL3-220｜13 个既有 Skills 与规则的完整纳管
+
+必须完整保留：
+
+1. `codex`
+2. `github-auth`
+3. `github-code-review`
+4. `github-issues`
+5. `github-pr-workflow`
+6. `github-repo-management`
+7. `model-switch`
+8. `agent-workflow-fortress`
+9. `project-data-boundary`
+10. `python-testing`
+11. `requesting-code-review`
+12. `sleep-mode`
+13. `windows-development-environment`
+
+实施：
+
+- 计算整个 Skill package 的 digest，包括 SKILL.md、scripts、references、assets、依赖和 provenance，而不只检查 frontmatter。
+- 对 Hermes 先做 isolated portable install；live apply 生成一次性批准计划。
+- 仓库拥有的同名子树可在批准后 backup→stage→atomic replace→readback；未知用户 Skill 保留；来源冲突进入 quarantine。
+- Codex 使用官方 AGENTS/Rules/Agent Skills 作用域；项目级资产放项目仓库，不复制整套全局 Home。
+- 为 Hermes 生成启用 `skills.write_approval`、`memory.write_approval` 和 pin 核心技能的官方配置行动计划；这是 live/global apply，未批准前不执行。
+- 皮肤、主题和窗口外观不属于 13 Skills 部署目标。
+
+验收：13 个一个不少；用户未知 Skill 零删除；完整包负控通过；live 未批准时其余开发不阻塞。
+
+### Batch D — 成长、记忆、上下文和模型治理
+
+#### WL3-300｜自动成长候选流水线
+
+- on-start、on-task-complete、低频 schedule 三类非模型 watcher 自动发现 Hermes/未来客户端的新 Skill、Rule、Memory metadata 和任务经验。
+- 只读取允许路径的 manifest、mtime、digest、来源和公开状态；不摄取完整会话与凭据。
+- 候选字段补齐：scope、project、provenance、license、confidence、created/observed/last-used、TTL、supersedes、contradictions、risk、eval、approval、rollback。
+- 状态：`DISCOVERED → QUARANTINED → SCANNED → EVALUATED → PROJECT_CANDIDATE → APPROVED_PROJECT/APPROVED_GLOBAL`；旁路 `BLOCKED/CONFLICT/EXPIRED/RETIRED`。
+- 项目级低风险候选可按预先批准政策启用；global promotion 始终单独批准。
+- 多 Writer 不共享同一个可写 Hermes Home；共享只读来源必须有 lease/fencing。
+
+验收：模拟 Hermes 自成长后自动发现、隔离、评测和投影；用户不需要手写总结；未批准内容不能进入 global live。
+
+#### WL3-310｜记忆遗忘、上下文压缩和项目漂移治理
+
+- 记忆层：session archive、active context、candidate quarantine、project memory、domain memory、global stable memory。
+- 时间敏感信息有 TTL/revalidate；冲突有 supersedes/valid-from/valid-to；长期未使用进入 recoverable archive。
+- 用户明确最新指令优先于旧记忆；安全边界、完成合同和批准边界是不可被压缩丢失的 pinned context blocks。
+- 禁止无语义保护的 `drop-oldest`。压缩必须输出 retained/dropped/reason manifest，并可追溯原始证据 digest。
+- context pack 使用稳定规则前缀＋任务相关项目层＋动态状态后缀；token-aware selection，不把全部历史和全部工具反复注入。
+- 每次任务记录实际 rule/skill/memory/model-policy digest，检测项目定位漂移。
+
+负控至少覆盖：项目 A 污染 B、旧偏好覆盖新指令、过期事实、恶意 Skill 提升、重复摘要权重膨胀、压缩丢安全边界、无来源推断变用户事实。
+
+#### WL3-320｜Skill/Plugin/MCP 全包安全与更新治理
+
+- 扫描 scripts/references/assets、symlink/junction、隐藏二进制、远程下载、postinstall、shell、Secret 引用、递归加载、Prompt injection、权限和数据外发。
+- 官方/用户/项目/第三方来源分离；官方更新只更新官方基准，用户派生版本作为 Patch/overlay rebase。
+- 新插件/MCP/Skill 默认 `QUARANTINED`，连接成功不等于可信，不自动安装或全局启用。
+- 上游许可证、NOTICE、安全和维护状态发生变化时标记 `UPSTREAM_CHANGED`，停止自动升级并保留可回滚版本。
+
+验收：恶意 fixture 全部隔离；合法完整 Skill 不因未知扩展丢失；任何自动升级都不能覆盖用户 overlay。
+
+#### WL3-330｜模型能力、准确率与成本策略
+
+- 只定义逻辑 lane 与能力要求，不固定 GPT/DeepSeek/Kimi 的具体模型 ID。
+- 当前计费现实作为可修改 billing profile：Codex/GPT subscription、DeepSeek API、Kimi API；未来转订阅只替换 billing adapter。
+- 确定性采集、diff、hash、分类和规则校验优先不用模型。
+- 辅助任务默认低成本/本地确定性路径；Kimi 不用于高频压缩、标题、后台监控或静默 fallback。
+- 高风险编码/审查使用独立高质量通道；失败先修输入、上下文和测试，不靠连续换模型掩盖。
+- 每次调用记录 lane、实际 provider/model、token/cache/latency/outcome、计费类型和 fallback reason；不记录正文。
+
+验收：模型/Agent 更换不影响核心合同；没有静默 fallback；订阅与 API 成本不混算；未知费用不显示 0。
+
+### Batch E — 真正自动运行的本地控制面
+
+#### WL3-400｜WORK-LAB Local Sidecar/Daemon
+
+建立一个用户级、本地优先、可恢复后台服务，承担：
+
+- adapter discovery 和健康探测；
+- platform identity/config drift watcher；
+- task scheduler/Task Ledger 驱动；
+- cross-project collectors；
+- growth candidate watcher；
+- Telemetry Ledger 和 Canonical Projection；
+- loopback API/SSE 与 health。
+
+要求：
+
+- 单实例锁和可恢复启动；默认只绑定 loopback；拒绝外部 origin；不开放写控制 API 给 Observer。
+- Windows 优先交付，但 service contract 跨平台；安装路径、端口和版本运行时发现/配置，不写死。
+- 不需要模型常驻，不依赖云数据库，不把 WORK-LAB 变成 Agent Runtime。
+- 升级失败可回退上一兼容配置/Schema；客户端未安装时优雅显示 unavailable。
+
+验收：重启机器/进程后恢复；重复启动只有一个有效实例；断网仍能观测本地已有证据；无凭据读取。
+
+#### WL3-410｜Task Ledger 驱动的有界自动循环
+
+- 将现有 Ledger/replay 真正接入 sidecar、runner 和每个 Stage 3 task，而不是只跑 fixture。
+- acquire/heartbeat/fencing/release、checkpoint、journal、intent/readback/reconcile、idempotency、retry budget、circuit breaker、waitpoint、zombie detection 完整。
+- 状态区分本地实现、review、delivery、remote sync、CI pending、CI verified 和 complete。
+- 外部副作用先写 intent，崩溃恢复先 readback；不能重复 push、rerun、apply 或发布。
+- `BLOCKED` 必须包含 fingerprint、影响范围、可继续任务、下一检查时间和用户决定项。
+
+验收：kill/restart、旧 writer 复活、网络断开、CI 四小时无 job、外部结果未知、重复 webhook、Ledger 部分损坏均可恢复且不重复副作用。
+
+#### WL3-420｜跨项目注册与微型 Project Profile
+
+- 全局 WORK-LAB 只安装一份。每个外部项目只需要微型、版本化 profile：project id/root resolution、允许/禁止路径、数据根、风险、Gate IDs、CI identity、release policy、项目级 Rule/Skill/Memory namespace。
+- 外部项目真实命令、fixture、产品数据和 Release 决策仍由项目拥有；WORK-LAB 不复制项目 runtime。
+- WORK-LAB 不可用时项目保持 standalone；managed 只能增加门禁，不能削弱项目要求。
+- 先用 fixture repo；写入真实 OS/Cognitive-Loop-OS profile 必须单独批准。
+
+验收：至少 WORK-LAB 自身和一个 fixture external project 可同时观测，数据不串项目；卸载 WORK-LAB 不破坏项目自身 CI。
+
+### Batch F — 唯一事实源、Token 与 CI
+
+#### WL3-500｜Workflow 唯一 Telemetry Ledger
+
+- Workflow Assistance 拥有唯一 append-only、schema-validated、redacted Telemetry Ledger 和可重建 Canonical Projection。
+- Observer 移除 append/authority 能力；现有 Observer store 迁移为只读 projection adapter、一次性导入器或可丢弃 cache，不能成为第二事实源。
+- collectors 对当前及已注册外部项目增量采集、去重、轮转、损坏隔离和 last-good。
+- event 至少包含：event_id、project_id、sourceRef、producer、occurredAt、observedAt、freshness、coverage、quality、schema/version、dedupe key、payload digest、redaction state。
+- 原始 Prompt/Response、tool body、凭据、绝对敏感路径永不进入 Ledger。
+
+验收：Projection 可从 Ledger 完整重建；重复摄取幂等；Observer 删除自身 cache 后仍能恢复；没有第二可写事件库。
+
+#### WL3-510｜Token、费用、任务与数据准确率
+
+数据质量固定区分：
+
+```text
+EXACT_SOURCE
+DERIVED
+ESTIMATED
+PARTIAL
+STALE
+UNKNOWN
+UNSUPPORTED
+```
+
+规则：
+
+- Token actual 只来自 provider/client 官方 usage 或可验证结构化记录；字符估算不能标 actual。
+- 输入、输出、reasoning、cache、tool、subagent 和重复记录分开；明确 dedupe/coverage。
+- API 费用区分 provider reconciled 与 estimate；subscription 显示 `subscription/not-metered`，不制造美元金额。
+- quota、余额、限额只有官方安全接口可得时显示；不得读取/刷新 OAuth 或私有额度端点。
+- 每个数字必须有 source、scope/window、freshness、quality 和 last-good age。
+- 数据源失效时显示最后可信值＋年龄，不清零，不把 snapshot 标 LIVE。
+
+验收：重复、轮转、截断、损坏、时区、WSL/native、model rename、缺 request ID fixtures 通过；UI 所有数字可追溯。
+
+#### WL3-520｜GitHub/CI 全局提速与阻塞治理
+
+实现语义 Gate 与项目 profile：
+
+- 普通 PR：主兼容版本＋受影响测试＋lint/static；
+- UI：追加 browser smoke；
+- Windows runtime：追加 Windows smoke；
+- Desktop/Tauri/Installer：追加 desktop/build/installer 分层 Gate；
+- 依赖/公共兼容合同：追加兼容矩阵；
+- nightly/RC：完整 profile；
+- main：同 tree/policy/workflow/Gate/source 证明一致时只做轻量 bind，否则 full；
+- formal release：同 exact SHA 完整资格、安装器、资产、下载哈希回读。
+
+CI watcher 状态至少包含 `DISCOVERING/QUEUED_NO_JOB/QUEUED_WITH_JOB/RUNNING/SUCCESS/FAILURE/CANCELLED/STALE/RATE_LIMITED/PLATFORM_OUTAGE/DEFERRED`。
+
+要求：
+
+- exact-SHA Full CI 与 main-bind 完全分离；main-bind 不能满足 Release。
+- 相同 tree/policy/Gate/environment 证据才允许复用；未知、安全、迁移、CI 自改、Release 一律 full/fail closed。
+- 退避、Retry-After、stall threshold、rerun budget、watcher checkpoint；无 job 数小时不占 writer。
+- stable aggregate 必须始终出现；required skipped/missing/cancelled 失败。
+- 移除 Open Design/MINIGAME 活动 Gate；独立 Gate 并行，普通 PR 不支付无关矩阵。
+
+验收：四小时无 job fixture 不死等；同 SHA 不无限 rerun；普通改动明显减少无关 Gate；安全与 Release 证据不降级。
+
+### Batch G — 实时只读 Observer 与 UI/UX
+
+#### WL3-600｜真实本地 API、SSE 与状态真实性
+
+唯一接口版本：
+
+```text
+GET /api/v1/snapshot
+GET /api/v1/events        # Server-Sent Events
+GET /healthz
+```
+
+- snapshot 负责初始状态，SSE 负责增量；断线指数退避并从 event cursor 恢复。
+- Observer 只连接本机 allowlisted sidecar；不写任务、不写 Ledger、不提供隐藏 mutation endpoint。
+- 状态必须为 `LIVE/STALE/SNAPSHOT/FIXTURE/OFFLINE/UNKNOWN`，bundled snapshot 和 fixture 永远不能标 LIVE。
+- 清除旧 `/api/dashboard` 单次 GET 与新 v2 Projection 的双权威；可保留兼容 read-only adapter 和明确废弃期。
+- Tauri 静态 shell 必须能发现/连接真实 sidecar，不能因相对 API 不可用而静默展示假 LIVE。
+
+验收：真实事件在无需刷新、无需模型、无需人工复制的情况下进入 Full 和 Compact；断线、重连、回放、Schema unknown 和 stale 全部正确显示。
+
+#### WL3-605｜Observer R3 视觉壳、组件与资产先行交付
+
+该任务在 WL3-010 后即可使用明确标记的 fixture 并行推进，不等待 sidecar、Telemetry 或 SSE 完成。基于已合并 R2 资产和组件继续深化，不另建第二 UI。先交付 Dark/Light × Full/Compact 四种可看、可评审视图；fixture 永远显示 `FIXTURE`，不得标 LIVE。
+
+视觉原则：
+
+- Apple 风格克制的液态玻璃层级、真实半透明、细边界、柔和空间阴影、清晰焦点和中性灰节奏；避免廉价紫色渐变、过度模糊、发光堆叠和通用后台模板感。
+- 使用系统字体栈、响应式布局、减弱动态/透明度模式、对比度和键盘可访问性；低性能环境有无透明 fallback。
+- 所有图标/切片/字体/资产本地化并有来源，不运行时远程拉取。
+- 质量、风险和数据来源通过一致的语义颜色、图标、文案和 tooltip 表达；不能只靠颜色。
+
+Full 信息架构：
+
+1. Overview；
+2. Projects & Tasks；
+3. Platform Identity；
+4. Configuration & Drift；
+5. Rules / Skills / Growth；
+6. Memory & Context；
+7. Models / Tokens / Cost；
+8. CI / Gates / SHA；
+9. Data Quality & Sources。
+
+Compact 只保留：总体健康、当前项目/任务、blocked、Token/费用状态、CI 状态、平台身份冲突和数据新鲜度。点击只能展开详情或打开完整只读窗口。
+
+允许行为：搜索、筛选、排序、时间范围、项目切换、刷新、展开、复制脱敏证据 ID、导出脱敏报告。禁止执行、批准、重试、应用、回滚、切模型、push、PR、merge、release、shell 或 Agent 指令。
+
+视觉资产包至少包含：主应用图标、tray 图标、平台/任务/CI/Token/配置/Skill/Memory/Data Quality 语义图标、深浅主题 token、玻璃 surface token、状态色、组件状态、SVG source、常用 Windows 像素切片和资产 provenance/manifest。现有 R2 五项品牌资产优先复用，禁止为了数量重复生成。
+
+验收：先输出四视图 Playwright 截图和可运行 fixture preview；无溢出、空白、假 LIVE、远程运行时资产或通用后台模板感；组件和切片完整，用户可以在后台接入前先评审视觉。
+
+#### WL3-610｜Observer R3 真实数据接入与 UI/UX 收口
+
+- 将 WL3-605 已批准的同一视觉壳绑定 WL3-600 的 snapshot/SSE，不重新设计第二版前端。
+- 所有卡片直接消费 Canonical Projection；fixture、snapshot、stale、offline、live 使用同一组件但有不可混淆的状态标识。
+- 补齐 loading、empty、partial、stale、corrupt、unsupported、identity conflict、CI no-job、cost unknown 等真实状态。
+- 完成键盘、对比度、reduced-motion、reduced-transparency、缩放、长文本、中英文和低性能 fallback。
+
+验收：Playwright 与真实 sidecar fixture 覆盖四视图和关键状态；事件无需刷新实时更新；无溢出/空白/假数据；用户无需阅读日志即可看懂问题。
+
+#### WL3-620｜Windows Portable Desktop 交付
+
+- 使用官方受信 toolchain 构建 Tauri Windows portable artifact；若本机仍缺 Rust/Tauri，输出精确官方安装计划与 `PENDING_TOOLCHAIN_APPROVAL`，不得下载未知二进制或伪报构建完成。
+- 验证 tray、Full/Compact 窗口、single instance、sidecar 生命周期、开机/手动启动策略、关闭到托盘、升级和回滚。
+- 构建物不提交 Git；发布资产包含版本、tree SHA、provider/toolchain digest、SHA256 和下载后复算。
+- 真实签名、安装器或发布仍是独立批准项。
+
+验收：在真实 Windows 环境启动并读取本地 sidecar；无浏览器手动入口；断开 sidecar 显示 OFFLINE 而非静态 LIVE。
+
+### Batch H — 中立 Adapter 与换平台验证
+
+#### WL3-700｜深化当前四个 Adapter
+
+Hermes、Codex、CC Switch、GitHub Adapter 至少提供：
+
+```text
+detect
+identity
+capabilities
+config_ownership
+observe
+plan
+apply (approval-gated)
+readback
+rollback
+```
+
+每个 manifest 包含官方接口来源、支持级别、配置/usage 数据源、权限、敏感边界、版本/能力快照、降级行为和测试。未有官方稳定能力时显式 `UNSUPPORTED`，不得通过读取私有数据库伪造支持。
+
+#### WL3-710｜未来 Agent manifest-only/read-only 适配
+
+- Cursor、Claude Code、WorkBuddy、Qwen Code 及后续国内外平台先实现 manifest＋capability probe＋identity/config root/observe fixture。
+- 有官方文档和隔离测试后才提升为 deep；detect 成功不自动获得 apply/invoke 权限。
+- 优先 Agent Skills、MCP、ACP、OpenTelemetry/OpenInference 等标准兼容；无原生标准的平台使用内部 bridge 并如实标注。
+- 未安装平台显示 unavailable，不使项目失败。
+
+#### WL3-720｜更换入口、模型和平台演练
+
+至少演练：
+
+1. Hermes 为入口，Codex 编码，GitHub CI；
+2. Codex/Cursor 类入口替代 Hermes；
+3. provider/model 更换但逻辑 lane 不变；
+4. 一个平台更新导致路径/Schema 变化；
+5. 一个客户端完全未安装。
+
+验收：WORK-LAB 核心、Task Ledger、Telemetry 和 Observer 不需要分叉；只替换/降级 Adapter；用户规则和项目 Profile 不丢失。
+
+### Batch I — 收口、体积、安全与交付
+
+#### WL3-800｜Stage 3 集成门禁
+
+至少覆盖：
+
+- 两活动模块和 Open Design/MINIGAME 排除；
+- platform identity 全状态与 ambiguous fail closed；
+- official baseline/user overlay 三方 rebase、readback、rollback；
+- 13 Skills 完整包、未知用户资产保留、恶意 Skill/MCP 隔离；
+- memory TTL/conflict/supersede/project isolation/context pinned blocks；
+- sidecar single instance、Ledger crash/replay、bounded retry；
+- cross-project project profile 与 standalone fallback；
+-唯一 Telemetry Ledger、Projection rebuild、SSE reconnect；
+- Token/cost/coverage/freshness truthfulness；
+- CI queue/no-job/rate-limit/main-bind/release exact-SHA；
+- Observer 无 mutation endpoint，snapshot 不冒充 LIVE；
+- Dark/Light × Full/Compact 视觉回归和可访问性；
+- secrets、路径、symlink、supply-chain、许可证和体积负控。
+
+#### WL3-810｜仓库体积与来源治理
+
+- 统计 working tree、Git objects、大文件、历史 archive、构建物风险和 Stage 3 增量。
+- 不 vendor 整仓，不提交 node_modules、缓存、数据库、portable binary、模型权重或下载依赖。
+- 当前不重写 Git 历史；输出可恢复的减重提案、节省估算和影响清单，等待独立批准。
+- Source Ledger 区分参考、方法吸收、Adapter、fixture、live verified；链接或 README 不得冒充实现。
+
+#### WL3-820｜一次 exact-tree 审查与批准包
+
+- writer 冻结 candidate tree digest 后，只做一次新鲜、隔离、只读 exact-tree 审查。
+- 同 tree 不重复审计；修复后只复审变化和高风险交叉面。
+- 运行相关本地 Gate、Stage 3 integration 和安全负控；记录真实 p50/p95、cache、Token、失败和 skipped 原因。
+- 输出一个批准包，分开列出：
+  1. commit/push/PR；
+  2. Hermes/Codex/global config live apply；
+  3. 双入口/双安装的卸载或配置迁移；
+  4. Windows toolchain/portable build/sign/release；
+  5. 付费 provider smoke；
+  6. 真实 OS/外部项目 profile canary；
+  7. 归档删除或 Git 历史减重。
+
+未获批准时最终状态：`LOCAL_VERIFIED_READY_FOR_APPROVAL`。获得发布批准后才 commit/push，启动一个可恢复 CI watcher，并报告真实 run/attempt/jobs/head SHA；不得重复触发相同 SHA。
+
+## 9. Observer 指标准确率最低合同
+
+Observer 至少覆盖：
+
+| 领域 | 必须显示 | 准确率边界 |
+|---|---|---|
+| 项目/任务 | 状态、阶段、依赖、checkpoint、attempt、blocker、耗时 | 来自 Task Ledger；无证据为 UNKNOWN |
+| 平台身份 | 安装实例、入口、配置根、Profile、active process、冲突状态 | 来自 resolver；路径脱敏 |
+| 配置 | 官方基准、用户 overlay、项目 overlay、drift、pending plan | 不显示 Secret/内部状态正文 |
+| Skills/Rules | owner、source、digest、scope、版本快照、candidate、冲突 | 整包 digest；未知来源隔离 |
+| Memory/Context | scope、年龄、TTL、冲突、promotion、context size/cache | 不显示私密正文 |
+| Model/Token | provider/model/lane、input/output/reasoning/cache、latency、outcome | actual/derived/estimated 分离 |
+| 费用/额度 | billing type、estimate/reconciled、subscription/not-metered、freshness | 无官方数据则 UNKNOWN |
+| CI/Gates | plan digest、Gate、run/attempt/job、queue/no-job、SHA、tree proof | queued 不是 success；main-bind 不是 full |
+| 数据质量 | source、coverage、freshness、drop/corrupt/unknown、last-good | snapshot/fixture 不得标 LIVE |
+
+任何卡片都必须能追溯 source/evidence ID；不能用“0”替代未知，不能让模型总结成为事实源。
+
+## 10. 性能和效率验收
+
+不预设虚假提升百分比，使用同一 fixture 和任务集对比：
+
+- 平台身份 discovery 时间、重复入口误判率、ambiguous 识别率；
+- 配置 diff/apply/readback/rollback 成功率和幂等性；
+- 任务首次通过率、平均修复轮数、相同 fingerprint 重复次数；
+- writer 活跃时间与等待 CI 时间；
+- Gate p50/p95、cache hit、无效 rerun、queue-to-job、deferred/resume；
+- context pack token、无关工具数、cache token/命中；
+- API 费用、Kimi auxiliary 调用数（目标 0）、subscription/API 误算数；
+- memory contamination、candidate promotion/rollback、Skill drift 发现时长；
+- event freshness、duplicate/drop/corrupt、Projection rebuild、SSE reconnect；
+- UI 首屏、更新延迟、CPU/内存、透明度 fallback 和可访问性。
+
+提速不能靠跳过安全 Gate、伪造缓存、减少必要回读、扩大自动写权限或把 unknown 显示为 success。
+
+## 11. Blocker 标准
+
+```yaml
+blocker_id: stable-id
+task_id: WL3-xxx
+class: ownership|identity|permission|credential|environment|external-platform|budget|quality|policy|unknown
+fingerprint: sha256-of-sanitized-cause
+first_seen_at: timestamp
+last_seen_at: timestamp
+attempts: integer
+retryable: true|false
+next_check_at: timestamp|null
+affected_tasks: []
+safe_tasks_continuing: []
+external_write_required: true|false
+user_decision_required: true|false
+evidence: []
+recommended_action: text
+```
+
+以下不是全局阻塞：旧忽略 Ledger 不存在、旧附件没有 WL ID、remote CI 仍 queued、缺少可选客户端、缺少付费 key、没有 Windows build toolchain。它们只阻塞对应 live/portable/paid 子任务。
+
+## 12. 最终 Definition of Done
+
+只有同时满足以下条件，Stage 3 才完成：
+
+1. WORK-LAB 只有 Workflow Assistance 和严格只读 Observer 两活动模块。
+2. Codex/Hermes 双入口、双安装、双配置根能自动发现、分类和 fail closed；每个平台可登记唯一逻辑实例。
+3. 官方基准＋用户 overlay＋项目 overlay 的字段所有权、三方 rebase、backup/readback/rollback 可运行。
+4. 官方更新不会被 WORK-LAB 整份覆盖；用户规则/13 Skills 不会被官方更新无声删除。
+5. Codex Desktop 内部状态、主题、线程状态和凭据从未被写入或当作稳定合同。
+6. Hermes 成长 Skill/Memory 自动进入 pending/quarantine，不需要用户手写总结，未经批准不污染 global。
+7. 记忆有 scope、TTL、冲突、supersedes、归档与撤回；项目 A 不污染 B；压缩不丢安全边界。
+8. sidecar 能自动启动/恢复，Task Ledger 真实驱动任务，有 lease/fencing/checkpoint/bounded retry/circuit breaker。
+9. WORK-LAB 能自动观测本项目与已登记外部项目，而不复制项目 Runtime 或用户数据。
+10. Workflow 持有唯一 Telemetry Ledger；Observer 没有第二可写事实源。
+11. Observer 通过 snapshot＋SSE 实时更新，无人工搬运、无模型总结、无假 LIVE。
+12. Token、费用、任务、CI 和数据质量均有来源、范围、新鲜度和准确度等级。
+13. Apple Liquid Glass 的 Dark/Light × Full/Compact 四视图真实可用、好看、清晰、可访问；没有控制按钮。
+14. 当前四个深度 Adapter 完成身份/所有权/观测/计划/回读；未来平台可 manifest-only 接入并优雅降级。
+15. 换 Agent 入口、换 provider/model、平台更新和客户端缺失演练通过，核心不分叉、不锁版本。
+16. 普通 CI 不再运行设计残留或无关重型矩阵；queue/no-job 不再占用 Agent 数小时；Release 安全不降级。
+17. 所有 live、paid、external-write、portable、release、destructive 项如未执行，诚实标记 pending/blocked，不伪造完成。
+
+## 13. HERMES 最终汇报格式
+
+只给用户一份最终收口报告：
+
+1. baseline/current tree digest、dirty 分类与 writer/lease；
+2. WL3 Task Graph 每个 ID 的终态和证据；
+3. Codex/Hermes 实例、入口、配置根与 controlled repro 结论；
+4. 官方基准/用户 overlay/项目 overlay 的实际部署与未批准 live 项；
+5. 13 Skills、成长、记忆、上下文和插件/MCP 安全结果；
+6. sidecar、Task Ledger、跨项目 Telemetry、Observer SSE 与 UI 结果；
+7. CI/性能/Token/费用/准确率前后对比；
+8. Open Design/MINIGAME 活动残留清理结果；
+9. 安全、隐私、许可证、体积和 rollback；
+10. 一次性批准清单。
+
+禁止用新增文档、Schema 数、注册项、截图或“本地测试通过”冒充 live apply、真实 portable build、exact-SHA CI、跨项目 canary 或发布完成。
+
+---
+
+## 最终执行判定
+
+本任务包可以立即交给 HERMES，先执行 WL3-000。它不等待旧 WL Ledger，不等待远端 CI，不要求先 commit dirty predecessor，也不重新研究已经完成的 Stage 2 开源来源。
+
+第一条主线必须是：
+
+```text
+平台实例唯一性
+→ 官方基准＋用户覆盖层
+→ 13 Skills 与成长治理
+→ sidecar/Task Ledger 自动运行
+→ 唯一 Telemetry Ledger
+→ 实时只读 Observer
+→ 中立 Adapter 与 CI/交付收口
+```
+
+任何偏离这条主线、恢复 Open Design/MINIGAME、增加新 Agent/聊天平台、建立第二数据库/第二 UI、写客户端私有状态或继续堆未落地插件的工作，都应直接拒绝为 scope drift。

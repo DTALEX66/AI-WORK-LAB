@@ -1,0 +1,241 @@
+# WORK-LAB 发展方向研究
+
+## 1. 发展判断
+
+WORK-LAB 应继续发展，但需要把投入集中到**跨软件变更验证、配置归属和可恢复交接**。原生 Agent 负责推理、工具调用、会话、内部调度和恢复；WORK-LAB 负责证明某次部署或配置变更是否适用于当前环境、是否真正生效、是否影响其他受管软件，以及任务交接是否保留了必要事实。
+
+这一方向是针对个人多项目维护场景的工程建议，不是已经验证的商业市场定位。单纯的“统一配置界面”“模型切换器”“Agent 总管”“Token 看板”已有明显替代压力。若这些是项目主体，继续扩展很容易变成维护另一款 Agent 软件。反过来，如果把所有治理都删除，只剩软件链接列表，也无法解决实际的配置串写、假完成、目录误写与升级回归。
+
+建议采用一个可检验原则：**每个自研模块必须说明原生能力尚未覆盖的具体缺口、证明该缺口的案例、自己的维护成本，以及何时可以退役。**“跨软件”本身并不构成长期壁垒；CC Switch 已覆盖多个客户端的配置管理，标准协议也在缩小集成差异。可积累的价值应是经过复现的兼容性案例、明确的配置所有权和可验证的交接证据，而不是适配器数量。[^S01][^S02]
+
+## 2. 项目边界与研究基线
+
+唯一目标是 DTALEX66/WORK-LAB。Hermes、Codex、DSH 属于其受管软件；DSH 不另立产品边界。ArcheAxis 与 DESIGN-LAB 保持独立。ComfyUI、ComfyUI-MCP、设计与音视频生产属于 DESIGN-LAB。WORK-LAB 对其他项目只能使用已经约定并获授权的状态引用，不共享其内部数据库，不直接写入其业务数据。
+
+本报告的证据截止时间为 2026-09-12 UTC。已读取 9 月 7 日旧总任务包全文；已重新查询云端分支、PR、近期 Actions，并静态读取恢复分支的关键实现。没有访问 Windows 本机、运行项目测试、验证已安装软件、使用付费模型或修改仓库。云端源码存在不等于功能已在设备上运行；以下发现明确区分静态事实和运行待验证项。
+
+| 对象 | 本轮查询结果 | 意义 |
+| --- | --- | --- |
+| main | e5231f0f605d1515ed12958267b394c9de1da20c | 主线基线未变 |
+| r4-recovery-exec | 9d02ae4911000092e54c558e1a5efa03e80bb450 | 后文源码分析以此 SHA 为主 |
+| migration/wl-directory-convergence-r1 | c6b7e8f6468281325d26524e3762607c6fa7a4ce | 迁移 PR 头 |
+| PR #123 | open；mergeable=true；mergeable_state=blocked | 技术可合并不等于获准合并 |
+| recovery 主门禁 | run 34009673705，failure，同恢复 SHA | 未获得主门禁通过证据 |
+| main 主门禁 | run 33396382418，failure，同主线 SHA | 主线也不能报告全部门禁通过 |
+| main 生产门禁 | run 33396382301，success，同主线 SHA | 部分门禁成功，不覆盖其他失败 |
+
+上述分支与 CI 信息来自本轮 GitHub 读取。[^R01][^R02][^R03] 没有据此判断本地未推送提交，也没有遍历全部分支实现。原始历史会话没有重新逐条核验，旧包中关于缺失附件的限制继续保留。旧任务包是承接依据，不是当前功能完成证明。[^H01]
+
+## 3. 原生能力正在覆盖什么
+
+### 3.1 Agent 内部协作已不适合另造一套
+
+Codex 官方文档提供子代理分工、并行工作、结果汇总与自定义代理配置。Hermes 官方功能清单包含技能按需加载、记忆、检查点、定时任务、子代理与 Hooks。因此，WORK-LAB 应使用这些入口配置或调用软件，而不复制其线程管理、内部任务规划和工具循环。原生多代理本身仍有协调与 Token 成本，不应因为能力存在就默认启用。[^S03][^S04]
+
+DSH 官方说明其采用插件化架构，并标注开发者预览阶段可能出现破坏兼容性的变化。9 月 10 日最新返回的发布条目是 dsh-v0.1.5-rc.2，仍为预发布。对 WORK-LAB 而言，重要能力是区分官方 runtime、第三方桌面壳和实际安装渠道，并验证升级影响；不是复制 DSH 源码或重做插件框架。[^S05][^S06]
+
+### 3.2 配置治理也已是原生产品的一部分
+
+Codex 已有 managed configuration，文档明确配置要求的来源、优先级及字段特定的合并行为。Claude Code 区分不同配置作用域；OpenCode 也定义原生配置来源和合并顺序。因此不能建立一套统一六层字典覆盖规则，再宣称它准确代表所有软件的有效配置。[^S07][^S08][^S09]
+
+WORK-LAB 可以表达“希望使用什么能力、哪些字段归谁管理”，但最终解析、限制执行和真实生效应以对应客户端为准。官方默认值不是不可覆盖的安全要求；用户合法偏好可以覆盖默认值。安全约束、组织要求与普通偏好必须分开建模，不能都叫“官方基线最高优先级”。对于本机版本不支持的能力，应明确返回不支持，而不是模拟成功。
+
+### 3.3 相邻工具也在占据跨软件空间
+
+CC Switch 官方手册已覆盖多客户端 Provider、MCP、Prompts、Skills 管理，并包括代理和用量功能。v3.20.3 发布说明还记录了跨客户端重试与超时设置串写、统一 Provider 同步覆盖子配置等修复。这里不把厂商发布说明当成本机复现，但它已经足以证明：配置串写是真实工程问题，统一配置管理也不是空白市场。[^S01][^S10]
+
+WORK-LAB 对 CC Switch 的合理态度应是可替换集成：现行仓内规则仍是 LEGACY_OBSERVE，不能因为新版能力丰富而自动恢复写权限。需要确认实际使用、配置归属和可验证接口；若它已可靠管理某个字段，WORK-LAB 应转为检查或调用，而不是成为第二个写者。
+
+### 3.4 上游缺陷不自动构成自研理由
+
+Hermes v0.21.2 / v2026.9.11 的发布说明专门描述会话数据库多写者、锁和恢复问题的修复。这支持减少 WORK-LAB 对软件内部数据库的依赖，而不是证明 WORK-LAB 应接管数据库维护。[^S11]
+
+当原生发生问题时，优先级应是：核实版本与配置 → 使用原生诊断 → 隔离重现 → 采用官方修复或受控回退 → 必要时提交最小上游修复。只有问题长期存在且影响关键工作，才考虑一个有退出条件的临时适配。不能为一次版本回归引入永久中间层。
+
+## 4. 官方快照与采用含义
+
+以下是研究快照，不是本机安装状态，也不意味着应立即升级。文档可能描述主线而非已安装版本；正式执行必须固定版本、渠道及适用配置。
+
+| 对象 | 本轮核验依据 | 对本项目的采用裁决 |
+| --- | --- | --- |
+| Codex | 当前官方子代理与 managed configuration 文档 | 原生委派、权限和配置解析优先；未重新确认 CLI 最新 release，不沿用旧包版本当最新 |
+| Hermes | v2026.9.11，发布说明 v0.21.2，2026-09-11 | 数据库读取旁路优先退出；受管配置仍按现有授权 |
+| DSH | dsh-v0.1.5-rc.2，2026-09-10，prerelease | 隔离评估，不默认生产升级 |
+| CC Switch | v3.20.3，2026-09-11 | 作为现成配置管理候选，维持观察状态直到单写者方案获准 |
+| OpenCode | v1.18.30，2026-09-09 | 有现成配置与插件机制；只有实际使用时才增加深度适配 |
+| Claude Code | 官方 settings 页面 | 作为原生作用域对照，非本轮必须安装客户端 |
+
+OpenCode 版本信息来自官方发布条目。[^S12] OpenHuman、Open Design 客户端等既有登记保持保留；本轮没有验证其最新版本，不将其删除，也不把它们纳入首个闭环的强制依赖。
+
+## 5. 替代工具与标准的取舍
+
+| 对象 | 已有能力 | 采用方式 | 不应据此承诺 |
+| --- | --- | --- | --- |
+| CC Switch | 跨软件配置、扩展及用量管理 | 对已使用字段评估委托管理；WORK-LAB 检测冲突 | 能在所有软件/版本上无损同步 |
+| mise | 工具版本、环境变量与任务配置 | 当现有依赖安装混乱时评估复用，不先部署 | 代替 Agent 配置语义与业务验收 |
+| chezmoi | 跨机器管理个人配置文件 | 仅对完整归属、非私密且获授权文件试用 | 自动安全处理混合所有权配置 |
+| Agent Skills 标准 | 技能包格式与渐进披露 | 复用包结构，逐客户端测兼容性 | 同一 Skill 在不同工具名与权限下行为一致 |
+| ACP | 编辑器与 Agent 的通信协议 | 已有 ACP 路线按能力协商接入，缺口才扩展 | 跨软件会话数据库迁移或通用配置协议 |
+| MCP | Host/Client/Server 能力连接 | 复用现有服务连接；可选暴露只读诊断 | 自动提供文件隔离、配置治理或任务验收 |
+| OpenTelemetry GenAI | 通用遥测语义 | 可选导出脱敏统计与引用，固定语义版本 | 一套遥测能证明任务成功或模型真实身份 |
+
+这些结论分别依据官方文档。[^S02][^S13][^S14][^S15][^S16][^S17] OTel GenAI 规范已迁往独立仓库，原页面明确不再维护。这意味着旧 NX-300 等映射不能因为曾“完成”就永久冻结，也不需要因此新建另一个遥测平台。[^S18]
+
+推荐顺序是原生功能、已有第三方工具、现有 WORK-LAB 代码、最后才是新增实现。首个可用版本默认新增外部运行依赖为零；这是一项建议目标，不是阻止必要修复的硬限制。每增加一项依赖都要说明替代了什么，以及卸载后是否影响原生软件启动。
+
+## 6. 云端代码给出的具体发展约束
+
+### 6.1 配置层需要收敛，不能简单删除
+
+恢复分支 config_compiler.py 的 plan/apply 明确带有 stub 注释，apply 修改意图文件状态，readback 输出同一意图记录。因此首要修复是取消虚假的 applied 语义，而不是立刻把所有客户端都补成可写。[^R04]
+
+config_control_plane.py 的 transaction 使用含时间的幂等键；before 来自合并字典；调用 apply_fn 时传入 effective_before；rollback 返回字典而非实际恢复。以上是静态读取事实，未做运行复现。新方向应把这一层缩为拥有明确范围的变更准备与证据记录，具体写入和回退走对应原生机制或受审查的窄适配器。[^R05]
+
+config_coordinator.py 已有保留用户值、隔离未知字段和限制 write_set 的逻辑，值得复用。config-ownership.json 又明确 Hermes 主要配置字段为 OBSERVE，只有少量字段为 MANAGE。新任务不能一边宣称原生优先，一边为了演示闭环扩大写权限。[^R06][^R07]
+
+### 6.2 Observer 应保留，但必须不干扰原生
+
+observer_live_server.py 仍默认定位 Hermes 私有 state.db，使用普通 sqlite3.connect；还存在固定 Git SHA、LIVE/fresh 与空 sourceRefs 的返回。这些静态问题足以要求停止假健康输出和默认内部数据库依赖。[^R08]
+
+应将原有 Observer 改为消费明确发布的脱敏观察结果，显示来源、时间、能力缺口和真实验收状态。不要另起前端，也不要把只读看板升级成配置写入口。若数据源缺失，保留 UNKNOWN；没有必要为了让画面完整而抓取软件内部数据库。
+
+### 6.3 后台 worker 应按行为拆分
+
+durable_worker.py 同时执行 collectors 和可选 task_handler，并包含租约、恢复状态与重试逻辑。源码存在不证明其当前已作为生产调度器启用。应先定位启动链和调用方：只读采集部分可以保留；若 task_handler 只是本项目自己的有限事务，也不等同于 Agent runtime；若它再次驱动 Agent 内部任务、重放副作用，就应退出该职责。[^R09]
+
+一个具体待验证风险是 handler 执行前仅见一次 heartbeat，长任务可能超过租约窗口；重试计数也有内存状态。不能直接把旧 worker 宣称为 exactly-once 或可靠跨软件恢复保证。任务包应覆盖双执行者、长处理与结果丢失的负向场景，而非继续增加调度功能。
+
+### 6.4 上下文治理只保留可证明的部分
+
+context_control_plane.py 返回静态压缩与缓存策略建议，并硬编码客户端适配提示。它没有证明对应软件的运行参数已生效。应保留任务边界摘要、来源引用和实际 usage 映射；将原生压缩、历史裁剪和缓存策略控制交回客户端。[^R10]
+
+### 6.5 仓库污染来自实际生成器
+
+run_quality_gate.py 仍建立 .hermes/task-runtime 和 .hermes/task-artifacts。根 AGENTS.md 又要求使用 .project-local，且仍引用旧编号布局。新方向必须修实际生成器与有效规则的矛盾，不能仅改 .gitignore 或批量删除目录。[^R11][^R12]
+
+任务权威索引仍保留 FROZEN 和 WLR 完成声明，当前恢复主门禁却失败。保留历史声明作为历史证据，当前完成判定重新绑定具体验收条件；不把所有旧任务无差别改成未完成。[^R13]
+
+## 7. 应保留、缩减与停止新增的能力
+
+| 能力 | 裁决 | 完成形态 |
+| --- | --- | --- |
+| 软件身份、版本、安装渠道 | 保留并修复 | 准确区分 runtime、桌面壳、CLI 与 profile |
+| 配置来源与字段所有权 | 加强 | 能解释谁提供值、谁允许写、是否冲突 |
+| 配置变更控制 | 缩为窄范围 | 原生操作优先，准备/读回/回退证据清晰 |
+| 全软件统一配置语义引擎 | 停止扩大 | 保留共用元数据，不统一覆盖原生优先级 |
+| Agent 内部调度、会话和推理 | 交回原生 | 现有实现先核调用方再退役 |
+| 跨软件任务交接 | 保留最小合同 | 任务、执行器、SHA、结果与未知项可续接 |
+| 自动重放外部副作用 | 停止默认行为 | 先查结果；无法确认时明确结果未知 |
+| Task Ledger / 本项目 SQLite | 有条件保留 | 只保存本项目工作流事实，不复制原生会话库 |
+| Observer | 保留、减功能面 | 只读、可溯源、可离线、不阻塞原生 |
+| Token 平台与模型网关 | 停止另造 | 复用现有用量来源，不额外转发请求 |
+| 技能治理 | 精简并验证 | 只保留有任务价值的技能，退出冗余内容 |
+| 自动吸收/自我提升/Verifier | 条件研究 | 有固定评测和预算才试验，不列发布前置 |
+| 全量语言迁移 | 暂不推进 | 先收敛保留模块，再作局部技术决策 |
+| 全软件全版本适配 | 延后 | 首轮 Hermes 与 Codex；DSH 下一轨；其余观察 |
+
+这些裁决是开发建议。不得把本报告当作删除文件、修改全局配置、合并 PR 或扩展设备访问范围的授权。
+
+## 8. 产品应如何被使用
+
+### 场景一：升级前检查
+
+维护者选择一个已登记客户端和目标版本。WORK-LAB 显示实际安装身份、受管配置、相关上游变更、已验证的适配范围及未知项，生成有限变更计划。已有原生升级流程执行后，再检查版本、字段生效与最小行为。如果原生不支持无损回退，必须在变更前说明限制，不能假装备份配置就能回退整个运行环境。
+
+### 场景二：配置异常诊断
+
+维护者发现模型、权限或路径与预期不同。WORK-LAB 只检查获授权且相关的来源，解释配置来源链、可能的多个写者和冲突字段；不递归扫描 home，也不读取凭据正文。只有获授权且客户端支持可验证写入时才执行修改。这个能力不需要每次调用 LLM：确定性解析与比较应覆盖常见情况。
+
+### 场景三：交给另一个 Agent 验收
+
+Hermes 完成修改后，交付最小收据：任务 ID、工作区身份、源 SHA、变化摘要、验证命令与结果、尚未完成的部分。Codex 使用获授权的仓库状态独立验收。WORK-LAB 区分执行器声称完成、代码已经修改、本地验证通过、当前 SHA 的 CI、实机验收；不把这些状态压成一个绿色圆点。
+
+这三种场景应先通过已有 CLI/脚本与 Observer 完成。后续只在反复使用证明需要时增加统一入口。原生软件必须可以脱离 WORK-LAB 独立启动；WORK-LAB 故障不能阻断正常工作，除非它正在执行一项本来就需要阻断式验证的受控变更。
+
+## 9. 实现架构与语言
+
+建议保留已有目录分工：services/policy 做配置归属与窄变更；integrations/executors 做版本特定的薄适配；services/receipts 与现有合同承载最小证据；apps/observer 只读显示。现有重复 schema、registry 和台账先找权威源，不增加第二套 TASKS 数据库。
+
+建议技术边界仍为 Python 治理与适配、TypeScript/React 界面、Rust 仅限现有 Tauri 桥、少量 PowerShell/Shell 引导。该建议延续旧包，未在本轮证明它已成为仓库批准 ADR。不要因为 DSH 使用某种语言就迁移 WORK-LAB，也不为尚未需要的独立桌面安装包做全量重写。[^H01][^R14]
+
+适配器最小合同应包含身份、版本适用范围、观察能力、写入能力、原生调用入口、读回证据和限制。不支持有效配置导出时，只报告原始文件观察，不能把自行合并结果标成原生真值。未知字段保持原样；所有权混合且无法不读取秘密完成操作时，该写入路径保持不可用。
+
+配置变更采用操作级幂等、实际 before 与窄字段保护。原生接口可能并不提供 CAS，此时软件内的锁或 WORK-LAB 自己的租约无法阻止外部编辑器写入。应显示并发保证的真实等级，必要时转为人工原生操作加读回，不能声称有无法落实的原子性。
+
+## 10. 发展节奏与停止条件
+
+### 第一阶段：先恢复可信基线
+
+完成分支路线、关键假成功修复、目录生成器与有效指令对齐。首个可用目标是一次 Hermes 或 Codex 的安全观察与配置读回，外加 Observer 的 UNKNOWN/STALE/真实状态显示。先不要求所有软件都安装成功。
+
+### 第二阶段：验证增量价值
+
+完成一个获授权的低风险配置变更与恢复案例，以及一个跨软件交接验收案例。DSH 进入独立兼容性轨道；不能让预发布适配阻塞已可用的 Hermes/Codex 能力。遗留六软件覆盖要求保留在待办映射中，明确延后而非宣布已完成。
+
+### 第三阶段：按效果决定扩展
+
+实际使用后再决定是否接入更多软件、打包本地工具、开放适配测试集或长期维持个人治理仓库。若主流原生工具继续吸收配置和交接能力，应进一步把 WORK-LAB 缩为兼容性验证与可导出的证据，而非为了保住项目规模主动扩大业务。
+
+以下时间仅为规划区间，不是工期承诺：首个可观察闭环可按 3–7 个有效开发日估算；包含授权实机修改与交接的试用版可按 2–4 周安排。分支路线、现有代码可复用程度和设备授权可能改变工期，应在首批任务后重新估算。
+
+长期选择有三条。个人工具路线维护成本最低，应优先；开源路线可先开放无私密数据的适配器合同和回归案例，许可证由所有者决定；商业路线只有在真实外部维护者愿意持续使用或付费时才研究。当前没有客户访谈、付费数据或市场规模证据，不能宣称存在商业壁垒。
+
+## 11. 价值评估
+
+评测比较三种条件：原生默认加必要边界、当前 WORK-LAB 配置、精简后的 WORK-LAB。使用相同任务、客户端版本、模型与验收条件；需要模型调用时单独确认数据和成本范围。默认先用无模型、无外部副作用的合成配置测试。
+
+| 指标 | 计算口径 | 用途 |
+| --- | --- | --- |
+| 配置冲突定位时间 | 从异常出现到定位具体来源 | 判断是否真的减少人工排查 |
+| 变更有效率 | 实际生效且验收通过 / 获准执行变更 | 防止“生成文件即成功” |
+| 错误成功声明 | 无证据却标 APPLIED/DONE 的次数 | 必须归零的正确性目标 |
+| 交接恢复时间 | 接手到第一个正确后续动作 | 判断交接摘要是否有效 |
+| 额外维护时间 | 维护 WORK-LAB 自身的时间 | 与节省时间对照 |
+| 额外模型请求 | 治理步骤新增的请求次数 | 核心确定性检查目标为零 |
+| 原生启动干扰 | 关闭 WORK-LAB 后是否仍可正常使用软件 | 防止形成不必要强依赖 |
+
+建议在至少十次实际使用后复盘，十次只是低成本试用门槛，不具统计显著性。若没有减少人工排查，或维护时间持续超过节省时间，应停止扩展相应模块。上游已覆盖的适配逻辑需进入退役检查，不以历史开发投入为继续保留理由。
+
+## 12. 任务包承接
+
+配套任务包将旧 H00–H12 全部映射到新的 NF-00–NF-14。新增方向不会抹掉旧 CI、目录、语言、权限和历史缺口；主要变化是缩减 H04 的全能配置编译目标、缩减 H09 的恢复范围、将 H10 保持条件研究，并为每个模块增加原生替代与退出条件。
+
+先修事实与当前风险，再完成有限原生适配，最后用实际节省的时间决定是否扩展。完整任务卡、验收、依赖与回退要求见同包 WORK-LAB-NATIVE-FIRST-TASKPACK.md；TASKS.json 是本次交付的待导入清单，不是仓库已有执行状态。
+
+## 来源
+
+以下在线来源均于 2026-09-12 访问；未标发布日期的页面为滚动文档。release 条目是发布者声明，本机效果未经验证。仓库源码引用固定 SHA。
+
+[^S01]: CC Switch，官方手册《Introduction》，[原文](https://github.com/farion1231/cc-switch/blob/main/docs/user-manual/en/1-getting-started/1.1-introduction.md)。
+[^S02]: Agent Client Protocol，《Introduction》，[原文](https://agentclientprotocol.com/get-started/introduction)。
+[^S03]: OpenAI，《Subagents》，[原文](https://learn.chatgpt.com/docs/agent-configuration/subagents)。
+[^S04]: Nous Research，《Features Overview》，[原文](https://hermes-agent.nousresearch.com/docs/user-guide/features/overview)。
+[^S05]: DeepSeek，DeepSeek Harness README，[原文](https://github.com/deepseek-ai/deepseek-harness)。
+[^S06]: DeepSeek，dsh-v0.1.5-rc.2，2026-09-10，[发布条目](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2)。
+[^S07]: OpenAI，《Managed configuration》，[原文](https://learn.chatgpt.com/docs/enterprise/managed-configuration)。
+[^S08]: Anthropic，《Settings files and precedence》，[原文](https://code.claude.com/docs/en/settings)。
+[^S09]: OpenCode，《Config》，[原文](https://opencode.ai/docs/config/)。
+[^S10]: CC Switch，v3.20.3，2026-09-11，[发布条目](https://github.com/farion1231/cc-switch/releases/tag/v3.20.3)。
+[^S11]: Nous Research，Hermes v2026.9.11，2026-09-11，[发布条目](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11)。
+[^S12]: OpenCode，v1.18.30，2026-09-09，[发布条目](https://github.com/anomalyco/opencode/releases/tag/v1.18.30)。
+[^S13]: mise，《Dev tools, environments, and tasks》，[原文](https://mise.jdx.dev/)。
+[^S14]: chezmoi，《What does chezmoi do?》，[原文](https://www.chezmoi.io/what-does-chezmoi-do/)。
+[^S15]: Agent Skills，《Specification》，[原文](https://agentskills.io/specification)。
+[^S16]: Model Context Protocol，《Architecture》，2026-07-28 规范，[原文](https://modelcontextprotocol.io/specification/2026-07-28/architecture)。
+[^S17]: OpenTelemetry，GenAI Semantic Conventions 仓库，[原文](https://github.com/open-telemetry/semantic-conventions-genai)。
+[^S18]: OpenTelemetry，GenAI 规范迁移通知，[原文](https://opentelemetry.io/docs/specs/semconv/gen-ai/)。
+[^R01]: WORK-LAB，分支列表，[API](https://api.github.com/repos/DTALEX66/WORK-LAB/branches?per_page=100)。
+[^R02]: WORK-LAB，PR #123，[原文](https://github.com/DTALEX66/WORK-LAB/pull/123)。
+[^R03]: WORK-LAB，Actions：[恢复主门禁](https://github.com/DTALEX66/WORK-LAB/actions/runs/34009673705)、[主线主门禁](https://github.com/DTALEX66/WORK-LAB/actions/runs/33396382418)、[主线生产门禁](https://github.com/DTALEX66/WORK-LAB/actions/runs/33396382301)。
+[^R04]: WORK-LAB，config_compiler.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_compiler.py)。
+[^R05]: WORK-LAB，config_control_plane.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_control_plane.py)。
+[^R06]: WORK-LAB，config_coordinator.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/policy/config_coordinator.py)。
+[^R07]: WORK-LAB，config-ownership.json，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/config/config-ownership.json)。
+[^R08]: WORK-LAB，observer_live_server.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/apps/observer/observer_live_server.py)。
+[^R09]: WORK-LAB，durable_worker.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/orchestration/durable_worker.py)。
+[^R10]: WORK-LAB，context_control_plane.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/packages/client-neutral-core/scripts/context_control_plane.py)。
+[^R11]: WORK-LAB，run_quality_gate.py，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/services/orchestration/run_quality_gate.py)。
+[^R12]: WORK-LAB，AGENTS.md，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/AGENTS.md)。
+[^R13]: WORK-LAB，taskpack-authority-index.json，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/.project/governance/taskpack-authority-index.json)。
+[^R14]: WORK-LAB，Observer frontend package.json，[固定源码](https://github.com/DTALEX66/WORK-LAB/blob/9d02ae4911000092e54c558e1a5efa03e80bb450/apps/observer/frontend/package.json)。
+[^H01]: 《WORK-LAB-HERMES-MASTER-TASKPACK-2026-09-07.md》，2026-09-07；已读取全文，584 行。内部历史交付文档，无公开 URL。旧包结论按本轮证据重新分类，不等同当前实现。

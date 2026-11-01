@@ -1,0 +1,475 @@
+# WORK-LAB UNIFIED PRODUCT CONVERGENCE TASKPACK — 2026-09-18
+
+**TaskPack ID:** `WORK-LAB-UNIFIED-PRODUCT-CONVERGENCE-TASKPACK-20260918`  
+**Top authority:** `WORK-LAB-AUTHORITY.md`  
+**Starting cloud baseline:** `main@803268da9dc356fe63f26b3b5405f724bc06b5b9`  
+**Execution rule:** resolve current `origin/main` again at execution start; the starting SHA is not a permanent current-SHA claim.
+
+This package supersedes all older WORK-LAB taskpacks as forward execution authority. Historical taskpacks remain evidence only.
+
+---
+
+# A. AUTHORITY RESET — MUST EXECUTE FIRST
+
+## A00 — Cloud authority landing
+
+Land these files in the repository:
+
+- `WORK-LAB-AUTHORITY.md`
+- `.project/governance/authority-index.json`
+- this taskpack
+- `taskpacks/current/OPEN-TASK-REGISTER.md`
+- `taskpacks/history/FROZEN-LEGACY-INDEX-20260918.md`
+
+Update existing `.project/governance/taskpack-authority-index.json` so every declared current path actually exists.
+
+Current preparation-session blocker:
+the connected ChatGPT GitHub App returned HTTP 403 for both branch creation and repository file creation. Use a local Codex/Hermes/Git identity with repository write permission.
+
+Done-When:
+- every authority path exists on `main`;
+- cloud readback succeeds by exact path;
+- machine index and human authority agree;
+- no `indexReferencesExist=true` claim can survive a missing current path.
+
+## A01 — Restore Git main enforcement
+
+Read actual protection/rules using an admin-capable GitHub identity.
+
+Restore/verify:
+- PR-first normal path;
+- required `aggregate` exact-SHA check;
+- required review baseline where configured;
+- no direct-push bypass of required gates;
+- no force-push.
+
+Do not trust stale protection text in TaskPacks.
+
+## A02 — Freeze and remove historical current-doc noise
+
+Pre-freeze retrieval source:
+`803268da9dc356fe63f26b3b5405f724bc06b5b9`.
+
+Converge `taskpacks/current/` to:
+- current taskpack;
+- current open register;
+- current summary/README;
+- sanitized error ledger (operational, non-authority);
+- only temporary machine compatibility files explicitly allowlisted by authority-index.
+
+Remove obsolete WLR/NX/Stage2/Stage3/Hermes/DSH/Integrated/Universal/branch-convergence taskpack bodies from default-branch current paths.
+
+Do not lose history: immutable pre-freeze commit + frozen index is the recovery handle.
+
+Remove legacy top-level `50-taskpacks/` and `90-archive/` after caller checks.
+
+## A03 — Machine authority verifier
+
+Add a verifier and CI test that fails when:
+- top authority missing;
+- machine authority index missing;
+- current taskpack missing;
+- current open register missing;
+- multiple current taskpacks declared;
+- `taskpacks/current` contains an unclassified legacy document;
+- forbidden legacy root reappears;
+- frozen historical document is declared normative;
+- authority path/ID mismatch exists.
+
+---
+
+# U01 — MANDATORY TEST TRUTH
+
+Current governance discovery must include Universal/NF tests.
+
+Requirements:
+- `nf*.py` mandatory or one canonical test manifest;
+- all required tests collected/executed;
+- required skip/missing/cancel/fail is not PASS;
+- negative mutation of an NF implementation must make aggregate CI fail;
+- reduce fragile manual file-by-file workflow test lists.
+
+---
+
+# U02 — REPOSITORY CONVERGENCE
+
+Complete the September directory migration instead of starting another migration.
+
+Fix:
+- root README to current paths;
+- `PROJECT_POSITIONING.md` current architecture / subordinate-to-authority status;
+- `.project/manifest.yaml` old baseline semantics;
+- project profile roots for `services/`, `integrations/`, `config/`, `apps/token-monitor`;
+- Token Monitor stale old path;
+- setup-workflow `.hermes/task-artifacts` and old `scripts/workflow/...` path;
+- `.hermes/skill-call-index.json` guidance -> project-owned `.project-local` location;
+- root allowlist + legacy-root regression test;
+- Observer frontend package-manager SSOT;
+- obsolete `.gitignore` compatibility entries.
+
+Never move software-owned Hermes/Codex/DSH homes into `.project-local`.
+
+---
+
+# U03 — REACT / TAURI PRODUCTION UI SSOT
+
+Production target:
+- `apps/observer/frontend`
+- `apps/observer/src-tauri`
+
+Build static-web -> React parity matrix.
+
+Migrate valid static-only features, then retire `apps/observer/web` as a production surface.
+
+No second Observer project.
+
+---
+
+# U04 — FRONTEND INFORMATION ARCHITECTURE
+
+Create one typed view registry for:
+- Overview
+- Projects
+- Agents
+- Executions
+- Models/Usage
+- Memory
+- Tools/Capabilities
+- Monitoring/System
+- Delivery
+- Trust
+- Settings
+
+Fix current Delivery/Trust/Settings reachability and remove index-position coupling.
+
+---
+
+# U05 — FULL / COMPACT / THEME RUNTIME MODES
+
+React must parse and enforce:
+- `view=full|compact`
+- `theme=dark|light`
+- `mode`
+
+Compact is a dedicated HUD, not full UI compressed to 440px.
+
+---
+
+# U06 — RUNTIME DESCRIPTOR / SNAPSHOT / SSE
+
+Fix full snapshot URL vs frontend base-URL double append.
+
+Define one runtime descriptor:
+- schemaVersion
+- snapshotUrl
+- eventsUrl
+- metricsUrl if used
+- instance identity/start info
+
+Eliminate fixed production ports such as 61867/9090.
+
+Flow:
+`initial snapshot -> SSE -> revision -> reconnect -> Last-Event-ID recovery`.
+
+Polling is fallback only.
+
+---
+
+# U07 — FRONTEND TRUTH DISCIPLINE
+
+Remove frontend authoritative hard-coding:
+- provider prices;
+- fixed FX;
+- arbitrary quota percent;
+- fake duration 0;
+- missing resource/token -> 0;
+- unrecognized state -> idle/success;
+- fixed sidecar display.
+
+Canonical backend owns truth.
+
+Unknown remains UNKNOWN.
+
+---
+
+# U08 — FRONTEND / RUST / WINDOWS TESTING
+
+Add React behavior tests:
+- view registry/navigation;
+- compact mode/theme;
+- runtime descriptor;
+- endpoint construction;
+- UNKNOWN/null;
+- state enum;
+- offline/stale;
+- SSE reconnect.
+
+Observer Rust CI:
+- `cargo fmt --check`
+- `cargo check --locked`
+- `cargo test --locked`
+
+Run real Windows Tauri E2E before product convergence is claimed.
+
+---
+
+# U09 — TOKEN MONITOR CONVERGENCE
+
+Compare Observer and Token Monitor:
+- usage ingestion;
+- provider/model identity;
+- current-session delta;
+- history;
+- cost;
+- source selection;
+- tray/desktop packaging.
+
+One canonical backend owns token/cost truth.
+
+Final state is either:
+- Observer main UI + Token Monitor specialist helper; or
+- Observer parity + separate Token Monitor UI retirement.
+
+Do not delete before parity.
+
+---
+
+# U10 — CONFIG TRANSACTION TRUTH
+
+Preserve already-fixed NOOP/APPLY_FAILED/simulated/stable-key behavior.
+
+Fix:
+- official safety floor cannot be weakened by user layer;
+- distinguish MISSING from explicit null;
+- compute expected-before / expected-after / exact write-set;
+- apply callback receives intended after-state;
+- readback exception -> typed failure/unknown;
+- only real write + native readback match may become verified commit;
+- no-readback and simulated results never count as verified success.
+
+---
+
+# U11 — REAL EVIDENCE BINDING
+
+REAL evidence requires:
+- evidence type;
+- immutable/verifiable handle;
+- digest/identity where applicable;
+- producer;
+- independent verifier/readback;
+- observedAt;
+- source SHA/run identity where applicable.
+
+`REAL + empty handle = INVALID`.
+
+Universal final signoff consumes VERIFIED REAL only.
+
+---
+
+# U12 — DURABLE INBOX / OUTBOX SAFETY
+
+Reuse existing TaskLedger. Do not add Redis/Kafka/new DB.
+
+Fix:
+- full read-modify-write cross-process safety;
+- process fencing/lock reuse;
+- exact outbox ACK by `task_id + receipt_digest + revision`;
+- no blanket task-level ACK.
+
+Real multi-process tests:
+- claim race;
+- lost update;
+- crash after intent;
+- crash after native start;
+- ACK race;
+- lease takeover.
+
+---
+
+# U13 — PROJECT ISOLATION / USAGE / COST
+
+Enforce approved-project isolation for:
+- execution;
+- usage;
+- CI;
+- git state;
+- Observer projections.
+
+Never borrow another project's state.
+
+Cost identity:
+`provider/model/channel/currency/input_rate/output_rate/effective_at/source/quality`.
+
+Project totals must not be copied into every execution.
+Estimated/partial usage must not become exact.
+
+---
+
+# U14 — SESSION / EXECUTION / WORKER EFFECT TRUTH
+
+`PROMPTED / RESUMED / CLOSED / CANCELLED / COMPLETED`
+require native side effect + observable/readback evidence.
+
+Capability ladder:
+`DECLARED -> DETECTED -> AVAILABLE -> INVOKED -> VERIFIED`.
+
+Command construction is not execution.
+
+Handler return is not completion; require typed effect/artifact/receipt/verification before `COMPLETED_LOCAL`.
+
+Persist retry/effect identity.
+
+---
+
+# U15 — LANGUAGE ARCHITECTURE FREEZE
+
+Create `docs/decisions/language-architecture.md`.
+
+Normative:
+- React/TypeScript = UI;
+- Rust/Tauri = native desktop/native-sensitive boundary;
+- Python = control plane/adapters/orchestration;
+- JSON Schema = cross-language truth;
+- PowerShell/Shell = minimal bootstrap.
+
+No big-bang Rust rewrite.
+
+---
+
+# U16 — CROSS-LANGUAGE CONTRACT SSOT
+
+Use JSON Schema as SSOT for:
+- RuntimeDescriptor;
+- Snapshot;
+- Execution;
+- Usage;
+- Receipt;
+- Task;
+- Evidence;
+- Project.
+
+Add Python/TypeScript/Rust conformance or generated types where practical.
+
+---
+
+# U17 — SOFTWARE / SKILL / MODEL ADAPTATION
+
+Retain the five-dimensional baseline.
+
+Use impact-diff for updates.
+
+Asset states:
+`CANDIDATE / POC_WRAPPER / WIRED / VERIFIED_RUNTIME`.
+
+Registry entry does not equal runtime integration.
+
+Preserve native provider/model/reasoning/auth choices.
+
+Skill inventory is dynamic; no fixed-count authority.
+
+---
+
+# U18 — UNIVERSAL WORKFLOW REAL SLICES
+
+Do not rerun already-completed synthetic/self-contained M0-M3 work.
+
+Real proof requires, when corresponding side effects are authorized:
+- real cloud/material publish + readback;
+- real external project;
+- real second executor, Hermes + Codex first;
+- real multi-environment/path binding;
+- real native global-rule readback;
+- zero manual task-body copying;
+- revision/cancel/restart/receipt proof.
+
+Paid calls, external project writes, global config and installs remain separately authorization-gated.
+
+---
+
+# U19 — FINAL WINDOWS PRODUCT E2E / RELEASE GATE
+
+Real Windows chain:
+
+`main exact SHA -> worker -> canonical store -> dynamic sidecar -> Snapshot v3 -> SSE -> Tauri -> React full UI + compact panel`.
+
+Verify:
+- normal;
+- empty;
+- running;
+- waiting;
+- blocked;
+- failed;
+- cancelled;
+- unknown;
+- stale;
+- sidecar restart;
+- Tauri restart;
+- SSE reconnect;
+- dynamic port;
+- two projects;
+- usage/cost quality;
+- CI state.
+
+Final required statuses:
+
+```text
+AUTHORITY_SINGLE_CURRENT=PASS
+AUTHORITY_REFERENCE_INTEGRITY=PASS
+MAIN_CI_ENFORCEMENT=PASS
+MANDATORY_TEST_TRUTH=PASS
+REPO_STANDARD=PASS
+FRONTEND_SSOT=PASS
+FRONTEND_BACKEND_E2E=PASS
+CONFIG_TRANSACTION_TRUTH=PASS
+REAL_EVIDENCE_BINDING=PASS
+DURABLE_INBOX_TRUTH=PASS
+PROJECT_ISOLATION=PASS
+SESSION_EXECUTION_TRUTH=PASS
+LANGUAGE_ARCHITECTURE=PASS
+WINDOWS_TAURI_E2E=PASS
+EXACT_SHA_CI=PASS
+ZERO_NEW_SPILL=PASS
+```
+
+Only then:
+`WORK_LAB_PRODUCT_CONVERGED`.
+
+`UNIVERSAL_WORKFLOW_VERIFIED` is separate and stronger.
+
+---
+
+# CONDITIONAL / NON-BLOCKING
+
+Do not block product convergence on:
+- paid four-arm model experiment;
+- Kimi entitlement research;
+- Agents API alternative executor research;
+- Bolt prototype;
+- optional Dagu/agentgateway POCs;
+- optional Hermes storage optimization;
+- legacy `.bak` deletion without explicit authorization.
+
+---
+
+# EXECUTION DISCIPLINE
+
+At execution start:
+1. resolve latest `origin/main`;
+2. read top authority + machine index + this taskpack + open register;
+3. classify changed scope;
+4. do not reopen CLOSED branch convergence;
+5. short-lived branch -> PR -> exact-SHA CI -> merge;
+6. update open register after each accepted card;
+7. do not create another authority/taskpack unless the user explicitly changes top-level direction.
+
+Every card returns:
+- source SHA/tree;
+- changed paths;
+- before/after;
+- positive test;
+- negative test;
+- runtime readback;
+- frontend impact when applicable;
+- rollback handle;
+- evidence level;
+- remaining limitations.

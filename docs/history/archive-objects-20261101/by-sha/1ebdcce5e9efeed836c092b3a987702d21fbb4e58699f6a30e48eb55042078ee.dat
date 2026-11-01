@@ -1,0 +1,160 @@
+# ArcheAxis 新对话交接摘要（完整约束版）
+
+> 用途：把本对话中有关 ArcheAxis / ArcheAxis-Knowledge-OS 的已确认决策、历史纠偏、技术路线、云端审计发现和迁移任务带入新对话。它不是“完成声明”；新对话第一步必须重新核对云端 `main`。旧摘要、README、工具自述与当前代码冲突时，以用户明确决定和可复现代码/测试证据为准。
+
+**唯一 OS 仓库**：`DTALEX66/ArcheAxis-Knowledge-OS`  
+**正式产品名**：ArcheAxis Knowledge｜星环知识平台  
+**内部工作台名**：ArcheAxis Learning Workspace  
+**本机根**：`D:\All projects\ArcheAxis-Knowledge-OS`  
+**近期审计 SHA 记录存在漂移**：历史 R4 为 `bf0c48396c751647ac76ee4578bc38f44888a23e`，另有较早配置审计记录 `e05765e`。两者均不可当“今天最新”；新对话先 fetch 后 diff。  
+**用户技术决定**：Windows 桌面优先，随后 macOS/Linux；采用 **C# + Avalonia UI**，不是 Rust/Electron；前后端/数据服务必须独立、可替换。
+
+## 1. 最终产品身份：什么是 ArcheAxis
+
+- ArcheAxis 是长期的、可成长为公司级产品的**人机双向重型学习、可信知识、证据和 AI 协作 Knowledge OS**；不是普通 RAG、聊天页面、模型入口或通用 Agent OS。
+- 核心主链是：**原件（Source）→ 精确锚点（Anchor）→ 证据/来源链（Evidence/Provenance）→ 人类学习事件与掌握状态 → 可验证机器能力/知识候选 → 复核后的可复用知识**。
+- 人类深度学习和机器可复用知识并列：前者不能被“问过一次/看过一次”替代，后者不能因用户掌握就自动成为可信机器知识。
+- 未来蓝图必须保留而非被早期 MVP 删除：多模态原件、Reader/Evidence/Learning 主链、知识图谱、视觉/视频/PDF/设计稿/3D/音频摄取、视觉编码、空间/记忆宫殿、动态课件、跨系统与跨平台客户端。
+- 当前实现仍偏文本知识系统；以上蓝图可分阶段实现，但必须在架构、数据模型与接口中预留，不可被聊天壳吞没。
+
+## 2. 三项目的权责边界
+
+| 项目 | 唯一权威 | ArcheAxis 的关系 |
+|---|---|---|
+| ArcheAxis | 知识、原件、锚点、证据、来源、学习、记忆与机器知识候选 | 核心 OS／Knowledge Authority |
+| WORK-LAB | Action Authority：工作流、权限、预算、审批、执行回执与只读观测 | 只能按批准合同调用知识；不能复制知识真相或控制 OS 身份 |
+| DESIGN-LAB | DesignIR、设计能力、Rubric、人工设计审核、专业工具适配与交付 | 经 Rights/Human Gate 批准后向 ArcheAxis 沉淀最小、可验证的知识；原始客户素材不默认外流 |
+
+- 不合并 ArcheAxis 与 WORK-LAB；WORK/DESIGN 不是 ArcheAxis 的子模块。
+- 不强制所有任务先经过三项目；ArcheAxis 在 WORK 不可用时要能独立学习/检索/证据闭环。
+- Obsidian、OpenHuman、Hermes、Codex、WORK-LAB、Cognitive-Loop-OS 都只能是 adapter、迁移参考或历史名称，不能成为 ArcheAxis 的产品名、一级导航、领域模块或宣传身份。
+
+## 3. Windows-first 与跨平台技术构成
+
+| 层 | 现行方向 | 原因与约束 |
+|---|---|---|
+| Windows 桌面 UI | C# + Avalonia | 原生桌面优先、跨 Windows/macOS/Linux、可保留统一 UI；不回到 Electron/Rust 作为主线 |
+| 应用可执行体 | `ArcheAxis.exe` | Windows 优先；避免双桌面壳并存 |
+| 本地服务 | `archeaxis-local-service` | UI 外独立启动/升级/测试，提供本地 API、作业、索引与安全边界 |
+| 领域/数据服务 | 独立 Python 领域包（统一 `archeaxis` 标识、AI 收敛为 `ai_asset`） | 复用成熟解析/ML 生态；不能让 UI 直接拥有数据库或领域规则 |
+| API 与契约 | versioned local API + schema/contract tests | 允许未来 Web、移动、macOS/Linux 或远程协作端复用，禁止 UI 私有耦合 |
+| 存储 | 本地 workspace、内容寻址对象/来源清单、关系/图索引可替换 | 真相源可迁移，支持备份/恢复而不锁死单一 UI 或数据库 |
+
+Windows 的标准数据根为 `%LOCALAPPDATA%\ArcheAxis\Workspace`；仓库开发运行数据则优先留在项目内 `.project-local/`。两者须有明确模式开关，不能散落其他盘符/用户目录。移动端停止投入；以后要跨平台，应复用契约、领域服务与 Avalonia UI，而不是重新堆一套产品。
+
+## 4. 前后端和用户体验合同
+
+### 4.1 必须冻结为可测试 UI Contract 的历史体验
+
+- **六空间/工作区导航**、Context Navigation、Inspector、Activity Dock。
+- **Reader → Evidence → Learning** 的主操作流：打开原件、精确定位、查看证据、记录学习、复习/测验、回到来源。
+- UI 不能降级为单一聊天窗口；聊天/模型只是受约束的工具入口。
+- Windows 多分辨率、多缩放、多窗口、键盘/鼠标/拖放、深浅色、长文本/大 PDF/断网/恢复必须做兼容性验收。
+
+### 4.2 UI 与服务的边界
+
+- `frontend/`、`backend/`、`docs/` 是**同一项目的子模块**，不是独立项目；worktree 与 submodule 仍归父项目，路径最长匹配不是唯一归属判定。
+- 前端只经公开、版本化 API 读取/写入；不能让客户端自报“验证成功”、直接篡改掌握度、来源或证据状态。
+- 本地服务负责身份/授权、导入管线、作业、索引、证据写入、验证和审计；UI 显示 `UNKNOWN/STALE/FAILED` 真值，不把空值或客户端乐观态当完成。
+
+## 5. 数据模型与不可妥协的真值规则
+
+| 实体 | 必须包含 | 禁止的捷径 |
+|---|---|---|
+| Source / Object | 原件 hash、版本、权利/来源、存储位置、导入事件 | 用文件名、摘要或聊天记录代替原件 |
+| Anchor | 精确页/时间码/坐标/片段、锚定算法和版本、可重定位证据 | 只记录“来自某文档” |
+| Evidence / Provenance | 主张、来源链、产生者、时间、变换、置信度、复核状态 | 把模型回答自动登记为事实 |
+| Learning Event | 行为、题项、结果、时间、上下文、复习算法状态 | “打开过/问过”即掌握 |
+| Human Mastery | 量表、阈值、时间衰减、人工/测验依据 | off-by-one 或前端自写验证状态 |
+| Machine Competence Candidate | 输入、评估、验证、版本、能力边界、批准者 | 人类掌握即自动生成机器知识/能力 |
+
+能力成熟度统一使用：E0 候选、E1 登记、E2 原型、E3 集成、E4 实测、E5 发布。任何文档/前端宣称都必须可追到代码、测试和运行证据。
+
+## 6. 已证实或高风险的当前缺陷
+
+这些在先前云端 R4 审计中被列为未闭环；新对话必须逐项复核，而不是假设仍存在或已修复：
+
+1. 机器掌握度存在 **off-by-one** 语义风险。
+2. 客户端可能可自报/伪造验证状态，服务端缺失最终验证权。
+3. SQLite 路径出现 `sqlite3.Row.get()` 不兼容错误风险。
+4. “人类掌握即生成机器知识候选”违反双轨真值，需拆为候选与独立验证。
+5. 双 Tauri/桌面壳、旧 React 壳与 Windows-first C#+Avalonia 决策冲突；必须做收敛迁移，而非第三套 UI。
+6. PDF.js `3.11.174`、SBOM 漏 canonical 根、来源/依赖清单不完整。
+7. 通用 Planner、ASR、完整 Job Center、点击级 Windows 验收和学习黄金纵切并未真正完成。
+8. 发布/版本声明存在不一致：曾见公开 Release `v0.6.10`、源码 `0.6.11`；需把 Git tag、Release、构建产物、UI 版本统一验证。
+9. 主分支保护/ruleset 曾缺失；对知识与证据写入应补最小 CI、签名/审计与不可绕过 Gate。
+
+## 7. 开源复用裁决（不默认自研）
+
+| 目标 | 优先吸收/采用 | 接入边界 |
+|---|---|---|
+| 证据与批注 | W3C Web Annotation、PROV-O | 吸收对象/锚点/来源模型，不照搬产品 UI |
+| 对象与长期保存 | OCFL | 对象版本、清单、修复性与迁移方法；保持本地数据主权 |
+| 学习与复习 | FSRS；OpenTutor 提炼算法/学习块 | 使用可验证算法，不把任一 tutor 产品当 ArcheAxis 身份 |
+| 通用学习界面 | DeepTutor 可作为限时产品底座/参考 | 先资格化；ArcheAxis 仍保留 Source/Anchor/Evidence/Learning 真值 |
+| 文档解析 | Docling、MarkItDown | Provider Adapter；原件/锚点/错误率必须可回读 |
+| ASR | faster-whisper | 可替换本地/云端适配器，记录模型与转写证据 |
+| 检索/图谱/记忆 | Graphiti、MemOS 等只作条件候选 | 不可夺取 Source/Provenance/学习状态的 SSOT |
+
+许可证、锁版本、SBOM、测试、回滚、数据出口和资源预算是每个第三方的入场门。GPL/AGPL 或会夺取数据真相源的项目只可外置/参考，不能直接混入核心。
+
+## 8. 项目内目录、运行时与隔离
+
+目标是按责任分层，而不是把工作流软件、完整上游副本或临时产物塞进仓库根：
+
+```text
+ArcheAxis-Knowledge-OS/
+├─ apps/desktop/                 # Avalonia Windows-first 客户端
+├─ services/local-service/       # 可独立运行的本地 API/作业服务
+├─ packages/domain/              # source/anchor/evidence/learning/competence
+├─ packages/contracts/           # API、事件、schema、迁移合同
+├─ integrations/{parsers,asr,models,hosts}/
+├─ fixtures/{sources,golden}/    # 可公开的测试数据，不含用户原件
+├─ docs/{architecture,decisions,taskpacks,history}/
+├─ vendor/                       # source lock/license/SBOM，不存整仓副本
+└─ .project-local/               # ignored：worktree/runs/cache/logs/artifacts
+```
+
+- `.HERMES`、Codex、DSH 等是外部工作流软件自己的运行根，不是 ArcheAxis 领域目录；项目可在根内建受控子目录，但不向外盘、其他项目或用户目录扩散。
+- 未知解析器、插件、模型与第三方 Skill 默认在 Windows Sandbox/等价隔离中资格化：最小权限、网络 allowlist、只读输入、受控输出、限时/限额、hash 和审计。
+- 原件、客户数据、密钥、模型缓存、生成物不得进 Git；运行数据迁移验证后清理旧目录与重复内容，清理必须晚于哈希、读回、空环境恢复和回滚证明。
+
+## 9. 迁移与开发任务顺序
+
+1. **基线与权威链**：刷新远端，生成差异；创建 Decision Ledger、需求追踪矩阵、统一成熟度和单一版本/Release/SBOM 投影。
+2. **收敛桌面技术**：冻结 C#+Avalonia + 独立本地服务；给既有 Tauri/React 做完整功能映射和迁移计划，迁移/测试通过后删除旧壳，不并行长期维护。
+3. **先补数据真相 P0**：服务端掌握验证、off-by-one、SQLite、Candidate→Verified machine competence、Source/Anchor/Evidence/Provenance schema 与迁移测试。
+4. **做一条学习黄金纵切**：导入一个可公开 PDF/音频/网页原件 → 精确锚点 → 证据标注 → 学习事件与 FSRS → 服务端验证 → 机器候选 → 独立复核 → 可追溯展示。要包含失败、重启与恢复。
+5. **冻结 UI Contract 并实测 Windows**：多 DPI/分辨率、Reader/Inspector/Activity Dock、离线/断网、错误态、数据回读、自动化+人工点击验收。
+6. **再扩展多模态与跨平台**：按 Adapter 引入 Docling/ASR/视觉/3D；先协议和黄金集，后功能。macOS/Linux 只在 Windows 验收稳定后开展，不重写领域/服务契约。
+7. **目录清理和恢复演练**：第三方逐项资格化、迁移、清理旧目录；空环境恢复一次，证明上下文、配置、任务、证据均可恢复。
+
+## 10. 0.1 可用与长期路线验收
+
+**0.1 可用**不是聊天可答，而是：Windows 客户端可在无管理员前提下启动；本地服务可恢复；一个真实原件的锚点、来源、学习与掌握状态全链可验证；用户可看见失败/未知而非假完成；重启后可读回；数据不外溢。
+
+**长期路线**：Windows 是第一发布面；服务/API、契约、内容寻址数据和 Avalonia UI 为 macOS/Linux 做预留；移动端已停止投入，不做现阶段 KPI。跨平台成功定义是同一 Source/Anchor/Evidence/Learning 真值可安全迁移，而不是“能打开一个空窗口”。
+
+## 11. 禁回归清单
+
+- 不把 ArcheAxis 降级成 RAG、聊天页、泛 Agent OS 或模型入口。
+- 不让 UI/客户端直接决定验证、掌握、来源或机器知识事实。
+- 不让人类掌握自动变机器知识；机器候选必须独立评价/批准。
+- 不重复建通用 Planner、ASR、OCR、解析器、模型 Runtime；优先成熟 Adapter。
+- 不保留双/多桌面壳，不因旧代码语言反转已确认 C#+Avalonia 决策。
+- 不删除空间学习、3D、动态课件、多模态等未来蓝图；只可分期。
+- 不混入 WORK/DESIGN 或工作流软件的内部目录、运行数据、密钥和用户资产。
+- 不把编译/文档/自述当发布；没有可回放证据就只能是 E0–E3。
+
+## 12. 新对话启动指令
+
+```text
+请以《ArcheAxis 新对话交接摘要（2026-09-03）》为当前约束，先只读 fetch 并核对 DTALEX66/ArcheAxis-Knowledge-OS 的 origin/main；不要沿用摘要中的旧 SHA。ArcheAxis 是 Windows-first 的 C#+Avalonia 人机双向学习与可信知识 OS，前后端/本地数据服务必须解耦，未来支持 macOS/Linux；不是 RAG/聊天/Agent Runtime。先审计 Source→Anchor→Evidence/Provenance→Learning→Human Mastery→Machine Competence Candidate→Verified 的真实链路，重点复核服务端验证、off-by-one、SQLite、双桌面壳、PDF.js/SBOM、版本/Release 和 UI Contract。每个问题先找成熟开源/官方组件，按 Adapter/最小吸收接入，禁止默认自研或整仓复制。先给差异、证据、选型与迁移 DAG；未经我明确授权，不修改、删除、提交或推送仓库。
+```
+
+## 13. 应优先读取的材料
+
+1. `ArcheAxis_OS_Full_Context_Handoff_2026-08-19.md`
+2. `ArcheAxis-Knowledge-OS_Project_Config_CI_DeDup_TaskPack_2026-08-13.md`
+3. `ARCHEAXIS-FINAL-TASKPACK-2026-08-25.md` / R2 快速成品化任务包（如仍在库中）
+4. 当前仓库的 `AGENTS.md`、架构/数据 schema、客户端与 local-service 启动代码、SBOM、Release/CI 文件。

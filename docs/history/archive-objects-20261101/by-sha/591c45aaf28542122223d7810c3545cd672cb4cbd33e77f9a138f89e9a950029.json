@@ -1,0 +1,1865 @@
+{
+  "conversation_id": "6aaebfc7-8dbc-83ea-9b09-b6f6c6906bd0",
+  "conversation_template_id": null,
+  "create_time": 1789837256.859066,
+  "current_node": "9f64f944-4339-4546-aa54-7122ccf72cbe",
+  "default_model_slug": "gpt-5-6-thinking",
+  "id": "6aaebfc7-8dbc-83ea-9b09-b6f6c6906bd0",
+  "is_archived": true,
+  "is_do_not_remember": false,
+  "is_read_only": null,
+  "is_starred": null,
+  "is_study_mode": false,
+  "mapping": {
+    "00080ece-9162-4ef8-b852-ca70c7f95097": {
+      "id": "00080ece-9162-4ef8-b852-ca70c7f95097",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "hermes能不能子智能体自动路由到其他FREE模型上"
+          ]
+        },
+        "create_time": 1789970939.085,
+        "id": "00080ece-9162-4ef8-b852-ca70c7f95097",
+        "metadata": {
+          "serialization_metadata": {
+            "custom_symbol_offsets": []
+          }
+        }
+      },
+      "parent": "41324795-2845-4eca-ba13-a490f8772635"
+    },
+    "1a980fa7-16ba-49a9-a2f9-a2ad9477aa79": {
+      "id": "1a980fa7-16ba-49a9-a2f9-a2ad9477aa79",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "可以做，但要区分两件事：**“子智能体能不能指定别的模型”**，以及 **“Hermes 能不能按任务自动挑选不同 FREE 模型”**。前者通常更容易，后者要看它现在有没有原生的 model-router/profile 机制，还是需要你在 WORK-LAB/Hermes 外层加一层路由。我查一下当前 Hermes 的官方实现。"
+          ]
+        },
+        "create_time": 1789970945.756952,
+        "id": "1a980fa7-16ba-49a9-a2f9-a2ad9477aa79",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "02a1d990-6325-4499-992f-7a8f25313471"
+        }
+      },
+      "parent": "00080ece-9162-4ef8-b852-ca70c7f95097"
+    },
+    "1cfbd696-6637-4f99-a019-56de0d855873": {
+      "id": "1cfbd696-6637-4f99-a019-56de0d855873",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content": "思考了 31s",
+          "content_type": "reasoning_recap"
+        },
+        "create_time": 1789970977.565308,
+        "id": "1cfbd696-6637-4f99-a019-56de0d855873",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "796506cf-e7ce-405a-b4d4-745f6cd02d3b"
+        }
+      },
+      "parent": "796506cf-e7ce-405a-b4d4-745f6cd02d3b"
+    },
+    "3fcf339a-3dc2-4b2b-bcdb-4bc11d5d4053": {
+      "id": "3fcf339a-3dc2-4b2b-bcdb-4bc11d5d4053",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "2e452cef-7d04-4629-970e-43f4ae2e178a",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "可以。最简单的做法是把委派模型设为 OpenRouter 的免费路由器，让每个子代理请求自动匹配可用免费模型；但按任务类型精细分配，仍需自行编排路由逻辑。",
+              "finished": true,
+              "summary": "配置免费自动路由"
+            },
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "配置了免费自动路由"
+            }
+          ]
+        },
+        "create_time": 1789970976.697064,
+        "id": "3fcf339a-3dc2-4b2b-bcdb-4bc11d5d4053",
+        "metadata": {
+          "content_references": [],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "2e452cef-7d04-4629-970e-43f4ae2e178a",
+          "tool_icons": []
+        }
+      },
+      "parent": "8046ba66-eac2-4b7f-aa2e-41a97a53484e"
+    },
+    "41324795-2845-4eca-ba13-a490f8772635": {
+      "id": "41324795-2845-4eca-ba13-a490f8772635",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "“**Hermes 只适合跑普通模型**”这个说法不准确，至少按 **2026 年 9 月现在的 Hermes Agent** 来看已经明显过时了。\n\n真正的问题不是“普通模型 vs 顶级模型”，而是：\n\n> **Hermes 最擅长的是：把一个模型当作“大脑”，由 Hermes 自己掌控 Agent Loop、工具、记忆、Skill、MCP、子 Agent、上下文压缩等。**\n>\n> 对那些本身已经带有完整 Agent Runtime 的模型/系统，例如 Codex、Claude Code 一类，如果只是把“模型 API”塞进 Hermes，反而可能丢掉一部分它们原生宿主的能力。\n\n### 先把“模型”和“Agent Runtime”分开\n\n| 类型 | 例子 | 放进 Hermes 的情况 |\n|---|---|---|\n| 普通聊天/推理模型 | DeepSeek、GLM、Kimi、Qwen、普通 Claude/GPT API | **非常适合** |\n| 强 Tool Calling 模型 | Claude、GPT、Gemini、DeepSeek 等 | **非常适合** |\n| 推理模型 | GPT reasoning、Claude thinking 等 | **支持很好** |\n| 原生 Coding Agent 模型 | Codex 系列 | **能跑，但运行方式很重要** |\n| 自带完整 Agent Harness | Codex CLI / Claude Code / Copilot ACP | 不应该简单降级成“一个 API 模型” |\n\nHermes 当前甚至要求主模型至少有 **64K context**，官方明确列出了 Claude、GPT、Gemini、Qwen、DeepSeek 等作为正常适配对象。citeturn281247search4turn281247search7\n\n而且现在 Hermes 已经支持 OpenAI、Anthropic、Gemini、OpenRouter、本地 Ollama/vLLM，以及任意 OpenAI-compatible endpoint。citeturn281247search1turn281247search11\n\n所以它绝不是“只能跑普通模型”。\n\n---\n\n## 为什么会有人这么说？\n\n核心原因是 **Hermes 最初/基础架构的抽象层是通用 Agent Harness**。\n\nHermes 内部把会话历史保存成接近 OpenAI Chat Completions 的统一结构，然后不同 provider 再通过 transport 转换：\n\n- `chat_completions`\n- `codex_responses`\n- `anthropic_messages`\n\n官方开发文档现在仍明确说明：Hermes 内部 conversation history 使用 OpenAI chat-completions 形态，再由其他 transport 转换成各家原生协议。citeturn281247search2\n\n这意味着：\n\n**普通 Tool Calling 模型 → Hermes**\n非常自然。\n\n流程基本就是：\n\n`模型 → function call → Hermes tool → result → 模型 → 下一步`\n\n但是：\n\n**Codex 这种“模型 + Agent Runtime”体系 → Hermes**\n\n问题就复杂了。\n\n因为 Codex 原本可能已经拥有：\n\n`模型`\n`+ shell`\n`+ patch`\n`+ sandbox`\n`+ MCP`\n`+ plugins`\n`+ context management`\n`+ programmatic tool calling`\n`+ 原生 coding loop`\n\n如果你只把 Codex 当成：\n\n> `model=\"xxx-codex\"`\n\n然后塞进一个普通 Chat Completion Agent Loop，\n\n就可能变成：\n\n> **把一个完整 Coding Agent 拆掉，只取里面的模型。**\n\n这才是“顶级模型放 Hermes 里不一定发挥完全”的真正来源。\n\n---\n\n# 但 Hermes 现在已经在解决这个问题\n\n这是非常关键的变化。\n\nHermes 现在已经有：\n\n### Codex Responses 原生 transport\n\n不是单纯把 OpenAI/Codex 当普通 `/chat/completions` 模型。\n\nHermes 会自动判断某些模型需要 Responses API，然后切换到：\n\n`codex_responses`\n\n甚至现在支持 GPT-5.6 Responses 的 **server-side native compaction**。citeturn712527search8turn712527search9\n\n也就是说现在已经开始：\n\n> **保留 OpenAI 原生模型特性，而不是全部压成普通 Chat Completion。**\n\n---\n\n# 更重要的是：Hermes 已经加入 Codex App Server Runtime\n\n这个其实直接改变了“只适合普通模型”这个判断。\n\n现在 Hermes 可以直接运行：\n\n**Codex App Server Runtime**\n\n这种模式下，不再是：\n\n`Hermes Agent Loop`\n→ `Codex 只是模型`\n\n而是：\n\n`Hermes`\n→ `Codex App Server`\n→ `Codex 原生 Agent Runtime`\n\nCodex 自己的：\n\n- shell\n- 文件操作\n- patch\n- sandbox\n- 原生插件\n\n继续保留。\n\n与此同时 Hermes 再通过 MCP callback 把：\n\n- web search\n- browser\n- vision\n- image generation\n- skills\n- TTS\n\n注入 Codex。citeturn712527search1\n\n这个架构其实非常接近我们一直在给 **WORK-LAB** 规划的：\n\n> **不要把各 Agent 全部强行同质化，而应该 Federation / Adapter / Native Runtime 优先。**\n\n---\n\n# 但现在依然存在“能力损耗”\n\n所以那句话不能说完全毫无依据。\n\n例如目前 Hermes 官方文档明确写着：\n\nCodex App Server Runtime 下，通过 Hermes MCP callback 时，目前有一些 Hermes 工具不能直接使用：\n\n`delegate_task`\n`memory`\n`session_search`\n`todo`\n\n因为这些工具依赖 Hermes 正在运行的 AIAgent 上下文，而 Codex MCP callback 是 stateless 的。citeturn712527search1\n\n反过来也一样。\n\n目前 Hermes 的普通 Codex Responses transport，虽然已经支持大量 Codex 特性，但 **OpenAI 原生 Programmatic Tool Calling 还没有完全映射进 Hermes**。\n\nHermes 官方 GitHub 目前还有专门的 feature issue，说明现有 `codex.py` 仍然主要把 Hermes 工具投影成普通 Responses function tools，还没有完整实现原生 `programmatic_tool_calling`。citeturn712527search11\n\n所以这里实际上存在一个非常重要的区别：\n\n### 模型能不能跑\n\n和\n\n### 模型能不能发挥 100% 原生 Agent 能力\n\n完全是两回事。\n\n---\n\n# 因此我会把 Hermes 的模型适配分成这样\n\n| 模型/体系 | Hermes 适配判断 | 原因 |\n|---|---|---|\n| DeepSeek V4 / R 系 | ★★★★★ | Hermes 自己提供 Agent Harness，正合适 |\n| GLM / Kimi / Qwen | ★★★★★ | 同上 |\n| Gemini | ★★★★☆～★★★★★ | Tool calling / 长上下文很好 |\n| Claude API | ★★★★★ | Hermes 有 native Anthropic Messages transport |\n| GPT 普通 API | ★★★★★ | Responses/Chat 两种路径 |\n| GPT reasoning | ★★★★★ | Hermes 已有 reasoning effort 管理 |\n| Codex 模型作为 Responses 模型 | ★★★★☆ | 很强，但部分 Codex-native runtime 能力仍有差异 |\n| Codex App Server | ★★★★★，但属于另一种架构 | 保留 Codex 原生 Agent runtime |\n| Claude Code 本体 | 类似 Codex | 应优先保持其 native harness，而不是只抽模型 |\n\n注意这里的星不是“政治/价值判断”那类评分，而只是我对**技术适配完整度**的简化表示。\n\n---\n\n## 所以你现在 Hermes 用 DeepSeek，其实不是“降级”\n\n反而从架构上非常合理。\n\n你现在这套思路：\n\n**Hermes**\n→ 强通用模型 / DeepSeek / 免费模型  \n→ Hermes 自己负责 Skill、Memory、MCP、Web、Delegate、Bot、Cron\n\n属于 Hermes 最原生的工作方式。\n\n而：\n\n**Codex**\n→ GPT/Codex\n→ Codex 自己的 Coding Runtime\n\n也合理。\n\n问题会出现在这种设计：\n\n`Hermes`\n→ `Codex 模型`\n→ 再用 Hermes 重建一套 Codex 已经拥有的 Coding Agent Loop\n\n这时候就出现：\n\n**Agent 套 Agent**\n\n甚至：\n\n**Harness 套 Harness**\n\n不仅不一定更强，还可能增加：\n\n- token\n- latency\n- 上下文重复\n- tool schema 重复\n- tool routing 冲突\n- memory 冲突\n- sandbox 冲突\n- system prompt 冲突\n\n---\n\n# 这也正好说明你 WORK-LAB 的方向为什么应该继续坚持\n\n不应该：\n\n```text\nWORK-LAB\n    ↓\nHermes\n    ↓\n所有模型\n    ↓\n所有 Agent\n```\n\n更合理的是：\n\n```text\n                 WORK-LAB\n          Governance / Federation\n                    │\n        ┌───────────┼───────────┐\n        │           │           │\n      Hermes       Codex       DSH\n        │           │           │\n   Hermes Loop   Codex Loop   DSH Loop\n        │           │           │\n   DeepSeek      GPT/Codex   DeepSeek\n   GLM/Kimi\n   Qwen/Claude\n```\n\n然后通过：\n\n**MCP / ACP / Task Protocol / Session Federation / Registry**\n\n互相协作。\n\n这样就不会为了统一而把 Codex、Hermes、DSH 都削成最低公共能力。\n\n这也是我认为你之前坚持的：\n\n> **WORK-LAB 是 Federation Control Plane，而不是第二个 Agent Runtime**\n\n这个定义非常关键。memcite\n\n---\n\n还有一个与你现在安装特别相关的变化：截至 **2026 年 9 月 20 日**，Hermes 最新稳定版已经是 **v0.21.3（2026-09-14）**，而且这个版本相比 v0.21.2 又合入了大约 **338 个 PR**；当前 `main` 的模型 transport / Codex runtime 能力甚至还在继续快速变化。citeturn783243search0\n\n所以如果你看到一两个月前甚至几周前有人说：\n\n> “Hermes 只能拿来套普通 API 模型。”\n\n**现在已经不能直接套用这个结论。**\n\n一句话总结：\n\n> **Hermes 不是只适合“普通模型”，而是最适合“让 Hermes 自己承担 Agent Runtime 的模型”；遇到 Codex 这种已经自带强 Runtime 的体系，则应该走原生 Runtime / Adapter / ACP/MCP 联邦接入，而不是把它强行降级成普通 LLM。**\n\n这其实和你现在 **Hermes + Codex + DSH 三角体系**非常匹配。"
+          ]
+        },
+        "create_time": 1789837287.4153,
+        "id": "41324795-2845-4eca-ba13-a490f8772635",
+        "metadata": {
+          "code_blocks": {
+            "0": {
+              "edited": false,
+              "id": "x70mkp",
+              "preview_language": null,
+              "previewable": false
+            },
+            "1": {
+              "edited": false,
+              "id": "3lduly",
+              "preview_language": null,
+              "previewable": false
+            }
+          },
+          "content_references": [
+            {
+              "alt": "([Hermes Agent](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "Hermes Agent",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 4,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    },
+                    {
+                      "ref_index": 7,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [
+                    {
+                      "attribution": "GitHub",
+                      "pub_date": null,
+                      "snippet": "",
+                      "title": "hermes-agent/website/docs/getting-started/quickstart.md at main · NousResearch/hermes-agent · GitHub",
+                      "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/getting-started/quickstart.md?utm_source=chatgpt.com"
+                    }
+                  ],
+                  "title": "Hermes Agent Quickstart | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/getting-started/quickstart?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([Hermes Agent](https://hermes-agent.nousresearch.com/docs/integrations/providers?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "Hermes Agent",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 1,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    },
+                    {
+                      "ref_index": 11,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [
+                    {
+                      "attribution": "Hermes Agent",
+                      "pub_date": null,
+                      "snippet": "",
+                      "title": "FAQ & Troubleshooting | Hermes Agent",
+                      "url": "https://hermes-agent.nousresearch.com/docs/reference/faq?utm_source=chatgpt.com"
+                    }
+                  ],
+                  "title": "LLM and Model Providers | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/integrations/providers?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([Hermes Agent](https://hermes-agent.nousresearch.com/docs/developer-guide/adding-providers?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "Hermes Agent",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 2,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "Adding Providers | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/developer-guide/adding-providers?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/developer-guide/context-compression-and-caching.md?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 8,
+                      "ref_type": "search",
+                      "turn_index": 1
+                    },
+                    {
+                      "ref_index": 9,
+                      "ref_type": "search",
+                      "turn_index": 1
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [
+                    {
+                      "attribution": "GitHub",
+                      "pub_date": null,
+                      "snippet": "",
+                      "title": "hermes-agent/agent/agent_init.py at main · NousResearch/hermes-agent · GitHub",
+                      "url": "https://github.com/NousResearch/hermes-agent/blob/main/agent/agent_init.py?utm_source=chatgpt.com"
+                    }
+                  ],
+                  "title": "hermes-agent/website/docs/developer-guide/context-compression-and-caching.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/developer-guide/context-compression-and-caching.md?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/codex-app-server-runtime.md?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 1,
+                      "ref_type": "search",
+                      "turn_index": 1
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "hermes-agent/website/docs/user-guide/features/codex-app-server-runtime.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/codex-app-server-runtime.md?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/codex-app-server-runtime.md?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 1,
+                      "ref_type": "search",
+                      "turn_index": 1
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "hermes-agent/website/docs/user-guide/features/codex-app-server-runtime.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/codex-app-server-runtime.md?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/issues/99827?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": 1788134400.0,
+                  "refs": [
+                    {
+                      "ref_index": 11,
+                      "ref_type": "search",
+                      "turn_index": 1
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "feat(openai-codex): support native Programmatic Tool Calling · Issue #99827 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/99827?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": null,
+              "prefix": null,
+              "prompt_text": null,
+              "type": "hidden"
+            },
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/releases?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": 1789344000.0,
+                  "refs": [
+                    {
+                      "ref_index": 0,
+                      "ref_type": "search",
+                      "turn_index": 2
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "Releases · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/releases?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "",
+              "has_images": false,
+              "prefix": null,
+              "prompt_text": null,
+              "sources": [
+                {
+                  "attribution": "Hermes Agent",
+                  "title": "Hermes Agent Quickstart | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/getting-started/quickstart?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "GitHub",
+                  "title": "hermes-agent/website/docs/developer-guide/context-compression-and-caching.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/developer-guide/context-compression-and-caching.md?utm_source=chatgpt.com"
+                }
+              ],
+              "type": "sources_footnote"
+            }
+          ],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "8968558f-1a9f-4124-a31e-c2e5c4d0693a",
+          "search_result_groups": [
+            {
+              "domain": "nousresearch.com",
+              "entries": [
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "CONTEXT ENGINE​  The context engine controls how conversations are managed when approaching the model's token limit. The built-in `compressor` engine uses lossy summarization (see Context Compression)...",
+                  "title": "Hermes Agent Configuration | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/configuration?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "HERMES AGENT  The self-improving AI agent built by Nous Research. The only agent with a built-in learning loop — it creates skills from experience, improves them during use, nudges itself to persist...",
+                  "title": "Hermes Agent Documentation | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "INTEGRATIONS  Hermes Agent connects to external systems for AI inference, tool servers, IDE workflows, programmatic access, and more. These integrations extend what Hermes can do and where it can run...",
+                  "title": "Integrations | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/integrations/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "CONFIGURING MODELS  Hermes uses two kinds of model slots:  * Main model — what the agent thinks with. Every user message, every tool-call loop, every streamed response goes through this model. * Auxi...",
+                  "title": "Configuring Models | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/configuring-models?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "FAQ & TROUBLESHOOTING  Quick answers and fixes for the most common questions and issues.  FREQUENTLY ASKED QUESTIONS​  WHAT LLM PROVIDERS WORK WITH HERMES?​  Hermes Agent works with any OpenAI-compat...",
+                  "title": "FAQ & Troubleshooting | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/reference/faq?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "配置模型  Hermes 使用两类模型槽位：  * 主模型 — agent 的思考核心。每条用户消息、每个工具调用循环、每次流式响应都经由该模型处理。 * 辅助模型 — agent 卸载给较小模型的边缘任务。包括上下文压缩、视觉（图像分析）、网页摘要、审批评分、MCP 工具路由、会话标题生成和技能搜索。每项任务有独立槽位，可单独覆盖。  本页介绍如何通过仪表板配置上述两类模型。如需使用配置文件或...",
+                  "title": "配置模型 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/configuring-models?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "添加 PROVIDER  Hermes 已经可以通过自定义 provider 路径与任何 OpenAI 兼容的端点通信。除非你需要为某个服务提供一流的用户体验，否则不要添加内置 provider：  * provider 专属的认证或 token 刷新 * 精选的模型目录 * setup / `hermes model` 菜单条目 * 用于 `provider:model` 语法的 provid...",
+                  "title": "添加 Provider | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/adding-providers?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "集成  Hermes Agent 可连接外部系统，用于 AI 推理、工具服务器、IDE 工作流、程序化访问等。这些集成扩展了 Hermes 的能力边界与运行环境。  AI 提供商与路由​  Hermes 开箱即支持多个 AI 推理提供商。使用 `hermes model` 进行交互式配置，或在 `config.yaml` 中直接设置。  * AI 提供商 — OpenRouter、Anthrop...",
+                  "title": "集成 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/integrations/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "PROVIDER RUNTIME RESOLUTION  Hermes has a shared provider runtime resolver used across:  * CLI * gateway * cron jobs * ACP * auxiliary model calls  Primary implementation:  * `hermes_cli/runtime_prov...",
+                  "title": "Provider Runtime Resolution | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/developer-guide/provider-runtime?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "CODEX APP-SERVER 运行时  Hermes 可以选择将 `openai/*` 和 `openai-codex/*` 的轮次交由 Codex CLI app-server 处理，而不是运行自己的工具循环。启用后，终端命令、文件编辑、沙箱隔离以及 MCP 工具调用均在 Codex 的运行时内执行——Hermes 成为其外层 shell（会话数据库、斜杠命令、gateway、记忆与技能审...",
+                  "title": "Codex App-Server 运行时（可选） | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/codex-app-server-runtime?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "CODEX APP-SERVER RUNTIME  Hermes can optionally hand `openai/*` and `openai-codex/*` turns to the Codex CLI app-server instead of running its own tool loop. When enabled, terminal commands, file edit...",
+                  "title": "Codex App-Server Runtime (optional) | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/codex-app-server-runtime?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "codex_gpt55_autoraise_notice: true  # Show the one-time autoraise notice (default: true)  codex_app_server_auto: native  # native|hermes|off for Codex app-server thread compaction  codex_responses_nat...",
+                  "title": "Context Compression and Caching | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/developer-guide/context-compression-and-caching?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "SUBSCRIPTION PROXY  The subscription proxy is a local HTTP server that lets external apps — OpenViking, Karakeep, Open WebUI, anything that speaks OpenAI-compatible chat completions — use your Hermes...",
+                  "title": "Subscription Proxy | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/subscription-proxy?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "Provider  | Description  | Requirements --- | --- | --- `\"auto\"`  | Try providers in order until one works (default)  | At least one provider configured `\"openrouter\"`  | Force OpenRouter  | `OPENROU...",
+                  "title": "Fallback Providers | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "XAI GROK OAUTH（SUPERGROK / X PREMIUM+）  Hermes Agent 通过基于浏览器的 OAuth 登录流程支持 xAI Grok，认证服务器为 accounts.x.ai，支持 SuperGrok 订阅（grok.com）或 X Premium+ 订阅（已关联的 X 账号）。无需 `XAI_API_KEY`——登录一次后，Hermes 会在后台自动刷新会话。...",
+                  "title": "xAI Grok OAuth（SuperGrok / X Premium+） | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/guides/xai-grok-oauth?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "API SERVER  The API server exposes hermes-agent as an OpenAI-compatible HTTP endpoint. Any frontend that speaks the OpenAI format — Open WebUI, LobeChat, LibreChat, NextChat, ChatBox, and hundreds mo...",
+                  "title": "API Server | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/api-server?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "| Broad Grok-synthesized public X research when `x_search` is available and no authenticated account context is needed.  For mixed workflows, use `x_search` to discover candidate public posts, then sw...",
+                  "title": "X (Twitter) Search | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/x-search?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "原生 ANTHROPIC 路径​  Anthropic 不再仅限于\"通过 OpenRouter\"访问。  当 provider 解析选择 `anthropic` 时，Hermes 使用：  * `api_mode = anthropic_messages` * 原生 Anthropic Messages API * `agent/anthropic_adapter.py` 进行转换  原生 Ant...",
+                  "title": "Provider 运行时解析 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/provider-runtime/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "2. 选择 PROVIDER​  这是最重要的配置步骤。使用 `hermes model` 以交互方式完成选择：  `  hermes model  `  最简路径：Nous Portal  一个订阅涵盖 300+ 个模型，以及 Tool Gateway（网页搜索、图像生成、TTS、云端浏览器）。全新安装时：  `  hermes setup --portal  `  该命令一次性完成登录、设置...",
+                  "title": "快速入门 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/getting-started/quickstart?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "* Idle timeout and eviction. Kernels die with the session, after `code_execution.kernel_idle_timeout` idle seconds (default 1800), or when more than `code_execution.max_session_kernels` (default 4) to...",
+                  "title": "Code Execution | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/code-execution?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "MCP (MODEL CONTEXT PROTOCOL)  MCP lets Hermes Agent connect to external tool servers so the agent can use tools that live outside Hermes itself — GitHub, databases, file systems, browser stacks, inte...",
+                  "title": "MCP (Model Context Protocol) | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "AGENT LOOP 内部机制  核心编排引擎是 `run_agent.py` 中的 `AIAgent` 类——这是一个大型文件（15k+ 行），负责处理从 prompt（提示词）组装到工具分发再到 provider 故障转移的所有逻辑。  核心职责​  `AIAgent` 负责：  * 通过 `prompt_builder.py` 组装有效的系统 prompt 和工具 schema * 选择正...",
+                  "title": "Agent Loop 内部机制 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/agent-loop?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "COMPUTER USE  Hermes Agent can drive your desktop — clicking, typing, scrolling, dragging — in the background on macOS, Windows, and Linux. Your cursor doesn't move, keyboard focus doesn't change, an...",
+                  "title": "Computer Use | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/computer-use?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "github.com",
+              "entries": [
+                {
+                  "attribution": "github.com",
+                  "snippet": "title  | LLM and Model Providers sidebar_label  | AI Providers sidebar_position  | 1  LLM AND MODEL PROVIDERS  This page covers setting up inference providers for Hermes Agent — from cloud APIs like...",
+                  "title": "hermes-agent/website/docs/integrations/providers.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/integrations/providers.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "CONFIGURING-MODELS.MD  414 lines (292 loc) · 24.5 KB  Raw  Copy raw file  Download raw file  Outline  Edit and raw actions  sidebar_position  | 3  CONFIGURING MODELS  Hermes uses two kinds of model s...",
+                  "title": "hermes-agent/website/docs/user-guide/configuring-models.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/configuring-models.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "sidebar_position  | 3 title  | FAQ & Troubleshooting description  | Frequently asked questions and solutions to common issues with Hermes Agent  FAQ & TROUBLESHOOTING  Quick answers and fixes for the...",
+                  "title": "hermes-agent/website/docs/reference/faq.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/reference/faq.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "2. CHOOSE A PROVIDER  The single most important setup step. Use `hermes model` to walk through the choice interactively:  hermes model  :::tip Easiest path: Nous Portal One subscription covers 300+ mo...",
+                  "title": "hermes-agent/website/docs/getting-started/quickstart.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/getting-started/quickstart.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "ADDING-PROVIDERS.MD  Copy path  [Input: Go to file]  Blame More file actions  Blame More file actions  LATEST COMMIT    HISTORY  History  main  BREADCRUMBS  1. hermes-agent 2. /website 3. /docs 4. /d...",
+                  "title": "hermes-agent/website/docs/developer-guide/adding-providers.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/developer-guide/adding-providers.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "sidebar_position  | 4 title  | Provider Runtime Resolution description  | How Hermes resolves providers, credentials, API modes, and auxiliary models at runtime  PROVIDER RUNTIME RESOLUTION  Hermes h...",
+                  "title": "nousresearch-hermes-agent/website/docs/developer-guide/provider-runtime.md at main · openax-reference/nousresearch-hermes-agent · GitHub",
+                  "url": "https://github.com/openax-reference/nousresearch-hermes-agent/blob/main/website/docs/developer-guide/provider-runtime.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "title  | Provider Routing description  | Configure OpenRouter provider preferences to optimize for cost, speed, or quality. sidebar_label  | Provider Routing sidebar_position  | 7  PROVIDER ROUTING...",
+                  "title": "hermes-agent/website/docs/user-guide/features/provider-routing.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/provider-routing.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "257 lines (195 loc) · 13.6 KB  Raw  Copy raw file  Download raw file  Outline  Edit and raw actions  sidebar_position  | 7 title  | Mixture of Agents description  | Create named MoA presets that appe...",
+                  "title": "hermes-agent/website/docs/user-guide/features/mixture-of-agents.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/mixture-of-agents.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "The Qwen Cloud (Alibaba DashScope) upstream caps cache TTL at 5 minutes, so Hermes uses the 5-minute breakpoint TTL there instead. Other Claude-via-third-party paths (AWS Bedrock, Azure Foundry) fall...",
+                  "title": "nousresearch-hermes-agent/website/docs/user-guide/configuration.md at main · openax-reference/nousresearch-hermes-agent · GitHub",
+                  "url": "https://github.com/openax-reference/nousresearch-hermes-agent/blob/main/website/docs/user-guide/configuration.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "`HERMES MODEL`  Interactive provider + model selector. This is the command for adding new providers, setting up API keys, and running OAuth flows. Run it from your terminal — not from inside an active...",
+                  "title": "hermes-agent/website/docs/reference/cli-commands.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/reference/cli-commands.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "sidebar_position  | 7 title  | Mixture of Agents description  | Create named MoA presets that appear as selectable models under the Mixture of Agents provider  MIXTURE OF AGENTS  Mixture of Agents is...",
+                  "title": "NousResearch-hermes-agent/website/docs/user-guide/features/mixture-of-agents.md at main · dqfront/NousResearch-hermes-agent · GitHub",
+                  "url": "https://github.com/dqfront/NousResearch-hermes-agent/blob/main/website/docs/user-guide/features/mixture-of-agents.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "RESOLUTION PRECEDENCE  At a high level, provider resolution uses:  1. explicit CLI/runtime request 2. `config.yaml` model/provider config 3. environment variables 4. provider-specific defaults or auto...",
+                  "title": "hermes-agent/website/docs/developer-guide/provider-runtime.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/developer-guide/provider-runtime.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "title  | AI Providers sidebar_label  | AI Providers sidebar_position  | 1  AI PROVIDERS  This page covers setting up inference providers for Hermes Agent — from cloud APIs like OpenRouter and Anthrop...",
+                  "title": "hermes/website/docs/integrations/providers.md at main · hermes-agent-org/hermes · GitHub",
+                  "url": "https://github.com/hermes-agent-org/hermes/blob/main/website/docs/integrations/providers.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "* Use `siliconflow` if you want one API layer focused on open-weight and Chinese model families. * Use direct providers such as `anthropic`, `openai`, `deepseek`, `google`, or `xai` when you want the...",
+                  "title": "hermes-agent-kit/docs/providers.md at main · srmdn/hermes-agent-kit · GitHub",
+                  "url": "https://github.com/srmdn/hermes-agent-kit/blob/main/docs/providers.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "`get_provider_profile()` in `providers/` returns a `ProviderProfile` for a given provider id. `runtime_provider.py` calls this at resolution time to get the canonical `base_url`, `env_vars` priority...",
+                  "title": "hermes-agent-docs/developer-guide/provider-runtime.md at main · mudrii/hermes-agent-docs · GitHub",
+                  "url": "https://github.com/mudrii/hermes-agent-docs/blob/main/developer-guide/provider-runtime.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "PROVIDERS.MD  Copy path  [Input: Go to file]  Blame More file actions  Blame More file actions  LATEST COMMIT    HISTORY  History  main  BREADCRUMBS  1. hermes-agent 2. /website 3. /docs 4. /integrat...",
+                  "title": "hermes-agent/website/docs/integrations/providers.md at main · lz2026km/hermes-agent · GitHub",
+                  "url": "https://github.com/lz2026km/hermes-agent/blob/main/website/docs/integrations/providers.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "Key  | What it does  | Default --- | --- | --- `provider`  | Which provider to use for auth and routing  | `\"auto\"` `model`  | Which model to request  | provider's default `base_url`  | Custom OpenAI...",
+                  "title": "hermes_agent/website/docs/user-guide/configuration.md at main · verstehenmonk/hermes_agent · GitHub",
+                  "url": "https://github.com/verstehenmonk/hermes_agent/blob/main/website/docs/user-guide/configuration.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "FAST MODE IS A SEPARATE MODEL ID AT A 2X PREMIUM.  (\"anthropic\", \"https://openrouter.ai/anthropic/claude-opus-4.8-fast\", \"anthropic-pricing-2026-05\", {  \"claude-opus-4-8-fast\": (\"10.00\", \"50.00\", \"1.0...",
+                  "title": "hermes-agent/agent/usage_pricing.py at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/agent/usage_pricing.py?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "sidebar_position  | 16 title  | Google Gemini description  | Use Hermes Agent with Google Gemini — native AI Studio API, API-key setup, tool calling, streaming, and quota guidance  GOOGLE GEMINI  Her...",
+                  "title": "hermes-agent/website/docs/guides/google-gemini.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/nousresearch/hermes-agent/blob/main/website/docs/guides/google-gemini.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "Value  | Behavior --- | --- `\"auto\"` (default)  | Enabled for models matching: `gpt`, `codex`, `gemini`, `gemma`, `grok`, `glm`, `qwen`, `deepseek`, `muse`. Disabled for all others (e.g. Claude). `tr...",
+                  "title": "hermes-agent/website/docs/user-guide/configuration.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/configuration.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "OpenAI Anthropic Google Gemini DeepSeek Local (Ollama) ...  ? Select a model: > hermes-3-llama-3.1-70b hermes-3-llama-3.1-405b ... `  You can also choose a model explicitly from the command line:  her...",
+                  "title": "hermes-agent/doc/hermesagent.studio/guide/quickstart.md at main · clauxel/hermes-agent · GitHub",
+                  "url": "https://github.com/clauxel/Hermes-Agent/blob/main/doc/hermesagent.studio/guide/quickstart.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "META MODEL API: CACHING IS OPT-IN VIA PROMPT_CACHE_RETENTION (0% HITS WITHOUT).  META MODEL API (API.META.AI) ONLY ACHIEVES PROMPT-CACHE HITS ON THE RESPONSES API WITH  PROMPT_CACHE_RETENTION; CHAT/CO...",
+                  "title": "hermes-agent/agent/transports/codex.py at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/agent/transports/codex.py?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "STABLE PROMPT-CACHE ROUTING FOR THE CODEX/RESPONSES AUX PATH, MIRRORING THE MAIN TRANSPORT  (AGENT/TRANSPORTS/CODEX.PY::BUILD_KWARGS, WHICH SETS PROMPT_CACHE_KEY =  _CONTENT_CACHE_KEY(INSTRUCTIONS, TO...",
+                  "title": "hermes-agent/agent/transports/chat_completions.py at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/agent/transports/chat_completions.py?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "957 lines (698 loc) · 41 KB  Raw  Copy raw file  Download raw file  Outline  Edit and raw actions  sidebar_position  | 4 title  | MCP (Model Context Protocol) description  | Connect Hermes Agent to e...",
+                  "title": "hermes-agent/website/docs/user-guide/features/mcp.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/mcp.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "sidebar_position  | 8 title  | MCP Config Reference description  | Reference for Hermes Agent MCP configuration keys, filtering semantics, and utility-tool policy  MCP CONFIG REFERENCE  This page is...",
+                  "title": "hermes-agent/website/docs/reference/mcp-config-reference.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/reference/mcp-config-reference.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "HERMES_TOOLS_MCP_SERVER.PY  \"\"\"Hermes-tools-as-MCP server for the codex_app_server runtime.  Codex owns the loop and tool list there, so a curated subset of Hermes tools is  exposed over stdio MCP; c...",
+                  "title": "hermes-agent/agent/transports/hermes_tools_mcp_server.py at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/agent/transports/hermes_tools_mcp_server.py?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "When api_mode was explicitly  PROVIDED, RESPECT IT — THE USER KNOWS WHAT THEIR ENDPOINT SUPPORTS (#10473). EXCEPTION: AZURE  OPENAI SERVES GPT-5.X ON /CHAT/COMPLETIONS AND DOES NOT SUPPORT THE RESPONS...",
+                  "title": "hermes-agent/agent/agent_init.py at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/agent/agent_init.py?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "CODEX SUBSCRIPTION COMPACT SERVER-SIDE: OPENAI PRUNES OLDER CONTEXT INTO AN  ENCRYPTED CHECKPOINT THAT HERMES REPLAYS ON LATER TURNS. NO OTHER PROVIDER,  ROUTE, OR MODEL IS AFFECTED. HERMES' LOCAL COM...",
+                  "title": "hermes-agent/cli-config.yaml.example at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/cli-config.yaml.example?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "NousResearch / hermes-agent Public  * Notifications You must be signed in to change notification settings * Fork 51.8k * Star  * Code * Issues 5k+ * Pull requests 5k+ * Actions * Projects * Security...",
+                  "title": "Pull requests · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/pulls?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "CURRENT STATUS — SEPTEMBER 18, 2026  The current compatibility target is #106742 at `485d5f6848c25`, still open and unmerged. The latest custody/private-inventory and selected Files/backend compositio...",
+                  "title": "Bot Group Chats should keep working after Desktop closes · Issue #97681 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/97681?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "NousResearch / hermes-agent Public  * Notifications You must be signed in to change notification settings * Fork 51.8k * Star  * Code * Issues 5k+ * Pull requests 5k+ * Actions * Projects * Security...",
+                  "title": "Inquiry — v0.21.0 released but Docker Hub image still v0.20.5; when will the Docker image be published? · Issue #105575 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/105575?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "P2Medium — degraded but workaround existsMedium — degraded but workaround exists  sweeper:risk-compatibilitySweeper risk: may break existing users, config, migrations, defaults, or upgradesSweeper ri...",
+                  "title": "Issues · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "DESCRIPTION  RuTarget  opened on Sep 9, 2026  Issue body actions  Is there an existing supported signed and notarized macOS ARM64 Hermes Desktop distribution, or an official delivery flow that lets u...",
+                  "title": "Supported signed macOS ARM64 Desktop distribution or verifiable delivery flow for a remote backend · Issue #106637 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/106637?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "UPDATING.MD  sidebar_position  | 3 title  | Updating & Uninstalling description  | How to update Hermes Agent to the latest version or uninstall it  UPDATING & UNINSTALLING  UPDATING  Update to the l...",
+                  "title": "hermes-agent/website/docs/getting-started/updating.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/getting-started/updating.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "NousResearch / hermes-agent Public  * Notifications You must be signed in to change notification settings * Fork 51.2k * Star  * Code * Issues 5k+ * Pull requests 5k+ * Actions * Projects * Security...",
+                  "title": "Issues · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "hermesagentdeskop / hermes-agent-desktop Public  LATEST COMMIT    HISTORY  3 Commits  FOLDERS AND FILES  Name  | Name  | Last commit message  | Last commit date --- | --- | --- | --- llm  | llm  |...",
+                  "title": "GitHub - hermesagentdeskop/hermes-agent-desktop: Hermes Agent Desktop - Nous Research, local Ollama or cloud, tools, skills, schedules. Windows Mac Linux. Download:🡇 · GitHub",
+                  "url": "https://github.com/hermesagentdeskop/hermes-agent-desktop?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "sweeper:risk-compatibilitySweeper risk: may break existing users, config, migrations, defaults, or upgradesSweeper risk: may break existing users, config, migrations, defaults, or upgrades  type/bugS...",
+                  "title": "Issues · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues?state=open&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "HERMES AGENT V0.13.0 (V2026.5.7)  Release Date: May 7, 2026 Since v0.12.0: 864 commits · 588 merged PRs · 829 files changed · 128,366 insertions · 282 issues closed (13 P0, 36 P1) · 295 community con...",
+                  "title": "NousResearch---hermes-agent/RELEASE_v0.13.0.md at main · bsmr/NousResearch---hermes-agent · GitHub",
+                  "url": "https://github.com/bsmr/NousResearch---hermes-agent/blob/main/RELEASE_v0.13.0.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "Root cold-import/load reliability investigation remains separate; no red waiver. * Final public docs deploy succeeded: https://github.com/NousResearch/hermes-agent/actions/runs/34120231799 at main `0d...",
+                  "title": "[Tracking] Desktop bug reproduction and verified fixes · Issue #104839 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/104839?utm_source=chatgpt.com"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "parent": "8968558f-1a9f-4124-a31e-c2e5c4d0693a"
+    },
+    "796506cf-e7ce-405a-b4d4-745f6cd02d3b": {
+      "id": "796506cf-e7ce-405a-b4d4-745f6cd02d3b",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "b521075f-052b-42dd-bc50-7d737e22f7d8",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "已搜索 1 个网站"
+            }
+          ]
+        },
+        "create_time": 1789970977.56089,
+        "id": "796506cf-e7ce-405a-b4d4-745f6cd02d3b",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "3fcf339a-3dc2-4b2b-bcdb-4bc11d5d4053",
+          "tool_icons": [
+            "https://www.google.com/s2/favicons?domain=github.com&sz=128"
+          ]
+        }
+      },
+      "parent": "3fcf339a-3dc2-4b2b-bcdb-4bc11d5d4053"
+    },
+    "8046ba66-eac2-4b7f-aa2e-41a97a53484e": {
+      "id": "8046ba66-eac2-4b7f-aa2e-41a97a53484e",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "59dac38e-0986-4f57-89e6-7741d4a759c1",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "我会说明：可以把子代理统一路由到免费模型，但目前更适合固定使用可用的免费路由器；按任务动态选择不同免费模型，通常需要自行编排，稳定性也会受模型列表变化影响。",
+              "finished": true,
+              "summary": "规划免费路由"
+            },
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "规划免费路由方案"
+            }
+          ]
+        },
+        "create_time": 1789970965.653248,
+        "id": "8046ba66-eac2-4b7f-aa2e-41a97a53484e",
+        "metadata": {
+          "content_references": [],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "59dac38e-0986-4f57-89e6-7741d4a759c1",
+          "tool_icons": []
+        }
+      },
+      "parent": "1a980fa7-16ba-49a9-a2f9-a2ad9477aa79"
+    },
+    "8968558f-1a9f-4124-a31e-c2e5c4d0693a": {
+      "id": "8968558f-1a9f-4124-a31e-c2e5c4d0693a",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content": "思考了 26s",
+          "content_type": "reasoning_recap"
+        },
+        "create_time": 1789837297.832674,
+        "id": "8968558f-1a9f-4124-a31e-c2e5c4d0693a",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "a5fe0447-50f4-419b-bed0-93e2ac32841d"
+        }
+      },
+      "parent": "a5fe0447-50f4-419b-bed0-93e2ac32841d"
+    },
+    "9ec7f608-a004-4606-8fb6-e7063c8a89f5": {
+      "id": "9ec7f608-a004-4606-8fb6-e7063c8a89f5",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "为什么说HERMES 只适合跑普通模型"
+          ]
+        },
+        "create_time": 1789837270.072,
+        "id": "9ec7f608-a004-4606-8fb6-e7063c8a89f5",
+        "metadata": {
+          "serialization_metadata": {
+            "custom_symbol_offsets": []
+          }
+        }
+      },
+      "parent": "client-created-root"
+    },
+    "9f64f944-4339-4546-aa54-7122ccf72cbe": {
+      "id": "9f64f944-4339-4546-aa54-7122ccf72cbe",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "可以，而且**这正是 Hermes 现在很适合做的成本优化方式之一**。\n\n你可以让主智能体继续跑强模型，然后让 `delegate_task` 创建出来的子智能体统一走 OpenRouter 的免费模型路由。例如：\n\n```yaml\nmodel:\n  provider: openai-codex\n  default: 你的主模型\n\ndelegation:\n  provider: openrouter\n  model: openrouter/free\n```\n\nHermes 官方现在明确支持给所有子智能体单独指定 `delegation.model` 和 `delegation.provider`；主模型和子模型可以完全不同。citeturn119510search0turn119510search2\n\n这样实际架构就是：\n\n```text\n强模型 / 主智能体\n       │\n       │ 规划、判断、拆任务\n       ↓\n   Hermes\n       │\n       ├── delegate_task\n       │       ↓\n       │   OpenRouter\n       │       ↓\n       │  openrouter/free\n       │       ↓\n       │   FREE 模型 A\n       │\n       ├── delegate_task\n       │       ↓\n       │   FREE 模型 B\n       │\n       └── delegate_task\n               ↓\n           FREE 模型 C\n```\n\n而且 `openrouter/free` 现在就是 OpenRouter 官方的 **免费模型 Router**。它会从当前免费模型池里选择模型，并且会先根据请求要求筛选，比如是否支持 **tool calling、图片输入、structured output** 等。OpenRouter 当前说明它会在符合要求的免费模型中进行路由，所以你不必手工每天追踪哪个 FREE 模型还活着。citeturn736108search10turn736108search11\n\n### 但这里有一个很重要的区别\n\n现在 Hermes 原生可以做到：\n\n> **主模型 → 自动委派 → FREE 子智能体**\n\n但目前还不能原生做到这种非常细粒度的：\n\n```text\n代码任务\n→ Nemotron Free\n\n网页调研\n→ Ling Free\n\n文档整理\n→ Gemma Free\n\n复杂推理\n→ DeepSeek Free\n\n视觉任务\n→ multimodal Free\n```\n\n原因是 Hermes 当前正式的 `delegation.model` **仍然是全局配置**。官方文档明确写了：\n\n> `delegate_task` 当前没有 per-task model 参数，所有 child agent 使用配置好的 delegation model。\n\n也就是说：\n\n```yaml\ndelegation:\n  model: openrouter/free\n```\n\n是可以的。\n\n但是：\n\n```text\n子Agent 1 → 模型A\n子Agent 2 → 模型B\n子Agent 3 → 模型C\n```\n\n让 Hermes 自己根据任务类型精确选择，目前仍不是正式的原生能力；社区也一直在推进 per-task / per-skill model routing。citeturn119510search0turn119510search1turn119510search8\n\n---\n\n## 不过 `openrouter/free` 恰好绕过了这个问题\n\n因为我们可以把：\n\n```text\nHermes 负责：\n要不要创建子智能体\n        ↓\nOpenRouter 负责：\n这个子智能体具体跑哪个 FREE 模型\n```\n\n所以实际上形成了**两层 Router**：\n\n```text\n                 主模型\n                    │\n              Hermes Planner\n                    │\n          ┌─────────┼─────────┐\n          ↓         ↓         ↓\n       Child A   Child B   Child C\n          │         │         │\n          └─────┬───┴─────┬───┘\n                ↓\n          openrouter/free\n                │\n        Capability Filter\n                │\n     ┌──────────┼──────────┐\n     ↓          ↓          ↓\n FREE模型A   FREE模型B   FREE模型C\n```\n\n这个配置我认为比：\n\n```text\nHermes 主模型也是 FREE\n```\n\n合理得多。\n\n因为真正重要的：\n\n**任务规划、拆解、检查、合并结果**\n\n仍然由强模型负责。\n\n而 token 消耗最大的执行层：\n\n**搜索、整理、初稿、提取、批处理、简单代码、并行分析**\n\n全部丢给 FREE 子智能体。\n\nHermes 官方文档自己就把这种模式称为类似：\n\n> **frontier planner + inexpensive workers**\n\n因为并行子智能体通常才是 token 消耗的大头。citeturn119510search0\n\n---\n\n## 甚至可以进一步做成“三层模型体系”\n\n我更建议你最终这样配置：\n\n```text\nL0 — Router / Planner\n────────────────────────\n强模型\nGPT / Codex / Claude / DeepSeek 高级模型\n\n职责：\n判断任务\n拆任务\n验证\n综合\n最终决策\n\n              ↓\n\nL1 — FREE Agent Workers\n────────────────────────\nOpenRouter /free\n\n职责：\n资料搜索\n网页整理\n代码扫描\n文件分析\n初稿\n批量工作\n并行研究\n\n              ↓\n\nL2 — LOCAL Workers\n────────────────────────\nOllama / vLLM / LM Studio\n本地模型\n\n职责：\n文本处理\n分类\n去重\n格式转换\nEmbedding\n简单代码\n批处理\n无限低成本任务\n```\n\n这样你的 token 成本可能会下降很多。\n\n---\n\n## 还有第二种：FREE 模型固定池\n\n如果你不喜欢 `openrouter/free` 每次可能切不同模型，也可以固定：\n\n```yaml\ndelegation:\n  provider: openrouter\n  model: 某个具体的-free模型\n```\n\n目前 OpenRouter 免费模型池仍然很大，并且会变化；它的免费模型页面现在直接按最近 7 天真实 token 使用量更新。citeturn736108search10\n\n这样：\n\n```text\n主Agent = 强模型\n子Agent = 固定 FREE 模型\n```\n\n会比随机 Free Router **稳定性、结果一致性更好**。\n\n---\n\n## 还有一个坑你必须知道\n\nHermes 有：\n\n```yaml\nfallback_providers:\n```\n\n可以实现：\n\n```text\n模型A失败\n→ 模型B\n→ 模型C\n```\n\nHermes 当前已经支持跨 provider fallback。citeturn837870search0\n\n但是官方目前说明：\n\n> **Delegation 本身只有 provider/model override，并没有独立 automatic fallback。**\n\n也就是说：\n\n```text\nMain Agent\n→ Hermes fallback chain\n```\n\n可以。\n\n但：\n\n```text\ndelegate_task\n→ Free A失败\n→ Free B\n→ Free C\n```\n\nHermes 自己目前并不会完整地这样逐级切。citeturn837870search4\n\n所以这里反而：\n\n```yaml\ndelegation:\n  provider: openrouter\n  model: openrouter/free\n```\n\n特别有价值。\n\n因为**子智能体的模型池/可用性问题直接交给 OpenRouter Router**。\n\n---\n\n# 所以你的答案是：完全能做\n\n而且可以分三个成熟度。\n\n| 方案 | 能否实现 | 特点 |\n|---|---:|---|\n| Hermes 主模型 + 固定 FREE 子模型 | ✅ | 最稳定 |\n| Hermes 主模型 + `openrouter/free` | ✅ | **最省心，自动 FREE 路由** |\n| Hermes 根据任务类型自动选不同 FREE 模型 | ⚠️ | 原生还不完整 |\n| WORK-LAB 自己做 Task Router → Hermes 多模型 | ✅ | **最终最强方案** |\n\n你现在如果目标就是：\n\n> **“强模型只负责思考，FREE 模型疯狂干活。”**\n\n我会直接先采用：\n\n```yaml\ndelegation:\n  provider: openrouter\n  model: openrouter/free\n```\n\n这已经能马上落地。\n\n下一阶段再把它升级成：\n\n```text\n代码 ─────────→ Coding FREE\n研究 ─────────→ Research FREE\n视觉 ─────────→ Vision FREE\n长文本 ───────→ Long Context FREE\n普通任务 ─────→ openrouter/free\n失败 ─────────→ 本地模型\n高难任务 ─────→ 主模型回收\n```\n\n这个第二阶段才需要我们做真正的 **Task-aware Model Router**，而且非常适合放在 WORK-LAB 的模型调度层，而不是硬改 Hermes 核心。memcite"
+          ]
+        },
+        "create_time": 1789970968.150807,
+        "id": "9f64f944-4339-4546-aa54-7122ccf72cbe",
+        "metadata": {
+          "code_blocks": {
+            "0": {
+              "edited": false,
+              "id": "is1u9f",
+              "preview_language": null,
+              "previewable": false
+            },
+            "1": {
+              "edited": false,
+              "id": "cwl9th",
+              "preview_language": null,
+              "previewable": false
+            },
+            "10": {
+              "edited": false,
+              "id": "2rm3ci",
+              "preview_language": null,
+              "previewable": false
+            },
+            "11": {
+              "edited": false,
+              "id": "a149ud",
+              "preview_language": null,
+              "previewable": false
+            },
+            "12": {
+              "edited": false,
+              "id": "5w1c3c",
+              "preview_language": null,
+              "previewable": false
+            },
+            "13": {
+              "edited": false,
+              "id": "oz0sz5",
+              "preview_language": null,
+              "previewable": false
+            },
+            "14": {
+              "edited": false,
+              "id": "oqlb8r",
+              "preview_language": null,
+              "previewable": false
+            },
+            "15": {
+              "edited": false,
+              "id": "jqra0q",
+              "preview_language": null,
+              "previewable": false
+            },
+            "16": {
+              "edited": false,
+              "id": "ru9i06",
+              "preview_language": null,
+              "previewable": false
+            },
+            "17": {
+              "edited": false,
+              "id": "8s2qb0",
+              "preview_language": null,
+              "previewable": false
+            },
+            "2": {
+              "edited": false,
+              "id": "26ddbv",
+              "preview_language": null,
+              "previewable": false
+            },
+            "3": {
+              "edited": false,
+              "id": "ykfwxj",
+              "preview_language": null,
+              "previewable": false
+            },
+            "4": {
+              "edited": false,
+              "id": "m5p0mn",
+              "preview_language": null,
+              "previewable": false
+            },
+            "5": {
+              "edited": false,
+              "id": "1io5vw",
+              "preview_language": null,
+              "previewable": false
+            },
+            "6": {
+              "edited": false,
+              "id": "74ry3q",
+              "preview_language": null,
+              "previewable": false
+            },
+            "7": {
+              "edited": false,
+              "id": "1wx90b",
+              "preview_language": null,
+              "previewable": false
+            },
+            "8": {
+              "edited": false,
+              "id": "tu0fu7",
+              "preview_language": null,
+              "previewable": false
+            },
+            "9": {
+              "edited": false,
+              "id": "lp8z7l",
+              "preview_language": null,
+              "previewable": false
+            }
+          },
+          "content_references": [
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/delegation.md?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 0,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    },
+                    {
+                      "ref_index": 2,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [
+                    {
+                      "attribution": "GitHub",
+                      "pub_date": null,
+                      "snippet": "",
+                      "title": "hermes-agent/website/docs/reference/faq.md at main · NousResearch/hermes-agent · GitHub",
+                      "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/reference/faq.md?utm_source=chatgpt.com"
+                    }
+                  ],
+                  "title": "hermes-agent/website/docs/user-guide/features/delegation.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/delegation.md?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([OpenRouter](https://openrouter.ai/collections/free-models?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "OpenRouter",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 10,
+                      "ref_type": "search",
+                      "turn_index": 1
+                    },
+                    {
+                      "ref_index": 11,
+                      "ref_type": "search",
+                      "turn_index": 1
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [
+                    {
+                      "attribution": "OpenRouter",
+                      "pub_date": null,
+                      "snippet": "",
+                      "title": "Models: 'free' | OpenRouter",
+                      "url": "https://openrouter.ai/models/?fmt=cards&input_modalities=image&output_modalities=text&q=free&utm_source=chatgpt.com"
+                    }
+                  ],
+                  "title": "Free AI Models on OpenRouter | OpenRouter",
+                  "url": "https://openrouter.ai/collections/free-models?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/delegation.md?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 0,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    },
+                    {
+                      "ref_index": 1,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    },
+                    {
+                      "ref_index": 8,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [
+                    {
+                      "attribution": "GitHub",
+                      "pub_date": null,
+                      "snippet": "",
+                      "title": "feat(delegate): per-task model/provider override in delegate_task tasks array · Issue #34764 · NousResearch/hermes-agent · GitHub",
+                      "url": "https://github.com/NousResearch/hermes-agent/issues/34764?utm_source=chatgpt.com"
+                    },
+                    {
+                      "attribution": "GitHub",
+                      "pub_date": null,
+                      "snippet": "",
+                      "title": "feat: mandatory per-skill model routing via delegate_task · Issue #42146 · NousResearch/hermes-agent · GitHub",
+                      "url": "https://github.com/NousResearch/hermes-agent/issues/42146?utm_source=chatgpt.com"
+                    }
+                  ],
+                  "title": "hermes-agent/website/docs/user-guide/features/delegation.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/delegation.md?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/delegation.md?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 0,
+                      "ref_type": "search",
+                      "turn_index": 0
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "hermes-agent/website/docs/user-guide/features/delegation.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/delegation.md?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([OpenRouter](https://openrouter.ai/collections/free-models?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "OpenRouter",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 10,
+                      "ref_type": "search",
+                      "turn_index": 1
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "Free AI Models on OpenRouter | OpenRouter",
+                  "url": "https://openrouter.ai/collections/free-models?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/integrations/providers.md?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 0,
+                      "ref_type": "search",
+                      "turn_index": 2
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "hermes-agent/website/docs/integrations/providers.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/integrations/providers.md?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": "([GitHub](https://github.com/dqfront/NousResearch-hermes-agent/blob/main/website/docs/user-guide/features/fallback-providers.md?utm_source=chatgpt.com))",
+              "fallback_items": null,
+              "items": [
+                {
+                  "attribution": "GitHub",
+                  "attribution_segments": null,
+                  "attributions": null,
+                  "hue": null,
+                  "pub_date": null,
+                  "refs": [
+                    {
+                      "ref_index": 4,
+                      "ref_type": "search",
+                      "turn_index": 2
+                    }
+                  ],
+                  "snippet": "",
+                  "supporting_websites": [],
+                  "title": "NousResearch-hermes-agent/website/docs/user-guide/features/fallback-providers.md at main · dqfront/NousResearch-hermes-agent · GitHub",
+                  "url": "https://github.com/dqfront/NousResearch-hermes-agent/blob/main/website/docs/user-guide/features/fallback-providers.md?utm_source=chatgpt.com"
+                }
+              ],
+              "prefix": null,
+              "prompt_text": null,
+              "type": "grouped_webpages"
+            },
+            {
+              "alt": null,
+              "prefix": null,
+              "prompt_text": null,
+              "type": "hidden"
+            },
+            {
+              "alt": "",
+              "has_images": false,
+              "prefix": null,
+              "prompt_text": null,
+              "sources": [
+                {
+                  "attribution": "GitHub",
+                  "title": "hermes-agent/website/docs/user-guide/features/delegation.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/delegation.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "OpenRouter",
+                  "title": "Free AI Models on OpenRouter | OpenRouter",
+                  "url": "https://openrouter.ai/collections/free-models?utm_source=chatgpt.com"
+                }
+              ],
+              "type": "sources_footnote"
+            }
+          ],
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "1cfbd696-6637-4f99-a019-56de0d855873",
+          "search_result_groups": [
+            {
+              "domain": "thenewstack.io",
+              "entries": [
+                {
+                  "attribution": "thenewstack.io",
+                  "snippet": "Open-weight models accounted for 60% of OpenRouter's US token consumption in August, most from China. In-Region Routing adds a data...",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/STbxa7vuMVRl7SEThx8QsV_kLXDy-YShs4HJGnim7gAsla0PUM4hs0gLGDnoLeoweXvt8BtI0I1zQEYQSMEzDYQDj6rN92vgpqbmP3f7_ytJcfuDdsqapoTjSgxmaWH5niVe9N4Cp2N1oC8eRIfbJm1uj0CoY_Xc6hUSfZhDvKByjOIe0YX4nAm2F14yugXw",
+                  "title": "Chinese AI models dominate OpenRouter's US token consumption. It can now guarantee that traffic stays entirely in the US.",
+                  "url": "https://thenewstack.io/openrouter-us-region-routing/?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "github.com",
+              "entries": [
+                {
+                  "attribution": "github.com",
+                  "snippet": "NousResearch / hermes-agent Public  * Notifications You must be signed in to change notification settings * Fork 52k * Star  * Code * Issues 5k+ * Pull requests 5k+ * Actions * Projects * Security an...",
+                  "title": "feat(delegate): per-task model/provider override in delegate_task tasks array · Issue #34764 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/34764?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "WORKFLOWS & PATTERNS  USING DIFFERENT MODELS FOR DIFFERENT TASKS (MULTI-MODEL WORKFLOWS)  Scenario: You use GPT-5.4 as your daily driver, but Gemini or Grok writes better social media content. Manuall...",
+                  "title": "hermes-agent/website/docs/reference/faq.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/reference/faq.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "229 lines (168 loc) · 6.76 KB  Raw  Copy raw file  Download raw file  Outline  Edit and raw actions  title  | Provider Routing description  | Configure OpenRouter provider preferences to optimize for...",
+                  "title": "hermes-agent/website/docs/user-guide/features/provider-routing.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/provider-routing.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "NousResearch / hermes-agent Public  * Notifications You must be signed in to change notification settings * Fork 51.3k * Star  * Code * Issues 5k+ * Pull requests 5k+ * Actions * Projects * Security...",
+                  "title": "Add profile/model override parameter to delegate_task · Issue #35409 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/35409?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "DESCRIPTION  iRonin  opened on Apr 6, 2026  Issue body actions  Three mechanisms for routing different tasks to different LLM models:  1. `DELEGATE_TASK(MODEL=..., PROVIDER=...)`  Route individual su...",
+                  "title": "feat: per-skill model routing + supervisor/execution model config · Issue #5508 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/5508?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "PROVIDERS/  Registry and ABC for every inference provider Hermes knows about.  Each provider is declared once as a `ProviderProfile`. Every other layer — auth resolution, transport kwargs, model list...",
+                  "title": "hermes-agent/providers/README.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/providers/README.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "NousResearch / hermes-agent Public  * Notifications You must be signed in to change notification settings * Fork 52k * Star  * Code * Issues 5k+ * Pull requests 5k+ * Actions * Projects * Security an...",
+                  "title": "Allow configurable subagent model in config.yaml · Issue #609 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/609?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "NousResearch / hermes-agent Public  * Notifications You must be signed in to change notification settings * Fork 51.8k * Star  * Code * Issues 5k+ * Pull requests 5k+ * Actions * Projects * Security...",
+                  "title": "feat: mandatory per-skill model routing via delegate_task · Issue #42146 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/42146?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "[FEATURE]: ALLOW DELEGATE_TASK TO ACCEPT PROVIDER/MODEL PARAMETERS #5012  New issue  Copy link  New issue  Copy link  Closed  Closed  [Feature]: Allow delegate_task to accept provider/model parameter...",
+                  "title": "[Feature]: Allow delegate_task to accept provider/model parameters · Issue #5012 · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/issues/5012?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "README.MD  70 lines (55 loc) · 2.29 KB  MODEL PROVIDER PLUGINS  Each subdirectory is a self-contained provider profile plugin. The directory layout mirrors `plugins/platforms/`:  `plugins/model-provi...",
+                  "title": "hermes-agent/plugins/model-providers/README.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/plugins/model-providers/README.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "PROVIDERPROFILE FIELDS  Full definition in `providers/base.py`. The most useful ones:  Field  | Type  | Purpose --- | --- | --- `name`  | str  | Canonical id — matches `model.provider` in `config.yaml...",
+                  "title": "hermes-agent/website/docs/developer-guide/model-provider-plugin.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/developer-guide/model-provider-plugin.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "Variable  | Description --- | --- `AUXILIARY_VISION_PROVIDER`  | Override provider for vision tasks `AUXILIARY_VISION_MODEL`  | Override model for vision tasks `AUXILIARY_VISION_BASE_URL`  | Direct O...",
+                  "title": "hermes-agent/website/docs/reference/environment-variables.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/reference/environment-variables.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "PROVIDERS.MD  Copy path  [Input: Go to file]  Blame More file actions  Blame More file actions  LATEST COMMIT    HISTORY  History  main  BREADCRUMBS  1. hermes 2. /website 3. /docs 4. /integrations...",
+                  "title": "hermes/website/docs/integrations/providers.md at main · hermes-agent-org/hermes · GitHub",
+                  "url": "https://github.com/hermes-agent-org/hermes/blob/main/website/docs/integrations/providers.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "This closes the fork-after-snapshot race. The stop wait is bounded; discovery or permission failures still use best-effort group cleanup, not a sandbox guarantee. Any target stopped by cleanup is resu...",
+                  "title": "hermes-agent/website/docs/developer-guide/cron-internals.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/developer-guide/cron-internals.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "\"\"\"hermes fallback — manage the fallback provider chain (tried in order when the primary fails).  Subcommands: ``list`` (default), ``add`` (same picker as `hermes model`), ``remove``, ``clear``.  \"\"\"...",
+                  "title": "hermes-agent/hermes_cli/fallback_cmd.py at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/hermes_cli/fallback_cmd.py?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "title  | Integrations sidebar_label  | Overview sidebar_position  | 0  INTEGRATIONS  Hermes Agent connects to external systems for AI inference, tool servers, IDE workflows, programmatic access, and...",
+                  "title": "hermes-agent/website/docs/integrations/index.md at main · NousResearch/hermes-agent · GitHub",
+                  "url": "https://github.com/NousResearch/hermes-agent/blob/main/website/docs/integrations/index.md?ref=toolbrain.net&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "FALLBACK MODEL (CONFIG.YAML ONLY)  The primary model fallback is configured exclusively through `config.yaml` — there are no environment variables for it. Add a `fallback_model` section with `provider...",
+                  "title": "",
+                  "url": "https://github.com/NousResearch/hermes-agent/diffs/5?base_sha=c9dc6c474990b36c9997f348fca7c4e9ec597690&head_user=Brenden2008&name=main&pull_number=4457&sha1=c9dc6c474990b36c9997f348fca7c4e9ec597690&sha2=175d2ccdaf0114966cc40fbeee69d02cfe46ead8&short_path=a4ef26c&w=false&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "`AUXILIARY_WEB_EXTRACT_API_KEY`  | API key paired with `AUXILIARY_WEB_EXTRACT_BASE_URL`  For task-specific direct endpoints, Hermes uses the task's configured API key or `OPENAI_API_KEY`. It does not...",
+                  "title": "",
+                  "url": "https://github.com/NousResearch/hermes-agent/diffs/4?base_sha=45bc4fb37fa8a62031c0bf7365a4e5342195a5c4&head_user=TrueConf&name=main&pull_number=25186&qualified_name=refs%2Fheads%2Fmain&sha1=701102e6d38e73cff601cf370dbf57eb70346e82&sha2=896290e9403b99797f78beee421f9cb8f53a44d6&short_path=a4ef26c&unchanged=expanded&w=false&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "The Qwen Cloud (Alibaba DashScope) upstream caps cache TTL at 5 minutes, so Hermes uses the 5-minute breakpoint TTL there instead. Other Claude-via-third-party paths (AWS Bedrock, Azure Foundry) fall...",
+                  "title": "nousresearch-hermes-agent/website/docs/user-guide/configuration.md at main · openax-reference/nousresearch-hermes-agent · GitHub",
+                  "url": "https://github.com/openax-reference/nousresearch-hermes-agent/blob/main/website/docs/user-guide/configuration.md?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "github.com",
+                  "snippet": "1. Module-level override — `_SCRIPT_TIMEOUT` (for tests/monkeypatching). Only used when it differs from the default. 2. Environment variable — `HERMES_CRON_SCRIPT_TIMEOUT` 3. Config — `cron.script_ti...",
+                  "title": "nousresearch-hermes-agent/website/docs/developer-guide/cron-internals.md at main · openax-reference/nousresearch-hermes-agent · GitHub",
+                  "url": "https://github.com/openax-reference/nousresearch-hermes-agent/blob/main/website/docs/developer-guide/cron-internals.md?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "getlatka.com",
+              "entries": [
+                {
+                  "attribution": "getlatka.com",
+                  "snippet": "OpenRouter AI is a platform that aggregates various AI models, providing users with a seamless API and chat interface to interact with...",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/UXAWZcKxEgBiBPT5D7ouRWI68SV3jXK16e4pRchUFwv6To-4co4hv2FNWvNUd8B6BPBuQlO5JpCBhFR_qjK6C_JlZNZ6tCFEza7ouOnIy5BIMBDPmvvAYWqBfMzc3zC4",
+                  "title": "OpenRouter Revenue 2026: $140M ARR, Acquired for $7.5B",
+                  "url": "https://getlatka.com/companies/openrouter.ai?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "the-decoder.com",
+              "entries": [
+                {
+                  "attribution": "the-decoder.com",
+                  "snippet": "On OpenRouter, a platform developers use to plug AI models into their products, weekly token consumption has surged more than 25,000 percent...",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/66vPpITySCKNvnyHCsBY0OLS2KjDJUdCJBxMC6nnE88Ju_BIiizRFI-OWtShzABcs_39Xsp2X4eysrCKkCAezjyHDu1i0URM8gAjjZXc-NoY7-AEKDlPtLmgOQ0OiWsy",
+                  "title": "OpenRouter's staggering token chart is the AI bubble debate in a single image",
+                  "url": "https://the-decoder.com/openrouters-staggering-token-chart-is-the-ai-bubble-debate-in-a-single-image/?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "wsj.com",
+              "entries": [
+                {
+                  "attribution": "wsj.com",
+                  "snippet": "The startup based in New York was most recently valued at $1.3 billion, but could fetch around $10 billion in a sale.",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/eiawLyKuO-018KRC-FMO_z8AjnegtK-_H1FFyL-JP_T7wg14LMEc4ZxL6bX4hz5BBjsBXMJRQknh6CAtEu9H4w",
+                  "title": "Exclusive | Stripe in Talks to Buy Buzzy AI-Model Marketplace OpenRouter",
+                  "url": "https://www.wsj.com/tech/ai/stripe-in-talks-to-buy-buzzy-ai-model-marketplace-openrouter-decc6a74?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "36kr.com",
+              "entries": [
+                {
+                  "attribution": "36kr.com",
+                  "snippet": "Union Alpha, a frequently referenced organizational entity across global industrial, technological and socio-economic sectors,...",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/9Ucj791ZitL7FtZ-Tp2CbN1QtNtD6mcf7IhKLk4wT4yP9O7LuNFl8vNqS1DpP_Dx8x0ziXaJ_OYdfNpQ3ENqDpYBfSfmD7dR8q_mapDqgXS9udzhyhY4Fu7SVgL0pZjx6MOT7PG7Z0b26A7X_oJLj1pnmjSADc63xXyS5Pjvln28UkDEFgoGgVewqG-SY8l8vfWPepejxS62V0pXwIy4A5Ne7T03mhuUVGpnM6LPU66rG1hSYCEIJh0B51EkJlcs",
+                  "title": "Mysterious Union Alpha Model Surprise Launch: 2B Tokens Consumed Day 1, Netizens Test Performance Near Par with Astra",
+                  "url": "https://eu.36kr.com/en/p/3986982567033604?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "venturebeat.com",
+              "entries": [
+                {
+                  "attribution": "venturebeat.com",
+                  "snippet": "The infrastructure surrounding open AI may ultimately be more commercially valuable than many of the individual models flowing through it.",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/VLUP8NfDmtDDM97vU1oedaC3m2OhjhmmvCrT1blw5-0_SMvMKMz8E-1KlKuJkDVFdQ-PNMtRNvyqvGGFFxBS5pDqDHNmHT8R0rtFQ1dfSgIYW7KY7g1icv8MQe9EfMnLkDu_E0efvaAWqM8VfFmu0cvJne7lMmAORaBZVUgyaQ7UH24ASz0gFnXjGhOdND6FnOIEsCF13CcEET__FqTa2ACUU5GdBQ74jdrCQbEpOc8",
+                  "title": "Nvidia acquires Hugging Face after Stripe nabs OpenRouter: here's what open source AI builders should do",
+                  "url": "https://venturebeat.com/infrastructure/nvidia-acquires-hugging-face-after-stripe-nabs-openrouter-heres-what-open-source-ai-builders-should-do?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "reuters.com",
+              "entries": [
+                {
+                  "attribution": "reuters.com",
+                  "snippet": "Payments firm Stripe ‌said on Wednesday it had agreed to buy OpenRouter, which helps businesses route and optimize token usage,...",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/xoPwK6zj_fH4DADoRamb4KtVnvGUERc_sSpZcwnqAoJBQh2yB-pDLzFTGtW5en0C5iQJZr80Q9IJlgZeEBtdRx7lvPrDXefe9loWcV9fVmkxVvhemrd3V3ETAbKJ-idN3AwegTfYL9svhHJ_CkqMqnCg7jb4uJ-LM3JzRQBVEn9SSPzQC9Fw84RUOO7fOHFACNUWujsU1aIb_XF0fwgmFMbmu0WIy9vtpJYFE6Mv0rS1mb9LPtUJpIc5GHFC5aa-OutXZUa23eDL781yH2l6JQ",
+                  "title": "Payments firm Stripe to buy marketplace OpenRouter in AI push",
+                  "url": "https://www.reuters.com/technology/payments-firm-stripe-buy-ai-developer-platform-openrouter-2026-08-19/?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "yahoo.com",
+              "entries": [
+                {
+                  "attribution": "yahoo.com",
+                  "snippet": "Stripe just bought the layer that decides which AI model answers your prompt—and it was already collecting the money for it.",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/zd5b_pm7MCevI6RstI9D0cz-m9jcGkQSPRoNszGxet1EJ5J14ojO2k4jE4s8so_E7Egyvpg_lUB7dSiYBpg-TIjpCYHvL6AK8w_SKJdU7BvRUfMd3-l8j1uc0cs2kTHSXcWdj1_0KfeDuILnW3QymYcDJ8E3zKuW8qUwy3foNdpDUhJ9DaWahBrbjSsLcYy3",
+                  "title": "What Stripe's $7 Billion OpenRouter Deal Actually Means for AI",
+                  "url": "https://finance.yahoo.com/technology/ai/articles/stripes-7-billion-openrouter-deal-155429171.html?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "kdnuggets.com",
+              "entries": [
+                {
+                  "attribution": "kdnuggets.com",
+                  "snippet": "Explore five free AI API providers for accessing large language models, fast inference, multimodal AI, and agentic applications without...",
+                  "thumbnail_url": "https://images.openai.com/static-rsc-1/_aCKxbkZgaPrx7VgDm2RAwFLqt1IfigpSvteX66xEyPD1_Esrev4vC8n-O0tvS7p2nmDTQZ_hA2XG3-0HtJrIEzgmFmibYiLz1dlDa3HrjzaR9OpbTsiJOd8tdaYfnNnJ9pZkyDX5jJHpXFu-O9EIA",
+                  "title": "5 Free LLM API Providers You Can Use in 2026",
+                  "url": "https://www.kdnuggets.com/5-free-llm-api-providers-you-can-use-in-2026?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "openrouter.ai",
+              "entries": [
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "Filter  MODELS  Top Weekly[Input]All variants[Input]  [Input: Search models...]  Pinned  [Button: All]Text 11 Image 0 Video 0 Speech 0 Transcription 0 Embeddings 1 Rerank 1 Audio 0  * Dots3-Note Prev...",
+                  "title": "Models: 'free' | OpenRouter",
+                  "url": "https://openrouter.ai/models/?fmt=cards&input_modalities=image&output_modalities=text&q=free&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "* # Models  Top Weekly[Input]All variants[Input]  [Input: Search models...]  Pinned  [Button: All]Text 3 Image 0 Video 0 Speech 0 Transcription 0 Embeddings 1 Rerank 0 Audio 0  * Dots3-Note Preview (...",
+                  "title": "Models: 'do' | OpenRouter",
+                  "url": "https://openrouter.ai/models?fmt=cards&input_modalities=text&q=do&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "Collections/Distillable Models  AI MODELS THAT ALLOW DISTILLATION AND TRAINING  Model rankings updated September 2026 based on real usage data.  Models are ranked by total prompt and completion token...",
+                  "title": "AI Models That Allow Distillation and Training | OpenRouter",
+                  "url": "https://openrouter.ai/collections/distillable-models?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "FREQUENTLY ASKED QUESTIONS  HOW DO I USE GOOGLE MODELS THROUGH THE OPENROUTER API?  OpenRouter serves 78 Google models behind one OpenAI-compatible API. Create an OpenRouter API key, point your client...",
+                  "title": "Google API and Models | OpenRouter",
+                  "url": "https://openrouter.ai/google/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "Filter  MODELS  [Button: All]Text 0 Image 0 Video 0 Speech 0 Transcription 0 Embeddings 0 Rerank 0 Decisions 0 Audio 0 More  * Jev Latest  This model always redirects to the latest model in the Jev f...",
+                  "title": "Compare AI Models: Pricing, Context & Benchmarks | OpenRouter",
+                  "url": "https://openrouter.ai/models?max_price=0&order=context-high-to-low&q=free&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "Filter  MODELS  [Button: All]Text 0 Image 0 Video 0 Speech 0 Transcription 0 Embeddings 0 Rerank 0 Audio 0  * Union Alpha  408B tokens  Union Alpha is a multimodal model built for research, coding, a...",
+                  "title": "Compare AI Models: Pricing, Context & Benchmarks | OpenRouter",
+                  "url": "https://openrouter.ai/models?fmt=cards&input_modalities=text&q=%3Afree&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "Filter  MODELS  [Button: All]Text 0 Image 0 Video 0 Speech 0 Transcription 0 Embeddings 0 Rerank 0 Decisions 0 Audio 0 More  * Ternary Bonsai 2 27B  4.23M tokens  Bonsai 2 27B is a 27B-parameter reas...",
+                  "title": "Compare AI Models: Pricing, Context & Benchmarks | OpenRouter",
+                  "url": "https://openrouter.ai/models?order=top-free&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "Image: Favicon for openai  OPENAI  Access 138 OpenAI models through the OpenRouter unified API including GPT Astra Latest, GPT Sol Latest, and GPT Terra Latest. Compare pricing, context windows, benc...",
+                  "title": "OpenAI API and Models | OpenRouter",
+                  "url": "https://openrouter.ai/openai/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "OpenRouter pricing  PRICING  Plans for indie hackers, AI native startups, growing teams, and enterprises  [Button: Free][Button: Standard][Button: Business][Button: Enterprise]  Feature  | Free --- |...",
+                  "title": "Pricing | OpenRouter",
+                  "url": "https://openrouter.ai/pricing?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "Collections/Text-to-Speech  BEST TEXT-TO-SPEECH MODELS  Model rankings updated September 2026 based on real usage data.  Models are ranked by total prompt and completion tokens processed through the...",
+                  "title": "Best Text-to-Speech Models | OpenRouter",
+                  "url": "https://openrouter.ai/collections/text-to-speech-models?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "HELLO, HOW CAN I HELP YOU?  Get the support you need to succeed with OpenRouter. Browse our help center, raise a ticket, or explore our documentation to find answers quickly.  RAISE A TICKET  Get per...",
+                  "title": "Support | OpenRouter",
+                  "url": "https://openrouter.ai/support/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "ANNOUNCEMENTS  Product launches, feature updates, and company news.  In-Region Routing: Keep your data in the US or EU US In-Region Routing is live, joining the EU. Send requests to us.openrouter.ai...",
+                  "title": "Announcements — OpenRouter Blog",
+                  "url": "https://openrouter.ai/blog/announcements/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "FEBRUARY RELEASE SPOTLIGHT  OpenRouter ·2/23/2026  Benchmarks on Model Pages  Our monthly Product Spotlight highlights a few of our biggest releases from the past month.  BENCHMARKS ON MODEL PAGES  E...",
+                  "title": "February Release Spotlight — OpenRouter Blog",
+                  "url": "https://openrouter.ai/blog/announcements/february-release-spotlight/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "MODELS  [Button: All]Text 0 Image 0 Video 0 Speech 0 Transcription 0 Embeddings 0 Rerank 0 Decisions 0 Audio 0 More  * Ternary Bonsai 2 27B  142M tokens  Bonsai 2 27B is a 27B-parameter reasoning mod...",
+                  "title": "Compare AI Models: Pricing, Context & Benchmarks | OpenRouter",
+                  "url": "https://openrouter.ai/models?order=pricing-low-to-high&q=free&utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "Discover models  Practical starting points from real OpenRouter usage, production performance, and independent benchmarks.  Browse all models  1.   2.   3.   4.   5.   6.   7.   8.   1.   2.   3.   4...",
+                  "title": "Discover models | OpenRouter",
+                  "url": "https://openrouter.ai/discover?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "FREE MODELS AND THE $10 CREDIT RULE  Models tagged `:free` cost $0 per token, but request limits still apply, and that catches people out.  Account state  | Daily :free cap  | Per-minute cap --- | ---...",
+                  "title": "Connect SillyTavern to OpenRouter: Setup, Models, Fixes — OpenRouter Blog",
+                  "url": "https://openrouter.ai/blog/tutorials/sillytavern-openrouter/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "UPDATES TO OUR FREE TIER: SUSTAINING ACCESSIBLE AI FOR EVERYONE  OpenRouter ·7/10/2025  What We’re Doing to Keep AI Free and Accessible:  We’re reaching out with important updates regarding our free...",
+                  "title": "Updates to Our Free Tier: Sustaining Accessible AI for Everyone — OpenRouter Blog",
+                  "url": "https://openrouter.ai/blog/announcements/updates-to-our-free-tier-sustaining-accessible-ai-for-everyone/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "COHERE  Access 13 Cohere models through the OpenRouter unified API including North Mini Code (free), Rerank 4 Pro, and Rerank 4 Fast. Compare pricing, context windows, benchmarks, and capabilities be...",
+                  "title": "Cohere API and Models | OpenRouter",
+                  "url": "https://openrouter.ai/cohere/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "CONNECT OPENCLAW TO OPENROUTER  OpenRouter ·6/18/2026  Connect OpenClaw to OpenRouter in one command  [Button: Connect OpenClaw to OpenRouter in one command][Button: Reference models with the openrou...",
+                  "title": "Connect OpenClaw to OpenRouter: One Key, Failover, Free Models — OpenRouter Blog",
+                  "url": "https://openrouter.ai/blog/tutorials/openclaw-openrouter/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "openrouter.ai",
+                  "snippet": "MODEL COLLECTIONS  Explore collections of the best AI models, all accessible through a single API. Browse lists of free LLMs, top image generation APIs, the best coding models, and more.  Image Gener...",
+                  "title": "Model Collections | OpenRouter",
+                  "url": "https://openrouter.ai/collections?utm_source=chatgpt.com"
+                }
+              ]
+            },
+            {
+              "domain": "nousresearch.com",
+              "entries": [
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "SUBAGENT DELEGATION  The `delegate_task` tool spawns child AIAgent instances with isolated context, inherited tool access, and their own terminal sessions. Each child gets a fresh conversation and wo...",
+                  "title": "Subagent Delegation | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/delegation?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "模型覆盖​  你可以通过 `config.yaml` 为子智能体配置不同的模型——适用于将简单任务委派给更便宜/更快的模型：  `  IN ~/.HERMES/CONFIG.YAML  delegation:  model: \"google/gemini-flash-2.0\"    # Cheaper model for subagents  provider: \"openrouter\"...",
+                  "title": "子智能体委派 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/delegation?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "USING YOUR OWN API KEY ALONGSIDE IT​  The free tier is the last resort, never a preference. Any provider you configure wins:  You have  | Inference runs on  | Connectors --- | --- | --- Nothing  | Nou...",
+                  "title": "Free tier and signing in | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/free-tier?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "PROVIDER ROUTING  When using OpenRouter as your LLM provider, Hermes Agent supports provider routing — fine-grained control over which underlying AI providers handle your requests and how they're pri...",
+                  "title": "Provider Routing | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/provider-routing?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "WORKFLOWS & PATTERNS​  USING DIFFERENT MODELS FOR DIFFERENT TASKS (MULTI-MODEL WORKFLOWS)​  Scenario: You use GPT-5.4 as your daily driver, but Gemini or Grok writes better social media content. Manua...",
+                  "title": "FAQ & Troubleshooting | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/reference/faq?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "备用提供商  Hermes Agent 具备三层弹性机制，在提供商出现问题时保持会话正常运行：  1. 凭据池 — 在同一提供商的多个 API 密钥之间轮换（优先尝试） 2. 主模型备用 — 当主模型失败时，自动切换到不同的提供商:模型 3. 辅助任务备用 — 针对视觉、压缩、网页提取等附属任务的独立提供商解析  凭据池处理同一提供商内的轮换（例如多个 OpenRouter 密钥）。本页介绍跨提...",
+                  "title": "备用提供商 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/fallback-providers?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "其他所有内容（模型、终端后端、压缩设置、内存限制、工具集）放入 `config.yaml`。当两者都设置时，`config.yaml` 对非机密设置优先。  环境变量替换​  可以在 `config.yaml` 中使用 `${VAR_NAME}` 语法引用环境变量：  `  auxiliary:  vision:  api_key: ${GOOGLE_API_KEY}  base_url: ${C...",
+                  "title": "配置 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/configuration?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "构建模型提供商插件  模型提供商插件声明一个推理后端——兼容 OpenAI 的端点、Anthropic Messages 服务器、Codex 风格的 Responses API，或 Bedrock 原生接口——Hermes 可通过这些后端路由 `AIAgent` 调用。每个内置提供商（OpenRouter、Anthropic、GMI、DeepSeek、Nvidia……）都以此类插件形式提供。第三...",
+                  "title": "模型提供商插件 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/model-provider-plugin?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "CONFIGURING MODELS  Hermes uses two kinds of model slots:  * Main model — what the agent thinks with. Every user message, every tool-call loop, every streamed response goes through this model. * Auxi...",
+                  "title": "Configuring Models | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/configuring-models?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "cache_ttl: \"5m\"   # \"5m\" or \"1h\" (Anthropic-supported tiers); other values are ignored  `  `cache_ttl` selects the breakpoint TTL Hermes attaches for Claude via the native Anthropic API, OpenRouter,...",
+                  "title": "Hermes Agent Configuration | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/configuration?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "Use the subcommands `add`, `list` (alias `ls`), `remove` (alias `rm`), and `clear` to manage the chain. Changes persist under the top-level `fallback_providers:` list in `config.yaml`.  If you'd rathe...",
+                  "title": "Fallback Providers | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers/?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "PROVIDER ROUTING  使用 OpenRouter 作为 LLM provider 时，Hermes Agent 支持 provider routing（提供商路由）——对哪些底层 AI provider 处理你的请求以及如何排列优先级进行精细控制。  OpenRouter 将请求路由到多个 provider（例如 Anthropic、Google、AWS Bedrock、Toget...",
+                  "title": "Provider Routing | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/user-guide/features/provider-routing?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "AI 提供商  本页介绍如何为 Hermes Agent 配置推理提供商——从 OpenRouter、Anthropic 等云端 API，到 Ollama、vLLM 等自托管端点，再到高级路由与故障转移配置。使用 Hermes 至少需要配置一个提供商。  推理提供商​  你需要至少一种方式连接到 LLM。使用 `hermes model` 交互式切换提供商和模型，或直接配置：  提供商  | 配...",
+                  "title": "AI 提供商 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/integrations/providers?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "LLM AND MODEL PROVIDERS  This page covers setting up inference providers for Hermes Agent — from cloud APIs like OpenRouter and Anthropic, to self-hosted endpoints like Ollama and vLLM, to advanced r...",
+                  "title": "LLM and Model Providers | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/integrations/providers?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "MODEL CATALOG  Hermes fetches curated model lists for OpenRouter and Nous Portal from a JSON manifest hosted alongside the docs site. This lets maintainers update picker lists without shipping a new...",
+                  "title": "Model Catalog | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/reference/model-catalog?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "BUILDING A MODEL PROVIDER PLUGIN  Model provider plugins declare an inference backend — an OpenAI-compatible endpoint, an Anthropic Messages server, a Codex-style Responses API, or a Bedrock-native s...",
+                  "title": "Model Provider Plugins | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/developer-guide/model-provider-plugin?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "AUXILIARY TASK OVERRIDES​  Variable  | Description --- | --- `AUXILIARY_VISION_PROVIDER`  | Override provider for vision tasks `AUXILIARY_VISION_MODEL`  | Override model for vision tasks `AUXILIARY_V...",
+                  "title": "Environment Variables | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/reference/environment-variables?utm_source=chatgpt.com"
+                },
+                {
+                  "attribution": "nousresearch.com",
+                  "snippet": "`runtime_provider.py` 在解析时调用它，以获取规范的 `base_url`、`env_vars` 优先级列表、`api_mode` 和 `fallback_models`，无需在多个文件中重复这些数据。在 `plugins/model-providers/<your-provider>/`（或 `$HERMES_HOME/plugins/model-providers/<you...",
+                  "title": "Provider 运行时解析 | Hermes Agent",
+                  "url": "https://hermes-agent.nousresearch.com/docs/zh-Hans/developer-guide/provider-runtime/?utm_source=chatgpt.com"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "parent": "1cfbd696-6637-4f99-a019-56de0d855873"
+    },
+    "a5fe0447-50f4-419b-bed0-93e2ac32841d": {
+      "id": "a5fe0447-50f4-419b-bed0-93e2ac32841d",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "thoughts",
+          "source_analysis_msg_id": "b8794d93-51b3-4939-a63a-01aed3876aed",
+          "thoughts": [
+            {
+              "chunks": [],
+              "content": "",
+              "finished": true,
+              "summary": "已搜索 2 个网站"
+            }
+          ]
+        },
+        "create_time": 1789837297.823344,
+        "id": "a5fe0447-50f4-419b-bed0-93e2ac32841d",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "1b216ee5-b46c-4e51-bc5c-d6a746ab088b",
+          "tool_icons": [
+            "https://www.google.com/s2/favicons?domain=hermes-agent.nousresearch.com&sz=128",
+            "https://www.google.com/s2/favicons?domain=github.com&sz=128"
+          ]
+        }
+      },
+      "parent": "ec7316f9-d7f9-4de9-93b4-57406f5c7383"
+    },
+    "client-created-root": {
+      "id": "client-created-root",
+      "message": null,
+      "parent": null
+    },
+    "ec7316f9-d7f9-4de9-93b4-57406f5c7383": {
+      "id": "ec7316f9-d7f9-4de9-93b4-57406f5c7383",
+      "message": {
+        "author": {
+          "name": null,
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "这句话本身很容易误导。更准确的说法通常不是“Hermes 只能跑普通模型”，而是 **Hermes 对模型的接口规范、工具调用能力、上下文行为和 Agent 适配度有要求；有些顶级模型在原生宿主里能发挥 100%，接到 Hermes 后可能只能发挥一部分能力**。我先按现在的 Hermes 实现和官方文档把这个差别拆开。"
+          ]
+        },
+        "create_time": 1789837271.335682,
+        "id": "ec7316f9-d7f9-4de9-93b4-57406f5c7383",
+        "metadata": {
+          "model_slug": "gpt-5-6-thinking",
+          "parent_id": "b6f6068f-fe77-4b6b-84ee-db222324a66c"
+        }
+      },
+      "parent": "9ec7f608-a004-4606-8fb6-e7063c8a89f5"
+    }
+  },
+  "memory_scope": "global_enabled",
+  "pinned_time": null,
+  "plugin_ids": null,
+  "title": "解释Hermes模型适配\n",
+  "update_time": 1789971008.263692,
+  "voice": null
+}

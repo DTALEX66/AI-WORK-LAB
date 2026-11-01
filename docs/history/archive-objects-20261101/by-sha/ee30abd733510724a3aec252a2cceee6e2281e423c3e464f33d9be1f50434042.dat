@@ -1,0 +1,826 @@
+# DTALEX66 / Knowledge-Base 多维度深化框架
+
+## 0. 总结定位
+
+Knowledge-Base 不应定位为“又一个 Dify / FastGPT / AnythingLLM 克隆”，而应定位为：
+
+> 个人 AI 知识中枢 + GitHub 项目研究器 + CODEX 任务包生成器 + 多模型/Prompt/MCP 管理底座。
+
+核心原则：
+
+1. 小内核，大插件。
+2. 本地优先，云端可选。
+3. 先闭环，再智能。
+4. 先证据链，再生成结论。
+5. 先能给 CODEX 用，再做漂亮 UI。
+6. 许可证安全优先于开发速度。
+
+---
+
+## 1. 最终产品结构
+
+```text
+Knowledge-Base
+├── 知识库 Knowledge
+│   ├── 网页采集
+│   ├── 文档入库
+│   ├── 清洗/摘要/标签
+│   ├── SQLite FTS5 检索
+│   └── 后期向量检索
+│
+├── 项目库 Projects
+│   ├── GitHub Repo 分析
+│   ├── README / package / pyproject / 目录结构解析
+│   ├── 同类项目交叉对比
+│   ├── 许可证风险分析
+│   └── CODEX 任务包生成
+│
+├── 技能库 Skills
+│   ├── SOP
+│   ├── 开发流程
+│   ├── 测试流程
+│   ├── 设计流程
+│   └── 可复用模板
+│
+├── 智库 Wisdom
+│   ├── 决策模型
+│   ├── 技术选型矩阵
+│   ├── 项目风险评估
+│   ├── 商业可行性分析
+│   └── 多专家视角分析
+│
+└── AI库 AI
+    ├── 模型清单
+    ├── Prompt 模板
+    ├── MCP Server
+    ├── 调用成本
+    ├── 效果评分
+    └── 运行记录
+```
+
+---
+
+## 2. 多角色视角交叉分析
+
+### 2.1 技术专家 / 架构师视角
+
+最重要的问题不是“接入多少高热项目”，而是“核心边界是否清楚”。
+
+推荐架构：
+
+```text
+Ingestion Layer
+  Scrapling / HTTPX / MarkItDown / Later Crawl4AI
+
+Normalization Layer
+  HTML → Markdown
+  Office/PDF → Markdown
+  Metadata normalization
+  Sensitive info redaction
+
+Storage Layer
+  SQLite documents
+  SQLite FTS5
+  files/exports
+  Later: Chroma / sqlite-vec / Qdrant adapter
+
+API Layer
+  FastAPI REST
+  Later: MCP Server
+
+Frontend Layer
+  Next.js /knowledge
+  Later: /projects /ai /prompts /evaluations
+
+Automation Layer
+  GitHub repo analysis
+  CODEX task generation
+  Report export
+
+Governance Layer
+  License scanner
+  Source citation
+  Security policy
+  Test gates
+```
+
+架构师判断：
+
+- P0 不上 Dify / Qdrant / MCP / Mem0。
+- P0 只修当前项目最小闭环。
+- 所有外部项目用 Adapter，不要把第三方大平台代码揉进主仓库。
+- 存储先稳定，再智能；SQLite FTS5 足够第一阶段。
+
+---
+
+### 2.2 学者 / 研究员视角
+
+这个项目本质上是“个人知识工程系统”，不是普通笔记软件。
+
+应建立三个研究指标：
+
+1. 知识可靠性
+   - 每条结论是否有来源？
+   - 是否能回溯到原网页、文档、GitHub 文件？
+   - 是否区分事实、推论、建议？
+
+2. 检索有效性
+   - 搜索是否能找回正确文档？
+   - 摘要是否遗漏关键条件？
+   - 是否存在模型幻觉污染知识库？
+
+3. 任务转化率
+   - 调研结果能否转化为 CODEX 任务？
+   - 任务包是否足够明确？
+   - CODEX 是否能按任务包完成代码？
+
+学者视角建议建立：
+
+```text
+Evidence → Note → Analysis → Decision → Task
+```
+
+也就是：
+
+```text
+证据
+→ 结构化笔记
+→ 多维分析
+→ 技术决策
+→ CODEX 可执行任务
+```
+
+---
+
+### 2.3 教授 / 方法论视角
+
+教授会关注“知识结构是否可教学、可复盘、可迁移”。
+
+所以四库不是随便命名，应该有严格分工：
+
+| 库 | 作用 | 例子 |
+|---|---|---|
+| 知识库 | 原始事实和资料 | GitHub 项目、网页、论文、文档 |
+| 技能库 | 可执行方法 | 如何测试、如何部署、如何写 Prompt |
+| 智库 | 判断框架 | 选型矩阵、风险模型、商业判断 |
+| AI库 | AI 运行资产 | 模型、Prompt、MCP、调用记录 |
+
+教授视角建议增加“课程化路径”：
+
+```text
+项目研究入门
+→ 知识采集
+→ 证据整理
+→ 技术选型
+→ 任务拆解
+→ 测试验收
+→ 复盘沉淀
+```
+
+这会让 Knowledge-Base 不只是工具，而是可复制的个人能力系统。
+
+---
+
+### 2.4 项目经理视角
+
+项目经理最关心：范围、进度、风险、验收。
+
+#### P0：工程修复与最小闭环
+
+目标：让项目真正能跑起来。
+
+```text
+1. 修 backend/pyproject.toml
+2. 补 pk_radar/api.py
+3. 补 pkr serve
+4. 前端 /knowledge 页面
+5. URL 入库
+6. 文件入库
+7. 搜索
+8. 文档详情
+9. 导出
+10. 测试
+```
+
+验收标准：
+
+```text
+cd backend
+pip install -e ".[all,dev]"
+pytest
+pkr init
+pkr add-url https://example.com
+pkr search example
+pkr serve
+
+cd frontend
+npm install
+npm run typecheck
+npm run build
+npm run dev
+```
+
+#### P1：能力增强
+
+```text
+1. MarkItDown 文档解析增强
+2. Crawl4AI Adapter
+3. GitHub Repo Analyzer
+4. CODEX Task Pack Generator
+5. LiteLLM Adapter
+6. Langfuse / Prompt 管理设计
+```
+
+#### P2：智能化和生态
+
+```text
+1. 向量检索
+2. MCP Server
+3. Mem0 记忆
+4. 多电脑同步
+5. 权限系统
+6. 自动化研究 Agent
+```
+
+项目经理判断：
+
+- 不允许 P0 阶段引入 5 个以上新依赖。
+- 不允许 P0 阶段重构成大平台。
+- 不允许没有测试就进入下一阶段。
+
+---
+
+### 2.5 产品经理视角
+
+核心用户不是“普通知识库用户”，而是：
+
+```text
+个人开发者
+AI 项目操盘者
+设计/技术项目负责人
+使用 CODEX / DeepSeek / Ollama / GitHub 的高频用户
+```
+
+核心场景：
+
+1. 我看到一个 GitHub 项目，想快速研究是否值得借鉴。
+2. 我想把网页、PDF、方案、竞品资料沉淀成自己的知识库。
+3. 我想让 AI 不再重复调研，而是基于我的沉淀继续分析。
+4. 我想把调研结果变成可直接交给 CODEX 的任务包。
+5. 我想记录哪个模型、哪个 Prompt、哪个工具效果最好。
+
+产品主线：
+
+```text
+采集
+→ 整理
+→ 分析
+→ 决策
+→ 生成任务
+→ 验收
+→ 复盘
+```
+
+核心页面：
+
+```text
+/knowledge    知识库
+/projects     项目研究
+/compare      交叉分析
+/tasks        CODEX 任务包
+/ai           模型 / Prompt / MCP
+/reports      报告导出
+/settings     配置
+```
+
+---
+
+### 2.6 黑客视角：攻击面分析
+
+这里不做攻击教程，只做防守视角的威胁枚举。
+
+潜在攻击面：
+
+1. 网页采集 URL
+   - SSRF
+   - 本地地址探测
+   - 内网资源访问
+   - 恶意重定向
+
+2. 文档上传
+   - 超大文件压垮系统
+   - 恶意 PDF / Office
+   - 压缩包炸弹
+   - 隐藏脚本或宏
+
+3. HTML / Markdown 渲染
+   - XSS
+   - 恶意链接
+   - iframe 注入
+   - 图片追踪
+
+4. Prompt 注入
+   - 文档里写“忽略之前所有指令”
+   - 网页内容诱导模型泄露配置
+   - GitHub README 里嵌入恶意指令
+
+5. API Key / 模型密钥
+   - 日志泄露
+   - 前端暴露
+   - 导出文件误带密钥
+
+6. GitHub 项目分析
+   - 拉取恶意仓库
+   - package 脚本执行风险
+   - 依赖投毒
+
+黑客视角结论：
+
+- 所有外部输入都视为不可信。
+- 采集和解析必须沙箱化。
+- 不允许自动执行仓库代码。
+- 不允许模型读取原始密钥。
+- Prompt 注入要作为 P0 安全测试项。
+
+---
+
+### 2.7 白帽 / 安全工程师视角
+
+防护策略：
+
+```text
+URL 安全：
+- 默认禁止 localhost / 127.0.0.1 / 内网 IP
+- 限制协议为 http/https
+- 跟随重定向前后都检查 host
+- 每域名限速
+
+文件安全：
+- 限制文件大小
+- 限制格式白名单
+- 解析进程隔离
+- 失败文件不进入索引
+
+内容安全：
+- Markdown 渲染默认转义 HTML
+- 外链加 rel=noopener noreferrer
+- 图片代理或禁用远程图片
+- 敏感信息自动脱敏
+
+Prompt 安全：
+- 文档内容与系统指令隔离
+- RAG 引用内容只作为 evidence，不作为 instruction
+- 模型输出标注“基于来源生成”
+
+密钥安全：
+- .env 只后端读取
+- 前端永不暴露 provider key
+- 日志脱敏
+- 导出前扫描 token/password/api_key
+```
+
+安全验收：
+
+```text
+1. SSRF 测试通过
+2. XSS 测试通过
+3. 大文件压力测试通过
+4. Prompt 注入测试通过
+5. 密钥扫描测试通过
+6. 许可证扫描通过
+```
+
+---
+
+### 2.8 测试工程师视角
+
+测试矩阵：
+
+| 类型 | 内容 |
+|---|---|
+| 单元测试 | store、cleaner、summarizer、policy、ingest |
+| 集成测试 | add-url → db → search → show |
+| API 测试 | health、documents、search、ingest |
+| 前端测试 | /knowledge 页面渲染、搜索、详情 |
+| 安全测试 | SSRF、XSS、文件大小、敏感词 |
+| 性能测试 | 100/1000/10000 文档搜索 |
+| 回归测试 | 每次改解析器都跑固定样本文档 |
+| 许可证测试 | dependency license allowlist |
+| 数据质量测试 | 摘要长度、标题提取、重复文档 |
+| 端到端测试 | 前端输入 URL → 后端入库 → 搜索展示 |
+
+质量门禁：
+
+```text
+backend:
+pytest
+ruff
+mypy
+
+frontend:
+npm run typecheck
+npm run build
+npm run test
+
+security:
+bandit / pip-audit / npm audit
+secret scan
+license scan
+```
+
+---
+
+### 2.9 法务 / 许可证视角
+
+项目分三类：
+
+#### 低风险，可直接依赖
+
+```text
+MIT
+Apache-2.0
+BSD-3-Clause
+```
+
+但仍要保留 LICENSE / NOTICE。
+
+#### 中风险，只做 Adapter
+
+```text
+带额外限制的 Apache 类许可证
+企业版目录混合许可证
+商业功能闭源项目
+```
+
+例如 Dify 和 FastGPT 都有额外条款，不适合直接作为项目核心源码吸收。
+
+#### 高风险，只学习设计
+
+```text
+AGPL
+GPL
+自定义强限制许可证
+来源不明项目
+```
+
+Firecrawl 这类 AGPL 项目不能复制代码进主项目，最多学习设计或独立调用 API。
+
+许可证流程：
+
+```text
+发现项目
+→ 检查 LICENSE
+→ 检查 package 子目录是否另有 license
+→ 检查 enterprise/ee 目录
+→ 判断 direct / adapter / design-only
+→ 写入 THIRD_PARTY_NOTICES
+```
+
+---
+
+### 2.10 DevOps / 运维视角
+
+P0 部署：
+
+```text
+后端：本地 Python + SQLite
+前端：Next.js dev
+数据库：SQLite
+文件：local data/
+浏览器依赖：Scrapling 可选安装
+```
+
+P1 部署：
+
+```text
+Docker Compose:
+- backend
+- frontend
+- optional worker
+- optional qdrant/chroma
+```
+
+P2 部署：
+
+```text
+Server:
+- Nginx / Caddy
+- API auth
+- scheduled jobs
+- backups
+- monitoring
+```
+
+备份策略：
+
+```text
+data/knowledge.db
+exports/
+uploads/
+config redacted
+```
+
+同步策略：
+
+```text
+P0：手动导出 ZIP
+P1：Git 同步 Markdown/JSON
+P2：WebDAV / S3 / R2
+P3：多端冲突解决
+```
+
+---
+
+### 2.11 商业 / 增长视角
+
+这个项目未来最有价值的商业点不是“聊天”，而是：
+
+```text
+AI 项目研究自动化
+个人知识资产沉淀
+CODEX 任务包生成
+模型/Prompt 成本管理
+跨项目复用经验
+```
+
+潜在产品形态：
+
+1. 个人版：本地知识库 + 项目研究。
+2. 专业版：团队知识沉淀 + AI 调研报告。
+3. 插件版：CODEX / VS Code / 浏览器剪藏。
+4. 服务版：定制行业知识库调研。
+
+但商业化必须后置。当前目标是：
+
+```text
+个人能用
+项目能跑
+结果可信
+CODEX 能接
+```
+
+---
+
+### 2.12 UI / 体验设计视角
+
+不要做“普通后台管理系统”。
+
+推荐风格：
+
+```text
+左侧：库和项目
+中间：文档/任务/报告
+右侧：来源、标签、AI 建议、风险提示
+底部：当前操作链路
+```
+
+核心交互：
+
+```text
+输入 GitHub Repo / URL / 上传文件
+→ 自动生成卡片
+→ 选择“入库 / 分析 / 对比 / 生成任务”
+→ 输出报告和 CODEX 任务包
+```
+
+每个文档卡片必须显示：
+
+```text
+标题
+来源
+入库时间
+标签
+可信度
+摘要
+可操作按钮
+```
+
+项目研究卡片显示：
+
+```text
+技术栈
+许可证
+活跃度
+可借鉴模块
+风险
+适配路线
+CODEX 任务包
+```
+
+---
+
+## 3. 重新定义 P0 / P1 / P2 / P3
+
+### P0：修复与闭环
+
+```text
+目标：项目可运行，可采集，可搜索，可展示。
+
+依赖：
+- Scrapling
+- MarkItDown
+- SQLite FTS5
+- FastAPI
+- Next.js
+
+禁止：
+- 不上 Dify
+- 不上 Qdrant
+- 不上 MCP
+- 不上 Mem0
+- 不上复杂权限
+```
+
+### P1：项目研究能力
+
+```text
+目标：从知识库升级为 GitHub 项目研究器。
+
+新增：
+- GitHub Repo Analyzer
+- 许可证分析器
+- 依赖扫描
+- 项目画像
+- 同类项目对比
+- CODEX 任务包生成
+```
+
+### P2：AI 增强
+
+```text
+目标：具备多模型、Prompt、评估和成本控制。
+
+新增：
+- LiteLLM Adapter
+- Langfuse / Prompt registry
+- 文档 chunk
+- 可选向量检索
+- Crawl4AI Adapter
+- Docling Adapter
+```
+
+### P3：生态与自动化
+
+```text
+目标：成为 AI 项目操作系统。
+
+新增：
+- MCP Server
+- Mem0 记忆
+- browser-use 自动研究
+- 多电脑同步
+- 工作流编排
+- 权限和审计
+```
+
+---
+
+## 4. 数据模型建议
+
+P0 表：
+
+```text
+documents
+sources
+events
+```
+
+P1 新增：
+
+```text
+projects
+project_files
+project_findings
+project_comparisons
+codex_tasks
+licenses
+dependencies
+```
+
+P2 新增：
+
+```text
+models
+prompts
+prompt_versions
+runs
+evaluations
+cost_records
+chunks
+embeddings
+```
+
+P3 新增：
+
+```text
+mcp_tools
+sync_state
+api_keys
+audit_logs
+memories
+workflows
+```
+
+---
+
+## 5. 核心 API 设计
+
+P0：
+
+```text
+GET  /health
+GET  /documents
+GET  /documents/{id}
+GET  /search?q=
+POST /ingest/url
+POST /ingest/file
+DELETE /documents/{id}
+GET  /export/markdown
+GET  /export/json
+```
+
+P1：
+
+```text
+POST /projects/analyze-github
+GET  /projects
+GET  /projects/{id}
+POST /projects/{id}/compare
+POST /projects/{id}/codex-task-pack
+GET  /licenses/report
+```
+
+P2：
+
+```text
+GET  /models
+POST /models/test
+GET  /prompts
+POST /prompts
+POST /rag/query
+GET  /runs
+GET  /evaluations
+```
+
+P3：
+
+```text
+GET  /mcp/tools
+POST /sync/run
+GET  /audit
+POST /workflows/run
+```
+
+---
+
+## 6. 最终执行路线
+
+### 第一冲刺：工程修复
+
+```text
+1. 修 pyproject
+2. 补 api.py
+3. 补 pkr serve
+4. 加 API 测试
+5. 修 README
+```
+
+### 第二冲刺：知识库闭环
+
+```text
+1. /knowledge 页面
+2. URL 入库
+3. 文件入库
+4. 搜索
+5. 详情
+6. 导出
+```
+
+### 第三冲刺：项目研究器
+
+```text
+1. 输入 GitHub Repo
+2. 抓 README / package / pyproject
+3. 输出技术栈
+4. 输出许可证风险
+5. 输出可借鉴模块
+6. 输出 CODEX 任务
+```
+
+### 第四冲刺：AI库雏形
+
+```text
+1. 模型配置
+2. Prompt 模板
+3. 运行记录
+4. 成本字段
+5. 评估记录
+```
+
+---
+
+## 7. 最终一句话
+
+Knowledge-Base 的正确方向不是“大而全 AI 平台”，而是：
+
+> 用轻量、可信、可追溯的方式，把网页、文档、GitHub 项目、Prompt、模型和任务包连接起来，形成个人 AI 项目操作系统。

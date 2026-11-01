@@ -1,0 +1,801 @@
+# WORK-LAB 最终整合升级执行任务包
+
+> 本文件是交给 HERMES 的可执行主任务包。它整合了项目历次定位讨论、云端仓库现状、规则/技能/配置审计、自动循环、记忆污染、模型效率与成本、CI 阻塞、只读观测、Open Design 质量和 MINIGAME 边界等全部要求。
+
+## 0. 任务元数据
+
+```yaml
+taskpack_id: WORK-LAB-FINAL-CONSOLIDATED
+snapshot_date: 2026-08-07
+status: READY_FOR_HERMES_LOCAL_IMPLEMENTATION
+repository: DTALEX66/WORK-LAB
+default_branch: main
+expected_baseline_sha: 471e90a99b4234e4f5c031c4280c2eba8b065439
+preferred_local_root: 'D:\All projects\WORK-LAB'
+execution_mode: CONTINUOUS_LOCAL_SAFE
+writer_policy: SINGLE_WRITER
+observer_policy: STRICTLY_READ_ONLY
+publication_policy: EXPLICIT_APPROVAL
+live_global_apply_policy: EXPLICIT_APPROVAL
+destructive_archive_policy: EXPLICIT_APPROVAL
+```
+
+`expected_baseline_sha` 只是本任务包审计时的证据快照，不是强制回退目标。执行时如果 `main` 已前进或本地存在用户改动，必须先生成差异报告并在新状态上继续，禁止 reset、覆盖或删除用户工作。
+
+## 1. 给 HERMES 的直接执行指令
+
+在 WORK-LAB 仓库根目录读取本文件，并按任务依赖顺序持续实施。不要只复述计划，不要重新发明项目定位，不要在每个普通步骤等待确认。
+
+执行要求：
+
+1. 先读取 `00-governance/PROJECT_POSITIONING.md`、`00-governance/projects.json`、`00-governance/module-ownership.json`、`00-governance/contracts/contract-catalog.json`、根 `README.md` 和本任务包。
+2. 先确认真实仓库根、当前分支、HEAD、工作区状态、远端包含关系和当前 Actions 状态。不得假定本地路径、默认远端、工作流名称或软件版本。
+3. 一个 checkout 同时只允许一个写入者。HERMES 是面向用户的编排入口；Codex 可作为写入者或独立审查者，但同一阶段不能出现两个写入者。高风险审查必须使用新鲜、隔离、只读、exact-tree 的审查上下文。
+4. 本地可逆工作自动连续执行；每完成一个任务写入 Task Ledger、检查点、输入摘要、输出摘要、测试证据和下一步。进程重启后从最后一个有效检查点恢复。
+5. 只有以下事项允许暂停：凭据/权限缺失、不可恢复删除、Git 历史重写、付费在线调用超预算、全局 live 配置写入、向 GitHub push/PR/merge/release、外部平台写入、真实设备/商业发布。
+6. 普通失败不得无限重试。按错误指纹去重，修复后再试；同一失败超过预算时转为明确 blocker，并继续所有不依赖该 blocker 的任务。
+7. 不得读取、复制、输出或归档 API Key、OAuth token、CC Switch 数据库、浏览器凭据、完整 prompt/response、私密会话正文。
+8. 不得把任何模型 ID、Agent 版本、配置版本、路径、工作流显示名写成全局永久假设。使用能力探测、用户选择和运行时快照。锁文件、Actions SHA 和一次运行的 exact version 证据可以保留，用于可复现性；它们不能变成排斥未来版本的产品兼容门槛。
+9. 完成每个批次后继续下一个批次；不要因为 GitHub Actions 排队而占用写入者或模型会话数小时。CI 交给可恢复 watcher，写入者释放租约。
+10. 默认终点为 `LOCAL_VERIFIED_READY_FOR_USER_APPROVAL`。没有明确发布授权时，不 commit、push、开 PR、merge、release 或 live apply；一次性列出待批准动作，不反复询问。
+
+## 2. 不得漂移的最终项目定位
+
+WORK-LAB 是一个面向多种 Agent/IDE/设计工具/GitHub 的、可审计、可恢复、客户端中立的工作辅助控制面。它管理规则、技能、配置、任务、边界、证据、记忆治理、模型策略与监控，但不是另一个智能体软件。
+
+### 2.1 三个且只有三个活动模块
+
+| 活动模块 | 最终职责 | 明确不做 |
+|---|---|---|
+| `10-workflow/workflow-assistance` | 主动后端控制面：全局规则/技能/配置治理，适配器，任务账本，自动循环，门禁/CI，模型策略，记忆与成长候选采集，事件生产 | 不做聊天界面、不做模型网关、不替代 HERMES/Codex/CC Switch/GitHub、不存凭据 |
+| `20-design/open-design` | 设计知识与质量引擎：大师研究资料、视觉方法、质量量表、真实案例迭代、生产交付；包含 MINIGAME 的 UI/视觉/资产设计能力域 | 不做通用前端平台、不做 Agent、不承接小游戏产品运行时和商业发行 |
+| `30-observer/work-lab-observer` | 严格只读的桌面观测面：任务、Token/流量/成本、模型、CI/门禁、技能/规则成长、记忆健康、Open Design 质量与数据质量 | 不执行、暂停、重试、取消、应用、回滚、push、merge、release 或控制 Agent |
+
+Observer 的“只读”仅限制界面和对外控制行为，不意味着整个 WORK-LAB 都是被动数据库。Workflow 必须有后台采集、编译、调度、恢复与治理服务；Open Design 必须有质量评估和知识编译能力。实际编码、生成、GitHub 操作和设计工具操作仍由外部软件/Agent 在授权边界内完成。
+
+### 2.2 五个支撑区
+
+1. `00-governance`：项目定位、所有权、合同、跨模块边界和单一事实来源。
+2. `40-knowledge`：稳定、带来源的跨模块索引，不复制模块实现。
+3. `50-taskpacks`：任务包、迁移与交付记录。
+4. `90-archive-manifests`：旧仓、归档、迁移和重复内容的可追溯清单。
+5. 根交付区：`.github`、`scripts`、`tests`，只放跨模块 CI、集成门禁和发布证据。
+
+### 2.3 外部软件的关系
+
+- HERMES 目前可以作为主要用户入口，但不是永久唯一入口。
+- Codex 是高质量编码/审查执行端，不是 WORK-LAB 的一个模块。
+- CC Switch 是路由/配置辅助工具，不是模型网关所有权来源，也不得读取其凭据数据库。
+- GitHub 是远端 SSOT、协作和 CI 证据来源，不是 WORK-LAB 的执行内核。
+- Cursor、Claude Code、WorkBuddy 及未来国内外 Agent/IDE 通过统一适配器合同接入。
+- Open Design 相关外部出图/设计工具负责生成；WORK-LAB 负责输入质量、方法选择、评审与证据闭环。
+
+### 2.4 MINIGAME 最终边界
+
+- MINIGAME 不再是第四个活动模块，也不在 WORK-LAB 内发展产品平台。
+- `20-design/open-design/domain-packs/minigame-design` 是唯一活动的 MINIGAME 能力入口，只负责游戏 UI、视觉、资产、交互表现和设计交付。
+- `20-design/open-design/minigame-runtime` 仅可作为隔离的设计回归样本/fixture；不得被描述为活动产品运行时。
+- `30-products/minigame` 仅保留为历史、迁移证据和参考样本。
+- 本任务包只生成重复度、来源和归档建议。任何删除、历史重写或彻底退役都必须由用户单独批准。
+
+## 3. 已解决的历史决策
+
+1. 保持一个 `DTALEX66/WORK-LAB` monorepo；原 Workflow、Open Design、MINIGAME 仓库保留为只读归档/历史，不继续双向开发。
+2. 暂不拆多仓。当前问题不是三模块过多，而是状态重复、运行时样本过重、功能尚未连通。
+3. 不创建新的 Agent、聊天软件、IDE、模型网关、任务操作平台或第四个产品。
+4. Observer 只读；Workflow 自动运行。两者通过版本化、脱敏事件连接，不把操作按钮塞进 Observer。
+5. 现有 Workflow 里的 Token Monitor 桌面壳迁入/复用到 Observer，不并行维护第二套 UI。
+6. Open Design 的第一优先级是解决“不好看、没质感、没感觉、AI 味重”；大师资料是核心依据，不能删除或延后。插件扩张可以延后。
+7. 模型、Agent 和配置版本都不锁死。使用逻辑能力通道和 runtime probe；每次运行记录实际 provider/model/version 作为证据。
+8. WORK-LAB 全局引擎只安装一份。OS 等外部项目只放一个很小的 project profile/adapter，定义自身目录、风险区、门禁和工作流，不复制整套全局规则。
+9. HERMES 的自动成长、各平台记忆和项目执行中形成的新规则不能直接污染全局；自动发现、自动隔离、自动分析，项目级低风险候选可按政策生效，全局规则/技能提升必须有明确批准。
+10. `fathah/hermes-desktop`、`NousResearch/hermes-agent` 等问询项目不并入 WORK-LAB。
+
+## 4. 2026-08-07 云端与代码审计基线
+
+### 4.1 云端事实
+
+- 仓库：`DTALEX66/WORK-LAB`，公开，默认分支 `main`。
+- 审计 HEAD：`471e90a99b4234e4f5c031c4280c2eba8b065439`，提交信息 `feat: add execution efficiency planning contracts`。
+- exact-SHA Actions run：`31139441168`，attempt 1，约 40 秒完成。
+- 五个 job 全部成功：`workflow-assistance`、`open-design`、`observer`、`integration`、`aggregate`。
+- run：<https://github.com/DTALEX66/WORK-LAB/actions/runs/31139441168>
+- commit：<https://github.com/DTALEX66/WORK-LAB/commit/471e90a99b4234e4f5c031c4280c2eba8b065439>
+- 当前无开放 PR/issue；有 `main` 和历史迁移分支 `migration/minigame-local-head`。
+
+因此，当前云端并非 CI 失败或排队状态。此前“attempt 5 排队约 4 小时仍没有 job”属于 GitHub Actions 调度/观测恢复缺陷的案例，不得继续当成当前 HEAD 的事实。
+
+独立 checkout 复核结果：Open Design verifier 为 `VERIFY_RESULT=OK total=460 failed=0`；Observer skeleton 为 `Ran 3 tests — OK`。审计容器直接运行 Workflow/root Python 门禁时缺少 `jsonschema`，出现的 4 个 failure 和 5 个 import error 均由该依赖缺失引起；同一 exact SHA 的 GitHub job 已先安装 `PyYAML/jsonschema` 并成功完成 Workflow 与 integration 门禁。因此这里把本地结果标为“审计环境依赖不完整”，不把它伪报为第二次完整通过，也不误判成仓库代码失败。
+
+### 4.2 已实现
+
+- 三模块和单写入者的治理合同已经建立。
+- Workflow 已有 13 个仓库管理技能，不能被遗漏或静默优化掉。
+- 核心 Workflow schema 清单为 19 个；根合同目录为 26 个。
+- 已有 project profile、gate registry/plan、blocker、CI observation、evidence manifest 六个执行效率合同。
+- 已有确定性的 `impact_planner.py`。
+- 已有 Task Ledger 核心类：状态、依赖、预算、错误指纹、lease/fencing、检查点和恢复基础。
+- 已有成长候选生命周期代码和规则/技能来源合同。
+- Open Design 结构门禁通过，已有 497 条大师注册项、77 张方法卡、12 个 benchmark brief、19 个质量 rubric、123 条来源登记。
+- Observer 已有脱敏 JSONL store、事件/数据质量 schema 和只读骨架。
+- Workflow 已有 Tauri Token Monitor 桌面原型。
+- 当前云端 exact-SHA 五项门禁全部通过。
+
+### 4.3 部分实现或仅有合同
+
+- 六个执行效率合同和 impact plan 尚未真正驱动任务执行器、GitHub Actions 条件 job 和 aggregate plan digest。
+- Task Ledger 没有接入 `run_taskpack_agent.py`，租约/心跳/恢复没有形成真实单写入闭环。
+- 成长候选只有库，没有 watcher、持久化、Hermes/未来客户端扫描器和自动任务结束采集。
+- 规则/技能安装已有安全同步能力，但还缺统一 live drift 监测、候选隔离和 Observer 投影。
+- 模型切换依赖用户显式模型，边界正确；但缺任务级路由、成本预算、辅助模型配置、缓存友好上下文和可比较效果评估。
+- Open Design 的结构和量表较完整，但真实视觉输出、人类标定和大师资料来源附件不足。
+- Observer 只有骨架，没有用户要求的完整可视化界面。
+
+### 4.4 关键缺口与风险
+
+#### P0-1：CI 工作流身份漂移
+
+实际云端 workflow 是 `work-lab-gate`，稳定聚合 job 是 `aggregate`；但 `workflow-manifest.yaml`、`run_taskpack_agent.py`、README 和多项测试仍默认等待 `workflow-governance`。这会把已成功的 CI 误判为“没有 exact-SHA 证据”，造成无意义排队、重触发和模型等待。
+
+#### P0-2：CI 观测阻塞写入者
+
+执行器目前固定约 6 秒轮询、约 20 分钟超时，缺少 queue/no-job 分类、指数退避、`Retry-After`、平台故障识别、重试预算、熔断、延迟 watcher 和恢复。它不应让一个 Agent 会话等待 GitHub 四小时。
+
+#### P0-3：自动循环只有零件，没有完整运行时
+
+Task Ledger 不在主执行路径中；runner 没有 acquire/heartbeat/release lease。部分 usage budget error 与 schema 不一致，写入也没有全部经过 schema 验证。崩溃、重复外部写和双写入风险仍存在。
+
+#### P0-4：记忆、成长与规则更新未自动闭环
+
+当前强制 `sessions.auto_prune: false` 不能等同于合理记忆治理。它可能保留历史，却没有 scope、TTL、衰减、矛盾、候选隔离和项目→全局提升边界。Hermes curator/learn/新技能、项目中修复出的经验和未来客户端变化都不会自动进入候选流水线。
+
+#### P0-5：模型成本与准确率没有任务级策略
+
+当前用户实际计费方式是：GPT 走 ChatGPT/Codex 订阅，DeepSeek 与 Kimi 走 API，Kimi API 成本偏高。现有切换脚本只是 provider lane，不足以防止 Kimi 被用于压缩、标题、curator、fallback 等高频辅助任务，也不能按任务风险选择推理强度。
+
+#### P1-1：Observer UI 所有权错位
+
+完整桌面壳在 Workflow 的 `apps/token-monitor-desktop`，Observer 本身只有约 13 个源/测试/schema 文件。继续新增 UI 会产生重复实现；应迁移/复用现有壳。
+
+#### P1-2：Open Design 资料“多但未充分证实”
+
+- 420/497 大师条目仍是 `research-seed-unverified`。
+- 77/497 是 `curated-method-card-draft`，但 77 张卡全部仍要求附来源才能成为权威依据。
+- 12 个 benchmark 明确要求人工标定，但当前没有可证明的人类校准结果。
+
+因此不能把“有 497 个名字/77 张卡”当作已经解决设计质感。真正缺的是来源、案例、方法迁移、真实前后对比和用户标定。
+
+#### P2-1：归档与重复造成体量偏大
+
+审计 checkout 中：`20-design` 约 71 MiB，非活动 `30-products` 约 99 MiB，`.git` 约 121 MiB；GitHub API 的仓库 size 指标约 409396 KiB。当前 CI 仍约 40 秒，因此不应现在拆仓或改写历史。先把活动边界、重复摘要和归档清单做对，再由用户批准是否从当前树移除重复大文件。
+
+#### 漂移文档
+
+- `50-taskpacks/WORK-LAB-EXECUTION-EFFICIENCY-REPAIR-HANDOFF.md` 仍称变更“未 commit/push”，但它已位于当前成功的云端提交中。
+- `40-knowledge/README.md` 仍称 MINIGAME 拥有产品实现，与当前 canonical inactive/archive 定位冲突。
+- 多处任务包、测试数、合同数和 CI 状态是旧快照。
+
+## 5. 最终运行关系
+
+```text
+HERMES / Codex / Cursor / Claude Code / WorkBuddy / GitHub / 设计工具
+                              │
+                    客户端中立 Adapter Contract
+                              │
+                 Workflow 主动控制面（唯一写入者）
+             ┌───────────────┼────────────────┐
+             │               │                │
+     Task Ledger/恢复    规则技能记忆治理    门禁/CI/模型策略
+             │               │                │
+             └───────────────┼────────────────┘
+                              │ 版本化、脱敏事件
+                  ┌───────────┴───────────┐
+                  │                       │
+        Open Design 质量引擎       Observer 严格只读 UI
+                  │                       │
+        设计工具实际生成/修改       只看状态、记录与证据
+```
+
+Observer 不能反向发控制命令。用户看到问题后，最终操作仍在 HERMES、Codex、GitHub 或设计软件中完成。
+
+## 6. 全局执行原则
+
+### 6.1 单写入和恢复
+
+- 每个 task 使用稳定 `task_id` 和 idempotency key。
+- 启动时 acquire lease，运行时 heartbeat，所有写入校验 fencing token，退出时 release。
+- 合法主状态建议：`DISCOVERED → PLANNED → LEASED → EXECUTING → LOCAL_VERIFIED → REVIEWED → REMOTE_SYNCED → CI_PENDING → CI_VERIFIED → COMPLETE`。
+- 分支状态：`BLOCKED`、`DEFERRED`、`FAILED_RECOVERABLE`、`FAILED_FINAL`、`CANCELLED_BY_USER`。
+- 每个外部副作用先写 intent，执行后 readback/reconcile；崩溃恢复时先对账，不盲目重复 push/PR/rerun。
+- 同错误指纹使用可配置的有限预算，默认不超过三次。改变输入/修复后生成新的 attempt，而不是无限累加。
+
+### 6.2 版本兼容与可复现性的区别
+
+- 产品支持条件：能力探测、schema negotiation、feature flags、graceful degradation。
+- 一次运行证据：实际 CLI 版本、配置 schema、provider/model、OS、依赖 digest。
+- 构建可复现：允许 lockfile 和供应链 commit SHA。
+- 禁止使用类似 `Hermes >=0.19,<0.21`、`config >=33,<35` 作为永久硬门；将其降为“已验证快照”，未知新版本先隔离 probe，再决定兼容性。
+
+### 6.3 数据边界
+
+- 项目数据默认留在项目自己的 `.hermes/task-runtime` 或项目配置的数据根。
+- 全局层只存稳定规则、技能包、适配器和跨项目匿名指标，不吸收项目源码、私密对话或未经提升的项目记忆。
+- Observer 只消费 schema-validated、redacted、append-only/可校验事件。
+- prompt/response 正文、凭据、完整 session、用户敏感文件永不进入 Observer。
+
+### 6.4 自动执行边界
+
+- 本地分析、结构化候选采集、门禁、缓存、观察、检查点和恢复可自动。
+- 低风险项目级候选可按显式政策自动激活并可回滚。
+- 全局规则/技能提升、外部写、付费大调用、发布、删除和权限变化必须批准。
+- “自动循环”不是无限循环；它是有状态、有限预算、可恢复、能转 blocker 的循环。
+
+## 7. 分批实施任务
+
+任务必须按依赖顺序推进。P0 完成前，不开始大规模 UI、插件或更多 Agent 平台适配。
+
+### Batch 0 — 基线、事实源与现有规则技能先部署
+
+#### WL-000：建立可生成的当前状态事实源（P0）
+
+实施：
+
+- 从 `projects.json`、合同目录、skill inventory、Open Design registries、Git HEAD 和 Actions evidence 生成 `00-governance/generated/CURRENT_STATE.json` 与可读摘要。
+- 生成器必须记录 `generated_at`、source digest、HEAD、合同数、活动模块、skill 数、CI run/attempt/jobs、未验证能力；不得手写重复数字。
+- 修复前述 handoff、`40-knowledge/README.md`、manifest、README 和 taskpack summary 的事实漂移。
+- 历史文档保留历史语境，但加 `superseded_by`，不能伪装成当前状态。
+
+验收：
+
+- 三活动模块、五支撑区和 MINIGAME 边界在所有 canonical 文件一致。
+- 当前状态可重复生成且无工作区变化时 digest 不变。
+- stale-doc gate 能发现故意注入的旧 workflow 名、旧 SHA/状态或第四活动模块。
+
+#### WL-010：完整盘点并隔离部署现有规则/技能（P0）
+
+现有 13 个 repo-managed skill 必须全部进入清单：
+
+1. `autonomous-ai-agents/codex`
+2. `github/github-auth`
+3. `github/github-code-review`
+4. `github/github-issues`
+5. `github/github-pr-workflow`
+6. `github/github-repo-management`
+7. `model-switch`
+8. `software-development/agent-workflow-fortress`
+9. `software-development/project-data-boundary`
+10. `software-development/python-testing`
+11. `software-development/requesting-code-review`
+12. `software-development/sleep-mode`
+13. `software-development/windows-development-environment`
+
+实施：
+
+- 为每个规则/skill 记录 owner、来源、digest、scope、风险、适用客户端、依赖、冲突、安装状态和最后 readback。
+- 先运行 isolated portable install，验证 13 个技能、managed config 和命令 wrapper；不得触碰 live home。
+- 对 live Hermes Home 只做路径/文件名/digest/受管键 read-only diff，不读 `.env`、token、OAuth、会话正文和 CC Switch 数据库。
+- 迁移策略为：仓库拥有的同名树使用 stage→backup→atomic replace；用户拥有的未知 skill 保留并登记；来源不明或变化的同名项进入 quarantine，不静默覆盖或删除。
+- managed config 只合并合同拥有键；当前 model/provider、用户 MCP、凭据与用户自有设置保持不变。
+- 生成一次 action plan、回滚路径和 readback 报告。
+
+Live apply：
+
+- 用户批准一次 `GLOBAL_RULE_SKILL_APPLY` 后，执行备份、原子应用、readback 和 smoke；失败自动回滚。
+- 未获批准不阻塞其余本地开发，状态记为 `AWAITING_GLOBAL_APPLY_APPROVAL`。
+
+验收：13 个技能一个不少；用户未知技能零删除；凭据零读取；隔离安装和回滚测试通过。
+
+### Batch 1 — exact-SHA、门禁与全局效率修复
+
+#### WL-100：修复工作流身份与项目 profile（最高 P0）
+
+实施：
+
+- 删除 runner/manifest/README/tests 对 `workflow-governance` 的永久默认假设。
+- 当前 WORK-LAB project profile 显式解析 workflow file/name `work-lab-gate` 和稳定聚合 check/job `aggregate`；其他项目由自己的 profile 提供。
+- 解析优先级：CLI 显式参数 → project profile → GitHub workflow file/API discovery → fail-closed blocker。
+- 同时查询 Actions workflow runs/check runs/check suites；不能因为 combined commit status 为空就判 CI 不存在。
+- 保存 workflow file、workflow id/name、run id、attempt、head SHA、event、job/check 名和 URL 的证据。
+
+验收：
+
+- 使用当前 exact SHA 能识别 run `31139441168` 为成功，不再等待不存在的 `workflow-governance`。
+- profile 中故意给错工作流时明确报 `WORKFLOW_IDENTITY_MISMATCH`，不无限 poll。
+- 外部项目可通过自身 profile 使用完全不同的工作流名。
+
+#### WL-110：让 impact plan 真正驱动本地门禁与 Actions（P0）
+
+实施：
+
+- 把现有 `impact_planner.py` 接入 runner，输出 canonical gate plan 和 plan digest。
+- 实现 gate DAG、依赖展开、cycle diagnostics、风险分级、skip reason。
+- GitHub Actions 先生成同一 plan，再条件运行 Workflow/Open Design/Observer/integration jobs；aggregate 必须读取同一 digest 并 fail closed。
+- 治理、合同、安全、供应链和根 CI 变更始终升级到 critical 集成门禁。
+- 未识别路径 fail closed 到安全门禁集，不静默 skip。
+
+验收：只改 Observer 时不重复运行无关的重型 Open Design 门；改治理时全门禁；本地和云端 plan digest 一致。
+
+#### WL-120：内容寻址门禁/证据缓存（P1）
+
+实施：
+
+- cache key 至少包括：gate implementation digest、输入文件 digest、相关配置/schema digest、toolchain snapshot、platform scope。
+- 明确 invalidation、TTL、trust level 和“高风险/安全门不得使用未知来源 cache”。
+- cache hit 仍生成证据引用，不伪造一次新执行。
+- Observer 展示命中率和节省时间，不允许清缓存按钮。
+
+验收：无变化重复审计不重跑相同门；相关输入变化必失效；不同平台证据不错误复用。
+
+#### WL-130：异步 CI watcher、退避和熔断（最高 P0）
+
+实施：
+
+- 将“远端同步完成”和“CI 证据完成”拆成两个阶段。写入者完成 push 后释放租约；独立、廉价、可恢复 watcher 观察 CI。
+- CI 状态至少区分：`DISCOVERING`、`QUEUED_NO_JOB`、`QUEUED_WITH_JOB`、`RUNNING`、`SUCCESS`、`FAILURE`、`CANCELLED`、`STALE`、`RATE_LIMITED`、`PLATFORM_OUTAGE`、`BLOCKED`。
+- 退避、queue stall 阈值、总观察窗口和 retry budget 全部在 project profile/policy 中可配置；尊重 `Retry-After` 和 rate-limit reset。
+- 只有在确认同 SHA 没有活动 job、不是平台故障、不是限流且仍在重试预算内时，才允许一次 rerun/re-dispatch。
+- 达到 stall/预算后写 `DEFERRED_CI` blocker 和下一次检查时间，停止占用 Agent 会话；后续 watcher 恢复观察。
+- 同一 SHA/run 的 observation 去重；不得产生 attempt 5 仍等四小时的死循环。
+
+建议风险策略：
+
+- 文档/低风险、非发布：本地相关门通过即可继续本地工作，CI 异步观察。
+- 普通代码：合并/交付前要求 stable aggregate check。
+- 治理、安全、schema migration、release：exact-SHA aggregate 成功是强制门。
+
+验收：模拟四小时无 job 不阻塞主 runner；模拟限流不重复请求；模拟平台恢复后从 checkpoint 完成；同 SHA 最多按政策触发一次恢复性 rerun。
+
+### Batch 2 — 真正可恢复的自动循环
+
+#### WL-200：把 Task Ledger 接入主 runner（最高 P0）
+
+实施：
+
+- `run_taskpack_agent.py` 的每一个阶段必须通过 Task Ledger 状态转换。
+- 启动 acquire lease，后台 heartbeat，所有写入携带 fence，finally release；拒绝过期 writer。
+- task、attempt、budget、error、checkpoint、blocker、external effect 全部先 schema validate 再原子写入。
+- 修复 usage budget exceeded error，使其包含 fingerprint、retryable、external_write、cause 和 sanitized evidence。
+- 修复 resume 与活动 lease 的冲突；恢复前先检查 holder/fence/expiry。
+
+验收：并发第二 writer 被拒绝；杀死进程后恢复；旧 fence 无法写；ledger 文件中途损坏可从 journal/checkpoint 恢复或 fail closed。
+
+#### WL-210：建立有界自主循环和故障分类（P0）
+
+实施：
+
+- 顺序：理解任务→编译 context pack→计划→执行→相关门禁→独立审查→修复→交付准备→CI watcher→完成。
+- 错误分为代码/测试、环境、权限、外部平台、质量不足、预算、策略冲突、未知；仅对可恢复类别重试。
+- 同错误 fingerprint 未改变时不重复花 Token；先要求新的诊断或修复动作。
+- 失败任务可拆子任务；父任务只在依赖全部满足时推进。
+- 长任务以检查点和事件续跑，不依赖无限会话上下文。
+
+验收：提供 crash、网络断开、测试失败、权限失败、质量审查失败、预算耗尽六类端到端恢复测试。
+
+#### WL-220：严格分离 stage、review、delivery、CI evidence（P0）
+
+实施：
+
+- reviewer 只读 exact tree，不直接修改 writer worktree。
+- 审查输入使用 tree/diff digest，不重复读取整个历史上下文。
+- 同一 tree digest 已通过的审查不重复；变化后只审相关差异和高风险交叉面。
+- commit/push/PR/merge/release 是不同外部效果和批准点。
+- “本地测试通过”“已 push”“exact-SHA CI 通过”“已 merge/release”不得互相冒充。
+
+验收：证据 manifest 能清晰区分五个阶段；任何缺失均显示 unknown/blocked，不能显示绿色成功。
+
+### Batch 3 — 模型效率、准确率和成本策略
+
+#### WL-300：建立模型能力与计费策略合同（最高 P0）
+
+新增/完善合同：
+
+- `model-lane`：逻辑任务通道，不含固定模型 ID。
+- `provider-capability-snapshot`：本次探测到的上下文、工具、视觉、推理参数和可用模型。
+- `billing-profile`：`subscription`、`api-metered`、`unknown`，绝不含凭据。
+- `model-call-event`：task、lane、provider、实际 model、reasoning effort、token/cache、latency、cost estimate/source、outcome、fallback reason。
+- `routing-decision`：选择依据、被排除通道、预算与升级条件。
+
+按用户当前计费方式设置默认策略：
+
+| 逻辑通道 | 默认用途 | 首选计费路线 | 约束 |
+|---|---|---|---|
+| `orchestrate_fast` | HERMES 日常规划、分类、摘要、辅助任务 | DeepSeek API | 默认低成本/低推理；具体 model 运行时选择 |
+| `orchestrate_hard` | 高难推理、复杂故障、评估冲突 | DeepSeek API 的当前高能力选项 | 只有升级条件触发后使用 |
+| `code_write` | 关键编码和修复 | Codex，通过官方 ChatGPT/Codex 订阅登录 | 不伪装为 API 成本；记录订阅/额度状态是否可得 |
+| `code_review` | 新鲜、隔离的高风险审查 | 独立 Codex 订阅会话 | 不复用 writer 对话；exact tree |
+| `long_context_specialist` | 检索仍无法缩短的超长上下文、特定视觉/专业任务 | Kimi API | 例外通道、预算前置、默认较低推理强度 |
+| `auxiliary` | 标题、压缩、curator、轻量分类、后台观测 | 低成本 DeepSeek API 或本地确定性逻辑 | 禁止默认落到 Kimi；能用代码就不用模型 |
+
+未来 GPT/Kimi/DeepSeek 改走订阅时，只替换 billing/auth adapter，不改变逻辑通道与任务策略。不得假定产品会员、API 额度和 coding subscription 相互通用。
+
+验收：仓库默认策略无具体模型 ID；每次调用均能解释“为什么用它、怎么计费、是否升级/回退”；Kimi 辅助调用为零。
+
+#### WL-310：任务级路由、升级与禁止静默 fallback（P0）
+
+实施：
+
+- 路由输入：任务类型、风险、上下文规模、工具/视觉需求、时延目标、剩余预算、近期质量结果、provider 健康。
+- 简单任务先确定性工具/低成本通道；高风险写入和审查直接进入合适高质量通道。
+- 只有质量/不确定性/连续失败/审查冲突触发升级；普通 provider 5xx/超时可按一次基础设施 fallback，必须记录事件。
+- 产品/代码质量失败不得通过换模型掩盖；先修输入、上下文和测试。
+- 会话保持 provider/model affinity，避免频繁切换破坏缓存；切换后新会话/reset，由适配器按探测结果执行。
+
+验收：相同评测集比较成功率、首次通过率、审查缺陷、总 Token、缓存命中、总时长和 API 费用；不能只比较单次响应快慢。
+
+#### WL-320：上下文与工具调用瘦身（P0）
+
+实施：
+
+- `build_context_pack.py` 调整为“稳定规则/合同前缀 → 任务相关知识/技能 → 动态 branch/SHA/time/status 后缀”，提升精确前缀缓存命中。
+- 以 token-aware selection 代替纯字符截断；只注入当前任务相关规则、项目记忆、技能摘要和必要文件索引。
+- 动态工具加载/任务级 toolset：普通代码任务不暴露浏览器、图像、cron、全量 MCP 等无关工具。
+- HERMES 所有辅助 model slots 显式解析到 `auxiliary`，不能自动继承昂贵主模型。
+- 压缩保留 durable history 的索引和摘要，不把全部旧消息反复注入。
+
+验收：同一任务族稳定前缀 digest 不变；无关工具数显著下降；上下文缩短且回归通过；缓存与成本在 Observer 可见。
+
+#### WL-330：安全的 live model smoke 与费率目录（P1）
+
+- 官方文档和 capability endpoint 是 source of truth；当前 model 列表/弃用/参数执行时重新探测。
+- DeepSeek/Kimi API live smoke 属于付费动作，必须有每 provider 的调用次数、token 和金额预算；默认只做离线合同测试。
+- GPT subscription 路线使用官方 Codex/OpenAI 登录，不复制 OAuth，不经过 CC Switch 数据库。
+- API 成本使用带 `effective_at` 和来源 URL 的 rate catalog 估算；provider 账单是最终事实。
+- 订阅通道显示 `subscription/not-metered` 或官方可得额度，不制造虚假美元成本。
+
+### Batch 4 — 记忆污染、成长技能和规则实时吸收
+
+#### WL-400：分层记忆与遗忘/衰减机制（最高 P0）
+
+建立五类分离存储：
+
+1. durable session archive：可搜索历史，不整体注入。
+2. active working context：单任务短期上下文。
+3. candidate memory quarantine：新经验、推断、冲突和外部记忆候选。
+4. project memory：仅当前项目有效的已确认知识。
+5. global stable memory：长期稳定偏好、不可变边界和跨项目通用规则。
+
+每条记忆至少包含：source、scope、class、confidence、created_at、last_confirmed_at、TTL/decay policy、contradictions、sensitivity、provenance digest、status、supersedes。
+
+状态：`QUARANTINED`、`ACTIVE_PROJECT`、`ACTIVE_GLOBAL`、`DECAYED`、`ARCHIVED`、`REJECTED`。遗忘优先使用衰减和可恢复归档，不直接销毁证据；敏感数据一开始就不采集。
+
+规则：
+
+- 项目事实不得自动提升全局。
+- 与活动规则冲突的新记忆先 quarantine。
+- 时间敏感事实过 TTL 后不注入，需重新确认。
+- 用户明确偏好可提升，但要保留来源和撤回能力。
+- Hermes/其他平台自有压缩和记忆只是输入源，不能成为 WORK-LAB 全局真相。
+- 对 `auto_prune`/compression/curator 先探测当前语义；目标是“保留可搜索历史，同时压缩活动上下文”，不是永久强制某个布尔值。
+
+验收：项目 A 的修复经验不会进入项目 B；过期事实不注入；矛盾候选可见但不污染；归档后可恢复。
+
+#### WL-410：自动成长/新技能候选 watcher（P0）
+
+实施：
+
+- on-start、on-task-complete 和低频计划任务三种触发方式；不依赖用户手工整理摘要。
+- 通过适配器读取允许的 skill/rule metadata、路径、mtime、digest 和 manifest；不读取密钥和私密会话正文。
+- 比较 repo-managed inventory 与 Hermes live skills、curator/learn 输出和未来客户端目录；新增/变化项复制到项目级 `growth-inbox` 隔离区，而不是直接写全局 live skills。
+- 自动执行：来源/许可证、安全静态扫描、秘密扫描、重复/冲突检测、schema、最小 eval、适用 scope 和回滚评估。
+- 任务结束时从结构化 task outcome、error fingerprint、修复 diff、测试和 review 结果自动生成 `lesson/rule/skill/memory candidate`，不要求用户再写总结文档。
+- 全局规则/skill promotion 必须明确批准；低风险 project-only 候选可按政策自动启用并随时回滚。
+
+验收：模拟 Hermes 新增/修改 skill 后自动发现、隔离、分析和 Observer 展示；未批准项绝不进入全局 live；未来客户端通过同一接口工作。
+
+#### WL-420：规则漂移、冲突和项目反馈闭环（P1）
+
+- 每个项目 task profile 记录本次实际使用的 global rule digest、project override digest、skill digest 和 model policy digest。
+- 项目执行中调整的规则先成为 project candidate；稳定复现、跨任务有效且无冲突后才建议 global promotion。
+- 明确 precedence：安全/用户硬边界 → global stable → project approved → task instruction → candidate（不生效）。
+- 规则修改运行受影响测试和历史案例 replay；失败自动阻止提升。
+- Observer 显示 drift、候选年龄、冲突、覆盖关系、最后 readback 和待批准项。
+
+### Batch 5 — 只读 Observer 可视化落地
+
+#### WL-500：统一事件与投影层（P0/P1）
+
+- Workflow、Open Design、CI watcher 和 memory/growth services 只写版本化、脱敏事件；Observer 不直接读各软件私有数据库。
+- 事件至少覆盖：task state、attempt/blocker、gate/CI、model call/usage、rule/skill drift、growth candidate、memory health、design quality、data quality。
+- 支持 schema evolution、unknown field、producer version、source digest、ingest status 和去重。
+- 原始 event append-only；dashboard 使用派生 projection。损坏/未知事件进入 quarantine 并显示数据质量，不使 UI 崩溃。
+
+#### WL-510：迁移/复用 Token Monitor 桌面壳（P0/P1）
+
+- 把 `10-workflow/workflow-assistance/apps/token-monitor-desktop` 的可复用 Tauri/UI 代码迁入 `30-observer/work-lab-observer`，保留兼容入口或迁移说明。
+- Workflow 只保留 usage/event producer，不再拥有第二套桌面 UI。
+- 迁移前后做功能与 digest 对照；确认新 UI 工作后再清理重复，未经批准不删除大量历史资产。
+
+#### WL-520：实现只读页面（P1）
+
+至少包含：
+
+1. Overview：任务健康、活跃/阻塞、Token、API 费用、CI、设计质量、数据新鲜度。
+2. Tasks：状态、阶段、attempt、依赖、检查点、耗时、错误指纹、blocker；无控制按钮。
+3. Models & Tokens：provider/model/lane、输入/输出/推理/cache、延迟、调用、计费类型、估算费用和结果。
+4. CI & Gates：plan digest、相关门、cache、run/attempt/job、queue/no-job、失败摘要、exact SHA。
+5. Rules, Skills & Growth：安装版本/digest、drift、candidate、冲突、来源、批准状态。
+6. Memory & Context：scope、年龄、TTL、衰减、冲突、每任务上下文大小和缓存命中；不显示私密正文。
+7. Open Design：brief、迭代、质量轴、退步、来源覆盖、人类标定状态。
+8. Data Quality：producer、延迟、丢弃/未知/损坏事件、schema 版本。
+
+允许的 UI 行为仅限视图：搜索、筛选、排序、时间范围、刷新、展开、导出脱敏报告、选择数据源。禁止 pause/resume/cancel/retry/apply/rollback/push/PR/merge/release、shell、Agent 指令或隐藏写 API。
+
+#### WL-530：接入真实 usage（P1）
+
+- 优先摄取 Hermes 官方 usage file/结构化输出，包括 tokens、cache、reasoning、API calls、estimated cost、provider/model/session、成功/失败。
+- 对 Codex/GPT subscription 标记订阅计费；只有官方暴露时显示 quota。
+- DeepSeek/Kimi API 使用带时间和来源的估算费率，另保留 provider billing reconciliation 状态。
+- 增加 task outcome、首次通过率、重试、tool loop、延迟/TTFT（能可靠获取时）和每成功任务成本。
+- 缺字段显示 unknown，不推测精确数字。
+
+验收：静态检查和运行时测试证明 Observer 无外部 mutation endpoint；断网仍能查看已记录事件；导出不含敏感数据。
+
+### Batch 6 — Open Design 质量闭环
+
+#### WL-600：大师资料从“名单”升级为证据卡（P1）
+
+- 保留 497 条 registry，不删大师资料。
+- 先从品牌、平面/编辑、字体、空间/展陈、视觉/摄影/3D、UI/游戏六个用户高频领域选择一小批高影响 anchor 做深，不追求一次填满 497。
+- 每张 authoritative card 至少有两条独立来源，其中一条为博物馆、档案馆、奖项机构、设计师/工作室或出版物等 primary/institutional source；至少比较三个项目或职业阶段。
+- 明确区分 observation 与 inference，记录许可/引用边界、适用问题、失效条件、制作约束和跨媒介迁移方法。
+- 最终生成指令必须去姓名化，使用可迁移方法；禁止复制可识别签名风格、商标和具体作品构图。
+
+验收：只有来源门通过的 card 才能标记 authoritative/commercial-ready；其余继续显示 draft/unverified，不能被数量掩盖。
+
+#### WL-610：建立用户真实失败案例回归集（最高 P1）
+
+覆盖用户长期反馈：AI 味、廉价感、没感觉、构图层级差、字体/留白差、错误透视、材质/灯光假、人物/食物不真实、锐化过度、品牌系统不一致、小游戏 UI 不好看。
+
+- 使用仓库已有可合法使用资产和用户明确提供的作品；不得伪造“用户认可”。
+- 每个案例保留 brief、参考证据、版本 A/B、变化说明、各质量轴评分、退步、生产约束和最终人类结论。
+- 自动评分只能做筛选和一致性检查，不能代替用户审美标定。
+- 建立盲评/成对比较模板，让用户只需做少量选择，不要求反复写长评语。
+
+验收：12 个 benchmark 至少有可重复的执行样例；human calibration 未完成时状态明确为 waiting，不可宣称质量已解决。
+
+#### WL-620：Open Design 实际运行/交付接入（P1/P2）
+
+- Workflow 通过 adapter 发送结构化 design brief、方法卡 digest、质量门和输出路径；外部设计工具实际生成。
+- Open Design 对每次迭代产出 critique、quality report、comparison、artifact digest 和 handoff，不直接成为聊天/Agent 平台。
+- 只有真实可用 runtime、readback 和 artifact 时才声称 E3/live integration；否则标记 isolated/blocked。
+- 插件扩展延后到真实质量回归和人类标定通过之后。
+
+#### WL-630：MINIGAME 设计能力保留（P1）
+
+- `domain-packs/minigame-design` 覆盖 HUD、移动控制、交互反馈、图标/资产、场景氛围、可读性、性能/尺寸交付规范。
+- 可使用历史 runtime 截图/资产作 fixture，但不得承担 Android/微信平台工程、变现、上架、后端或游戏运行时维护。
+- MINIGAME 未来独立恢复产品开发时，应在其归档/独立产品仓中实施，WORK-LAB 只提供设计和工作流辅助。
+
+### Batch 7 — 客户端兼容、外部项目和体量治理
+
+#### WL-700：统一 adapter SDK 与能力协商（P2）
+
+接口继续使用：`detect`、`capabilities`、`plan`、`apply`、`invoke`、`observe`、`rollback`。
+
+- 先完善当前 deep adapters：Hermes、Codex、CC Switch、GitHub、Open Design。
+- 将现有 Cursor、Claude Code、WorkBuddy 从 manifest-only 提升到 read-only `detect/capabilities/observe`，前提是有官方文档和隔离测试。
+- 新增国内外平台只需 manifest + capability probe + conformance fixtures；不为每个平台复制整套 Workflow。
+- apply/invoke 必须独立提升支持等级和审批，不因 detect 成功就假定可写。
+- 所有 adapter 禁止读取凭据正文；只报告 credential presence/health 的脱敏状态。
+
+验收：没有任何客户端被写死为永久入口；未安装客户端显示 unavailable 而不是测试失败；新版本先 probe，再兼容降级。
+
+#### WL-710：全局安装一次、项目只放微型 profile（P1/P2）
+
+为 OS 等外部项目定义最小 `.work-lab/project-profile.yaml`（实际文件名可由合同决定），只包含：
+
+- project id/root resolution；
+- 受保护/允许写入路径；
+- 数据根和敏感区；
+- 风险规则；
+- 本地 gate 命令/DAG；
+- GitHub workflow/check identity discovery；
+- release/exact-SHA policy；
+- project-only rules/skills/memory namespace。
+
+全局 WORK-LAB 安装提供 engine、基础安全规则、合同和通用 skill。OS 项目不重复配置整套全局规则，但仍必须有上述小 profile，因为它的路径、测试、门禁和发布规则不可能由 WORK-LAB 猜测。
+
+验收：用一个 fixture OS repo 证明 profile 可工作；不得修改真实 OS 仓库，除非用户另行授权。
+
+#### WL-720：非破坏性体量与重复治理（P2）
+
+- 计算 `domain-packs/minigame-design`、`minigame-runtime`、`30-products/minigame` 的文件/大对象 digest、来源、活动引用和重复报告。
+- 给每块标记 active/reference/archive/duplicate/unknown；CI 默认不测试非活动产品运行时。
+- 设仓库增长预算和大文件预警；设计资产允许合理增长，但必须有 provenance 和 active reference。
+- 当前不拆仓、不改写 Git 历史。若用户批准，可从当前 tree 移除已确认重复且在原归档仓可恢复的 blobs；保留 manifest/digest/commit link。
+
+验收：不删除任何文件也能清楚回答“什么在活动、什么只是历史、哪些重复、移除可节省多少”。
+
+### Batch 8 — 最终集成、审查与交付
+
+#### WL-800：跨模块集成门禁（P0/P1/P2 收口）
+
+必须覆盖：
+
+- canonical positioning 与 module count；
+- contract catalog/schema 正负控制；
+- single writer/lease/fencing/crash recovery；
+- impact plan/DAG/cache invalidation；
+- CI queue/rate-limit/outage/deferred recovery；
+- rules/skills isolated install、merge、rollback、readback；
+- growth/memory quarantine、冲突、TTL、promotion；
+- model routing、billing、Kimi cost guard、no silent fallback；
+- Observer external mutation default false 和 UI 无控制 endpoint；
+- Open Design source/benchmark/human calibration truthfulness；
+- MINIGAME inactive product boundary；
+- adapter capability/provenance；
+- secret scan、project data boundary、supply-chain pins。
+
+#### WL-810：只做一次 exact-tree 审查（P0）
+
+- writer 完成本批 tree 后冻结 digest。
+- 新鲜 Codex reviewer 在只读环境审查安全、正确性、边界、测试缺口和任务包验收。
+- 修复后 tree 改变才重新审相关差异；相同 digest 不重复“审计—重审计—再重审计”。
+- 审查不能用文档声明代替运行证据。
+
+#### WL-820：交付与发布批准（外部写边界）
+
+在本地全部通过后输出一个批准包，包含：
+
+- baseline/current tree SHA 或 digest；
+- 实际改动文件和任务 ID；
+- 本地门禁、时长、cache、review 结果；
+- 未验证 live/paid/device/human 项；
+- commit/branch/PR 建议；
+- global apply plan；
+- archive deletion proposal（若有）；
+- rollback plan。
+
+用户只需对以下独立动作做一次选择：
+
+1. commit/push/PR；
+2. global rules/skills live apply；
+3. 付费 provider smoke；
+4. 归档重复文件移除；
+5. 外部 OS/项目 profile 写入。
+
+获得发布批准后，push 精确 tree，启动一次 CI watcher，等待/恢复 aggregate exact-SHA 证据。成功后报告 run id、attempt、jobs、head SHA 和 URL；不重复触发相同 SHA。
+
+## 8. 优先级和依赖总表
+
+| 顺序 | 任务 | 优先级 | 依赖 | 可以并行 |
+|---|---|---:|---|---|
+| 1 | WL-000 当前状态事实源 | P0 | 无 | WL-010 的只读盘点 |
+| 2 | WL-010 规则技能隔离部署 | P0 | 无 | WL-000 |
+| 3 | WL-100 workflow identity | P0 | WL-000 | 无，先修 |
+| 4 | WL-200/210/220 Task Ledger 自动循环 | P0 | WL-100 | 内部按顺序 |
+| 5 | WL-110/120/130 门禁、缓存、CI watcher | P0/P1 | WL-100、WL-200 | WL-300 的 schema 工作 |
+| 6 | WL-300/310/320 模型与上下文 | P0 | WL-200 | WL-400 的 schema 工作 |
+| 7 | WL-400/410/420 记忆成长规则闭环 | P0/P1 | WL-010、WL-200、WL-300 | 无跨 writer 并行 |
+| 8 | WL-500/510/520/530 Observer | P1 | 事件合同、前述 producers | Open Design 资料研究只读工作 |
+| 9 | WL-600/610/620/630 Open Design | P1 | WL-500 事件合同 | 部分来源研究 |
+| 10 | WL-700/710/720 兼容和体量 | P2 | 核心稳定 | 只读分析 |
+| 11 | WL-800/810/820 收口 | P0 | 全部选定 scope | 无 |
+
+若任务规模需要分批交给多个会话，也必须使用同一 Task Ledger 串行接力；不要把它拆成三个互相漂移的项目任务包。推荐一个主任务包、多个由 ledger 生成的阶段 ticket。
+
+## 9. 最终验收定义
+
+只有同时满足下列条件，才能说用户的要求达到第一阶段可用：
+
+1. 项目始终只有 Workflow、Open Design、Observer 三活动模块；无第四产品/Agent。
+2. 13 个原有技能完整纳管并通过隔离安装；live 部署有 backup/readback/rollback。
+3. HERMES 不是永久写死入口；adapter 通过能力协商兼容未来客户端。
+4. runner 真正使用 Task Ledger、lease、heartbeat、fencing、checkpoint、错误指纹和有限重试。
+5. 重启、断网、CI 排队、无 job、限流和平台故障不会使主任务永远停滞。
+6. 当前 `work-lab-gate/aggregate` exact-SHA 成功能被正确识别；不会再等不存在的 `workflow-governance`。
+7. impact plan 驱动本地和云端相关门，重复审核有安全 cache，不因提速削弱关键门。
+8. 模型路由符合当前账单：GPT/Codex subscription 用于关键编码/审查，DeepSeek API 承担日常与辅助，Kimi API 只作预算受控例外；没有静默 fallback。
+9. 每次模型调用可观察 token/cache/latency/outcome/billing；订阅和 API 成本不混算。
+10. 任务经验、新规则、Hermes 成长技能会自动进入隔离候选，不需要用户手工写总结；未经批准不污染全局。
+11. 记忆有 scope、来源、TTL/衰减、矛盾和归档；项目 A 不污染项目 B。
+12. Observer 是可用只读 UI，覆盖任务、Token、CI、规则技能、记忆、Open Design 和数据质量；不存在控制动作。
+13. Open Design 保留大师资料，并把核心资料升级为有来源的方法证据；真实案例和用户标定决定质量，不以数量自证。
+14. MINIGAME 只作为 Open Design 设计域和归档样本；没有产品平台扩张。
+15. OS 等项目只需微型 profile，不重复安装/复制整套 WORK-LAB。
+16. 所有软件/模型/配置兼容基于能力探测；运行快照可复现但不锁死未来版本。
+17. 每项完成都有可验证 evidence；live、付费、人类、设备或商业步骤没做时明确标 unknown/blocked。
+
+## 10. 性能与质量指标
+
+执行前后使用同一 fixture/任务集测量，不预设虚假绝对保证：
+
+- 任务首次通过率、最终通过率、平均修复轮数；
+- 相同错误 fingerprint 重复次数；
+- writer 活跃时间与等待 CI 时间；
+- 本地门禁 p50/p95、cache hit、节省时长；
+- GitHub queue-to-job、job duration、deferred/resume 成功率、无效 rerun 数；
+- 总输入/输出/推理 token、cache token/命中、每成功任务 API 成本；
+- Kimi 调用占比和 Kimi auxiliary 调用数（目标为 0）；
+- context pack token 和无关 tool 数；
+- memory conflict/quarantine/promotion/decay；
+- skill drift 发现到候选报告时长；
+- Observer event freshness、unknown/corrupt/drop 率；
+- Open Design 各质量轴、A/B 人类偏好、退步率、来源覆盖。
+
+任何“提速”不得以跳过安全门、伪造证据、降低设计标准、扩大自动写权限或无限增加昂贵模型调用为代价。
+
+## 11. Blocker 处理模板
+
+遇到阻塞时只记录一次：
+
+```yaml
+blocker_id: stable-id
+task_id: WL-xxx
+class: permission|credential|environment|external-platform|budget|quality|policy|unknown
+fingerprint: sha256-of-sanitized-cause
+first_seen_at: timestamp
+last_seen_at: timestamp
+attempts: integer
+retryable: true|false
+next_check_at: timestamp|null
+external_write_required: true|false
+user_decision_required: true|false
+safe_completed_work: []
+evidence: []
+recommended_action: text
+```
+
+不要只写“卡住了”。说明它是否影响主路径、还能继续什么、何时再检查、需要用户批准什么。相同 fingerprint 不重复消耗模型进行同一分析。
+
+## 12. HERMES 最终汇报格式
+
+最终只给用户一份收口报告：
+
+1. 当前 HEAD/tree digest 与基线差异。
+2. 已完成 task ID 和实际功能变化。
+3. 本地门禁、独立 review、性能对比和证据位置。
+4. Observer/Open Design/Workflow 分别达到什么证据等级。
+5. 未完成项及真正 blocker，不用模糊“基本完成”。
+6. 一次性批准清单：发布、global apply、付费 smoke、归档、外部项目写入。
+7. 若已获发布授权：commit/PR、exact-SHA CI run/attempt/jobs/URL 和 rollback。
+
+禁止用新增大量 README、schema、目录或“规划完成”代替可运行的执行器、watcher、UI、readback、真实测试和质量证据。
+
+## 13. 当前官方参考源（执行时重新验证）
+
+### OpenAI/Codex
+
+- Codex 认证（ChatGPT 登录或 API Key）：<https://developers.openai.com/codex/auth>
+- 模型目录：<https://developers.openai.com/api/docs/models>
+- Reasoning：<https://developers.openai.com/api/docs/guides/reasoning>
+- Prompt caching：<https://developers.openai.com/api/docs/guides/prompt-caching>
+
+### Kimi/Moonshot
+
+- 当前模型与弃用：<https://platform.kimi.ai/docs/models>
+- Hermes Agent 接入：<https://platform.kimi.ai/docs/guide/use-kimi-in-hermes-agent>
+- Reasoning effort：<https://platform.kimi.ai/docs/guide/use-reasoning-effort>
+- Dynamic tool loading：<https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading>
+- Kimi 产品/API/会员关系说明：<https://www.kimi.com/help/kimi-api/api-troubleshooting>
+
+### DeepSeek
+
+- 当前模型与计费：<https://api-docs.deepseek.com/zh-cn/quick_start/pricing/>
+- Thinking mode：<https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/>
+
+### Hermes Agent
+
+- 模型与 auxiliary slots：<https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/configuring-models.md>
+- CLI usage file：<https://github.com/NousResearch/hermes-agent/blob/main/website/docs/reference/cli-commands.md>
+- Curator：<https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/curator.md>
+- 上下文压缩与缓存：<https://github.com/NousResearch/hermes-agent/blob/main/website/docs/developer-guide/context-compression-and-caching.md>
+- Sessions：<https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/sessions.md>
+
+参考源只说明当前产品能力和计费边界。执行时必须重新读取官方文档/能力探测，不把今天的模型名或参数永久写进 WORK-LAB。
+
+---
+
+## 最终审计判定
+
+WORK-LAB 有明确价值，也不需要再复刻一个智能体软件。当前仓库已经有较强的治理、合同、规则技能和设计知识基础，但仍处于“控制面骨架较完整、关键运行闭环尚未连通、Observer UI 未落地、Open Design 证据与人类质量闭环不足”的阶段。
+
+最合适的推进方式不是继续堆模块、插件、模型或文档，而是先完成五个核心闭环：
+
+1. 工作流身份/CI watcher 与 impact gates；
+2. Task Ledger 驱动的可恢复自动循环；
+3. 模型/上下文/成本策略；
+4. 记忆/成长/规则候选自动治理；
+5. 事件统一后复用现有壳完成只读 Observer。
+
+随后再用大师资料来源、真实案例、人类标定把 Open Design 从“知识结构完整”提升为“实际输出变好”。这条路线保持原定位、避免重复操作，也能把能力真正服务到 OS、设计项目和未来其他 Agent 平台。

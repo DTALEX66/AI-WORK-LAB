@@ -1,0 +1,94 @@
+# CODEX 执行指令 — DESIGN-LAB：修资产版本错误，接通原生设计交付
+
+你在 DTALEX66/DESIGN-LAB 项目工作。请实施、测试并验收一个真实设计生产闭环，不要再把任务结束在矩阵/配置/治理文档上。
+
+## 基线与不许重开的已完成工作
+
+审计main `6a16c40b7a48f72757a0327ec07462d23449bb11`；开放PR #135：feat/ui-convergence-slice2 / `085a0f6ed8e0cd0db6e459cae9ce9c6f772f8ce2`。main Canonical Verify35546749035成功，PR135的PR-triggered run35670330237成功；启动时重读新SHA、PR状态和具体检查。不要擅自合并PR、删分支或覆盖其UI增量。
+
+先读AUTHORITY.md、.project/governance/authority-index.json、AGENTS.md、当前PRODUCT_DEFINITION/BOUNDARY_CONTRACT/ARCHITECTURE/LANGUAGE-POLICY、2026-09-18 FINAL-AUTHORITY-CONVERGENCE任务包、design-lab/config/task-ledger-r3.json。R5 lineage可保留，不新造R6账本。
+
+正式产品strict TypeScript/Vite/pnpm + Python；不引React/Vue/Tauri/Electron/Avalonia，不改架构。standalone-first，WORK-LAB/AAOS/Open Design不成为强制运行依赖。不让ComfyUI、H3、UIA或一套通用computer-use平台阻塞首个原生设计交付。
+
+P0工程门禁与Project→Brief→Reference→Direction→DesignSystem已在权威中关闭并有E2证据，保留回归，不从头重做。接下来是DesignIR/原生editable artifact/真实Host E3及人工E4。
+
+## 第一阶段：修复有确定反例的生产代码错误
+
+src/design_lab/creative/asset_versions.py 的branches()使用MAX(version_id)作为tip；同文件branch_tip()按version_no降序。runtime/asset_store.py用uuid4生成version_id，故MAX随机ID不是最新版本。
+
+先写失败回归：同asset同branch，旧version_no=1且ID=v-ffff...，新version_no=2且ID=v-0000...，branches必须返回2对应ID，且与branch_tip一致。再补多分支、多个asset、state与现有语义、空分支、较多版本、非顺序UUID用例。按version_no/既有唯一性规则修SQL或复用一套查询，不假定UUID可排序。
+
+检索branches消费者，检查预览/版本列表/交付/回退是否依赖错误tip；只修受影响路径，不借机重写asset_version存储或改变既有内容hash去重语义。版本不可变、父版本归属、PENDING/ACTIVE界限、fenced lease保持严格。
+
+## 第二阶段：消除宿主环境状态的历史漂移
+
+control-capability-matrix.json写Adobe未安装/2026-08-22卸载，而当前AGENTS记录已安装Photoshop/Illustrator。先把它识别成冲突，而不是选一个当真。
+
+按.project/paths.json、docs/LOCAL_ENVIRONMENT.md和当前已授权的精确配置探测软件位置、版本、入口、读回能力与授权状态。云端runner没有Adobe，不代表用户Windows没有；默认路径找不到，不代表自定义路径不存在。不扫描全盘、不擅自安装/卸载。
+
+共享目录注册包括Model library、Design assets、OS External Configuration、Design External Configuration；它们是定位来源，不授予任意写入。区分MiniMax Design软件、H3模型、云API；检查实际能力，不从一个工具能点按钮推导全Adobe可用。
+
+环境记录必须带observed_at、host/device/context、probe结果/来源；unknown、not-found-in-probed-path、installed、reachable、authorized、qualified分别表示。只有真实运行资格证据可提升supported/E级，不把旧文字换成无证据true。
+
+## 第三阶段：承接PR135，连接DesignIR与单个原生宿主
+
+复用PR135的tokens/hash路由/真实API绑定，先对照B10/B09/B07，再延伸任务需要的用户页面；7个尚无backend槽位可以诚实显示未开放，但已选择的生产流程不能停在槽位或JSON编辑器。
+
+选择一个已授权且实际可用的Photoshop或Illustrator。对本次矢量/文化墙型示例，条件相当时优先Illustrator；若当前现成已验证链更适合Photoshop则先打通PSD，不并行扩成Adobe全家桶。宿主不可用时完成可执行adapter+controlled tests并阻塞E3，不用浏览器截图冒充原生工程。
+
+基于一个不含客户隐私、许可明确的测试Brief：保留原有Project/Brief/Reference/Direction/DesignSystem实体，把其约束、选中方向、资产版本、尺寸/单位、字体引用、文字、颜色、图层/对象及来源关系编译到现有DesignIR。
+
+完成真实链：Workbench发起→批准范围的prepare→native有界创建/修改→保存PSD或AI→导出预览→计算文件hash→关闭本次任务文档→重开工程→原生读回对象/图层/文字/尺寸→与DesignIR及manifest核对→把receipt回到Workbench。
+
+必须能对一处文字/颜色/对象做局部patch，证明未请求对象及原输入未被改动。失败保持可解释状态和恢复入口。图片变成“可编辑文件扩展名”不算可编辑；只改后缀、整图铺底、仅生成SVG预览都不得宣布PSD/AI闭环。
+
+用户执行过程应看到预览、参数、所选宿主/版本、实际状态、失败原因、产物和证据；数据来自真实API，不使用假KPI/localStorage作为正式资产真相。现有controlled浏览器链保持回归，新增链提供真实host产物。
+
+## 第四阶段：把重放测试补成真故障恢复
+
+现有test_design_layer_idempotency_recovery.py已验证真实HTTP重复POST和SQLite唯一性；不要删或重复造同一套后端。其已读用例没有实际切断TCP或重启服务，故新增精确故障注入：
+- DB commit后、HTTP响应发出前断开，客户端同operation_intent重试。
+- 同key同内容不新增实体/事件，同key不同内容409。
+- 受控自有服务进程重启后恢复状态，不能靠只重建客户端假装进程恢复。
+- 原生文件生成/保存后、数据库登记前中断；重开/rehash能对账，不能重复创建对象或丢失已成功产物。
+- 旧lease/fencing token写入拒绝；取消未收到真实ack前不宣称释放/成功；不以杀用户共享宿主进程清锁。
+
+故障注入只能针对本任务独占进程、测试文档和隔离目录；真实用户文档、共享软件和原件受保护。分别记录API重放、进程恢复、原生工程恢复等级。
+
+## 第五阶段：质量、许可与可交付版本
+
+交付manifest关联原生工程、预览、链接素材引用/允许分发的素材、字体标识和许可信息、Brief/Reference/DesignIR版本、软件版本、参数与实际生成配置、hash、Jury、readback/rollback。不要收集或打包系统字体文件，不上传密钥/客户原稿；源代码仓库只收许可明确的小型夹具与脱敏摘要。
+
+Automated Quality与Human Jury分开。自动检查文字/尺寸/单位/比例/资源缺失/输出完整性；印刷型规格按该Brief实际要求核验，不假定通用DPI/出血数值。Rights未知不得自动通过；人工审美与客户/Owner E4不能由AI自签。
+
+至少演示三个内容版本、当前tip正确、任一关联产物失败不假成功、重开与回退可读回。最终在Workbench展示准备交付/需人工审查/阻塞的准确原因，不能把E2浏览器PASS包装为Adobe E3或人工E4。
+
+## 收尾
+
+修过的任务映射到原活动账本，implementation/unit/host_live/delivery/evidence分轴更新；用现有generate_current_reports工具重建而非手改投影。当前PROJECT_STATUS里所有PARTIAL并不意味着P0代码必须重做，旧WORKTREE观察也不能改时间戳冒充本次HEAD重测。
+
+遵循lockfiles和现有CI：Python完整回归、strict typecheck、Vite build、unit、no-drift、真实browser E2E、wheel/隔离运行及本次原生E3。main的Open Design job有路径条件skip，不得当宿主已运行。对本次产物实际upload/query/download/rehash（在已有允许范围），记录精确subject SHA；不自动发Release。
+
+最后交付修复diff、失败回归、用户可操作流程、原生可编辑产物+预览+读回、故障恢复证据、独立复核和剩余Owner待审清单。若真实宿主/授权不具备，完成非依赖部分并明确E3阻塞，不能只留一句“缺软件”就停止。
+
+## 共同执行边界
+
+本指令是 2026-09-22 云端取证审计后的增量执行委托，不是另一份替代当前仓库 Authority 的活动账本。先把审计任务映射到当前任务 ID；不要重编号、覆盖冻结任务包或另建平行活动账本。
+
+这是实施任务，不要只给计划、补文档或让用户反复说“继续”。读取必要上下文后，直接在已授权开发工作区实现、测试、修复、复核；每个阶段给出短进展。已经完成且证据仍有效的能力只做回归，不重造。
+
+1. 先读取 git status --short、git remote -v、git branch --show-current、git rev-parse HEAD、已有 worktree、现有未完成 PR 和任务锁。网络允许时刷新远端引用，然后记录 origin/main 和候选分支的精确 SHA。不要覆盖未知修改，不运行 reset --hard / clean -fd，不强推、不擅自删分支或合并。需要并行时，每仓库独立 worktree、分支、测试与回退；同一文件/账本由一个集成人串行修改。
+2. 当前用户明确指令优先；仓库中冲突的历史任务通过当前 supersession/authority 索引判定，不按文件名日期或“已完成”自述直接执行。事实层以代码、锁定 SHA 的运行结果和产物读回为准。
+3. 只使用真实环境提供的工具与模型能力，不编造模型 ID、CLI 参数、API 凭证或额度。付费模型调用遵守已有授权与预算，不进行无限重试、大批基准或擅自下载大模型。缺权限只阻塞依赖该权限的动作，其余安全、独立工作继续。
+4. 禁止新 tag、Release、GitHub release asset、擅自版本递增、原安装目录迁移或重新安装。新候选不得自动覆盖现有绿色版。Owner 的人工验收、授权接受、原库迁移与原位替换不能由执行代理代签。
+5. 不访问 E:、不读取私有 .codex/.zcode/.hermes 或凭证；共享目录仅按当前已授权的精确路径和用途访问。禁止扩大到全盘扫描。工作产物遵守仓库 .project-local 规范，但 .project-local 不是任意真实用户资料的永久归档授权。
+6. 不把真实 PDF、设计原稿、模型权重、数据库、密钥、日志或工作副本提交进源码。测试夹具、合法示例与真实资料分别分类；发现疑似漂移先只读清点，列出用途、位置、跟踪状态、内容指纹和建议目的地，不自动移动/删除原件。
+7. 拒绝“删断言、加无理由 skip/xfail、降低 required checks、把 UNKNOWN 改为 PASS、手写成功 receipt”式修复。文档、结构测试、受控运行、真实宿主运行、人工验收分别记录。
+8. UI 视觉/交互按可访问的用户套件：B10 最终视觉与光效，B09 交互，B07 路由/状态，B04 tokens 等基础层；有冲突以上层指定意图为准。B08 React 原型只可吸收设计/行为，不授权改正式技术栈。两项目共享组件和交互方法，保持各自品牌，不合成一个三项目页面。缺参考图时不声称严格像素复刻。
+9. 不再开展无边界同行检索；优先复用本仓库已吸收、已许可的模块与现有 harness。真需引入依赖时，核查原始官方文档、许可、精确版本、现有锁文件及回退成本。
+
+## 统一交付要求
+
+每项给出：实际修改文件、根因、任务映射、精确 source/subject SHA、命令与退出码、失败/跳过原因、正反例、产物路径和哈希、回退办法。明确这次是 Git commit、dirty worktree、旧候选还是运行产物；commit/tree/blob 不混用。不得把旧证据改写为新 HEAD 已测试。
+
+最终至少交付一个可审阅的实施 diff、可运行回归、当前任务状态更新、用户能操作的已实现链路及剩余阻塞表。报告写到现有约定位置；动态大文件放 .project-local；公开仓库只保存许可允许的脱敏证据/摘要。独立审查人不能仅重复执行者的自述，也不能冒充 Owner E4 或 AAOS A15 的独立签署。

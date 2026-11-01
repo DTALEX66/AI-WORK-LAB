@@ -1,0 +1,116 @@
+# ArcheAxis 云端增量复审 · 2026-09-12
+
+**结论：Q00仍不通过，Q01尚不具备条件。分支已经合并main；合并与新增审计文档没有修复产品问题。**
+
+## 1. 本次真实基线
+
+|项目|本次读取结果|
+|---|---|
+|main|`1e9813ea2bd49f47d334ba6717c78d3e9feda6ce`|
+|实现分支 codex/full-loop-0906|`c06b234ca335b9cbb2c1fde270851e2390c36b89`|
+|上次独立审计|`c78919271afe61789b51be7a1ddd081ca9991d69`|
+|main与实现分支文件树|相同|
+|上次以来新增提交|2个文档提交+1个合并提交|
+|文件差异|6份文档，235行新增、3行删除；产品代码、测试、工作流未变化|
+
+已读取新增AUDIT-PACKET.md、入口索引、状态和证据索引差异，逐一比较上次12项发现的关键文件，全部字节相同。产品缺陷延续的结论依据实际Git差异，不是凭旧记忆照抄。本次不重复运行未变化代码的合成破坏性反例；上次复现证据保留在9月11日报告中。
+
+## 2. 当前main的两个CI工作流均失败
+
+- [CI run 34697741153](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34697741153)：completed / failure。
+- [vnext-ci run 34697741160](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/actions/runs/34697741160)：completed / failure。
+
+两者均对应当前完整main SHA，已读取失败job原始日志。本次有当前提交的直接CI证据，无需再推断旧分支CI能否代表main。
+
+|失败项|原始日志确认|修复归属与方向|
+|---|---|---|
+|vnext-ci / cargo-test；CI / rust-vnext|learning_schedule_api第46行，期望fsrs、实际unavailable，cargo退出101|R05/R13：补锁定依赖、正确解释器与共享模块导入环境；保持真实FSRS测试，不改成跳过|
+|CI / test (3.12)|2586通过、11失败、33跳过、124 subtests通过|10项bulk路径测试失败，1项core_launch进程测试失败；Linux绝对路径被当UNC/绝对根拒绝，另直接调用Windows tasklist|
+|CI / workers-vnext|3个errors、7个skipped|缺python-pptx、openpyxl、pymupdf；引擎依赖未按门禁环境安装|
+|CI / desktop-fast|src-tauri/Cargo.toml “current package believes it's in a workspace when it's not”|R00/R13/R15：治理迁移未贯通CI，需明确旧Tauri恢复参考的独立构建范围，不能盲目加回新核心workspace|
+|CI / lint|TASKS.json与MANIFEST.json缺末尾LF|R00：上一任务包生成缺陷现已真实阻断CI，修订冻结包格式和哈希关系，不应长期当作允许失败|
+
+成功的定向job也应保留：gateplan、format-targeted、browser-smoke、desktop-vnext、contracts-vnext、wheel-smoke。它们不能抵消其他必要job失败，也不能据此宣称完整Windows软件可用。
+
+源码定位：
+- [.github/workflows/ci.yml](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/1e9813ea2bd49f47d334ba6717c78d3e9feda6ce/.github/workflows/ci.yml)
+- [.github/workflows/vnext-ci.yml](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/1e9813ea2bd49f47d334ba6717c78d3e9feda6ce/.github/workflows/vnext-ci.yml)
+- [scripts/maintenance/bulk_fixture_factory.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/1e9813ea2bd49f47d334ba6717c78d3e9feda6ce/scripts/maintenance/bulk_fixture_factory.py)
+- [scripts/maintenance/bulk_evidence.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/1e9813ea2bd49f47d334ba6717c78d3e9feda6ce/scripts/maintenance/bulk_evidence.py)
+- [scripts/launch/core_launch.py](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/1e9813ea2bd49f47d334ba6717c78d3e9feda6ce/scripts/launch/core_launch.py)
+- [Cargo.toml](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/1e9813ea2bd49f47d334ba6717c78d3e9feda6ce/Cargo.toml)
+
+## 3. 上次12项发现的本次状态
+
+A编号沿用上一审计，只是发现索引，全部仍回到R3原任务。没有证据表明已完成对应修复。
+
+|发现|问题|本次状态|原任务|
+|---|---|---|---|
+|A01|Windows CI持续失败，未取得同源发布资格|未修；当前main再次失败且新增多个失败job|R05, R13, R14|
+|A02|FSRS接入未形成持久复习系统|未修；关键文件未变化|R05, R10|
+|A03|幂等重试仍未绑定完整排程语义|未修；关键文件未变化|R05|
+|A04|开放归档遗漏两类新增持久数据|未修；关键文件未变化|R03, R09, R11, R13|
+|A05|启动器备份恢复不完整且接受无关SQLite|未修；关键文件未变化|R13, R03|
+|A06|候选包未证明产物来自声明提交|未修；关键文件未变化|R13, R14|
+|A07|打包拒绝前已递归删除输出目录|未修；关键文件未变化|R13|
+|A08|界面和候选包仍不能供普通用户完成M0|未修；关键文件未变化|R10, R13|
+|A09|真实MCP协议已有，但机器能力验收仍是检索/自报收据|未修；关键文件未变化|R11, R09|
+|A10|清理未执行，容量只迁位置仍增长|仍为清理提议；没有新增执行或释放空间证据|R01, R12|
+|A11|旧资产迁移和全格式仍未收口|未修；关键文件未变化|R07, R15|
+|A12|包完整性与执行口径仍有不必要阻塞|摘要部分更新；完整性和LF缺陷未修，lint实际失败|R00, R14|
+
+关键产品风险仍在：
+
+- FSRS完整卡片状态和精确due未落库，默认旅程继续走临时梯度；完整请求语义和重试收据未闭合。
+- 开放归档遗漏card_references与machine_tasks；启动器SQLite备份没有带原件目录，且接受无关SQLite作为恢复输入。
+- 打包可把任意已有二进制标成某历史提交；拒绝dirty前已删除既有输出目录。
+- 学习面板只读；Avalonia主窗仍Welcome；候选包缺Python/worker/宿主，未具备普通用户完整操作旅程。
+- MCP协议接入成立，但固定提交succeeded收据和检索命中不是独立任务能力评测；结果版本资格仍不足。
+- 旧资产附件/关系/时间戳与一致快照尚未闭合；清理未执行。
+
+上次的已修成果也继续成立：知识普通审校不覆盖正文，v3多历史归档布局兼容已补，未知actor拒绝，否定核查不再误判支持。本次未推翻这些已验证进展。
+
+## 4. 新审计入口的三处口径问题
+
+[AUDIT-PACKET.md](https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/1e9813ea2bd49f47d334ba6717c78d3e9feda6ce/docs/authority/taskpack-0910-r3/AUDIT-PACKET.md)改善了线上查找入口，但其状态总结不能替代独立审计：
+
+1. **R00–R09、R11 “nothing on the executor's side”不成立。** FSRS持久状态、机器实际任务、归档与迁移等都有明确实现缺口。状态可写“部分实现/待续修”，不能把所有剩余责任移给独立审计或用户。
+2. **R10不是只缺把面板挂到DeepTutor导航。** 现有面板主要GET状态，挂载不会自动增加导入、讲解、练习、纠错、复习操作。用户已经要求优先复用与必要接线，不能将上游不可直接改动泛化成所有连接都要重新审批。
+3. **R13不应把MSI、代码签名和卸载器列为首版必需前提。** 本轮用户目标是最快可用，完整便携包或本地Web入口可以先验收；真正缺的是依赖齐全、可靠恢复、同源产物与干净环境完整旅程。发布签名可按后续分发需求安排。
+
+此外，“CI未运行，因此线上不可证明”现已被当前main的真实运行取代，必须链接实际失败结果。代码签名、UI挂载等不能掩盖已存在的失败CI。
+
+## 5. 本次独立本地检查
+
+8个检查器在隔离main工作树实际运行，结果6通过、2失败：
+
+|检查器|退出码|实际摘要|
+|---|---|---|
+|check_evidence_index.py|0|evidence index check passed: 17 slices, 81 tracked evidence pointers, 3 receipts, every status agrees with STATE.json, no independent gate is self-signed and every slice states its limits|
+|check_architecture.py|0|architecture guard passed|
+|check_language_boundaries.py|0|language boundary check passed: protocol major 1 agreed by rust/python/schemas; database owner = crates/ only; workers and desktop shell hold no database handle|
+|check_path_conventions.py|0|path convention check passed: 1724/1793 tracked paths owned (96.15%), 69 unowned and all recorded, 0 deny-commit paths tracked, 0 ambiguous, 65 top-level entries classified, 1246 legacy assets inventoried across 6 legacy roots|
+|check_worker_reachability.py|0|worker reachability check passed: 12 capability workers, 10 routed, 2 exempted with a recorded reason|
+|check_format_matrix.py|0|format status matrix check passed: 16 groups carried, 0 complete, 14 partial, 2 custody only; every claimed route exists in the Core and transport tables (11 core routes, 10 worker routes parsed)|
+|check_taskpack_integrity.py|1|taskpack integrity check failed:；  - the install snapshot cannot attribute EXECUTION.md, STATE.json; restore it (expected under /workspace/scratch/1fa6cf5dfcd5/audit-1e9813e/.project-local/runs/taskpack-0910-shipped) or the divergence is unexplained|
+|check_repository_conventions.py|1|docs/authority/taskpack-0910-r3/MANIFEST.json: missing-final-newline: text must end with LF；docs/authority/taskpack-0910-r3/TASKS.json: missing-final-newline: text must end with LF；repository convention check failed: 2 issue(s)|
+
+格式仍为0完整、14部分、2仅保管；当前证据指针实际81条，路径1724/1793有归属，69条未归属仍只是登记。新AUDIT-PACKET保留80指针、1723/1792等旧数字，应附测量SHA或更新，不能当成本次实时统计。
+
+完整性检查缺少ignored安装快照。最初把可变STATE/EXECUTION放进固定MANIFEST、默认编码与末尾换行问题，确实来自本审计方之前生成的任务包，继续承担这个归因。修法是把冻结定义与活动状态分开校验，指定UTF-8、规范LF并更新修订记录；不是伪造安装快照，也不是让执行者永久接受红灯。
+
+## 6. Q00/Q01与最快后续路径
+
+Q00：**FAIL**。G01同源制品、G05学习系统、G09恢复、G11Windows可用、G14CI/发布均未达标；G03云端交叉核查仍缺证据。Q01：**NOT_ELIGIBLE**，M0关键缺口未闭合，M1格式、旧资产、清理也未完成。合入main不改变门禁结果。
+
+后续仍用R3，不新开架构：
+
+1. R03/R13先修工作区完整恢复与打包输出删除；保护已有数据。
+2. R05补完整FSRS状态、due和幂等，同时修当前两个CI暴露的环境依赖/路径/桌面边界问题；R00顺带修包格式和校验。
+3. R10/R11交付可操作的人类学习流程与有实际产物、独立标准的机器任务；R13交付完整便携包或本地Web启动入口。
+4. R12依据已有授权和明确范围执行安全缓存清理，清前/后/重构建后分别计量；保全唯一历史、私密资料与原件。未取得本机执行能力时如实记录，不宣称已释放空间。
+5. 独立复审Q00通过后，再扩M1。Rust/Python/C#/Web职责保持；3D、动画、大型知识宫殿与远期蓝图继续保留、重型自研冻结。
+
+## 7. 审计边界
+
+本次读取最新远端、完整差异、新审计入口、当前CI日志，实际运行8个轻量检查器并逐一核对旧发现关键文件。产品代码未变化，故沿用上次有限复现，不冒称本轮再次完成Rust/.NET/模型/WindowsGUI测试。未访问用户D盘/E盘、私密.hermes、真实资料库；未清理本机、未修改或推送产品代码。结束前再次确认远端与工作区状态。

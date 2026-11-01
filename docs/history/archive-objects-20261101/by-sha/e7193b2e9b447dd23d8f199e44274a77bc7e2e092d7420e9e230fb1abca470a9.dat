@@ -1,0 +1,300 @@
+# DTALEX66/Knowledge-Base 项目接管调研与执行包
+
+> 目标：把 Knowledge-Base 从“概念型四库系统”推进为可运行、可扩展、可交给 CODEX 持续迭代的个人 AI 知识中枢。
+
+---
+
+## 1. 当前项目定位
+
+项目当前 README 将系统定义为：
+
+- 知识库：网页/文件采集、清洗、SQLite 存储、搜索
+- 技能库：学习路线、记忆训练、主动训练
+- 智库：AI 工具索引、风险评分、选型报告
+- AI库：Prompt / 模型 / MCP 管理，当前仍待建
+
+建议最终定位调整为：
+
+> DT ALEX 个人 AI 知识中枢：网页采集 + 文档入库 + 项目研究 + GitHub 项目分析 + Prompt/模型/MCP 管理 + CODEX 任务包生成。
+
+不要做成大而全的企业级 Dify 克隆，先走轻量、个人本地优先、可插件化路线。
+
+---
+
+## 2. 已发现的当前仓库问题
+
+### P0：安装结构错误
+
+当前 backend/pyproject.toml 写：
+
+```toml
+[tool.setuptools.packages.find]
+where = ["src"]
+```
+
+但实际包路径是：
+
+```text
+backend/pk_radar/
+```
+
+必须改成：
+
+```toml
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pk_radar*"]
+```
+
+或迁移成标准 src 结构：
+
+```text
+backend/src/pk_radar/
+```
+
+### P0：README 写了 pkr serve，但 main.py 没有 serve 命令
+
+需要新增：
+
+```python
+@app.command()
+def serve(host: str = "127.0.0.1", port: int = 8787):
+    import uvicorn
+    uvicorn.run("pk_radar.api:app", host=host, port=port, reload=False)
+```
+
+并新增 `pk_radar/api.py`。
+
+### P0：前后端未打通
+
+frontend 首页已经写明：
+
+- 真实后端：待接入
+- IndexedDB：下一阶段升级
+- AI Provider：先本地规则，后云端增强
+
+所以第一阶段必须打通：
+
+```text
+网页输入 URL
+→ 后端抓取
+→ SQLite 保存
+→ 搜索
+→ 文档详情
+→ 导出
+```
+
+---
+
+## 3. 外部高热项目调研与吸收策略
+
+### 3.1 RAG / 知识库 / Agent 平台
+
+| 项目 | 借鉴点 | 风险 | 吸收方式 |
+|---|---|---|---|
+| Dify | Workflow、RAG Pipeline、模型管理、LLMOps | Dify Open Source License，有额外条件 | 学产品结构，不直接搬代码 |
+| AnythingLLM | 本地优先、多用户、文档聊天、Agent、向量库 | MIT，较安全 | 可借鉴信息架构和本地体验 |
+| FastGPT | 数据处理、RAG、可视化工作流、模型代理 | 不允许未经授权做 SaaS | 学工作流和知识库交互，不搬代码 |
+| Open WebUI | Ollama/OpenAI 接入、Docker 一键部署、离线模式 | 有品牌保留等附加许可 | 学部署和模型连接方式 |
+| Khoj | AI second brain、自动研究、日程化通知、Obsidian/桌面/手机接入 | AGPL-3.0 | 学能力边界，不复制代码 |
+| Mem0 | Agent 长期记忆层 | Apache-2.0 | 可作为记忆层设计参考 |
+| Flowise / Langflow | 可视化 Agent/Workflow 编排 | Flowise Apache-2.0；Langflow MIT | 后期做工作流时参考节点模型 |
+
+### 3.2 网页采集 / 浏览器 Agent
+
+| 项目 | 借鉴点 | 风险 | 吸收方式 |
+|---|---|---|---|
+| Scrapling | 当前已采用，适合自适应抓取、动态页面、MCP | BSD-3-Clause，较友好 | 继续作为主采集引擎 |
+| Crawl4AI | LLM-ready Markdown、RAG/Agent 数据管线 | Apache-2.0 | 可作为可选采集后端 |
+| Firecrawl | Search/Scrape/Crawl/Map/Batch，MCP 生态成熟 | AGPL-3.0，自托管/商用要谨慎 | 优先作为可选 API，不内置复制 |
+| browser-use | AI 浏览器操作、表单/网站自动化 | MIT | 后期做“项目研究 Agent”时接入 |
+
+### 3.3 文档解析
+
+| 项目 | 借鉴点 | 风险 | 吸收方式 |
+|---|---|---|---|
+| Microsoft MarkItDown | PDF/Word/PPT/Excel/HTML/音频/图片等转 Markdown | MIT | 直接作为依赖优先接入 |
+| Docling | 文档转 GenAI-ready 内容 | 需单独检查版本许可 | 第二阶段评估 |
+| Unstructured | 文档 ETL、chunk、embedding | 企业版生态复杂 | 只借鉴分区与 chunk 思路 |
+| MinerU | PDF/Office 转 LLM-ready Markdown/JSON | 需要评估依赖体积 | 适合作为高级 PDF 模式 |
+
+### 3.4 检索 / 向量数据库
+
+| 项目 | 借鉴点 | 使用策略 |
+|---|---|---|
+| SQLite FTS5 | 当前已有，轻量、零服务 | 第一阶段保留 |
+| Chroma | AI 搜索基础设施，Python 友好 | 第二阶段本地向量库候选 |
+| LanceDB | 嵌入式多模态检索库 | 更适合个人本地部署 |
+| Qdrant | 高性能向量数据库 | 第三阶段服务器部署候选 |
+| LlamaIndex | 文档 Agent / OCR / RAG 管线 | 作为可选框架，不直接引入重依赖 |
+| Haystack | 企业级 RAG Pipeline | 学评估与管线，不作为第一阶段依赖 |
+
+---
+
+## 4. 推荐技术路线
+
+### 第一阶段：最小闭环，1 个仓库跑通
+
+技术选择：
+
+```text
+后端：FastAPI + Typer + SQLite FTS5 + Scrapling + MarkItDown
+前端：Next.js + React + TypeScript
+AI：Ollama / OpenAI-compatible Provider 抽象
+存储：SQLite 本地优先
+向量：暂不强制，上线后再加
+```
+
+必须交付：
+
+```text
+1. pkr init
+2. pkr add-url
+3. pkr add-file
+4. pkr search
+5. pkr serve
+6. 前端 /knowledge 页面
+7. URL 采集
+8. 文件上传
+9. 搜索列表
+10. 文档详情
+11. Markdown 导出
+```
+
+### 第二阶段：文档能力增强
+
+新增：
+
+```text
+1. MarkItDown 转换器
+2. PDF / DOCX / PPTX / XLSX 支持
+3. 文档 chunk
+4. 标签、来源、项目归属
+5. 项目研究报告模板
+```
+
+### 第三阶段：GitHub 项目研究
+
+新增：
+
+```text
+1. GitHub Repo 输入
+2. 自动读取 README、package、pyproject、目录结构
+3. 自动生成项目画像
+4. 自动提取可借鉴模块
+5. 自动生成 CODEX 任务包
+```
+
+### 第四阶段：AI库
+
+新增：
+
+```text
+models
+prompts
+mcp_servers
+runs
+cost_records
+provider_keys
+```
+
+能力：
+
+```text
+1. 模型聚合配置
+2. Ollama 本地模型
+3. OpenAI-compatible API
+4. Prompt 模板版本管理
+5. 每次调用成本和效果评分
+```
+
+### 第五阶段：同步与多电脑
+
+推荐路线：
+
+```text
+第一步：本地 SQLite + 导出 ZIP
+第二步：GitHub 私有仓库同步 Markdown/JSON
+第三步：可选 WebDAV / S3 / R2
+第四步：真正多人协作再考虑 CRDT
+```
+
+---
+
+## 5. CODEX 第一阶段任务包
+
+```text
+你接手 DTALEX66/Knowledge-Base 项目。
+
+目标：修复当前项目结构，并打通知识库最小闭环。
+
+必须先做：
+1. 修复 backend/pyproject.toml 包发现路径。
+2. 新增 pk_radar/api.py。
+3. 新增 pkr serve 命令。
+4. 增加 FastAPI 接口：
+   - GET /health
+   - GET /documents
+   - GET /documents/{id}
+   - GET /search?q=
+   - POST /ingest/url
+   - POST /ingest/file
+   - POST /documents/{id}/tags
+   - DELETE /documents/{id}
+5. 前端新增 /knowledge 页面。
+6. 前端新增 lib/api.ts。
+7. 实现 URL 入库、搜索、查看详情。
+8. 保留 SQLite FTS5，不要先上向量数据库。
+9. 所有新增接口必须有测试。
+10. 更新 README，去掉不真实能力描述。
+
+验收命令：
+cd backend && pip install -e ".[all,dev]" && pytest
+cd frontend && npm install && npm run typecheck && npm run build
+```
+
+---
+
+## 6. 代码吸收规则
+
+可以做：
+
+```text
+1. 使用 MIT / Apache-2.0 / BSD-3-Clause 项目作为依赖。
+2. 借鉴产品结构、页面流程、数据模型。
+3. 参考公开 API 设计。
+4. 保留许可证和 NOTICE。
+5. 单独封装 adapter，避免项目被污染。
+```
+
+不要做：
+
+```text
+1. 直接复制 AGPL/GPL/自定义限制许可证项目代码。
+2. 复制 Dify / FastGPT / Open WebUI 的受限制核心代码。
+3. 把第三方品牌、Logo、文案直接搬过来。
+4. 未检查许可证就集成。
+5. 为了“快”牺牲可维护性。
+```
+
+---
+
+## 7. 最终目标产品形态
+
+```text
+Knowledge-Base
+├── 知识库：网页/文档/项目资料采集、搜索、摘要
+├── 项目库：GitHub 项目分析、竞品拆解、CODEX 任务包
+├── 技能库：学习路线、训练、复盘
+├── 智库：AI 工具、模型、价格、风险、选型
+└── AI库：Prompt、模型、MCP、成本、调用记录
+```
+
+核心原则：
+
+```text
+小而稳，先闭环，再扩展。
+本地优先，云端可选。
+能给 CODEX 用，能给 DeepSeek 分阶段做。
+不盲目追高星项目，不复制受限代码。
+```

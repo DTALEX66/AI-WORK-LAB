@@ -1,0 +1,169 @@
+schema_version: dual-hermes-taskpack/v4
+taskpack_id: dual-repository-workflow-open-design-v4
+generated_at: '2026-08-05'
+
+repositories:
+  workflow:
+    local_path: 'D:\All projects\Workflow-assistance'
+    github: DTALEX66/Workflow-assistance
+    audit_sha: aee5d72c47d05eb88c77c41fdb69c485f6c192ee
+  open_design:
+    local_path: 'D:\All projects\OPEN-DESIGN-Assistance'
+    github: DTALEX66/OPEN-DESIGN-Assistance
+    audit_sha: c8212401e891e7c3f0e4a6f36cdb11dbcca24e27
+
+defaults:
+  execution_mode: audit_then_implement_locally
+  global_single_writer: true
+  windows_native_first: true
+  live_apply: false
+  github_commit: false
+  github_push: false
+  create_draft_pr: false
+  apply_github_ruleset: false
+  merge: false
+  release: false
+  allow_network_research: true
+  allow_model_live_smoke: false
+  max_review_repair_rounds: 3
+  third_party_default: quarantine
+
+forbidden:
+  roots:
+    - 'E:\'
+  reads:
+    - credentials
+    - auth.json
+    - oauth_tokens
+    - api_keys
+    - cookies
+    - private_keys
+    - authentication_databases
+  mutations_without_explicit_approval:
+    - project_external_write
+    - live_apply
+    - commit
+    - push
+    - pull_request
+    - ruleset
+    - merge
+    - release
+
+tasks:
+  - id: GLOBAL-001
+    title: dual repository read-only baseline
+    repo: both
+    depends_on: []
+  - id: GLOBAL-002
+    title: write eligibility and concurrency gate
+    repo: both
+    depends_on: [GLOBAL-001]
+  - id: OD-001
+    title: remove credential reads and broad permissions
+    repo: open_design
+    depends_on: [GLOBAL-002]
+  - id: OD-002
+    title: align documentation with safety behavior
+    repo: open_design
+    depends_on: [OD-001]
+  - id: WA-001
+    title: client-neutral product definition
+    repo: workflow
+    depends_on: [OD-002]
+  - id: WA-002
+    title: workflow core schemas
+    repo: workflow
+    depends_on: [WA-001]
+  - id: OD-003
+    title: truthful per-capability evidence index
+    repo: open_design
+    depends_on: [WA-002]
+  - id: OD-004
+    title: canonical v3 windows and linux CI
+    repo: open_design
+    depends_on: [OD-003]
+  - id: OD-005
+    title: reduce public plugin entries
+    repo: open_design
+    depends_on: [OD-004]
+  - id: OD-006
+    title: isolate research from runtime eligible knowledge
+    repo: open_design
+    depends_on: [OD-005]
+  - id: OD-007
+    title: repository and install pack slimming
+    repo: open_design
+    depends_on: [OD-006]
+  - id: OD-008
+    title: workflow domain pack manifest
+    repo: open_design
+    depends_on: [OD-007, WA-002]
+  - id: WA-003
+    title: client adapter registry
+    repo: workflow
+    depends_on: [WA-002]
+  - id: WA-004
+    title: action plan configuration governance
+    repo: workflow
+    depends_on: [WA-003]
+  - id: WA-005
+    title: client-neutral task ledger and resume
+    repo: workflow
+    depends_on: [WA-004]
+  - id: WA-006
+    title: unified monitoring events
+    repo: workflow
+    depends_on: [WA-005]
+  - id: WA-007
+    title: workflow console
+    repo: workflow
+    depends_on: [WA-006]
+  - id: WA-008
+    title: python node rust CI and supply chain
+    repo: workflow
+    depends_on: [WA-007]
+  - id: WA-009
+    title: repository governance and maintainability
+    repo: workflow
+    depends_on: [WA-008]
+  - id: BR-001
+    title: domain pack schema compatibility
+    repo: both
+    depends_on: [OD-008, WA-009]
+  - id: BR-002
+    title: official open design adapter
+    repo: workflow
+    depends_on: [BR-001]
+  - id: OD-009
+    title: real open design E3 scenario
+    repo: open_design
+    depends_on: [BR-002]
+  - id: BR-003
+    title: end-to-end golden path
+    repo: both
+    depends_on: [OD-009]
+  - id: BR-004
+    title: failure and recovery matrix
+    repo: both
+    depends_on: [BR-003]
+  - id: BR-005
+    title: monitoring correlation
+    repo: both
+    depends_on: [BR-004]
+  - id: BR-006
+    title: cursor claude-code workbuddy conformance
+    repo: workflow
+    depends_on: [BR-005]
+  - id: FINAL-001
+    title: exact-tree independent review
+    repo: both
+    depends_on: [BR-006]
+  - id: FINAL-002
+    title: final reports and user approval stop
+    repo: both
+    depends_on: [FINAL-001]
+
+final_states:
+  - READY_FOR_USER_APPROVAL
+  - BLOCKED
+  - COMPLETED_AND_RELEASE_VERIFIED

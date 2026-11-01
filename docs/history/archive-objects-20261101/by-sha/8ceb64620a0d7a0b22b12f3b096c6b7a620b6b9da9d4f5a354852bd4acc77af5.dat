@@ -1,0 +1,159 @@
+# AAOS / DESIGN-LAB 云端证据审计
+
+**日期：2026-09-22；范围：两仓；操作：只读。**
+
+## 1. 审计结论
+
+现在不应把两项目标记为“全绿、全量验收完成、可发布”。AAOS 的现行状态文件本来就保留大量真实闭环缺口；DESIGN-LAB 已具备真实服务和受控前端测试，但真实原生交付及独立人审仍是另外的验收层。后续任务的中心是保留已做工作、修复精确阻塞、闭合真实流程，不是再换技术栈。[S03–S05,S18–S20]
+
+本报告完成的是**已列明范围的云端证据审阅和缺陷定位**，不是两仓所有文件、完整历史和用户本地环境的全量验收。覆盖矩阵中未读、未复现、响应截断、来源冲突均保留为未通过，不能换算成虚构完成率。
+
+## 2. 四份基线，不能只看两个 main
+
+| 对象 | 固定 SHA | 本次观察 |
+|---|---|---|
+| AAOS main | `e3875db0ee6d073d37839eb7b95f7ef4ce881bbb` | 2026-09-20T23:34:15Z；tree `560e46e761f1df8d8aa76affc1cf83bd85c23e3e` |
+| AAOS UI 分支 | `4525564bc11be0eb6a88ecb780d882810201a57b` | 2026-09-21T23:57:44Z；比 main 前进 1 commit、落后 0；比较元数据为 34 文件、+836/-113；不代表逐文件读完 |
+| DESIGN main | `6a16c40b7a48f72757a0327ec07462d23449bb11` | 2026-09-21T00:09:07Z；PR #134 控制能力矩阵与恢复回归已合入 |
+| DESIGN PR #135 | `085a0f6ed8e0cd0db6e459cae9ce9c6f772f8ce2` | OPEN、未合入；2 commits、6 文件、+1028/-9 |
+
+以上时间均为 UTC。PR 的临时 merge SHA 不是 main 已合并的证明。DESIGN 还必须加入用户未上传工作区这一独立状态；AAOS 也应检查未提交/未推送本地工作。只有三方/四方差异对账后才能选修复基线。[S01,S02,S13,S22]
+
+## 3. 历史梳理后的有效约束
+
+### 3.1 不能继续执行已经被替代的旧方案
+
+9 月 4 日报告是历史材料，不是今天的技术栈授权。AAOS 当前根规则明确：正式桌面为 `apps/ArcheAxis.Desktop/` 的 C#/Avalonia，Canonical 写入由 Rust Core 承担，Python 是隔离 worker；旧 `frontend/`、`src-tauri/`、`desktop/` 和旧 Green 仅保留各自的恢复/参考职责。不能把旧 C# 单写者或 React/Tauri 方案直接重新套上来。[H01,S03]
+
+DESIGN-LAB 当前已经有 `apps/workbench/` strict TypeScript + Vite 前端，Python 生产层与宿主适配器。旧报告中“前端尚未迁移”的描述不能再用来派发一次整站迁移。其当前规则禁止未获 ADR 授权的 React/Vue/Electron/Tauri/Avalonia/Rust/C# 重写。[H02,S18,S20]
+
+### 3.2 两个项目边界
+
+AAOS 是人类学习、机器学习和长期知识沉淀中枢；DESIGN 是设计生产、可编辑产物、Jury、rights、preflight、宿主读回和恢复层。DESIGN 必须 standalone-first，不以 WORK-LAB 或 AAOS 在线作为启动、测试和黄金流程的前提。知识出口只传经 rights 和人工批准的 KnowledgeCandidate；不共享或直接写对方私有数据库。[S03,S20]
+
+### 3.3 绿色版、资料、软件安装路径
+
+保留本地可用 Green，不发布新版本，不迁到默认 C 盘，不为了重装而新建第二套环境。先识别当前安装和实际配置。DESIGN 的 `.project/paths.json` 与 `docs/LOCAL_ENVIRONMENT.md` 已被根规则指定为本机排查入口；用户已确认存在 Photoshop、Illustrator、ComfyUI、MiniMax H3 与 MiniMax Design，但“存在”不能代替版本、调用、读回、恢复验证。[S03,S20]
+
+PDF 出现在项目文件夹里不能单凭扩展名判定漂移。需区分：受许可且受控的测试 fixture；参考文献；用户导入的原始学习资料；运行时转换产物；交付资产。是否受 Git 跟踪、当前目录权威、实际项目数据根以及来源/许可共同决定归属。本次没有读取用户本地 PDF，故只列为待核验，禁止批量移动/删除。DESIGN 商业资产不得默认外溢到共享资料库。
+
+### 3.4 UI 历史权威
+
+检索到的批次映射为：B10 最终视觉优先，B09 行为，B08 原型，B07 路由/权限/状态，B04 tokens。PR #135 自述并在增量代码中采用 B04/B07；是否已经对齐 B10 必须对照真实本地包核验，不能据批次名称直接宣判“风格错误”，也不能把 B08 React 原型当成迁移技术栈的授权。统一品牌语言不等于把 AAOS 和 DESIGN 的页面互相复制。[H03,S22,S24]
+
+## 4. AAOS：已确认、待复现与证据冲突分开
+
+### A-01：main nightly 报告 4 项 Python 失败
+
+run `35705091183`，job `106671984547`，head 为 `e3875db0ee6d073d37839eb7b95f7ef4ce881bbb`。已通过连接器读取实际 job 日志，摘要为：
+
+`4 failed, 3049 passed, 35 skipped, 13 warnings, 135 subtests passed in 185.59s`
+
+这是 GitHub 运行报告，不是本助手在用户电脑或当前容器重跑。full-suite 失败后，browser smoke 和 Windows runtime 下游 job 被跳过；Python 3.11/3.13 compatibility job 的成功只覆盖编译/导入范围，不能替代完整测试。[S06,S07]
+
+| 失败点 | 已读到的证据 | 修复时不能做什么 |
+|---|---|---|
+| `tests/contract/test_bulk_schema_matrix.py::test_schema_matrix_coverage_status_is_explicit` | 覆盖状态清单与在库 schema 集合不等；缺 9 项状态 | 不删除测试，不把生产使用中的 schema 随意标 pending 来过门禁 |
+| `tests/test_axr060_completion_audit.py::test_tracked_current_surfaces_only_reference_declared_release_delta_or_source_objects` | 当前事实引用含未声明的 3 个 SHA；测试从 CURRENT-SYSTEM-BASELINE 收集当前表面 | 不把所有 SHA 无条件加入 allowlist，不为修测试伪造发布 |
+| `tests/test_p0_python_worker_lifecycle.py::test_real_text_worker_health_execute_failure_disable_and_enable` | typed PluginManifest 在 install_builtin 路径落入 mapping 校验，出现“不是 object” | 不绕过 schema 或插件权限验证；类身份/import reload/测试顺序是待验证假设，不是已证实根因 |
+| `tests/test_workspace_api.py::test_workspace_upload_keeps_distinct_raw_assets_when_conversion_text_matches` | converter_engine_chain 实际含插件来源前缀，而期望只有引擎 | 不删除有效 provenance 来凑断言；也不能据此宣称原始资料丢失 |
+
+9 个 schema 名：`derived-projection`、`machine-growth`、`closed-loop`、`model-capability-pool`、`courseware-artifact`、`domain-pack`、`format-execution-receipt`、`local-green-identity`、`desktop-routes`，均以 `.schema.json` 结尾。覆盖清单路径为 `tests/contract/schema_coverage_status.json`，本次读了消费它的测试，未完整重审该清单和所有 schema。[S08]
+
+3 个待核验引用：`fbb630e7ff8561bb11b87577aa88716303ca888d`、`5d34d98c3d80e31a9174b83d78fd1707496ba279`、`c0ec75b605b0fc1c9d2d14411e7b4d8b208da07b`。[S09]
+
+插件问题调用点：`app/capability/store.py` 约 265 行先做 `isinstance(manifest, PluginManifest)`，否则 `load_manifest_from_mapping`。测试模块在顶层导入该类，而调用点在函数内导入；可能存在测试 reload 造成的类身份问题，需要单测、关联测试组、完整 suite 分别复现后定根因。[S10,S11]
+
+资料问题中，两个不同字节 WAV 的来源 ID 和 hash 断言在引擎链断言前已执行；断言之后的检查不能据未执行日志宣称通过。保留原始资产区分、来源链和产品契约再决定改实现还是改过时的期望。[S12]
+
+### A-02：UI 分支的失败报告存在来源冲突，必须隔离处理
+
+run `35669953279` 元数据报告 UI head `4525564bc11be0eb6a88ecb780d882810201a57b` 的失败。job `106563962352` 日志显示 Ubuntu、`cd vnext && cargo test --workspace`，以及 `archeaxis-domain-learning` 中 `not_covered_items_do_not_penalize_mastery` 失败：
+
+`InvalidAnswerPayload("item pending: attempt answers must be item-bound")`
+
+但是本次同 SHA 直接读取 `.github/workflows/vnext-ci.yml` 得到的定义是：`name: vnext-ci`、Windows `cargo-test` job、仓库根 `cargo test --workspace --locked`。真实根 `crates/` tree 返回八个 crate，未列出 `archeaxis-domain-learning`；日志推导的 `vnext/crates/archeaxis-domain-learning/src/lib.rs` 内容接口返回 404。[S14–S16]
+
+**处置结论：CI 报告失败这一返回事实保留，但不能把该 Rust 测试故障直接认定为已绑定当前源码的回归。其级别为 `EVIDENCE_IDENTITY_MISMATCH`。** 必须重读 run、job attempt、checkout SHA、workflow SHA/ref、工作目录、构建前拷贝/生成行为与源树，匹配后才修。如果仍不匹配，应将这份日志隔离为不可用于当前验收的证据。禁止新建 `vnext/` 或该 crate 来迎合日志。
+
+UI 分支比较元数据还涉及学习 schema/fixtures、启动和来源存在性判断，因此不是纯颜色改动；34 文件清单只是比较结果，不能说已完整语义审阅 34 文件。[S13]
+
+### A-03：R6 状态仍未就绪，且状态 JSON 存在重复键
+
+新鲜读取 UI head 的 `docs/current/R6-STATE.json`：`overall_status=IN_PROGRESS`、`release_status=FROZEN`。A02/A16 为 owner decision 阻塞，多项 A04–A15 保留 PARTIAL/真实使用待验。不得用旧 subject_sha 或局部 smoke 抬升到当前交付资格。[S05]
+
+A10 对象内 `evidence_level` 出现两次，值相同。当前没有证据显示它导致功能数据错误，但 JSON 消费端可能只保留后一项；应删除重复键并增加拒绝重复键的状态文件检查，不要重写历史任务状态来“顺便刷绿”。[S05]
+
+### A-04：门禁要读有效 ruleset，不能只看 classic protection
+
+AAOS main 存在 active ruleset，禁止 non-fast-forward 和删除，required status context 为 `a0-gates`。所以不能说“main 没保护”。需要继续检查 `a0-gates` 是否真实汇总本次 Python/正式桌面必要检查；本次未完整读取该聚合逻辑，不能断言它已经失效。[S17]
+
+## 5. DESIGN-LAB：不重做第一条链路，但新 UI 还不能直接放行
+
+### D-01：已经存在的工作，必须保留
+
+当前 AUTHORITY 把 `Project → Brief → Reference → Direction → DesignSystem` 第一条全栈链路列为 CLOSED，并有 strict-TS、API/浏览器/打包等回归保护。此次读取了 AUTHORITY、AGENTS、authority-index、main 的九个 job 状态及 PR 新前端片段；这些支持“不是只写了 README”，但本次没有逐行独立复验整条后端链路。[S18–S21,S24]
+
+main run `35546749035` 九个 job conclusion 为 success；其中 Open Design host adapter job 内的依赖安装和 structural gate 步骤实际被条件跳过。Workbench browser E2E 则实际运行成功。成功的 job 名称不等于里面所有步骤运行，更不等于真实 Photoshop/Illustrator 验收。
+
+PR #135 head 的检查中，本次确认看到 Python 和 browser E2E success；接口 total_count=18，但显示内容截断，本报告不把未展开的 18 项全部标绿。[S23]
+
+### D-02：新 AppShell 登录可见性缺陷，独立最小逻辑复现已完成
+
+范围：PR #135 的 `apps/workbench/main.ts`，`mountAppShell().show()`。[S24]
+
+代码先按路由把 `login.hidden` 设为 true；返回工作台时又把该 DOM 可见性当作连接状态，令 `workspace.hidden=false`，却不恢复 login。
+
+显式初态为“未连接、登录可见、工作区隐藏”，序列为：
+
+| 动作 | login.hidden | workspace.hidden |
+|---|---:|---:|
+| 初始工作台 | false | true |
+| 点仪表盘 | true | true |
+| 返回工作台 | true | false |
+
+本包 `08_DESIGN_APPSHELL_MIN_REPRO.mjs` 在当前容器 Node v22.16.0 执行，预期安全断言失败，exit code=1；完整 stdout/stderr 在 `09_...RESULT.json`。这是抽取可见性赋值的最小逻辑复现，不是原 bundle 的浏览器 E2E，不证明后端鉴权被绕过。后端仍有 Bearer API 路径，不能把 UI 状态错误夸大成未授权访问。[S24]
+
+修复方向：连接/鉴权状态必须显式持有，不能由 `login.hidden` 反向推导；未连接导航后返回应恢复登录并隐藏 workspace。补真实浏览器用例，再允许合并候选。
+
+### D-03：异步路由读回存在串页风险，尚待产品浏览器复现
+
+多个 renderer 持有同一个 `route-view` DOM，await 后直接 `replaceChildren`。新 `show()` 没有 route generation、取消或 stale-response 判定。因而旧 dashboard 请求晚于 settings 返回时，可能把旧视图写回新路由。catch 错误路径也需要相同保护。[S24]
+
+此项是源码可推导的竞态风险，不是已观察到的用户数据泄露。测试需控制旧请求延迟，快速换路由，验证最后成功/失败响应都不会污染新视图；同时覆盖断开连接、重新连接、项目切换。已有主工作台 epoch/request 保护不能自动覆盖新 AppShell renderer。
+
+### D-04：12 路由不是 12 条完整业务能力
+
+实际新代码保留旧工作台，并新增四个真实 API 读回视图；另外七个槽位明确写着未开放：独立 projects、research、design-domains、creative-tools、deliverables、evidence、collaboration。状态机组件也明确只是契约可视化，不代表真实进度。[S22,S24]
+
+这是诚实的能力边界，不应为了补齐菜单虚构后端、KPI 或“已交付”状态。后续优先把当前已有任务/交付/证据能力通过服务合同连接到合适页面，不先造团队协作、第二画布或通用 Agent 系统。
+
+### D-05：真正剩余的是原生编辑产物与可恢复闭环
+
+AUTHORITY 的下一段是 `Reference / DesignSystem → DesignIR → 原生可编辑产物`，再加 reopen/readback、patch、幂等恢复、rights/preflight、独立人工质量验收。不能把 controlled-runtime E2 或控制路由矩阵当成 E3/E4。MiniMax Design 软件、H3 模型、ComfyUI 与 Adobe 宿主各自有能力和证据边界；不能推导“全家桶全部可控”。Comfy/H3/UIA 不是 Adobe M1 的强制前置。[S18,S20]
+
+## 6. 必须保留为待核验的范围
+
+| 范围 | 本次状态 |
+|---|---|
+| 用户未上传的 DESIGN 文件、真实本地工作树、Green 安装位置 | LOCAL_ONLY_UNVERIFIED |
+| 原始完整对话导出，包括全部 9/14–9/15 记录 | 检索到历史报告/摘要；未完成完整逐条覆盖 |
+| 两仓所有 blob、全部调用链、所有历史分支和 tags/releases | PARTIAL / NOT_COVERED；无全量百分比 |
+| 全部依赖漏洞/供应链/历史 secrets/许可证扫描 | NOT_RUN；现有 hygiene CI 不能替代全审 |
+| GitHub artifacts 下载、哈希和真实原生软件交付包读回 | 未完整进行 |
+| Windows 实机、Avalonia 交互、Adobe/Comfy/H3/MiniMax 真运行与人工验收 | 未执行 |
+| AAOS UI CI 与源树对应关系 | CONFLICT，验收隔离 |
+
+第一次 AAOS tree 读取曾出现与提交实际 tree 不一致的目录响应。此前关于缓存和大日志进入源码库的推断已撤回，**不作为本报告缺陷或清理授权**。后续审计必须按 commit→tree→blob 串接并记录接口截断，不能继续复用那份异常清单。
+
+## 7. 后续任务顺序
+
+`G0 本地与云端增量保全 → G1 历史/权威/全仓覆盖补齐与 CI 身份绑定 → A1 Python 阻塞 + D1/D2 UI 回归 → U1 B10 视觉/行为对账 → A2 正式桌面与学习/M0真实闭环 + D3 原生交付链 → G2 完整复核与 Owner review`
+
+在独立 worktree 中，AAOS 的 Python 修复与 DESIGN 的 UI 修复可以并行；但同一文件、共享 Canonical DB、账本和最终整合由单一责任人串行控制。不得因某个宿主、账号或 owner gate 阻塞而停止所有不依赖它的任务，也不得绕过该 gate 声称完成。
+
+## 8. 交付状态和来源
+
+本包为可执行交接，不是合并、推送、发布、目录迁移或接收许可的授权。本次未操作用户仓库写入。用 `10_TASKS.json` 对接既有任务 ID，不新建独立 mutable ledger。
+
+来源索引见 `11_SOURCE_INDEX.md`；机器记录见 `05_EVIDENCE_LEDGER.json`；逐项覆盖见 `06_AUDIT_COVERAGE.csv`。本包保存的是审计记录和关键复现，不声称包含所有原始云端日志或仓库备份。

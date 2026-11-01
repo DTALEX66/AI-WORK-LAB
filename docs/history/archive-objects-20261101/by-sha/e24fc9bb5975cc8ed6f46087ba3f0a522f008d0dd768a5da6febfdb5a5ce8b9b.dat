@@ -1,0 +1,300 @@
+# WORK-LAB TOP-LEVEL AUTHORITY
+
+**Authority ID:** `WORK-LAB-AUTHORITY-20260918-V1`  
+**Repository:** `DTALEX66/WORK-LAB`  
+**Authority level:** TOP / NORMATIVE  
+**Baseline at authority reset:** `main@803268da9dc356fe63f26b3b5405f724bc06b5b9`  
+**Frozen pre-authority corpus:** the same exact SHA is the immutable retrieval anchor for records removed from the default branch after this reset.
+
+> This is the first document every cloud GPT, Codex, Hermes, DSH, reviewer, audit agent, or future executor MUST read before auditing or modifying WORK-LAB.
+>
+> Historical conversations, handoffs, reports and taskpacks are evidence for intent/recovery only. They never override the latest explicit user decision, this document, the machine authority index, or current exact-SHA repository truth.
+
+## 1. Mandatory audit bootstrap
+
+Every WORK-LAB cloud audit MUST run in this order:
+
+1. Resolve current `origin/main` exact commit and tree.
+2. Read `WORK-LAB-AUTHORITY.md`.
+3. Read `.project/governance/authority-index.json`.
+4. Read `AGENTS.md`.
+5. Read the current taskpack named by `.project/governance/taskpack-authority-index.json`.
+6. Read `taskpacks/current/OPEN-TASK-REGISTER.md`.
+7. Read machine contracts relevant to the requested scope.
+8. Only then consult historical records explicitly identified by the authority index or frozen-history index.
+
+Forbidden audit behavior:
+- treating an old TaskPack/Handoff/README as current merely because it sounds newer;
+- rebuilding current architecture from historical fragments before reading current authority;
+- inferring authority from branch age, commit count, a historical “COMPLETE” label, or stale current-directory placement;
+- allowing an old branch-local README/taskpack to override current `main`;
+- promoting compile/unit/synthetic results into REAL runtime evidence;
+- using archived history as permission for external mutation.
+
+Precedence:
+
+```text
+latest explicit user decision
+> WORK-LAB-AUTHORITY.md
+> .project/governance/authority-index.json
+> current taskpack / current open-task register
+> AGENTS.md + current machine-readable contracts
+> current exact-SHA code + CI/runtime readback
+> historical conversations/taskpacks/handoffs/audits
+```
+
+## 2. Project identity
+
+WORK-LAB is the user's **client-neutral AI workflow / Agent Operations / governance / federation control plane**.
+
+It owns:
+- cross-software and cross-project workflow coordination;
+- Rules / Skills / plugins-MCP declarations / capability policy;
+- Task protocol, Task Ledger, receipts, checkpoints, leases and completion authority;
+- session and execution federation contracts;
+- configuration ownership, diff/apply/readback/rollback governance;
+- permissions, risk, budget and human-approval boundaries;
+- telemetry/canonical projections and strictly read-only observability;
+- software adapters and software/model/version impact adaptation;
+- Universal Workflow material handoff and receipt return;
+- radar/evolution/security/cleanup control-plane capabilities.
+
+It does not own:
+- Hermes/Codex/DSH or another agent's inference loop;
+- user credentials, provider secrets, private auth stores or browser data;
+- a second Agent runtime;
+- ArcheAxis knowledge/learning truth;
+- DESIGN-LAB design-domain assets/capabilities/specs;
+- external software internals;
+- a general chat product or prompt/response archive.
+
+Open Design client and DESIGN-LAB project are distinct identities.
+
+## 3. Canonical repository architecture
+
+Current active source surfaces are:
+
+```text
+packages/client-neutral-core/
+packages/contracts/
+services/
+integrations/
+config/
+apps/observer/
+apps/token-monitor/
+scripts/
+tests/
+.project/
+taskpacks/
+docs/
+```
+
+Legacy active-root names such as `00-governance/`, `10-workflow/`, `30-observer/`, `50-taskpacks/`, `80-evidence/`, `90-archive/` are historical only and MUST NOT be treated as current paths.
+
+The only project-owned runtime/evidence boundary is `.project-local/`.
+
+Hermes Home / Codex Home / DSH Home remain software-owned native locations; WORK-LAB must not absorb them into project runtime.
+
+## 4. Governance model
+
+Hard principle: **governance minimization**.
+
+Preferred structure:
+
+```text
+one global user rule
++ project delta
++ software adapter
++ on-demand skill
+```
+
+Do not create duplicate Task Ledgers, duplicate Authority systems, duplicate publish/sync engines, another Agent runtime, meta-governance loops, or long-lived shadow-main branches.
+
+One task has one writer. Parallel read-only review is allowed. Parallel writers require explicitly isolated ownership/worktrees.
+
+Observer is always read-only.
+
+## 5. Five-dimensional managed-software baseline
+
+Every managed software surface must preserve:
+
+1. one canonical official/native entry;
+2. working desktop/native entry when GUI exists;
+3. official baseline + user configuration, preserving unknown/user provider/model/auth state;
+4. lean, non-blocking rules/skills loaded on demand;
+5. task-level model policy, with provider/model/reasoning following the user's native selection and no global cost/rate cap by default.
+
+Pricing and usage claims require provider/model/currency/effective_at/source/quality. Missing values remain `UNKNOWN`, never fabricated as zero.
+
+## 6. Product frontend/backend architecture
+
+WORK-LAB **has a frontend**.
+
+Normative product direction:
+
+```text
+React + TypeScript + Vite
+        ↓
+Tauri 2 / Rust native desktop shell
+        ↓
+read-only Runtime Descriptor / Snapshot / SSE
+        ↓
+Python control plane / canonical store / adapters
+```
+
+Production frontend targets:
+- `apps/observer/frontend`
+- `apps/observer/src-tauri`
+
+`apps/observer/web` is legacy/static compatibility material until parity migration completes. It must not remain a second long-term production UI.
+
+Frontend must render backend truth rather than recreate business truth.
+
+Token Monitor is a specialist application pending capability convergence with Observer. Duplicate token/cost truth engines are not allowed long-term.
+
+## 7. Language architecture
+
+No full-repository Rust rewrite.
+
+| Layer | Normative language |
+|---|---|
+| Product UI | TypeScript + React |
+| Native desktop / native-sensitive boundary | Rust + Tauri |
+| Workflow/config/policy/adapters/orchestration | Python |
+| Cross-language truth | JSON Schema |
+| Bootstrap only | minimal PowerShell / Shell |
+
+Rust expands only where native Windows APIs, process identity, locking/fencing, IPC/security, packaging, or measured performance justify it.
+
+Every language migration is contract-first, parity-tested, rollbackable, and removes the superseded implementation after cutover.
+
+## 8. Configuration ownership
+
+Official standard + user state is the baseline.
+
+WORK-LAB may manage only declared overlay fields. Unknown or user-owned provider/model/auth/runtime state is preserved.
+
+Config writes require:
+
+```text
+discover
+→ effective config
+→ exact diff
+→ backup/recovery handle
+→ approval when required
+→ adapter write
+→ native readback
+→ verified commit or honest rollback/failure state
+```
+
+A plan is not a write. An apply callback returning is not a verified write. A write without readback is not verified success.
+
+## 9. Evidence truth
+
+Evidence levels:
+
+```text
+NO_EVIDENCE
+SIMULATED
+SYNTHETIC
+INTEGRATED
+REAL
+```
+
+REAL requires a verifiable evidence handle/identity and readback. Empty handles are invalid for REAL.
+
+Compile PASS ≠ behavior PASS. Unit PASS ≠ integration PASS. CI PASS ≠ Windows desktop PASS. Synthetic fixture ≠ external project. Command construction ≠ native side effect. Handler return ≠ completed execution.
+
+Unknown stays UNKNOWN.
+
+## 10. Git and delivery authority
+
+Permanent code authority is `main`.
+
+Normal delivery:
+
+```text
+short-lived branch
+→ PR
+→ exact-SHA CI
+→ independent review where required
+→ merge to main
+→ remove short-lived branch
+```
+
+No `r5`, `r6`, `main2`, long-lived `recovery-*`, or other shadow-main lines.
+
+The 2026-09-17 branch convergence is historical-complete and must not be reopened.
+
+Direct main push is not the normal delivery path and must not bypass required checks.
+
+## 11. Historical record policy
+
+Historical records are frozen, non-normative evidence.
+
+The default branch must not keep obsolete historical taskpack bodies mixed into `taskpacks/current/`.
+
+The frozen pre-cleanup corpus is retrieved by immutable ref:
+
+`803268da9dc356fe63f26b3b5405f724bc06b5b9`
+
+Cloud GPT audits MUST NOT bulk-search historical corpora by default. They may consult history only after the current authority identifies a specific unresolved historical question.
+
+Historical material cannot satisfy current Done-When unless current code/readback independently proves the claim.
+
+## 12. Normative authority surfaces
+
+Top-level human authority:
+- `WORK-LAB-AUTHORITY.md`
+
+Machine authority:
+- `.project/governance/authority-index.json`
+- `.project/governance/taskpack-authority-index.json`
+
+Execution rules:
+- `AGENTS.md`
+- `docs/decisions/global-execution-standard.md`
+
+Machine ownership/boundaries:
+- `.project/governance/projects.json`
+- `.project/governance/module-ownership.json`
+- `.project/governance/project-data-boundary.json`
+- `config/config-ownership.json`
+
+Current plan:
+- `taskpacks/current/WORK-LAB-UNIFIED-PRODUCT-CONVERGENCE-TASKPACK-20260918.md`
+
+Single open-task register:
+- `taskpacks/current/OPEN-TASK-REGISTER.md`
+
+## 13. Current unresolved work
+
+The current taskpack owns all remaining work. Core unresolved groups are:
+- authority-reference integrity and restoration of main CI enforcement;
+- mandatory NF/test discovery truth;
+- taskpack/current and repository/path convergence;
+- React/Tauri production-surface convergence;
+- endpoint descriptor, SSE, UNKNOWN/null/cost truth;
+- Observer Rust CI and Windows real E2E;
+- Token Monitor capability convergence;
+- Config transaction safety/readback truth;
+- REAL evidence binding;
+- Durable Inbox/outbox cross-process safety and exact ACK;
+- project isolation and usage/cost attribution;
+- session/execution/durable-worker effect truth;
+- language architecture / cross-language contract SSOT;
+- adapter/skill/model impact-diff adaptation;
+- Universal Workflow real external slices;
+- final Windows full-product E2E.
+
+Paid experiments and optional technology POCs do not block the core product.
+
+## 14. Authority change procedure
+
+This document changes only when:
+1. the user explicitly changes a project-level decision; or
+2. current exact-SHA implementation proves a documented fact obsolete and the change is accepted through the current taskpack.
+
+Every authority change must update this document, the machine authority index, and affected current task/open-task records, while preserving the old version in Git history.
+
+No subordinate document may silently redefine WORK-LAB.

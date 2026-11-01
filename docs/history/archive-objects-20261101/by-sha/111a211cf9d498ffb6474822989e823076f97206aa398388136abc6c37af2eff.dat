@@ -1,0 +1,451 @@
+# 三项目目录所有权与工作流软件边界审计
+
+> 审计日期：2026-09-01  
+> 审计对象：ArcheAxis、WORK-LAB、DESIGN-LAB 云端 `main`  
+> 审计方式：只读核验 Git 树、根级规则、忽略规则、当前摘要、治理配置、任务包、运行时路径引用和工具发现文件；未修改、提交或推送三个仓库。
+
+## 1. 最终裁决
+
+三个仓库当前的目录都能解释其历史演进，但**还不是最终正确的目录规范**。主要问题不是有没有 `.hermes`，而是以下四类对象混在了一起：
+
+1. 产品源码与产品数据模型；
+2. 项目治理契约、测试和发布证据；
+3. Hermes、Codex、DSH、Claude 等执行器的适配或发现文件；
+4. 本地缓存、日志、数据库、虚拟环境、构建输出和一次性证据。
+
+最终判断如下：
+
+| 问题 | 裁决 |
+|---|---|
+| 三个项目都应有“工作流软件目录”吗 | **不应。**只有 WORK-LAB 的产品领域本身就是工作流治理；另外两库只能有薄适配器，不应复制工作流运行时。 |
+| `.hermes/` 是项目产品根吗 | **不是。**它是当前约定的、位于项目根内且被 Git 忽略的本地执行沙箱。 |
+| `.hermes/` 是 Hermes 全局根吗 | **不是。**Hermes Home、用户配置、凭据和全局缓存应在仓库外。 |
+| `.hermes/` 里的内容归谁 | 内容按所在仓库归项目任务所有，但属于**临时运行数据**，不属于产品源代码；Hermes 只是可能的写入者之一。 |
+| 是否必须用 `.HERMES` | **不应。**当前规则写的是小写 `.hermes/`；Windows 虽通常大小写不敏感，Git 和其他系统并非如此。统一只认小写，随后迁移到中性名称。 |
+| 推荐长期名称 | 用受 Git 管理的 `.project/` 保存项目契约；用被忽略的 `.project-local/` 保存本地运行数据。 |
+| `.github/` 是否是“工作流软件目录” | 不是。它是 GitHub 的仓库级 CI、Issue、PR 和安全治理配置，跟踪它是正确的。 |
+| `.agents/`、`.codex/`、`.claude/` 能否入库 | 真实用户状态不得入库；必要的项目发现文件只能作为可生成投影入库，并且要有中性权威源、哈希和漂移测试。 |
+
+一句话边界：
+
+> 项目决定“做什么、数据是什么、怎样验收”；WORK-LAB 决定“怎样治理和编排”；Hermes/Codex/DSH 只是“谁来执行”。执行器不能反过来拥有项目目录和项目真相。
+
+## 2. 云端事实基线
+
+| 项目 | 审计 SHA | 当前一级目录特征 |
+|---|---|---|
+| ArcheAxis | `db13d0564ac2971d4b1eb3e3a5bff9c9256af313` | 产品源码、两套前端/桌面壳、知识资料、文档、报告、`.worklab`、`.codex.example` 并存 |
+| WORK-LAB | `e5231f0f605d1515ed12958267b394c9de1da20c` | 编号式治理、工作流、Observer、知识暂存、任务包、归档结构；另有 `.agents` 投影 |
+| DESIGN-LAB | `33488c882d267d683250ae684caf28d0916d9099` | 主能力树、设计系统、MiniGame fixture、`project-memory`、大量第三方 intelligence/knowledge 源码并存 |
+
+## 3. 目录对象必须分成四类
+
+| 类别 | 典型内容 | 是否入 Git | 权威性 | 推荐位置 |
+|---|---|---:|---|---|
+| A. 产品与项目契约 | 前后端源码、schema、迁移、测试、ADR、产品配置 | 是 | 项目真相 | `apps/`、`packages/`、`services/`、`config/`、`docs/`、`tests/`、`.project/` |
+| B. 执行器适配/投影 | Codex/Hermes/DSH 的命令模板、发现文件、安装描述 | 可选 | 非权威；必须由 A 生成或对照 | `integrations/executors/`、`projections/` |
+| C. 项目本地运行数据 | 日志、缓存、DB、下载、浏览器数据、构建、临时证据、worktree | 否 | 不构成云端完成证据 | `.project-local/` |
+| D. 工具全局状态 | Hermes Home、Codex Home、用户账号、凭据、跨项目缓存 | 否，且不得放入仓库 | 工具/用户私有状态 | `%APPDATA%`、`%LOCALAPPDATA%` 或工具自己的外部 Home |
+
+### 3.1 “项目内”不等于“应该入库”
+
+`.hermes/task-runtime/` 位于项目 Git 根下面，所以它是**项目作用域的本地数据**；但 `.gitignore` 排除了它，所以它不是仓库交付内容。这个设计的合理部分是防止项目数据散落到系统临时目录或其他项目；不合理部分是用某个执行器的名字代表所有执行器共享的沙箱。
+
+### 3.2 建议的新统一合同
+
+受 Git 管理：
+
+```text
+.project/
+├─ manifest.yaml               # repo_id、产品边界、schema 版本
+├─ governance/
+│  ├─ gates.yaml               # 稳定 Gate ID
+│  ├─ path-risk.yaml           # 路径风险与测试映射
+│  └─ data-ownership.yaml      # 数据 Owner、真相源、同步/删除规则
+└─ projections.yaml            # 允许生成哪些工具投影及其权威源
+```
+
+Git 忽略：
+
+```text
+.project-local/
+├─ runtime/                    # 任务运行目录、临时数据库
+├─ artifacts/                  # 原始执行证据、截图、读回结果
+├─ cache/                      # 可再生缓存、模型/包下载缓存
+├─ build/                      # 编译、打包、安装器 staging
+├─ logs/                       # 原始日志
+├─ tmp/                        # 一次性文件
+├─ env/                        # venv、node/cargo 临时环境
+└─ worktrees/                  # 隔离 Git worktree
+```
+
+受 Git 管理的执行器适配：
+
+```text
+integrations/
+└─ executors/
+   ├─ hermes/
+   ├─ codex/
+   ├─ dsh/
+   └─ opencode/
+
+projections/                   # 仅在工具强制根级发现时使用
+├─ .agents/
+└─ README.md                   # 标明 GENERATED、源文件、哈希、生成命令
+```
+
+工具若只能扫描根级 `.agents/`，可以保留根级投影，但要满足：
+
+- 真正权威文件位于中性目录；
+- 根级文件带 `GENERATED — DO NOT EDIT`；
+- CI 校验源文件与投影哈希一致；
+- 不含密钥、账号、本机绝对路径和用户偏好；
+- 删除投影后，项目本身仍可构建、测试和运行。
+
+### 3.3 项目根数据围栏与零外溢规则
+
+三个项目的**项目根目录就是各自的数据围栏**。所有由任务产生的源码副本、运行数据、缓存、构建、日志、浏览器状态、中间文件和原始证据，默认只能写入本项目根下的 `.project-local/`。禁止写入系统 Temp、用户目录、桌面、下载目录、其他项目、其他盘符、UNC 网络路径或工具全局 Home。
+
+```text
+<repo>/
+└─ .project-local/
+   ├─ worktrees/                # 项目内独立 Git worktree
+   │  └─ <task-id>/
+   ├─ runs/
+   │  └─ <task-id>/<attempt-id>/
+   │     ├─ input/
+   │     ├─ work/
+   │     ├─ output/
+   │     ├─ evidence/
+   │     ├─ logs/
+   │     ├─ tmp/
+   │     └─ tool-state/
+   ├─ cache/
+   ├─ toolchains/
+   ├─ build/
+   ├─ artifacts/
+   └─ locks/
+```
+
+源码 worktree 与运行沙箱必须分离，但两者都留在项目根的数据围栏内。本地可行性验证已经确认：Git 可以在被忽略的 `.project-local/worktrees/<task-id>/` 下建立独立 worktree，主工作树仍保持 clean。
+
+每个执行任务必须由项目启动器创建独立 `task-id + attempt-id`，并只对子进程设置项目内路径：
+
+- `TEMP`、`TMP` → 本次 `runs/.../tmp/`；
+- Python/uv/pip、Node/npm/pnpm、Cargo/Rust、Playwright、Hugging Face、Torch 等缓存 → `.project-local/cache/`；
+- 编译目标和 staging → `.project-local/build/`；
+- 浏览器 profile、临时数据库和工具会话 → 本次 `runs/.../tool-state/`；
+- 不得重写系统级 `HOME`，不得永久修改用户环境变量。
+
+路径门禁必须在写入前执行 canonical path 校验：
+
+1. 解析 `..`、绝对路径、盘符、UNC 和大小写；
+2. 最终目标必须仍位于当前项目的 canonical root 下；
+3. 拒绝可把写入重定向到围栏外的符号链接、junction 和 reparse point；
+4. 目标盘符必须与项目根盘符一致；
+5. 其他项目即使同在 `D:\All projects` 下，也默认不可读写；
+6. 外部输入必须以只读方式导入并复制到本次 `input/`，记录来源和哈希后再处理；
+7. 第三方未知程序进入严格模式：只映射当前项目根、默认断网，运行后执行外溢审计。
+
+这是一条“默认零外溢”规则，而不是声称所有第三方二进制天然不会外写。对不遵守环境重定向的程序，必须使用 Windows Sandbox、受限容器或等价文件系统隔离；运行结束后检查系统 Temp、用户 profile、其他项目根和其他盘符是否出现本次任务指纹。发现外溢即判定任务失败并隔离产物。
+
+跨项目任务必须拆成三个项目子任务。WORK-LAB 只保存跨项目任务 ID、状态、exact SHA、证据哈希和位置指针；ArcheAxis 的运行沙箱只能在 ArcheAxis 根内，DESIGN-LAB 的运行沙箱只能在 DESIGN-LAB 根内。禁止以 WORK-LAB、Hermes 或其他工具的公共目录代替目标项目自己的沙箱。
+
+## 4. ArcheAxis 目录审计
+
+### 4.1 当前正确之处
+
+- `.github/` 作为仓库 CI/治理目录是正确的。
+- `.hermes/` 和真实 `.codex/` 已被 `.gitignore` 排除，原则正确。
+- 运行时日志、缓存、数据库和临时证据不进入 Git 的规则明确。
+- `.worklab` 目前保存的是项目自己的 Gate 和路径风险声明，不要求 WORK-LAB 在线才能运行。
+
+### 4.2 当前问题
+
+| 现状 | 问题 | 裁决 |
+|---|---|---|
+| `.worklab/` 保存项目治理契约 | 内容归 ArcheAxis，但名称让人误以为 WORK-LAB 拥有项目真相 | 迁移到 `.project/governance/`；WORK 通过公开 schema 读取 |
+| `.codex.example/` | 把某个执行器放在项目根发现面 | 移至 `integrations/executors/codex/example/`，或由中性 manifest 生成 |
+| `codex-taskpacks/` | 任务交付按执行器命名 | 迁移到 `docs/taskpacks/`；任务包不得绑定某个执行器 |
+| `docs/HANDOFF_*` 大量平铺 | 当前权威、历史交接和一次性执行摘要混在一起 | 当前摘要进 `docs/current/`，历史进 `docs/history/handoffs/` |
+| `app/`、`shared/`、`frontend/`、`OSUI/`、`desktop/`、`src-tauri/` 并存 | 产品边界和壳层边界不直观，容易形成多套权威前端 | 收敛到 `apps/windows/` + `services/core/` + `packages/`；迁移期间明确唯一生产入口 |
+| `.hermes/portable-*`、toolchains、desktop-runtime 等历史用法 | 项目缓存、可分发运行时、构建工具链全塞进一个执行沙箱 | 在 `.project-local/` 下分成 `build/cache/runtime/artifacts`，不得把可发布产品只留在本地沙箱 |
+
+`app/agent/` 如果表达的是 ArcheAxis 产品内部的学习/知识 Agent 能力，可以保留为产品模块；判断标准不是目录名里是否有 agent，而是它是否承载 ArcheAxis 的领域逻辑。它不得变成 Hermes/Codex 的私有状态目录。
+
+### 4.3 ArcheAxis 目标目录
+
+```text
+ArcheAxis/
+├─ .project/
+├─ .github/
+├─ apps/
+│  └─ windows/                 # 唯一生产 Windows 客户端与桌面壳
+├─ services/
+│  ├─ api/                     # 前后端 API 边界
+│  ├─ ingestion/               # 多格式接入/转换
+│  ├─ evidence/                # Source/Anchor/Evidence/Provenance
+│  └─ learning/                # Human/Machine learning state
+├─ packages/
+│  ├─ contracts/               # schema、事件、错误码
+│  ├─ domain/                  # 领域模型
+│  ├─ ui/                      # 统一 UI contract/components
+│  └─ adapters/                # Docling、ASR、模型、存储等适配
+├─ integrations/
+│  └─ executors/               # Hermes/Codex/DSH 薄适配
+├─ knowledge-assets/           # 许可明确、最小化的项目知识资产
+├─ config/
+├─ migrations/
+├─ tests/
+├─ docs/
+│  ├─ architecture/
+│  ├─ decisions/
+│  ├─ current/
+│  ├─ taskpacks/
+│  └─ history/
+├─ reports/
+│  ├─ release/                 # 可复核、净化、与 SHA 绑定的稳定证据
+│  └─ security/
+└─ .project-local/             # ignored
+```
+
+## 5. WORK-LAB 目录审计
+
+### 5.1 工作流目录在 WORK-LAB 是否正确
+
+**概念上正确。**WORK-LAB 本身就是工作流治理、策略、适配器、审批、回执和只读观测产品，因此 `10-workflow/` 不是外来工具污染，而是产品核心之一。
+
+但当前把产品能力、某个执行器资产、根级发现投影和本地运行数据混在同一命名空间，仍需重构。
+
+### 5.2 当前正确之处
+
+- `00-governance`、`10-workflow`、`30-observer` 表达了控制面、执行协作和观测面的产品分层。
+- Hermes、Codex、DSH、Open Design 被定义为可替换 Adapter，而不是领域模型。
+- `.hermes/`、`80-evidence/`、缓存和构建产物已总体被忽略。
+- `50-taskpacks/` 作为版本化任务契约可以入库。
+
+### 5.3 当前问题
+
+| 现状 | 问题 | 裁决 |
+|---|---|---|
+| `10-workflow/.../codex-assets/` | 把一个执行器的规则、skills、profile 混入通用工作流模块 | 拆成 `integrations/executors/codex/` 与中性 `packages/policy/` |
+| Hermes 专用脚本、`bin/hermes-npx` 等散布 | 适配器与核心源码边界不清 | 统一进入 `integrations/executors/hermes/`；核心不得 import 私有 Hermes 状态 |
+| 根 `.agents/skills/work-lab-workflow/SKILL.md` | 是工具发现投影，但没有清晰可验证的中性权威源 | 建立 canonical source，再生成根投影并校验哈希 |
+| `10-workflow/config/.backups/hermes-*.json` 7 个文件被跟踪 | 配置备份不应进入 Git；当前 ignore 规则未覆盖嵌套目录 | P0：停止跟踪、加递归忽略、扫描历史；当前文件未发现敏感键但规则仍违规 |
+| `.hermes/task-runtime` 被所有执行器共用 | 功能合理，名字把公共运行边界绑定 Hermes | 迁移到 `.project-local/runtime` |
+| `40-knowledge/` | 不是 WORK 的长期领域所有权，却容易被当成正式产品知识库 | 明确为 `knowledge-staging/`，状态 `DEFERRED_STAGING`；不得被生产运行时直接引用 |
+| `50-taskpacks/` 与 `90-archive/` 有多份历史交接 | 当前执行包和历史包可能争夺权威 | `taskpacks/current/` 只留当前包；其余进入 `docs/history/taskpacks/`，用索引标状态 |
+
+### 5.4 WORK-LAB 目标目录
+
+```text
+WORK-LAB/
+├─ .project/
+├─ .github/
+├─ apps/
+│  ├─ control-surface/          # 可写治理控制面
+│  └─ observer/                 # 严格只读真值观测面
+├─ services/
+│  ├─ authority/                # 权威链、lease、single-writer
+│  ├─ orchestration/            # 编排与状态机，不复制外部执行引擎
+│  ├─ policy/                   # 预算、审批、权限、风险
+│  └─ receipts/                 # 事件、回执、证明链
+├─ packages/
+│  ├─ contracts/
+│  ├─ sdk/
+│  └─ client-neutral-core/
+├─ integrations/
+│  ├─ executors/
+│  │  ├─ hermes/
+│  │  ├─ codex/
+│  │  ├─ dsh/
+│  │  └─ opencode/
+│  ├─ engines/                  # Dagu 等外置引擎适配
+│  └─ projects/                 # ArcheAxis/DESIGN-LAB 项目合同适配
+├─ projections/                 # 必要的工具发现输出；非权威
+├─ taskpacks/
+│  └─ current/
+├─ knowledge-staging/           # 临时隔离，不是正式知识真相源
+├─ config/
+├─ tests/
+├─ docs/
+│  ├─ architecture/
+│  ├─ decisions/
+│  ├─ current/
+│  └─ history/
+├─ reports/
+│  └─ release/
+└─ .project-local/              # ignored
+```
+
+WORK-LAB 可以管理“适配 Hermes 的代码”，但不能管理 Hermes Home；可以生成 Hermes 项目投影，但不能要求三个产品的领域代码都在 `.hermes` 下编写。
+
+## 6. DESIGN-LAB 目录审计
+
+### 6.1 工作流软件目录在 DESIGN-LAB 是否正确
+
+**作为产品根不正确；作为薄适配正确。**DESIGN-LAB 的领域是设计判断、生产、质量门、资产与宿主软件协作，不是通用 Agent Runtime 或工作流引擎。
+
+`design-lab/adapters/agents/{codex,hermes}` 这类空适配占位可以存在，但不能成为 DESIGN-LAB 的运行真相。Open Design、Adobe、Figma、Blender、Inkscape 等属于 Host/Adapter；WORK-LAB、Hermes、Codex 属于 Executor/Control Adapter。
+
+### 6.2 当前正确之处
+
+- 根级规则明确 DESIGN-LAB 不是通用 Agent runtime、模型网关或第二个完整设计软件。
+- Open Design 被作为主要宿主，Adobe/Blender 等按适配器接入，方向正确。
+- 根 `.hermes/` 已被忽略，没有把真实 Hermes 用户状态提交到云端。
+- 许多第三方项目已有 `SOURCE.md` 和许可证记录，具备继续治理的基础。
+
+### 6.3 当前问题
+
+| 现状 | 问题 | 裁决 |
+|---|---|---|
+| `design-lab/` 下同时放 atoms、skills、plugins、adapters、intelligence、knowledge、exports | 产品源码、可发现技能、第三方源码和生成物的边界过密 | 拆成 `packages/capabilities`、`integrations`、`vendor`、`assets`、`.project-local/artifacts` |
+| 232 个 tracked `AGENTS/CLAUDE/SKILL/.agents/.claude` 类文件 | 第三方指令可能被 IDE/Agent 递归发现；“文档声明 inert”不足以物理隔离 | 第三方完整树迁至 `vendor/sources/`，工具扫描明确排除；活跃技能只从 allowlist 生成 |
+| `design-lab/knowledge` 约 22.3 MB/1474 文件；`intelligence` 约 15.6 MB/740 文件 | 收集仓、产品能力和第三方 fork 混合，迭代成本与供应链风险上升 | 候选进 `vendor/sources` 或 `research/candidates`；吸收后的最小能力进入 `packages` |
+| `project-memory/` | 内容实际是产品定义、边界、路线图和历史决策，不是易失 memory | 迁至 `docs/architecture`、`docs/decisions`、`docs/current`、`docs/history` |
+| `minigame-runtime/` | 名称与既定“游戏视觉 fixture、非独立产品线”冲突 | 改为 `fixtures/domains/game-visual/`；冻结为测试/评估资产 |
+| `design-system/08_PROMPTS/{codex,hermes,...}` | 同一设计意图按工具复制，容易漂移 | 建中性 prompt/spec 权威源，再生成工具投影 |
+| `design-lab/exports/` 被跟踪 | 导出物与产品源码混杂；部分交付物可能大且可再生 | 可发布 fixture 小样入 `fixtures/expected`；真实导出进 `.project-local/artifacts` 或正式 Release |
+
+第三方 `SKILL.md` 并不天然有害；问题是完整上游项目被放在活跃产品树并带有工具可识别文件。许可证登记、哈希和一份 `THIRD_PARTY_ISOLATION.md` 不能替代物理隔离与扫描 allowlist。
+
+### 6.4 DESIGN-LAB 目标目录
+
+```text
+DESIGN-LAB/
+├─ .project/
+├─ .github/
+├─ apps/
+│  └─ workbench/                # Brief、任务、审核、质量、交付工作台
+├─ services/
+│  ├─ jobs/                     # 设计作业状态，不复制通用工作流引擎
+│  ├─ review/                   # 强制人工 Gate、批注、比较
+│  ├─ quality/                  # 可解释质量检查
+│  └─ delivery/                 # 预检、打包、来源与许可证
+├─ packages/
+│  ├─ contracts/
+│  ├─ capabilities/             # 已资格化并吸收的设计能力
+│  ├─ design-system/
+│  ├─ asset-model/
+│  └─ ui/
+├─ integrations/
+│  ├─ hosts/                    # Open Design、Adobe、Figma、Blender、Inkscape
+│  ├─ canvases/                 # OpenPencil 等
+│  ├─ generators/               # ComfyUI/模型等
+│  └─ executors/                # Hermes/Codex/WORK 薄适配
+├─ vendor/
+│  ├─ sources/                  # 固定 URL/SHA/license 的惰性上游快照
+│  └─ patches/                  # 明确维护的补丁，不直接编辑 source snapshot
+├─ research/
+│  └─ candidates/               # 尚未资格化，不能出现在能力索引
+├─ assets/
+│  ├─ canonical/
+│  └─ licensed-fixtures/
+├─ fixtures/
+│  └─ domains/game-visual/      # 原 minigame-runtime
+├─ config/
+├─ tests/
+├─ docs/
+│  ├─ architecture/
+│  ├─ decisions/
+│  ├─ current/
+│  ├─ taskpacks/
+│  └─ history/
+├─ reports/
+│  └─ release/
+└─ .project-local/              # ignored
+```
+
+## 7. 当前目录到目标目录的统一迁移映射
+
+| 当前路径/概念 | 目标 | 迁移说明 |
+|---|---|---|
+| `<repo>/.hermes/task-runtime/` | `<repo>/.project-local/runtime/` | 兼容读取一段时间；新写入只到新路径 |
+| `<repo>/.hermes/task-artifacts/` | `<repo>/.project-local/artifacts/` | 原始证据不入 Git；净化后的稳定证据可提升到 `reports/release/` |
+| `<repo>/80-evidence/` | `.project-local/artifacts/evidence/` | 若为原始/私有证据；公开稳定证据另行提升 |
+| ArcheAxis `.worklab/` | ArcheAxis `.project/governance/` | 数据仍归 ArcheAxis；WORK 只读消费公开合同 |
+| ArcheAxis `.codex.example/` | `integrations/executors/codex/example/` | 根不再绑定某客户端 |
+| ArcheAxis `codex-taskpacks/` | `docs/taskpacks/` | 执行器无关化 |
+| WORK `codex-assets/` | `integrations/executors/codex/` + `packages/policy/` | 拆出中性逻辑和客户端投影 |
+| WORK 根 `.agents/` | 由 `integrations`/`projections` 生成 | 保留兼容，但禁止成为唯一权威源 |
+| WORK `40-knowledge/` | `knowledge-staging/` | 先改状态与 import 门禁；是否物理迁移需用户批准 |
+| DESIGN `project-memory/` | `docs/{architecture,decisions,current,history}` | 按文档语义拆分 |
+| DESIGN `minigame-runtime/` | `fixtures/domains/game-visual/` | 不再暗示独立 Runtime 产品 |
+| DESIGN 第三方完整仓 | `vendor/sources/<name>@<sha>/` | 只读快照、许可证、来源、补丁、退出方式齐全 |
+| DESIGN 工具化 prompts | 中性 `packages/capabilities` → 工具投影 | 单一权威源、多客户端生成 |
+
+## 8. 迁移任务包
+
+目录迁移不应一次性大搬家。先建立合同和兼容层，再移动，避免破坏 CI、文档链接和外部适配器。
+
+### G0：冻结与登记（1—2 天）
+
+| ID | 动作 | 验收 |
+|---|---|---|
+| DIR-G0-01 | 三仓新增目录所有权清单：Owner、是否入 Git、读写者、保留期、删除规则 | 所有一级目录均有且只有一个分类 A/B/C/D |
+| DIR-G0-02 | 声明 `.hermes` 为 `LEGACY_PROJECT_LOCAL_RUNTIME`，禁止称为 Hermes Root | 根规则、README、任务包口径一致 |
+| DIR-G0-03 | CI 检查 `.hermes/.project-local/.codex` 无 tracked 文件 | `git ls-files` 门禁为 0 |
+| DIR-G0-04 | CI 检查第三方 `AGENTS/CLAUDE/.agents/.claude` 不进入活跃发现 allowlist | DESIGN 的 232 个文件有明确 active/inert 分类，默认 inert |
+
+### G1：先修真实违规（1—3 天）
+
+| ID | 项目 | 动作 | 验收 |
+|---|---|---|---|
+| DIR-G1-W01 | WORK | 停止跟踪 7 个 `10-workflow/config/.backups/hermes-*.json`；增加任意深度 `.backups/` 忽略与 secret history scan | fresh clone 不含备份；历史扫描有回执；当前文件虽无敏感键也不得继续保留 |
+| DIR-G1-W02 | WORK | 为根 `.agents` 建立中性权威源和生成器 | 删除根投影后可一条命令重建；CI 比对哈希 |
+| DIR-G1-D01 | DESIGN | 将第三方工具指令从活跃发现面隔离；先用 allowlist 和扫描排除，后物理迁移 | 根工具只能加载批准的 DESIGN 自有能力 |
+| DIR-G1-A01 | ArcheAxis | 禁止新任务包继续写 `codex-taskpacks` 或新建工具命名产品根 | 新文件只进入 `docs/taskpacks` 或 `integrations/executors` |
+
+### G2：建立中性目录（3—5 天）
+
+1. 三仓加入 `.project/` schema 和 `.project-local/` ignore。
+2. 运行器按顺序解析：新 `.project-local/` → 旧 `.hermes/` 只读兼容。
+3. 不自动搬运或删除旧本地 `.hermes/`；生成迁移清单，让用户确认后再复制/清理。
+4. 工具 Home 永远不进入自动迁移范围。
+
+### G3：逐仓结构收敛（1—3 周）
+
+- ArcheAxis：先冻结唯一生产 Windows 前端与 API 边界，再移动 `apps/services/packages`；不要在目录重命名时顺便重写领域逻辑。
+- WORK-LAB：先把核心、适配器、投影拆开，再调整编号式目录；Control 与 Observer 继续物理分离。
+- DESIGN-LAB：先迁第三方 vendor 与 project-memory，再迁能力包；MiniGame 只做路径/身份迁移，不扩展功能。
+
+### G4：删除兼容口（两个稳定 Release 后）
+
+- 新代码和 CI 不再写 `.hermes/`；
+- 文档中的当前路径全部改为 `.project-local/`，历史报告保持原文并标记 legacy；
+- 删除旧路径兼容前，验证 Windows 大小写、长路径、空格路径、fresh clone、升级安装和回滚；
+- 只有用户授权后，才能删除本机旧 `.hermes` 数据。
+
+## 9. 强制门禁
+
+每个仓库至少加入以下自动检查：
+
+1. **Tracked runtime gate**：`.project-local/`、`.hermes/`、真实 `.codex/`、凭据、日志、DB、venv 不得被跟踪。
+2. **Instruction discovery gate**：根规则以外的 `AGENTS.md`、`CLAUDE.md`、`SKILL.md`、`.agents/`、`.claude/` 必须命中 active allowlist 或 inert vendor allowlist。
+3. **Projection drift gate**：客户端投影必须可重建、带来源与哈希，禁止手改。
+4. **Vendor gate**：每个第三方快照记录 URL、精确 SHA、许可证、用途、调用位置、补丁、退出与回滚。
+5. **Import boundary gate**：ArcheAxis/DESIGN 不得 import WORK/Hermes/Codex 私有模块；WORK 核心不得 import某一执行器实现。
+6. **Evidence promotion gate**：原始证据先进入 ignored 目录；只有净化、可复核、带任务 ID/commit SHA/哈希/环境摘要的证据才能进入 `reports/release/`。
+7. **Fresh clone gate**：全新 Linux 与 Windows checkout 都应 clean；不能因换行或路径大小写立即出现 dirty tree。
+8. **Standalone gate**：禁用 Hermes、Codex 或 WORK 后，ArcheAxis 和 DESIGN 仍能独立构建、测试和运行自己的核心产品。
+9. **No-spill gate**：任务结束后扫描系统 Temp、用户 profile、其他项目根和其他盘符的任务指纹；检测到未授权写入即 FAIL，产物不得提升。
+
+## 10. 不应采用的做法
+
+- 不要把三个仓库全部放到 Hermes Home 下，以此表示“由 Hermes 管理”。
+- 不要规定所有人必须在 `.HERMES` 里修改产品源码。
+- 不要把 `.hermes/` 提交到 Git 作为完成证据。
+- 不要让每个执行器各复制一份项目规则、prompt 和 taskpack，并人工同步。
+- 不要因为第三方目录有许可证就自动允许其 `AGENTS.md`、`CLAUDE.md` 或安装脚本进入控制链。
+- 不要在一次提交里同时移动数千文件、改 import、换框架和改变产品行为。
+- 不要自动删除旧 `.hermes/`，其中可能包含用户 WIP、证据、数据库、浏览器状态或昂贵缓存。
+
+## 11. 最终回答
+
+当前三个仓库都有与工作流工具相关的目录，**不能一概判断为正确**：
+
+- WORK-LAB：工作流是产品本身，保留工作流核心，但要把中性核心、执行器适配、工具投影和本地运行数据拆开。
+- ArcheAxis：工作流工具目录只能是可替换适配或历史任务材料；知识、证据、学习状态、前后端和 Windows 产品不得归 Hermes/Codex/WORK 所有。
+- DESIGN-LAB：工作流/Agent 目录只能是设计宿主与执行器的薄适配；大量第三方技能仓必须物理隔离，不能与活跃产品能力混放。
+
+`.hermes/` 的准确含义是：**项目根内、Git 忽略、项目作用域的 legacy 本地执行沙箱**。它既不是项目产品根，也不是 Hermes 全局根。长期应迁移成中性的 `.project-local/`；真正受版本控制的项目治理合同放在 `.project/`。这样 Hermes、Codex、DSH、OpenCode 或未来其他执行器都可以替换，而三个产品的目录、数据和架构不会随工具变化。

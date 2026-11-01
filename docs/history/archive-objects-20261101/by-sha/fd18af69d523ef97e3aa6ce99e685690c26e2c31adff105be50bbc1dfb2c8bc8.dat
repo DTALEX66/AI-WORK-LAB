@@ -1,0 +1,1121 @@
+# MINIGAME《异常电梯》V5｜夜班协议
+## HERMES / CODEX 总执行命令（完整交付版）
+
+> 仓库：`DTALEX66/MINIGAME`
+> 本地建议路径：`D:\All projects\MINIGAME`
+> 当前主线：Game001《异常电梯》
+> 暂不处理：小游戏合集、第二个独立游戏、新皮肤扩张、商城、排行榜、Unity/Cocos 重构
+
+---
+
+# 0. 总目标
+
+在现有 V4“竖屏大 CCTV + 楼层/人数/门状态三项读数 + 放行/封锁双按钮”的基础上，升级为 V5「夜班协议」。
+
+V5 核心体验：
+
+> 阅读本班规则 → 观察 CCTV → 对比主控数据 → 必要时查证 → 放行或封锁 → 处理高危事件 → 承担后续结果。
+
+禁止把游戏重新做回旧式七按钮控制台。
+
+---
+
+# 1. 执行安全约束
+
+必须遵守：
+
+1. 只允许修改当前仓库目录内文件。
+2. 禁止删除或修改仓库外的任何文件、磁盘、注册表、系统环境。
+3. 禁止运行清空磁盘、递归删除父目录、删除其他项目的命令。
+4. 删除文件前必须先列出目标路径并确认目标位于当前仓库内。
+5. 所有改动必须使用独立分支。
+6. 每个阶段完成后必须运行测试。
+7. 不得伪造测试、真机、发布、广告或审核结果。
+8. 真实 AppID、广告位、签名、账号凭据只能写入 ignored 私有配置，不得提交。
+9. 不得把生成图中的伪文字、固定楼层、答案提示直接作为正式运行素材。
+10. 不得在未完成真实平台测试前声称“已上线”或“已正式商业接入”。
+
+---
+
+# 2. 基线同步命令
+
+在 Windows PowerShell 执行：
+
+```powershell
+Set-Location "D:\All projects\MINIGAME"
+
+git status
+git fetch --all --prune
+git checkout main
+git pull --ff-only origin main
+
+git rev-parse --short HEAD
+git log -5 --oneline
+
+npm install
+npm test
+npm run verify:summary
+```
+
+确认当前主线无未提交改动后创建分支：
+
+```powershell
+git checkout -b feat/game001-v5-night-protocol
+```
+
+如果本地存在未提交内容：
+
+```powershell
+git status
+git diff
+```
+
+先停止执行，不允许自动覆盖、自动 reset 或删除用户未提交内容。
+
+---
+
+# 3. 当前正式版本边界
+
+## 3.1 正式玩家版本
+
+正式玩家版本以：
+
+```text
+微信 / 抖音 Canvas V4
+```
+
+为主。
+
+正式基础玩法只允许：
+
+```text
+放行
+封锁
+```
+
+非巡检阶段显示：
+
+```text
+等待下一班
+系统处置中
+```
+
+## 3.2 H5 定位
+
+当前 H5 旧驾驶舱暂时定义为：
+
+```text
+开发调试模式 / Debug Console
+```
+
+本轮不要求把 H5 完整重做成正式 V5，但必须：
+
+1. 在页面明显标注“开发调试模式”。
+2. 不再使用 H5 截图作为正式商店素材。
+3. README 明确正式玩家版本为 Canvas。
+4. 所有核心逻辑必须尽量放在共享 `src/`，不能只写死在 Canvas 渲染层。
+
+---
+
+# 4. V5 核心玩法结构
+
+正式循环：
+
+```text
+夜班协议
+    ↓
+生成正常班次或异常班次
+    ↓
+玩家观察 CCTV
+    ↓
+核对楼层 / 人数 / 门状态
+    ↓
+可选：切摄像头 / 热源扫描 / 三秒回放
+    ↓
+放行 或 封锁
+    ↓
+普通事件自动处理
+高危事件进入处置选择
+    ↓
+决定后续污染、资源和事件链
+    ↓
+局后因果复盘
+```
+
+---
+
+# 5. 第一阶段：异常内容协议
+
+新增建议目录：
+
+```text
+src/content/
+├── protocols.json
+├── normalShifts.json
+├── anomalies.json
+├── eventChains.json
+└── endings.json
+
+schemas/
+├── protocol.schema.json
+├── normal-shift.schema.json
+├── anomaly-content.schema.json
+├── event-chain.schema.json
+└── ending.schema.json
+
+src/
+├── protocolEngine.js
+├── evidenceEngine.js
+├── investigationTools.js
+├── eventChainEngine.js
+├── contamination.js
+├── highRiskResolution.js
+├── runDirector.js
+└── debriefTimeline.js
+```
+
+## 5.1 异常数据结构
+
+每个异常至少包含：
+
+```json
+{
+  "id": "weight_mismatch",
+  "name": "载重矛盾",
+  "difficulty": 1,
+  "duration": 5,
+  "decision": "anomaly",
+  "screenData": {
+    "floor": 3,
+    "passengers": 1,
+    "door": "closed"
+  },
+  "panelData": {
+    "floor": 3,
+    "passengers": 0,
+    "door": "closed"
+  },
+  "primaryConflict": "passengers",
+  "explanation": "监控画面中存在一名乘客，但载重计数显示为 0。",
+  "visualState": "passenger_count_mismatch",
+  "audioCue": null,
+  "resolutionAction": "restartSystem",
+  "highRisk": false,
+  "protocolTags": ["personnel"],
+  "normalVariants": ["empty_car", "one_passenger"]
+}
+```
+
+每个异常必须明确：
+
+1. CCTV 看见什么。
+2. 主控显示什么。
+3. 哪个字段冲突。
+4. 正确答案。
+5. 判断解释。
+6. 自动处置或高危处置。
+7. 可用查证工具。
+8. 是否依赖协议。
+9. 是否受污染度影响。
+10. 静音状态下的替代证据。
+
+## 5.2 禁止进入正式池的异常
+
+禁止：
+
+- 只能通过标题知道答案。
+- 只能通过红色边框知道答案。
+- 只能靠恐怖氛围判断。
+- 没有具体证据冲突。
+- 所有来源同时不可信。
+- 只能靠声音判断。
+- 需要阅读长日志才能判断。
+- 画面关键线索容易被裁切。
+- 正常与异常无法在测试中明确区分。
+
+---
+
+# 6. 首批内容要求
+
+## 6.1 12 个正式异常
+
+### 一级：单项矛盾
+
+1. 画面楼层与主控楼层不一致。
+2. 画面有人，人数显示 0。
+3. 门在开启，门状态显示关闭。
+4. 空轿厢，人数显示 1。
+
+### 二级：延迟与状态冲突
+
+5. CCTV 楼层比主控慢一层。
+6. 门已关闭，但画面持续显示开启。
+7. 电梯移动，画面人物完全静止。
+8. 同一人物连续两班动作完全一致。
+
+### 三级：复合视觉异常
+
+9. 影子数量比乘客数量多。
+10. 同一人物同时出现在轿厢和走廊。
+11. 门外有人，但热源扫描为空。
+12. 正常楼层对应错误空间或不存在走廊。
+
+每个异常至少提供 2 个视觉或数值变体。
+
+## 6.2 10 个正常班次变体
+
+必须包含：
+
+1. 空轿厢。
+2. 一名普通乘客。
+3. 两名乘客。
+4. 维修人员。
+5. 清洁人员。
+6. 门外有人经过但未进入。
+7. 门正在关闭。
+8. 轻微摄像头噪声但数据一致。
+9. 正常灯光闪烁。
+10. 已知设备延迟但符合本班协议。
+
+正常班次必须包含“看起来可疑但实际正常”的情况，避免玩家形成“画面变化就封锁”的机械判断。
+
+---
+
+# 7. 夜班协议系统
+
+每局随机 2—3 条规则。
+
+示例：
+
+```text
+01｜13 层不存在，任何前往 13 层的请求必须封锁。
+02｜维修人员不计入人数，但必须佩戴黄色胸牌。
+03｜CAM-07 固定延迟两秒，延迟本身不属于异常。
+```
+
+协议分类：
+
+- 楼层协议
+- 人员协议
+- 时间协议
+- 设备协议
+- 特殊身份协议
+
+设计要求：
+
+1. 每条规则一句话。
+2. 每局最多三条。
+3. 至少一条会在本局实际出现。
+4. 协议可随时快速查看。
+5. 不暂停判断倒计时。
+6. 高污染度时允许协议出现轻微视觉异常，但必须保留其他可靠验证路径。
+7. 不允许随机改变答案且不给玩家验证手段。
+
+---
+
+# 8. 查证工具系统
+
+首版只做三个工具。
+
+## 8.1 摄像头切换
+
+```text
+CAM-01｜电梯轿厢
+CAM-03｜电梯门外走廊
+CAM-07｜电梯井 / 楼层区域
+```
+
+要求：
+
+- 切换免费。
+- 消耗判断时间。
+- 每个摄像头提供不同证据。
+- 不同摄像头可出现时间、人物、门状态或空间冲突。
+
+## 8.2 热源扫描
+
+要求：
+
+- 每局默认 2 次。
+- 消耗电力。
+- 显示热源数量和位置。
+- 不能成为唯一判断方式。
+- 高污染度可产生干扰，但必须可通过其他证据复核。
+
+## 8.3 三秒回放
+
+要求：
+
+- 每局默认 2 次。
+- 判断倒计时继续。
+- 可发现重复帧、延迟、瞬移、门循环。
+- 显示明确的回放状态，不与直播混淆。
+
+工具状态建议：
+
+```json
+{
+  "activeCamera": "cam01",
+  "thermalUses": 2,
+  "replayUses": 2,
+  "thermalActive": false,
+  "replayActive": false
+}
+```
+
+---
+
+# 9. 连续事件链
+
+首版至少实现三条。
+
+## 9.1 重复乘客
+
+阶段：
+
+1. 普通乘客正常进入。
+2. 同一乘客再次出现，动作完全相同。
+3. 同一人物同时出现在两个摄像头。
+4. 错误放行后污染度上升并影响后续传感器。
+
+## 9.2 不存在的楼层
+
+阶段：
+
+1. 楼层短暂显示 13。
+2. 有乘客请求 13 层。
+3. CCTV 显示不存在的走廊。
+4. 进入高危处置：重启 / 封闭楼层 / 急停。
+
+## 9.3 被替换的摄像头
+
+阶段：
+
+1. CAM-07 轻微延迟。
+2. 时间戳固定。
+3. 其他摄像头显示电梯已移动，CAM-07 仍是旧画面。
+4. 玩家必须决定是否切断、重启或封闭。
+
+事件链必须记录：
+
+```json
+{
+  "id": "repeated_passenger",
+  "step": 2,
+  "flags": ["first_seen", "reappeared"],
+  "consequences": []
+}
+```
+
+---
+
+# 10. 污染度系统
+
+新增：
+
+```text
+污染度 0—100
+```
+
+增加来源：
+
+- 错误放行异常乘客。
+- 高危事件错误处置。
+- 忽略连续事件链。
+- 反复使用被污染的设备。
+- 接受伪造协议。
+
+阶段：
+
+```text
+0—25：正常
+26—50：轻度污染
+51—75：中度污染
+76—100：严重污染
+```
+
+视觉影响：
+
+- 轻微色散。
+- 时间码短暂跳动。
+- 摄像头边缘重影。
+- 协议字符短暂缺失。
+- 声音短暂抽空。
+
+禁止：
+
+- 全屏持续变红。
+- 污染高就意味着当前班次一定异常。
+- 污染直接给出正确答案。
+
+---
+
+# 11. 高危处置系统
+
+普通异常：
+
+```text
+封锁后由系统自动处置
+```
+
+高危异常：
+
+```text
+确认异常后，底部临时切换为处置按钮
+```
+
+首版只做：
+
+```text
+急停
+系统重启
+封闭楼层
+```
+
+要求：
+
+1. 不永久显示处置按钮。
+2. 处置阶段 CCTV 继续播放。
+3. 工具按钮暂时锁定。
+4. 有明确处置倒计时。
+5. 错误处置会影响安全、电力、污染和后续事件。
+6. 教学模式可以提示，正式模式不能直接高亮正确答案。
+
+---
+
+# 12. 资源系统
+
+首版只保留：
+
+```text
+安全值
+电力
+污染度
+```
+
+安全值归零失败。
+
+电力用于热源扫描、系统重启、强制封闭和摄像头恢复。
+
+污染度用于改变信息可靠性、事件链和结局。
+
+---
+
+# 13. 单局结构
+
+保留两个模式。
+
+## 快速值守
+
+```text
+60 秒
+```
+
+包含：
+
+- 1 条协议
+- 双按钮判断
+- 1 个查证工具
+- 简单异常
+- 不进入复杂高危处置链
+
+## 夜班协议
+
+```text
+90—180 秒
+```
+
+包含：
+
+- 2—3 条协议
+- 三个查证工具
+- 连续事件链
+- 污染度
+- 高危处置
+- 多结局
+
+---
+
+# 14. V5 画面结构
+
+设计宽度：
+
+```text
+750
+```
+
+验收设备：
+
+```text
+393×852
+360×640
+```
+
+布局：
+
+```text
+顶部：时间 / 得分 / 连击 / 污染度
+协议条：本班协议摘要
+主区域：大 CCTV
+CCTV 内底部：CAM-01 / CAM-03 / CAM-07
+下方：楼层 / 人数 / 门状态
+工具区：回放 / 热源 / 协议
+底部：放行 / 封锁
+```
+
+## 14.1 CCTV
+
+要求：
+
+- 使用 3:4 竖向素材。
+- 建议 900×1200 或 1080×1440。
+- 素材不得烘焙文字、楼层、REC、警告框和答案。
+- HUD 全部运行时绘制。
+- 关键线索不得被 cover 裁切。
+- 增加每个镜头的 focal point / crop anchor 配置。
+
+CCTV 内只保留：
+
+```text
+CAM 编号
+时间码
+画面楼层
+信号图标
+```
+
+禁止：
+
+```text
+THREAT HIGH
+ANOMALY DETECTED
+SIGNAL VARIANCE
+固定红框
+答案标签
+```
+
+## 14.2 三项读数
+
+保持：
+
+```text
+楼层
+人数
+门状态
+```
+
+判断前中性，判断后才高亮冲突字段。
+
+## 14.3 查证工具
+
+```text
+[3秒回放 2] [热源扫描 2] [协议]
+```
+
+工具按钮视觉等级低于放行/封锁。
+
+## 14.4 非巡检状态
+
+替换为宽状态板：
+
+```text
+等待下一班
+监控自动运行
+```
+
+或：
+
+```text
+系统处置中
+无需额外操作
+```
+
+## 14.5 反馈
+
+永久反馈面板改为 1—2 秒悬浮提示。
+
+错误时：
+
+1. CCTV 冻结 300—500ms。
+2. 标记冲突字段。
+3. 显示一句解释。
+4. 不显示长日志。
+
+---
+
+# 15. CCTV 资产结构
+
+```text
+assets/cctv-v5/
+├── backgrounds/
+├── passengers/
+├── anomalies/
+├── overlays/
+└── manifests/
+```
+
+建议子项：
+
+```text
+backgrounds/
+- elevator_closed
+- elevator_open
+- corridor_floor_01
+- shaft_view
+
+passengers/
+- passenger_worker
+- passenger_cleaner
+- passenger_child
+- passenger_standard
+
+anomalies/
+- extra_shadow
+- duplicate_person
+- entity_corner
+- wrong_corridor
+- thermal_mismatch
+
+overlays/
+- thermal
+- glitch
+- replay
+- scanline
+- blackout
+
+manifests/
+- scenes.json
+- focal-points.json
+```
+
+不要把此前自动切片包整包直接接入正式项目，只可择优使用无文字纹理、边框、螺钉、灯珠和噪声层。
+
+---
+
+# 16. 局后因果复盘
+
+展示：
+
+```text
+本局得分
+正确判断
+误报
+漏报
+超时
+最高连击
+平均反应时间
+工具使用次数
+剩余电力
+最终污染度
+```
+
+时间线示例：
+
+```text
+00:08 正常乘客进入       放行 ✓
+00:21 重复乘客出现       放行 ✕
+00:35 CAM-07 开始循环
+00:48 热源数量异常       封锁 ✓
+01:04 摄像头被替换
+01:17 最终封锁失败
+```
+
+错误班次必须显示：
+
+```text
+你的判断
+正确判断
+关键证据
+错误后果
+影响的后续事件
+```
+
+---
+
+# 17. 结局
+
+首版至少：
+
+1. 正常交班
+2. 带病交班
+3. 错误放行
+4. 系统接管
+5. 操作员替换
+
+结局必须来自安全值、污染度、事件链、高危处置和关键协议结果，不能纯随机。
+
+---
+
+# 18. 音效与震动
+
+保留：
+
+```text
+boot
+release
+lockdown
+motor
+wrong
+```
+
+新增建议：
+
+```text
+door_open
+door_close
+arrival_bell
+camera_glitch
+weight_sensor
+breathing_far
+radio_noise
+floor_chime_wrong
+```
+
+声音只能辅助判断，静音后仍必须可玩。
+
+---
+
+# 19. 埋点
+
+新增：
+
+```text
+game_start
+mode_select
+protocol_generated
+shift_start
+inspection_start
+camera_switch
+thermal_scan
+replay_use
+inspection_decision
+inspection_timeout
+decision_correct
+decision_wrong
+high_risk_start
+high_risk_resolution
+contamination_change
+event_chain_advance
+run_success
+run_failure
+run_restart
+debrief_open
+archive_open
+second_run_start
+third_run_start
+```
+
+默认允许控制台 sink，禁止默认上传未声明数据。
+
+---
+
+# 20. 测试要求
+
+新增建议：
+
+```text
+tests/protocolEngine.test.js
+tests/evidenceEngine.test.js
+tests/investigationTools.test.js
+tests/eventChainEngine.test.js
+tests/contamination.test.js
+tests/highRiskResolution.test.js
+tests/debriefTimeline.test.js
+tests/canvasV5Layout.test.js
+tests/canvasV5Gameplay.test.js
+```
+
+必须覆盖：
+
+1. 正常班次关键字段一致。
+2. 每个异常至少有一个明确冲突。
+3. 每个异常存在解释。
+4. 静音状态可判断。
+5. 正确放行得分。
+6. 正确封锁得分。
+7. 误报处罚。
+8. 漏报处罚。
+9. 超时只处罚一次。
+10. 前两班误点不处罚。
+11. 第三班无答案高亮。
+12. 工具次数正确消耗。
+13. 电力不足工具禁用。
+14. 回放期间倒计时继续。
+15. 摄像头切换不修改正确答案。
+16. 污染度不泄露当前答案。
+17. 高危处置成功与失败路径。
+18. 自动处置不重复加分。
+19. 事件链按条件推进。
+20. 错误放行影响后续。
+21. 局后时间线完整。
+22. 结算后清理活动异常、动画和巡检。
+23. 广告旧回调不能污染新局。
+24. 393×852 关键内容无遮挡。
+25. 360×640 无横向溢出。
+26. 顶部胶囊与底部手势区安全。
+27. 主按钮高度 ≥48 CSS px。
+28. 关键文字 ≥14 CSS px。
+
+---
+
+# 21. 分阶段执行
+
+## 阶段 A｜地基
+
+1. 内容 schema
+2. 协议引擎
+3. 证据模型
+4. 污染度状态
+5. 单元测试
+
+```powershell
+npm test
+npm run skins:check
+```
+
+## 阶段 B｜玩法 MVP
+
+1. 12 个异常
+2. 10 个正常班次
+3. 三个查证工具
+4. 三条事件链
+5. 三种高危处置
+6. 局后基础复盘
+
+```powershell
+npm test
+npm run douyin:build
+npm run douyin:check
+```
+
+## 阶段 C｜Canvas V5
+
+1. 污染度
+2. 协议摘要条
+3. 摄像头切换
+4. 查证工具区
+5. 非巡检宽状态板
+6. 悬浮反馈
+7. 高危临时按钮
+8. 竖向 CCTV 资产
+9. 两种尺寸截图
+
+```powershell
+npm test
+npm run douyin:build
+npm run douyin:check
+npm run douyin:compliance
+```
+
+## 阶段 D｜留存
+
+1. 因果复盘
+2. 异常档案
+3. 第二局快速开始
+4. 结局系统
+5. 决策级埋点
+
+```powershell
+npm test
+npm run verify
+```
+
+## 阶段 E｜发布前工程
+
+```powershell
+npm run verify
+npm run release:check
+```
+
+没有真实私有配置时，`release:check` 应失败关闭。
+
+---
+
+# 22. Git 提交规范
+
+每个阶段单独提交：
+
+```powershell
+git status
+git diff --stat
+git diff
+
+npm test
+npm run verify:summary
+
+git add .
+git commit -m "feat(game001): implement V5 night protocol phase A"
+```
+
+推荐提交：
+
+```text
+feat(game001): add protocol and evidence engines
+feat(game001): add investigation tools and contamination
+feat(game001): add event chains and high-risk resolution
+feat(ui): rebuild Canvas layout for V5 night protocol
+feat(game001): add causal debrief timeline
+test(game001): cover V5 protocol and evidence rules
+docs(game001): update V5 handoff and acceptance criteria
+```
+
+---
+
+# 23. 最终全量验收
+
+```powershell
+Set-Location "D:\All projects\MINIGAME"
+
+git status
+npm install
+
+npm test
+npm run skins:check
+
+node build.js wechat
+node scripts/check-wechat-bundle.mjs --strict
+
+npm run douyin:build
+npm run douyin:check
+npm run douyin:compliance
+
+npm run android:build
+npm run android:inspect
+
+npm run verify
+npm run release:check
+```
+
+输出写入：
+
+```text
+docs/V5_VERIFICATION_REPORT.md
+```
+
+报告记录：
+
+- 执行时间
+- 当前 commit SHA
+- Node / npm 版本
+- 每条命令真实输出摘要
+- 通过项
+- 失败项
+- 预期失败的发布门禁
+- 未完成真机项
+- 外部阻塞
+
+---
+
+# 24. 截图证据
+
+```text
+release-assets/v5/screenshots/
+├── 01-start-393x852.png
+├── 02-normal-inspection-393x852.png
+├── 03-anomaly-inspection-393x852.png
+├── 04-tool-thermal-393x852.png
+├── 05-high-risk-resolution-393x852.png
+├── 06-debrief-393x852.png
+├── 07-normal-inspection-360x640.png
+└── 08-anomaly-inspection-360x640.png
+```
+
+必须来自真实运行界面，不得使用生成海报冒充截图。
+
+---
+
+# 25. 最终交付
+
+必须提供：
+
+1. 分支名
+2. commit SHA
+3. 修改文件清单
+4. 新增模块
+5. 协议清单
+6. 12 个异常
+7. 10 个正常班次
+8. 三条事件链
+9. 三个查证工具
+10. 三种高危处置
+11. 污染度规则
+12. 复盘字段
+13. 新增测试
+14. `npm test` 结果
+15. `npm run verify` 结果
+16. 两种尺寸截图
+17. 尚未完成项
+18. 外部发布阻塞
+19. 私有配置清单
+20. 下一阶段建议
+
+---
+
+# 26. 本轮禁止事项
+
+禁止：
+
+- 合集首页
+- 第二个游戏
+- 新皮肤
+- 商城
+- 角色养成
+- 排行榜
+- Unity/Cocos/Godot 重构
+- 新增大量广告点位
+- 全面重写旧 H5
+- 批量接入低质量 UI Kit
+- 用红框直接泄题
+- 不可解释随机死亡
+- 所有信息同时不可信
+
+---
+
+# 27. V5 MVP 完成定义
+
+必须同时满足：
+
+1. 3 秒内理解放行/封锁。
+2. 每局至少一条实际协议。
+3. 三个查证工具可用。
+4. 12 个正式异常。
+5. 10 个正常班次。
+6. 三条连续事件链。
+7. 错误影响后续。
+8. 高危异常有玩家处置。
+9. 污染影响信息环境和结局。
+10. 局后解释错误与后果。
+11. 两种尺寸无关键遮挡。
+12. `npm test` 与 `npm run verify` 真实通过。
+13. 无私有配置时发布门禁失败关闭。
+14. README 与实际玩法一致。
+15. 不混入合集平台工作。
+
+---
+
+# 28. 最终执行指令
+
+立即执行，但必须分阶段。
+
+先做：
+
+```text
+阶段 A：协议、证据、污染度数据地基
+```
+
+完成测试和汇报后再做：
+
+```text
+阶段 B：12 个异常、10 个正常班次、三个工具、三条事件链
+```
+
+禁止跳过地基直接堆 UI。
+
+每轮必须：
+
+```text
+检查 → 修改 → 测试 → 截图/证据 → 提交 → 汇报
+```
+
+最终目标：
+
+> 规则不同、证据可能冲突、工具有限、错误会影响后续、失败后愿意立即再玩一局。

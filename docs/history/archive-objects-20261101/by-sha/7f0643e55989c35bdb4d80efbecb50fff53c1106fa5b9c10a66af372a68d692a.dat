@@ -1,0 +1,71 @@
+# 接入当前 Cognitive-Loop-OS 仓库
+
+## 上游对齐点
+
+本交付包按以下真实状态设计：
+
+- Phase 4 已有 GitHub URL → candidate ResearchPackageV1 持久化闭环；
+- `app.contracts.v1` 已有 ResearchPackageV1、KnowledgeUnitV1、LearningArtifactV1、MasterySignalV1、MachineKnowledgeUnitV1；
+- 新增 `shared.provider_contract`，但默认路由为空，未宣称在线可用；
+- 新增 Registry V2，101 项资产仍需治理和人工审核；
+- 最新主线已移除容器运行栈，入口回归 `app.runtime_entrypoint`；
+- 当前下一刀是 Phase 5 Knowledge/Learning/Mastery/Machine Knowledge 治理。
+
+## 推荐接入策略
+
+### 方案 A：先独立验收（推荐）
+
+在仓库旁边运行本包 `8010` 端口，不修改主仓库。先验证状态机、人工审核、练习、掌握和机器知识审核。
+
+### 方案 B：作为开发路由挂载
+
+1. 将 `archeaxis_mcs/` 复制到 Cognitive-Loop-OS 根目录。
+2. 保持数据目录独立：
+
+```powershell
+$env:ARCHEAXIS_MCS_DATA_DIR = "$PWD\data\mcs-phase5"
+```
+
+3. 在开发分支中创建子应用：
+
+```python
+from archeaxis_mcs.api import create_app as create_mcs_app
+mcs_app = create_mcs_app(embedded_worker=True)
+app.mount("/mcs", mcs_app)
+```
+
+4. 验收：
+
+```text
+http://127.0.0.1:8000/mcs/
+http://127.0.0.1:8000/mcs/docs
+```
+
+## 不建议直接做的修改
+
+- 不替换 `app/main.py`；
+- 不直接写入 `research.sqlite` 或现有主库；
+- 不把 `KnowledgeUnitV1` 旧图实体合同误当成完整 KnowledgeVersion 合同；
+- 不将 Candidate ResearchPackage 自动提升为正式知识；
+- 不在本阶段绑定 DeepSeek/GPT/Claude 等云模型；
+- 不恢复已移除的容器主运行栈；
+- 不把这条 Phase 5 切片宣传成 Phase 9 Alpha。
+
+## Phase 4 ResearchPackage 导入
+
+本包提供 `archeaxis_mcs.repo_bridge.read_upstream_research_package(package_id)`，它通过主仓库公共 Facade 读取数据，并转换成 `/api/v1/research/import` 请求结构。
+
+该桥接只读上游数据，不修改上游数据库。
+
+## 后续正式合并建议
+
+正式合并时应把本包的领域概念拆入：
+
+- `modules/knowledge` 或当前 Knowledge Facade；
+- `modules/learning` 或当前 Learning Facade；
+- `modules/machine_knowledge`；
+- `platform/events` / `platform/jobs`；
+- `/api/v1` Router；
+- React 工作台。
+
+本包静态工作台只用于闭环验收，不替代 V3.0 蓝图中的最终 React 主前端。
