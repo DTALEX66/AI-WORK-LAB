@@ -138,6 +138,14 @@ V09_RADAR_NODES = _nodes("test_v09_honesty.py",
     "test_radar_qualification_cannot_be_minted_from_documentation_or_probe",
     "test_radar_weights_state_cannot_be_folded_back_onto_the_count",
     "test_radar_catalog_document_satisfies_the_published_schema")
+#: 05#L21|design-domain and 05#L28|research -- the two rows that had no assertion at all.
+V24_DOMAIN_NODES = _nodes("test_v24_capability_evidence.py",
+    "test_domain_pack_projection_reports_the_disk_and_invents_no_verdict",
+    "test_the_pack_verdict_is_the_checkers_and_an_unreadable_pack_is_never_dropped")
+V24_RESEARCH_NODES = _nodes("test_v24_capability_evidence.py",
+    "test_research_material_is_data_that_no_runtime_path_imports")
+V24_RECON_NODES = _nodes("test_v24_capability_evidence.py",
+    "test_rir_contract_is_one_document_in_three_places_and_refuses_what_it_must")
 #: 05#L22 -- asset versions, byte-pinned references, the input/output split, no platform channel.
 V04_ASSET_NODES = _nodes("test_v04_design_loop.py",
     "test_design_asset_versions_are_immutable_history_and_both_revisions_read_back",
@@ -881,13 +889,17 @@ def family_claims() -> dict[str, dict]:
                           "status": "IMPLEMENTED_VERIFIED",
                           "basis": "软件×模型×入口档案从受管配置现读且不落第二副本；引用必须指向真实档案——「选择不等于连接和执行」由资格层断言。"},
         "design-domain": {"location": find_definition("build", "domains/design/design_lab/domain_packs.py"),
-                          "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
-                          "basis": "领域包构建器在（它按包尝试加载 checker，见 domain_packs.py 的 _load_checker "
-                                  "与 CHECKER_REL=design-lab/scripts/verify_domain_pack_v2.py；"
-                                  "但本树 13 个包目录下没有任何 .py、也没有 design-lab/ 子目录，"
-                                  "即该路径永不解析，逐包校验一次也没有真正执行过），"
-                                  "/api/domains 路由在；"
-                                  "但「13 领域包与资源可加载、资格分别标记」在本仓没有对应断言，数字未经复算。"},
+                          "evidence": V24_DOMAIN_NODES, "status": "PARTIAL",
+                          "basis": "领域包投影的目录数、身份字段与资格合计都由这一次调用现算，并被两个具名"
+                                  "节点钉住：列出的条目与盘面上的包目录逐一对齐（既不漏也不凭空多），"
+                                  "`counts.packs` 与 `byValidation` 各类相加等于该长度，manifest 里没有的字段"
+                                  "答 null 而不是被默认成字符串（v1 包不许冒充 v2 身份）。" + PARTIAL_MARKER
+                                  + "本树没有仓库自带的那个校验脚本（checker.state=UNAVAILABLE，路径 "
+                                  "design-lab/scripts/verify_domain_pack_v2.py 在打包资源根下不存在），"
+                                  "所以这些包的资格实际全部停在 NOT_CHECKED——「资格分别标记」这一格只有词表"
+                                  "与机制被测到，VALIDATES/INVALID/UNREADABLE 三格由植入的校验器证明"
+                                  "（那个节点同时证明投影没有把结论写死）。把校验脚本随包发布是未做的一步，"
+                                  "本行不声称逐包校验真跑过。"},
         "design-assets": {
                           "location": "GET /api/projects/([0-9a-f]{32})/assets(?:/(img-[0-9a-f]{64})/content)?",
                           "evidence": V04_ASSET_NODES,
@@ -909,9 +921,18 @@ def family_claims() -> dict[str, dict]:
                                   "不是操作系统进程重启，也不主张断电语义；本行也不声称宿主真能打开产物——"
                                   "输出字节是合成的，这一面只哈希不解析，真实宿主产生输出的链路仍按人工门逐次进行。"},
         "design-reconstruction": {"location": find_definition("validate_rir", "packages/capabilities/reconstruction/contracts.py"),
-                                  "evidence": NO_EVIDENCE, "status": "IMPLEMENTED_UNVERIFIED",
-                                  "basis": "RIR 校验与规范化摘要在包内实现并被 native_plan 使用；"
-                                          "「结构与视觉规格分开验收」需人审，本仓无 pytest 断言，故不标 VERIFIED。"},
+                                  "evidence": V24_RECON_NODES, "status": "PARTIAL",
+                                  "basis": "RIR 合同由 native_plan 与 plan_to_rir 真实调用（它们以 "
+                                          "`design_lab.reconstruction` 的名字导入，而实现只有一份："
+                                          "`contracts.__file__` 落在 packages/capabilities/reconstruction 下，"
+                                          "包路径是别名不是复制）；合同的三份副本（来源仓、打包资源、对外发布）"
+                                          "逐字节相同；安装态不给项目根就拒、缺必填字段按 schema 自己声明的字段名"
+                                          "拒、非有限数在任何字段检查前拒，路径政策的绝对/穿越/反斜杠/URI/空串"
+                                          "各有具名拒绝，而干净的相对路径确实落在根内——由本行引用的节点钉住。"
+                                          + PARTIAL_MARKER
+                                          + "「结构与视觉规格分开验收」需要真人判断，本仓不替人签这个字；"
+                                          "且本仓没有一份能过整份合同的合法 RIR 样本，"
+                                          "raster 节点在合法文档内走同一函数的链路未被端到端演示。"},
         "design-quality": {"location": find_definition("assert_not_agent_signed", "domains/design/design_lab/assurance/human_jury.py"),
                            "evidence": "tests/unified/test_v11_audit_rework.py::test_f08_agent_and_unresolved_verifiers_cannot_satisfy_professional",
                            "status": "IMPLEMENTED_VERIFIED",
@@ -952,10 +973,17 @@ def family_claims() -> dict[str, dict]:
                               "安装态是否真带上是 A08/F06 隔离安装那条实测的范围，不算在本行）。"
                               "本节现算而非抄旧数：packages/contracts 目录下 JSON 文件 %d 份。"
                               % CONTRACTS_PUBLISHED_JSON},
-        "research": {"location": "research/candidates/CANDIDATE-TAXONOMY.json:2", "evidence": NO_EVIDENCE,
-                     "status": "IMPLEMENTED_UNVERIFIED",
-                     "basis": "研究资料按「资料不是运行事实」留在 research/ 内且未被任何运行路径导入；"
-                             "联网检索延期（09 分期表 L30 属 P3），本行不声称已具备检索能力。"},
+        "research": {"location": "research/candidates/CANDIDATE-TAXONOMY.json:2",
+                     "evidence": V24_RESEARCH_NODES, "status": "IMPLEMENTED_VERIFIED",
+                     "basis": "「资料不是运行事实」与「不新增在线采集依赖」两条都可查，且由具名节点查过："
+                             "research/ 下的跟踪文件全是 JSON（本树实测没有任何 .py，因此运行时不可能从它 "
+                             "import 到模块）；全仓跟踪的 .py 里没有一条 import 语句指向顶层 research 包"
+                             "——该谓词本身用植入导入与 `from .assurance import research_store` 这种"
+                             "同名不同物的写法两边都验过，避免误报与漏报；候选分类学能解析、条目非空、"
+                             "条目键集合一致，条目数由这次读取现算而不是抄登记；pyproject 声明的依赖名里"
+                             "没有 requests/httpx/aiohttp/urllib3/selenium/playwright 这类在线采集客户端。"
+                             "本行不声称已具备联网检索能力（09 分期表 L30 的 P3 检索未做），"
+                             "也不声称资料内容的正确性（那是人审范围）。"},
         "evolution": {"location": "GET /api/v1/improvements", "evidence": "tests/unified/test_v09_honesty.py::test_improvements_answer_contract_only;" + caps,
                       "status": "PARTIAL",
                       "basis": "改进面诚实回答 CONTRACT_ONLY / activation_state=UNAVAILABLE，能力目录把 core.evolution 标为 DECLARED 且 can_invoke=false；" + PARTIAL_MARKER
