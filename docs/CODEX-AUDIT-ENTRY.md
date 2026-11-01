@@ -1493,3 +1493,86 @@ schema，不是宿主跑过、不是设计质量判定、不是被接受的领�
 之后仍没有补偿动作（跨项目误读产生的 PASS 与据此 COMPLETED 的任务留在存储里，报表点名它而不撤销它）；
 真实宿主写入与读回、模型推理、真实私有数据迁移、STITCH 前端、真人专业验收签字、`L10#0` 的 owner
 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的真实宿主探测继续按边界记 NOT_RUN/BLOCKED/DEFERRED。
+
+### 15.23 融合项目第一次有了顶层入口；`e87773b` 上那两个失败各自有了名字和修法；统一归档逐摘要对账建成（O + P）
+
+**一、为什么这一节不是文档美容。** 任务包的前提是「WORK-LAB 与 DESIGN-LAB 已经合并成 AIWORKLAB / AI-WORK-LAB」。
+这个决定本身是真的，但仓库当时的跟踪根级文件只有 `.gitattributes`、`.gitignore`、`INTEGRATION_POLICY.md`、
+`pyproject.toml`——**没有 README，没有 AGENTS，没有当前状态入口**。它造成的第一个事故我自己撞上了：
+本会话被自动载入的是 `DESIGN-LAB` 那份 `agents.md`，于是我一开局读到的是「唯一 integrated TaskPack」
+「DL-KB-01…16」「34 项 FROZEN_DEFERRED」这类**来源仓的历史派工**，而不是融合项目的现行状态。
+一个新 Agent 从任何别的入口进来，都会拿到同一个错误前提。所以这一轮先补入口，再谈数字。
+
+**二、入口三件套与它的防漂移检查。** 新增 `PROJECT_CURRENT.md`（117 行，唯一顶层入口）、
+`README.md`、`AGENTS.md`，以及 `scripts/check_project_current.py`。检查器不评价文笔，只做四件事：
+根入口引用的每个仓内路径必须存在；项目身份必须出现在前 12 行内；自称顶层权威的根级 `.md` 必须只有
+`PROJECT_CURRENT.md` 一份；根入口引用的每个数字都必须等于寄存器现值。数字段由
+`scripts/check_project_current.py --print-block` 现算并写回文档，`--check` 逐条比对，共
+`23` 个键。守卫测试在 `tests/unified/test_v29_top_level_entry.py`：
+它不止跑一次真检查（现值 PASS），还**逐个种下故障**要求对应的具名结论出现——
+改一个数字要报 `FIGURE_STALE`、删掉数字段要报 `MISSING_FIGURES_BLOCK`、把 `= 30` 写成 `= thirty`
+要报 `UNPARSEABLE_FIGURE_LINE`、删掉 `L10#0` 要报 `BLOCKING_QUEUE_NOT_DISCLOSED`。
+一个不能失败的闸门不守任何东西。
+
+本轮实测结果（`--check`）：判定 PASS，findings []。
+其中若出现 `ENTRY_NOT_IN_GIT`，它的含义是入口文件还没进 Git——一份克隆带不出它们；正确的处置是提交，
+而不是把这条检查改成警告。
+
+检查器第一次运行还抓到两处我自己的错话，都已改：把阻断登记的位置写成
+`migration/blocker-register.json`（实际是 `config/blocker-register.json`）；把两仓逐仓去重路径之和
+`6687` 说成「去重后 6687 条」，实际跨仓并集是 `6676` 条，有 11 条路径两个仓里都有。
+
+**三、收据所测 2312963 上那两个失败：现在各自有名字、各自有修法。**
+收据 `ed0c64df743b68cf` 记的是 `2 failed, 469 passed, 3 subtests passed in 834.11s (0:13:54)`（exit 1），它只记计数不记节点名，
+逼人重跑 13 分钟才知道坏了什么。用 `-rfE` 复跑全量后（41 passed in 8.89s）：
+
+* `test_rebuilding_over_the_published_registers_does_not_relamp_them`
+* `test_a_clone_can_run_the_machine_independent_part_of_the_suite`
+
+1. `test_rebuilding_over_the_published_registers_does_not_relamp_them` 说的是发布出去的
+   `migration/capability-family-register.csv` 与生成器现算结果不一致。逐行比对后差异只有一处、
+   一个字符：`05#L15|cleanup` 行的锚点从 `migrate_sources.py:1134` 漂到 `:1137`——因为我本轮改了
+   那个脚本的 `apply_plan`，行号跟着走了，而寄存器是改之前发布的。这是「行号指针会烂」的教科书案例，
+   重发布寄存器即可，差异为 `05#L15|cleanup`（`migrate_sources.py:1134 -> 1137`）。
+2. `test_a_clone_can_run_the_machine_independent_part_of_the_suite` 是**克隆里**挂的，本机却是绿的，
+   这正是它存在的意义。我本轮新加的栅格断言用 `TARGET_ROOT` 去剥 `migration/copies.json` 里
+   `target` 的绝对前缀来得到相对键；台账记的绝对路径是**复制那台机器**上的根，克隆的根不一样，
+   于是剥不出来、查不到记录。改成与同文件里既有先例一致的做法：按路径结尾取该记录、并要求它唯一，
+   同时补上 `sha256_source == sha256_target` 这条台账自证。验证方式是造一份真克隆、把修好的文件
+   盖进去跑那一个节点：修前 `1 failed`（断言消息直接打印出剥不掉的绝对键），修后 `1 passed`。
+   整条闸门要等这三个文件提交进 Git 之后才会在全量里转绿——克隆取的是 HEAD。
+
+复跑受影响文件（`test_v16_traceability.py`、`test_v29_top_level_entry.py`、
+`test_v24_capability_evidence.py`）：41 passed in 8.89s，失败的是 无。
+收据 `ed0c64df743b68cf` 仍然记 `2 failed, 469 passed, 3 subtests passed in 834.11s (0:13:54)`：重取收据要求干净跟踪树，也就是要求一次提交，
+本节不假装这一步已经完成。生产器 `run_closure_evidence.py` 只把汇总行写进收据，
+不写 FAILED 节点名——这条已经登记为待办，它就是把「2 failed」变成不可追查计数的直接原因。
+
+**四、统一归档与本仓的逐摘要对账。** 新增 `migration/archive-object-reconciliation-20261101.csv`
+（1212 行，逐条 `sha256,bytes,archive_path,projects,category,disposition,evidence,source_hint`）
+与同名 JSON。对账对象是 `_归档管理\对象目录.json` 的 1212 条记录，按摘要去重后仍是
+1212 个唯一对象，合计 1,150,474,300 字节，且登记行集合与归档对象集合**逐摘要相等**。
+判定分布 {'ARCHIVE_ONLY': 1131, 'REGISTERED_NOT_MIGRATED': 80, 'UNCLASSIFIED_RESIDUE': 1}，字节分布 {'ARCHIVE_ONLY': '1,064,753,404', 'REGISTERED_NOT_MIGRATED': '85,711,929', 'UNCLASSIFIED_RESIDUE': '8,967'}。
+
+三条硬事实，都是现算的：
+- `migration/copies.json` 里 0 个来源摘要与归档对象摘要相同——**交集为 0**，
+  本仓迁入的字节与归档保存的字节不是同一批，两边不能互相顶替。
+- 归档自己的 `完整性校验报告.json` 写 `source_file_set_unchanged = True`，
+  并声明重算过 2031 条来源文件；这 2031 条路径今天在盘上存在
+  0 条。`D:\All projects\Record` 已不存在，`D:\All projects\xiangmuguidang` 是空目录。
+  那句话在它被写下的时候是真的，对今天的磁盘不再是——而它意味着
+  **1131 个对象（1,064,753,404 字节）目前唯一的副本就在归档里**，归档因此不是可清理的副本。
+  本轮不改归档（任务包规定它只读），只把这条不一致登记在 `PROJECT_CURRENT.md` §二。
+- 有 1 个对象停在 `UNCLASSIFIED_RESIDUE`：`48c8552ff78d09d5…`（8967 字节）。
+  它的字节确实在本仓 `AI-WORK-LAB_HANDOFF_20261029/03_CODEX_独立审计提示词.txt`（现算摘要相等），
+  但没有任何寄存器行或台账记录认领它。归 `ARCHIVE_ONLY` 违反该类定义，归 `MIGRATED` 缺迁移证据，
+  所以留在残差并写明原因，而不是为了四类凑齐。
+
+**五、这一轮没有证明什么。** 没证明删除两个来源仓之后本仓仍可独立运行——这一点在做实测，
+方法是在一份副本里把所有指向 WORK-LAB / DESIGN-LAB 的路径改指到不存在的位置再跑全量，
+结论落在 `.project-local/runs/independence-simulation-20261101.json`，写到这里之前不引用。
+也没证明：真实宿主往返、模型推理、真实私有数据迁移、真人专业签字（仍是 `NOT_RUN`）；
+`apps/workbench` 的 bundle 仍不可重建（缺 `picomatch`，需网络安装，未授权）。
+本轮按 owner 指示「确保都在仓库」做了一次**本地提交**：三个入口文件、`scripts/check_project_current.py`、
+`tests/unified/test_v29_top_level_entry.py`、重发布的寄存器与归档对账表都进
+`e87773b`；**未推送**——远程仓是 PUBLIC，推送需要 owner 单独点头。本节自身在它之后的提交里。
