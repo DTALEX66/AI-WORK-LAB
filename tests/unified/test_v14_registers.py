@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 """V14: the registers and packaged assets this rework now claims, checked as data.
 
-Three claims were made in prose during the rework and prose cannot be audited, so
+The claims below were made in prose during the rework and prose cannot be audited, so
 each is turned into a recomputation here:
 
 * the source-coverage register must account for **every** non-ignored file in both
@@ -11,7 +11,11 @@ each is turned into a recomputation here:
 * the two F06 gaps that were closable offline are closed in fact: the host bridge
   script must be reachable at the path the adapter probes and byte-identical to the
   source of truth, and the control plane must parse a YAML document instead of
-  reporting `DOCUMENT_UNPARSEABLE`.
+  reporting `DOCUMENT_UNPARSEABLE`;
+* since 2026-11-01, the owner-rule destination columns must carry a closed vocabulary:
+  the enumeration the builder declares and the values the published rows actually hold
+  differ by the empty set in both directions, every value is recomputed from the
+  archive ledger rather than remembered, and each refusal is planted and proven red.
 """
 from __future__ import annotations
 
@@ -35,6 +39,8 @@ BRIDGE_PACKAGED = (TARGET_ROOT / "domains" / "design" / "design_lab" / "resource
                    / "adobe" / "photoshop-native-assemble.jsx")
 BRIDGE_SOURCE_OF_TRUTH = (TARGET_ROOT / "integrations" / "hosts" / "adobe"
                           / "photoshop-reconstruction" / "legacy-assemble.jsx")
+#: owner 2026-11-01 规则的唯一归档台账：覆盖登记表的 archive_* 三列逐行现算自它。
+ARCHIVE_LEDGER = (TARGET_ROOT / "docs" / "history" / "sources-20261101" / "MANIFEST.csv")
 
 #: Classes that would mean the register did not actually decide anything.
 UNEXPLAINED = {"", "SOURCE_UNREGISTERED", "COPIED_MISSING_IN_TARGET"}
@@ -92,6 +98,28 @@ _CITATION = re.compile(r"^(.+?):(\d+)$")
 def _read(csv_path: Path) -> list[dict]:
     with csv_path.open(encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
+
+
+def _ledger_rows() -> list[dict]:
+    """The 2026-11-01 archive ledger as rows: one per coverage row, fan-out included."""
+    return _read(ARCHIVE_LEDGER)
+
+
+def _ledger_index() -> dict:
+    """The same ledger keyed by (repo, path), read independently of the builder.
+
+    Read here rather than taken from the builder so the register and the ledger are
+    compared by two separate readers of the same file: a builder that quietly invented
+    its own ledger would still have to match these rows. Two verdicts for one source
+    file are a refusal, not a last-write-wins.
+    """
+    out = {}
+    for row in _ledger_rows():
+        key = (row["repo"], row["path"].replace("\\", "/"))
+        if key in out and out[key] != row:
+            pytest.fail("同一来源文件在台账里有两种去向：" + key[1])
+        out[key] = row
+    return out
 
 
 def _coverage(tmp_path_factory) -> dict:
@@ -241,6 +269,146 @@ def test_coverage_register_leaves_no_row_undecided(coverage):
             row["path"] for row in adjudicated), label
         assert document["pending_reason_duplicates"] == {}, document["pending_reason_duplicates"]
         assert document["pending_owner_decision_count"] == len(pending), label
+
+
+def test_archive_disposition_enumeration_equals_every_published_value(coverage):
+    """owner 2026-11-01 规则的去向列：声明词表与实际行值的双向差集必须都是空集。
+
+    三列 ``archive_*`` 由 ``docs/history/sources-20261101/MANIFEST.csv`` 现算，不是第二份
+    归档台账。这里同时钉住四件事：每个来源文件都有一个非空去向（"每个来源文件都有一行去向"
+    这条不变式不因规则而缩水）、行值全在词表内、词表里没有失效项、以及台账人群与登记表
+    人群双向相等。行数不写死在本文件里：它等于台账该仓的行数，来源树一旦移动，红的是台账
+    过期而不是一个被手抄的数字。抽样复验的是位置真的持有该来源的字节，不是又一次自我声明。
+    """
+    module = _coverage_module()
+    declared = set(module.ARCHIVE_DISPOSITIONS)
+    assert len(declared) == len(module.ARCHIVE_DISPOSITIONS), "词表里有重复项"
+    ledger = _ledger_index()
+    rows_by_repo = collections.Counter(entry["repo"] for entry in _ledger_rows())
+    actual = set()
+    for label in ("work", "design"):
+        rows = _read(TARGET_ROOT / ("migration/source-coverage-" + label + ".csv"))
+        ledger_paths = {path for (repo, path) in ledger if repo == label}
+        assert len(rows) == rows_by_repo[label], (
+            label + "：登记表的行数与台账的行数不再是同一个人群（"
+            + str(len(rows)) + " vs " + str(rows_by_repo[label]) + "）")
+        assert {row["path"] for row in rows} == ledger_paths, label
+        assert all({"archive_disposition", "archive_target", "archive_evidence"}
+                   <= set(row) for row in rows), label + "：三列必须都已发布"
+        blank = [row["path"] for row in rows if not row["archive_disposition"]]
+        assert blank == [], (label + "：这些来源文件在 owner 规则下没有去向：" + str(blank[:5]))
+        actual |= {row["archive_disposition"] for row in rows}
+        findings = module.archive_vocabulary_findings(rows)
+        assert findings == [], (label + "：" + " | ".join(findings[:3]))
+    assert actual - declared == set(), ("行值不在声明词表内：" + str(sorted(actual - declared)))
+    assert declared - actual == set(), ("词表声明了没有任何行使用的失效项："
+                                        + str(sorted(declared - actual)))
+    # 去向是"位置"，不是"能力已验证"：ARCHIVED_IN_REPO 的行仍由 class 说迁移事实
+    archived = [row for label in ("work", "design")
+                for row in _read(TARGET_ROOT / ("migration/source-coverage-" + label + ".csv"))
+                if row["archive_disposition"] == "ARCHIVED_IN_REPO"]
+    assert archived, "ARCHIVED_IN_REPO 一行都没有：词表已经失效"
+    for row in archived[::37]:
+        payload = module._read_bytes_any(TARGET_ROOT / row["archive_target"])
+        assert payload is not None, (row["path"], row["archive_target"])
+        assert hashlib.sha256(payload).hexdigest() == row["source_sha256"], (
+            "归档位置并不持有该来源的字节：" + row["archive_target"])
+
+
+def test_archive_dispositions_are_recomputed_from_the_ledger_not_remembered(coverage):
+    """每一行的处置都能由台账的 action 现算出来，且排除行的两种理由分得开。
+
+    台账把 5102 COPIED 与 300 DUPLICATED 记成两类 action；本表把它们归入同一个处置，因为
+    两者的字节都在本仓历史区（DUPLICATED 是同 SHA 去重后指回那份原件），上一项测试已逐行
+    复验其字节。EXCLUDED 则必须能按 reason 现算出「缓存与构建」和「截图照片」两族，否则
+    owner 后加的「截图照片去掉」在登记表里就消失了。台账里一旦出现 FAILED 或任何未登记的
+    action，本表拒绝发布——所以这里断言的是映射关系，不是某个记忆住的数字。
+    """
+    module = _coverage_module()
+    ledger = _ledger_index()
+    counts = collections.Counter()
+    excluded_families = collections.Counter()
+    for label in ("work", "design"):
+        for row in _read(TARGET_ROOT / ("migration/source-coverage-" + label + ".csv")):
+            entry = ledger[(label, row["path"])]
+            assert row["archive_disposition"] == module.ARCHIVE_ACTION_LABELS[entry["action"]], (
+                label, row["path"], entry["action"], row["archive_disposition"])
+            counts[row["archive_disposition"]] += 1
+            if row["archive_disposition"] == "EXCLUDED_BY_OWNER_RULE":
+                excluded_families[module._excluded_family(entry["reason"])] += 1
+                assert "owner 2026-11-01" in row["archive_evidence"], row
+                assert row["archive_target"] == "", row
+    expected = collections.Counter(
+        module.ARCHIVE_ACTION_LABELS[entry["action"]] for entry in _ledger_rows())
+    assert dict(counts) == dict(expected), (dict(counts), dict(expected))
+    assert set(excluded_families) == {"缓存与构建", "截图照片"}, dict(excluded_families)
+    summary = coverage["owner_rule_archive"]
+    rows_by_repo = collections.Counter(entry["repo"] for entry in _ledger_rows())
+    for label in ("work", "design"):
+        assert sum(summary["counts_by_repo"][label].values()) == rows_by_repo[label], label
+    assert summary["excluded_by_family"] == dict(excluded_families), summary
+    assert summary["ledger_actions"] == dict(collections.Counter(
+        entry["action"] for entry in _ledger_rows())), summary
+    assert set(summary["ledger_actions"]) <= set(module.ARCHIVE_ACTION_LABELS), summary
+
+
+def test_the_archive_disposition_guard_can_actually_fail(tmp_path):
+    """每种拒绝都要能到达，否则词表只是装饰。
+
+    在临时副本里逐一植入：一个不存在的处置、一个空值、一个指向不存在文件的位置、一个命名了
+    位置却被排除的行、以及把一个处置整族抹掉造成的失效枚举项。每次只改一处，并断言对应的
+    那句拒绝真的出现——先命中的分支不能把后面的 finding 吃掉。最后一遍用真实登记表证明同
+    一个调用返回空集，否则这条守卫只是在永远报警。
+    """
+    module = _coverage_module()
+    rows = _read(TARGET_ROOT / "migration/source-coverage-work.csv")
+    assert module.archive_vocabulary_findings(rows) == [], "真实登记表本身就带着拒绝项"
+
+    def planted(mutate):
+        copy = [dict(row) for row in rows]
+        mutate(copy)
+        # 写进临时副本再读回来：守卫检查的是寄存器文件，不是内存里的字典
+        out = tmp_path / "source-coverage-work-planted.csv"
+        with out.open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(copy)
+        with out.open(encoding="utf-8-sig", newline="") as handle:
+            return module.archive_vocabulary_findings(list(csv.DictReader(handle)))
+
+    def make_bogus(document):
+        document[3]["archive_disposition"] = "ARCHIVED_IN_REPO_BUT_NOT_REALLY"
+    findings = planted(make_bogus)
+    assert any("ARCHIVED_IN_REPO_BUT_NOT_REALLY" in text for text in findings), findings
+
+    def make_blank(document):
+        document[4]["archive_disposition"] = ""
+    findings = planted(make_blank)
+    assert any("空值" in text for text in findings), findings
+
+    def make_ghost(document):
+        for row in document:
+            if row["archive_disposition"] in module.IN_REPO_ARCHIVE_LABELS:
+                row["archive_target"] = "docs/history/sources-20261101/work/nowhere.svg"
+                break
+    findings = planted(make_ghost)
+    assert any("命名的仓内位置不在树上" in text for text in findings), findings
+
+    def name_a_location(document):
+        for row in document:
+            if row["archive_disposition"] == "EXCLUDED_BY_OWNER_RULE":
+                row["archive_target"] = "docs/history/sources-20261101/work/should-not-exist"
+                break
+    findings = planted(name_a_location)
+    assert any("排除行不应命名位置" in text for text in findings), findings
+
+    def drop_a_value(document):
+        for row in document:
+            if row["archive_disposition"] == "ARCHIVED_ELSEWHERE_LINKED":
+                row["archive_disposition"] = "ARCHIVED_IN_REPO"
+    findings = planted(drop_a_value)
+    assert any("失效的枚举项" in text and "ARCHIVED_ELSEWHERE_LINKED" in text
+               for text in findings), findings
 
 
 def test_f01_register_separates_wired_from_merely_present():
