@@ -297,10 +297,12 @@ def check_archive_coverage() -> list:
     if not (ROOT / ARCHIVE_REGISTER).is_file():
         return ["ARCHIVE_REGISTER_MISSING"]
     for row in rows(ARCHIVE_REGISTER):
-        if row["disposition"] not in ADMITTED_DISPOSITIONS:
-            findings.append("UNKNOWN_DISPOSITION %s %s" % (row["sha256"][:12], row["disposition"]))
-        elif row["disposition"] == "ARCHIVE_ONLY":
+        # order matters and a plant proved it: judging "not in the admitted set" first would report
+        # the undecided state as an unknown word and the dedicated finding below could never fire
+        if row["disposition"] == "ARCHIVE_ONLY":
             findings.append("DESTINATION_UNDECIDED " + row["sha256"][:12])
+        elif row["disposition"] not in ADMITTED_DISPOSITIONS:
+            findings.append("UNKNOWN_DISPOSITION %s %s" % (row["sha256"][:12], row["disposition"]))
     import_rows = imported_rows()
     if not import_rows:
         findings.append("ARCHIVE_IMPORT_MANIFEST_MISSING")

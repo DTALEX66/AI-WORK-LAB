@@ -16,6 +16,7 @@ These nodes do two things a "the file exists" test cannot:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -136,3 +137,90 @@ def test_no_root_markdown_calls_itself_the_top_authority_but_one():
     claimants = sorted(path.name for path in TARGET_ROOT.glob("*.md")
                        if "唯一顶层入口" in path.read_text(encoding="utf-8", errors="replace"))
     assert claimants == ["PROJECT_CURRENT.md"], claimants
+
+
+def _gate_module():
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import check_project_current
+    return check_project_current
+
+
+IMPORT_HEADER = """sha256,bytes,category,original_name,archive_path,action,target_rel,member_count,reason"""
+
+
+def test_the_imported_object_list_can_be_shown_wrong(tmp_path, monkeypatch):
+    """A row saying "this object is in the repo" must be contradicted by the repo itself.
+
+    Without this the coverage check only ever passes: it reads a manifest generated from the bytes
+    that are already there, so nothing demonstrates the two ways it can disagree -- the file
+    vanishing, and the file holding different bytes than the row claims.
+    """
+    gate = _gate_module()
+    fake = tmp_path / "docs" / "history" / "archive-objects-20261101"
+    (fake / "by-sha").mkdir(parents=True)
+    # the coverage check reads the reconciliation register first and refuses without it, so the
+    # fixture carries one too -- this node is about the import manifest, not about a missing register
+    register = tmp_path / "migration"
+    register.mkdir(parents=True)
+    (register / "archive-object-reconciliation-20261101.csv").write_text(
+        "sha256,bytes,archive_path,projects,category,disposition,evidence,source_hint\n"
+        + "a" * 64 + ",10,_资料库/a.md,[x],历史方案,ARCHIVED_IN_REPO,,Record/a.md\n",
+        encoding="utf-8", newline="\n")
+    payload = b'{"real": true}'
+    (fake / "by-sha" / "aaaa.json").write_bytes(payload)
+    digest = hashlib.sha256(payload).hexdigest()
+    rows = [
+        # a row whose bytes really are on disk
+        digest + ",14,历史方案,x.json,_资料库/x.json,ARCHIVED_IN_REPO,"
+        "docs/history/archive-objects-20261101/by-sha/aaaa.json,0,逐字节复验相符",
+        # a row that claims the same thing about a file that is not there
+        "0" * 64 + ",9,历史方案,y.json,_资料库/y.json,ARCHIVED_IN_REPO,"
+        "docs/history/archive-objects-20261101/by-sha/missing.json,0,盘上没有这个文件",
+    ]
+    (fake / "ARCHIVE-OBJECTS-MANIFEST.csv").write_text(
+        IMPORT_HEADER + "\n" + "\n".join(rows) + "\n", encoding="utf-8", newline="\n")
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    kinds = [entry.split()[0] for entry in gate.check_archive_coverage()]
+    assert "ARCHIVE_IMPORT_MANIFEST_MISSING" not in kinds, kinds
+    assert "IMPORTED_BYTES_MISSING" in kinds, kinds
+    assert "IMPORTED_DIGEST_STALE" not in kinds, (
+        "逐字节相符的那行被报成摘要不符，说明比较的对象不是盘上的字节", kinds)
+
+
+def test_a_destination_that_was_never_decided_is_refused(tmp_path, monkeypatch):
+    """`ARCHIVE_ONLY` -- "we have not decided where this goes" -- is the drift state; it must be red.
+
+    So must a disposition nobody defined: an enumeration the register can grow silently is how a
+    coverage table starts meaning something other than what the checker tests.
+    """
+    gate = _gate_module()
+    register = tmp_path / "migration"
+    register.mkdir(parents=True)
+    (register / "archive-object-reconciliation-20261101.csv").write_text(
+        "sha256,bytes,archive_path,projects,category,disposition,evidence,source_hint\n"
+        + "b" * 64 + ",10,_资料库/b.md,[x],历史方案,ARCHIVE_ONLY,,Record/b.md\n"
+        + "c" * 64 + ",10,_资料库/c.md,[x],历史方案,SOMETHING_MADE_UP,,Record/c.md\n",
+        encoding="utf-8", newline="\n")
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    kinds = [entry.split()[0] for entry in gate.check_archive_coverage()]
+    assert "DESTINATION_UNDECIDED" in kinds, kinds
+    assert "UNKNOWN_DISPOSITION" in kinds, kinds
+
+
+def test_an_unexplained_top_level_directory_is_refused(tmp_path):
+    """The rule that names an undocumented root directory is driven at a tree that actually has one."""
+    gate = _gate_module()
+    (tmp_path / "PROJECT_CURRENT.md").write_text("# 入口\n\n只提到 apps 和 scripts。\n",
+                                                 encoding="utf-8")
+    (tmp_path / "apps").mkdir()
+    (tmp_path / "mystery").mkdir()
+    saved = gate.ROOT
+    try:
+        gate.ROOT = tmp_path
+        findings, _machine_only = gate.check_entries(tmp_path / "PROJECT_CURRENT.md")
+    finally:
+        gate.ROOT = saved
+    undocumented = [entry for entry in findings if entry.startswith("ROOT_DIR_UNDOCUMENTED")]
+    assert any(entry.endswith("mystery") for entry in undocumented), findings
+    assert not any("apps" in entry for entry in undocumented), (
+        "被说明过的目录也被报未说明，这条规则测的就不是它声称的东西", undocumented)
