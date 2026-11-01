@@ -32,11 +32,13 @@ ROOT = Path(__file__).resolve().parents[1]
 ENTRY = "PROJECT_CURRENT.md"
 #: the promoted October-current authorities, listed at the repository root by owner rule
 AUTHORITY_INDEX = "AUTHORITY-INDEX.md"
-REQUIRED_ENTRIES = ("PROJECT_CURRENT.md", "README.md", "AGENTS.md", AUTHORITY_INDEX)
-#: documents whose path-shaped tokens are claims about *this* repository. The promoted index
-#: is deliberately excluded: its third column names paths inside the source repositories, and
-#: its destinations are already verified byte by byte in check_authority_index().
-CITING_ENTRIES = ("PROJECT_CURRENT.md", "README.md", "AGENTS.md")
+REQUIRED_ENTRIES = ("PROJECT_CURRENT.md", "README.md", "AGENTS.md", AUTHORITY_INDEX,
+                    "LICENSE", "SECURITY.md", "CONTRIBUTING.md")
+#: documents whose path-shaped tokens are claims about *this* repository. AUTHORITY-INDEX.md is
+#: deliberately left out: its third column names paths inside the *source* repositories, and its
+#: destinations are already verified byte by byte in check_authority_index().
+CITING_ENTRIES = ("PROJECT_CURRENT.md", "README.md", "AGENTS.md",
+                  "SECURITY.md", "CONTRIBUTING.md", "docs/LICENSING.md")
 FIGURES_START = "<!-- entry-figures:start -->"
 FIGURES_END = "<!-- entry-figures:end -->"
 #: root directories a citation may start with; anything else is prose, not a path claim
@@ -64,6 +66,64 @@ ADMITTED_DISPOSITIONS = frozenset({
 def rows(rel: str) -> list[dict]:
     raw = (ROOT / rel).read_bytes().decode("utf-8-sig")
     return list(csv.DictReader(io.StringIO(raw, newline="")))
+
+
+#: areas whose bytes are attested elsewhere (digests in migration/copies.json and the manifests),
+#: so their line endings are lineage, not taste -- never reformat them
+BLOB_AREAS = ("docs/history/", "docs/authority-202610/", "domains/design/design_lab/resources/",
+              "vendor/")
+
+
+def _tracked_files(*patterns: str) -> list:
+    listing = subprocess.run(["git", "ls-files", "-z", *patterns], cwd=str(ROOT),
+                             capture_output=True, text=True,
+                             encoding="utf-8", errors="replace").stdout
+    return [rel for rel in listing.split(chr(0)) if rel]
+
+
+def line_endings() -> dict:
+    """Tracked files that are purely CRLF, and those that contain LF, outside the attested areas.
+
+    This number may fall (a real repair, one file at a time, with its digest re-attested) but may
+    never grow: a new file written on the wrong side of that boundary silently expands the mix that
+    `* -text` and the migration ledger are there to keep honest.
+    """
+    crlf = lf = 0
+    for rel in _tracked_files():
+        normalised = rel.replace(chr(92), "/")
+        if any(normalised.startswith(area) for area in BLOB_AREAS):
+            continue
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        blob = path.read_bytes()
+        pairs, ends = blob.count(b"\r\n"), blob.count(b"\n")
+        if pairs and ends == pairs:
+            crlf += 1
+        elif ends:
+            lf += 1
+    return {"crlf": crlf, "lf": lf}
+
+
+def spdx_claims() -> dict:
+    """Well-formed SPDX lines in tracked Python, and the near-misses that would read as MIT anyway."""
+    good = sloppy = missing = 0
+    for rel in _tracked_files("*.py"):
+        normalised = rel.replace(chr(92), "/")
+        if any(normalised.startswith(area) for area in BLOB_AREAS):
+            continue
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        head = path.read_bytes()[:400].decode("utf-8", errors="replace")
+        claim = next((line for line in head.splitlines() if "SPDX-License-Identifier:" in line), None)
+        if claim is None:
+            missing += 1
+        elif re.search(r"SPDX-License-Identifier:\s*[A-Za-z0-9.+-]+\s*$", claim):
+            good += 1
+        else:
+            sloppy += 1
+    return {"good": good, "sloppy": sloppy, "missing": missing}
 
 
 def archive_summary() -> dict:
@@ -108,6 +168,10 @@ def derive_figures() -> dict:
         "archive_source_hints": len(hints),
         "suite_test_files": json.loads((ROOT / TEST_CENSUS).read_text(encoding="utf-8"))["files"],
         "suite_test_nodes": json.loads((ROOT / TEST_CENSUS).read_text(encoding="utf-8"))["tests"],
+        "crlf_tracked_files": line_endings()["crlf"],
+        "lf_tracked_files": line_endings()["lf"],
+        "spdx_claimed_files": spdx_claims()["good"],
+        "spdx_malformed_lines": spdx_claims()["sloppy"],
         "source_rows_work": len(work),
         "source_rows_design": len(design),
         "source_rows_total": len(work) + len(design),
@@ -243,6 +307,9 @@ def check_entries(entry_path: Path) -> tuple[list, list]:
         for token in cited_paths(text):
             if not (ROOT / token).exists():
                 findings.append("CITED_PATH_MISSING %s -> %s" % (name, token))
+    malformed = spdx_claims()["sloppy"]
+    if malformed:
+        findings.append("SPDX_MALFORMED_LINES %d（声明读起来像 MIT，实际不合规）" % malformed)
     return findings, machine_only
 
 

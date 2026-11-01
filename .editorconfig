@@ -1,0 +1,46 @@
+# 本仓的行尾与空白规则刻意"保守"，因为字节保真是契约的一部分：
+# .gitattributes 是 `* -text`（Git 不转换行尾），migration/copies.json 按字节记过迁入原件的摘要，
+# tests/unified/test_v07_migration.py 会复验。任何"编辑器顺手统一格式"的动作都可能让
+# 已认证的摘要与磁盘不符，所以这里只声明、不改造。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = false
+trim_trailing_whitespace = false
+indent_style = space
+indent_size = 4
+
+# 迁移血统带来的既有 CRLF 文件（现算个数见顶层入口数字段 crlf_tracked_files）：
+# 明确保持 CRLF，避免编辑器在无关修改里把行尾一起改掉。
+[backend/v1.py]
+end_of_line = crlf
+
+[backend/core/work_surfaces.py]
+end_of_line = crlf
+
+[config/capability-matrix.json]
+end_of_line = crlf
+
+[design-lab/schemas/{artifact,design-system}.schema.json]
+end_of_line = crlf
+
+[AI-WORK-LAB_HANDOFF_20261029/*.csv]
+end_of_line = crlf
+
+# 登记与台账由生成器写出，格式即产物，禁止自动重排
+[*.{csv,json}]
+indent_size = 2
+insert_final_newline = false
+
+[*.md]
+indent_size = 2
+max_line_length = off
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.psm1]
+end_of_line = crlf
+
