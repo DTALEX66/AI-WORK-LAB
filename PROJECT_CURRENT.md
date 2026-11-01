@@ -23,10 +23,10 @@ archive_only_objects = 1131
 archive_registered_not_migrated = 80
 archive_source_hints = 1212
 archive_unclassified_residue = 1
-archived_excluded_cache_and_build = 390
+archived_excluded_cache_and_build = 513
 archived_linked_in_archive = 85
 archived_linked_in_repo = 1108
-archived_objects_copied = 5225
+archived_objects_copied = 5102
 archived_objects_duplicated = 300
 authority_index_entries = 23
 blocker_items = 7
@@ -59,7 +59,9 @@ unsettled_files = 237
   现在的定性与替代关系。检查器会**重算每个原件的摘要**并与表里记的比对，摘要一旧就红。
 - 历史区已迁入：按 owner 规则（缓存与构建不要、其他按历史/文档归档进本仓）把来源内容复制进
   `docs/history/sources-20261101/`，逐条去向在 `MANIFEST.csv`（`7108` 行全覆盖）：
-  `5225` 行逐字节复制、`300` 行同字节去重指向已复制件、`1108` 行本仓已按字节持有、
+  `5102` 行逐字节复制、`300` 行同字节去重指向已复制件、`1108` 行本仓已按字节持有、
+  `123` 张截图与照片（64,092,364 字节）按 owner 2026-11-01「截图照片去掉」移出 Git —— 但字节没被删，连名带摘要搬进 `.project-local/removed-raster-20261101/`（两个来源仓待删，直接删文件会把「不要进仓」变成「这东西不存在了」）；`38` 个 SVG 是图形不是照片，暂留，要一起走说一声。
+  
   `85` 行与统一归档逐摘要相同（不搬第二份）、`390` 行为缓存/构建按规则不要。
   两处缺陷是复验时抓到并修好的：`37` 行原判"本仓已持有"只凭台账 `sha256_source`，而改后文件让
   本仓实际持有的是修复版本、原始字节无处可寻（已补采并逐行复验摘要）；`1` 个 260 字符以上的
