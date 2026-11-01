@@ -1705,3 +1705,25 @@ PASS——任何一种情况它都 `return` 非零且不写文档）。它在 `s
 census 的节点数是 dict 不是 int）都是这套桩先抓到的，而不是等 14 分钟的全量跑完。**这两个文件在
 `.project-local/` 里，不随克隆走**——克隆里拿不到的是"这台机器测过"这件事本身，不是结论的算法；
 要在新机器上重放，需要重跑收据生产器与受控对照，产物路径在本节已逐个点名。
+
+**十、公开面实测：给决策的数，不给结论。** owner 要把这仓推到 GitHub 上看规范，而远程现在是
+PUBLIC，所以本轮把"推上去会公开什么"量成数，写在 `.project-local/runs/public-exposure-scope-20261102.json`
+（取数器 `.project-local/edits-20261101/scan_public_exposure_scope.py`，模式自检 rc=0）：
+
+- 待推范围 `origin/integration/local-fusion-20261029..HEAD` 共 5868 个变更文件；扫描读到当前字节的
+  5764 个，跳过 `missing 89`（在这一段里被移出工作树的历史原件，字节只存在于历史 blob，**本轮没有
+  扫它们**）与 `binary_or_large 15`，读取失败 0。
+- 形态命中：`real_email` 3990 处 / 144 文件、`user_home_path` 1625 处 / 382 文件、`phone_cn` 548 / 111、
+  `id_card_cn` 267 / 92、`secret_assignment` 25 / 13、`credential_shape` 7 / 5；另有 247 个文件名本身
+  指向真实交付物（JSON 里那个列表只留前 50 个，别把 50 当成总数）。
+- 这些数是**形态匹配，不是定性**。抽查把它们大部分打回原形：`real_email` 的头部是
+  `notifications@github.com` 2549 次、`git@github.com` 124 次，还有 `1920@ui2026-light.png` 352 次
+  （文件名里的 `@`）与 `w@F.us` 一类 71 次（base64 片段）；`user_home_path` 只有 4 个不同写法，
+  工作区根那种写法占 1205 次，`C:` 盘用户目录那种 369 次且没有用户名尾巴；
+  `secret_assignment` 命中的是文档里的 `X-Goog-Api-Key: YOUR_API_KEY` 占位示例，
+  `credential_shape` 命中的是一个 1.3 MB 归档对象里的 base64 正文。**在这批字节里没有确认到
+  一条活凭据**；但形态扫描不能证明"没有"，247 个交付物命名文件与 89 个只活在历史里的 blob
+  要人工过一遍才算数——这一步是 owner 的决定，我不替你把公开说成安全。
+- 还有一条挡在前面的既有策略：`.git/hooks/pre-push` 从 2026-10-29 起拦截本仓**全部** push
+  （`LOCAL_ONLY_NO_REMOTE_ACTIONS`，`exit 1`，它自己的注释写明"防误推的 guard，不是网络隔离"）。
+  要推送必须先决定怎么处理这条钩子；`--no-verify` 不在我可自行使用的范围里。
