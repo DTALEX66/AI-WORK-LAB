@@ -318,3 +318,48 @@ def test_the_figure_writer_refuses_a_document_missing_its_markers(tmp_path):
     assert copy.read_text(encoding="utf-8").count("suite_test_nodes") == 1, (
         "拒绝必须一个字都不写")
 
+
+
+def test_a_regeneration_with_identical_readings_writes_no_bytes(tmp_path, monkeypatch):
+    """The census lives under `tests/`, where the receipt clause allows nothing -- so it must not restamp.
+
+    Re-running the producers after a receipt is the normal closing move, and the census is one of
+    them. If it rewrote `generated_at` on identical readings, the rebinding commit would carry a
+    tracked change under `tests/`, the receipt clause would (correctly) refuse it, and the only way
+    out would be a third measurement for a number that did not change. Both directions are asserted:
+    identical readings keep the file byte-for-byte, a real gain still gets written.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_test_census as census_tool
+
+    published = {"schema": "ai-work-lab/test-node-census/v1",
+                 "generated_at": "2026-01-01T00:00:00+00:00", "files": 2, "tests": 15,
+                 "unified_tests": 15, "legacy_tests": 0,
+                 "scope": "tests/ only", "observed_from": "static scan",
+                 "nodes": {"tests/unified/test_a.py": {"tests": 12, "bytes": 100, "sha256": "x"},
+                           "tests/unified/test_b.py": {"tests": 3, "bytes": 50, "sha256": "y"}}}
+    census_path = tmp_path / "node-census.json"
+    original_bytes = (json.dumps(published, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    census_path.write_bytes(original_bytes)
+    monkeypatch.setattr(census_tool, "OUT", census_path)
+
+    same = dict(published, generated_at="2026-11-02T09:00:00+00:00")
+    monkeypatch.setattr(census_tool, "census", lambda: same)
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        rc = census_tool.main([])
+    assert rc == 0, buffer.getvalue()
+    assert json.loads(buffer.getvalue())["verdict"] == "UNCHANGED", buffer.getvalue()
+    assert census_path.read_bytes() == original_bytes, (
+        "读数一模一样却换了时间戳：这次写会把收据从它描述的树上摘下来")
+
+    grown = dict(same, tests=16, nodes=dict(same["nodes"], **{
+        "tests/unified/test_a.py": {"tests": 13, "bytes": 110, "sha256": "x2"}}))
+    monkeypatch.setattr(census_tool, "census", lambda: grown)
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        rc = census_tool.main([])
+    assert rc == 0, buffer.getvalue()
+    assert "verdict" not in json.loads(buffer.getvalue()), (
+        "真的有新增节点时必须写：不写的话清单就永远落后于套件")
+    assert json.loads(census_path.read_text(encoding="utf-8"))["tests"] == 16

@@ -59,6 +59,11 @@ def census() -> dict:
             "unified_tests": unified, "legacy_tests": legacy, "nodes": state}
 
 
+def _without_stamp(document: dict) -> dict:
+    """The census minus its clock: the part that is a claim about the tree."""
+    return {key: value for key, value in document.items() if key != "generated_at"}
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
@@ -109,6 +114,16 @@ def main(argv=None) -> int:
                                       "删测试换绿是本项目明令禁止的动作"},
                              ensure_ascii=False, indent=2))
             return 3
+        published = json.loads(OUT.read_text(encoding="utf-8"))
+        if _without_stamp(published) == _without_stamp(fresh):
+            # Re-running with identical readings must not move the file. `generated_at` alone would
+            # change tracked bytes under tests/, and the receipt clause allows nothing there: a
+            # refresh that restamps takes the measurement off the tree it is being read at.
+            print(json.dumps({"written": str(OUT), "verdict": "UNCHANGED",
+                              "generated_at_kept": published.get("generated_at"),
+                              "files": fresh["files"], "tests": fresh["tests"]},
+                             ensure_ascii=False))
+            return 0
     OUT.write_text(json.dumps(fresh, ensure_ascii=False, indent=2) + "\n",
                    encoding="utf-8", newline="\n")
     print(json.dumps({"written": str(OUT), "files": fresh["files"], "tests": fresh["tests"]},
