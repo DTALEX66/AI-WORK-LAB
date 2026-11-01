@@ -767,6 +767,13 @@ build_audit_item_closure        rc=0
   每包的 checker（`domain_packs.py:101 _load_checker`，`CHECKER_REL=design-lab/scripts/verify_domain_pack_v2.py`），
   但 13 个包目录下没有任何 `.py`、也没有 `design-lab/` 子目录，即该路径永不解析——
   逐包校验一次也没执行过。文字改成这句，状态仍是不声称已验证。
+  **【2026-11-01 取代，见 §15.22】** 上面这句里两处都需要更正，而且错的方向不一样。
+  其一，「也没有 `design-lab/` 子目录」当场就是假的：`domains/design/design_lab/resources/repo/design-lab/`
+  确实存在（`schemas/domain-pack.schema.json` 就在里面，与来源仓逐字节相同），缺的只有那个校验脚本本身，
+  所以「路径永不解析」是过度断言——`_load_checker()` 每次都解析得到同一个活的根，只是找不到文件。
+  其二，逐包校验现在**执行过了**：脚本按逐字节复制迁入 `CHECKER_REL` 探测的那个位置，
+  `checker.state` 为 `LOADED`，`05#L21|design-domain` 那行的缺口改写为「E1 已过，E4 未做」，
+  不再是「一次也没执行」。两处都由具名节点钉住（`tests/unified/test_v24_capability_evidence.py`）。
 
 还有两处相反的错（**低**报而不是虚报）：`ui-entry` 的 workbench/dashboard 等行写"本仓无对应断言"，
 而导航表派生关系其实有断言在 `apps/workbench/tests/appshell.mjs`（`ROUTE_VIEWS`/`B10_NAV`，node 门、
