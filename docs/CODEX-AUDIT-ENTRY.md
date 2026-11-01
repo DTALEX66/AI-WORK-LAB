@@ -1444,3 +1444,57 @@ disclosed ["A00#1", "L00#2", "L20#0"]；能力族直方图 {"IMPLEMENTED_VERIFIE
 任务留在存储里，报表点名它而不撤销它）；真实宿主写入与读回、模型推理、真实私有数据迁移、
 STITCH 前端、真人专业验收签字、`L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、
 `L20#0` 的真实宿主探测按边界记 NOT_RUN/BLOCKED/DEFERRED。
+### 15.22 领域包资格第一次被真判；三条提示词路由补上反例；顺带修掉一处工具的自相矛盾（M+L）
+
+**一、登记自己点名的缺口，这轮被走通了**：`05#L21|design-domain` 那行的缺口原文是「本树没有仓库
+自带的那个校验脚本」，而读路径 `checker.state=UNAVAILABLE` 恰好让 `NOT_CHECKED` 成为一个永远走不出的
+格子——一句自陈的谦虚，写成断言以后就变成了一条不可反驳的话。去量的结果是：脚本在来源仓里存在
+（110 行、MIT、只 import 标准库 + `jsonschema`，而 `jsonschema` 早就是本仓 `pyproject.toml` 声明的硬
+依赖、本机 4.26.0 已在），`domain_packs._load_checker()` 探测的又是打包资源根下那个**活的**路径，
+`schemas/` 兄弟文件与来源仓逐字节相同。于是按逐字节复制把它迁入
+`domains/design/design_lab/resources/repo/design-lab/scripts/verify_domain_pack_v2.py`：来源覆盖登记这一行从 `TOOL_OR_SCRIPT` 转为 `COPIED_VERIFIED`，
+`checker.state` 从 UNAVAILABLE 变成 `LOADED`，13 个包第一次拿到逐包结论——
+12 个 VALIDATES、1 个 INVALID、`NOT_CHECKED` 归 0。
+词表里 `NOT_CHECKED` 那一格仍然被声明：词表说的是这个发射器会说哪四种话，不是这一次的读数。
+
+**二、被拒的那个包没有被「修好」，这是有意的**：`minigame-design` 是 INVALID，校验器给了
+11 条理由，第一条点名缺少的 `domain` 属性，其余是 `files.*` 声明缺失——它的清单是
+`workflow/domain-pack/v1`，而校验器按 Spec V2 说话。我没有改它一个字节：让它在读回里继续 INVALID 才是校验器
+在尽责，补它的清单是 owner 的设计工作。VALIDATES 也只到 E1：它说的是这个仓里的文件齐不齐到能过
+schema，不是宿主跑过、不是设计质量判定、不是被接受的领域能力，更不是真人 E4 验收；
+「12 个通过」对这 12 个包设计得好不好没有任何说法。
+
+**三、迁入只该动一行台账，但 `--apply` 会顺手改语义**：直接跑 `--apply` 会把
+`migration/copies.json` 里 36 条记录的 `sha256_target` 从「复制时的摘要」改写为「当前磁盘摘要」。
+那一步看着只是刷新，实际会把 17 份**声明过的返工**打扮成迁移产物本来就该长这样——
+37 行覆盖登记随之转绿，一条钉住「已发布合同既不等于迁移记录也不等于声明返工就算 stale」的断言
+当场失去对象。所以台账按已发布惯例逐字节追加一条（`git diff --numstat` = 15 增 0 删），其余不动。
+
+同一轮里修掉 `apply_plan()` 的一处自相矛盾：它拒绝所有 `MODIFIED` 行，包括自己已经标成
+`declared_rework` + `rework_attested` 的那些，于是错误信息里「先把它声明出来」这个补救办法永远无法被
+满足——声明了也照样拒。现在只拒绝没有回执的那些，并且绝不重写有回执的字节；返回的计数也改成
+「实际被替换了几个」，不再把跳过的一并报成覆盖。新增两个具名节点把这两半钉住：有回执的目标字节
+没变、且那条行的来源被指成一个**不存在的文件**（跳过若没发生，读取就会炸），
+植入一条无回执的修改则照样拒绝、且拒绝发生在写入之前。
+
+**四、提示词那一行「本仓无 pytest 覆盖」只对了一半**：实测是反推有旧只读套件的具名节点覆盖，
+生成／列表／签收三条确实没有。本轮补上 5 个走真实 HTTP 的节点，
+其中「提示词导出不算作品生成」从约定变成断言：`/assets` 与 `/native-assets` 两个素材面的 id 集合在
+生成前后逐字相同，重打同一请求只重放同一行；畸形过滤器得到具名 400 而不是 404；签收要具名真人，
+`reviewer_kind` 为 agent 被具名拒绝；存储守卫被打穿时路由答具名拒绝而不是闷声 201。够不到的两个
+并发 409 与那条在路由面上构造不出的 `STALE_REVISION` 留在文字里说明，没有用别的码冒充。
+
+**五、隔离安装的证据**：本轮重跑了离线隔离安装与验收：报告 `.project-local/build/offline-20261101T110113Z/verify-report.json`（99018 字节、16 项检查、overall=PASS、blocked=0、failed_required=0，wheel 摘要 7b5a30815d58228a）；在装出来的环境里直接调 `domain_packs.build()` 探一次，checker=LOADED、packs=13、validates=12、invalid=['minigame-design']、NOT_CHECKED=0（探针脚本 .project-local/edits-20261101/probe_installed_packs.py，不是那 16 项已发布检查之一）。
+
+**六、本轮实测**：收据 `ca1d7acb1112a992` 绑提交 `2dfbd09e04`；本节写入时工作树相对那一次提交多出的跟踪改动只有 4 份，全部是文档或生成登记表：`config/isolated-install-verdict.json`、`docs/AUDIT-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md`、`migration/audit-item-closure.csv`。（HEAD 已到 `8645f646ce`。）
+套件 `468 passed, 3 subtests passed in 777.06s (0:12:57)`（exit 0），逐类别 passed 468，与 collect-only 的 468 项一致，
+节点增减 7/0；验收门 REFUSED（exit 1），blocking ["L10#0"]，
+disclosed ["A00#1", "L00#2", "L20#0"]；能力族直方图 {"IMPLEMENTED_VERIFIED": 18, "PARTIAL": 12}；任务验收登记 {"CONFIRMED": 41, "PARTIAL": 2, "BLOCKED_BY_BOUNDARY": 2, "DEFERRED_P3": 3}；
+迁移计划 identical 1110 / EOL_ONLY 2 / MODIFIED 17
+（17 份有声明与回执、unmanaged 0）。
+
+**七、还欠着的**：`J-a`（`vite build` 缺 `picomatch`，bundle 无法重建，两个读 bundle 的 JS 闸门仍在
+10-29 的旧字节上）；`minigame-design` 的清单仍是 v1，补齐它是设计工作而不是登记可以替它做的事；判定写下
+之后仍没有补偿动作（跨项目误读产生的 PASS 与据此 COMPLETED 的任务留在存储里，报表点名它而不撤销它）；
+真实宿主写入与读回、模型推理、真实私有数据迁移、STITCH 前端、真人专业验收签字、`L10#0` 的 owner
+决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的真实宿主探测继续按边界记 NOT_RUN/BLOCKED/DEFERRED。
