@@ -1,0 +1,100 @@
+/* Control Surface thin shell.
+   Colors are the SAME six documented values the Observer's tokens.ts DARK palette publishes, restated here
+   once with attribution — this shell has no build step and no package manager, so importing the real token
+   module would mean a second npm ecosystem for one page. It is not a second design system: only the six
+   surface/ink values and the two brand accents are copied, and the shell owns no component library. */
+:root {
+  --bg-0: #050D16;
+  --bg-1: #081420;
+  --bg-2: #0C1B2A;
+  --line: #17435D;
+  --ink: #EEF6FC;
+  --muted: #8EABBC;
+  --primary: #2A91FF;
+  --secondary: #20CDE1;
+  --warn: #F59E0B;
+  --error: #FF6B6B;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--bg-0);
+  color: var(--ink);
+  font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+
+.bar { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px; }
+.bar h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: .02em; }
+.bar .sub { margin: 0; color: var(--muted); font-size: 12px; }
+
+main { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+/* the candidate panel spans both columns: a JSON editor in one column is unreadable */
+.panel.wide { grid-column: 1 / -1; }
+
+.panel {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  min-width: 0;
+}
+.panel h2 { margin: 0 0 8px; font-size: 15px; }
+.hint { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+
+.ops { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ops li { border: 1px solid var(--line); border-radius: 8px; background: var(--bg-2); padding: 10px; }
+.ops li.unsupported { border-style: dashed; }
+.ops p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.ops p.next { color: var(--secondary); }
+
+label { display: block; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
+input {
+  display: block; width: 100%; margin-top: 4px; padding: 8px 10px;
+  background: var(--bg-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 6px; font: inherit;
+}
+input:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+/* The candidate editor is a text area, not an auth field: no autofill, no credential semantics, and the
+   CSP forbids inline style, so its metrics live here with the rest of the tokens. */
+textarea {
+  display: block; width: 100%; margin-top: 4px; padding: 8px 10px;
+  background: var(--bg-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 6px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11px; line-height: 1.45;
+  resize: vertical;
+}
+textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button {
+  padding: 8px 14px; border-radius: 6px; border: 1px solid var(--primary);
+  background: var(--primary); color: var(--bg-0); font: inherit; font-weight: 600; cursor: pointer;
+}
+button#regen { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 400; }
+button:disabled { opacity: .55; cursor: progress; }
+button:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
+
+.tag { display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); }
+.tag.ok { color: var(--secondary); border-color: var(--secondary); }
+.tag.warn, .tag.muted { color: var(--warn); }
+.tag.error { color: var(--error); border-color: var(--error); }
+
+.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11px; color: var(--muted); }
+.pending { margin-top: 10px; padding: 8px 10px; border: 1px dashed var(--secondary); border-radius: 6px; color: var(--secondary); font-size: 12px; }
+.result { margin: 12px 0 0; padding: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; white-space: pre-wrap; word-break: break-word; color: var(--ink); font-size: 12px; min-height: 3.5em; }
+.readback { margin-top: 10px; font-size: 12px; color: var(--secondary); word-break: break-word; white-space: pre-wrap; }
+/* UNKNOWN and refusal states stay on screen in their own colour; hiding them is how a thin shell starts
+   reading as a success it never earned. */
+.readback.warn, .warn { color: var(--warn); }
+.hint.ok { color: var(--secondary); }
+.hint.warn { color: var(--warn); }
+form strong { color: var(--warn); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

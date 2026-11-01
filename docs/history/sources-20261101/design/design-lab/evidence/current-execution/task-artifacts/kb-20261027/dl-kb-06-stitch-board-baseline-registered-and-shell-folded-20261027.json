@@ -1,0 +1,23 @@
+{
+  "id": "dl-kb-06-stitch-board-baseline-registered-and-shell-folded-20261027",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-27T13:30:59Z",
+  "subject_sha": "8895bea6062bec86d8a50307f04b6b9e4ef8c614",
+  "audit_finding": "owner 2026-10-27: the workbench still reads as the old shell, not as the STITCH boards. Two causes found: the delivered board pack (Record/stitch_design_lab.zip, 2026-10-24, 14 boards) was never registered, so the project could not see its own baseline; and the nav rail carried all 24 legacy routes where 14/14 boards and 08's own words say three daily entries plus settings.",
+  "reproduced_before_fix": "measured before touching anything: route table = 24 entries in 4 groups; `stitch_design_lab` named in 0 files under docs/, design-lab/config, reports/; the pack's zip sha256 ae76e90307bfcc429b5b11e13502e2a739ad69f7a3bc96a5a86f0cdc941eee03 (5,115,919 B, 31 files, 5,678,932 B unpacked)",
+  "changed": [
+    "docs/history/record-archive-2026-10-27-stitch-boards/ARCHIVE-MANIFEST.json: per-member name/bytes/CRC32/SHA-256 computed from the ZIP's own bytes, canonical local root .project-local/record-archive-2026-10-27/, and the three limitations this registration does not paper over",
+    "docs/RECORD-ARCHIVE-INDEX.md: the dated 2026-10-27 section, inserted BEFORE the generated register heading because the generator owns everything from that heading to EOF",
+    "apps/workbench/shell.ts + style.css (cbaee463, 8895bea6): nav folded to the three daily entries with settings pinned bottom-left and a 全部功能 toggle -- no route deleted, because the .app-nav-item count is what the browser E2E and DESIGN.md re-measure; screen 1 gains 清空 · N 字, Shift+Return 换行 and 已关联 N 项参考, recomputed in renderReferences() because stored-plan load and post-save clear set value programmatically and fire no input event",
+    "DESIGN.md §4 re-pinned by the debt gate's own reading 521 -> 525 (the four new literal px are in the nav rules; screen 1 is token-only)"
+  ],
+  "measured": {
+    "gate_sequence": "test_design_debt_baseline went red first naming the exact sentence, then 9/9 OK after the re-pin",
+    "local_after_change": "npm run test:unit exit 0; design-layer browser E2E Ran 2 tests in 9.830s OK; contrast gate Ran 31 tests OK; theme geometry 3/3 OK; overflow gate Ran 4 tests in 390.858s OK",
+    "ci": "cbaee463 PR run 40509435322 conclusion=success (all 10 non-skipped jobs)",
+    "head": "8895bea6062bec86d8a50307f04b6b9e4ef8c614"
+  },
+  "not_claimed": "not done and not claimed: delivery-type chips (the <select> is the single state holder and a second control needs a contract first), attachment tiles' name/size (references carry only kind+id), thumbnails (needs a static-asset route and a CSP widening, which is the owner's security call), and the boards' Windows window controls (no real implementation inside a browser tab; no decorative buttons). Whether the rail collapse extends beyond the nav into DESIGN.md's inventory is an owner decision, not this receipt's."
+}

@@ -1,0 +1,138 @@
+{
+  "schema_version": "workflow/plugin-inventory/v1",
+  "generated_at": "2026-08-26",
+  "generated_by": "WLR-080",
+  "purpose": "Managed plugin inventory. Each item binds upstream, commit/tag, SPDX, hash, consumer, permissions, lifecycle state.",
+  "lifecycle_states": [
+    "discovered",
+    "installed",
+    "enabled",
+    "active",
+    "disabled",
+    "quarantined",
+    "removed"
+  ],
+  "entries": [
+    {
+      "id": "chrome-profiles",
+      "display_name": "Hermes Plugin Chrome Profiles",
+      "type": "agent-plugin",
+      "upstream": "anpicasso/hermes-plugin-chrome-profiles",
+      "commit": "5b9c3257b464c0f926d4355149a8aed9c8f307b4",
+      "spdx": "MIT",
+      "hash": "33ffc598c56e9bde61574df2e2f7966eabb4e85a1b860b748687da9a9ea07f76",
+      "consumer": "hermes",
+      "permissions": [
+        "browser"
+      ],
+      "lifecycle": "enabled",
+      "security_scan": "PASSED",
+      "installed_at": "2026-08-26",
+      "pinned": false,
+      "version_kind": "FLOATING_REVISION",
+      "install_metadata_source": "%LOCALAPPDATA%/hermes/plugins/.install-metadata.json",
+      "declared_revision": "5b9c3257b464c0f926d4355149a8aed9c8f307b4",
+      "declared_source": "https://github.com/anpicasso/hermes-plugin-chrome-profiles.git",
+      "observed": {
+        "observed_at": "2026-10-01",
+        "method": "git -C %LOCALAPPDATA%/hermes/plugins/chrome-profiles rev-parse HEAD plus per-file sha256",
+        "observed_commit": "5b9c3257b464c0f926d4355149a8aed9c8f307b4",
+        "clone_kind": "shallow",
+        "shallow_point": "5b9c3257b464c0f926d4355149a8aed9c8f307b4",
+        "tracked_files_at_head": 6,
+        "committed_tree_digest": "dcf18d52964ec76f4fb3370a4f3b0f62aed9efd8ffbc6313b02784e7f4e9e97e",
+        "working_tree_digest": "33ffc598c56e9bde61574df2e2f7966eabb4e85a1b860b748687da9a9ea07f76",
+        "working_tree_matches_commit": false,
+        "locally_modified_paths": [
+          "__init__.py"
+        ],
+        "installed_file_digests": {
+          "__init__.py": "a56a2ebefd1c68262dabc18060ae766f4be7b33ca39f4ec88a33742783e2c8e6"
+        },
+        "committed_file_digests": {
+          "__init__.py": "8e5595cb6db55f15aa2528be26c19497a8a919e2f8ca0c3e5e481549eae88217"
+        }
+      },
+      "hash_note": "AG-06l / audit F07 (2026-10-01). The record previously carried commit=null and hash=null while the install metadata declared a revision, so traceability was weak. Now both halves are recorded and, crucially, the audit's own caveat is honoured: a revision STRING cannot prove that the installed bytes match that commit. Verified from the live clone - the declared revision is CORRECT (git rev-parse HEAD equals it, shallow clone of the same commit) BUT the working tree does NOT match the commit: __init__.py is locally modified, 24,433 B / a56a2ebe... installed versus 23,764 B / 8e5595cb... committed, i.e. 669 bytes larger than what revision 5b9c3257 contains. No value was invented: where a fact is unknown it stays absent rather than guessed.",
+      "hash_scope": "working tree over the 6 tracked paths, sha256 of path then file content, sorted"
+    },
+    {
+      "id": "security-guidance",
+      "display_name": "Security Guidance",
+      "type": "desktop-plugin",
+      "upstream": "bundled",
+      "commit": null,
+      "spdx": "bundled",
+      "hash": null,
+      "consumer": "hermes",
+      "permissions": [],
+      "lifecycle": "enabled",
+      "security_scan": "bundled",
+      "installed_at": "2026-08-26",
+      "record_note": "CORRECTION 2026-10-01 (AG-06q). An earlier pass in this session reported a declared-vs-observed disagreement between this entry's lifecycle 'enabled' and its absence from the user plugins directory. That was WRONG and is withdrawn here. This entry's own type/upstream/spdx say 'bundled' (type desktop-plugin, upstream bundled, spdx bundled), which is exactly what it is: it is a BUNDLED plugin shipped with the Hermes application, not a user-installed one. It was PRESENT where it should be, so there was no disagreement to resolve and no lifecycle value needed changing. The lesson recorded: an install-shaped observation cannot be applied to a non-installed component class; the absence of a bundled plugin from the user install directory is the correct state, not a finding.",
+      "observed": {
+        "observed_at": "2026-10-01",
+        "method": "enumerated %LOCALAPPDATA%/hermes/hermes-agent/plugins and the user plugins directory",
+        "bundled": true,
+        "observed_path": "%LOCALAPPDATA%/hermes/hermes-agent/plugins/security-guidance",
+        "present_in_application": true,
+        "user_install_directory_present": false,
+        "working_tree_matches_commit": "NOT_COMPARABLE",
+        "comparison_not_possible_reason": "bundled component with no independent checkout; it ships inside the Hermes application",
+        "observed_commit": null
+      },
+      "verification_kind": "BUNDLED_COMPONENT"
+    },
+    {
+      "id": "web-ddgs",
+      "display_name": "Web DuckDuckGo Search",
+      "type": "desktop-plugin",
+      "upstream": "bundled",
+      "commit": null,
+      "spdx": "bundled",
+      "hash": null,
+      "consumer": "hermes",
+      "permissions": [
+        "web"
+      ],
+      "lifecycle": "enabled",
+      "security_scan": "bundled",
+      "installed_at": "2026-08-26",
+      "record_note": "CORRECTION 2026-10-01 (AG-06q). An earlier pass in this session reported a declared-vs-observed disagreement between this entry's lifecycle 'enabled' and its absence from the user plugins directory. That was WRONG and is withdrawn here. This entry's own type/upstream/spdx say 'bundled' (type desktop-plugin, upstream bundled, spdx bundled), which is exactly what it is: it is the bundled DuckDuckGo web-search provider (plugins/web/ddgs), not a user-installed plugin. It was PRESENT where it should be, so there was no disagreement to resolve and no lifecycle value needed changing. The lesson recorded: an install-shaped observation cannot be applied to a non-installed component class; the absence of a bundled plugin from the user install directory is the correct state, not a finding.",
+      "observed": {
+        "observed_at": "2026-10-01",
+        "method": "enumerated %LOCALAPPDATA%/hermes/hermes-agent/plugins and the user plugins directory",
+        "bundled": true,
+        "observed_path": "%LOCALAPPDATA%/hermes/hermes-agent/plugins/web/ddgs",
+        "present_in_application": true,
+        "user_install_directory_present": false,
+        "working_tree_matches_commit": "NOT_COMPARABLE",
+        "comparison_not_possible_reason": "bundled component with no independent checkout; it ships inside the Hermes application",
+        "observed_commit": null
+      },
+      "verification_kind": "BUNDLED_COMPONENT"
+    }
+  ],
+  "quarantined": [
+    {
+      "id": "hermes-media-studio",
+      "display_name": "Hermes Media Studio",
+      "type": "agent-plugin",
+      "upstream": "yimisunrise/hermes-media-studio",
+      "lifecycle": "quarantined",
+      "security_scan": "DANGEROUS (89 findings, CRITICAL persistence)",
+      "quarantined_at": "2026-08-26",
+      "reason": "Security scan blocked: plugin modifies project AGENTS.md/design docs (CRITICAL persistence)"
+    },
+    {
+      "id": "hermes-telegram-business",
+      "display_name": "Hermes Telegram Business",
+      "type": "agent-plugin",
+      "upstream": "NousResearch/hermes-telegram-business",
+      "lifecycle": "quarantined",
+      "security_scan": "DANGEROUS (2 findings, CRITICAL persistence + supply_chain)",
+      "quarantined_at": "2026-08-26",
+      "reason": "Security scan blocked: induces config writes + supply chain warning"
+    }
+  ]
+}

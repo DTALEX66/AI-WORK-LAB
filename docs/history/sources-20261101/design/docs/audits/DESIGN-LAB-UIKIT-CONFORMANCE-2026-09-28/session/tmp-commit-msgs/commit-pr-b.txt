@@ -1,0 +1,20 @@
+feat(governance): GA-1 路径引用漂移 + 机器安装策略 fail-closed 门（G-A/G-B/G-C）
+
+CROSSWALK 2026-09-24 旗舰结构缺口 G-A（路径引用漂移，RAW P0-T2）+ G-C（机器
+安装策略，RAW P0-T3 残留）+ G-B（DL-GOV-130 语言漂移守卫接 CI）合并为单一门：
+
+- scripts/verify_path_refs.py: 纯 stdlib、只读、fail-closed。
+  · AUTHORITY.md/AGENTS.md 的路径引用必须全部命中 tracked 文件（未命中且未
+    allowlist 即 FAIL，反静默漂移）；project/ → .project/ 别名解析；代码围栏排除
+  · .project/governance/path-ref-policy.json 机器策略：allowAutoInstall=false、
+    officialReleaseOnly=true、eDriveProtected=true、externalRootDrive=D:；
+    sharedInputs==paths.json shared_inputs、externalAssetsRoots==external-assets-index
+    shared_roots（漂移即 FAIL）；allowlist_missing 条目必须带 reason+approvedIn
+  · DL-GOV-130 守卫（verify_project_drift.py）必须接进 CI，拆线即本门 FAIL（自举）
+- .project/governance/path-ref-policy.json: 单一机器策略源（不建第二 ledger）
+- design-lab/tests/test_path_ref_gate.py: 12 个 fail-closed 回归 + live 冒烟
+- .github/workflows/canonical-verify.yml: top-authority-gate 追加 DL-GOV-130 + GA-1
+  两步（纯 stdlib，无新依赖；CI 现有 9 required 检查不动）
+
+本地验证：verify_path_refs.py 10/10 PASS；test_path_ref_gate 12/12 全绿。
+Authority: DL-AUTHORITY-2026-09-18-R2 / base main 5fd9253（#152 合后）

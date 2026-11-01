@@ -1,0 +1,248 @@
+{
+  "schemaVersion": "design-lab/foundation-audit/v1",
+  "task_key": "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-F020",
+  "audited_at": "2026-09-13T16:39:14+00:00",
+  "subject_sha": "",
+  "files": [
+    "src/design_lab/runtime/asset_store.py",
+    "src/design_lab/runtime/state_resources.py"
+  ],
+  "explicit_insert_columns": {
+    "positional_inserts": [],
+    "ok": true,
+    "evidence": "src/design_lab/runtime/asset_store.py names its columns for the v1 version insert; the change was made precisely so an additive migration cannot break the v1 writer"
+  },
+  "backward_compatibility": {
+    "frozen_v1_schemas": [
+      {
+        "file": "design-lab-state-v1.sql",
+        "exists": true,
+        "creative_markers_found": [],
+        "widened": false
+      },
+      {
+        "file": "design-lab-state-assets-v1.sql",
+        "exists": true,
+        "creative_markers_found": [],
+        "widened": false
+      },
+      {
+        "file": "design-lab-state-attempt-v1.sql",
+        "exists": true,
+        "creative_markers_found": [],
+        "widened": false
+      }
+    ],
+    "rehearsal": {
+      "status": "REHEARSED_PASS_PENDING_ACCEPTANCE",
+      "passed": true,
+      "steps": 15
+    },
+    "ok": true
+  },
+  "state_ownership": {
+    "schemas": [
+      {
+        "schema": "design-lab-state-v1.sql",
+        "expected_appliers": [
+          "src/design_lab/runtime/asset_store.py",
+          "src/design_lab/runtime/job_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "appliers_that_read_it": [
+          "src/design_lab/runtime/asset_store.py",
+          "src/design_lab/runtime/job_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "ok": true
+      },
+      {
+        "schema": "design-lab-state-assets-v1.sql",
+        "expected_appliers": [
+          "src/design_lab/runtime/asset_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "appliers_that_read_it": [
+          "src/design_lab/runtime/asset_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "ok": true
+      },
+      {
+        "schema": "design-lab-state-assets-v2.sql",
+        "expected_appliers": [
+          "src/design_lab/runtime/asset_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "appliers_that_read_it": [
+          "src/design_lab/runtime/asset_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "ok": true
+      },
+      {
+        "schema": "design-lab-state-attempt-v1.sql",
+        "expected_appliers": [
+          "src/design_lab/runtime/job_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "appliers_that_read_it": [
+          "src/design_lab/runtime/job_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "ok": true
+      },
+      {
+        "schema": "design-lab-state-attempt-v2.sql",
+        "expected_appliers": [
+          "src/design_lab/runtime/job_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "appliers_that_read_it": [
+          "src/design_lab/runtime/job_store.py",
+          "src/design_lab/creative/store.py"
+        ],
+        "ok": true
+      },
+      {
+        "schema": "design-lab-state-creative-v1.sql",
+        "expected_appliers": [
+          "src/design_lab/creative/store.py"
+        ],
+        "appliers_that_read_it": [
+          "src/design_lab/creative/store.py"
+        ],
+        "ok": true
+      }
+    ],
+    "ok": true
+  },
+  "terminal_immutability": {
+    "guards": [
+      {
+        "table": "attempt_state",
+        "schema": "design-lab-state-attempt-v2.sql",
+        "triggers": [
+          "attempt_event_no_delete",
+          "attempt_event_no_update",
+          "attempt_no_delete",
+          "terminal_attempt_no_update"
+        ],
+        "ok": true
+      },
+      {
+        "table": "attempt_event",
+        "schema": "design-lab-state-attempt-v2.sql",
+        "triggers": [
+          "attempt_event_no_delete",
+          "attempt_event_no_update",
+          "attempt_no_delete",
+          "terminal_attempt_no_update"
+        ],
+        "ok": true
+      },
+      {
+        "table": "version_rejection",
+        "schema": "design-lab-state-creative-v1.sql",
+        "triggers": [
+          "decision_event_no_delete",
+          "decision_event_no_update",
+          "operation_lineage_no_delete",
+          "operation_lineage_no_update",
+          "requirement_event_no_delete",
+          "requirement_event_no_update",
+          "version_rejection_no_delete",
+          "version_rejection_no_update"
+        ],
+        "ok": true
+      },
+      {
+        "table": "requirement_event",
+        "schema": "design-lab-state-creative-v1.sql",
+        "triggers": [
+          "decision_event_no_delete",
+          "decision_event_no_update",
+          "operation_lineage_no_delete",
+          "operation_lineage_no_update",
+          "requirement_event_no_delete",
+          "requirement_event_no_update",
+          "version_rejection_no_delete",
+          "version_rejection_no_update"
+        ],
+        "ok": true
+      },
+      {
+        "table": "decision_event",
+        "schema": "design-lab-state-creative-v1.sql",
+        "triggers": [
+          "decision_event_no_delete",
+          "decision_event_no_update",
+          "operation_lineage_no_delete",
+          "operation_lineage_no_update",
+          "requirement_event_no_delete",
+          "requirement_event_no_update",
+          "version_rejection_no_delete",
+          "version_rejection_no_update"
+        ],
+        "ok": true
+      },
+      {
+        "table": "operation_lineage",
+        "schema": "design-lab-state-creative-v1.sql",
+        "triggers": [
+          "decision_event_no_delete",
+          "decision_event_no_update",
+          "operation_lineage_no_delete",
+          "operation_lineage_no_update",
+          "requirement_event_no_delete",
+          "requirement_event_no_update",
+          "version_rejection_no_delete",
+          "version_rejection_no_update"
+        ],
+        "ok": true
+      }
+    ],
+    "ok": true
+  },
+  "no_duplicate_ssot": {
+    "checked_by": "scripts/verify_contract_graph.py (DUPLICATE_TABLE_DECLARATION)",
+    "note": "runtime_migration is deliberately created by each store with CREATE TABLE IF NOT EXISTS: it is a shared migration ledger, not a duplicated fact"
+  },
+  "migration_tests": {
+    "migrations": [
+      {
+        "migration": "assets-v2",
+        "test": "design-lab/tests/test_runtime_asset_safety.py",
+        "markers_found": [
+          "pre-assets-v2"
+        ],
+        "covered": true
+      },
+      {
+        "migration": "attempt-v2",
+        "test": "design-lab/tests/test_runtime_attempt_safety.py",
+        "markers_found": [
+          "attempt-v2",
+          "operation_state"
+        ],
+        "covered": true
+      },
+      {
+        "migration": "creative-v1",
+        "test": "design-lab/tests/test_creative_migration.py",
+        "markers_found": [
+          "creative-v1",
+          "pre-creative-v1"
+        ],
+        "covered": true
+      }
+    ],
+    "ok": true
+  },
+  "failures": [],
+  "verdict": "PASS",
+  "projection": true,
+  "subjectSha": "042ac635ae7a6042db366f7fb19508fc5db7bc65",
+  "fresh": false,
+  "generatedBy": "scripts/deepseek_foundation_audit.py"
+}

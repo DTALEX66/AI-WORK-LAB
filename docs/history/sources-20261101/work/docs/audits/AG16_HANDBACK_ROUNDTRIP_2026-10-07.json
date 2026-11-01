@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "work-lab/ag16-handback-roundtrip/v1",
+  "measuredAt": "2026-10-06T23:20:41Z",
+  "tool": "scripts/audit/ag16_handback_roundtrip.py",
+  "objective": "exercise the planning -> handback -> contract link once with a real returning end, which AG-16 recorded as never having been round-tripped",
+  "planningEnd": {
+    "runtime": "lmstudio",
+    "endpoint": "http://localhost:1234/v1/chat/completions",
+    "modelRequested": "qwen2.5-vl-7b-instruct",
+    "servedModels": [
+      "qwen2.5-vl-7b-instruct",
+      "qwen3-reranker-0.6b",
+      "qwen3.5-4b",
+      "qwen3.8-27b",
+      "text-embedding-nomic-embed-text-v1.5",
+      "text-embedding-qwen3-embedding-0.6b"
+    ],
+    "registryCapabilities": [
+      "chat.completions",
+      "desktop.gui",
+      "embeddings",
+      "jit.model.ttl",
+      "model.lifecycle.by-key",
+      "openai.compat./v1",
+      "text.completions",
+      "vision.image_input"
+    ],
+    "responseFormatMode": "json_schema",
+    "responseSeconds": 7.94
+  },
+  "returnShape": {
+    "jsonParseOk": true,
+    "parseError": null,
+    "responseChars": 526,
+    "responseSha256": "4bfdc3313702b77df7f0185beb30cdaabed44a37bef13519fe542f0d3c598d3c",
+    "topLevelKeys": [
+      "assumptions",
+      "authorizationRef",
+      "changes",
+      "openQuestions",
+      "targetCapability",
+      "unresolved",
+      "verification"
+    ],
+    "note": "prompt and response bodies are not copied here by design"
+  },
+  "requestPromptSha256": "70081b168b59ed5f28aef89784d1306b74388b77636a4f1d75a1cf8f7b12ba46",
+  "requestPromptChars": 691,
+  "contextUsedForPlanning": {
+    "path": "docs/current/workflow-assistance/workflow/error-governance.md",
+    "basis": "the tracked blob at HEAD, CRLF normalised"
+  },
+  "cases": [
+    {
+      "case": "model-return-without-envelope",
+      "origin": "MODEL",
+      "verdictStatus": "REFUSED_MISSING_ENVELOPE",
+      "refusalReason": "planning candidate is missing required field(s): ['baseline', 'contextDigest', 'contextRef', 'planningSoftware', 'taskRevision', 'workUnitId']; refusing to infer them",
+      "keysReturnedByModel": [
+        "assumptions",
+        "authorizationRef",
+        "changes",
+        "openQuestions",
+        "targetCapability",
+        "unresolved",
+        "verification"
+      ],
+      "executionStatus": "NOT_EXECUTED",
+      "executorSelected": null
+    },
+    {
+      "case": "model-content-in-real-envelope",
+      "origin": "MODEL+HARNESS_ENVELOPE",
+      "envelopeSources": {
+        "planningSoftware": "GET /v1/models on the registered lmstudio runtime",
+        "baseline.commit": "git rev-parse HEAD",
+        "contextRef": "docs/current/workflow-assistance/workflow/error-governance.md",
+        "contextDigest": "sha256 of that tracked file's blob at HEAD, CRLF normalised",
+        "workUnitId": "harness id for this round-trip",
+        "taskRevision": "first revision of this work unit"
+      },
+      "modelSuppliedKeys": [
+        "assumptions",
+        "authorizationRef",
+        "changes",
+        "openQuestions",
+        "targetCapability",
+        "unresolved",
+        "verification"
+      ],
+      "contentDigest": "e53ebe5698f6263522c1aa5264116cb9bff3b85ac1525e7cd1e8daa3d39145f7",
+      "verdictStatus": "REFUSED_CAPABILITY_UNAVAILABLE",
+      "verdictReason": "no registered executor advertises capability 'publish'",
+      "ignoredSelfClaims": [],
+      "blockingItems": [],
+      "targetCapability": "publish",
+      "registryAdvertisesCapability": false,
+      "replaySameContentFreshId": "DUPLICATE_CONTENT",
+      "executionStatus": "NOT_EXECUTED",
+      "executorSelected": null
+    },
+    {
+      "case": "fixture-clean-no-grant",
+      "origin": "FIXTURE",
+      "contentDigest": "ebfb6109ab6ac199b424e08a7dff6da347c9a04c4836ee0a0e9b573da259eea9",
+      "verdictStatus": "AWAITING_AUTHORIZATION",
+      "verdictReason": "grant 'grant-that-does-not-exist' is not in the trusted local record",
+      "grantSource": "none",
+      "trustedGrants": [],
+      "blockingItems": [],
+      "ignoredSelfClaims": [],
+      "executionStatus": "NOT_EXECUTED",
+      "executorSelected": null
+    },
+    {
+      "case": "fixture-clean-with-fixture-grant",
+      "origin": "FIXTURE",
+      "contentDigest": "ebfb6109ab6ac199b424e08a7dff6da347c9a04c4836ee0a0e9b573da259eea9",
+      "verdictStatus": "AUTHORIZED_NOT_EXECUTED",
+      "verdictReason": "grant resolved in the trusted local record",
+      "grantSource": "fixture",
+      "trustedGrants": [
+        "grant-that-does-not-exist"
+      ],
+      "blockingItems": [],
+      "ignoredSelfClaims": [],
+      "executionStatus": "NOT_EXECUTED",
+      "executorSelected": null
+    },
+    {
+      "case": "fixture-blocking-despite-grant",
+      "origin": "FIXTURE",
+      "contentDigest": "dec7b4479b90ef6d421d87fd791cec4ba9954d7e88d330d2dafc56946b85ec93",
+      "verdictStatus": "NEEDS_INPUT",
+      "verdictReason": "the plan leaves blocking items unresolved",
+      "grantSource": "fixture",
+      "trustedGrants": [
+        "grant-that-does-not-exist"
+      ],
+      "blockingItems": [],
+      "ignoredSelfClaims": [],
+      "executionStatus": "NOT_EXECUTED",
+      "executorSelected": null
+    },
+    {
+      "case": "fixture-unknown-capability",
+      "origin": "FIXTURE",
+      "contentDigest": "96ab635a9181f1a4ca401a277882b3821fb604ec0106cd08b97d4667974f4a24",
+      "verdictStatus": "REFUSED_CAPABILITY_UNAVAILABLE",
+      "verdictReason": "no registered executor advertises capability 'capability-nobody-advertises'",
+      "grantSource": "fixture",
+      "trustedGrants": [
+        "grant-that-does-not-exist"
+      ],
+      "blockingItems": [],
+      "ignoredSelfClaims": [],
+      "executionStatus": "NOT_EXECUTED",
+      "executorSelected": null
+    },
+    {
+      "case": "fixture-self-grant-ignored",
+      "origin": "FIXTURE",
+      "contentDigest": "ebfb6109ab6ac199b424e08a7dff6da347c9a04c4836ee0a0e9b573da259eea9",
+      "verdictStatus": "AWAITING_AUTHORIZATION",
+      "verdictReason": "grant 'grant-that-does-not-exist' is not in the trusted local record",
+      "grantSource": "none",
+      "trustedGrants": [],
+      "blockingItems": [],
+      "ignoredSelfClaims": [
+        "approved",
+        "scope"
+      ],
+      "executionStatus": "NOT_EXECUTED",
+      "executorSelected": null
+    }
+  ],
+  "counts": {
+    "cases": 7,
+    "modelOrigin": 2,
+    "authorized": 1,
+    "authorizedWithoutFixtureGrant": 0,
+    "executed": 0
+  },
+  "notClaimed": [
+    "no executor was selected and nothing executed",
+    "no real authorization exists; any AUTHORIZED verdict carries grantSource=fixture",
+    "the automatic cross-client connection remains AG-17 / OD02 (owner decision)",
+    "one planning return, one model, temperature 0.0 — a round-trip, not a quality measurement"
+  ],
+  "publishedAt": "2026-10-06T23:20:52Z",
+  "capabilityVocabularyFinding": "The contract probes agent-operation capabilities (read/publish/execute/status/cancel/resume/observe/review/store) while the registered lmstudio runtime advertises only inference operations (chat.completions, desktop.gui, embeddings, jit.model.ttl, model.lifecycle.by-key, openai.compat./v1, text.completions, vision.image_input). The two vocabularies do not intersect, so a model plan named `publish` was refused at the capability gate on real registry data. That is the honest end state of this round-trip, and the gap is recorded as ERR-138 instead of being papered over by loosening the check or by registering a capability nobody probed.",
+  "secondRunNote": "the run was repeated after fixing the tool's own count of AUTHORIZED verdicts (the contract spells the status AUTHORIZED_NOT_EXECUTED, so an exact-word comparison reported 0 authorized while one case was authorized on a fixture grant); counts.authorized is now 1 and authorizedWithoutFixtureGrant 0"
+}

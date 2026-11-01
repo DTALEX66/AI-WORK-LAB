@@ -1,0 +1,38 @@
+{
+  "id": "kb-06-knowledge-refusal-provoked-with-real-ids-20261026",
+  "task_id": "DL-KB-06",
+  "axis": "browser",
+  "outcome": "PARTIAL",
+  "observed_at": "2026-10-25T19:03:00Z",
+  "subject_sha": "82a5e15c91bd93232a8b4f18413585c5978fd213",
+  "changed": [
+    "design-lab/tests/e2e/audit_workbench_contrast.mjs: openRefusalState() takes selectors, because the knowledge form builds `kb-new-*` fields and gives its submit button and status region no id; the knowledge provocation now reveals the form via #kb-new and addresses #kb-form [role=status] / #kb-new-title / #kb-form .primary-btn",
+    "design-lab/tests/e2e/audit_workbench_contrast.mjs: errorNamedAdjacent counted separately, and the nearest-control reduction no longer seeds with null (it crashed the whole run on the first host without a painted control)",
+    "design-lab/tests/test_workbench_contrast_gate.py: enforces named == namedAdjacent and refuses the narrowing (errors must exceed the named count, so the compound messages cannot be dropped from the population to buy a green); both families must be provoked"
+  ],
+  "measured": {
+    "refusal_proved": [
+      "assistant+refusal",
+      "knowledge+refusal"
+    ],
+    "spec": {
+      "errors": 12,
+      "errorAdjacent": 8,
+      "errorNamed": 8,
+      "errorNamedAdjacent": 8,
+      "errorUnowned": 4
+    },
+    "far_examples": [
+      "1440:knowledge+refusal p.error -> nearest dy=82px",
+      "1440:knowledge+entry-detail p.error -> nearest dy=82px",
+      "1920:knowledge+refusal p.error -> nearest dy=82px",
+      "1920:knowledge+entry-detail p.error -> nearest dy=82px"
+    ],
+    "gate": "Ran 5 tests in 78.768s OK",
+    "artefact": "workbench-contrast-gate.json",
+    "gate_ran_against_sha": "82a5e15c91bd93232a8b4f18413585c5978fd213"
+  },
+  "why_this_was_registered_wrong_before": "the family reported absent because the probe named ids that route never builds; the form does render on click -- verified by reading the real prefix out of knowledgeFormPanel instead of assuming the ids",
+  "outcome_why_partial": "field-level refusals are adjacent and judged (8 of 8); the knowledge form's compound message names three fields in one sentence and sits 82px from the nearest control, so the pack sentence is satisfied for named messages and measured-unmet for that one, with its distance printed",
+  "not_claimed": "no product change to the knowledge panel; the compound message was not split per field; .view-hint refusals still carry no role=alert"
+}

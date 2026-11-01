@@ -1,0 +1,166 @@
+{
+  "id": "dl-kb-06-first-screen-two-columns-recent-plans-right-20261028",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-28T19:04:38Z",
+  "subject_sha": "e5a930b5bb8792766cde2885c9599c2b80383bca",
+  "follow_up_sha": "b3f193cfa1b60a0f482aaa9e1b8b4065fc76b4dc",
+  "ci_red_at_first_run": {
+    "run": "PR #279 run 40747812300, job \"Python gate (V3 verifiers + unit tests)\" 123026179192",
+    "failing_case": "test_workbench_native_ui.WorkbenchNativeUiTests.test_list_responses_and_errors_cannot_overwrite_newer_refresh (function=refresh, both the success and the error direction)",
+    "raise_site": "bundle recentPlans: TypeError: Cannot read properties of undefined (reading 'length')",
+    "root_cause": "我用错了工具：shapeFieldMissing 报的是 apiOrEmpty 那道 seam 自己补过的字段（它读 SHAPE_MISSING 符号），而这一列走 api()，不做形状归一化。一个 200 但没有 plans 数组的答复因此绕过所有检查，直接撞上 data.plans.length。类型注解读不到运行时。",
+    "fix": "换成运行时真检查 Array.isArray(data?.plans)，不成就说\"未读回：响应里没有 plans 数组\"，与另外两条\"没读到\"同形；为此引入的 shapeFieldMissing 导入撤掉。新增 assert_guard_precedes_dereference 钉\"守卫必须在读之前\"，三种缺陷各自定罪（没有守卫 / 守卫在读之后 / 整列不再读信封）。",
+    "attribution": "这条红是我的，不是夹具的也不是偶发：推送前我跑了 css-single-def、route-calls、weight、structure-contracts、debt、counts、overflow、contrast 八处，唯独没跑**直接驱动被我改动的 refresh()** 的那个 vm 合同套件。把一次读加进共享函数时，先 grep 谁在驱动这个函数，把那些套件列进推送前清单。",
+    "post_fix_rerun": "native_ui 15 OK、first_screen_columns 16 OK、tsc 干净、vite build 632344B、unit/appshell/shape-notice 全过；真 Chromium 四档重测两列几何与折叠线读数与修复前逐字一致。"
+  },
+  "owner_instruction": "owner 原本四刀里未做的最后一刀：首屏双列（最近方案进右列），动 flex-wrap 后必须重量常驻页脚与窄窗行框。",
+  "premise_corrected_before_writing_code": "入口把这一刀记为 NOT_STARTED，而 #/assistant 早就是双列且最近方案在右列（as-split 由 2d9372fb 于 2026-10-24 引入，git log -S 核过）。真 Chromium 对照两面才定下主语：默认路由 ''（遗留工作台）的 .grid 只有 01 导入与 02 读回预览，右列是一块从未导入过东西的棋盘占位，03 执行历史在 900px 折叠线以下。所以这一刀改的是应用打开时的第一面，不是设计辅助那屏。",
+  "delivered": "apps/workbench/index.html：.grid 的两个面板包进左 .col（导入 → 读回预览仍上下相邻），右 .col 是新的 最近方案 面板（eyebrow RECENT PLANS，不带 01–05 编号，那条序列是导入→读回→记录→产物→设计层，方案列不在其中）。apps/workbench/style.css：.grid>.col{display:grid;gap:inherit;align-content:start;min-width:0} —— gap 用 inherit 而不是再写一遍数值，列间距是 .grid 的财产；.plan-line 把每条方案分成两行。apps/workbench/workbench.ts：recentPlans() 读 GET /api/projects/{id}/assistance-plans?limit=5（RECENT_PLANS_LIMIT），在 refresh() 的同一批读回里，切项目/断开时由 resetProject() 清列并把初始句写回。",
+  "why_the_wording_is_three_sentences_not_one": "未选项目 / 读被拒 / 响应缺 plans 字段 各有一句，都只说\"这一列没读到\"；只有服务真发回 0 条才说\"这个项目共 0 条\"。服务本身按 created_at DESC 发回每个计划的最新修订 （src/design_lab/assistance_plan.py::AssistancePlans.list），所以面板写\"服务按写入时间倒序发回\"而不是自己宣称排序，并把 total/returned/一页之外 三个数逐字写在读回上。",
+  "shared_declaration_moved_not_duplicated": "方案列表信封的 AssistancePlanRow / AssistancePlanListView 从 shell.ts 的局部声明移进 apps/workbench/contracts.ts，shell.ts 改为从 contracts.js 导入。第二个读者出现时留两份 TS 声明就是本仓反复判红的第二台账；test_workbench_first_screen_columns.py test_a_second_copy_of_the_envelope_is_convicted 三向钉住（shell 里长出第二份、contracts 里那份被降级、shell 不再导入，各自定罪）。",
+  "bounded_read_not_a_ninth_unbounded_route": "这一列带 limit=5 进查询串；scripts/measure_workbench_weight.py 的无界登记 （test_workbench_weight.py UNBOUNDED_REGISTER）读的是服务端 store 的默认界限，本轮没有新增无界面，DOCUMENTED_COUNTS 那句「8 条无界路由」逐字未动。",
+  "falsification": {
+    "static_module": "design-lab/tests/test_workbench_first_screen_columns.py",
+    "reading": "Ran 16 tests OK",
+    "what_can_fail": [
+      "第三个面板被直接加进 .grid（自动落成一列三格）",
+      "方案面板被搬进左列 / 读回行 id 丢失",
+      ".grid>.col 出现第二份定义，或被改写死长度",
+      ".plan-line 丢失或被降级（日期在 1100px 从连字符处折断就是它修的）",
+      "未读态写成\"这个项目没有方案记录\"",
+      "index.html 的初始句与 resetProject() 写回的句子漂移",
+      "按钮写的 hash 不在 ROUTE_VIEWS 里",
+      "读回失去 limit 界限，或界限超出 store 的 1..MAX_LIMIT",
+      "方案列表信封出现第二份 TS 声明"
+    ],
+    "geometry_guard": "design-lab/tests/e2e/audit_workbench_overflow.mjs 的 firstScreen 读数 + test_workbench_overflow_gate.py::_assert_first_screen_columns，配 6 个植入方向（叠成一列 / 面板不在第二列 / 印出的条数与画出的行数不一致 / 有行却说没读过 / 未读态声称零 / 探针失明），test_the_first_screen_column_assertion_can_fail 逐条要求它红。",
+    "the_assertion_that_was_wrong_before_it_shipped": "第一版几何断言写死\"折叠线上必须说没读过\"，真实运行当场判红：闸的夹具在交互步骤里建了一条真方案，首屏读到的是 1 条而不是 0 条。改成与状态无关的一致性检查——画出行数 N 就必须印\"读到 N 条\"，没有行才允许说没读到——这条断言才既管得住谎也管得住它自己的假设。"
+  },
+  "gate_readings_before_push": {
+    "node": "tsc --noEmit 干净；vite build 632344B；unit / appshell / shape-notice 全过，seam 读数仍 62 处且每处有报告",
+    "python_structure": "test_workbench_css_single_definition 17 OK（.plan-line 与 .plan-line small 不算重复定义）；test_workbench_route_calls 23 OK；test_workbench_weight 22 OK；run_structure_contracts.py STRUCTURE_CONTRACTS=PASS tests=31（这一步不在聚合那 77 条里）",
+    "debt_and_counts": "design_debt_baseline --check PASS：literal_px 仍 526、literal_colors 仍 26 —— 新规则一个 literals 都没加；DOCUMENTED_COUNTS=PASS claims=21 route_views=25 cli=24 adapters=41 routes=89",
+    "overflow_gate": "Ran 5 tests in 406.417s OK（三套主题各跑一次真 Chromium），报告主体 bundle sha256 aff3697ca5c9e609515c3c73cbbe5dd6b99ef60a932c1313d67a6171469cbb7a",
+    "contrast_gate": "Ran 32 tests in 303.413s OK —— 新增的方案行文字与 --muted 小字在三套配色下都过；CI 是 Linux，本地绿不等于云上绿，由承载本 SHA 的 PR run 读回"
+  },
+  "rendered_and_looked_at": {
+    "tool": "真 Chromium（headless shell）对 loopback 服务，页面由 workbench.py 发出；播种 7 条真方案（limit=5 所以必然出现\"一页之外\"），四档桌面宽度各拍折叠线与整页",
+    "geometry": {
+      "1280:workbench": {
+        "tracks": 2,
+        "sideBySide": true,
+        "plansInSecondCol": true,
+        "rowCount": 1,
+        "infoBox": {
+          "x": 675,
+          "y": 505,
+          "w": 562,
+          "h": 20,
+          "right": 1237,
+          "bottom": 525
+        },
+        "pageWide": 0
+      },
+      "1440:workbench": {
+        "tracks": 2,
+        "sideBySide": true,
+        "plansInSecondCol": true,
+        "rowCount": 1,
+        "infoBox": {
+          "x": 743,
+          "y": 505,
+          "w": 654,
+          "h": 20,
+          "right": 1397,
+          "bottom": 525
+        },
+        "pageWide": 0
+      },
+      "1536:workbench": {
+        "tracks": 2,
+        "sideBySide": true,
+        "plansInSecondCol": true,
+        "rowCount": 1,
+        "infoBox": {
+          "x": 750,
+          "y": 505,
+          "w": 663,
+          "h": 20,
+          "right": 1413,
+          "bottom": 525
+        },
+        "pageWide": 0
+      },
+      "1920:workbench": {
+        "tracks": 2,
+        "sideBySide": true,
+        "plansInSecondCol": true,
+        "rowCount": 1,
+        "infoBox": {
+          "x": 750,
+          "y": 505,
+          "w": 663,
+          "h": 20,
+          "right": 1413,
+          "bottom": 525
+        },
+        "pageWide": 0
+      }
+    },
+    "populated_reading": "1440/1280/1100 三档两列并排、方案面板在第二列、底边 862/862/882 均在 900 折叠线内；700 档（≤760 媒体查询）自动落回一列，面板排在导入之下；每档 docScrollWidth 等于视口宽、consoleErrors=0；点「在设计辅助中查看全部方案」确实换到 #/assistant 并读到 7 行。",
+    "footer_remeasured": "常驻页脚这一刀没有被触发条件命中：本轮没有新增 flex-wrap。量到的事实如实记下——首屏那面 .sidebar-footer 画的是 0×0（B10 侧栏在遗留工作台路由不画），会随内容下移的是 body > footer（静态、非吸附）：实测 body > footer 在 1440 档 y=3090、700 档 y=4659 且 flex-wrap 生效时仍是一行；改动前的同一点没有量过，所以这里只报改后的读数，不给差值。侧栏页脚与导航切线的 6px 底线由 overflow 闸在三种主题下继续量着。",
+    "tracked_renditions": {
+      "filled-1100-fold.png": {
+        "path": ".project-local/task-runtime/twocol/shots/filled-1100-fold.png",
+        "sha256": "sha256:d2d5e45cbc5692f59bfa288422b8ac4d4e729cf83a46d867eb599f5171c796cb",
+        "bytes": 136811
+      },
+      "filled-1100-full.png": {
+        "path": ".project-local/task-runtime/twocol/shots/filled-1100-full.png",
+        "sha256": "sha256:8aa93f408b2f215b4494df31920ef96128bdbf5d059a6b169f2d68c41f3034f1",
+        "bytes": 394709
+      },
+      "filled-1280-fold.png": {
+        "path": ".project-local/task-runtime/twocol/shots/filled-1280-fold.png",
+        "sha256": "sha256:0189d0289464a5f41159050714d84dcdafb4b8875b473cee4957c5b268e0a9b8",
+        "bytes": 139755
+      },
+      "filled-1280-full.png": {
+        "path": ".project-local/task-runtime/twocol/shots/filled-1280-full.png",
+        "sha256": "sha256:1f2d4d6d3289703aee1c3ef519f3755f28e2e711db2ec51837079b4a3de5705e",
+        "bytes": 390479
+      },
+      "filled-1440-fold.png": {
+        "path": ".project-local/task-runtime/twocol/shots/filled-1440-fold.png",
+        "sha256": "sha256:a316c0b9d86b6ec001228a8372868819b3d63241a988c232331a7440adc8f3d8",
+        "bytes": 142644
+      },
+      "filled-1440-full.png": {
+        "path": ".project-local/task-runtime/twocol/shots/filled-1440-full.png",
+        "sha256": "sha256:0f79db5db80a6fcb903bcda619ab0a45a85abb9aa36d32ae38a8627c16e5f5d2",
+        "bytes": 394540
+      },
+      "filled-700-fold.png": {
+        "path": ".project-local/task-runtime/twocol/shots/filled-700-fold.png",
+        "sha256": "sha256:f80378ee0c36b7d4d346ba21c5cbefe81493595e7b10ee1424d76ee9f0a39c7f",
+        "bytes": 65568
+      },
+      "filled-700-full.png": {
+        "path": ".project-local/task-runtime/twocol/shots/filled-700-full.png",
+        "sha256": "sha256:73b6867ab008d3cdd3343a7f1ed84f19d351d7b33a09b49ae8c5572c73e0496a",
+        "bytes": 374791
+      },
+      "routed-assistant.png": {
+        "path": ".project-local/task-runtime/twocol/shots/routed-assistant.png",
+        "sha256": "sha256:da0e62accc3604edc88e0ea8ef5aa19205775c0d9ef37bd0d62f2c18e7dea011",
+        "bytes": 250513
+      }
+    },
+    "provenance_note": "这些 PNG 留在被忽略的运行根里，不在 clone 中。理由与上一轮同一把闸：DL-AST-001 要求受跟踪二进制带 asset-sidecar/v1，而品牌标志自己的 sidecar 写着 redistributable:false，它的一次 Chromium 渲染继承这个属性，本轮会话不能替 owner 签那份具名人工批准。摘要列在下面，谁都能重跑 .project-local/task-runtime/twocol/landing.py 再导出同一批图。"
+  },
+  "defect_found_and_repaired_in_passing": "起手 git status 露出 apps/workbench/brand/index-synthetic.html：test_workbench_brand_asset.py 的夹具每次运行往受跟踪素材目录写一个文件且从不删，派生投影还把它登记成证据主体路径（reports/current/PROJECT_STATUS.json、CLOUD_BASELINE.json、design-lab/config/current-report-index.json 都点名一个 clone 里不存在的文件）——\"存在不等于交付\"那一类。夹具改到 .project-local 忽略根并跑完即删 （commit 8a4f37771e4e06a161fa95120e55a7100991e27a），24 条仍全绿；那三份投影里的旧路径由本轮重生成步骤清掉。",
+  "not_claimed": "没有新增路由、没有新增无界面、没有改 CSP 或服务路径白名单；没有宣称真人验收、宿主运行或发布。本刀的第一条 PR run 是红的（见 ci_red_at_first_run），修好之后的 head 才是权威读数：承载最新 head 的那条 PR run 必须由下一份回执带着自己的 SHA 逐字引用。",
+  "boundaries_unchanged": "只做桌面端，手机端仍是排除项；三方素材与字库在项目范围外；E 盘不动；不部署模型、不宣称推理已验证；编号仍由人填或显式选 UNUSED；验收与签字只认具名真人；候选导出是读回不是发送；AAOS 不是依赖或门；release、安装态分发、真实宿主 E3、真人 E4、ComfyUI、MiniMax H3 继续冻结；旧 34 项仍 FROZEN_DEFERRED；windows 桌面 UI 自动化连接器仍未启用；21 个品牌模板许可归属仍待 Rights gate；.codebuddy/ 与 .cursor/ 未暂存。"
+}

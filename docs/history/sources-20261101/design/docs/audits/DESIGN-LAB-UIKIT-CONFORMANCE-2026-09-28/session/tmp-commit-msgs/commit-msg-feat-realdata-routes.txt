@@ -1,0 +1,39 @@
+feat(workbench): 升级 4 个未开放路由为只读真数据页（projects/creative-tools/deliverables/evidence）
+
+前端轻量界面批次（用户全量指令：前端优先，后端延后/并行，实操自动化不执行）。
+
+把 AppShell 中 4 个"有真实后端路由、但前端只有占位"的 IA 路由升级成
+只读回（READ-ONLY）真数据页，共享一个项目选择器：
+
+- 项目 (/api/projects)：读回项目台账。新建/选择在工作台执行，本页不修改。
+- 创作工具 (/api/projects/{id}/tasks)：读回宿主任务台账（Illustrator/
+  Photoshop）。提交/运行/取消由宿主在工作台高级区执行；本页不触发实操。
+- 交付中心 (/api/projects/{id}/tasks)：读回交付候选任务。交付包按任务在
+  下载时打包，本页不下载不打包。
+- 证据系统 (/api/projects/{id}/design-layer)：读回 briefs/directions/
+  选定方向/活动绑定/设计系统登记。版本链在工作台点单条时读回；只读。
+
+架构边界保留诚实占位（不凭空造 KPI）：
+- 研究 / 设计域 / 协作 三条仍标"未开放 + 原因"：本地单用户无协作模型、
+  无持久化研究模型——是架构边界事实，不是数据缺失。
+
+实操自动化（POST /native-plans、/tasks/{job}/run、/patch、/bundle、
+/choose、/bind）一律不触发：页面只读回状态并标注"由宿主/工作台执行"，
+遵守"实际操作和自动化操控的任务不执行，保留任务文档"。
+
+实现：
+- main.ts：+projectPickerPanel(共享选择器) + renderProjects/
+  renderCreativeTools/renderDeliverables/renderEvidence + 4 个 case 接入
+  renderRoute；VIEW_NOT_OPEN 移除已升级的 4 条，保留 3 条边界。
+- style.css：.project-picker/.project-select/.route-view-body/.items/.error。
+- build/main.js：重建（53.87kB → 60.72kB，no-drift 基线更新）。
+
+验证（真实执行，非声明）：
+- tsc --noEmit 0 错误
+- vite build 成功，产物 60.72 kB
+- tests/unit.mjs 4/4 PASS（bundle present / no top-level import /
+  vm-executes / labels+handlers+route-prefix）
+- tests/appshell.mjs PASS（AppShell 12 路由 + 导航 + 移动端）
+
+Evidence：E1（静态合同）+ E2（真实读回 fixture，bundle 可 vm 执行）。
+未触及 E3/E4/E5。

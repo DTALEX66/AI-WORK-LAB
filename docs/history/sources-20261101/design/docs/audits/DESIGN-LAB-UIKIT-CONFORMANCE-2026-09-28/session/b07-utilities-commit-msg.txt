@@ -1,0 +1,58 @@
+workbench(style): implement B07 shared-ui-core utility contract (7 classes)
+
+W02's coverage analysis against B07's 46-component registry found 7 utility
+classes the originals publish but the app never implemented:
+
+  .responsive-grid  .desktop-only  .ui-motion-fast  .ui-motion-base
+  .ui-motion-slow   .focus-ring    .pressable
+
+All were implemented=0/7 before this change. `.responsive-grid` is also how
+B07's own PageTemplate example lays out a page, so this closes a published
+contract, not a guess.
+
+TWO THINGS ARE DELIBERATELY NOT COPIED
+
+  * B07's breakpoints.css also carries `.sidebar{display:none}` at <=767px. The
+    app already has 760px (.app-nav) and B10 ships 840px (.sidebar). Adding a
+    fourth mobile breakpoint would freeze the X-3/X-4 conflict into code, and
+    breakpoint unification is an owner decision -- so it is not added.
+  * component-contracts.md states "Pressed: scale(0.99), 80ms" but B07's own
+    motion.css only writes `.pressable:active{transform:scale(.99)}` and never
+    expresses the 80ms. The CSS is implemented as published; the duration is not
+    invented (recorded as X-8 instead).
+
+A DEFECT IN THE ORIGINAL, RECORDED NOT HIDDEN
+
+  B07 only ever gives `.responsive-grid` a `grid-template-columns` inside three
+  media queries -- it never declares `display:grid`, so the published class
+  cannot work on its own. This adds the minimal base it needs
+  (`display:grid; gap:var(--space-4)`); the 16px gap matches the app's existing
+  .kpi-grid/.two-col/.three-col gap.
+
+VERIFIED BY COMPUTED STYLE IN REAL CHROMIUM, at 1600 / 1000 / 600 px
+
+  .responsive-grid   display:grid, gap 16px, 12 / 2 / 1 columns  (B07's own
+                     >=1200, 768-1199, <=767 breakpoints)
+  .desktop-only      display:none at 600, visible at 1000 and 1600
+  .focus-ring        really matches :focus-visible; outline 2px solid, offset 2px
+  .pressable         really matches :active; transform matrix(0.99,0,0,0.99,0,0)
+  .ui-motion-fast    0.12s   .ui-motion-slow  0.28s
+  0 CSP violations under the service policy
+
+Pseudo-classes cannot be grepped or read off an unpressed element, so the first
+harness run reported three false failures (an unfocused element legitimately
+reports outline "3px none", an unpressed one reports transform "none"). The
+harness now focuses and presses for real -- recorded because the same mistake
+would have produced a false PASS if written the other way round.
+
+New findings from the same originals, unaddressed here (owner calls):
+  Hover contract 120ms      vs app 200ms
+  Focus ring 2px           vs app 3px (input:focus)
+  Modal 220ms              not expressed
+  Toast 4s                 vs app 1900ms
+  B07 folder-structure.md recommends React + React Router + Zustand + TanStack
+    Query + Radix + Tailwind, which contradicts AUTHORITY section 3 and the task
+    pack's "keep Vanilla TS/Vite" ruling -> REFERENCE_ONLY, not adopted.
+
+Local gates: tsc --noEmit, vite build, tests/unit.mjs, tests/appshell.mjs all
+green; no apps/workbench/build drift (the bundle does not depend on CSS).

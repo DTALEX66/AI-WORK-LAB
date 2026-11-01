@@ -1,0 +1,119 @@
+name: Release Gate (DL-CI-006)
+
+on:
+  workflow_dispatch:
+  # F-02 (audit P1-7): the gate must ALSO run on tag push. Without this the
+  # tag-only preflight step below (`if: startsWith(github.ref, 'refs/tags/')`)
+  # is unreachable, so cutting a release tag never triggered E5 qualification
+  # even though the preflight (F-3) was already merged. `*` is intentionally
+  # broad: this repo has 0 tags and no established release-tag convention yet,
+  # so matching every tag is the only choice that cannot silently miss the one
+  # the owner cuts. The gate is fail-closed (INCOMPLETE / BLOCKED, never a
+  # silent PASS for a tag lacking canonical CI), so a stray non-release tag
+  # costs one red 20-min job, not a false release. Tighten this pattern to the
+  # real convention (e.g. `v*`) once release tags are established.
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  release-gate:
+    name: Fail-closed release qualification (runtime evidence)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact target tree
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Install verifier dependencies (uv.lock; PR115 audit F04)
+        run: |
+          python -m pip install uv
+          uv sync --locked
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Run canonical structural verification (exact checkout SHA)
+        run: python design-lab/scripts/verify_design_lab.py
+
+      - name: Check capability evidence floors
+        run: python design-lab/scripts/verify_capability_evidence_v4.py
+
+      - name: Run fail-closed release gate (preconditions, human acceptance, cards)
+        run: python design-lab/scripts/verify_release_gate.py
+
+      # DL-CI-006: release evidence is generated at runtime, never required as a
+      # pre-committed file. The attestation carries the exact checkout SHA and is
+      # uploaded as an Actions Artifact; a committed file can only ever prove a
+      # PRIOR commit (DL-EVD-002 forbids self-reference).
+      - name: Generate runtime Evidence Attestation (exact SHA)
+        run: |
+          python design-lab/scripts/update_evidence_binding.py --attestation
+          test -f .project-local/task-runtime/evidence/attestation-*.json
+          ATTR=$(ls .project-local/task-runtime/evidence/attestation-*.json | head -1)
+          SUBJECT=$(python -c "import json,sys;print(json.load(open(sys.argv[1]))['subjectCommitSha'])" "$ATTR")
+          echo "attestation subject=$SUBJECT"
+          test "$SUBJECT" = "${{ github.sha }}"
+          sha256sum "$ATTR" design-lab/config/sbom-v42.spdx.json design-lab/config/capability-index.json > artifacts.sha256
+          cat artifacts.sha256
+
+      - name: Upload runtime evidence as Actions Artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dl-release-evidence-${{ github.sha }}
+          path: |
+            .project-local/task-runtime/evidence/attestation-*.json
+            artifacts.sha256
+          if-no-files-found: error
+
+      # API readback: the attestation must match the exact run's head SHA
+      # (github context is the API-backed checkout identity).
+      - name: API readback consistency check
+        run: |
+          ATTR=$(ls .project-local/task-runtime/evidence/attestation-*.json | head -1)
+          SUBJECT=$(python -c "import json,sys;print(json.load(open(sys.argv[1]))['subjectCommitSha'])" "$ATTR")
+          echo "github.sha=${{ github.sha }}"
+          echo "subject=$SUBJECT"
+          test "$SUBJECT" = "${{ github.sha }}"
+          echo "RELEASE_EVIDENCE_READBACK=OK"
+
+      # Batch F-3 (audit P1-CI): the step above compares two values produced by
+      # this same run, so on its own it cannot prove artifact identity. This step
+      # performs the REAL readback through the GitHub API:
+      #   tag -> commit SHA (annotated tags dereferenced)
+      #   Canonical Verify run for the exact SHA concluded success
+      #   the uploaded artifact is DOWNLOADED and its sha256 re-computed
+      #   the published release assets match the expected set
+      #   every asset's sha256 matches the local artifacts.sha256
+      # Fail-closed: no token / no network / an artifact that cannot be downloaded
+      # reports INCOMPLETE (exit 3), a contradiction reports BLOCKED (exit 2) --
+      # neither is ever PASS. The uploaded artifact is queried from THIS run
+      # (--run-id). If Actions has not indexed the upload yet the step reports
+      # ARTIFACT-MISSING and stays red; re-run the job instead of weakening the
+      # gate. Tag refs only: release qualification is a tag operation.
+      # Injection safety: no expression is interpolated into the script body; the
+      # values come from GitHub's trusted default environment variables
+      # (GITHUB_REF_NAME / GITHUB_SHA / GITHUB_REPOSITORY / GITHUB_RUN_ID).
+      - name: "Release preflight (real API readback: tag/SHA, CI, artifact download+sha256, assets, checksums)"
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python design-lab/scripts/verify_release_preflight.py \
+            --tag "$GITHUB_REF_NAME" \
+            --sha "$GITHUB_SHA" \
+            --repo "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --artifact-name "dl-release-evidence-$GITHUB_SHA" \
+            --expect-assets "artifacts.sha256,attestation-*.json" \
+            --local-checksums artifacts.sha256 \
+            --download-dir .project-local/task-artifacts/release-preflight

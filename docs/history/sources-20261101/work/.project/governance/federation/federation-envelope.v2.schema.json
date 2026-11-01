@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/federation-envelope/v2",
+  "title": "Federation Envelope V2 (registry-driven, revisioned, authorization-referenced)",
+  "description": "Incremental extension of the v1 contract family. producer/consumer are registered project references (not a three-project enum); source/target software and environment are first-class; task revision + baseline kind + immutable artifact digest + receipt location + target capability + authorization reference + supersedes are added. The task body travels only via its immutable snapshot reference (digest on the envelope, content via artifactRef). Authorization is bound to a trusted local grant record, never to model-mutable payload text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "messageId",
+    "producer",
+    "consumer",
+    "sourceSoftware",
+    "targetSoftware",
+    "environment",
+    "workUnitId",
+    "taskRevision",
+    "baseline",
+    "bodyDigest",
+    "artifactRef",
+    "receiptLocation",
+    "targetCapability",
+    "authorizationRef",
+    "classification",
+    "rightsStatus",
+    "createdAt",
+    "idempotencyKey"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "workflow/federation-envelope/v2" },
+    "messageId": { "type": "string", "minLength": 1 },
+    "producer": { "type": "string", "minLength": 1, "description": "registered opaque project reference, not a client id and not a three-value enum" },
+    "consumer": { "type": "string", "minLength": 1 },
+    "sourceSoftware": { "type": "string", "minLength": 1, "description": "client/executor identity, kept distinct from the project" },
+    "targetSoftware": { "type": "string", "minLength": 1 },
+    "environment": { "type": "string", "minLength": 1, "description": "node/environment binding, e.g. local or a named cloud node" },
+    "correlationId": { "type": "string" },
+    "workUnitId": { "type": "string", "minLength": 1 },
+    "taskRevision": { "type": "integer", "minimum": 1 },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "description": "code/workspace baseline — distinct from the task-body revision",
+      "properties": {
+        "kind": { "enum": ["git", "artifact"] },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "worktree": { "type": "string" },
+        "digest": { "type": "string", "minLength": 1 }
+      }
+    },
+    "bodyDigest": { "type": "string", "minLength": 1, "description": "digest over the task body; equals the immutable snapshot for Ready publication" },
+    "artifactRef": { "type": "string" },
+    "receiptLocation": { "type": "string", "minLength": 1 },
+    "targetCapability": { "type": "string", "minLength": 1 },
+    "authorizationRef": { "type": "string", "minLength": 1, "description": "trusted local grant record id; the ONLY authorization authority" },
+    "supersedes": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "workUnitId": { "type": "string" },
+        "revision": { "type": "integer" }
+      }
+    },
+    "classification": { "enum": ["public", "private", "internal", "classified"] },
+    "rightsStatus": { "enum": ["owned", "licensed", "restricted", "unknown"] },
+    "createdAt": { "type": "string" },
+    "idempotencyKey": { "type": "string", "minLength": 1 }
+  },
+  "$comment": "v1 readers reject this via the schemaVersion const; v2 readers reject v1 symmetrically — no silent truncation in either direction."
+}

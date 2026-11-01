@@ -1,0 +1,28 @@
+ci+packaging: P1-7 release-gate tag trigger + P1-1 wheel/sdist node_modules exclusion
+
+Two audit P1s (2026-09-21 deep audit, Batch B/F) closed as one governance
++ packaging change set:
+
+P1-7 (.github/workflows/release-gate.yml):
+- The `on:` block only had workflow_dispatch, so the tag-only preflight step
+  (`if: startsWith(github.ref, 'refs/tags/')`) was unreachable: even a tag
+  push would never run the E5 release gate, no matter how complete the F-3
+  preflight was. Added `push: tags: '*'` (additive; dispatch retained).
+  `*` is intentional — the repo has 0 tags and no release-tag convention yet;
+  a broad tag match plus the fail-closed gate (INCOMPLETE/BLOCKED, never a
+  silent PASS) cannot produce a false release. Tighten to the real tag
+  pattern once release tags exist.
+- Verified: YAML parse clean, `on` = {workflow_dispatch, push}, push.tags=['*'].
+
+P1-1 (pyproject.toml + verify_workbench_packaging.py):
+- wheel force-include and sdist only-include mapped the whole apps/workbench
+  directory, so a local build drags node_modules (~30MB / 251 files, present
+  on dev machines) into the artifact; the CI clean-checkout build does not
+  have it, so local vs CI wheels diverged. Now each target ships exactly
+  the three files the packaged service serves (workbench.py ROUTES:
+  index.html, style.css, build/main.js) — no node_modules possible.
+- The static verifier's check 5 was extended (same fix, root cause): it now
+  requires the three precise wheel mappings AND the three sdist entries, and
+  FAILS CLOSED if a whole-directory mapping returns (regression guard).
+- Verified: verifier 5/5 PASS; tomllib assert — wheel=3 workbench entries,
+  sdist entries exactly the 3 served files, no whole-dir mapping.

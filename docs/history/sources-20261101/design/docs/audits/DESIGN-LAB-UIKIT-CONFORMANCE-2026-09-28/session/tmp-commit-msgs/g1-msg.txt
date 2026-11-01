@@ -1,0 +1,24 @@
+G-1/B1: 全 git 历史 secret 扫描器 + CI gate（stdlib，fail-closed，redact 报告）
+
+对应 CROSSWALK B1（R12）：现有 G040 只扫当前 tracked 文件，一条被 commit、
+分支或 force-push 过的凭据仍活在对象图里。本 PR 补全 git 历史维度。
+
+- scripts/verify_secret_history.py：`git rev-list --objects --all` 枚举全部
+  blob 修订，`cat-file --batch-check`+`--batch` 批量取数（bulk write + 读全量，
+  消除 Windows 逐对象管道往返）。复用 verify_supply_chain 的同一套
+  SECRET_PATTERNS / is_synthetic / load_adjudications——单一规则源，历史扫描与
+  HEAD 扫描永不漂移。redaction 契约：报告只存 value 的 sha256 + 3/3 端，不落全值。
+  fail-closed：git 失败 / 读不到的对象 / 触 cap 都是 FAIL，绝不静默 PASS。
+- 取数解析带 id 回显校验 + 边界杂字节自适应：标准布局与本机构建（每条 body 后
+  多一个 \n）都正确，任何更深错位 fail-closed。
+- verify_supply_chain.py：SYNTHETIC_MARKERS 加 your_（对称 your-），豁免 inert
+  research 文档里的 YOUR_* 占位符（如 YOUR_RAPIDAPI_KEY）。值内容规则、非路径
+  规则，真凭据仍被 credential-shape 子句拦住。
+- design-lab/tests/test_secret_history_scan.py：12 个 hermetic 用例（纯核心 +
+  throwaway git repo 的 cat-file 管道 + 占位符/真凭据边界）。
+- CI license-secret-gate：fetch-depth 0 + 全历史扫描 step（--max-blobs 0）+ 报告
+  作 artifact。
+- .gitignore：SECRET-HISTORY-REPORT.json 不入 Git（退出码即门，避免与 drift gate
+  形成 rebind 循环；报告留 CI artifact 供查）。
+
+本地全历史扫描：6760 blobs / 0 hits / 0 failures / ~3s，PASS。

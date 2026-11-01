@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <base href="../">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Game001 V5 Canvas Acceptance</title>
+  <style>
+    html, body { margin: 0; background: #07090a; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="异常电梯 V5 夜班协议运行时验收"></canvas>
+  <script type="module">
+    import { createInitialState } from '../src/state.js';
+    import { init, render } from '../platform/canvasRenderer.js';
+
+    const query = new URLSearchParams(location.search);
+    const width = Number(query.get('width')) || 393;
+    const height = Number(query.get('height')) || 852;
+    const safeTop = width === 360 ? 22 : 28;
+    const canvas = document.querySelector('#game');
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    const state = createInitialState();
+    const roundType = query.get('round') || 'classification';
+    const acceptanceCopy = {
+      identity: {
+        shiftId: 'identity-maintenance-01',
+        feedback: '胸牌编号与目标楼层待核验，请选择身份处置',
+        floor: 12,
+        passengers: 1,
+      },
+      highRisk: {
+        shiftId: 'anomaly-device-05',
+        feedback: '制动回路失联，选择高危处置以控制本层风险',
+        floor: 13,
+        passengers: 3,
+      },
+      classification: {
+        shiftId: 'anomaly-space-01',
+        feedback: 'CAM-03 回放出现重复乘客，等待异常分类',
+        floor: 7,
+        passengers: 2,
+      },
+      protocolQuery: {
+        shiftId: 'anomaly-floor-01',
+        feedback: '协议查询已打开，调查资源与电力保持不变',
+        floor: 13,
+        passengers: 2,
+      },
+      debrief: {
+        shiftId: 'debrief-night-01',
+        feedback: '夜班已结束，复盘记录由本局真实决定与污染历史生成',
+        floor: 13,
+        passengers: 0,
+      },
+    }[roundType] || {
+      shiftId: `v5-${roundType}`,
+      feedback: '夜班证据已更新，等待当前处置',
+      floor: 7,
+      passengers: 2,
+    };
+
+    state.tutorialStep = 4;
+    state.score = 1280;
+    state.streak = 3;
+    state.remaining = 146;
+    state.floor = acceptanceCopy.floor;
+    state.passengers = acceptanceCopy.passengers;
+    state.inspection = { id: 'v5-acceptance', kind: 'anomaly', status: 'pending', expiresAt: 18 };
+    state.night.activeProtocols = [
+      { id: 'protocol-floor-13', category: 'floor', text: '13层请求必须封锁并复核来源' },
+      { id: 'protocol-badge', category: 'identity', text: '维修人员必须核验胸牌与目标楼层' },
+    ];
+    state.night.currentShift = {
+      id: acceptanceCopy.shiftId,
+      evidence: { cameras: { cam01: [], cam03: [], cam07: [] } },
+    };
+    state.night.roundType = ['protocolQuery', 'debrief'].includes(roundType) ? 'investigation' : roundType;
+    if (roundType === 'protocolQuery') {
+      state.night.overlay = 'protocolQuery';
+      state.night.protocolQuery = state.night.activeProtocols.map(protocol => ({ ...protocol }));
+    }
+    if (roundType === 'debrief') {
+      state.night.overlay = 'debrief';
+      state.night.debrief = {
+        summary: { decisions: 8, accuracy: 0.75, peakContamination: 34 },
+        ending: { name: '清醒交班', summary: '你保留了两条可靠验证路径，并将未决异常完整移交。' },
+      };
+    }
+    state.lastFeedback = acceptanceCopy.feedback;
+    state.investigation.activeCamera = 'cam03';
+
+    init(canvas, { windowWidth: width, windowHeight: height, safeArea: { top: safeTop } }, { imageFactory: () => document.createElement('img') });
+    const drawFrame = () => render(state, { started: true, paused: false, muted: true, cctvMotion: { frameTime: 1000 } });
+    drawFrame();
+    // 截图前重绘数帧，确保异步加载的 CCTV/覆盖层资产真正上屏。
+    let frames = 0;
+    const redraw = () => {
+      drawFrame();
+      frames += 1;
+      if (frames < 14) setTimeout(redraw, 120);
+      else document.documentElement.dataset.ready = 'true';
+    };
+    window.addEventListener('load', () => setTimeout(redraw, 80));
+    // 资产路径探针：截图流水线可读取 data-img-ok 验证图片真实可加载。
+    const probe = new Image();
+    probe.onload = () => { document.documentElement.dataset.imgOk = `${probe.naturalWidth}x${probe.naturalHeight}`; };
+    probe.onerror = () => { document.documentElement.dataset.imgOk = 'error'; };
+    probe.src = 'visual/cctv/v5_01_quick_mobile.png';
+  </script>
+</body>
+</html>

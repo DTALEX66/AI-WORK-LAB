@@ -1,0 +1,24 @@
+{
+  "id": "kb-13-prompt-results-list-bounded-20261026",
+  "task_id": "DL-KB-13",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-25T17:19:00Z",
+  "subject_sha": "78eb296bf2b1bd29490cd8189187912e77a97409",
+  "why_now": "section 5.62 recorded that \"closest to shippable\" was refuted -- the readback schema is additionalProperties:false with a fixed 13-key set, so the bound requires a schema change; refutation is not a reason to skip the work, only a correction of its size",
+  "changed": [
+    "src/design_lab/prompt_results.py: PROMPT_RESULT_LIMIT=100 / MAX_PROMPT_RESULT_LIMIT=200, readback(project_id, offset=0, limit=...) validated before any query",
+    "every count is taken before slicing: total_readable (readable whole), result_count (rows including unparseable), newest/state/accepted_count/reviews are whole-set; only `results` is the page; reviews is never paginated because cutting the acceptance history hides decisions",
+    "src/design_lab/http_service.py: the GET route declares path_only and the handler parses offset/limit with urlsplit+parse_qsl, refusing by name: PROMPT_RESULT_FILTER_MALFORMED, PROMPT_RESULT_OFFSET_INVALID, PROMPT_RESULT_LIMIT_INVALID",
+    "design-lab/schemas/prompt-result-readback-v1.schema.json: six keys added to properties and required (total_readable, offset, limit, returned, truncated, next_offset)",
+    "design-lab/config/contract-bindings.json: the row states the bound and the three codes",
+    "design-lab/tests/test_workbench_weight.py: _list_prompt_results delisted from UNBOUNDED_REGISTER in the same change, with an assertion that the live instrument agrees"
+  ],
+  "frontend_untouched_reason": "contracts.ts carries no PromptResultReadback type (grep: zero matches), so the closed-schema change needed no TS shape edit; no .ts file was modified for this blade",
+  "instrument_reading": {
+    "summary_line": "LISTROWS list_routes=18 bounded=10 without_limit=8 frontend_call_sites_scanned=142",
+    "route_line": "LISTROWS _list_prompt_results           initial_rows= 100 kind=page-limit    at=prompt_results.py:51(PROMPT_RESULT_LIMIT) max_rows=   - client_calls=2 client_limits=- client_without_limit=2"
+  },
+  "tests": "design-lab/tests/test_prompt_results.py gained three route-level cases (default page publishes 100 with truncated False; a 2-row list paged by 1 still reports total_readable=2/truncated/next_offset and keeps state/newest/reviews byte-identical to the whole; four malformed bounds each answer their own named code). Module ran 21 tests OK; test_service_http + test_route_payload_contracts green; VERIFY_CONTRACT_BINDINGS=PASS routes=90 bound=76",
+  "not_claimed": "no call site passes limit/offset yet -- the UI affordance for turning pages is a separate blade; the other seven unbounded routes stay registered with their own reasons and were not given the same treatment"
+}

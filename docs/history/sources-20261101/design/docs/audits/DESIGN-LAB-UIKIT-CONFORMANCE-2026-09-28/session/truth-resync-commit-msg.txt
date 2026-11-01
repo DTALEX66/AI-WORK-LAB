@@ -1,0 +1,69 @@
+project-truth resync: R5 evidence backfill + Authority dynamic-fact readback + projection rebind
+
+Three project truth surfaces had drifted from the delivered facts. This closes
+that gap; it changes no product behaviour.
+
+1) reports/current/** was a stale projection.
+   PROJECT_STATUS.md observed 6ba2578a... while main was 634071f3..., and it
+   named taskpack DL-TP-20260908-R5 rather than the current integrated pack.
+   Per .project/governance/authority-index.json ("projectionRule": PROJECTION,
+   usable only after freshness validation) it was unusable. Regenerated with
+   scripts/generate_current_reports.py; --check now reports PASS on bound-input
+   integrity (13 projection files + design-lab/config/current-report-index.json).
+
+2) The R5 ledger had almost no evidence bound.
+   design-lab/config/task-ledger-r3.json: 28 tasks, all four axes PARTIAL, all
+   PENDING_EVIDENCE_REVIEW, only 3 of 112 axes carrying evidence -- while
+   AUTHORITY section 15 already records several P0s as
+   CLOSED_WITH_REGRESSION_GUARD. Added 3 receipts for facts observed in this
+   session at exact SHA 634071f3c8ffa87e08fa1386f49c185ff6fa36d8 and
+   referenced them from the matching axes (DL-R5-001, -002, -003):
+     * branch convergence   -- 28 -> 1 remote branch (main only), 0 open PR,
+                               single worktree, 0 stashes
+     * runtime-root boundary -- .hermes is not an active write root (its only
+                               file is a month stale) while .project-local is;
+                               ownership-classified cleanup with sha256 readback
+                               before and after each move
+     * required-check surface -- 9 checks, all pass at that SHA
+
+   Contract constraints honoured (src/design_lab/governance/r5_contract.py):
+   definition/title/depends_on/predecessor_task_ids/required_axes are byte-frozen
+   and untouched; :100-101 forbids axis state PASS/IMPLEMENTED_LOCAL while
+   reassessment != REVIEWED, so every axis state stays PARTIAL. These receipts
+   record what was verified, not that any task is complete.
+
+   Deliberately NOT bound: a Workbench strict-TS receipt. The evidence-root
+   policy in src/design_lab/governance/reporting.py:52 omits "apps" from its
+   allowed set, so NO receipt can cite apps/workbench/** at all. Recorded as a
+   governance gap rather than relaxing the policy without owner intent.
+
+3) AUTHORITY.md asserted stale dynamic facts.
+   Its section 13 (the establishment snapshot) was being read as current: 7
+   required checks / 28 branches / "workbench still only 3 files"; live readback
+   is 9 / 1 / 10.
+     * section 13 preserved verbatim -- it is explicitly the establishment
+       baseline, and rewriting it would falsify history.
+     * section 13.1 added: an explicitly dated live readback with the exact
+       observation SHA, so the file no longer leads a reader to the old values.
+     * the three present-tense "7 required checks" claims in section 15
+       corrected.
+     * per AUTHORITY section 17, scripts/verify_top_level_authority.py re-pins
+       the AUTHORITY.md byte hash (f7c1e6ad... -> 7b29d3ea...) with the owner
+       intent, reason, superseded value and impact recorded inline, following
+       the existing 2026-09-20 precedent. Checks count unchanged at 10.
+
+Also regenerated reports/current/DEEPSEEK-AUTHORITY-CHAIN.json, whose recorded
+ledger digest had drifted together with (2).
+
+Local verification, all on this tree:
+  scripts/verify_top_level_authority.py               TOP_AUTHORITY_GATE=PASS checks=10
+  scripts/verify_authority_gates.py --zero-spill      AUTHORITY_GATES=PASS gates=7
+  scripts/generate_current_reports.py --check         CURRENT_REPORTS=PASS
+  design-lab/scripts/verify_project_drift.py          PROJECT_DRIFT=PASS findings=0
+  scripts/verify_path_refs.py                         PATH_REF_GATE=PASS checks=10
+  design-lab/scripts/update_evidence_binding.py --check   UPDATE_EVIDENCE_BINDING=HISTORICAL_VALID
+  verify_identity_gate / design_lab / adapter_matrix / product_manifest_v3 /
+  runtime_contracts_v3 / visual_scoring_v3 / source_registry / v2_protocols /
+  visual_quality_v21 / library_index_consistency / anti-slop / compileall  all OK
+  workbench: tsc --noEmit + vite build + tests/unit.mjs + tests/appshell.mjs all
+  green, no apps/workbench/build drift.

@@ -1,0 +1,23 @@
+{
+  "id": "dl-final-t04-closed-head-read-and-three-bindings-rebound-20261027",
+  "task_id": "DL-FINAL-T04",
+  "axis": "verification",
+  "outcome": "PASS",
+  "observed_at": "2026-10-27T16:37:02Z",
+  "subject_sha": "19ffd0d164dc9c67a1fb529c90d6e9b510a46291",
+  "audit_finding": "The PR run at 5388b62f completed failure with four jobs red, and the run at 924af2fb completed failure with two. Three of those four were the same self-inflicted class: a derived binding that a real change had moved, left un-regenerated while its gate had already been quoted as green locally.",
+  "reproduced_before_fix": "verbatim from CI: RECORD_REGISTER_GATE=FAIL checks=5 problems=5 with 'row 5: bytes claim 419,586 vs 425,392'; AUTHORITY_CHAIN=DRIFT entries changed since generation: ['design-lab/config/task-ledger-r3.json'], whose only differing nested key is ledger.evidence_receipts 321 -> 322; and PYTHON_TESTS_SHARD_FAILURES shard=1/3 n=1 ids=test_language_boundary_check_mode.ChainEncodingTests.test_the_chain_completes_on_a_gbk_console_and_writes_no_tracked_file -- the same stale chain seen from the test side.",
+  "changed": [
+    "docs/RECORD-ARCHIVE-INDEX.md regenerated from the committed dossier blobs (three times this round, once per dossier edit)",
+    "reports/current/DEEPSEEK-AUTHORITY-CHAIN.json regenerated after the ledger row landed",
+    "reports/current/* regenerated from the rebound ledger",
+    "docs/audits/DESIGN-LAB-ARCHIVE-AND-REMOVAL-2026-10-19.md section 5.83 names all three bindings and section 5.84 carries this readback; docs/current/NEXT-AGENT-PROMPT.md now states the closing order as a command sequence rather than as a memory"
+  ],
+  "measured": {
+    "ci_at_19ffd0d1": "PR run 40537819918 conclusion=success, 10 non-skipped jobs success (Branch light gate and CI artifact proof skipped by design). Verbatim: PYTHON_TESTS_UNION=OK expected=3415 distinct=3415 ran=3415 duplicates=0 missing=0 unexpected=0; VERIFY_DESIGN_LAB=OK total=77 failed=0; BROWSER_E2E ran=44 skipped=0 failed=0, per-module lines including test_workbench_design_layer_e2e ran=2 skipped=0 failed=0 and test_workbench_ui_audit_gate ran=1 skipped=0 failed=0.",
+    "race_fix_proven_on_ci": "the Workbench browser E2E job passed at 924af2fb with the copy-seed wait in place, after failing at 5388b62f without it -- the fix is what changed between the two heads for that job.",
+    "local_after_rebind": "verify_archive_record_register PASS problems=0; verify_authority_gates --zero-spill PASS gates=7 failed=none; verify_projection_freshness OK findings=0; verify_documented_counts PASS claims=21 route_views=24; test_language_boundary_check_mode Ran 16 tests OK; ledger 322 rows with 0 hash disagreements.",
+    "head": "19ffd0d164dc9c67a1fb529c90d6e9b510a46291"
+  },
+  "not_claimed": "not claimed: that every intermediate head has its own CI verdict -- 3a2b6565 through 5e52fa97 were never pushed individually, so their bytes are covered only by the runs at 924af2fb and 19ffd0d1, which carry the same bytes. Not claimed either: the attachment tiles' name and size (the read-back projection still omits path and byte_size), the tab icon, thumbnails/CSP, the desktop shell, or any release, E3 host, or E4 human acceptance -- those remain open or owner-gated."
+}

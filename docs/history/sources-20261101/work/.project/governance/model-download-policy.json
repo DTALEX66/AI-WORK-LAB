@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "work-lab/model-download-policy/v1",
+  "title": "WORK-LAB 模型下载通道路由策略",
+  "purpose": "Every model weight download must use a domestic route. Reaching huggingface.co here consumes the user's personal VPN, so it is forbidden by default rather than merely discouraged.",
+  "precedence": "WORK-LAB-AUTHORITY.md > .project/governance/project-authority-index.json > this file.",
+  "userDirective": {
+    "text": "下载模型 尽量走国内通道，不要占据我的个人VPN",
+    "date": "2026-09-29",
+    "interpretation": "Applies to all model-weight and model-metadata traffic, including any tool that downloads on our behalf."
+  },
+  "measuredEnvironment": {
+    "huggingface.co_dns": "157.240.10.36 — a Facebook address, i.e. DNS pollution; not a real HF edge",
+    "hf-mirror.com_dns": "160.16.86.14",
+    "systemProxy": "HKCU Internet Settings ProxyEnable=1 ProxyServer=127.0.0.1:7890",
+    "consequence": "Any Hugging Face request is proxied through the user's local proxy/VPN. Foreign routes are therefore a real cost to the user, not a theoretical one."
+  },
+  "routes": {
+    "preferred": [
+      {
+        "name": "modelscope",
+        "base": "https://modelscope.cn",
+        "measured_throughput": "26-29 MiB/s",
+        "notes": "used for FAST (Qwen3.5-4B) and DEEP (Qwen3.8-27B)"
+      },
+      {
+        "name": "modelscope-cdn",
+        "base": "https://www.modelscope.cn",
+        "measured_throughput": "same CDN"
+      },
+      {
+        "name": "hf-mirror",
+        "base": "https://hf-mirror.com",
+        "measured_throughput": "single connection 0.766 MiB/s; 8 parallel ranged connections up to 13.4 MiB/s",
+        "notes": "used for the Qwen2.5-VL model + mmproj via ggml-org"
+      },
+      {
+        "name": "gh-proxy",
+        "base": "https://gh-proxy.com",
+        "measured_throughput": "1.7-3.0 MiB/s (GitHub direct measured 77 KB/s)"
+      }
+    ],
+    "forbiddenByDefault": [
+      {
+        "host": "huggingface.co",
+        "reason": "foreign route; consumes the user's VPN"
+      },
+      {
+        "host": "cdn-lfs.huggingface.co",
+        "reason": "same"
+      },
+      {
+        "host": "cdn-lfs-us-1.huggingface.co",
+        "reason": "same"
+      }
+    ],
+    "override": "A foreign route requires the explicit --allow-remote flag on the downloader AND a recorded reason. It is never selected automatically."
+  },
+  "toolchain": {
+    "canonicalDownloader": ".project-local/runs/model-governance-20260928/wl_model_download.py",
+    "canonicalDownloaderNote": "The runner path is inside the deliberately untracked .project-local evidence area, so it does NOT exist in a fresh clone. To obtain it on another machine, extract it from the archived copy below and verify its sha256 against the archive manifest. The policy above is the normative part; the script is a convenience implementation of it.",
+    "canonicalDownloaderArchivedCopy": {
+      "path": ".project-local/artifacts/model-runtime-migration-20260929/04-scripts/wl_model_download.py",
+      "manifest": ".project-local/artifacts/model-runtime-migration-20260929/MANIFEST.json",
+      "sha256": "ed842e5aea87a4f0977112636bdbd301e868a71605c0a51d7fb4e19f68d9ee49",
+      "sha256Note": "recorded for the 2026-09-29 archive (64 files). The authoritative value is always the one in MANIFEST.json; this field is a convenience cross-check and may change if the archive is rebuilt.",
+      "archiveSelfCheck": ".project-local/runs/model-governance-20260928/verify_migration_archive.py (64 files, ARCHIVE INTACT)"
+    },
+    "guarantees": [
+      "refuses any foreign host before opening a connection",
+      "resolves sha256 from the mirror's own metadata instead of a hand-typed value",
+      "parallel ranged download with per-chunk retry (hf-mirror throttles a single connection)",
+      "verifies size, sha256 and the GGUF magic before promoting the file",
+      "idempotent: an already-present artifact with the right hash is skipped"
+    ],
+    "rejectedTools": {
+      "lms get": "NOT used. It fetches from huggingface.co (consuming the VPN) and its model search is interactive, so it cannot be scripted or audited. Files are instead placed at <library>/<publisher>/<repo>/<file>.gguf, which LM Studio indexes in place because its model root IS the shared library (downloadsFolder).",
+      "lms import": "NOT needed. Newly placed files were indexed automatically with no import call, so no copy/move/link is performed and the single-physical-copy rule holds."
+    },
+    "lmStudioDownloadSettings": {
+      "useHFProxy": true,
+      "note": "Left as the vendor default. It only matters if the GUI downloader is used; the declared workflow never uses it."
+    }
+  },
+  "verifiedWeights": [
+    {
+      "provider": "local.fast.default",
+      "model": "Qwen3.5-4B",
+      "route": "modelscope",
+      "downloadSource": "https://modelscope.cn/models/unsloth/Qwen3.5-4B-GGUF",
+      "upstreamOrigin": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF",
+      "usedForeignRoute": false,
+      "throughput": "28-29 MB/s"
+    },
+    {
+      "provider": "local.deep.default",
+      "model": "Qwen3.8-27B-UD-IQ4_XS",
+      "route": "modelscope",
+      "usedForeignRoute": false
+    },
+    {
+      "provider": "local.embedding.default",
+      "model": "Qwen3-Embedding-0.6B",
+      "route": "ollama-blob-migrated",
+      "usedForeignRoute": false,
+      "note": "moved from the Ollama store in-place; no download"
+    },
+    {
+      "provider": "local.reranker.default",
+      "model": "Qwen3-Reranker-0.6B",
+      "route": "ollama-blob-migrated",
+      "usedForeignRoute": false,
+      "note": "moved from the Ollama store in-place; no download"
+    },
+    {
+      "provider": "local.ocr.default",
+      "model": "Qwen2.5-VL-7B-Instruct + mmproj",
+      "route": "hf-mirror",
+      "downloadSource": "https://hf-mirror.com/ggml-org/Qwen2.5-VL-7B-Instruct-GGUF",
+      "usedForeignRoute": false
+    },
+    {
+      "provider": "local.asr.default",
+      "model": "faster-whisper-large-v3-turbo",
+      "route": "pre-existing",
+      "usedForeignRoute": false,
+      "note": "in-process; already on disk before this work package"
+    }
+  ],
+  "lastVerified": "2026-09-29"
+}

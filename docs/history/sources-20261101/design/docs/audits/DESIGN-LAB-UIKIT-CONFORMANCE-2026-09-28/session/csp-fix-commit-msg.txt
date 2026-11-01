@@ -1,0 +1,35 @@
+workbench: apply styles via CSSOM so style-src 'self' is satisfied
+
+The browser E2E failed on CI with:
+
+  E2E_BROWSER_ERRORS: console: Applying inline style violates the following
+  Content Security Policy directive 'style-src 'self''
+
+Every E2E step had passed ("E2E ok: mobile appshell layout" etc.) — the failure
+was purely the console-error assertion. The service serves all workbench
+responses with `style-src 'self'` and no 'unsafe-inline'
+(src/design_lab/workbench.py:14), which blocks a `style` ATTRIBUTE. B10 can use
+inline style attributes only because its static page has no CSP.
+
+Probed the exact CSP in a real browser:
+  setAttribute('style', ...)  -> BLOCKED
+  style.cssText / setProperty / property assignment -> applied
+So the root-cause fix is in el(): route the `style` option through the CSSOM
+instead of setAttribute. One change fixes the whole app, including two
+pre-existing latent violations the E2E never reached because they live on the
+dashboard route — under the production CSP those silently dropped the dashboard
+.progress bar widths and the two-col/three-col top margins, i.e. exactly the
+B10 visuals this slice is meant to replicate.
+
+- el(): `style` -> node.style.cssText (falls back to setAttribute under the vm
+  DOM mocks, which have no CSSStyleDeclaration and enforce no CSP).
+- sparkSvg(): drop the inline style="filter:drop-shadow(...)" from the innerHTML
+  markup (innerHTML is HTML-parsed, so its style attribute is an inline style
+  too) and move the glow to `.spark polyline` in style.css. The stroke now uses
+  the primary->secondary gradient, matching B10's url(#spark-grad).
+
+Verified by serving index.html + the committed build/main.js + style.css with
+the service's exact CSP header in real Chromium:
+  shell / dashboard / settings -> 0 CSP violations, 0 console errors
+  progressWidth=266.9 (CSSOM-applied width takes effect)
+typecheck + build + tests/unit.mjs + tests/appshell.mjs all green.

@@ -1,0 +1,196 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "commercial-design-router",
+  "title": "Commercial Design Router",
+  "version": "0.2.0",
+  "publishedAt": "2026-08-04T00:00:00Z",
+  "description": "Route and complete a commercially deliverable design project.",
+  "author": {
+    "name": "DTALEX66 OPEN-DESIGN-Assistance"
+  },
+  "license": "MIT",
+  "tags": [
+    "scenario",
+    "commercial-design",
+    "router"
+  ],
+  "compat": {
+    "agentSkills": [
+      {
+        "path": "./SKILL.md"
+      }
+    ]
+  },
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "scenario",
+    "useCase": {
+      "query": {
+        "en": "Route and complete a commercially deliverable design project.",
+        "zh-CN": "Route and complete a commercially deliverable design project."
+      }
+    },
+    "inputs": [
+      {
+        "name": "brief",
+        "type": "text",
+        "required": true,
+        "label": "Design brief"
+      },
+      {
+        "name": "discipline",
+        "type": "select",
+        "options": [
+          "auto",
+          "brand",
+          "graphic",
+          "uiux",
+          "art-direction",
+          "spatial",
+          "packaging",
+          "editorial",
+          "motion",
+          "3d"
+        ],
+        "default": "auto"
+      },
+      {
+        "name": "production_profile",
+        "type": "select",
+        "options": [
+          "digital-ui",
+          "print-commercial",
+          "spatial-exhibition",
+          "packaging",
+          "3d-asset",
+          "motion",
+          "presentation",
+          "editorial"
+        ],
+        "required": false
+      }
+    ],
+    "capabilities": [
+      "prompt:inject",
+      "pipeline:*",
+      "media:image",
+      "media:video",
+      "fs:write"
+    ],
+    "pipeline": {
+      "stages": [
+        {
+          "id": "intake",
+          "atoms": [
+            "source-intake-gate",
+            "discovery-question-form",
+            "brief-normalizer"
+          ]
+        },
+        {
+          "id": "route",
+          "atoms": [
+            "todo-write",
+            "direction-picker"
+          ]
+        },
+        {
+          "id": "execute",
+          "atoms": [
+            "file-read",
+            "file-write",
+            "media-image",
+            "media-video",
+            "live-artifact"
+          ]
+        },
+        {
+          "id": "critique",
+          "atoms": [
+            "design-quality-jury",
+            "critique-theater"
+          ],
+          "repeat": true,
+          "until": "critique.score>=8 && blockers==0 || iterations>=3",
+          "onFailure": "retry"
+        },
+        {
+          "id": "preflight",
+          "atoms": [
+            "commercial-preflight"
+          ],
+          "onFailure": "abort"
+        },
+        {
+          "id": "handoff",
+          "atoms": [
+            "delivery-packager"
+          ]
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        }
+      ],
+      "craft": [
+        "typography",
+        "color",
+        "layout",
+        "accessibility",
+        "anti-ai-slop",
+        "production-preflight"
+      ],
+      "atoms": [
+        "source-intake-gate",
+        "brief-normalizer",
+        "reference-dna-analyzer",
+        "design-direction-jury",
+        "design-quality-jury",
+        "commercial-preflight",
+        "delivery-packager"
+      ]
+    },
+    "genui": {
+      "surfaces": [
+        {
+          "id": "brief-gap-form",
+          "kind": "form",
+          "persist": "project",
+          "trigger": {
+            "stageId": "intake",
+            "atom": "discovery-question-form"
+          },
+          "prompt": "Collect only material facts missing from the commercial design brief.",
+          "onTimeout": "abort"
+        },
+        {
+          "id": "direction-choice",
+          "kind": "choice",
+          "persist": "project",
+          "trigger": {
+            "stageId": "route",
+            "atom": "direction-picker"
+          },
+          "prompt": "Choose one design direction or request a bounded revision.",
+          "onTimeout": "abort"
+        },
+        {
+          "id": "production-confirm",
+          "kind": "confirmation",
+          "persist": "project",
+          "trigger": {
+            "stageId": "preflight",
+            "atom": "commercial-preflight"
+          },
+          "prompt": "Confirm the target production profile and supplier requirements.",
+          "onTimeout": "abort"
+        }
+      ]
+    }
+  }
+}

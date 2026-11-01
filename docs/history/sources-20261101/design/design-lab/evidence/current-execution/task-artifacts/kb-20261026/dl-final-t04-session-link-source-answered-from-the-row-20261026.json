@@ -1,0 +1,41 @@
+{
+  "id": "dl-final-t04-session-link-source-answered-from-the-row-20261026",
+  "task_id": "DL-FINAL-T04",
+  "axis": "unit",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T12:55:00Z",
+  "subject_sha": "f12931bf82e2985822d4420de89f3414cfaae1a6",
+  "audit_finding": "owner audit 2026-10-26, finding 7 of 7 (first half): the compatible Python API may answer session correlation from a different source than the one it persists, with UI/HTTP reachability unconfirmed",
+  "reproduced_before_fix": "Ran 10 tests in 1.107s FAILED (failures=1) -- \"CreativeError not raised\": the conflicting re-link was accepted and answered with the caller's source while the row kept the first one",
+  "changed": [
+    "src/design_lab/creative/session_link.py: an existing link answers with the stored source_system (the row is write-once -- no UPDATE, UNIQUE(job_id, session_ref)), and a re-link naming a different source is refused with both sides in the message",
+    "design-lab/tests/test_creative_session_link.py: the divergence case, plus a reachability case that enumerates the service/workbench/workflow population from the git index and requires none of it to name this module -- so \"unwired\" is a measured fact with a floor, not a sentence in a report"
+  ],
+  "measured": {
+    "surface_files": 126,
+    "surface_files_naming_it": 0,
+    "pre_fix": "Ran 10 tests in 1.107s FAILED (failures=1)",
+    "post_fix": "Ran 10 tests in 0.997s OK",
+    "pre_fix_commit": "022c5a9bd989bc4f1b57af7936167cb8656bf009",
+    "head": "f12931bf82e2985822d4420de89f3414cfaae1a6",
+    "non_surface_files_naming_it": [
+      "design-lab/config/current-report-index.json",
+      "design-lab/tests/test_creative_migration.py",
+      "design-lab/tests/test_creative_session_link.py",
+      "docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/evidence/local-gates/last-run.json",
+      "docs/history/record-imports-2026-10-08/FINAL-CONSOLIDATED-2026-09-29/appendices/current-task-progress-snapshot.json",
+      "docs/history/record-imports-2026-10-08/FINAL-CONSOLIDATED-2026-09-29/appendices/github-tree.json",
+      "docs/history/taskpacks/20261009-adoption/pre-adoption/design-lab/config/current-report-index.json",
+      "docs/history/taskpacks/20261009-adoption/pre-adoption/reports/current/DEEPSEEK-AUTHORITY-LEDGER-2026-09-14.json",
+      "reports/current/CONTRACT-GRAPH.json",
+      "reports/current/DEEPSEEK-AUTHORITY-LEDGER-2026-09-14.json",
+      "reports/current/DEEPSEEK-FINAL-TEST-GATE.json",
+      "reports/current/DEEPSEEK-WORKTREE-DIFF-SUMMARY.md",
+      "reports/current/DEEPSEEK-WORKTREE-INVENTORY.json",
+      "scripts/deepseek_test_gate_report.py",
+      "scripts/deepseek_worktree_reconciliation.py"
+    ],
+    "non_surface_note": "these are prose and inventories ABOUT the module, not paths TO it: report projections, the register index, two CI bookkeeping scripts, its own tests and migration census, and history snapshots"
+  },
+  "not_claimed": "E2 at module level only: no HTTP route, CLI parser or workbench view reaches session correlation today, so there is no real-flow read-back to report and no E3 claim; the write-once semantics are kept as they were (the fix does not add an UPDATE path), and no task state changed"
+}

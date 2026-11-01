@@ -1,0 +1,375 @@
+{
+  "schemaVersion": "work-lab/provider-registry/v1",
+  "title": "WORK-LAB logical model provider registry — the only model identifiers projects may reference",
+  "purpose": "Projects (ArcheAxis-Knowledge-OS, WORK-LAB, DESIGN-LAB) call these logical provider ids. A provider id hides the runtime, the file name, the quantization and every absolute path. Physical binding lives in model-registry.json + runtime-registry.json.",
+  "precedence": "WORK-LAB-AUTHORITY.md > .project/governance/project-authority-index.json > this file.",
+  "banned_in_client_code": [
+    "GGUF file names",
+    "quantization names",
+    "Windows absolute paths",
+    "runtime executable paths",
+    "raw model root paths"
+  ],
+  "providers": [
+    {
+      "id": "local.fast.default",
+      "display_name": "Local FAST (quick classification / extraction / rewrite / routing)",
+      "binds_to_model": "qwen3.5-4b",
+      "binds_to_runtime": "lmstudio",
+      "endpoint": "http://127.0.0.1:1234/v1",
+      "api_shape": "openai-compatible",
+      "model_name_on_wire": "qwen3.5-4b",
+      "capabilities": [
+        "text.fast",
+        "classify",
+        "extract",
+        "rewrite",
+        "route",
+        "summarize.short"
+      ],
+      "context_window": 8192,
+      "required_request_options": {
+        "reasoning_effort": "none",
+        "why": "Measured on LM Studio 0.4.25: qwen3.5-4b IGNORES both chat_template_kwargs {enable_thinking:false} and the /no_think prompt token (reasoning_content consumed the whole max_tokens budget, content empty; reproduced 3x). reasoning_effort=\"none\" works (600 content chars, reasoning_tokens 0)."
+      },
+      "measured": {
+        "gen_tok_per_s": 90.41,
+        "completion_tokens": 479,
+        "seconds": 5.3,
+        "reasoning_tokens_reported": 0,
+        "vram_used": "~2.0 GiB",
+        "cold_load_seconds": 299.7,
+        "warm_reload_seconds": 3.3,
+        "runtime": "lmstudio 0.4.25 (desktop), llama.cpp backend managed by LM Studio"
+      },
+      "allowed_projects": [
+        "ArcheAxis-Knowledge-OS",
+        "WORK-LAB",
+        "DESIGN-LAB"
+      ],
+      "access_tier": "shared-common",
+      "expected_latency_class": "interactive (<5s first answer at 8k context)",
+      "fallback": [
+        "local.fast.legacy"
+      ],
+      "owner": "WORK-LAB",
+      "binding_note": "Single physical copy in the shared library; LM Studio indexes the shared library root in place (downloadsFolder = the model library), so no import, copy or link exists. Ollama was NOT used for this weight (its CDN measured 136 KB/s here and the pull never completed).",
+      "weight_location": "D:\\All projects\\Model library\\plain-gguf\\qwen3.5-4b\\Qwen3.5-4B-Q4_K_M.gguf",
+      "operationalStatus": "OPERATIONAL 2026-09-29: server autostarts, self-heals every 10 minutes, and loads this model on demand without the user opening LM Studio."
+    },
+    {
+      "id": "local.fast.legacy",
+      "display_name": "Local FAST — standby legacy path",
+      "binds_to_model": "qwen3-8b",
+      "binds_to_runtime": "lmstudio",
+      "endpoint": "http://127.0.0.1:1234/v1",
+      "api_shape": "openai-compatible",
+      "model_name_on_wire": "qwen3-8b",
+      "capabilities": [
+        "text.fast",
+        "general.chat"
+      ],
+      "context_window": 40960,
+      "allowed_projects": [
+        "WORK-LAB"
+      ],
+      "access_tier": "standby",
+      "owner": "WORK-LAB",
+      "weight_location": "D:\\All projects\\Model library\\ollama\\blobs\\sha256-a3de86cd1c132c822487ededd47a324c50491393e6565cd14bafa40d0b8e686f",
+      "quantization": "Q4_K_M (GGUF file_type 15)",
+      "standby_reason": "Ollama 0.34.4 no longer resolves OLLAMA_MODELS to the shared library (see runtime-registry ollama.model_store_defect), so this weight is not served by any runtime right now. It is retained in place pending a user decision; it is NOT deleted and NOT counted as the WL-MODEL-02 'two general LLMs' target.",
+      "operationalStatus": "OPERATIONAL 2026-09-29: server autostarts, self-heals every 10 minutes, and loads this model on demand without the user opening LM Studio."
+    },
+    {
+      "id": "local.deep.default",
+      "display_name": "Local DEEP (complex understanding / multi-document synthesis / deep reasoning)",
+      "binds_to_model": "qwen3.8-27b-ud-iq4_xs",
+      "binds_to_runtime": "lmstudio",
+      "endpoint": "http://127.0.0.1:1234/v1",
+      "api_shape": "openai-compatible",
+      "model_name_on_wire": "qwen3.8-27b",
+      "capabilities": [
+        "reasoning.deep",
+        "long_context",
+        "knowledge.synthesis",
+        "evidence.analysis",
+        "multi_document"
+      ],
+      "context_window": 32768,
+      "required_request_options": {
+        "preferred": {
+          "reasoning_effort": "none"
+        },
+        "also_works": [
+          "chat_template_kwargs {enable_thinking:false}",
+          "no parameter control"
+        ],
+        "why": "Measured on LM Studio 0.4.25: unlike qwen3.5-4b, DEEP produced real content on ALL THREE channels (reasoning_effort=none: 84 content chars / 0 reasoning tokens; chat_template_kwargs enable_thinking=false: 56 chars / 57 reasoning tokens; no control: 64 chars / 141 reasoning tokens). reasoning_effort=none is recommended because it produced the least reasoning overhead."
+      },
+      "measured": {
+        "gen_tok_per_s_lmstudio": 1.966,
+        "gen_tok_per_s_llamacpp_ngl32": 2.52,
+        "prompt_tok_per_s_llamacpp": 20.1,
+        "perf_note": "LM Studio's default offload reaches 78% of llama.cpp's explicit -ngl 32 (2.52 tok/s) but is clearly better than -ngl 0 (1.32 tok/s). Explicit offload control remains superior for this memory-bandwidth-bound 13.27 GB model on an 8 GiB card."
+      },
+      "allowed_projects": [
+        "ArcheAxis-Knowledge-OS",
+        "WORK-LAB",
+        "DESIGN-LAB"
+      ],
+      "access_tier": "shared-common",
+      "expected_latency_class": "batch / long-form (hybrid CPU+GPU on this machine)",
+      "owner": "WORK-LAB",
+      "weight_location": "D:\\All projects\\Model library\\plain-gguf\\qwen3.8-27b\\Qwen3.8-27B-UD-IQ4_XS.gguf",
+      "binding_note": "Indexed in place by LM Studio from the shared library root; single physical copy.",
+      "runtime_status": "ONLINE and verified: LM Studio served real content on all three parameter channels (2026-09-29). 1.966 tok/s vs llama.cpp -ngl 32 at 2.52 tok/s.",
+      "operationalStatus": "OPERATIONAL 2026-09-29: server autostarts, self-heals every 10 minutes, and loads this model on demand without the user opening LM Studio."
+    },
+    {
+      "id": "local.code.default",
+      "display_name": "Local code specialist",
+      "binds_to_model": "qwen3-coder-30b-a3b",
+      "binds_to_runtime": "lmstudio",
+      "endpoint": "http://127.0.0.1:1234/v1",
+      "api_shape": "openai-compatible",
+      "model_name_on_wire": "qwen3-coder-30b-a3b",
+      "capabilities": [
+        "code.generate",
+        "code.review.readonly",
+        "code.explain"
+      ],
+      "context_window": 262144,
+      "allowed_projects": [
+        "WORK-LAB"
+      ],
+      "access_tier": "worklab-only",
+      "owner": "WORK-LAB",
+      "weight_location": "D:\\All projects\\Model library\\ollama\\blobs\\sha256-1194192cf2a187eb02722edcc3f77b11d21f537048ce04b67ccf8ba78863006a",
+      "quantization": "Q4_K_M (GGUF file_type 15)",
+      "status_note": "Weight present (18.56 GB, arch qwen3moe, 128 experts / 8 used). NOT served and NOT part of the WL-MODEL-02 target count; retained pending a user decision.",
+      "operationalStatus": "OPERATIONAL 2026-09-29: server autostarts, self-heals every 10 minutes, and loads this model on demand without the user opening LM Studio."
+    },
+    {
+      "id": "local.embedding.default",
+      "display_name": "Local embeddings (retrieval / semantic search)",
+      "binds_to_model": "qwen3-embedding-0.6b",
+      "binds_to_runtime": "lmstudio",
+      "endpoint": "http://127.0.0.1:1234/v1/embeddings",
+      "api_shape": "openai-compatible /v1/embeddings",
+      "model_name_on_wire": "text-embedding-qwen3-embedding-0.6b",
+      "capabilities": [
+        "embedding.text",
+        "retrieval.semantic",
+        "similarity"
+      ],
+      "context_window": 32768,
+      "allowed_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "access_tier": "archeaxis-first",
+      "owner": "WORK-LAB (weights/runtime); embedding vectors + semantics owned by ArcheAxis-Knowledge-OS",
+      "ownership_note": "Never conflate weight ownership (WORK-LAB) with knowledge/vector ownership (ArcheAxis).",
+      "weight_location": "D:\\All projects\\Model library\\Qwen\\Qwen3-Embedding-0.6B-GGUF\\Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "dimensions": 1024,
+      "quantization": "Q8_0 (GGUF file_type 7)",
+      "measured": {
+        "dimensions": 1024,
+        "verification": "live /v1/embeddings call on 2026-09-29",
+        "sim_cat_zh_vs_cat_en": 0.834039,
+        "sim_cat_zh_vs_plane_zh": 0.339623,
+        "separation": 0.494417,
+        "discriminative": true,
+        "verdict": "REAL and discriminative: cross-lingual synonym 0.834 vs unrelated 0.340.",
+        "correction_note": "An earlier note proposed rewriting this provider's dimension DOWN to 768 on the assumption that 1024 was wrong. That was itself wrong: the GGUF header of this model reports qwen3.embedding_length=1024, and a live call returned 1024-dim vectors. The 768 figure belongs to the different bundled model text-embedding-nomic-embed-text-v1.5."
+      },
+      "migration": {
+        "from": "ollama blob (extensionless, outside any publisher/repo layout)",
+        "to": "shared library <publisher>/<repo>/<file>.gguf",
+        "method": "same-volume move (os.replace) after sha256 verification - one physical copy, one path",
+        "source_sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "date": "2026-09-29"
+      },
+      "runtime_status": "ONLINE and verified: live /v1/embeddings returned 1024-dim vectors.",
+      "operationalStatus": "OPERATIONAL 2026-09-29: server autostarts, self-heals every 10 minutes, and loads this model on demand without the user opening LM Studio."
+    },
+    {
+      "id": "local.reranker.default",
+      "display_name": "Local reranker (retrieval precision)",
+      "binds_to_model": "qwen3-reranker-0.6b",
+      "binds_to_runtime": "lmstudio",
+      "endpoint": "http://127.0.0.1:1234/v1/completions",
+      "api_shape": "openai-compatible /v1/completions driven by the model's own rerank chat template",
+      "serve_command": null,
+      "model_name_on_wire": "qwen3-reranker-0.6b",
+      "capabilities": [
+        "rerank.passage",
+        "retrieval.precision"
+      ],
+      "allowed_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "access_tier": "archeaxis-first",
+      "measured": {
+        "fidelity": "BINARY_VERDICT_ONLY",
+        "channel": "tokenizer.chat_template.rerank (embedded in the GGUF) via /v1/completions",
+        "verified_cases": {
+          "zh": {
+            "relevant": "yes",
+            "irrelevant": "No"
+          },
+          "en": {
+            "relevant": "Yes",
+            "irrelevant": "No"
+          },
+          "zh_three_way": {
+            "RTX 5060 8GB fact": "Yes",
+            "RTX 5090 32GB distractor": "yes",
+            "context-only passage": "no"
+          }
+        },
+        "verdict": "Correct on every case, including the hard distractor; but it returns only yes/no."
+      },
+      "runtime_note": "Ollama 0.34.3 exposes NO rerank endpoint (probed: /api/rerank, /v1/rerank, /api/reranking all 404), so reranking is served by llama.cpp with --rerank --pooling rank.",
+      "owner": "WORK-LAB",
+      "context_window": 40960,
+      "weight_location": "D:\\All projects\\Model library\\Qwen\\Qwen3-Reranker-0.6B-GGUF\\Qwen3-Reranker-0.6B-Q8_0.gguf",
+      "quantization": "Q8_0 (GGUF file_type 18)",
+      "runtime_limitation": "Measured on LM Studio 0.4.25: (a) there is NO rerank endpoint - /v1/rerank, /api/v0/rerank and GET /v1/rerank all return {\"error\":\"Unexpected endpoint or method\"}; (b) the API NEVER returns logprobs - /v1/completions with logprobs=20 returns \"logprobs\": null even for an already-loaded ordinary LLM (qwen3.5-4b), and /api/v0/completions behaves the same. Without logprobs only a hard yes/no verdict is obtainable, so ties between two accepted candidates cannot be ordered.",
+      "superseded_measurement": {
+        "score_spread": 0.9996,
+        "scores": [
+          1.0,
+          0.7362,
+          0.6036,
+          0.0006,
+          0.0004
+        ],
+        "was_measured_on": "llama.cpp b11221 /v1/rerank --rerank --pooling rank",
+        "status": "NOT REPRODUCIBLE ON LM STUDIO - retained only as the llama.cpp reference record, must not be cited as an LM Studio capability."
+      },
+      "fidelity_tradeoff": "This is a real, recorded regression in fidelity versus the llama.cpp path: llama.cpp gives a continuous score (spread 0.9996, deterministically orderable), LM Studio gives a binary verdict. The capability is online and correct, but not equivalent.",
+      "migration": {
+        "method": "same-volume move after sha256 verification",
+        "source_sha256": "eae89db7f8d56fcead26125f6e3ddabf6ad1702d9d4c23d3d69a7059c4c4d64d",
+        "date": "2026-09-29"
+      },
+      "runtime_status": "ONLINE and verified as a binary verdict (correct on every tested case), but NO score is exposed: LM Studio 0.4.25 has no rerank endpoint and never returns logprobs.",
+      "operationalStatus": "OPERATIONAL 2026-09-29: server autostarts, self-heals every 10 minutes, and loads this model on demand without the user opening LM Studio."
+    },
+    {
+      "id": "local.ocr.default",
+      "display_name": "Local OCR / document vision",
+      "binds_to_model": "qwen2.5vl-7b",
+      "binds_to_runtime": "lmstudio",
+      "endpoint": "http://127.0.0.1:1234/v1",
+      "api_shape": "openai-compatible (vision)",
+      "model_name_on_wire": "qwen2.5-vl-7b-instruct",
+      "capabilities": [
+        "ocr.image",
+        "vision.describe",
+        "layout.understand"
+      ],
+      "context_window": 128000,
+      "allowed_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "access_tier": "archeaxis-first",
+      "provisional": false,
+      "provisional_reason": null,
+      "owner": "WORK-LAB",
+      "weight_location": "D:\\All projects\\Model library\\ggml-org\\Qwen2.5-VL-7B-Instruct-GGUF\\(Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf + mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf)",
+      "provenance_note": "Alternative to migrating the Ollama blob: that blob contains no vision projector (hasVision=false, no clip.* keys, single image.model layer, no mmproj anywhere in the library), so OCR could not be migrated. Downloaded from the llama.cpp project's own repository via hf-mirror.com (domestic route; huggingface.co direct was avoided on user instruction so the personal VPN is not consumed). 8 parallel ranged connections measured up to 13.4 MiB/s.",
+      "mmproj": "mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf (853119712 B, sha256 2ddb555391bae966e412deab9e07b58afa18bcc06930ba0f1c78a3695ab9e506)",
+      "measured": {
+        "verification": "live vision call on the zh/en fixture, 2 independent runs",
+        "fixture": "page-zh-en.png (1240x520, Chinese + English mixed)",
+        "seconds_per_run": 5.3,
+        "prompt_tokens": 892,
+        "completion_tokens": 70,
+        "exact_lines": 8,
+        "total_lines": 8,
+        "exact_rate": 1.0,
+        "verdict": "REAL_OCR_WORKING",
+        "comparison": "The earlier Ollama qwen2.5vl:7b result was 6/6 in 61.7 s. This is 8/8 in 5.3 s and, unlike that blob, it genuinely has a vision projector."
+      },
+      "operationalStatus": "OPERATIONAL 2026-09-29: server autostarts, self-heals every 10 minutes, and loads this model on demand without the user opening LM Studio."
+    },
+    {
+      "id": "local.asr.default",
+      "display_name": "Local ASR (audio/video transcription)",
+      "binds_to_model": "faster-whisper-large-v3-turbo",
+      "binds_to_runtime": "faster-whisper",
+      "endpoint": "in-process python (faster_whisper.WhisperModel)",
+      "api_shape": "python-library / optional local wrapper",
+      "model_name_on_wire": "large-v3-turbo",
+      "capabilities": [
+        "asr.transcribe",
+        "asr.timestamps"
+      ],
+      "allowed_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "access_tier": "archeaxis-first",
+      "provisional": true,
+      "provisional_reason": "default ASR provider pending a real Chinese-audio test against the sherpa-onnx SenseVoice alternate",
+      "alternates": [
+        "local.asr.cpu.sensevoice"
+      ],
+      "owner": "WORK-LAB",
+      "migration_note": "NOT an Ollama model and NOT affected by the Ollama removal: faster-whisper runs in-process (CTranslate2 int8). No runtime change was made or is required."
+    },
+    {
+      "id": "local.asr.cpu.sensevoice",
+      "display_name": "Local ASR — CPU-friendly multilingual alternate",
+      "binds_to_model": "sherpa-onnx-sense-voice",
+      "binds_to_runtime": "sherpa-onnx",
+      "endpoint": "in-process (sherpa-onnx)",
+      "api_shape": "python-library",
+      "model_name_on_wire": "sense-voice-zh-en-ja-ko-yue-2024-07-17",
+      "capabilities": [
+        "asr.transcribe",
+        "asr.multilingual"
+      ],
+      "allowed_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "access_tier": "archeaxis-alternate",
+      "owner": "WORK-LAB"
+    }
+  ],
+  "accessTiers": {
+    "shared-common": "All three projects may call it when a real task needs it.",
+    "archeaxis-first": "Authorized to ArcheAxis by default; other projects only on a real, declared need.",
+    "worklab-only": "Used by WORK-LAB itself.",
+    "standby": "Present, not the default, not deleted."
+  },
+  "defaultExposure": {
+    "note": "brief section 10: do NOT expose the whole ArcheAxis ingestion pipeline to every project by default.",
+    "shared-common": [
+      "local.fast.default",
+      "local.deep.default"
+    ],
+    "archeaxisOnly": [
+      "local.embedding.default",
+      "local.reranker.default",
+      "local.ocr.default",
+      "local.asr.default",
+      "local.asr.cpu.sensevoice"
+    ]
+  },
+  "lastVerified": "2026-09-29",
+  "migrationEpoch": {
+    "date": "2026-09-29",
+    "directive": "user decision: uninstall Ollama and consolidate on LM Studio",
+    "summary": "All model providers now resolve through the lmstudio runtime; Ollama bindings removed.",
+    "completed": "2026-09-29",
+    "ollamaRemoved": true
+  },
+  "operationalDeployment": {
+    "date": "2026-09-29",
+    "summary": "LM Studio runs as an unattended background service: autostart on launch, logon warm-up, 10-minute health check with self-heal, and just-in-time loading for the large models.",
+    "userActionRequired": "none - call http://127.0.0.1:1234/v1 with the model name",
+    "userGuide": "%LOCALAPPDATA%\\WORK-LAB\\README-本地模型服务.md",
+    "acceptance": "8/8 capability lines PASS (final-acceptance.json, verdict ACCEPTED_ALL_LINES, 2026-09-29)"
+  }
+}

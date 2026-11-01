@@ -1,0 +1,267 @@
+{
+  "schemaVersion": "work-lab/ag11-ocr-asr-matrix/v1",
+  "measuredAt": "2026-10-06T21:49:57Z",
+  "tool": "python scripts/audit/ag11_ocr_asr_matrix.py",
+  "environment": {
+    "visionEndpoint": "http://localhost:1234/v1",
+    "visionModel": "qwen2.5-vl-7b-instruct",
+    "servedModels": [
+      "qwen3-reranker-0.6b",
+      "text-embedding-qwen3-embedding-0.6b",
+      "qwen2.5-vl-7b-instruct",
+      "text-embedding-nomic-embed-text-v1.5",
+      "qwen3.5-4b",
+      "qwen3.8-27b"
+    ],
+    "whisperModelDir": "D:\\All projects\\Model library\\whisper\\faster-whisper-large-v3-turbo",
+    "packages": {
+      "pillow": "12.3.0",
+      "ctranslate2": "4.8.2",
+      "faster_whisper": "1.2.1",
+      "pypdfium2": "5.14.0"
+    },
+    "ocrRuntimeNote": "LM Studio serving the registered qwen2.5-vl-7b-instruct weight; no model was downloaded or installed for the OCR half",
+    "asrRuntimeNote": "faster-whisper / CTranslate2 in-process, CPU int8, in the project-local venv .project-local/toolchains/wl-ag11 (created 2026-10-07)"
+  },
+  "fixtureIdentity": {
+    "page-zh-en.png": {
+      "path": ".project-local\\artifacts\\model-governance-20260928\\fixtures\\page-zh-en.png",
+      "bytes": 52901,
+      "sha256": "a52a57af07510cd5157297626b017757212f7e6bfebb79f8b122b2aa205bcd31"
+    },
+    "governance.pdf": {
+      "path": ".project-local\\artifacts\\model-governance-20260928\\fixtures\\governance.pdf",
+      "bytes": 1020,
+      "sha256": "b427d9ae0582f2a8c5055ba8b9e12f03c161fc9297e550c91e23082a0fd41903"
+    },
+    "speech-zh.wav": {
+      "path": ".project-local\\artifacts\\model-governance-20260928\\fixtures\\speech-zh.wav",
+      "bytes": 198170,
+      "sha256": "09ea23dcd0f3d8ba20cfa70a31f673683e643c133dbf236f530c69f72a9dab49"
+    }
+  },
+  "declaredCells": [
+    "ocr-mixed-zh-en-page",
+    "ocr-scanned-degraded",
+    "ocr-zh-prompt",
+    "ocr-en-prompt",
+    "ocr-pdf-page",
+    "ocr-table",
+    "ocr-page-order",
+    "asr-fixture-zh-cer",
+    "asr-vendor-wavs"
+  ],
+  "cells": [
+    {
+      "id": "ocr-mixed-zh-en-page",
+      "kind": "ocr",
+      "input": "D:\\All projects\\WORK-LAB\\.project-local\\artifacts\\model-governance-20260928\\fixtures\\page-zh-en.png",
+      "groundTruth": "11 probe strings taken from the fixture generator",
+      "status": "MEASURED",
+      "seconds": 6.3,
+      "characters": 157,
+      "probes": 11,
+      "hits": 11,
+      "hit_rate": 1.0,
+      "found": [
+        "WORK-LAB",
+        "Qwen3.5-4B",
+        "Qwen3.8-27B",
+        "Qwen3.8",
+        "Reranker",
+        "本地模型治理",
+        "共享模型库",
+        "只保存一份",
+        "嵌入模型",
+        "关注度",
+        "OCR"
+      ],
+      "missing": []
+    },
+    {
+      "id": "ocr-scanned-degraded",
+      "kind": "ocr",
+      "input": "page-zh-en.png rescaled 0.5x + JPEG q32 + blur",
+      "groundTruth": "same 11 probes as the clean page",
+      "status": "MEASURED",
+      "seconds": 6.17,
+      "characters": 149,
+      "probes": 11,
+      "hits": 11,
+      "hit_rate": 1.0,
+      "found": [
+        "WORK-LAB",
+        "Qwen3.5-4B",
+        "Qwen3.8-27B",
+        "Qwen3.8",
+        "Reranker",
+        "本地模型治理",
+        "共享模型库",
+        "只保存一份",
+        "嵌入模型",
+        "关注度",
+        "OCR"
+      ],
+      "missing": []
+    },
+    {
+      "id": "ocr-zh-prompt",
+      "kind": "ocr",
+      "input": "page-zh-en.png",
+      "groundTruth": "probes checked case-sensitively against a zh-language prompt",
+      "status": "MEASURED",
+      "seconds": 6.21,
+      "characters": 157,
+      "probes": 4,
+      "hits": 4,
+      "hit_rate": 1.0,
+      "found": [
+        "本地模型治理",
+        "共享模型库",
+        "只保存一份",
+        "嵌入模型"
+      ],
+      "missing": []
+    },
+    {
+      "id": "ocr-en-prompt",
+      "kind": "ocr",
+      "input": "page-zh-en.png",
+      "groundTruth": "probes checked case-sensitively against a en-language prompt",
+      "status": "MEASURED",
+      "seconds": 6.23,
+      "characters": 157,
+      "probes": 4,
+      "hits": 4,
+      "hit_rate": 1.0,
+      "found": [
+        "WORK-LAB",
+        "Qwen3.5-4B",
+        "Reranker",
+        "OCR"
+      ],
+      "missing": []
+    },
+    {
+      "id": "ocr-pdf-page",
+      "kind": "ocr",
+      "input": "governance.pdf page 1 rendered at 150 dpi",
+      "groundTruth": "probes read mechanically from the same page's text layer",
+      "status": "MEASURED",
+      "seconds": 16.57,
+      "characters": 360,
+      "pdf_text_layer_characters": 368,
+      "probes": 8,
+      "hits": 8,
+      "hit_rate": 1.0,
+      "found": [
+        "WORK-LAB LOCAL MODEL GOVERNANCE (PDF fixture)",
+        "Title (UTF-16BE): 672c57306a21578b6cbb74068bf4660e",
+        "FAST -> Qwen3.5-4B",
+        "DEEP -> Qwen3.8-27B UD-IQ4_XS",
+        "EMBED -> Qwen3-Embedding-0.6B",
+        "RERANK-> Qwen3-Reranker-0.6B",
+        "OCR -> qwen2.5vl:7b (provisional)",
+        "ASR -> faster-whisper large-v3-turbo (provisional)"
+      ],
+      "missing": []
+    },
+    {
+      "id": "ocr-table",
+      "kind": "ocr",
+      "input": "synthetic 5x3 CJK table rendered with the system font",
+      "groundTruth": "the exact cell strings that were drawn",
+      "status": "MEASURED",
+      "seconds": 7.27,
+      "cells": 15,
+      "probes": 15,
+      "hits": 15,
+      "hit_rate": 1.0,
+      "found": [
+        "模型",
+        "角色",
+        "运行时",
+        "qwen3-embedding-0.6b",
+        "嵌入",
+        "lmstudio",
+        "qwen3-reranker-0.6b",
+        "重排",
+        "lmstudio",
+        "faster-whisper",
+        "语音识别",
+        "进程内",
+        "qwen2.5-vl-7b",
+        "光学识别",
+        "lmstudio"
+      ],
+      "missing": []
+    },
+    {
+      "id": "ocr-page-order",
+      "kind": "ocr",
+      "input": "three rendered pages in one request",
+      "groundTruth": "each page's unique heading string, in the given order",
+      "status": "MEASURED",
+      "seconds": 3.26,
+      "pages": 3,
+      "found_positions": [
+        0,
+        17,
+        34
+      ],
+      "probes": 3,
+      "hits": 3,
+      "hit_rate": 1.0,
+      "order_preserved": true
+    },
+    {
+      "id": "asr-fixture-zh-cer",
+      "kind": "asr",
+      "input": "D:\\All projects\\WORK-LAB\\.project-local\\artifacts\\model-governance-20260928\\fixtures\\speech-zh.wav",
+      "groundTruth": "the synthesised phrase '本地模型治理由工作实验室统一负责'",
+      "status": "MEASURED",
+      "audio_seconds": 4.49,
+      "transcribe_seconds": 5.05,
+      "real_time_factor": 1.12,
+      "transcript": "本地模型治理由工作实验室统一负责。",
+      "character_error_rate": 0.0,
+      "probes": 1,
+      "hits": 1,
+      "hit_rate": 1.0
+    },
+    {
+      "id": "asr-vendor-wavs",
+      "kind": "asr",
+      "status": "MEASURED_NO_TRUTH",
+      "input": "D:\\All projects\\Model library\\sherpa-onnx\\sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23\\test_wavs",
+      "runs": {
+        "0.wav": {
+          "audio_seconds": 5.61,
+          "transcribe_seconds": 5.21,
+          "transcript": "对我做了介绍 那么我想说的是呢 大家如果对我的研究感兴趣呢"
+        },
+        "1.wav": {
+          "audio_seconds": 5.15,
+          "transcribe_seconds": 5.08,
+          "transcript": "重点想谈三个问题 首先就是这一轮全球金融动荡的表现"
+        },
+        "8k.wav": {
+          "audio_seconds": 4.52,
+          "transcribe_seconds": 4.37,
+          "transcript": "深入的分析这一次全球金融动荡背后的根源"
+        }
+      },
+      "groundTruth": "none — the vendor ships these wavs without transcripts, so no character error rate is claimable from them"
+    }
+  ],
+  "counts": {
+    "declared": 9,
+    "measured": 9,
+    "not_run": 0,
+    "failed": 0
+  },
+  "interpretation": {
+    "ocr": "hit_rate is over probe strings whose ground truth is mechanical: the rendered cells are built from the strings being checked, and the PDF probes are read out of the same page's text layer",
+    "asr": "character_error_rate is against the phrase that synthesised the fixture wav; the vendor test wavs ship no transcript, so their runs are reported as MEASURED_NO_TRUTH rather than as quality"
+  }
+}

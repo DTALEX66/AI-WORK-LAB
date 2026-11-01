@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DESIGN-LAB · L9 Demo</title>
+<style>:root{--bg:#060A14;--sidebar:#090E1A;--surface:#0D1221;--surface2:#11182A;--border:#213D66;--primary:#316CFF;--secondary:#4BAFFF;--text:#F5F7FC;--muted:#9AA3B8;--success:#2FC58D;--warning:#F4B942;--error:#F05252;}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:Inter,"Segoe UI","Noto Sans SC",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.app{display:grid;grid-template-columns:260px 1fr;height:100vh;overflow:hidden}
+.sidebar{background:var(--sidebar);border-right:1px solid var(--border);padding:22px 16px;display:flex;flex-direction:column;min-width:0}
+.brand{display:flex;gap:12px;align-items:center;padding:4px 6px 20px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.mark{width:42px;height:42px;border:1px solid var(--primary);border-radius:12px;display:grid;place-items:center;color:var(--primary);font-weight:800}
+.brand h1{font-size:16px;margin:0}.brand small{display:block;color:var(--primary);font-size:9px;margin-top:4px;line-height:1.2}
+.nav{display:flex;flex-direction:column;gap:6px;overflow:auto}.nav button{display:flex;gap:11px;align-items:center;width:100%;background:transparent;border:1px solid transparent;color:var(--text);padding:11px 12px;border-radius:9px;text-align:left}
+.nav button:hover{background:var(--surface2);border-color:var(--border)}.nav button.active{background:var(--primary);color:#fff}
+.dot{width:9px;height:9px;border-radius:50%;border:2px solid currentColor}.user{margin-top:auto;border-top:1px solid var(--border);padding:16px 6px 0;display:flex;gap:11px;align-items:center}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center}
+.main{min-width:0;display:flex;flex-direction:column}.topbar{height:70px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex:0 0 auto}
+.search{width:min(560px,52vw);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--muted);cursor:pointer}
+.top-actions{display:flex;gap:8px}.top-actions button,.ghost{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 11px}
+.content{padding:26px;overflow:auto}.page-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:20px}.page-head h2{font-size:30px;margin:0 0 5px}.page-head p{margin:0;color:var(--muted)}
+.primary{background:var(--primary);border:0;color:#fff;border-radius:9px;padding:10px 15px;font-weight:700}.danger{background:var(--error);border:0;color:#fff;border-radius:9px;padding:10px 15px;font-weight:700}
+.grid{display:grid;gap:16px}.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.two{grid-template-columns:1.3fr 1fr}.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;min-width:0}.card:hover{border-color:var(--primary)}.card h3{font-size:15px;margin:0 0 14px}
+.kpi strong{font-size:31px;display:block;color:var(--primary)}.kpi small{color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:9px}.row{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}.row:hover{border-color:var(--primary)}
+.tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;background:var(--primary);color:#fff}.tag.ok{background:var(--success)}.tag.warn{background:var(--warning)}.tag.bad{background:var(--error)}
+.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--border);font-size:13px}.table th{color:var(--muted)}.table tr:hover td{background:var(--surface2)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar button{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:8px}.toolbar button.active{background:var(--primary);border-color:var(--primary)}
+input,textarea,select{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;outline:none}input:focus,textarea:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 25%, transparent)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:50}.overlay.open{display:flex}.modal{width:min(640px,90vw);background:var(--surface);border:1px solid var(--primary);border-radius:16px;padding:22px;box-shadow:0 20px 80px rgba(0,0,0,.45)}.modal h3{margin-top:0}
+.drawer{position:fixed;top:0;right:-520px;width:min(500px,92vw);height:100vh;background:var(--surface);border-left:1px solid var(--primary);z-index:45;padding:24px;transition:right .24s ease}.drawer.open{right:0}
+.palette{position:fixed;top:12vh;left:50%;transform:translateX(-50%);width:min(760px,90vw);background:var(--surface);border:1px solid var(--primary);border-radius:14px;z-index:60;display:none;box-shadow:0 30px 100px rgba(0,0,0,.5)}.palette.open{display:block}.palette input{width:calc(100% - 28px);margin:14px}.palette .item{padding:11px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between}.palette .item:hover{background:var(--surface2)}
+.toast{position:fixed;right:22px;bottom:22px;background:var(--surface);border:1px solid var(--primary);padding:13px 15px;border-radius:10px;z-index:80;display:none}.toast.show{display:block}
+.canvas{position:relative;min-height:520px;background:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:32px 32px;border:1px dashed var(--border);border-radius:12px;overflow:hidden}.node{position:absolute;min-width:130px;padding:12px 15px;background:var(--surface2);border:1px solid var(--primary);border-radius:9px;user-select:none;cursor:grab}.node:active{cursor:grabbing}
+.graph svg{width:100%;height:360px}.graph circle{cursor:pointer}.graph .selected{stroke:var(--secondary);stroke-width:3}
+.progress{height:9px;background:var(--surface2);border-radius:6px;overflow:hidden}.progress>div{height:100%;background:var(--primary);border-radius:6px}
+.split{display:grid;grid-template-columns:1fr 360px;gap:16px}.muted{color:var(--muted)}.big-number{font-size:42px;font-weight:800;color:var(--primary)}
+pre.log{background:#03070b;border:1px solid var(--border);border-radius:9px;padding:12px;max-height:350px;overflow:auto;color:#b9d6e8;font-size:12px}
+@media(max-width:1000px){.kpis{grid-template-columns:repeat(2,1fr)}.two,.three,.split{grid-template-columns:1fr}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.sidebar{display:none}.top-actions{display:none}.search{width:100%}.content{padding:16px}.kpis{grid-template-columns:1fr}.page-head{flex-direction:column}.card{padding:14px}}
+</style></head>
+<body>
+<div class="app">
+ <aside class="sidebar">
+  <div class="brand"><div class="mark">DL</div><div><h1>DESIGN-LAB</h1><small>AI-NATIVE DESIGN INTELLIGENCE</small></div></div>
+  <div class="nav"><button data-route="dashboard"><span class="dot"></span>仪表盘</button><button data-route="projects"><span class="dot"></span>项目</button><button data-route="research"><span class="dot"></span>研究洞察</button><button data-route="brand"><span class="dot"></span>品牌系统</button><button data-route="domains"><span class="dot"></span>设计领域</button><button data-route="tools"><span class="dot"></span>创作工具</button><button data-route="preflight"><span class="dot"></span>预检 / QA</button><button data-route="deliverables"><span class="dot"></span>交付中心</button><button data-route="evidence"><span class="dot"></span>证据系统</button><button data-route="collab"><span class="dot"></span>团队协作</button><button data-route="settings"><span class="dot"></span>设置</button></div>
+  <div class="user"><div class="avatar">A</div><div><b>Alex</b><div class="muted" style="font-size:12px">Personal Workspace</div></div></div>
+ </aside>
+ <main class="main">
+  <header class="topbar"><div class="search" id="openPalette">⌘ K &nbsp; 搜索 / Command Palette</div><div class="top-actions"><button id="notifyBtn">通知</button><button>帮助</button><button id="openDrawer">账户</button></div></header>
+  <section class="content" id="content"></section>
+ </main>
+</div>
+<div class="overlay" id="modal"><div class="modal"><h3 id="modalTitle">确认操作</h3><p class="muted" id="modalText">该操作将被记录。</p><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px"><button class="ghost" data-close-modal>取消</button><button class="primary" id="modalConfirm">确认</button></div></div></div>
+<aside class="drawer" id="drawer"><h3>账户 / Context</h3><p class="muted">当前工作区与快速设置。</p><div class="list"><div class="row"><span>Workspace</span><small>Personal</small></div><div class="row"><span>Theme</span><small>Locked</small></div><div class="row"><span>Local state</span><small>Enabled</small></div></div><button class="primary" id="closeDrawer" style="margin-top:20px">关闭</button></aside>
+<div class="palette" id="palette"><input id="paletteInput" placeholder="搜索页面或命令…"><div id="paletteItems"><div class="item" data-go="dashboard"><span>仪表盘</span><small>Open</small></div><div class="item" data-go="projects"><span>项目</span><small>Open</small></div><div class="item" data-go="research"><span>研究洞察</span><small>Open</small></div><div class="item" data-go="brand"><span>品牌系统</span><small>Open</small></div><div class="item" data-go="domains"><span>设计领域</span><small>Open</small></div><div class="item" data-go="tools"><span>创作工具</span><small>Open</small></div><div class="item" data-go="preflight"><span>预检 / QA</span><small>Open</small></div><div class="item" data-go="deliverables"><span>交付中心</span><small>Open</small></div><div class="item" data-go="evidence"><span>证据系统</span><small>Open</small></div><div class="item" data-go="collab"><span>团队协作</span><small>Open</small></div><div class="item" data-go="settings"><span>设置</span><small>Open</small></div></div></div>
+<div class="toast" id="toast">已完成</div>
+<template id="templates"></template>
+<script>
+const APP_KEY="design-lab";
+const NAV=[["dashboard", "仪表盘"], ["projects", "项目"], ["research", "研究洞察"], ["brand", "品牌系统"], ["domains", "设计领域"], ["tools", "创作工具"], ["preflight", "预检 / QA"], ["deliverables", "交付中心"], ["evidence", "证据系统"], ["collab", "团队协作"], ["settings", "设置"]];
+const content=document.getElementById("content");
+const palette=document.getElementById("palette"), paletteInput=document.getElementById("paletteInput");
+const modal=document.getElementById("modal"), drawer=document.getElementById("drawer"), toast=document.getElementById("toast");
+function showToast(msg){toast.textContent=msg;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),1800)}
+function setRoute(id){location.hash=id;render(id);}
+function currentRoute(){return location.hash.replace("#","")||NAV[0][0]}
+function activateNav(id){document.querySelectorAll("[data-route]").forEach(b=>b.classList.toggle("active",b.dataset.route===id))}
+document.querySelectorAll("[data-route]").forEach(b=>b.onclick=()=>setRoute(b.dataset.route));
+document.getElementById("openPalette").onclick=()=>{palette.classList.add("open");paletteInput.focus()};
+document.getElementById("openDrawer").onclick=()=>drawer.classList.add("open");
+document.getElementById("closeDrawer").onclick=()=>drawer.classList.remove("open");
+document.getElementById("notifyBtn").onclick=()=>showToast("暂无新的通知");
+document.querySelectorAll("[data-close-modal]").forEach(b=>b.onclick=()=>modal.classList.remove("open"));
+document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();palette.classList.toggle("open");if(palette.classList.contains("open"))paletteInput.focus()} if(e.key==="Escape"){palette.classList.remove("open");modal.classList.remove("open");drawer.classList.remove("open")}});
+paletteInput.addEventListener("input",()=>{const q=paletteInput.value.toLowerCase();document.querySelectorAll("#paletteItems .item").forEach(i=>i.style.display=i.textContent.toLowerCase().includes(q)?"flex":"none")});
+document.querySelectorAll("#paletteItems .item").forEach(i=>i.onclick=()=>{setRoute(i.dataset.go);palette.classList.remove("open")});
+window.addEventListener("hashchange",()=>render(currentRoute()));
+
+let projects=JSON.parse(localStorage.getItem(APP_KEY+":projects")||"null")||[
+ {name:"Aurora 品牌升级",domain:"Branding",status:"进行中",quality:96},
+ {name:"Nebula App",domain:"UI/UX",status:"评审中",quality:92},
+ {name:"Motion Reel 2024",domain:"Motion",status:"已完成",quality:98},
+ {name:"Spatial Exhibit",domain:"3D",status:"进行中",quality:90}
+];
+const checks=[
+ {name:"图片分辨率",cat:"资产",level:"pass",msg:"全部满足要求"},
+ {name:"字体缺失",cat:"字体",level:"warn",msg:"Page 04 缺少 1 个字体"},
+ {name:"出血设置",cat:"印刷",level:"error",msg:"Poster A2 缺少 3mm 出血"},
+ {name:"版权来源",cat:"合规",level:"pass",msg:"授权记录完整"},
+ {name:"色彩空间",cat:"输出",level:"pass",msg:"CMYK 配置正确"},
+ {name:"导出命名",cat:"交付",level:"warn",msg:"2 个文件命名不规范"}
+];
+function head(t,d,a=""){return `<div class="page-head"><div><h2>${t}</h2><p>${d}</p></div>${a?`<button class="primary" data-action="${a}">${a}</button>`:""}</div>`}
+function kpi(v,l){return `<div class="card kpi"><strong>${v}</strong><small>${l}</small></div>`}
+function render(id){activateNav(id);
+ if(id==="dashboard"){content.innerHTML=head("仪表盘","项目、质量、领域、工具和交付概览","+ 新建项目")+`<div class="grid kpis">${kpi(projects.filter(p=>p.status==="进行中").length,"进行中项目")}${kpi(projects.filter(p=>p.status==="评审中").length,"待审核")}${kpi(Math.round(projects.reduce((a,b)=>a+b.quality,0)/projects.length),"质量评分")}${kpi("24","本周完成")}</div><div class="grid two" style="margin-top:16px"><div class="card"><h3>最近项目</h3><div class="list">${projects.map(p=>`<div class="row"><span>${p.name}</span><small>${p.domain} · ${p.quality}</small></div>`).join("")}</div></div><div class="card"><h3>质量分布</h3>${projects.map(p=>`<div style="margin:14px 0"><div style="display:flex;justify-content:space-between"><span>${p.name}</span><small>${p.quality}</small></div><div class="progress"><div style="width:${p.quality}%"></div></div></div>`).join("")}</div></div>`}
+ else if(id==="projects"){content.innerHTML=head("项目","筛选、编辑与持久化","+ 新建项目")+`<div class="toolbar"><input id="pSearch" placeholder="搜索项目…"><select id="pStatus"><option value="">全部状态</option><option>进行中</option><option>评审中</option><option>已完成</option></select></div><div class="card"><table class="table"><thead><tr><th>项目</th><th>领域</th><th>状态</th><th>质量</th><th></th></tr></thead><tbody id="pBody"></tbody></table></div>`;setupProjects()}
+ else if(id==="preflight"){content.innerHTML=head("预检 / QA","运行检查并生成问题清单","运行预检")+`<div class="grid kpis"><div class="card kpi"><strong id="passN">0</strong><small>通过</small></div><div class="card kpi"><strong id="warnN">0</strong><small>警告</small></div><div class="card kpi"><strong id="errN">0</strong><small>错误</small></div><div class="card kpi"><strong id="scoreN">—</strong><small>质量评分</small></div></div><div class="card" style="margin-top:16px"><div id="checkList" class="list"><p class="muted">点击“运行预检”开始检查。</p></div></div>`;document.querySelector("[data-action]").onclick=runPreflight}
+ else if(id==="brand"){content.innerHTML=head("品牌系统","Logo、色彩、字体、图形、模板和资产")+`<div class="grid three">${["Logo","Color","Typography","Icon","Graphic Language","Templates"].map((x,i)=>`<div class="card"><h3>${x}</h3><div style="height:130px;border:1px dashed var(--border);border-radius:9px;position:relative"><div style="position:absolute;left:${20+i*7}px;top:${25+i*5}px;width:${80+i*10}px;height:${80-i*3}px;border:2px solid var(--primary);border-radius:${8+i*2}px"></div></div></div>`).join("")}</div>`}
+ else if(id==="collab"){content.innerHTML=head("团队协作","评论、审核和版本活动")+`<div class="split"><div class="card"><h3>评论</h3><div id="comments" class="list">${JSON.parse(localStorage.getItem(APP_KEY+":comments")||'["Alex: 调整标题层级","Taylor: 更新 UI Kit"]').map(x=>`<div class="row">${x}</div>`).join("")}</div><textarea id="commentText" rows="3" style="width:100%;margin-top:12px" placeholder="添加评论…"></textarea><button class="primary" id="addComment" style="margin-top:8px">发送</button></div><div class="card"><h3>审批流</h3><div class="list"><div class="row"><span>Draft</span><small>✓</small></div><div class="row"><span>Review</span><small>Current</small></div><div class="row"><span>Approved</span><small>—</small></div><div class="row"><span>Published</span><small>—</small></div></div></div></div>`;document.getElementById("addComment").onclick=addComment}
+ else{content.innerHTML=head(NAV.find(x=>x[0]===id)?.[1]||"模块","AI-native 设计生产与交付模块","主要操作")+`<div class="grid three">${["概览","资源","活动"].map(x=>`<div class="card"><h3>${x}</h3><div class="list">${[1,2,3].map(i=>`<div class="row"><span>${x} Item ${i}</span><small>Ready</small></div>`).join("")}</div></div>`).join("")}</div>`}
+ wireActions()}
+function setupProjects(){const body=document.getElementById("pBody"),q=document.getElementById("pSearch"),s=document.getElementById("pStatus");function draw(){const v=q.value.toLowerCase(),st=s.value;body.innerHTML=projects.filter(p=>(!st||p.status===st)&&p.name.toLowerCase().includes(v)).map((p,i)=>`<tr><td>${p.name}</td><td>${p.domain}</td><td><span class="tag ${p.status==="已完成"?"ok":p.status==="评审中"?"warn":""}">${p.status}</span></td><td>${p.quality}</td><td><button class="ghost editP" data-i="${i}">编辑</button></td></tr>`).join("");document.querySelectorAll(".editP").forEach(b=>b.onclick=()=>editProject(+b.dataset.i))}q.oninput=s.onchange=draw;draw()}
+function editProject(i){const p=projects[i];document.getElementById("modalTitle").textContent="编辑项目";document.getElementById("modalText").innerHTML=`<input id="editName" value="${p.name}" style="width:100%;margin-bottom:10px"><select id="editStatus" style="width:100%"><option ${p.status==="进行中"?"selected":""}>进行中</option><option ${p.status==="评审中"?"selected":""}>评审中</option><option ${p.status==="已完成"?"selected":""}>已完成</option></select>`;modal.classList.add("open");document.getElementById("modalConfirm").onclick=()=>{p.name=document.getElementById("editName").value;p.status=document.getElementById("editStatus").value;localStorage.setItem(APP_KEY+":projects",JSON.stringify(projects));modal.classList.remove("open");render("projects");showToast("项目已更新")}}
+function runPreflight(){let i=0;const list=document.getElementById("checkList");list.innerHTML="";const timer=setInterval(()=>{if(i>=checks.length){clearInterval(timer);const pass=checks.filter(x=>x.level==="pass").length,warn=checks.filter(x=>x.level==="warn").length,err=checks.filter(x=>x.level==="error").length;document.getElementById("passN").textContent=pass;document.getElementById("warnN").textContent=warn;document.getElementById("errN").textContent=err;document.getElementById("scoreN").textContent=Math.max(0,100-warn*5-err*15);showToast("预检完成");return}const c=checks[i++];list.innerHTML+=`<div class="row"><span>${c.name}<small class="muted"> · ${c.cat}</small></span><span class="tag ${c.level==="pass"?"ok":c.level==="warn"?"warn":"bad"}">${c.msg}</span></div>`},280)}
+function addComment(){const ta=document.getElementById("commentText");if(!ta.value.trim())return;const arr=JSON.parse(localStorage.getItem(APP_KEY+":comments")||'["Alex: 调整标题层级","Taylor: 更新 UI Kit"]');arr.unshift("Alex: "+ta.value.trim());localStorage.setItem(APP_KEY+":comments",JSON.stringify(arr));render("collab")}
+function wireActions(){document.querySelectorAll("[data-action]").forEach(b=>{if(b.textContent==="运行预检")return;b.onclick=()=>showToast(b.dataset.action+" 已触发")})}
+
+render(currentRoute());
+</script></body></html>

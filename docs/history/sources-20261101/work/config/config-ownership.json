@@ -1,0 +1,686 @@
+{
+ "schema_version": "workflow/config-ownership/v2",
+ "single_authority": true,
+ "note": "WL3-200: single source replacing config-ownership v1, managed-config-schema.yaml field lists, and hard-coded sync-script managed config. Unknown fields default to OBSERVE/QUARANTINE; never silently deleted. Managed surface as of 2026-08-11: active clients hermes/codex/cc-switch/github (deep), observe-only platforms openhuman/open-design (skills + OBSERVE declarations), manifest-only future clients cursor/claude-code/workbuddy, and the workflow adapter itself.",
+ "layers": {
+  "UPSTREAM_OFFICIAL": {
+   "mode": "OBSERVE",
+   "behavior": "read-only version/capability/schema/digest; never copy install tree"
+  },
+  "USER_OVERLAY": {
+   "mode": "MANAGE",
+   "behavior": "user Rules, Skills (dynamic inventory, no fixed count), observed plugin declarations, boundaries, explicit preferences; diff/rebase/rollback"
+  },
+  "PROJECT_OVERLAY": {
+   "mode": "MANAGE",
+   "behavior": "owned and written by the current project only; this global workflow contract may observe but never apply project Rules/Skills/Profile/Gate"
+  },
+  "TASK_EPHEMERAL": {
+   "mode": "OBSERVE",
+   "behavior": "current task context; expires at task end; never auto-promotes to global"
+  },
+  "PLATFORM_INTERNAL": {
+   "mode": "OBSERVE",
+   "behavior": "observe necessary metadata only; never manage"
+  },
+  "RUNTIME_EPHEMERAL": {
+   "mode": "IGNORE",
+   "behavior": "ignored runtime state; never committed"
+  },
+  "SECRET": {
+   "mode": "FORBIDDEN",
+   "behavior": "never collected, copied, hashed, or archived"
+  },
+  "COSMETIC": {
+   "mode": "IGNORE",
+   "behavior": "default user-owned/ignore; optional manage only when user opts in and official interface is stable"
+  }
+ },
+ "operation_modes": [
+  "MANAGE",
+  "OBSERVE",
+  "IGNORE",
+  "FORBIDDEN"
+ ],
+ "default_unknown": {
+  "mode": "OBSERVE",
+  "quarantine": true
+ },
+ "adapter_defaults": {
+  "hermes": {
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "preserve_unknown": true
+  },
+  "codex": {
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "preserve_unknown": true
+  },
+  "cc-switch": {
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "preserve_unknown": true
+  },
+  "github": {
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "preserve_unknown": true
+  },
+  "openhuman": {
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "preserve_unknown": true
+  },
+  "open-design": {
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "preserve_unknown": true
+  },
+  "workflow": {
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "preserve_unknown": true
+  },
+  "cursor": {
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "preserve_unknown": true
+  },
+  "claude-code": {
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "preserve_unknown": true
+  },
+  "workbuddy": {
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "preserve_unknown": true
+  }
+ },
+ "fields": [
+  {
+   "path": "display.language",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "display.busy_input_mode",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "display.theme",
+   "layer": "COSMETIC",
+   "mode": "IGNORE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "hermes.managed_asset_units",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "hermes",
+   "scope": "Q3: the exclusive managed units are exactly the entries declared in config/managed-config-schema.yaml#global_workflow (owned_asset_roots -> <HERMES_HOME>/skills/**, owned_binary_paths -> <HERMES_HOME>/bin/**, owned_file_mappings -> SOUL.md) plus .env.template. WORK-LAB owns these units and publishes them only through integrations/executors/hermes/sync_hermes_workflow_assets.py. Nothing else under the Hermes home is managed.",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "hermes.managed_asset_units.native_curator_output",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes",
+   "scope": "Q3: content that a NATIVE component (Hermes skill curator) writes into a managed unit is not owned by WORK-LAB and is OBSERVE. The portable sync must refuse to overwrite it: no automatic deletion and no automatic promotion. A three-way comparison (last published baseline x current live x candidate) decides, and any live state the tool did not itself publish is refused. DECIDED POLICY (2026-09-17, operator ruling 'C'): curator output is preserved by FOLDING IT BACK into the repository, which stays the single authority, and live is then republished from that authority until the two match again. Folding is automatable only as ADDITIONS: `integrations/executors/hermes/curator_foldback.py` auto-accepts files added in live, lines appended to existing files, and line-ending-only differences (normalised to LF per .gitattributes), while any file removed in live, any deleted line, or any rewritten line is reported as NEEDS_REVIEW instead of being applied. The tool never writes to Hermes Home; the adopt-baseline step plus the sanctioned sync perform the live-side convergence. Rationale: the sync's whole-tree replacement semantics and the curator's in-place writes share one directory, so one of the two must be the authority; keeping the repository authoritative preserves both the curator's knowledge and the refusal behaviour that protects unknown live content.",
+   "safety": "critical",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "hermes.managed_asset_units.conflict_resolution",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "hermes",
+   "scope": "Q3: conflicts are resolved by an operator, never by the tool. On MANAGED_ASSET_LIVE_CHANGE_REFUSED the operator inspects the target and then either (a) re-runs with --adopt-live-baseline to accept the current live content as the new baseline, (b) re-runs with --suspend <target> to stop publishing that unit while the native writer is active, or (c) first promotes the reviewed content into the repository and publishes. Publishing any of these is recorded in HERMES_HOME/.workflow-assistance-baseline.json.",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "project.AGENTS",
+   "layer": "PROJECT_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "codex",
+   "scope": "Owned and written only by the target project; no global synchronizer may apply it."
+  },
+  {
+   "path": "project.rules",
+   "layer": "PROJECT_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "codex",
+   "scope": "Owned and written only by the target project; no global synchronizer may apply it."
+  },
+  {
+   "path": "project.skills",
+   "layer": "PROJECT_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "codex",
+   "scope": "Owned and written only by the target project; no global synchronizer may apply it."
+  },
+  {
+   "path": "user.AGENTS",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "codex"
+  },
+  {
+   "path": "user.skills",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "codex"
+  },
+  {
+   "path": "codex.model.routing",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "codex"
+  },
+  {
+   "path": "codex.model.provider",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "codex",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "codex.model.base_url",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "codex",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "approval_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "codex"
+  },
+  {
+   "path": "sandbox_mode",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "codex"
+  },
+  {
+   "path": "project_doc_max_bytes",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "codex"
+  },
+  {
+   "path": "mcp_servers.user_defined",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "mcp_servers.owned_names",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "plugins",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "hooks.pre_tool_call",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "memory",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "sessions.auto_prune",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "hermes.model.provider",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "hermes.model.default",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "hermes.model.base_url",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "hermes.agent.reasoning_effort",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes",
+   "scope": "Five-dimension baseline 5: stays at official default (empty = medium) or higher; never downgraded."
+  },
+  {
+   "path": "hermes.model.temperature",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "hermes",
+   "scope": "Five-dimension baseline 5: no temperature downgrade below the official published baseline."
+  },
+  {
+   "path": "cc_switch.provider.cost_multiplier",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "cc-switch",
+   "scope": "Five-dimension baseline 5: official provider routing (cost_multiplier=1.0); no cost cap or downgrade.",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "cc_switch.provider.rate_limits",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "cc-switch",
+   "scope": "Five-dimension baseline 5: no daily/monthly rate caps on managed providers.",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "cc_switch.provider.catalog",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "cc-switch",
+   "scope": "No reviewed CC Switch adapter may write provider catalog entries.",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "cc_switch.provider.routing",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "cc-switch",
+   "scope": "No reviewed CC Switch adapter may write provider routing.",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "codex.prompt_sync",
+   "layer": "PLATFORM_INTERNAL",
+   "mode": "IGNORE",
+   "adapter": "cc-switch"
+  },
+  {
+   "path": "codex.skill_sync",
+   "layer": "PLATFORM_INTERNAL",
+   "mode": "IGNORE",
+   "adapter": "cc-switch"
+  },
+  {
+   "path": "codex.session_sync",
+   "layer": "RUNTIME_EPHEMERAL",
+   "mode": "IGNORE",
+   "adapter": "cc-switch"
+  },
+  {
+   "path": "hermes.memory_sync",
+   "layer": "RUNTIME_EPHEMERAL",
+   "mode": "IGNORE",
+   "adapter": "cc-switch"
+  },
+  {
+   "path": "chatgpt.memory",
+   "layer": "PLATFORM_INTERNAL",
+   "mode": "OBSERVE",
+   "adapter": "codex"
+  },
+  {
+   "path": "codex.local_memories",
+   "layer": "RUNTIME_EPHEMERAL",
+   "mode": "IGNORE",
+   "adapter": "codex"
+  },
+  {
+   "path": "memory.growth_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "workflow"
+  },
+  {
+   "path": "openhuman.workspace_metadata",
+   "layer": "PLATFORM_INTERNAL",
+   "mode": "OBSERVE",
+   "adapter": "openhuman"
+  },
+  {
+   "path": "openhuman.global_configuration",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "openhuman",
+   "scope": "OpenHuman client USER_GLOBAL desired state (rules/skills/plugins/workflow_policy); apply only via a reviewed adapter and a stable official interface.",
+   "apply_supported": false
+  },
+  {
+   "path": "openhuman.runtime_memory",
+   "layer": "RUNTIME_EPHEMERAL",
+   "mode": "IGNORE",
+   "adapter": "openhuman"
+  },
+  {
+   "path": "open-design.read_only_mcp",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "open-design"
+  },
+  {
+   "path": "open-design.global_configuration",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "open-design",
+   "scope": "Open Design client USER_GLOBAL desired state (rules/skills/plugins/workflow_policy, capability mapping, support level); design capability belongs to DESIGN-LAB and is excluded.",
+   "apply_supported": false
+  },
+  {
+   "path": "open-design.design_capability",
+   "layer": "PROJECT_OVERLAY",
+   "mode": "IGNORE",
+   "adapter": "open-design",
+   "scope": "Owned by the DTALEX66/DESIGN-LAB project, not by the Open Design client; never collected or applied here."
+  },
+  {
+   "path": "external_projects.design_lab.project_configuration",
+   "layer": "PROJECT_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "workflow",
+   "scope": "DESIGN-LAB project-owned configuration; WORK-LAB observes declared pointers only and never applies them.",
+   "apply_supported": false
+  },
+  {
+   "path": "desktop.internal_state",
+   "layer": "PLATFORM_INTERNAL",
+   "mode": "OBSERVE",
+   "adapter": "codex"
+  },
+  {
+   "path": "desktop.global_state_digest",
+   "layer": "PLATFORM_INTERNAL",
+   "mode": "OBSERVE",
+   "adapter": "codex"
+  },
+  {
+   "path": "task.lease",
+   "layer": "TASK_EPHEMERAL",
+   "mode": "OBSERVE",
+   "adapter": "workflow"
+  },
+  {
+   "path": "task.checkpoint",
+   "layer": "TASK_EPHEMERAL",
+   "mode": "OBSERVE",
+   "adapter": "workflow"
+  },
+  {
+   "path": "sessions",
+   "layer": "RUNTIME_EPHEMERAL",
+   "mode": "IGNORE",
+   "adapter": "hermes"
+  },
+  {
+   "path": "cache",
+   "layer": "RUNTIME_EPHEMERAL",
+   "mode": "IGNORE",
+   "adapter": "workflow"
+  },
+  {
+   "path": "logs",
+   "layer": "RUNTIME_EPHEMERAL",
+   "mode": "IGNORE",
+   "adapter": "workflow"
+  },
+  {
+   "path": "credentials",
+   "layer": "SECRET",
+   "mode": "FORBIDDEN",
+   "adapter": "all",
+   "safety": "high",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "api_keys",
+   "layer": "SECRET",
+   "mode": "FORBIDDEN",
+   "adapter": "all",
+   "safety": "high",
+   "secret": true,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "auth_tokens",
+   "layer": "SECRET",
+   "mode": "FORBIDDEN",
+   "adapter": "all",
+   "safety": "high",
+   "secret": true,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "oauth_state",
+   "layer": "SECRET",
+   "mode": "FORBIDDEN",
+   "adapter": "all",
+   "safety": "high",
+   "secret": true,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "prompt_response_bodies",
+   "layer": "SECRET",
+   "mode": "FORBIDDEN",
+   "adapter": "all"
+  },
+  {
+   "path": "workflow.global_agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "workflow",
+   "scope": "Global Agent Policy SSOT: config/global-agent-policy.yaml. Cross-software semantic only — no Codex/Hermes/DSH-specific syntax. Rendered per-client by adapters into their own native surfaces. Every renderer MUST emit a ProjectionLossReport; 'rendered successfully' is never 100% support.",
+   "safety": "critical",
+   "secret": false,
+   "merge": "replace",
+   "compatibility": "compatible"
+  },
+  {
+   "path": "workflow.global_agent_policy.model",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "workflow",
+   "scope": "User model choice. No renderer may hard-code or override.",
+   "safety": "critical"
+  },
+  {
+   "path": "workflow.global_agent_policy.provider",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "workflow",
+   "scope": "User provider choice. No renderer may hard-code or override.",
+   "safety": "critical"
+  },
+  {
+   "path": "workflow.global_agent_policy.reasoning",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "workflow",
+   "scope": "User reasoning_effort choice. No renderer may hard-code or override.",
+   "safety": "critical"
+  },
+  {
+   "path": "workflow.global_agent_policy.auth",
+   "layer": "SECRET",
+   "mode": "FORBIDDEN",
+   "adapter": "workflow",
+   "scope": "User auth / tokens / keys. Never rendered, copied, or managed.",
+   "safety": "critical",
+   "secret": true
+  },
+  {
+   "path": "workflow.global_agent_policy.credentials",
+   "layer": "SECRET",
+   "mode": "FORBIDDEN",
+   "adapter": "workflow",
+   "scope": "No real token/key/password may appear in any projection.",
+   "safety": "critical",
+   "secret": true
+  },
+  {
+   "path": "codex.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "codex",
+   "scope": "Codex native projection of the global policy: managed block in CODEX_HOME/AGENTS.md + managed config fields in CODEX_HOME/config.toml + rules/workflow-assistance.rules. Projected only through sync_codex_global_assets.py. Provider/model/reasoning are OBSERVE, never overwritten.",
+   "safety": "high"
+  },
+  {
+   "path": "hermes.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "MANAGE",
+   "adapter": "hermes",
+   "scope": "Hermes native projection of the global policy: config/SOUL.md managed overlay + managed skills under skills/ + managed bin/ launchers. Projected only through sync_hermes_workflow_assets.py with three-way managed_asset_baseline guard. Curator additions fold back; deletions are NEEDS_REVIEW. Provider/model/reasoning/auth are OBSERVE, never overwritten.",
+   "safety": "high"
+  },
+  {
+   "path": "dsh.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "dsh",
+   "apply_supported": false,
+   "scope": "DSH global policy projection is OBSERVE/PLAN only until it has a stable official native interface + ownership definition + isolated fixture + readback + rollback + negative tests. Native model/provider/reasoning remain user-owned."
+  },
+  {
+   "path": "cc-switch.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "cc-switch",
+   "apply_supported": false,
+   "scope": "CC Switch global policy projection is OBSERVE_ONLY. It can detect, compare against the desired policy, and report drift. It never writes the policy back. No global-policy write without a re-validated stable native interface."
+  },
+  {
+   "path": "github.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "github",
+   "apply_supported": false,
+   "scope": "GitHub is not an agent persona. Only the Git/delivery-related parts of the policy project here: branch policy, PR policy, required checks, release policy, permission policy, evidence semantics. Language, session federation, and model reasoning do NOT project to GitHub."
+  },
+  {
+   "path": "openhuman.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "openhuman",
+   "apply_supported": false
+  },
+  {
+   "path": "open-design.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "open-design",
+   "apply_supported": false,
+   "scope": "Open Design client projection. WORK-LAB may manage the client's rules/skills/plugins/workflow-policy but NEVER the DESIGN-LAB design assets, generation params, design model policy, specs, or quality gates. No stable official apply interface yet."
+  },
+  {
+   "path": "cursor.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "cursor",
+   "apply_supported": false,
+   "scope": "Manifest-only client. detect/observe/plan only. No apply."
+  },
+  {
+   "path": "claude-code.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "claude-code",
+   "apply_supported": false,
+   "scope": "Manifest-only client. detect/observe/plan only. No apply."
+  },
+  {
+   "path": "workbuddy.user_global.agent_policy",
+   "layer": "USER_OVERLAY",
+   "mode": "OBSERVE",
+   "adapter": "workbuddy",
+   "apply_supported": false,
+   "scope": "Manifest-only client. detect/observe/plan only. No apply."
+  }
+ ],
+ "rules": {
+  "unknown_field_default": "OBSERVE_QUARANTINE",
+  "secret_never_collected": true,
+  "user_overlay_cannot_weaken_official_security": true,
+  "official_deprecated_fields_preserve_user_intent": true,
+  "identity_must_be_unique_before_apply": true,
+  "live_config_discovery_required_before_apply": true,
+  "machine_scoped_action_plan_required": true,
+  "apply_only_actual_managed_drift": true,
+  "no_op_plan_never_writes": true,
+  "explicit_approval_after_plan_review": true,
+  "apply_readback_required": true,
+  "apply_requires_stable_official_interface": true,
+  "cosmetic_managed_only_on_opt_in": true,
+  "cc_switch_owns_supported_client_provider_routing_only": true,
+  "cross_client_prompt_skill_session_sync_forbidden": true,
+  "raw_memory_never_crosses_client_boundary": true,
+  "open_design_capability_owned_by_open_design_project": true,
+  "global_policy_no_model_provider_auth_override": true,
+  "global_policy_e_drive_guard_not_weakenable": true,
+  "projection_loss_report_required_per_adapter": true,
+  "projection_render_success_not_equal_full_support": true,
+  "user_model_provider_auth_never_managed": true
+ }
+}

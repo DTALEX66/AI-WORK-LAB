@@ -1,0 +1,70 @@
+{
+  "id": "kb-13-motion-band-graded-to-pack-sentence-20261025",
+  "task_id": "DL-KB-13",
+  "axis": "unit",
+  "outcome": "PASS",
+  "observed_at": "2026-10-25T15:42:00Z",
+  "measured": {
+    "transition_declarations_before": 20,
+    "transition_declarations_out_of_band_before": 16,
+    "bare_shorthand_equal_transition_property_all": 10,
+    "durations_outside_120_180ms": {
+      "220ms": 4,
+      "200ms": 2,
+      "280ms": 2,
+      "550ms": 1
+    },
+    "non_allowed_animated_properties": [
+      "background",
+      "border-color",
+      "box-shadow",
+      "filter",
+      "r"
+    ],
+    "motion_tokens_resolved_from_stylesheet": {
+      "--motion-fast": "120ms",
+      "--motion-base": "180ms",
+      "--motion-slow": "280ms"
+    },
+    "transition_declarations_after": 17,
+    "after_compliant": 14,
+    "after_registered_exceptions": 3,
+    "exception_reason": "B07 UIKIT .ui-motion-fast/-base/-slow; values pinned by docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/evidence/W02-UTILITY-VERIFY.json; zero consumers in build/main.js, in all eight apps/workbench/*.ts sources and in index.html",
+    "animation_declarations": 4,
+    "animation_all_infinite": 4,
+    "animation_live_before_fix": 1,
+    "animation_live_after_fix": 0,
+    "animation_dead_registered": [
+      "dashMove",
+      "pulse",
+      "scanSweep"
+    ],
+    "why_unmeasured_before": "both motion rulers read transition: and neither read animation:"
+  },
+  "budget_research": {
+    "pack_sentence": "首屏 JavaScript gzip 不超过 150KB (02_完整产品方案.md:146) / ≤150KB (06_分阶段实施与验收.md:50), both declared 建议目标，尚未执行测量",
+    "industry_provenance": "the family is 「critical file size budget < 170Kb gzipped」 (2018 frontend checklist item 07, restated by the web.dev code-splitting codelab), derived backwards from a stated profile: $200 Android, 3G, 400ms RTT, ~400kb/s, TTI<5s, plus ~1s parse+compile on a mid phone. It covers the WHOLE critical path (HTML+CSS+JS together), so the pack number applied to JS alone is stricter than its source, and states no profile or metric.",
+    "high_star_forms": "Next.js build output colours per-route gzip <130/130-170/>170 KB; webpack performance defaults 244 KiB uncompressed per asset/entrypoint; Lighthouse CI budget.json resourceSizes + timings.",
+    "measured_this_round": {
+      "bundle_bytes": 615430,
+      "bundle_gzip_level9": 161916,
+      "bundle_bytes_before_this_round": 610364,
+      "bundle_gzip_level9_before": 160246,
+      "stylesheet_bytes": 120140,
+      "stylesheet_gzip_level9": 41183,
+      "document_bytes": 10144,
+      "document_gzip_level9": 3857,
+      "critical_path_gzip_total": "206956 B = 202.1 KiB",
+      "vite_reports_gzip_differently": "vite printed 164.50 kB for the same file; the numbers here are gzip level 9 computed in this repo, one level used for both sides of every delta",
+      "loopback_does_not_gzip": true,
+      "cold_load_event_ms": 93,
+      "response_end_ms": 4,
+      "long_tasks": 0,
+      "js_heap_mb": 2.3,
+      "dom_nodes": 436
+    },
+    "conclusion": "the transfer budget measures a transfer that does not happen in this deployment form; for a 127.0.0.1-served desktop UI the normalized equivalent is a CPU budget, which is currently met with 40x margin. Raising, lowering or re-basing 150KB is an owner decision; measure_workbench_weight.py prints budgetDeclared=False and refuses to invent one."
+  },
+  "gate": "design-lab/tests/test_workbench_contrast_gate.py::MotionBandFollowsThePack (3 tests, incl. three planted faults: background-color 400ms, bare .5s, transform 90ms) and ::EnhancedMotionLayerStaysComposited.test_the_static_face_carries_no_live_infinite_loop plus its planted-loop control. Ran 11 OK. Aggregate verify_design_lab.py total=76.",
+  "not_claimed": "no human acceptance, no model inference, no release; the 150KB ceiling is not declared satisfied or revised by this row."
+}

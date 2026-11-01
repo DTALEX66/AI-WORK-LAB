@@ -1,0 +1,959 @@
+{
+  "schemaVersion": "design-lab/taskpack-r5/v1",
+  "id": "DL-TP-20260908-R5",
+  "status": "PLAN_DELIVERED_NOT_IMPLEMENTED",
+  "mainSha": "c4dccd58331bc4561eb89265283d924b7630d113",
+  "developmentBranch": "codex/r3-runtime-correctness",
+  "developmentSha": "ed8d45ab2857b312f6056c43f7bb5e19dd9b65eb",
+  "adoption": "本包为增量输入；接入前现有R3账本仍是唯一活动源。DL-R5-001显式迁移或扩展其schema后再切换入口，不并行维护两个状态源。",
+  "tasks": [
+    {
+      "id": "DL-R5-001",
+      "title": "分支收敛、账本与增量接入",
+      "depends_on": [],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "开发分支领先 main 18 提交；已有 R3 四轴账本及 R4.1 映射",
+      "implementation": "冻结 main/develop SHA，核查提交与当前 CI；把本包差量映射入现有账本，保留 R3 历史状态；生成报告，不再新建平行活动账本",
+      "acceptance": [
+        "每个旧 R4 ID 可追踪",
+        "所有任务具有验收/回退/证据字段",
+        "报告 check 在锁定环境通过",
+        "明确合并状态"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-002",
+      "title": "仓库路径规范与旧运行根治理",
+      "depends_on": [
+        "DL-R5-001"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "项目路径解析器和外置根已登记；仍有 EXTERNAL_ASSET_INTAKE 活跃旧路径",
+      "implementation": "修复 packages/capabilities/governance/EXTERNAL_ASSET_INTAKE.md；分类扫描代码、配置、技能、启动器；追踪实际写入；按清单备份和迁移，验证后停用旧入口",
+      "acceptance": [
+        "已安装 Agent、CLI、UI、Adobe 入口无新增项目数据写入 .hermes",
+        "旧数据 hash 对应",
+        "历史引用保留且不作为执行指令"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-003",
+      "title": "CI 与验证环境补齐",
+      "depends_on": [
+        "DL-R5-001"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "开发分支 CI 34155003375 成功；本轮 80 项针对测试通过",
+      "implementation": "复用 uv.lock；补报告生成 check、安装包 smoke、前端类型检查门；核查全路径触发；解决本轮 jsonschema 缺失环境后重验",
+      "acceptance": [
+        "干净锁定环境可运行报告 check",
+        "wheel 非仓库目录运行",
+        "不因缺依赖误报代码故障",
+        "每项结果绑定 SHA"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-004",
+      "title": "运行状态与宿主异常恢复",
+      "depends_on": [
+        "DL-R5-001"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "Operation/Attempt 已修复部分旧缺陷；相关回归通过；NativeTasks 未知结果保留 guard",
+      "implementation": "补持久化 reconciliation：已验证产物接续提交、无副作用重试、未知状态暂停；取消等真实 ack；禁止靠过期或关闭共享宿主清锁",
+      "acceptance": [
+        "在 dispatch 后、receipt 后、publish 后注入中断",
+        "重启可对账且不重复建对象",
+        "未证明停止不解锁"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-005",
+      "title": "资产原子版本与完整交付清单",
+      "depends_on": [
+        "DL-R5-002",
+        "DL-R5-004"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "资产事务有回归；NativeTasks 当前主要发布 AI/PSD 主文件",
+      "implementation": "将原生工程、预览、链接素材、字体信息、Brief/rights/节点模型/seed/hash/Jury 引用组成版本清单；输出原子发布，多文件一致",
+      "acceptance": [
+        "同名三版本可回退",
+        "任一副文件失败无假成功",
+        "重开与打包读回可核对",
+        "不得遗失链接素材"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-006",
+      "title": "软件与模型资格选择",
+      "depends_on": [
+        "DL-R5-001"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已有基于证据的 fail-closed Profile",
+      "implementation": "保留当前实现，补用户用途、真实安装、版本、资源与证据绑定；软件 MiniMax Design、H3 本地模型、云 API 分开",
+      "acceptance": [
+        "拒绝不合格 candidate",
+        "未知给出具体阻塞",
+        "不从时区推定地域",
+        "不把个人非商业自动当全部第三方许可"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-007",
+      "title": "Doctor 与本机证据接续",
+      "depends_on": [
+        "DL-R5-002"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已有软件定位、ASR 记录、H3 组件校验；OCR 未实测",
+      "implementation": "沿 docs/LOCAL_ENVIRONMENT.md 和 .project/paths.json 读取明确路径；完成 OCR 加载/识别；模型状态区分字节/加载/推理",
+      "acceptance": [
+        "不重复报已登记软件未安装",
+        "config-only 不就绪",
+        "ASR 不计 TTS",
+        "仅本机实测可提升推理状态"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-008",
+      "title": "ComfyUI 生产适配与可选本地 MCP",
+      "depends_on": [
+        "DL-R5-004",
+        "DL-R5-005",
+        "DL-R5-006",
+        "DL-R5-007"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已有真实服务与无模型夹具记录；comfy_task.py 缺陷仍在",
+      "implementation": "补图参数/输入/节点模型指纹、产物根校验、实例发现、REST/WS 提交进度、取消确认、断线恢复；MCP 复用同一适配与权限边界",
+      "acceptance": [
+        "路径穿越、假 hash 拒绝",
+        "图像 golden 连续10次记录完整",
+        "另测取消/失败/重连",
+        "正常失败也须记录，不把完整记录当10次全成功"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受",
+      "conditional_gate": "只阻塞使用本能力的任务，不阻塞原生Adobe M1"
+    },
+    {
+      "id": "DL-R5-009",
+      "title": "Python 安装包与 RIR 门面",
+      "depends_on": [
+        "DL-R5-001"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已有 CLI、wheel 和本地服务；RIR 转换仍依赖仓库模块",
+      "implementation": "把必要 reconstruction/RIR schema/转换封装成安装包资源；不搬入整个历史目录；统一配置和资源读取",
+      "acceptance": [
+        "空目录安装后完成 RIR→受控 native job",
+        "无需 repo sys.path、绝对开发路径",
+        "升级可回退"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-010",
+      "title": "工作台执行、修改、取消与导出",
+      "depends_on": [
+        "DL-R5-004",
+        "DL-R5-005",
+        "DL-R5-009"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "有项目/导入/任务查询/AI PSD hash 校验界面",
+      "implementation": "增加受控原生提交、对象 patch、任务取消与恢复、版本选择、导出；修复同项目异步返回竞态；权限与路径校验复用服务",
+      "acceptance": [
+        "从页面提交并看真实状态",
+        "快速切换不显示旧结果",
+        "刷新后恢复",
+        "无任意脚本/任意路径执行接口"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-011",
+      "title": "Illustrator 产品链路",
+      "depends_on": [
+        "DL-R5-004",
+        "DL-R5-005",
+        "DL-R5-009"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已新增 COM、生产桥及受控原生案例记录",
+      "implementation": "复用现有桥连接真实对象计划，补文本路径蒙版局部 patch、幂等与保存重开，固定已装宿主版本",
+      "acceptance": [
+        "真实参考制作 AI",
+        "两次局部修改不重建无关对象",
+        "文本路径可编辑",
+        "保存关闭重开读回",
+        "用户文档不受影响"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-012",
+      "title": "Photoshop 产品链路",
+      "depends_on": [
+        "DL-R5-004",
+        "DL-R5-005",
+        "DL-R5-009"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已有 COM PSD 受控重开记录与 RIR 转换；UXP 另有边界",
+      "implementation": "优先复用已验证 COM/JSX 路径闭环；UXP 作为独立资格项，不为换桥重写；补字体蒙版图像对象和 patch",
+      "acceptance": [
+        "真实参考制作 PSD",
+        "两次局部修改与重开",
+        "像素层不能冒充矢量形状",
+        "不支持外观显式拒绝"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-013",
+      "title": "真实参考到可修正对象计划",
+      "depends_on": [
+        "DL-R5-006",
+        "DL-R5-007",
+        "DL-R5-009"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已有 RIR 与转换；手工合成 RIR 不等于自动拆解",
+      "implementation": "接 OCR、区域、遮挡、字体、几何和层级；用户能修正不确定项；记录推断与支持范围",
+      "acceptance": [
+        "5—10 张多类型参考集有对象标注、错误清单与修正记录",
+        "不能用整图贴底冒充分层",
+        "单图3D标记不可观测背面"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-014",
+      "title": "局部对比、Human Jury 与生产预检",
+      "depends_on": [
+        "DL-R5-010",
+        "DL-R5-011",
+        "DL-R5-012",
+        "DL-R5-013"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "有相关质量能力，完整产品接受链未完成",
+      "implementation": "接叠加差异、对象级问题、Brief/构图/品牌/可落地性/rights 人审；M1 就执行平面交付预检",
+      "acceptance": [
+        "每个接受版本有人审凭据",
+        "两次 patch 前后差异可查",
+        "字体链接尺寸色彩alpha等适用项通过或明确豁免理由"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-015",
+      "title": "M1 首个可用研究版",
+      "depends_on": [
+        "DL-R5-003",
+        "DL-R5-014"
+      ],
+      "priority": "P0",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "未发布",
+      "implementation": "一入口启动→导入→对象计划确认→AI或PSD制作→局部改两次→保存重开→人审→完整导出；分别验证AI和PSD",
+      "acceptance": [
+        "两条格式链都通过，安装升级备份可用",
+        "记录耗时和限制",
+        "M1不依赖Comfy、H3、UIA、WORK-LAB或ArcheAxis"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-016",
+      "title": "本地语音生成",
+      "depends_on": [
+        "DL-R5-006",
+        "DL-R5-007",
+        "DL-R5-010",
+        "DL-R5-015"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "ASR 已有记录，TTS 未证明",
+      "implementation": "择一个设备可行TTS，接资产版本和试听，按句修改",
+      "acceptance": [
+        "中文短句→WAV→试听→改一句重生",
+        "保存文本/模型版本",
+        "不以转写抵扣"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-017",
+      "title": "音乐与音轨",
+      "depends_on": [
+        "DL-R5-006",
+        "DL-R5-007",
+        "DL-R5-010",
+        "DL-R5-015"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "未证明实际生成",
+      "implementation": "择一可行模型或适配；参数和输出进版本；区分混音和真实分轨",
+      "acceptance": [
+        "20—30秒生成可试听",
+        "真实多轨有各轨文件",
+        "资源不足仅阻塞本项"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-018",
+      "title": "H3 本地专项",
+      "depends_on": [
+        "DL-R5-006",
+        "DL-R5-007",
+        "DL-R5-008"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已有四组件 hash 记录；加载/推理未通过",
+      "implementation": "核实适用条件后本机加载，记录资源峰值，生成15秒有内容与分镜视频；不静默切云",
+      "acceptance": [
+        "本地运行证据、组件revision、输出与可重跑工作流齐全",
+        "未通过保持阻塞但不阻塞M1"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-019",
+      "title": "Premiere 可编辑视频",
+      "depends_on": [
+        "DL-R5-010",
+        "DL-R5-015"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "未证明原生项目",
+      "implementation": "用可用合法素材先剪辑；语音音乐生成按案例条件依赖，不强制从模型产出；纳入字幕媒体重连",
+      "acceptance": [
+        "20—30秒项目含可改剪辑/音轨/字幕",
+        "保存重开媒体重连",
+        "MP4不替代工程"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受",
+      "conditional_dependencies": {
+        "TTS_required": "DL-R5-016",
+        "generated_music_required": "DL-R5-017"
+      }
+    },
+    {
+      "id": "DL-R5-020",
+      "title": "Blender 可编辑场景",
+      "depends_on": [
+        "DL-R5-007",
+        "DL-R5-009",
+        "DL-R5-013",
+        "DL-R5-015"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "未证明完整真实参考重建",
+      "implementation": "复用 bpy/后台接口；分离几何材质灯光相机；采用可修正场景参数",
+      "acceptance": [
+        "blend 重开可改对象",
+        "正侧视验证",
+        "不可见几何明确推断",
+        "非单面贴图"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-021",
+      "title": "可选宿主与 Agent 收敛",
+      "depends_on": [
+        "DL-R5-006",
+        "DL-R5-010",
+        "DL-R5-015"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "OpenDesign/MiniMax Design 入口未全验",
+      "implementation": "默认一个已用Agent；Codex/Hermes/DSH共用合同；MiniMax Design/Open Design/CorelDRAW/InDesign/AE/Houdini/C4D/3ds Max逐项候选登记，不同时铺开",
+      "acceptance": [
+        "每项有版本接口许可证最小案例与回流结论",
+        "无WORK-LAB硬依赖",
+        "不支持时人工接力且不冒充自动"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-022",
+      "title": "跨媒体依赖更新",
+      "depends_on": [
+        "DL-R5-005",
+        "DL-R5-014",
+        "DL-R5-019",
+        "DL-R5-020"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "未形成完整依赖传播",
+      "implementation": "版本依赖图连接图像/布局/视频/3D；patch只更新受影响下游",
+      "acceptance": [
+        "修改一个源对象后准确列出受影响资产",
+        "无关资产不重生",
+        "可回滚"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-023",
+      "title": "历史完整性、维护与扩展交付预检",
+      "depends_on": [
+        "DL-R5-001"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "已有历史定位和冻结材料，不能承诺全部原文已找齐",
+      "implementation": "建立 expected/found/hash/locator/unresolved/recovery ledger；保留早期归档、R3/R4及本轮决策；按音频/视频/3D扩充preflight",
+      "acceptance": [
+        "每个已知原始任务可追踪",
+        "缺失明确列出不伪造",
+        "维护升级恢复与媒体清单可验证"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-024",
+      "title": "UIA 与视觉控制后备",
+      "depends_on": [
+        "DL-R5-002",
+        "DL-R5-004"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "后备策略已映射但非默认必需",
+      "implementation": "原生接口不足时才资格验证；首试点只读/开副本/导入/导出新文件；视觉步骤按已授权范围人工确认",
+      "acceptance": [
+        "不得覆盖源/发布/购买/上传",
+        "进程窗口定位与超时可查",
+        "禁用后备不影响原生脚本路径"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受",
+      "conditional_gate": "只阻塞使用本能力的任务，不阻塞原生Adobe M1"
+    },
+    {
+      "id": "DL-R5-025",
+      "title": "Comfy 短视频动效",
+      "depends_on": [
+        "DL-R5-008",
+        "DL-R5-015"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "未完成模型工作流",
+      "implementation": "固定一个设备可行工作流和失败恢复样例，复用资产清单",
+      "acceptance": [
+        "时间帧率尺寸及输入输出hash可查",
+        "生成失败和恢复真实记录"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-026",
+      "title": "Comfy 提取与透明资产",
+      "depends_on": [
+        "DL-R5-008",
+        "DL-R5-015"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "未完成完整资格",
+      "implementation": "透明背景/分割/边缘保真与下游PSD导入",
+      "acceptance": [
+        "alpha实际存在",
+        "前景不缺损",
+        "白边和误镂空有检查与反例"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-027",
+      "title": "游戏交互资产交付",
+      "depends_on": [
+        "DL-R5-005",
+        "DL-R5-010",
+        "DL-R5-015"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "仅现有领域夹具，非游戏引擎产品",
+      "implementation": "定义编辑源、资产导出和目标导入回读合同",
+      "acceptance": [
+        "交互资产可改可回读",
+        "不开发通用游戏引擎"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    },
+    {
+      "id": "DL-R5-028",
+      "title": "语言治理与渐进迁移",
+      "depends_on": [
+        "DL-R5-001"
+      ],
+      "priority": "P1",
+      "execution_state": "PLANNED_DELTA",
+      "baseline_observation": "Python可安装已推进；main.ts为浏览器可执行子集，未证明TS类型治理",
+      "implementation": "记录ADR：Python服务/算法，TS工作台，AdobeJS/JSX宿主；给前端加strict类型检查、明确构建/资源策略；搬迁必要RIR模块后保留兼容门面，逐个删除旧入口",
+      "acceptance": [
+        "类型检查通过",
+        "wheel含正确前端与RIR资源",
+        "同一算法无双份实现",
+        "迁移对照/回退/旧入口退役有证据",
+        "不为M1全仓换Rust或C#"
+      ],
+      "rollback": "回退本项独立提交与版本化迁移；保留旧工程、输入、失败证据；禁止删除用户作品或关闭共享宿主来恢复。",
+      "evidence_required": [
+        "source_sha",
+        "environment_versions",
+        "commands_and_exit_codes",
+        "artifact_hashes",
+        "limitations",
+        "rollback_record"
+      ],
+      "axes": {
+        "implementation": "REASSESS_FROM_R3",
+        "unit": "REASSESS_FROM_R3",
+        "host_live": "NOT_VERIFIED_BY_THIS_AUDIT",
+        "delivery": "NOT_ACCEPTED"
+      },
+      "execution_owner": "单一执行Agent；Windows宿主项交本机执行；用户负责人工接受"
+    }
+  ]
+}

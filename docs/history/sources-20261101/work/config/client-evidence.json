@@ -1,0 +1,132 @@
+{
+  "schema_version": "workflow/client-evidence/v1",
+  "generated_at": "2026-09-02T14:30:00Z",
+  "generated_by": "WLR-090",
+  "purpose": "Per-client real installation/behavior evidence. Each client must have at least one evidence entry with exact-SHA, screenshots, and behavioral proof.",
+  "evidence": {
+    "hermes": {
+      "client": "hermes",
+      "evidence_level": "E2",
+      "install_method": "git",
+      "version": "0.21.2",
+      "release_label": "2026.9.11",
+      "upstream_commit": "53c57871d67ee7d2202861aacc4ea0ef6ef93112",
+      "install_path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent",
+      "cli_path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe",
+      "desktop_path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "shortcuts": [
+        "%USERPROFILE%\\Desktop\\Hermes.lnk",
+        "%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\HermesUpdateGuard.lnk"
+      ],
+      "shortcut_issues": [
+        "HermesUpdateGuard.lnk targets D:\\All projects\\WORK-LAB\\.hermes\\task-runtime\\hermes-update-guard.ps1, which no longer exists (Test-Path false); the script was relocated to .project-local/runs/legacy-task-runtime/. Startup target chain therefore does not resolve end-to-end."
+      ],
+      "config_path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\config.yaml",
+      "config_schema_version": "v44",
+      "verified_at": "2026-09-14T12:12:00Z",
+      "health": "doctor PASS (exit 0): version files consistent (0.21.2); Python 3.11.15 + venv active; SSL CA bundle valid; required packages present; .env + config.yaml present; config version up to date (v44); no deprecated config keys or env vars; no retired xAI models; no removed plugin import paths; SOUL.md present; state.db 1938 sessions; API reachable for OpenRouter + DeepSeek; warnings: state.db large (3.8 GB), ripgrep/docker/node not installed, Nous Portal / MiniMax / xAI OAuth not logged in",
+      "features_verified": [
+        "cli-version-readback (hermes --version, exit 0)",
+        "cli-status-readback (hermes status, exit 0)",
+        "cli-doctor-readback (hermes doctor, exit 0)",
+        "path-resolution (registry-fresh shell resolves hermes to %LOCALAPPDATA%\\hermes\\bin\\hermes.exe)",
+        "native-skill-discovery (all 13 managed skills reported enabled; 12 local + 2 shadowed by same-name builtins)",
+        "native-completion (hermes chat -q <marker> --oneshot --max-turns 1, exit 0, 14.9s, exact token returned)"
+      ],
+      "observation_scope": "Only the read-only CLI surfaces and one non-tool completion above were exercised on 2026-09-14. Task cancellation, failure paths and the auxiliary-slot call routing were NOT exercised; auxiliary slots are config-layer evidence (provider=auto, model empty) only.",
+      "prior_record": {
+        "source": "git show HEAD:config/client-evidence.json (record as of 2026-08-26T16:00:00Z, Hermes 0.20.5)",
+        "preserved_verbatim": {
+          "client": "hermes",
+          "evidence_level": "E2",
+          "install_method": "git (SSH remote)",
+          "version": "0.20.5",
+          "install_path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent",
+          "desktop_path": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Hermes\\Hermes.exe",
+          "shortcuts": [
+            "%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\HermesUpdateGuard.lnk"
+          ],
+          "config_path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\config.yaml",
+          "verified_at": "2026-08-26T16:00:00Z",
+          "health": "doctor-all-green",
+          "features_verified": [
+            "delegation-6",
+            "checkpoints",
+            "auto-prune",
+            "fallback-chain",
+            "chrome-profiles-plugin",
+            "bots-mode",
+            "kanban"
+          ]
+        },
+        "note": "Kept intact so historical capability claims are not lost and are not re-read as current evidence."
+      }
+    },
+    "codex": {
+      "client": "codex",
+      "evidence_level": "E1",
+      "install_method": "wrapper (bin/codex)",
+      "version": "UNVERIFIED",
+      "status": "quarantined",
+      "note": "Codex adapter quarantined; wrapper exists but runtime unverified"
+    },
+    "dsh": {
+      "client": "dsh",
+      "evidence_level": "E2",
+      "install_method": "official-nsis-per-user",
+      "version": "0.2.0-rc.2",
+      "install_path": "%LOCALAPPDATA%\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+      "install_path_policy": "RESOLVE_AT_RUNTIME_NOT_HARDCODED",
+      "install_root_resolution": "Uninstall registry entry \"DeepSeek Harness 0.2.0-rc.2\" (InstallLocation) or the desktop/Start Menu shortcut TargetPath; both currently agree on the vendor default per-user path. No drive letter is pinned.",
+      "config_path": "C:\\Users\\ALEX\\.dsh",
+      "verified_at": "2026-10-13",
+      "health": "installed-and-data-root-resolved (2026-10-13): uninstall entry \"DeepSeek Harness 0.2.0-rc.2\" with matching InstallLocation; the single Start Menu shortcut resolves to <root>\\DeepSeek Harness.exe; installed version equals the vendor feed head (nightly.yml 0.2.0-rc.2 / 289313640 / sha512 raIlxMQd...) so no upgrade was applied; live data root = C:\\Users\\ALEX\\.dsh with 15 session.v4.jsonl.zstd and newest write 2026-10-13 19:23. Resolved since the 2026-10-01 record: the data-root question. STILL NOT verified: a real GUI launch or session readback for the official build, and there is no Desktop shortcut for it (measured, D2 gap).",
+      "note": "2026-10-13 correction (ERR-276), superseding the AG-07 wording on three points that had gone stale: the DSH_HOME HKCU value was CLEARED (it pointed at D:\\All projects\\DSH\\.dsh, while the live root is the default C:\\Users\\ALEX\\.dsh with 15 session.v4.jsonl.zstd); the dead Start-Menu shortcut DSH Desktop.lnk (target D:\\All projects\\DSH\\DSH Desktop.exe, already deleted) was REMOVED; and the retired D:\\All projects\\DSH directory is no longer \"empty except .dsh\" - it holds that archive plus a pnpm-store. History retained: the community desktop (anywhere-labs/deepseek-harness-desktop v2.0.13) remains SUPERSEDED by the official build and its exe is gone, while its data directory is kept intact (13 session files, newest session 2026-10-03) as an unused archive. The two launch-trap records stay live for the official build, not merely historical: ERR-087 (.lnk TargetPath/IconLocation reset by NSIS silent installs - re-read after any upgrade) and ERR-088/ERR-276 (one data-root layer, two directions: a declared root diverging from the live root; verify by session counts and mtimes, never by assertion). Nothing was moved or merged: no session data was copied between roots."
+    },
+    "github": {
+      "client": "github",
+      "evidence_level": "E1",
+      "install_method": "gh CLI (scoop)",
+      "version": "2.95.0",
+      "install_path": "D:\\All projects\\OS External Configuration\\10-toolchains\\scoop\\apps\\gh\\2.95.0\\bin\\gh.exe",
+      "authenticated_as": "DTALEX66",
+      "protocol": "SSH",
+      "verified_at": "2026-08-26T16:00:00Z"
+    },
+    "opendesign": {
+      "client": "opendesign",
+      "evidence_level": "E0",
+      "status": "external-client",
+      "note": "Open Design is external client (nexu-io/open-design); WORK-LAB manages plugins only; design capability owned by DESIGN-LAB"
+    },
+    "openhuman": {
+      "client": "openhuman",
+      "evidence_level": "E0",
+      "status": "manifest-only",
+      "note": "Registered in adapter-registry; no local installation evidence"
+    },
+    "dagu": {
+      "client": "dagu",
+      "evidence_level": "E2",
+      "install_method": "npm global (@dagucloud/dagu)",
+      "version": "2.15.3",
+      "install_path": "D:\\All projects\\OS External Configuration\\toolchains\\scoop\\persist\\nodejs-lts\\bin\\node_modules\\@dagucloud\\dagu\\dagu.exe",
+      "web_ui": "http://127.0.0.1:8080",
+      "config_path": "C:\\Users\\ALEX\\.dagu\\",
+      "verified_at": "2026-08-26T20:48:00Z",
+      "health": "smoke-test-passed (hello-world DAG succeeded)",
+      "note": "Dagu v2.15.3 installed via npm; Web UI server running; DAG execution verified"
+    },
+    "tokentelemetry": {
+      "client": "tokentelemetry",
+      "evidence_level": "E1",
+      "install_method": "git clone + npm",
+      "version": "1.0.0",
+      "source": "VasiHemanth/tokentelemetry",
+      "install_path": "D:\\All projects\\tokentelemetry",
+      "status": "installed",
+      "note": "Cloned + npm installed (0 vulnerabilities); start script available",
+      "health": "npm-start-verified"
+    }
+  }
+}

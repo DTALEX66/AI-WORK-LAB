@@ -1,0 +1,76 @@
+# Compatibility recipe for constructing an isolated empty Hermes home.
+# Field ownership is authoritative only in config/config-ownership.json. This
+# file never authorizes repo -> live config merge or lists secrets, OAuth
+# credentials, or routing.
+schema_version: 1
+authority: config/config-ownership.json
+compatibility_scope: isolated-empty-home
+global_workflow:
+  scope: hermes-codex-github-user-overlay
+  source_of_truth: repository
+  owned_asset_roots:
+    - packages/client-neutral-core/skills/autonomous-ai-agents/codex
+    - packages/client-neutral-core/skills/github/github-auth
+    - packages/client-neutral-core/skills/github/github-code-review
+    - packages/client-neutral-core/skills/github/github-issues
+    - packages/client-neutral-core/skills/github/github-pr-workflow
+    - packages/client-neutral-core/skills/github/github-repo-management
+    - packages/client-neutral-core/skills/model-switch
+    - packages/client-neutral-core/skills/software-development/agent-workflow-fortress
+    - packages/client-neutral-core/skills/software-development/project-data-boundary
+    - packages/client-neutral-core/skills/software-development/python-testing
+    - packages/client-neutral-core/skills/software-development/requesting-code-review
+    - packages/client-neutral-core/skills/software-development/sleep-mode
+    - packages/client-neutral-core/skills/software-development/windows-development-environment
+  owned_binary_paths:
+    - packages/client-neutral-core/bin/codex
+    - packages/client-neutral-core/bin/codex.cmd
+    - packages/client-neutral-core/bin/hermes-npx
+    - packages/client-neutral-core/bin/hermes-npx.cmd
+    - packages/client-neutral-core/bin/hermes-project-data.py
+    - packages/client-neutral-core/bin/hermes-project-terminal-guard.py
+  owned_file_mappings:
+    - source: config/SOUL.md
+      target: SOUL.md
+  deployment: isolated-empty-home-only
+managed:
+  display.busy_input_mode: replace
+  display.language: replace
+  sessions.auto_prune: replace
+  memory.memory_enabled: replace
+  memory.user_profile_enabled: replace
+  memory.memory_char_limit: replace
+  memory.user_char_limit: replace
+  platform_toolsets.cli: replace
+  mcp_servers:
+    # Isolated baseline construction only; never a live Home deployment instruction.
+    strategy: merge_owned
+    owned_names: [context7]
+  hooks.pre_tool_call:
+    # Isolated baseline construction only; never a live Home deployment instruction.
+    strategy: replace_owned_matcher
+    owned_matcher: terminal
+
+preserved:
+  - model.provider
+  - model.default
+  - model.base_url
+  - model.api_key
+  - model.other
+  - credentials
+  - auth.json
+  - mcp_servers.user_defined
+  - quick_commands.user_defined
+  - model_picker.user_defined
+  - plugins
+  - sessions
+  - memories
+forbidden:
+  - model routes
+  - model picker lanes
+  - model-switching quick commands
+  - .env
+  - OAuth tokens
+  - refresh tokens
+  - browser cookies
+  - credential stores

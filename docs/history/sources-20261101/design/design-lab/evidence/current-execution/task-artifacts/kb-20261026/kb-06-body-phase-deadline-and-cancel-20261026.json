@@ -1,0 +1,28 @@
+{
+  "id": "kb-06-body-phase-deadline-and-cancel-20261026",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "audit_finding": "owner audit 2026-10-26, finding 3 of 7 (P2): the request deadline and the page-change cancel are released when response HEADERS arrive, so a slow body outruns the budget and a lost write body is unclassified",
+  "reproduced_before_fix": "the same appshell block against a bundle rebuilt from HEAD's workbench.ts: PROVED: all 3 body-phase cases are non-vacuous -- each one is red on the pre-fix bytes and green on the fixed ones.",
+  "changed": [
+    "apps/workbench/workbench.ts: the body read moved into the same try as the fetch, so the timer and both abort listeners are released only after headers AND body; a write whose body is lost after the headers reports outcomeUnknown rather than failure",
+    "apps/workbench/tests/appshell.mjs: three body-phase cases (slow body -> read deadline, navigation mid-body -> cancelled, write with lost body -> outcome unknown), each raced against a watchdog so an ungoverned implementation is judged red instead of hanging",
+    ".project-local/task-runtime/audit-fixes/prove_body_phase.py: the falsifier now asserts the swap really rewrote build/main.js (digest change + the fixed-only sentence gone) and reads the child exit code instead of assuming 0"
+  ],
+  "not_claimed": "loopback timing on this machine only; no real host and no network profile was measured, and the three endings are proven in the DOM harness, not by a human watching a slow service",
+  "measured": {
+    "node": [
+      "WORKBENCH SMOKE: all checks passed",
+      "APPSHELL REGRESSION: all checks passed"
+    ],
+    "python": [
+      "test_knowledge_library.py: Ran 26 tests in 5.483s OK",
+      "test_report_path_display.py: Ran 6 tests in 0.009s OK",
+      "test_local_import_shadowing.py: Ran 4 tests in 2.344s OK"
+    ],
+    "head": "022c5a9bd989bc4f1b57af7936167cb8656bf009"
+  },
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T12:49:00Z",
+  "subject_sha": "022c5a9bd989bc4f1b57af7936167cb8656bf009"
+}

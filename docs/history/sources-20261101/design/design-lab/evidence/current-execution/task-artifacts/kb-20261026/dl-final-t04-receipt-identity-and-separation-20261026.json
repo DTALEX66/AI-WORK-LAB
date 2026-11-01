@@ -1,0 +1,51 @@
+{
+  "id": "dl-final-t04-receipt-identity-and-separation-20261026",
+  "task_id": "DL-FINAL-T04",
+  "axis": "unit",
+  "audit_finding": "owner audit 2026-10-26, finding 6 of 7 (P2): a normal scan and the falsification test share one receipt path, so the archived artefact may be the deliberate red",
+  "reproduced_before_fix": "the falsifier ran after the coverage cases and wrote the baseline filename; canonical-verify.yml uploads the whole evidence directory with if: always(), so last writer won",
+  "changed": [
+    "design-lab/tests/test_workbench_contrast_gate.py: the falsifier now writes workbench-contrast-gate-enforce-red.json, _run_gate_once hands back the path the child was told to write (it used to return the baseline name regardless of CT_OUT), and the identity env (palette/scheme/enforce/git sha) is spelled from this invocation rather than inherited from the runner",
+    "design-lab/tests/e2e/audit_workbench_contrast.mjs: report.run records palette, scheme, widths, strict, specEnforce, git sha, product fails and planted controls, so a receipt states what it measured without the log that surrounded it",
+    "static guard: any _run_gate call that changes configuration without naming its own receipt is convicted, and the plant that deletes the falsifier's CT_OUT line must be caught"
+  ],
+  "measured": {
+    "baseline_run_identity": {
+      "palette": "design-lab",
+      "scheme": "dark",
+      "widths": "1440,1920",
+      "strict": true,
+      "specEnforce": false,
+      "gitSha": "022c5a9bd989bc4f1b57af7936167cb8656bf009",
+      "productFails": 0,
+      "plantedControls": 368,
+      "note": "configuration of this single run; a falsification run and a baseline run are separate files whose fields differ, so neither can stand in for the other"
+    },
+    "red_run_identity": {
+      "palette": "design-lab",
+      "scheme": "dark",
+      "widths": "1440",
+      "strict": true,
+      "specEnforce": true,
+      "gitSha": "022c5a9bd989bc4f1b57af7936167cb8656bf009",
+      "productFails": 0,
+      "plantedControls": 304,
+      "note": "configuration of this single run; a falsification run and a baseline run are separate files whose fields differ, so neither can stand in for the other"
+    },
+    "repo_wide_deliberate_red_receipt_writers": 1,
+    "node": [
+      "WORKBENCH SMOKE: all checks passed",
+      "APPSHELL REGRESSION: all checks passed"
+    ],
+    "python": [
+      "test_knowledge_library.py: Ran 26 tests in 5.483s OK",
+      "test_report_path_display.py: Ran 6 tests in 0.009s OK",
+      "test_local_import_shadowing.py: Ran 4 tests in 2.344s OK"
+    ],
+    "head": "022c5a9bd989bc4f1b57af7936167cb8656bf009"
+  },
+  "not_claimed": "the other three browser gates (motion, theme-affordance, theme-geometry) share the single-hard-coded-path SHAPE but have no second writer today, so they were reported, not changed",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T12:49:00Z",
+  "subject_sha": "022c5a9bd989bc4f1b57af7936167cb8656bf009"
+}

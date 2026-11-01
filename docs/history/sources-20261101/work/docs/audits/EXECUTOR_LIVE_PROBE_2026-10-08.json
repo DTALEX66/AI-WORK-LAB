@@ -1,0 +1,1522 @@
+{
+  "schemaVersion": "work-lab/executor-live-probe/v1",
+  "at": "2026-10-08T02:08:19+0800",
+  "tool": "scripts/audit/executor_live_probe.py",
+  "readOnly": true,
+  "registrySha256": "2abffd0995d0a1a84d6f3e4696790c2558ddc884bbc0ff29e44f37ce96a7dcea",
+  "registryDigestBasis": "git-index",
+  "counts": {
+    "LIVE_VERIFIED": 1,
+    "VERSION_MOVED": 2,
+    "ENTRY_NOT_RESOLVED": 3,
+    "PROBE_TIMEOUT": 1,
+    "NOT_PROBED_DECLARATIVE_ONLY": 3
+  },
+  "results": [
+    {
+      "adapter": "hermes",
+      "command": [
+        "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe",
+        "--version"
+      ],
+      "state": "LIVE_VERIFIED",
+      "detail": "observed=0.21.5+6948.gedd2476 agrees with claimed=0.21.5+6948.gedd2476",
+      "probe": {
+        "invoked": true,
+        "exitCode": 0,
+        "outputSha256": "95f01c441b6b07beebac29d720ca46fb5e47046fd646f0c090adf7a09a609402",
+        "versionLine": "Hermes Agent v0.21.5+6948.gedd2476 (2026.9.24) · upstream edd24765",
+        "observedVersion": "0.21.5+6948.gedd2476"
+      },
+      "claimedVersion": "0.21.5+6948.gedd2476"
+    },
+    {
+      "adapter": "codex",
+      "command": [
+        "cmd.exe",
+        "/d",
+        "/c",
+        "D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd",
+        "--version"
+      ],
+      "state": "VERSION_MOVED",
+      "detail": "observed=0.162.0-alpha.2 claimed=0.160.1 — both kept, neither reconciled",
+      "probe": {
+        "invoked": true,
+        "exitCode": 0,
+        "outputSha256": "58b398aea3eb8f00e9aebdff1ca63c9d55eb686486f126c03816f5553ac790f1",
+        "versionLine": "codex-cli 0.162.0-alpha.2",
+        "observedVersion": "0.162.0-alpha.2"
+      },
+      "claimedVersion": "0.160.1"
+    },
+    {
+      "adapter": "cc-switch",
+      "state": "ENTRY_NOT_RESOLVED",
+      "detail": "declared entry point not found on this machine"
+    },
+    {
+      "adapter": "github",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "--version"
+      ],
+      "state": "VERSION_MOVED",
+      "detail": "observed=2.98.0 claimed=2.98.0 (2026-08-20) — both kept, neither reconciled",
+      "probe": {
+        "invoked": true,
+        "exitCode": 0,
+        "outputSha256": "63737ad9f9a2bf673d515b80287e619712f744cc5373974fd043c5402ec80863",
+        "versionLine": "gh version 2.98.0 (2026-08-20)",
+        "observedVersion": "2.98.0"
+      },
+      "claimedVersion": "2.98.0 (2026-08-20)"
+    },
+    {
+      "adapter": "openhuman",
+      "state": "ENTRY_NOT_RESOLVED",
+      "detail": "declared entry point not found on this machine"
+    },
+    {
+      "adapter": "open-design",
+      "state": "ENTRY_NOT_RESOLVED",
+      "detail": "declared entry point not found on this machine"
+    },
+    {
+      "adapter": "deepseek-harness",
+      "command": [
+        "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+        "--version"
+      ],
+      "state": "PROBE_TIMEOUT",
+      "detail": "exit=None PROBE_TIMEOUT_25s",
+      "probe": {
+        "invoked": true,
+        "exitCode": null,
+        "reason": "PROBE_TIMEOUT_25s"
+      },
+      "claimedVersion": "0.2.0-rc.2"
+    },
+    {
+      "adapter": "cursor",
+      "state": "NOT_PROBED_DECLARATIVE_ONLY",
+      "detail": "no live entry point is declared for this support level"
+    },
+    {
+      "adapter": "claude-code",
+      "state": "NOT_PROBED_DECLARATIVE_ONLY",
+      "detail": "no live entry point is declared for this support level"
+    },
+    {
+      "adapter": "workbuddy",
+      "state": "NOT_PROBED_DECLARATIVE_ONLY",
+      "detail": "no live entry point is declared for this support level"
+    }
+  ],
+  "verbProbe": {
+    "schemaVersion": "work-lab/adapter-verb-probe/v1",
+    "at": "2026-10-08T03:04:16+0800",
+    "tool": "packages/client-neutral-core/scripts/adapter_verb_probe.py",
+    "readOnly": true,
+    "network": false,
+    "verbVocabulary": {
+      "verbs": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ],
+      "source": "packages/contracts/schemas/workflow/client-adapter.schema.json#properties.interface.const",
+      "crossChecksAgreed": [
+        "schema.operations.enum",
+        "capability-matrix#interface_contract"
+      ],
+      "declaredPerClientFrom": [
+        "config/adapter-registry.json#entries[].operations",
+        "config/capability-matrix.json#clients[].operations",
+        "config/adapter-registry.json#entries[].policy_projection"
+      ],
+      "contractVerbsWithNoPolicyFlag": [
+        "capabilities",
+        "invoke",
+        "observe"
+      ],
+      "policyFlagsNamingVerbsOutsideTheContract": [
+        "readback_supported",
+        "drift_supported"
+      ]
+    },
+    "policy": {
+      "attempted": "只读 version/help/inventory 子进程调用，以及进程内纯计算的 capabilities()/observe()",
+      "neverAttempted": [
+        "apply",
+        "invoke",
+        "plan",
+        "rollback"
+      ],
+      "neverAttemptedWhere": "这些动词在任何客户端、任何配置下都不被本探针触发",
+      "refusedPerClient": {
+        "observe": "GitHubAdapter.observe() 出网；无 vendored adapter 的客户端无只读会话读回源——两者都记 NOT_PROBED 并写明拒绝理由"
+      },
+      "neverAttemptedReason": "写入真实用户配置、付费 provider 调用、把提示词送出本机、网络请求、启动 GUI 窗口",
+      "timeoutSeconds": 20,
+      "allowedFlags": [
+        "--version",
+        "-V",
+        "--help",
+        "-h",
+        "help"
+      ]
+    },
+    "counts": {
+      "clients": 10,
+      "MET": 6,
+      "NOT_PROBED": 34,
+      "NOT_SUPPORTED": 30
+    },
+    "results": [
+      {
+        "client": "hermes",
+        "displayName": "Hermes",
+        "adapterVendored": true,
+        "adapterDeclared": "HermesAdapter",
+        "adapterDrift": null,
+        "entryKind": "cli",
+        "entryExists": true,
+        "checkedPaths": [
+          "HERMES_HOME|default -> C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe"
+        ],
+        "adapterSelfReport": "real_adapters.py::HermesAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']",
+        "stateCounts": {
+          "MET": 2,
+          "NOT_PROBED": 5
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "MET",
+            "evidenceLevel": "INTEGRATED",
+            "source": "read-only version readback: C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe --version",
+            "reason": "只读版本读回成功返回：detect 动词的一次真实作答，不含任何写入。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:00+0800",
+            "basis": "Hermes Agent v0.21.5+6948.gedd2476 (2026.9.24) · upstream edd24765",
+            "command": [
+              "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe",
+              "--version"
+            ],
+            "exitCode": 0,
+            "outputDigest": "95f01c441b6b07beebac29d720ca46fb5e47046fd646f0c090adf7a09a609402",
+            "outputLines": 6,
+            "detail": "Hermes Agent v0.21.5+6948.gedd2476 (2026.9.24) · upstream edd24765",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED"
+          },
+          {
+            "verb": "capabilities",
+            "state": "MET",
+            "evidenceLevel": "INTEGRATED",
+            "source": "read-only inventory readback: C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe --help",
+            "reason": "客户端以只读 usage/清单形式作答。这是人类可读的命令清单，不是机器可读的能力合同，卡片不得据此推断其它动词成立。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:02+0800",
+            "basis": "224 行清单；首行 usage: hermes [-h] [--version] [-z PROMPT] [--usage-file PATH] [-m MODEL]",
+            "command": [
+              "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe",
+              "--help"
+            ],
+            "exitCode": 0,
+            "outputDigest": "a7a7e6cc891a1de7f2257a33b49beb2b29bbd0033289edfff8fa951654ded403",
+            "outputLines": 224,
+            "detail": "usage: hermes [-h] [--version] [-z PROMPT] [--usage-file PATH] [-m MODEL]",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：plan 的产物是一张针对真实用户配置的待审批变更草稿；本探针不生成任何写入计划。（另记：real_adapters.py::HermesAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:02+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "HERMES_HOME|default -> C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe"
+            ]
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：apply 会对真实用户配置写入。即使当前实现答 UNSUPPORTED，一个已实现 apply 的版本会被这次调用真的写下去，所以本探针不给自己这个权限。（另记：real_adapters.py::HermesAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:02+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "HERMES_HOME|default -> C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe"
+            ]
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：invoke 是一次真实执行——付费 provider 调用、提示词送出本机、并发起网络请求。（另记：real_adapters.py::HermesAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:02+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "HERMES_HOME|default -> C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe"
+            ]
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "已调用进程内 adapter.observe({}) ：返回 status=OBSERVED 但 events=[] 且 observed_at=null —— 这是自报完成，没有任何可读回的观测，按「自报 ≠ PASS」不记 MET。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:02+0800",
+            "basis": "observe() 实测返回 {\"status\": \"OBSERVED\", \"adapter_id\": \"hermes\", \"observed_at\": null, \"source\": \"real-platform-probe\", \"events\": []}；digest=7c9a0a46fe3cbafc",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            }
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：rollback 是对真实用户配置的写回，属于破坏性动作，本探针一律不触发。（另记：real_adapters.py::HermesAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:02+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "HERMES_HOME|default -> C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe"
+            ]
+          }
+        ]
+      },
+      {
+        "client": "codex",
+        "displayName": "Codex",
+        "adapterVendored": true,
+        "adapterDeclared": "CodexAdapter",
+        "adapterDrift": null,
+        "entryKind": "cli-wrapper",
+        "entryExists": true,
+        "checkedPaths": [
+          "repo canonical wrapper -> D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd"
+        ],
+        "adapterSelfReport": "real_adapters.py::CodexAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']",
+        "stateCounts": {
+          "MET": 2,
+          "NOT_PROBED": 5
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "MET",
+            "evidenceLevel": "INTEGRATED",
+            "source": "read-only version readback: cmd.exe /d /c D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd --version",
+            "reason": "只读版本读回成功返回：detect 动词的一次真实作答，不含任何写入。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:09+0800",
+            "basis": "codex-cli 0.162.0-alpha.2",
+            "command": [
+              "cmd.exe",
+              "/d",
+              "/c",
+              "D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd",
+              "--version"
+            ],
+            "exitCode": 0,
+            "outputDigest": "58b398aea3eb8f00e9aebdff1ca63c9d55eb686486f126c03816f5553ac790f1",
+            "outputLines": 1,
+            "detail": "codex-cli 0.162.0-alpha.2",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED"
+          },
+          {
+            "verb": "capabilities",
+            "state": "MET",
+            "evidenceLevel": "INTEGRATED",
+            "source": "read-only inventory readback: cmd.exe /d /c D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd --help",
+            "reason": "客户端以只读 usage/清单形式作答。这是人类可读的命令清单，不是机器可读的能力合同，卡片不得据此推断其它动词成立。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "104 行清单；首行 Codex CLI",
+            "command": [
+              "cmd.exe",
+              "/d",
+              "/c",
+              "D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd",
+              "--help"
+            ],
+            "exitCode": 0,
+            "outputDigest": "4a7f0188d4d6e6d812c5cfbcf82468336b899acd5e437de7450421a403c0071e",
+            "outputLines": 104,
+            "detail": "Codex CLI",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：plan 的产物是一张针对真实用户配置的待审批变更草稿；本探针不生成任何写入计划。（另记：real_adapters.py::CodexAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "repo canonical wrapper -> D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd"
+            ]
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：apply 会对真实用户配置写入。即使当前实现答 UNSUPPORTED，一个已实现 apply 的版本会被这次调用真的写下去，所以本探针不给自己这个权限。（另记：real_adapters.py::CodexAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "repo canonical wrapper -> D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd"
+            ]
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：invoke 是一次真实执行——付费 provider 调用、提示词送出本机、并发起网络请求。（另记：real_adapters.py::CodexAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "repo canonical wrapper -> D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd"
+            ]
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "已调用进程内 adapter.observe({}) ：返回 status=OBSERVED 但 events=[] 且 observed_at=null —— 这是自报完成，没有任何可读回的观测，按「自报 ≠ PASS」不记 MET。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "observe() 实测返回 {\"status\": \"OBSERVED\", \"adapter_id\": \"codex\", \"observed_at\": null, \"source\": \"real-platform-probe\", \"events\": []}；digest=e6e3d655f483b0cd",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            }
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：rollback 是对真实用户配置的写回，属于破坏性动作，本探针一律不触发。（另记：real_adapters.py::CodexAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "repo canonical wrapper -> D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd"
+            ]
+          }
+        ]
+      },
+      {
+        "client": "cc-switch",
+        "displayName": "CC Switch",
+        "adapterVendored": true,
+        "adapterDeclared": "CCSwitchAdapter",
+        "adapterDrift": null,
+        "entryKind": "gui",
+        "entryExists": true,
+        "checkedPaths": [
+          "registry-declared executable -> D:\\Programs\\CC Switch\\cc-switch.exe"
+        ],
+        "adapterSelfReport": "real_adapters.py::CCSwitchAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']",
+        "stateCounts": {
+          "NOT_PROBED": 3,
+          "NOT_SUPPORTED": 4
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "GUI 客户端：入口文件存在性已实测（见 checkedPaths），但 --version 是启动窗口而不是作答，本探针不启动 GUI，因此 detect 记 NOT_PROBED 而非 MET。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "ENTRY_PRESENT_LAUNCH_REFUSED",
+            "checkedPaths": [
+              "registry-declared executable -> D:\\Programs\\CC Switch\\cc-switch.exe"
+            ]
+          },
+          {
+            "verb": "capabilities",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "客户端侧未作答（GUI 客户端：入口文件存在性已实测（见 checkedPaths），但 --version 是启动窗口而不是作答，本探针不启动 GUI）；本仓库 adapter.capabilities() 自报 operations=['detect', 'capabilities', 'plan', 'observe'] —— 自报清单不是客户端的作答，不记 MET。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "real_adapters.capabilities() 自报",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "ENTRY_PRESENT_LAUNCH_REFUSED"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[cc-switch].operations + config/capability-matrix.json#clients[cc-switch].operations 均不含 plan + config/adapter-registry.json#entries[cc-switch].policy_projection.plan_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[cc-switch].operations + config/capability-matrix.json#clients[cc-switch].operations 均不含 apply + config/adapter-registry.json#entries[cc-switch].policy_projection.apply_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[cc-switch].operations + config/capability-matrix.json#clients[cc-switch].operations 均不含 invoke",
+            "reason": "该动词不在该客户端的任何声明动词集合里：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "已调用进程内 adapter.observe({}) ：返回 status=OBSERVED 但 events=[] 且 observed_at=null —— 这是自报完成，没有任何可读回的观测，按「自报 ≠ PASS」不记 MET。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "observe() 实测返回 {\"status\": \"OBSERVED\", \"adapter_id\": \"cc-switch\", \"observed_at\": null, \"source\": \"local-router-probe\", \"events\": []}；digest=4592c84618cb00ab",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            }
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[cc-switch].operations + config/capability-matrix.json#clients[cc-switch].operations 均不含 rollback + config/adapter-registry.json#entries[cc-switch].policy_projection.rollback_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:15+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          }
+        ]
+      },
+      {
+        "client": "github",
+        "displayName": "GitHub",
+        "adapterVendored": true,
+        "adapterDeclared": "GitHubAdapter",
+        "adapterDrift": null,
+        "entryKind": "cli",
+        "entryExists": true,
+        "checkedPaths": [
+          "PATH gh|gh.exe -> C:\\Program Files\\GitHub CLI\\gh.EXE"
+        ],
+        "adapterSelfReport": "real_adapters.py::GitHubAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']",
+        "stateCounts": {
+          "MET": 2,
+          "NOT_PROBED": 3,
+          "NOT_SUPPORTED": 2
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "MET",
+            "evidenceLevel": "INTEGRATED",
+            "source": "read-only version readback: C:\\Program Files\\GitHub CLI\\gh.EXE --version",
+            "reason": "只读版本读回成功返回：detect 动词的一次真实作答，不含任何写入。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "gh version 2.98.0 (2026-08-20)",
+            "command": [
+              "C:\\Program Files\\GitHub CLI\\gh.EXE",
+              "--version"
+            ],
+            "exitCode": 0,
+            "outputDigest": "63737ad9f9a2bf673d515b80287e619712f744cc5373974fd043c5402ec80863",
+            "outputLines": 2,
+            "detail": "gh version 2.98.0 (2026-08-20)",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED"
+          },
+          {
+            "verb": "capabilities",
+            "state": "MET",
+            "evidenceLevel": "INTEGRATED",
+            "source": "read-only inventory readback: C:\\Program Files\\GitHub CLI\\gh.EXE --help",
+            "reason": "客户端以只读 usage/清单形式作答。这是人类可读的命令清单，不是机器可读的能力合同，卡片不得据此推断其它动词成立。",
+            "attempted": true,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "62 行清单；首行 Work seamlessly with GitHub from the command line.",
+            "command": [
+              "C:\\Program Files\\GitHub CLI\\gh.EXE",
+              "--help"
+            ],
+            "exitCode": 0,
+            "outputDigest": "5665cc62dabe5ed7be4d26714e79e4ebc645c1ca6bf56bd81499bf68bd94b474",
+            "outputLines": 62,
+            "detail": "Work seamlessly with GitHub from the command line.",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：plan 的产物是一张针对真实用户配置的待审批变更草稿；本探针不生成任何写入计划。（另记：real_adapters.py::GitHubAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "PATH gh|gh.exe -> C:\\Program Files\\GitHub CLI\\gh.EXE"
+            ]
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[github].policy_projection.apply_supported=false",
+            "reason": "本仓库为该客户端登记的 policy_projection 明确声明此动词不支持；没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "declaresDrift": "operations 声明含 apply，但 policy_projection.apply_supported=false：两份在册声明矛盾，此处按更具体的那条记 NOT_SUPPORTED 并保留矛盾，不替 owner 选真值"
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：invoke 是一次真实执行——付费 provider 调用、提示词送出本机、并发起网络请求。（另记：real_adapters.py::GitHubAdapter.capabilities() 自报 unsupported_operations=['apply', 'invoke', 'rollback']；那是本仓库实现的声明，不是客户端的拒绝）",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "PATH gh|gh.exe -> C:\\Program Files\\GitHub CLI\\gh.EXE"
+            ]
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "拒绝尝试：GitHubAdapter.observe() 的源码实测执行 `gh run list --limit 3`，即一次出网请求；本探针禁止网络。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "RESOLVED",
+            "checkedPaths": [
+              "PATH gh|gh.exe -> C:\\Program Files\\GitHub CLI\\gh.EXE"
+            ],
+            "ref": "packages/client-neutral-core/scripts/real_adapters.py:171-179"
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[github].policy_projection.rollback_supported=false",
+            "reason": "本仓库为该客户端登记的 policy_projection 明确声明此动词不支持；没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "declaresDrift": "operations 声明含 rollback，但 policy_projection.rollback_supported=false：两份在册声明矛盾，此处按更具体的那条记 NOT_SUPPORTED 并保留矛盾，不替 owner 选真值"
+          }
+        ]
+      },
+      {
+        "client": "openhuman",
+        "displayName": "OpenHuman",
+        "adapterVendored": false,
+        "adapterDeclared": null,
+        "adapterDrift": null,
+        "entryKind": "gui",
+        "entryExists": true,
+        "checkedPaths": [
+          "desktop shortcut *openhuman*.lnk -> ['C:\\\\Users\\\\ALEX\\\\Desktop\\\\OpenHuman.lnk']",
+          "PATH openhuman -> None"
+        ],
+        "adapterSelfReport": null,
+        "stateCounts": {
+          "NOT_PROBED": 3,
+          "NOT_SUPPORTED": 4
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "桌面快捷方式存在（见 checkedPaths），但其 TargetPath 需要 cscript 解析、目标又是一个 GUI 程序；本探针既不解析快捷方式目标也不启动 GUI，因此 detect 记 NOT_PROBED 而非 MET。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "SHORTCUT_PRESENT_TARGET_NOT_RESOLVED",
+            "checkedPaths": [
+              "desktop shortcut *openhuman*.lnk -> ['C:\\\\Users\\\\ALEX\\\\Desktop\\\\OpenHuman.lnk']",
+              "PATH openhuman -> None"
+            ]
+          },
+          {
+            "verb": "capabilities",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "没有可作答的只读入口：桌面快捷方式存在（见 checkedPaths），但其 TargetPath 需要 cscript 解析、目标又是一个 GUI 程序；本探针既不解析快捷方式目标也不启动 GUI；本树也没有该客户端的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "SHORTCUT_PRESENT_TARGET_NOT_RESOLVED"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[openhuman].operations + config/capability-matrix.json#clients[openhuman].operations 均不含 plan + config/adapter-registry.json#entries[openhuman].policy_projection.plan_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[openhuman].operations + config/capability-matrix.json#clients[openhuman].operations 均不含 apply + config/adapter-registry.json#entries[openhuman].policy_projection.apply_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[openhuman].operations + config/capability-matrix.json#clients[openhuman].operations 均不含 invoke",
+            "reason": "该动词不在该客户端的任何声明动词集合里：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "observe 未被建立：本探针要记这个动词，需要一次已接通的会话读回或一次只读查询，而网络被禁止；本树也没有该客户端可调用的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "SHORTCUT_PRESENT_TARGET_NOT_RESOLVED",
+            "checkedPaths": [
+              "desktop shortcut *openhuman*.lnk -> ['C:\\\\Users\\\\ALEX\\\\Desktop\\\\OpenHuman.lnk']",
+              "PATH openhuman -> None"
+            ]
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[openhuman].operations + config/capability-matrix.json#clients[openhuman].operations 均不含 rollback + config/adapter-registry.json#entries[openhuman].policy_projection.rollback_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          }
+        ]
+      },
+      {
+        "client": "open-design",
+        "displayName": "Open Design",
+        "adapterVendored": false,
+        "adapterDeclared": null,
+        "adapterDrift": null,
+        "entryKind": "gui",
+        "entryExists": true,
+        "checkedPaths": [
+          "registry-declared executable -> C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe"
+        ],
+        "adapterSelfReport": null,
+        "stateCounts": {
+          "NOT_PROBED": 3,
+          "NOT_SUPPORTED": 4
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "GUI 客户端：入口文件存在性已实测（见 checkedPaths），但 --version 是启动窗口而不是作答，本探针不启动 GUI，因此 detect 记 NOT_PROBED 而非 MET。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "ENTRY_PRESENT_LAUNCH_REFUSED",
+            "checkedPaths": [
+              "registry-declared executable -> C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe"
+            ]
+          },
+          {
+            "verb": "capabilities",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "没有可作答的只读入口：GUI 客户端：入口文件存在性已实测（见 checkedPaths），但 --version 是启动窗口而不是作答，本探针不启动 GUI；本树也没有该客户端的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "ENTRY_PRESENT_LAUNCH_REFUSED"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[open-design].operations + config/capability-matrix.json#clients[open-design].operations 均不含 plan + config/adapter-registry.json#entries[open-design].policy_projection.plan_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[open-design].operations + config/capability-matrix.json#clients[open-design].operations 均不含 apply + config/adapter-registry.json#entries[open-design].policy_projection.apply_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[open-design].operations + config/capability-matrix.json#clients[open-design].operations 均不含 invoke",
+            "reason": "该动词不在该客户端的任何声明动词集合里：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "observe 未被建立：本探针要记这个动词，需要一次已接通的会话读回或一次只读查询，而网络被禁止；本树也没有该客户端可调用的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "ENTRY_PRESENT_LAUNCH_REFUSED",
+            "checkedPaths": [
+              "registry-declared executable -> C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe"
+            ]
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[open-design].operations + config/capability-matrix.json#clients[open-design].operations 均不含 rollback + config/adapter-registry.json#entries[open-design].policy_projection.rollback_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          }
+        ]
+      },
+      {
+        "client": "deepseek-harness",
+        "displayName": "DeepSeek Harness",
+        "adapterVendored": false,
+        "adapterDeclared": "DeepSeekHarnessAdapter",
+        "adapterDrift": "config/capability-matrix.json 声明 runtime_adapter=DeepSeekHarnessAdapter，但 real_adapters.ADAPTERS 实测键为 ['cc-switch', 'codex', 'github', 'hermes']：该 adapter 在本树不可调用",
+        "entryKind": "gui",
+        "entryExists": true,
+        "checkedPaths": [
+          "LOCALAPPDATA vendor default -> C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe"
+        ],
+        "adapterSelfReport": null,
+        "stateCounts": {
+          "NOT_PROBED": 3,
+          "NOT_SUPPORTED": 4
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "GUI 客户端：入口文件存在性已实测（见 checkedPaths），但 --version 是启动窗口而不是作答，本探针不启动 GUI，因此 detect 记 NOT_PROBED 而非 MET。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "ENTRY_PRESENT_LAUNCH_REFUSED",
+            "checkedPaths": [
+              "LOCALAPPDATA vendor default -> C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe"
+            ]
+          },
+          {
+            "verb": "capabilities",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "没有可作答的只读入口：GUI 客户端：入口文件存在性已实测（见 checkedPaths），但 --version 是启动窗口而不是作答，本探针不启动 GUI；本树也没有该客户端的 vendored adapter（config/capability-matrix.json 声明 runtime_adapter=DeepSeekHarnessAdapter，但 real_adapters.ADAPTERS 实测键为 ['cc-switch', 'codex', 'github', 'hermes']：该 adapter 在本树不可调用）。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "ENTRY_PRESENT_LAUNCH_REFUSED"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[deepseek-harness].operations + config/capability-matrix.json#clients[deepseek-harness].operations 均不含 plan",
+            "reason": "该动词不在该客户端的任何声明动词集合里：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            },
+            "declaresDrift": "两份 operations 清单都不含 plan，但 policy_projection.plan_supported=True：verb 声明与 policy_projection 声明矛盾。此处按接口的每客户端声明（operations）记 NOT_SUPPORTED，并把矛盾原样留着，不替 owner 选真值"
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[deepseek-harness].operations + config/capability-matrix.json#clients[deepseek-harness].operations 均不含 apply + config/adapter-registry.json#entries[deepseek-harness].policy_projection.apply_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[deepseek-harness].operations + config/capability-matrix.json#clients[deepseek-harness].operations 均不含 invoke",
+            "reason": "该动词不在该客户端的任何声明动词集合里：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "observe 未被建立：本探针要记这个动词，需要一次已接通的会话读回或一次只读查询，而网络被禁止；本树也没有该客户端可调用的 vendored adapter（config/capability-matrix.json 声明 runtime_adapter=DeepSeekHarnessAdapter，但 real_adapters.ADAPTERS 实测键为 ['cc-switch', 'codex', 'github', 'hermes']：该 adapter 在本树不可调用）。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "ENTRY_PRESENT_LAUNCH_REFUSED",
+            "checkedPaths": [
+              "LOCALAPPDATA vendor default -> C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe"
+            ]
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[deepseek-harness].operations + config/capability-matrix.json#clients[deepseek-harness].operations 均不含 rollback + config/adapter-registry.json#entries[deepseek-harness].policy_projection.rollback_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          }
+        ]
+      },
+      {
+        "client": "cursor",
+        "displayName": "Cursor",
+        "adapterVendored": false,
+        "adapterDeclared": null,
+        "adapterDrift": null,
+        "entryKind": "none",
+        "entryExists": false,
+        "checkedPaths": [
+          "desktop shortcut *cursor*.lnk -> no match",
+          "PATH cursor -> None"
+        ],
+        "adapterSelfReport": null,
+        "stateCounts": {
+          "NOT_PROBED": 3,
+          "NOT_SUPPORTED": 4
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "NOT_PROBED_DECLARATIVE_ONLY：该 support_level 没有声明任何 live 入口点，PATH 与桌面快捷方式实测均无（见 checkedPaths），因此 detect 记 NOT_PROBED 而非 MET。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "NO_DECLARED_ENTRY",
+            "checkedPaths": [
+              "desktop shortcut *cursor*.lnk -> no match",
+              "PATH cursor -> None"
+            ]
+          },
+          {
+            "verb": "capabilities",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "没有可作答的只读入口：NOT_PROBED_DECLARATIVE_ONLY：该 support_level 没有声明任何 live 入口点，PATH 与桌面快捷方式实测均无（见 checkedPaths）；本树也没有该客户端的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "NO_DECLARED_ENTRY"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[cursor].operations + config/capability-matrix.json#clients[cursor].operations 均不含 plan + config/adapter-registry.json#entries[cursor].policy_projection.plan_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[cursor].operations + config/capability-matrix.json#clients[cursor].operations 均不含 apply + config/adapter-registry.json#entries[cursor].policy_projection.apply_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[cursor].operations + config/capability-matrix.json#clients[cursor].operations 均不含 invoke",
+            "reason": "该动词不在该客户端的任何声明动词集合里：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "observe 未被建立：本探针要记这个动词，需要一次已接通的会话读回或一次只读查询，而网络被禁止；本树也没有该客户端可调用的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "NO_DECLARED_ENTRY",
+            "checkedPaths": [
+              "desktop shortcut *cursor*.lnk -> no match",
+              "PATH cursor -> None"
+            ]
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[cursor].operations + config/capability-matrix.json#clients[cursor].operations 均不含 rollback + config/adapter-registry.json#entries[cursor].policy_projection.rollback_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          }
+        ]
+      },
+      {
+        "client": "claude-code",
+        "displayName": "Claude Code",
+        "adapterVendored": false,
+        "adapterDeclared": null,
+        "adapterDrift": null,
+        "entryKind": "none",
+        "entryExists": false,
+        "checkedPaths": [
+          "desktop shortcut *claude code*.lnk -> no match",
+          "PATH claudecode -> None"
+        ],
+        "adapterSelfReport": null,
+        "stateCounts": {
+          "NOT_PROBED": 3,
+          "NOT_SUPPORTED": 4
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "NOT_PROBED_DECLARATIVE_ONLY：该 support_level 没有声明任何 live 入口点，PATH 与桌面快捷方式实测均无（见 checkedPaths），因此 detect 记 NOT_PROBED 而非 MET。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "NO_DECLARED_ENTRY",
+            "checkedPaths": [
+              "desktop shortcut *claude code*.lnk -> no match",
+              "PATH claudecode -> None"
+            ]
+          },
+          {
+            "verb": "capabilities",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "没有可作答的只读入口：NOT_PROBED_DECLARATIVE_ONLY：该 support_level 没有声明任何 live 入口点，PATH 与桌面快捷方式实测均无（见 checkedPaths）；本树也没有该客户端的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "NO_DECLARED_ENTRY"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[claude-code].operations + config/capability-matrix.json#clients[claude-code].operations 均不含 plan + config/adapter-registry.json#entries[claude-code].policy_projection.plan_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[claude-code].operations + config/capability-matrix.json#clients[claude-code].operations 均不含 apply + config/adapter-registry.json#entries[claude-code].policy_projection.apply_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[claude-code].operations + config/capability-matrix.json#clients[claude-code].operations 均不含 invoke",
+            "reason": "该动词不在该客户端的任何声明动词集合里：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "observe 未被建立：本探针要记这个动词，需要一次已接通的会话读回或一次只读查询，而网络被禁止；本树也没有该客户端可调用的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "NO_DECLARED_ENTRY",
+            "checkedPaths": [
+              "desktop shortcut *claude code*.lnk -> no match",
+              "PATH claudecode -> None"
+            ]
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[claude-code].operations + config/capability-matrix.json#clients[claude-code].operations 均不含 rollback + config/adapter-registry.json#entries[claude-code].policy_projection.rollback_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          }
+        ]
+      },
+      {
+        "client": "workbuddy",
+        "displayName": "WorkBuddy",
+        "adapterVendored": false,
+        "adapterDeclared": null,
+        "adapterDrift": null,
+        "entryKind": "none",
+        "entryExists": true,
+        "checkedPaths": [
+          "desktop shortcut *workbuddy*.lnk -> ['C:\\\\Users\\\\ALEX\\\\Desktop\\\\WorkBuddy.lnk']",
+          "PATH workbuddy -> None"
+        ],
+        "adapterSelfReport": null,
+        "stateCounts": {
+          "NOT_PROBED": 3,
+          "NOT_SUPPORTED": 4
+        },
+        "verbs": [
+          {
+            "verb": "detect",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "桌面快捷方式存在（见 checkedPaths），但其 TargetPath 需要 cscript 解析、目标又是一个 GUI 程序；本探针既不解析快捷方式目标也不启动 GUI，因此 detect 记 NOT_PROBED 而非 MET。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "SHORTCUT_PRESENT_TARGET_NOT_RESOLVED",
+            "checkedPaths": [
+              "desktop shortcut *workbuddy*.lnk -> ['C:\\\\Users\\\\ALEX\\\\Desktop\\\\WorkBuddy.lnk']",
+              "PATH workbuddy -> None"
+            ]
+          },
+          {
+            "verb": "capabilities",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "没有可作答的只读入口：桌面快捷方式存在（见 checkedPaths），但其 TargetPath 需要 cscript 解析、目标又是一个 GUI 程序；本探针既不解析快捷方式目标也不启动 GUI；本树也没有该客户端的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "SHORTCUT_PRESENT_TARGET_NOT_RESOLVED"
+          },
+          {
+            "verb": "plan",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[workbuddy].operations + config/capability-matrix.json#clients[workbuddy].operations 均不含 plan + config/adapter-registry.json#entries[workbuddy].policy_projection.plan_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "apply",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[workbuddy].operations + config/capability-matrix.json#clients[workbuddy].operations 均不含 apply + config/adapter-registry.json#entries[workbuddy].policy_projection.apply_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "invoke",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[workbuddy].operations + config/capability-matrix.json#clients[workbuddy].operations 均不含 invoke",
+            "reason": "该动词不在该客户端的任何声明动词集合里：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          },
+          {
+            "verb": "observe",
+            "state": "NOT_PROBED",
+            "evidenceLevel": "NO_EVIDENCE",
+            "source": null,
+            "reason": "observe 未被建立：本探针要记这个动词，需要一次已接通的会话读回或一次只读查询，而网络被禁止；本树也没有该客户端可调用的 vendored adapter。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "探针政策：只读 version/help/inventory 之外一律不触发",
+            "declaredIn": {
+              "adapter-registry": true,
+              "capability-matrix": true
+            },
+            "entryResolution": "SHORTCUT_PRESENT_TARGET_NOT_RESOLVED",
+            "checkedPaths": [
+              "desktop shortcut *workbuddy*.lnk -> ['C:\\\\Users\\\\ALEX\\\\Desktop\\\\WorkBuddy.lnk']",
+              "PATH workbuddy -> None"
+            ]
+          },
+          {
+            "verb": "rollback",
+            "state": "NOT_SUPPORTED",
+            "evidenceLevel": "SYNTHETIC",
+            "source": "config/adapter-registry.json#entries[workbuddy].operations + config/capability-matrix.json#clients[workbuddy].operations 均不含 rollback + config/adapter-registry.json#entries[workbuddy].policy_projection.rollback_supported=false",
+            "reason": "该动词不在该客户端的任何声明动词集合里，且 policy_projection 同步否证：这是声明层面的缺失，本机没有测量成分。",
+            "attempted": false,
+            "probedAt": "2026-10-08T03:04:16+0800",
+            "basis": "声明否证",
+            "declaredIn": {
+              "adapter-registry": false,
+              "capability-matrix": false
+            }
+          }
+        ]
+      }
+    ],
+    "note": "MET means this probe ran a read-only call that the row names and the client answered it. NOT_SUPPORTED is a named declaration, never a measurement. NOT_PROBED is either a refusal this probe holds itself to or an answer that carries too little to be credited — `reason` says which and `attempted` says whether a call was made. No verb row climbs the seven-layer ladder: it can make a card honest, it cannot make a client MET above Installed."
+  },
+  "note": "LIVE_VERIFIED requires exit 0 and agreement with the version the registry already claims. This script mutates nothing: it reports, and a human or a follow-up change decides whether a registry entry's evidence_state moves."
+}

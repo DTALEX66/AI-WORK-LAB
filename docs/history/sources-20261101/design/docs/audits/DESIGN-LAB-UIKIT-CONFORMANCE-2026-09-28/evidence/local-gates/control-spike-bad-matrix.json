@@ -1,0 +1,296 @@
+{
+  "$schema": "../../schemas/control-capability-matrix.schema.json",
+  "version": "1.0.0",
+  "generated_at": "2026-09-21",
+  "policy": "本矩阵是控制能力路由声明（P1-CONTROL-SPIKE 交付物），不是运行时证明。分层原则：Computer-Use 负责 reachability（能不能够到宿主 UI）；Host-native readback / artifact rehash 负责 truth（宿主里究竟发生了什么）；DESIGN-LAB 自己的 State/Evidence 层负责 provenance。supported=true 的能力必须有 evidence_level>=E2 且必填 qualified_sha；无真实宿主证据的 Host 一律 supported=false，等级不得提升，本文件绝不替代真实运行证据。",
+  "hosts": [
+    {
+      "host": "photoshop",
+      "host_version": null,
+      "control_transport": "native",
+      "reachability_model": "native-launch",
+      "truth_model": "host-native-readback",
+      "capabilities": [
+        {
+          "name": "launch",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "Adobe 未安装（2026-08-22 卸载），无宿主可达性证据"
+        },
+        {
+          "name": "inspect",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无宿主读回证据"
+        },
+        {
+          "name": "create",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无宿主创建证据"
+        },
+        {
+          "name": "patch",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无宿主 patch 证据"
+        },
+        {
+          "name": "save-editable",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "PSD 可编辑产物验证未建立"
+        },
+        {
+          "name": "export",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无导出证据"
+        },
+        {
+          "name": "reopen-verify",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "重开验证未建立"
+        },
+        {
+          "name": "readback",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无宿主读回证据"
+        }
+      ],
+      "authorization": {
+        "user_authorized": false,
+        "no_bypass_license": true,
+        "bounded_command": true
+      },
+      "failure_recovery": "checkpoint + artifact snapshot（任务书 P1-CONTROL-SPIKE 红线：不绕过 Adobe 授权，只发有界命令）"
+    },
+    {
+      "host": "illustrator",
+      "host_version": null,
+      "control_transport": "native",
+      "reachability_model": "native-launch",
+      "truth_model": "host-native-readback",
+      "capabilities": [
+        {
+          "name": "launch",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "Adobe 未安装，无宿主可达性证据"
+        },
+        {
+          "name": "inspect",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无宿主读回证据"
+        },
+        {
+          "name": "create",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无宿主创建证据"
+        },
+        {
+          "name": "patch",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无宿主 patch 证据"
+        },
+        {
+          "name": "save-editable",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "AI 可编辑产物验证未建立"
+        },
+        {
+          "name": "export",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无导出证据"
+        },
+        {
+          "name": "reopen-verify",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "重开验证未建立"
+        },
+        {
+          "name": "readback",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无宿主读回证据"
+        }
+      ],
+      "authorization": {
+        "user_authorized": false,
+        "no_bypass_license": true,
+        "bounded_command": true
+      },
+      "failure_recovery": "checkpoint + artifact snapshot（同 photoshop：不绕过授权，有界命令）"
+    },
+    {
+      "host": "minimax-design",
+      "host_version": null,
+      "control_transport": "computer-use",
+      "reachability_model": "computer-use",
+      "truth_model": "artifact-rehash",
+      "capabilities": [
+        {
+          "name": "launch",
+          "supported": true,
+          "evidence_level": "E0",
+          "qualified_sha": "deadbeef",
+          "note": "结构声明（adapter-manifest.json），无真实运行证据"
+        },
+        {
+          "name": "inspect",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无真实运行证据"
+        },
+        {
+          "name": "create",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无真实运行证据；GUI 看到 ≠ 状态证明"
+        },
+        {
+          "name": "patch",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无真实运行证据"
+        },
+        {
+          "name": "save-editable",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "产物可编辑性未验证"
+        },
+        {
+          "name": "export",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "无真实运行证据"
+        },
+        {
+          "name": "reopen-verify",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "重开验证未建立"
+        },
+        {
+          "name": "readback",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "Computer-Use 截图不作事实层；事实层只认 artifact rehash / 宿主原生读回"
+        }
+      ],
+      "authorization": {
+        "user_authorized": false,
+        "no_bypass_license": true,
+        "bounded_command": true
+      },
+      "failure_recovery": "checkpoint + artifact snapshot；GUI fallback 失败不自动升级，必须走 native adapter 或人工"
+    },
+    {
+      "host": "browser",
+      "host_version": "playwright@1.63.0 (chromium)",
+      "control_transport": "computer-use",
+      "reachability_model": "computer-use",
+      "truth_model": "artifact-rehash",
+      "capabilities": [
+        {
+          "name": "launch",
+          "supported": true,
+          "evidence_level": "E2",
+          "qualified_sha": "9f89452",
+          "note": "clean runner 真 Chromium 启动；workbench-browser-e2e no-skip 门禁（Batch D/P0-G）",
+          "evidence_ref": "CI gate 'Workbench browser E2E (exact-SHA controlled-runtime, no-skip)' canonical-verify.yml workbench-browser-e2e job: design-lab/tests/test_workbench_design_layer_e2e.py 16 vm-contract tests, artifact workbench-e2-<sha> .project-local/task-artifacts/browser-e2e/browser-e2e-summary.json"
+        },
+        {
+          "name": "inspect",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "通用宿主 DOM 检查超出 Workbench 纵切范围"
+        },
+        {
+          "name": "create",
+          "supported": true,
+          "evidence_level": "E2",
+          "qualified_sha": "9f89452",
+          "note": "Project/Brief/Direction/DesignSystem 创建走真实 loopback API（E2 纵切）",
+          "evidence_ref": "CI gate 'Workbench browser E2E (exact-SHA controlled-runtime, no-skip)' canonical-verify.yml workbench-browser-e2e job: design-lab/tests/test_workbench_design_layer_e2e.py 16 vm-contract tests, artifact workbench-e2-<sha> .project-local/task-artifacts/browser-e2e/browser-e2e-summary.json"
+        },
+        {
+          "name": "patch",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "未纳入 E2 纵切"
+        },
+        {
+          "name": "save-editable",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "不适用浏览器宿主"
+        },
+        {
+          "name": "export",
+          "supported": false,
+          "evidence_level": "E0",
+          "qualified_sha": null,
+          "note": "未纳入 E2 纵切"
+        },
+        {
+          "name": "reopen-verify",
+          "supported": true,
+          "evidence_level": "E2",
+          "qualified_sha": "9f89452",
+          "note": "reload + DOM/API/DB 三层读回一致（E2 纵切核心断言）",
+          "evidence_ref": "CI gate 'Workbench browser E2E (exact-SHA controlled-runtime, no-skip)' canonical-verify.yml workbench-browser-e2e job: design-lab/tests/test_workbench_design_layer_e2e.py 16 vm-contract tests, artifact workbench-e2-<sha> .project-local/task-artifacts/browser-e2e/browser-e2e-summary.json"
+        },
+        {
+          "name": "readback",
+          "supported": true,
+          "evidence_level": "E2",
+          "qualified_sha": "9f89452",
+          "note": "SQLite 持久化 + API 读回 + 浏览器读回三层一致",
+          "evidence_ref": "CI gate 'Workbench browser E2E (exact-SHA controlled-runtime, no-skip)' canonical-verify.yml workbench-browser-e2e job: design-lab/tests/test_workbench_design_layer_e2e.py 16 vm-contract tests, artifact workbench-e2-<sha> .project-local/task-artifacts/browser-e2e/browser-e2e-summary.json"
+        }
+      ],
+      "authorization": {
+        "user_authorized": true,
+        "no_bypass_license": true,
+        "bounded_command": true
+      },
+      "failure_recovery": "CI 失败上传 trace/screenshot/log + SQLite 快照（去密）；browser unavailable 是 infra failure 不是 SKIP PASS"
+    }
+  ]
+}

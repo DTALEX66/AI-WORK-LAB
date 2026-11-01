@@ -1,0 +1,319 @@
+{
+  "meta": {
+    "id": "subway",
+    "name": "地铁末班调度室",
+    "subtitle": "LAST TRAIN · ANOMALY DISPATCH"
+  },
+  "monitor": {
+    "initial": "CCTV-07：末班车停靠 02 站台。站台广播仍在循环，候车区热源数量为 1。",
+    "actions": {
+      "openDoor": "监控：站台屏蔽门已开启。车门内侧灯带出现绿色拖影。",
+      "closeDoor": "监控：屏蔽门闭合。站台边缘黄线短暂闪烁。",
+      "moveUp": "监控：列车按上行方向发车。隧道信号灯保持绿色。",
+      "moveDown": "监控：列车返站调度。车尾红灯在画面中延迟 2 秒。",
+      "emergencyStop": "监控：紧急制动触发。车厢灯光熄灭一帧后恢复。",
+      "restartSystem": "监控：信号系统重启。站台广播被切断 3 秒。"
+    }
+  },
+  "actionLabels": {
+    "openDoor": "开屏蔽门",
+    "closeDoor": "关屏蔽门",
+    "moveUp": "上行发车",
+    "moveDown": "返站调度",
+    "emergencyStop": "紧急制动",
+    "restartSystem": "重启信号",
+    "inspectLog": "查看调度日志",
+    "unlockHiddenLog": "解码封存记录"
+  },
+  "doorLabels": {
+    "open": "开启",
+    "closed": "关闭"
+  },
+  "directionLabels": {
+    "up": "上行",
+    "down": "返站",
+    "idle": "待命"
+  },
+  "statusLabels": {
+    "panelTitle": "调度状态",
+    "floor": "站台",
+    "door": "屏蔽门",
+    "direction": "调度",
+    "passengers": "乘客",
+    "power": "供电",
+    "stability": "信号",
+    "anomalyLevel": "异常等级",
+    "reviveCount": "复活",
+    "adHintsCount": "记录解码",
+    "hiddenLogsCount": "待解码"
+  },
+  "canvasLabels": {
+    "countdown": "末班值守",
+    "monitorPanel": "站台 CCTV",
+    "actionPanel": "调度台",
+    "logPanel": "信号日志",
+    "forceAnomaly": "触发异常测试",
+    "failureTitle": "调度失控",
+    "failureEyebrow": "SIGNAL FAILURE",
+    "monitorSignalStable": "SIGNAL: CLEAR",
+    "monitorSignalUnstable": "SIGNAL: DELAYED",
+    "monitorSignalCorrupted": "SIGNAL: LOST",
+    "monitorThreat": "INCIDENT: {level}",
+    "failureMetricStability": "信号",
+    "failureMetricAnomaly": "事件",
+    "failureMetricRemaining": "剩余"
+  },
+  "actionFailMessages": {
+    "openDoor_moving": "列车运行中，禁止开启屏蔽门。",
+    "moveUp_doorNotClosed": "屏蔽门未关闭，禁止上行发车。",
+    "moveDown_doorNotClosed": "屏蔽门未关闭，禁止返站调度。",
+    "unknownAction": "未知调度指令：{actionId}",
+    "gameOver": "调度系统已失控，必须复活或重新开始。",
+    "systemBusy": "当前调度动作尚未完成，请等待列车状态稳定。"
+  },
+  "actionFeedback": {
+    "openDoor": "屏蔽门已开启。",
+    "closeDoor": "屏蔽门已关闭。",
+    "moveUp": "上行发车指令已执行。",
+    "moveDown": "返站调度指令已执行。",
+    "emergencyStop": "紧急制动已执行。",
+    "emergencyStop_fail": "紧急制动回路失效。",
+    "restartSystem": "信号系统重启完成。",
+    "inspectLog": "已查看调度日志。",
+    "unlockHiddenLog_noLocked": "没有待解码的封存记录。",
+    "unlockHiddenLog_limit": "本局已解码 {count} 条封存记录，达到上限。"
+  },
+  "actionLogMessages": {
+    "openDoor": "屏蔽门已在 {floor} 号站台开启。",
+    "closeDoor": "屏蔽门已关闭。",
+    "moveUp": "列车进入上行区间，当前站台 {floor}。",
+    "moveDown": "列车执行返站调度，当前站台 {floor}。",
+    "emergencyStop": "执行紧急制动：列车已停靠，信号稳定度下降。",
+    "emergencyStop_fail": "紧急制动无响应。异常等级上升。",
+    "restartSystem": "信号系统重启完成：异常等级下降，但消耗 {cost} 点供电。",
+    "inspectLog": "调度员查看日志：最近 30 秒存在未授权停靠请求。",
+    "inspectLog_hiddenRecords": "发现 {count} 条待解码封存记录。可解码完整内容。",
+    "unlockHiddenLog_ok": "解码完成。封存记录已解码。"
+  },
+  "anomalies": [
+    {
+      "id": "phantom_platform",
+      "title": "不存在的 13 站台",
+      "severity": 2,
+      "monitor": "监控：线路图跳转到 13 站台。公开视频墙没有这个站点。",
+      "adHint": "出现 13 站台时不要开屏蔽门，先重启信号系统。",
+      "effects": { "floor": 13, "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "cctv_delay",
+      "title": "站台 CCTV 延迟",
+      "severity": 1,
+      "monitor": "监控：CCTV-07 延迟 3 秒。乘客抬头动作与调度日志不同步。",
+      "adHint": "监控延迟时先查日志，不要连续发车。",
+      "effects": { "anomalyLevel": 1, "stability": -6 }
+    },
+    {
+      "id": "empty_train_heat",
+      "title": "空车厢出现热源",
+      "severity": 2,
+      "monitor": "监控：车厢画面为空，但热源识别显示 1 个目标。",
+      "adHint": "热源异常时保持屏蔽门关闭，先紧急制动再查日志。",
+      "effects": { "passengers": 0, "anomalyLevel": 2, "stability": -12 }
+    },
+    {
+      "id": "signal_echo",
+      "title": "广播重复警告",
+      "severity": 1,
+      "monitor": "监控：站台广播重复播放“不要上车”。音频时间戳早于本次值守。",
+      "adHint": "广播重复通常是轻度异常，重启信号可降低风险。",
+      "effects": { "anomalyLevel": 1, "stability": -5 }
+    },
+    {
+      "id": "auto_departure",
+      "title": "无人下达发车指令",
+      "severity": 2,
+      "monitor": "监控：调度台未触碰，上行发车灯自动亮起。",
+      "adHint": "自动发车请求出现时不要跟随，先关屏蔽门并紧急制动。",
+      "effects": { "anomalyLevel": 2, "power": -8 }
+    },
+    {
+      "id": "brake_failure",
+      "title": "紧急制动失效",
+      "severity": 3,
+      "monitor": "监控：紧急制动按钮指示灯熄灭，安全回路拒绝确认。",
+      "adHint": "紧急制动失效时不要反复点击，优先重启信号系统。",
+      "effects": { "anomalyLevel": 3, "stability": -15 }
+    },
+    {
+      "id": "negative_station",
+      "title": "站台编号显示 -1",
+      "severity": 2,
+      "monitor": "监控：站台编号显示 -1。隧道画面出现未登记检修门。",
+      "adHint": "负数站台不是正常支线，立即重启信号系统。",
+      "effects": { "floor": -1, "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "traction_power_drain",
+      "title": "牵引供电异常下降",
+      "severity": 2,
+      "monitor": "监控：备用牵引电源已接管，但供电仍在下降。",
+      "adHint": "供电异常下降时减少发车，优先关门与重启。",
+      "effects": { "anomalyLevel": 2, "power": -22 }
+    },
+    {
+      "id": "platform_door_refuse",
+      "title": "屏蔽门拒绝关闭",
+      "severity": 2,
+      "monitor": "监控：关门指令已发送，屏蔽门在闭合前自动弹开。",
+      "adHint": "屏蔽门拒绝关闭时不要连按关门，先制动再重启。",
+      "effects": { "door": "open", "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "passenger_mismatch",
+      "title": "闸机人数与车厢人数不一致",
+      "severity": 1,
+      "monitor": "监控：闸机记录 0 人进站，车厢热源识别仍显示 1。",
+      "adHint": "人数异常时优先查日志，乘客计数可能被重置。",
+      "effects": { "passengers": 0, "anomalyLevel": 1, "stability": -7 }
+    },
+    {
+      "id": "station_jump",
+      "title": "列车跳站",
+      "severity": 2,
+      "monitor": "监控：列车从 5 号站台直接跳转至 9 号站台，缺失 4 段区间画面。",
+      "adHint": "跳站时减少移动操作，用信号重启恢复站台显示。",
+      "effects": { "floor": "+4", "anomalyLevel": 2, "stability": -12, "power": -10 }
+    },
+    {
+      "id": "tunnel_lights",
+      "title": "隧道应急灯自行点亮",
+      "severity": 3,
+      "monitor": "监控：隧道应急灯无触发信号自行点亮。备用电源消耗加速。",
+      "adHint": "应急灯启动时避免发车，立即重启信号系统。",
+      "effects": { "anomalyLevel": 3, "stability": -14, "power": -20 }
+    }
+  ],
+  "hiddenLogs": {
+    "phantom_platform": {
+      "title": "13 站台封存记录",
+      "content": "内部记录：13 站台曾用于夜间折返测试，事故后从公开视频墙和线路图中删除。信号系统没有完成注销。"
+    },
+    "cctv_delay": {
+      "title": "CCTV-07 校准记录",
+      "content": "校准日志：CCTV-07 与站台广播存在 3 秒差值。技术备注：延迟只在末班车后出现。"
+    },
+    "empty_train_heat": {
+      "title": "热源识别异常说明",
+      "content": "传感器手册补录：空车厢热源曾在 02:17 反复出现，人工复核未发现人员。建议不要打开屏蔽门。"
+    },
+    "signal_echo": {
+      "title": "广播系统诊断报告",
+      "content": "诊断报告：重复广播的音频源来自旧调度服务器。该服务器在三年前的末班事故后已停用。"
+    },
+    "auto_departure": {
+      "title": "自动发车审计追踪",
+      "content": "审计追踪：发车请求来自未登记终端。终端备注只有一行：下一班还没有到。"
+    },
+    "brake_failure": {
+      "title": "制动回路维护日志",
+      "content": "维护日志：紧急制动回路 B 被标记为状态不稳定。签署人为空，时间为事故后一小时。"
+    },
+    "negative_station": {
+      "title": "检修门勘测报告",
+      "content": "勘测报告：-1 标记对应一段未公开检修通道。通道供电仍接入末班车调度系统。"
+    },
+    "traction_power_drain": {
+      "title": "牵引供电异常报告",
+      "content": "异常报告：备用牵引电源存在非授权分接线，线缆标签写着“维持站台照明，不得切断”。"
+    },
+    "platform_door_refuse": {
+      "title": "屏蔽门保护日志",
+      "content": "门控模块记录：识别到外部拉力，拒绝闭合。摄像头没有拍到任何站台人员。"
+    },
+    "passenger_mismatch": {
+      "title": "闸机与车载计数比对",
+      "content": "比对记录：闸机人数为 0，车载热源为 1。热源坐标固定在最后一节车厢靠窗位置。"
+    },
+    "station_jump": {
+      "title": "定位模块缺帧日志",
+      "content": "定位日志：5 至 9 区间画面缺失，信标回传连续四次为空。末端记录显示列车曾停靠不存在的站台。"
+    },
+    "tunnel_lights": {
+      "title": "隧道应急照明测试报告",
+      "content": "测试报告：应急灯在无触发信号时自行启动。终端设备编号无法匹配任何已登记隧道设备。"
+    }
+  },
+  "failure": {
+    "summaries": {
+      "power": "牵引供电耗尽",
+      "stability": "信号稳定度归零",
+      "anomalyLevel": "异常事件失控",
+      "passengers": "乘客记录出现负数",
+      "default": "调度系统拒绝继续响应"
+    },
+    "defaultHint": "先关屏蔽门，再重启信号，避免连续发车。",
+    "firstRunAdvice": "下次先核对画面和三项数据；一致放行，矛盾封锁。",
+    "hintPrefix": "提示：{hint}",
+    "adReviveRollback": "复活完成：回滚 {seconds} 秒，恢复至可控调度状态。",
+    "adReviveMonitor": "复活完成：回滚到 {seconds} 秒前的站台状态。",
+    "snapshotFallback": "可观看复活，回滚到 {seconds} 秒前的调度状态。",
+    "noSnapshotFallback": "可观看复活，回滚到初始调度状态。"
+  },
+  "fakeEnding": {
+    "eyebrow": "⚠ LAST TRAIN INCIDENT",
+    "title": "调度员关联异常",
+    "text": "系统检测到调度员第 {count} 次调度失控。\n根据末班调度守则，您已被标记为“站台关联人员”。\n前 {threshold} 次记录已从公开视频墙删除。\n建议您立即离开调度台并联系线路控制中心。",
+    "truthPlaceholder": "[???] 揭示末班真相。",
+    "truthContent": "末班车从未真正入库。\n每晚 02:17，调度系统都会等待一名新的值守员确认发车。\n日志中所谓“乘客热源”，其实是上一任调度员留在 CCTV 里的坐标。"
+  },
+  "ui": {
+    "viewAd": "复活",
+    "unlockAd": "解码封存记录",
+    "restart": "重新开始",
+    "revealTruth": "揭示真相",
+    "triggerTest": "触发异常测试",
+    "decodePrefix": "[封存记录]",
+    "initialLog": "地铁末班调度台已接管。等待调度员指令。",
+    "initialFeedback": "等待下一班列车",
+    "tutorialNormal": "信息一致，点击放行",
+    "tutorialAnomaly": "发现矛盾，点击封锁",
+    "coreRule": "对得上就放行，对不上就封锁",
+    "standby": "等待下一班",
+    "wrongTutorial": "再看一眼：核对画面和数据",
+    "wrongTreatment": "处置错误，异常仍在持续。",
+    "inspectionReady": "请核对当前画面和三项数据",
+    "treatmentTutorial": "最后一步：按亮起的处置键解除异常",
+    "wrongTreatmentTutorial": "这项处置不对应当前线索，再看一次",
+    "autoResolutionCorrect": "封锁成功，系统已自动处置",
+    "autoResolutionWrong": "判断错误，系统已紧急隔离",
+    "autoResolutionTimeout": "判断超时，系统已自动隔离",
+    "anomalyEventLog": "异常事件：{title}。{hint}",
+    "startTitle": "等待接管末班调度台",
+    "startCopy": "目标：值守 60 秒，观察 CCTV、处理信号异常、避免调度系统失控。接管后倒计时才会启动。",
+    "startChecklist": "先读站台 CCTV 和信号日志\n异常出现时按提示执行调度\n失败后可通过模拟复活",
+    "startFailureRulesTitle": "失控条件",
+    "startFailureRules": "供电归零\n信号归零\n异常事件失控",
+    "startButton": "开始接管",
+    "sidebarEntry": "侧边栏入口",
+    "pausedTitle": "值守已暂停",
+    "pausedCopy": "返回前台后继续，不计算后台时间",
+    "audioOn": "声音开",
+    "audioOff": "已静音",
+    "rewardUnavailable": "奖励暂不可用，请稍后重试",
+    "reportNormal": "判为正常",
+    "reportAnomaly": "报告异常",
+    "inspectionLabel": "巡检判定 {seconds}s",
+    "baselineInspectionTitle": "当前站台画面未见异常",
+    "anomalyInspectionTitle": "站台信号发生变化，请判断画面",
+    "anomalyResolved": "处置完成：{action} 已解除当前异常。",
+    "anomalyResolvedMonitor": "站台监控恢复稳定，等待下一轮巡检。",
+    "inspectionPrompt": "巡检判定：{title}（{seconds}秒内响应）",
+    "inspectionCorrectNormal": "判定正确：当前站台正常。",
+    "inspectionCorrectAnomaly": "判定正确：异常已上报，系统压力下降。",
+    "inspectionWrong": "判定错误：信号稳定度下降，异常压力上升。",
+    "inspectionTimeout": "判定超时：未完成本次巡检。",
+    "successfulShift": "本轮结束，连续失败计数已重置。",
+    "shiftComplete": "值守完成",
+    "hiddenLogCaptured": "封存记录已捕获：{title}。"
+  }
+}

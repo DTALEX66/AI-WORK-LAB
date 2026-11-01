@@ -1,0 +1,35 @@
+G-5/B5: evidence card append-only 校验层 — content-bound 身份 + supersedes 链（小改 verify_evidence_cards）
+
+对应 FINAL TaskPack §B5（R13）："Evidence append-only 约定（对应 R13）：
+evidence card 加 supersedes + immutable ID 校验（小改 verify_evidence_cards）。"
+
+前序 schema 层（本分支 c94fef0）已落两个可选属性（evidence_id /
+supersedes，均 `^sha256:[0-9a-f]{64}$`）；本提交补齐校验器层 + 测试层，
+B5 完整闭环。
+
+校验器不变量（design-lab/scripts/verify_evidence_cards.py，fail-closed）：
+- evidence_id = 实质字段（除 evidence_id/supersedes 外所有顶层字段）的
+  规范化 sha256（content_identity）。修订追加新记录或移动 supersedes 指针
+  都不改变被指记录的身份；committed id 与内容不符 = 原地覆写 → 报错。
+- accepted 卡强制 evidence_id；任何带 supersedes 的修订强制 evidence_id；
+  多记录链中每条记录强制 evidence_id。
+- 每 card_id 分组形成一条线性链：唯一 genesis（无 supersedes）、
+  无 fork / 无环 / 无 dangling / 无跨 benchmark_id。静默重复 card_id
+  仍非法（无 supersedes 链接的重复 = genesis 数 > 1 或不可达 → 报错）。
+- 记录数检查由 == 放宽为 >=（append-only 允许追加修订），末尾的
+  benchmark 集合覆盖检查不变（每个 benchmark 至少一张卡）。
+
+向后兼容：fixture 12 张 not-run 单例卡无新字段，零误报
+（EVIDENCE_CARDS_PASS cards=12 chained=0）。契约行加 chained= 计数，
+EVIDENCE_CARDS_PASS 无下游消费者（仅脚本自身 + 2026-08-07 历史 handoff
+文档提及，文档不解析契约行）。
+
+测试（design-lab/tests/test_evidence_cards.py，+10 用例，12/12 全绿）：
+身份稳定（修订后 genesis 与 revision 各自 content_identity 自洽）/
+genesis PASS / 线性链 PASS / 原地覆写 FAIL / accepted 缺 id FAIL /
+修订缺 id FAIL / dangling FAIL / fork FAIL / 环 FAIL / 静默重复 FAIL。
+
+CI：verify_evidence_cards.py 已在 verify_design_lab.py SCRIPTS 列表
+（Python gate 聚合内），无需 workflow 变更。
+
+基线 main@a6aeccf；仅 2 文件（脚本 + 测试），不含 fixture / 报告快照。

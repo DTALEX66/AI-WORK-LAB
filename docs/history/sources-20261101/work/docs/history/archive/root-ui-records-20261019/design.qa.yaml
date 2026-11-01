@@ -1,0 +1,107 @@
+# Design QA automation config for the design-review plugin suite.
+#
+# Why this file exists: `skills/design-md-review/scripts/audit-design-md.mjs` resolves its inputs from
+# `shared/lib/config.mjs`, which defaults `designMd` to `DESIGN.md` relative to this file's directory and
+# `outputDir` to `.design-qa`. Run without it, the lint reported `blocker: DESIGN.md is missing` while
+# pointing at `<repo>/DESIGN.md` — it was looking in the wrong place, not finding nothing. This file pins
+# both paths so the plugin reads the contract that actually exists.
+#
+# outputDir deliberately points inside `.project-local/artifacts/`: the boundary declaration
+# (`.project/governance/project-data-boundary.json`) requires every artefact this project produces to stay
+# inside the Git root and evidence to live under the declared evidence root, so the plugin's generated
+# `reports/ expected/ actual/ diff/` trees must not appear at the repository root.
+#
+# The node dependency `yaml`, which the plugin imports and does not ship, is resolved from
+# `.project-local/runs/node-libs/node_modules/yaml` through
+# `.project-local/runs/node-libs/yaml-resolve-hook.mjs`; nothing was installed into the plugin cache and
+# `apps/observer/frontend/package.json` is unchanged. Invoke as:
+#   node --no-warnings \
+#     --experimental-loader file:///<repo>/.project-local/runs/node-libs/yaml-resolve-hook.mjs \
+#     <plugin>/skills/design-md-review/scripts/audit-design-md.mjs --config design.qa.yaml
+
+project:
+  name: work-lab-observer
+  root: apps/observer/frontend          # informational; the plugin's normalized project block keeps
+                                        # name/baseUrl/outputDir/appCommand/appReady* only
+  outputDir: .project-local/artifacts/design-qa-20261008/automation
+  baseUrl: http://127.0.0.1:4173/
+  # The route is a tracked entry point, not a remembered command line: it resolves the Node runtime from
+  # the declared manager, binds preview to an explicit IPv4 address, and keeps cache/temp/profile inside
+  # `.project-local/`. See apps/observer/scripts/frontend_toolchain.py.
+  appCommand: python apps/observer/scripts/frontend_toolchain.py preview --window
+  appReadyUrl: http://127.0.0.1:4173/
+  buildCommand: python apps/observer/scripts/frontend_toolchain.py build
+
+# `shared/lib/config.mjs` reads these from a top-level `design:` block, NOT from `project:` -- measured:
+# with designMd/screenSpec placed under `project:` the normalizer silently kept its own defaults
+# (`DESIGN.md`, `SCREEN_SPEC.md`) and the lint reported "DESIGN.md is missing" against the repo root.
+design:
+  designMd: apps/observer/frontend/DESIGN.md
+  screenSpec: apps/observer/frontend/SCREEN_SPEC.md
+
+# Only screens with captured rendered evidence are listed.
+# `apps/observer/frontend/src/lib/viewRegistry.ts` registers 22 view ids;
+# the rest stay unlisted rather than being declared as covered by a name nobody has rendered.
+# `shared/lib/config.mjs` defaults `code.include` to `src/**`, `app/**`, `pages/**`, `components/**`
+# resolved against this file's directory. In a monorepo that matches nothing, and the consequence is the
+# worst kind of green: `audit-design-debt.mjs` and `audit-components.mjs` both returned
+# `scannedFileCount: 0, findings: 0` -- a clean verdict from an empty scope. The globs are therefore
+# pinned to the real source root, and a zero-file scan must be read as "did not run", never as "no debt".
+code:
+  include:
+    - apps/observer/frontend/src/**/*.{ts,tsx,css}
+  exclude:
+    - apps/observer/frontend/node_modules/**
+    - apps/observer/frontend/dist/**
+    - '**/*.test.ts'
+    - '**/*.test.tsx'
+
+screens:
+  - name: overview-offline-dark
+    url: /?view=evidence
+    viewport: { width: 1386, height: 807 }
+    theme: dark
+    state: degraded-offline
+    evidence:
+      - .project-local/artifacts/design-qa-20261008/00-initial-1400.png
+      - .project-local/artifacts/design-qa-20261008/live-state.json
+  - name: overview-offline-light
+    url: /?view=evidence
+    viewport: { width: 1386, height: 807 }
+    theme: light
+    state: degraded-offline
+    evidence:
+      - .project-local/artifacts/design-qa-20261008/02-after-theme-toggle.png
+      - .project-local/artifacts/design-qa-20261008/contrast-corrected.json
+
+# Widths actually swept on 2026-10-08. The contract's own bands are 1100 / 760 / <760; the sweep values
+# below are what was measured, and the 760 boundary is unproven because it was never sampled.
+viewports:
+  - { width: 1400, height: 807 }
+  - { width: 1100, height: 800 }
+  - { width: 900, height: 800 }
+  - { width: 700, height: 800 }
+  - { width: 560, height: 800 }
+  - { width: 430, height: 800 }
+
+knownDeviations:
+  # Recorded, not masked: these are the blockers in DESIGN.md `Known Gaps` and SCREEN_SPEC.md, and a QA
+  # run that reports zero findings while they stand would be a false pass.
+  - id: dead-rail-scroll
+    severity: blocker
+    where: "`.nav` overflow-y:auto never engages; 23 rendered nav buttons, 9 reachable at 807px"
+  - id: no-action-overflow
+    severity: major
+    where: "`.top-actions` flex-wrap:wrap, no 更多 control at any swept width"
+  - id: light-theme-contrast
+    severity: major
+    where: "3 of 52 text nodes fail AA in light (1.13:1 avatar, 3.74:1 sub-label, 4.43:1 chip); 0 in dark"
+  - id: type-floor
+    severity: major
+    where: "minimum rendered text 9px against the 12px floor"
+  - id: theme-not-persisted
+    severity: major
+    where: "localStorage empty after selecting light"
+  - id: geometry-gate-blind-to-vertical-reachability
+    severity: blocker
+    where: "scripts/audit/topbar_geometry_via_cdp.py printed 17/17 PASS over the clipped rail"

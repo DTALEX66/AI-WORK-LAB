@@ -1,0 +1,52 @@
+{
+  "note": "原计划子代理 E（MiniMax/ComfyUI Web 研究）因免费档 429 失败（507s），主线程接管完成。以下为主线程 live web 研究结论（2026-09-21）。",
+  "summary": "MiniMax Design = 官方桌面 Agent 创作平台（Win10+/macOS13+），无外部可编程协议披露 → 定位 ASSET_BRIDGE/创意交互层，不进控制链。H3 走 ComfyUI 官方原生路径成立（CONFIRMED_OFFICIAL，≥0.30.0）。推荐：DESIGN-LAB → ComfyUIAdapter → 本地 ComfyUI:8188 → H3；MiniMax Design 并列作为 H3 云 API 与创意资产桥。",
+  "minimax_design": {
+    "official_form": "CONFIRMED_OFFICIAL：本地多模态 AI 创作工作台/Agent 平台（design.minimaxi.com 官方文案：五步链路、画布、Skill、资产中心、本地文件读写、一键直连专业剪辑软件；Win10+/macOS13+ 桌面端，Microsoft Store 分发）",
+    "public_protocol": "UNCONFIRMED（机制未公开）：官网与官方渠道未披露任何外部可编程 API/SDK/插件协议；官方披露的外部触达面仅 IM 接入（微信/飞书扫码）与本地文件",
+    "arbitrary_comfyui_url": "UNCONFIRMED：官方博客（MiniMax Design 发布文，zcool 官号转载）『接入开源生态』段确认 MiniMax Design 可打开/运行 ComfyUI 工作流（云端或本地运行模式，Agent 可编辑节点与参数），OFweek 实测文确认『可导入自己的 ComfyUI 工作流』但作者未实测；是否支持用户自定义 base URL（127.0.0.1:8188 任意实例）官方未披露",
+    "ps_control_mechanism": "UNCONFIRMED/机制未公开：官方文案仅『一键直连专业剪辑软件』（指向剪辑类导出，非 PS 控制）；未发现任何 Photoshop 操作能力官方声明 → 不得推断 PS/Illustrator 可控"
+  },
+  "h3_comfyui": {
+    "official_path": "CONFIRMED_OFFICIAL：ComfyUI 官方教程 docs.comfy.org/tutorials/video/minimax/minimax-h3（2026-08-03 H3 开源当天原生支持合入 Comfy-Org/ComfyUI）；ComfyUI ≥0.30.0；官方模板 T2V/I2V/R2V（fl2va/ref2va 节点 MiniMaxH3ImageToVideo / MiniMaxH3ReferenceToVideo）+ 3 个 MiniMax 云 API 模板；模型文件托管 HuggingFace Comfy-Org/MiniMax-H3（bf16/INT8 convrot/pruned INT8 + Qwen3VL 文本编码器 + 视频/音频 VAE）",
+    "third_party_supply_chain_risk": "社区节点包（ComfyUI-MiniMax-H3-Image-Studio、ComfyUI-MiniMaxH3-Easy 等）为第三方实验包，供应链风险存在；官方路径无需任何第三方 custom node —— 推荐只走 Comfy-Org 官方原生节点",
+    "cloud_api": "CONFIRMED_OFFICIAL：MiniMax 平台 H3 视频生成 API = 异步 task 模型（POST {BASE}/v2/video_generation → task_id；GET {BASE}/v2/query/video_generation/{task_id} 轮询；多模态 content[] 结构 text/image_url/video_url/audio_url，role 标注 first_frame/last_frame/reference_*）；另有 H3-Context-IR 提示词增强任务"
+  },
+  "comfyui_api": [
+    {"endpoint": "POST /prompt", "status": "CONFIRMED_CODE (comfyanonymous/ComfyUI server.py 路由；Comfy-Org openapi.yaml 亦收录)", "semantics": "提交 workflow(JSON API 格式)，返回 prompt_id + number(队列序) + node_errors；node_errors 非空=验证失败永不入队"},
+    {"endpoint": "GET /prompt", "status": "CONFIRMED_CODE", "semantics": "当前队列状态（pending/running/total）"},
+    {"endpoint": "GET/POST /queue", "status": "CONFIRMED_CODE", "semantics": "GET 读 running+pending；POST {clear:true}|{delete:[id]} 清队列"},
+    {"endpoint": "GET /history, GET /history/{prompt_id}", "status": "CONFIRMED_CODE", "semantics": "完成作业历史；outputs 文件清单；POST 清历史/删单条"},
+    {"endpoint": "GET /view?filename=&subfolder=&type=", "status": "CONFIRMED_CODE", "semantics": "读 output/input/temp 文件字节（图片/视频下载）"},
+    {"endpoint": "GET /system_stats", "status": "CONFIRMED_CODE", "semantics": "Python 版本/CUDA/VRAM/设备信息"},
+    {"endpoint": "GET /object_info, /object_info/{class_type}", "status": "CONFIRMED_CODE", "semantics": "全节点目录/单节点 schema（含 custom node 声明的 input spec）"},
+    {"endpoint": "POST /upload/image (multipart: image + subfolder + type + overwrite)", "status": "CONFIRMED_CODE", "semantics": "上传 input 目录（asset bridge 入向）；另有 /upload/mask"},
+    {"endpoint": "POST /interrupt", "status": "CONFIRMED_CODE", "semantics": "打断当前 running prompt"},
+    {"endpoint": "POST /free", "status": "CONFIRMED_CODE", "semantics": "释放显存 unload_models/evict_models"},
+    {"endpoint": "GET /embeddings /extensions /models/{type}", "status": "CONFIRMED_CODE", "semantics": "资源清单 introspection"},
+    {"endpoint": "/ws?clientId=", "status": "CONFIRMED_CODE", "semantics": "WebSocket 推送 status/executing/executed/execution_error + 二进制预览帧；queue+poll(GET /history/{prompt_id}) 为最稳生产模式（无需长连接）"},
+    {"endpoint": "稳定性承诺", "status": "INFERRED", "semantics": "ComfyUI 官方未发正式 API 稳定版本承诺（openapi.yaml 在 Comfy-Org 仓库为 1.0.0 描述性文档）；端点集近两年事实稳定，但集成应做版本探测（GET /system_stats + /object_info 探活）而非硬编码假设"}
+  ],
+  "recommended_architecture": {
+    "control_plane": "DESIGN-LAB（State/Evidence/Adapter 编排）",
+    "minimax_role": "ASSET_BRIDGE + Creative UX（官方稳定接口缺失，不进核心执行链；云 H3 API 可经 MiniMaxProvider 适配，但控制面保持 DESIGN-LAB）",
+    "comfyui_adapter": "DESIGN-LAB → ComfyUIAdapter(localhost:8188 可配 base_url) → 官方原生 H3 节点（fl2va/ref2va）→ 产物经 /view 回收 + 哈希入库 evidence；queue+poll 模式优先于 ws 长连接",
+    "confidence": "H3 官方路径=CONFIRMED_OFFICIAL；ComfyUI 端点=CONFIRMED_CODE；MiniMax Design 外部协议=UNCONFIRMED（机制未公开）",
+    "caveats": [
+      "H3 本地权重 19.5-27GB 级（diffusion+text encoder+VAE），需 Windows GPU 实测（owner-gated，不计纯 CI）",
+      "第三方 H3 ComfyUI 节点包有供应链风险，只用 Comfy-Org 官方原生节点",
+      "MiniMax Design 若未来披露稳定协议再评估进控制链；当前任何『经 MiniMax 中转控 ComfyUI』设计=undocumented coupling，违反路线原则",
+      "ComfyUI API 无版本承诺 → adapter 带版本探测 + fail-closed"
+    ]
+  },
+  "evidence_refs": [
+    "https://docs.comfy.org/tutorials/video/minimax/minimax-h3 (CONFIRMED_OFFICIAL)",
+    "https://docs.comfy.org/zh/tutorials/video/minimax/minimax-h3",
+    "https://www.runflow.io/blog/comfyui-api-endpoints (社区2026参考, 佐证)",
+    "https://github.com/Comfy-Org/ComfyUI openapi.yaml (CONFIRMED_CODE)",
+    "https://design.minimaxi.com/ (CONFIRMED_OFFICIAL 产品形态)",
+    "https://www.zcool.com.cn/article/ZMTgxMzAwNA==.html (MiniMax Design 官方博客转载: 接入开源生态 ComfyUI 段)",
+    "https://cloud.ofweek.com/news/2026-08/ART-178802-8330-30699796.html (第三方实测: 可导入自有 ComfyUI 工作流, 未实测 base URL)",
+    "https://platform.minimaxi.com/docs/guides/video-generation (H3 云 API 官方文档)"
+  ]
+}

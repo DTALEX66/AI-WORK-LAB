@@ -1,0 +1,35 @@
+workbench(style): add the unscoped .seg segmented control B07 maps Tabs to
+
+B10 defines the segmented control only inside `.toolbar`, so the class is
+unusable anywhere else -- but B07's component-registry maps `Tabs` onto `.seg`,
+and all 46 registered components declare four states (default / hover / focus /
+disabled) while B10's toolbar rule declares only default and active.
+
+- copy B10's `.toolbar .seg*` literals verbatim as unscoped `.seg*`
+- add the two states B07 declares but B10 never expressed: hover (120ms,
+  `--motion-fast`) and focus (2px ring, 2px offset), plus `:disabled`
+- no new tokens, no new dependency, no B10 restyle
+
+Leak containment: `.seg button`(0,1,1) also matches inside the toolbar, and the
+only property it declares that B10's `.toolbar .seg button`(0,2,1) does not is
+`transition` -- so the 120ms hover timing leaked into B10's control, which was
+instant before (measured none -> 0.12s). `.toolbar .seg button{transition:none}`
+restores the pre-existing value explicitly.
+
+Evidence: `.project-local/task-artifacts/external-recovery-2026-09-27/w02-verify-seg.mjs`,
+19/19 PASS under the served CSP. An 18-property computed-style diff of unscoped
+`.seg*` against `.toolbar .seg*` shows zero divergence for the wrap and only
+`transition` for button/active -- i.e. every property B10 declares (border,
+background, color, padding, border-radius) is provably untouched. Local gates:
+workbench smoke (4/4) + appshell regression both pass.
+
+Harness corrections found while verifying (tooling defects, NOT product defects;
+both recorded in the probe):
+1. The focus probe called getComputedStyle in the same task as focus(), so it
+   read the transition START state -- pre-focus `outline-width` is the initial
+   `medium` (3px) and offset 0px -- which looked like the legacy
+   `button:focus-visible` rule had won. After settling it is
+   `2px solid rgb(49,108,255)` = `--color-primary`, i.e. the intended rule does
+   win on specificity (0,2,1) vs (0,1,1). Third occurrence of this bug class.
+2. A literal `rgba(0, 0, 0, 0)` background assertion was a misread of the wrap
+   row in the dump and produced a false FAIL; replaced by an identity assertion.

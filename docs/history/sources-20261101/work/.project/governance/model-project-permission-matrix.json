@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "work-lab/model-project-permission-matrix/v1",
+  "title": "WORK-LAB local-model project permission matrix — which project may call which logical provider",
+  "purpose": "Expresses brief section 10: a physical model is registered once by WORK-LAB and exposed to projects as a logical provider. ArcheAxis gets the full local AI base; WORK-LAB and DESIGN-LAB share only the common capabilities they actually need.",
+  "precedence": "WORK-LAB-AUTHORITY.md > .project/governance/project-authority-index.json > .project/governance/three-project-boundary.json > this file.",
+  "principle": "Physical Model -> Runtime -> Provider -> Capability -> Project Permission",
+  "projects": {
+    "ArcheAxis-Knowledge-OS": {
+      "role": "The only project with a complete local AI base requirement.",
+      "owns": ["knowledge truth", "embedding vectors and indexes", "RAG corpus", "OCR/ASR ingestion outputs", "candidate/evidence semantics"],
+      "does_not_own": ["model runtime governance", "model weights", "provider registry", "runtime lifecycle"],
+      "usage_contract": "Consumes versioned Capability/Provider contracts only; never a file path, GGUF name or runtime executable."
+    },
+    "WORK-LAB": {
+      "role": "Model control plane: discovery, registry, capability profile, provider config, local endpoints, runtime lifecycle, health, GPU/RAM state, context config, concurrency, task routing, benchmark, usage, latency, failure/restart/fallback, model version + file hash, license metadata, three-project sharing.",
+      "owns": ["model-registry.json", "runtime-registry.json", "provider-registry.json", "capability matrix", "this permission matrix", "benchmark/health evidence"],
+      "does_not_own": ["ArcheAxis knowledge data", "embedding database", "ArcheAxis RAG data", "DESIGN-LAB design knowledge", "model weight copies outside the shared library"],
+      "observer_rule": "apps/observer stays strictly read-only."
+    },
+    "DESIGN-LAB": {
+      "role": "Design domain. Does NOT build a local model base.",
+      "allowed": ["call already-registered common providers on demand"],
+      "forbidden": ["duplicating a model weight because it needs a capability", "own model registry", "own runtime"],
+      "notes": "ComfyUI/ visual weights already live in the shared library and are DESIGN-LAB-owned read-only territory for WORK-LAB; text/vision needs route through local.fast.default / local.deep.default."
+    }
+  },
+  "permissions": [
+    {"provider": "local.fast.default", "model": "qwen3.5-4b", "ArcheAxis-Knowledge-OS": "ALLOW", "WORK-LAB": "ALLOW", "DESIGN-LAB": "ALLOW", "tier": "shared-common"},
+    {"provider": "local.deep.default", "model": "qwen3.8-27b-ud-iq4_xs", "ArcheAxis-Knowledge-OS": "ALLOW", "WORK-LAB": "ALLOW", "DESIGN-LAB": "ALLOW", "tier": "shared-common"},
+    {"provider": "local.embedding.default", "model": "qwen3-embedding-0.6b", "ArcheAxis-Knowledge-OS": "ALLOW", "WORK-LAB": "DENY_BY_DEFAULT", "DESIGN-LAB": "DENY_BY_DEFAULT", "tier": "archeaxis-first"},
+    {"provider": "local.reranker.default", "model": "qwen3-reranker-0.6b", "ArcheAxis-Knowledge-OS": "ALLOW", "WORK-LAB": "DENY_BY_DEFAULT", "DESIGN-LAB": "DENY_BY_DEFAULT", "tier": "archeaxis-first"},
+    {"provider": "local.ocr.default", "model": "qwen2.5vl-7b", "ArcheAxis-Knowledge-OS": "ALLOW", "WORK-LAB": "DENY_BY_DEFAULT", "DESIGN-LAB": "DENY_BY_DEFAULT", "tier": "archeaxis-first", "note": "DESIGN-LAB visual work uses its own ComfyUI chain, not this OCR provider"},
+    {"provider": "local.asr.default", "model": "faster-whisper-large-v3-turbo", "ArcheAxis-Knowledge-OS": "ALLOW", "WORK-LAB": "DENY_BY_DEFAULT", "DESIGN-LAB": "DENY_BY_DEFAULT", "tier": "archeaxis-first"},
+    {"provider": "local.asr.cpu.sensevoice", "model": "sherpa-onnx-sense-voice", "ArcheAxis-Knowledge-OS": "ALLOW", "WORK-LAB": "DENY_BY_DEFAULT", "DESIGN-LAB": "DENY_BY_DEFAULT", "tier": "archeaxis-alternate"},
+    {"provider": "local.fast.legacy", "model": "qwen3-8b", "ArcheAxis-Knowledge-OS": "DENY_BY_DEFAULT", "WORK-LAB": "ALLOW", "DESIGN-LAB": "DENY_BY_DEFAULT", "tier": "standby"},
+    {"provider": "local.code.default", "model": "qwen3-coder-30b-a3b", "ArcheAxis-Knowledge-OS": "DENY_BY_DEFAULT", "WORK-LAB": "ALLOW", "DESIGN-LAB": "DENY_BY_DEFAULT", "tier": "worklab-only"}
+  ],
+  "antiPatterns": [
+    "A project starting its own llama.cpp/Ollama instance for the same model",
+    "A project storing a second copy of a weight file",
+    "A project hard-coding a GGUF name, quantization, or absolute path",
+    "Exposing the whole ArcheAxis ingestion pipeline to every project by default",
+    "Adding a second active provider for a capability without a golden-test failure"
+  ],
+  "escalation": "A project needing an archeaxis-first provider declares a concrete task; WORK-LAB flips that provider to ALLOW for that project and records the reason here.",
+  "lastVerified": "2026-09-28"
+}

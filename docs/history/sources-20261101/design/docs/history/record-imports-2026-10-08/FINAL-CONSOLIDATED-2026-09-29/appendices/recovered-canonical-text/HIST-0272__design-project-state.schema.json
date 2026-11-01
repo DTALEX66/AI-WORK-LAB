@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/design-project-state.json",
+  "title": "Commercial Design Project State",
+  "type": "object",
+  "required": [
+    "project_id",
+    "stage",
+    "decisions",
+    "artifacts"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "stage": {
+      "enum": [
+        "intake",
+        "research",
+        "strategy",
+        "directions",
+        "system",
+        "generation",
+        "critique",
+        "preflight",
+        "handoff",
+        "approved"
+      ]
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "decision",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "proposed",
+              "approved",
+              "rejected",
+              "superseded"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "type",
+          "status"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "review",
+              "approved",
+              "superseded"
+            ]
+          },
+          "hash": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "active_design_system": {
+      "type": "string"
+    },
+    "active_direction": {
+      "type": "string"
+    },
+    "iteration": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": true
+}

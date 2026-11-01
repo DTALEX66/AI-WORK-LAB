@@ -1,0 +1,150 @@
+schema_version: workflow/project-profile/v1
+project:
+  id: work-lab
+  root_policy: discover_git_root
+  windows_native_first: true
+configuration:
+  precedence:
+    - global_defaults
+    - project_profile
+    - local_runtime
+    - environment
+    - cli
+modules:
+  workflow:
+    # P2-04 (2026-10-08): services/ and integrations/ are active supporting surfaces of the same owner
+    # (AGENTS.md scope; module-ownership keeps exactly two module ROOTS). Before this they were "unknown"
+    # to the planner, so any change under them escalated to every CI job — and an unknown surface is also
+    # the case where a classifier can silently select nothing. Naming the root makes the workflow job the
+    # precise requirement, because that job runs the whole local governance batch these surfaces are
+    # tested by. Gate ids are deliberately NOT added here: scripts/ci/aggregate_gate.py requires the
+    # profile's gate set to equal its PLAN_GATES, so a new gate id would reject every plan.
+    roots:
+      - packages/client-neutral-core
+      - services
+      - integrations
+    depends_on: []
+    active: true
+  observer:
+    roots:
+      - apps/observer
+    depends_on:
+      - workflow
+    observation_only: true
+    active: true
+risk_zones:
+  critical:
+    - .github/**
+    - .project/governance/**
+    - scripts/ci/**
+    - config/**
+    - packages/contracts/schemas/**
+gates:
+  workflow:
+    command: python services/orchestration/run_quality_gate.py governance
+    # W07: the CI job this gate corresponds to, by job ID (not by its display `name:`).
+    ci_job: workflow
+    # A schema change is consumed by generated types and by code that reads them, so it runs the job
+    # that owns the governance batch — not only the aggregate/catalog check.
+    paths:
+      - packages/contracts/
+    tiers:
+      - module
+      - full
+      - release
+    platform: discovered
+  observer:
+    command: python apps/observer/scripts/verify_observer_skeleton.py
+    # W07: the CI job this gate corresponds to, by job ID (not by its display `name:`).
+    ci_job: observer
+    tiers:
+      - module
+      - full
+      - release
+    platform: discovered
+  integration:
+    command: python tests/ci/test_governance_gate.py
+    # W07: the CI job this gate corresponds to, by job ID (not by its display `name:`).
+    ci_job: integration
+    paths:
+      - packages/contracts/
+    tiers:
+      - full
+      - release
+    platform: discovered
+  token-monitor:
+    command: npm ci && npm run build && cargo test --locked && cargo check --locked
+    # W07: the CI job this gate corresponds to, by job ID (not by its display `name:`).
+    ci_job: token-monitor
+    paths:
+      - apps/token-monitor/**
+    tiers:
+      - module
+      - full
+      - release
+    platform: windows
+  supply-chain-security:
+    command: python scripts/ci/verify_supply_chain_tools.py
+    # W07: the CI job this gate corresponds to, by job ID (not by its display `name:`).
+    ci_job: supply-chain-security
+    tiers:
+      - full
+      - release
+    platform: discovered
+ci:
+  workflow_file: .github/workflows/work-lab-gate.yml
+  workflow_name: work-lab-gate
+  stable_aggregate_check: aggregate
+  stable_aggregate_job: aggregate
+  # W07 (2026-10-17): the mapping between the CI jobs and the local gates, written down so it can be
+  # checked. `verify_gate_ci_job_mapping.py` enforces both directions: every job in either workflow is either
+  # claimed by a gate, or declared here with a reason, and every gate names a job that exists.
+  #
+  # `structural_jobs` are not product checks: `plan` computes the plan and `aggregate` IS the CI verdict, so
+  # neither has (or should have) a local product-gate counterpart.
+  structural_jobs:
+    plan: "computes the gate plan from changed paths; there is no product check to run locally"
+    aggregate: "compares the required jobs against the plan; it is the CI verdict itself, not a gate"
+    wlr060-aggregate: "the aggregate of the wlr-060 workflow's own jobs; same reasoning as `aggregate` -- it is that workflow's verdict, not a product check"
+  # `additional_required_jobs` are required CI jobs with no profile gate. `local_route` names the command a
+  # writer can run here; `local_route: null` is an honest declaration of a CI-only check, not an omission --
+  # it is the value W07 asks to be visible instead of implied.
+  additional_required_jobs:
+    schema-fixtures:
+      local_route: "python scripts/ci/verify_contract_ssot.py"
+      note: "the CI job json-parses every schema; the SSOT check reads the same files and also proves they are declared"
+    observer-readonly:
+      local_route: "python scripts/ci/verify_observer_readonly.py"
+      note: "same script, same working directory as the job"
+    config-compiler:
+      local_route: "python tests/ci/test_config_compiler_conforms_to_its_contract.py"
+      note: "the job drives create/plan/approve on a temp fixture; the local test pins the contract it must satisfy"
+    capsule-verify:
+      local_route: null
+      note: "CI-only: the job's export/verify/redact round-trip and its two negative controls have no local test module. Declared rather than implied so the gap is visible."
+  # CL-14 (2026-10-25): the fifth direction. `run_quality_gate.py verify` performs VERIFY_ORDER -- 50 stages --
+  # and the workflows previously invoked 23 of them by name while the other 27 were mentioned nowhere, so the
+  # reader could not tell an intentional local-only stage from an accidental omission. 25 of the 27 are now
+  # invoked in the `workflow` job (each was run on this branch first and each prints counts, not silence). The
+  # two left here are the ones CI genuinely cannot judge, and saying which is the point.
+  stage_coverage:
+    observer-frontend-contracts:
+      status: covered_by_ci_step
+      covered_by: observer
+      reason: "the stage drives two suites and the `observer` job now runs both on the bundle it builds: vitest through the `observer-frontend-test` group (`npm run test`) and the JS static-contract suite through its own step (`node tests/run_all_tests.js`, added 2026-10-25 because until then no workflow invoked that file at all). Invoking the wrapper in this Python job instead would re-measure bytes this job never builds and would need a Node runtime a second time."
+    exact-sha-ci:
+      status: is_ci_verdict_itself
+      reason: "the stage's subject is the exact-SHA Actions evidence, which does not exist until the run that would check it has finished; locally it can only print PENDING. It becomes a real judgement only with WLGM_EXACT_SHA_CI_REQUIRED=1 against a completed run, and the `aggregate` job is what reads that evidence, so this is the CI verdict rather than a product check."
+  exact_sha_required_for:
+    - critical
+    - release
+  outage_blocks:
+    - schema-migration
+    - external-write
+    - release
+  watcher_policy:
+    base_delay_seconds: 6
+    max_delay_seconds: 120
+    observation_window_seconds: 1200
+    queue_stall_seconds: 600
+    retry_budget: 1

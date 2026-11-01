@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "work-lab/model-benchmark/v1",
+  "title": "WORK-LAB local model benchmark — measured on this machine, 2026-09-28",
+  "machine": {
+    "cpu": "Intel Core i5-14600KF (14 cores / 20 threads)",
+    "ram_gb": 63.8,
+    "gpu": "NVIDIA GeForce RTX 5060, 8151 MiB VRAM, driver 595.97, compute capability 12.0",
+    "gpu_used_at_test_time_mib": 6785,
+    "gpu_free_at_test_time_mib": 1111,
+    "os_build": "Windows (C: 241.6 GB free, D: 129.5 GB free at start)",
+    "note": "Only ~1.1 GiB of VRAM was free because the desktop session holds ~6.8 GiB. That single fact dominates every number below."
+  },
+  "harness": {
+    "deep_bench": "llama-bench.exe (llama.cpp b11221) via bench_deep.py / bench_deep2.py",
+    "deep_serving": "llama-server.exe + OpenAI-compatible /v1/chat/completions via deep_serving.py / deep_usability.py",
+    "fast_serving": "llama-server.exe (--ngl 99 -t 14) via e2e_pipeline.py",
+    "ollama": "Ollama 0.34.3 /api/chat and /api/embed",
+    "evidence_files": [
+      "bench-deep.json", "bench-deep-round2.json", "deep-serving.json",
+      "deep-usability.json", "inference-probe.json", "e2e-results.json", "fast-ab.log"
+    ]
+  },
+  "deep_model": {
+    "id": "qwen3.8-27b-ud-iq4_xs",
+    "file_bytes": 14252845984,
+    "cold_start_seconds_to_health": {"ngl8_ctx8192": 21.6, "ngl8_ctx16384": 9.5, "note": "second value is a warm OS page cache"},
+    "throughput": [
+      {"config": "ngl=0 t=8 ctx=4096",  "prompt_tok_per_s": 11.91, "gen_tok_per_s": 1.34},
+      {"config": "ngl=4 t=8 ctx=4096",  "prompt_tok_per_s": 12.57, "gen_tok_per_s": 1.42},
+      {"config": "ngl=6 t=8 ctx=4096",  "prompt_tok_per_s": 12.60, "gen_tok_per_s": 1.47},
+      {"config": "ngl=8 t=8 ctx=4096",  "prompt_tok_per_s": 12.16, "gen_tok_per_s": 1.29},
+      {"config": "ngl=0 t=14 ctx=4096", "prompt_tok_per_s": 12.33, "gen_tok_per_s": 0.75},
+      {"config": "ngl=0 t=14 p=1024",   "prompt_tok_per_s": 14.54, "gen_tok_per_s": 1.32},
+      {"config": "ngl=8 t=14 p=1024",   "prompt_tok_per_s": 14.12, "gen_tok_per_s": 1.46},
+      {"config": "ngl=8 t=14 ctx=8192 server", "prompt_tok_per_s": 10.68, "gen_tok_per_s": 1.97}
+    ],
+    "offload_finding": "GPU offload of 8 of ~64 layers buys only ~+10% generation and no prompt-processing gain, because only 1.1 GiB of VRAM is free. The model is effectively CPU-bound on this machine while the desktop holds the GPU.",
+    "thinking_mode_finding": "Qwen3.8 is a reasoning model: with thinking enabled the token budget is consumed by reasoning_content and visible content stays empty. chat_template_kwargs {enable_thinking:false} (or /no_think) must be set by the caller; measured reasoning_chars=0 and a complete answer once disabled.",
+    "real_answer_sample": "1. 降低存储成本与硬件压力… 2. 简化版本管理与一致性… 3. 提升部署与更新效率…",
+    "recommended_serve_command": "llama-server.exe -m <gguf> -ngl 8 -c 16384 -t 14 --host 127.0.0.1 --port 8080"
+  },
+  "fast_model": {
+    "id": "qwen3.5-4b",
+    "file_bytes": 2740937888,
+    "served_config": "llama-server --ngl 99 -t 14 -c 8192 (port 8081)",
+    "measured": [
+      {"metric": "prompt_tok_per_s (cold 15 tok)", "value": 26.48},
+      {"metric": "generation_tok_per_s (32 tok)", "value": 1.51, "note": "cold, first request, CPU fallback because only 1.1 GiB VRAM was free"},
+      {"metric": "generation_tok_per_s (warm, E2E A6)", "value": 8.04, "prompt_tokens": 312, "completion_tokens": 30, "seconds": 3.85},
+      {"metric": "generation_tok_per_s (warm, D round trip)", "value": null, "seconds": 15.79, "note": "longer answer, same server"}
+    ],
+    "thinking_mode_finding": "Qwen3.5 is also a reasoning model; without enable_thinking:false the visible content is empty (finish_reason=length). Set it explicitly.",
+    "quality_sample_zh": "Reranker 的作用是显著减少把大量低相关 chunk 塞给大模型，从而降低 context token、推理时间与本地模型负载。"
+  },
+  "alternates_and_controls": {
+    "qwen3-coder-30b-a3b-q4_K_M (Ollama, MoE 3B active)": {"gen_tok_per_s": 7.81, "seconds": 46.05, "quality": "3-point Chinese answer, comparable substance to DEEP", "note": "3.9x faster than the dense 27B on this hardware"},
+    "qwen3-8b (Ollama) think=false": {"gen_tok_per_s": 4.63, "seconds": 37.4, "quality": "correct 3-point Chinese answer"},
+    "qwen3-8b (Ollama) think=default": {"gen_tok_per_s": 4.20, "visible_content": "empty (reasoning consumed the budget)"},
+    "qwen3-embedding-0.6b (Ollama)": {"dim": 1024, "throughput_cold_chunks_per_s": 0.71, "throughput_warm_chunks_per_s": 17.86, "note": "6 chunks; warm number is after the model is resident"},
+    "qwen3-reranker-0.6b (llama.cpp --rerank --pooling rank)": {"latency_s": 1.77, "score_spread": 0.9996, "scores": [1.0, 0.7362, 0.6036, 0.0006, 0.0004], "verdict": "discriminative and usable"},
+    "faster-whisper-large-v3-turbo (CPU int8)": {"model_load_s": 4.2, "transcribe_s": 6.7, "audio_s": 4.49, "real_time_factor": 1.5, "transcript_exact": true},
+    "qwen2.5vl-7b OCR": {"seconds": 61.68, "english": "all matched", "chinese": "all 6 phrases matched, including 只保存一份 and 关注度：高"}
+  },
+  "robustness": {
+    "concurrent_2_requests": {"per_request_seconds": [27.38, 27.38], "per_request_tok_per_s": [1.415, 1.415], "verdict": "requests queue; a single CPU-bound model does not gain throughput"},
+    "restart_recovery": {"seconds_to_health": 9.5, "served_again": true},
+    "over_context_request": {"http_status": 400, "error_type": "exceed_context_size_error", "detail": "request (40052 tokens) exceeds the available context size (8192 tokens)", "verdict": "fail-closed with a structured error; no crash, no silent truncation"},
+    "oom": "No CUDA OOM observed: with only 1.1 GiB free the runtime fell back to CPU instead of over-committing VRAM. A true OOM was not reproducible without an app holding the GPU."
+  },
+  "headline": {
+    "archeaxis_full_pipeline_with_FAST": "usable",
+    "deep_dense_27b_on_this_box": "runs correctly at ~2.5 tok/s; usable for batch/long-form work, slow for interactive chat",
+    "fastest_local_30b_class_option": "qwen3-coder:30b-a3b at 7.81 tok/s (already installed)",
+    "gpu_free_retest": "After the desktop's GPU footprint was released (VRAM used 6.8 -> 2.0 GiB, free 1.1 -> 5.9 GiB): DEEP ngl=32 reaches 20.10 prompt / 2.52 gen tok/s and FAST ngl=99 reaches 114.20 prompt / 10.81 gen tok/s."
+  },
+  "gpu_free_retest": {
+    "context": "User closed the programs that were holding the GPU; re-measured 2026-09-28.",
+    "gpu_state_before_retest": "total 8151 MiB, used 2009 MiB, free 5887 MiB",
+    "measurements": [
+      {"config": "deep ngl=16 t=14 p=512 g=48", "prompt_tok_per_s": 19.92, "gen_tok_per_s": 2.38},
+      {"config": "deep ngl=24 t=14 p=512 g=48", "prompt_tok_per_s": 19.89, "gen_tok_per_s": 2.49},
+      {"config": "deep ngl=32 t=14 p=512 g=48", "prompt_tok_per_s": 20.10, "gen_tok_per_s": 2.52},
+      {"config": "fast ngl=99 t=14 p=512 g=128", "prompt_tok_per_s": 114.20, "gen_tok_per_s": 10.81}
+    ],
+    "analysis": "Freeing the GPU lifted DEEP generation 1.32 -> 2.52 tok/s (+91%) and prompt processing 14.54 -> 20.10 (+38%), and it is flat from ngl 16 to 32 (diminishing returns: ~222 MB of weights per layer, only about a third of the model fits in 8 GiB). The dense 27B is therefore memory-bandwidth bound on 64 GB DDR4-3600: its 13.27 GB at roughly 38 GB/s gives a ceiling near 2.7 tok/s, and 2.52 is about 93% of that. FAST, which genuinely fits in the card, went 8.04 -> 10.81 gen tok/s with 114.20 prompt tok/s.",
+    "headroom": "DEEP cannot get materially faster on this machine without a smaller quant or a larger GPU; the effective lever would be a model that fits entirely in 8 GiB (roughly an 8B class). FAST is now comfortably interactive."
+  },
+  "lastVerified": "2026-09-28"
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "work-lab/archeaxis-local-ai-pipeline-matrix/v1",
+  "title": "ArcheAxis-Knowledge-OS local AI pipeline matrix — the 14 declared needs mapped to a real provider and a real test",
+  "precedence": "WORK-LAB-AUTHORITY.md > project-authority-index.json > three-project-boundary.json > this file.",
+  "ownership_rule": "ArcheAxis owns knowledge/embedding/RAG truth and its data. WORK-LAB owns the model runtime, registry and governance. ArcheAxis never owns model runtime governance and never sees a file path.",
+  "requirementMatrix": [
+    {"#": 1, "need": "通用语言理解", "provider": "local.fast.default / local.deep.default", "status": "PASS", "evidence": "FAST produced a correct Chinese answer over retrieved context; DEEP produced a correct 3-point Chinese answer"},
+    {"#": 2, "need": "本地 reasoning", "provider": "local.deep.default", "status": "PASS", "evidence": "27B real generation, 1.97 tok/s, complete answer with enable_thinking=false"},
+    {"#": 3, "need": "长文档处理", "provider": "local.deep.default", "status": "PARTIAL", "evidence": "context 16384 verified serving; 40052-token request correctly rejected with exceed_context_size_error at c=8192; a full long-document run was not executed (2 tok/s makes it a batch job)"},
+    {"#": 4, "need": "知识抽取", "provider": "local.fast.default", "status": "PASS", "evidence": "E2E A6 answered a factual query strictly from the retrieved chunks"},
+    {"#": 5, "need": "Embedding", "provider": "local.embedding.default", "status": "PASS", "evidence": "1024-dim vectors; top retrieval score 0.6718 on the correct chunk"},
+    {"#": 6, "need": "Reranking", "provider": "local.reranker.default", "status": "PASS", "evidence": "score spread 0.9996 (1.0 / 0.7362 / 0.6036 / 0.0006 / 0.0004), 1.77s for 5 candidates"},
+    {"#": 7, "need": "OCR", "provider": "local.ocr.default", "status": "PASS", "evidence": "zh+en mixed PNG page: all English lines and all 6 Chinese probes matched, 61.7s"},
+    {"#": 8, "need": "ASR", "provider": "local.asr.default", "status": "PASS", "evidence": "real Chinese WAV 4.49s transcribed exactly, RTF 1.5, CPU int8"},
+    {"#": 9, "need": "RAG / Retrieval 全链路", "provider": "embedding -> reranker -> fast/deep", "status": "PASS", "evidence": "document ingest -> chunk -> embed -> retrieve -> rerank -> context -> answer, plus a second independent query round trip"},
+    {"#": 10, "need": "AI Knowledge Candidate 生成", "provider": "local.fast.default / local.deep.default", "status": "PARTIAL", "evidence": "the candidate CONTENT generation is proven; writing candidates into ArcheAxis storage is ArcheAxis-side work and was not executed here"},
+    {"#": 11, "need": "人类学习辅助", "provider": "local.fast.default / local.deep.default", "status": "PARTIAL", "evidence": "answer generation works; no study-material workflow was built"},
+    {"#": 12, "need": "Machine Competence Candidate", "provider": "local.deep.default", "status": "PARTIAL", "evidence": "reasoning output available; the competence-candidate contract is ArcheAxis-side"},
+    {"#": 13, "need": "离线/断网基础运行", "provider": "all local providers", "status": "PASS", "evidence": "every model ran from local files; no cloud endpoint was used for any inference; downloads only ever hit the shared library"},
+    {"#": 14, "need": "本地 Pipeline E2E 测试", "provider": "whole chain", "status": "PASS", "evidence": "e2e_pipeline.py 11/11 PASS with real models and real fixtures (md/txt/pdf/png/wav)"}
+  ],
+  "pipeline": {
+    "documentPath": "PDF/TXT/MD -> parse -> chunk -> embedding -> vector retrieval -> rerank -> FAST/DEEP -> candidate -> evidence/provenance",
+    "imagePath": "PNG -> OCR (vision) -> text -> evidence candidate",
+    "audioPath": "WAV -> ASR -> transcript -> evidence candidate",
+    "retrievalPath": "query -> embedding -> vector search -> reranker -> context -> FAST/DEEP -> answer"
+  },
+  "provenance": {
+    "required_fields": ["source_files", "chunk_index", "source", "embedding_model", "rerank_model", "generation_model", "query"],
+    "verified": true,
+    "evidence_file": ".project-local/runs/model-governance-20260928/e2e-results.json -> provenance"
+  },
+  "notProvenInThisRound": [
+    "long-document (multi-hundred-page) end-to-end run",
+    "candidate persistence into ArcheAxis storage",
+    "human-learning workflow",
+    "machine-competence candidate contract",
+    "PDF with real embedded CJK glyphs (the fixture stores the Chinese title as UTF-16BE hex because no CJK font could be embedded offline)"
+  ],
+  "lastVerified": "2026-09-28"
+}

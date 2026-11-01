@@ -1,0 +1,31 @@
+fix(design-layer): correctness + Reference integration for the vertical slice
+
+P0 correctness (Batch A):
+- P0-01: choose_direction() now atomically un-chosen other directions in the
+  same brief within one transaction (was: could leave multiple chosen=1).
+- P0-02: get_design_layer() returns chosen_direction=null unless a real
+  chosen=1 direction exists (was: fell back to the latest direction).
+- P0-03: bind_design_system() fails closed with DIRECTION_NOT_CHOSEN(400)
+  when the target direction is not chosen (was: validated existence only).
+- P0-04: Brief.constraints is now stored as the raw JSON string and read
+  back as string|null (was: double-serialized to an object -> [object
+  Object] in the Workbench).
+- P0-05: create_brief() verifies every reference_asset_id against the real
+  asset table in the same guarded connection — shape (img-<64hex>),
+  existence, project ownership, order-preserving dedupe. Malformed ids are
+  rejected before hashing; cross-project / missing assets fail closed with
+  REFERENCE_ASSET_NOT_FOUND / REFERENCE_ASSET_PROJECT_MISMATCH.
+- P0-07: the design-system catalog is resolved packaged-first through
+  importlib.resources (wheel) with a source-checkout fallback; design-lab/
+  design-systems is now force-included into the wheel + sdist.
+
+Workbench (Batch B): a real Reference picker in the design panel — the
+created brief carries the selected imported-asset ids instead of an empty
+list; brief readback shows the reference count.
+
+Tests: 15 design-layer contract/regression tests covering the multiple-
+choice invariant, no-choice null, bind-before-choice rejection, constraints
+round-trip, valid/cross-project/missing/malformed references, repeated
+choose/bind idempotency, and project isolation — verifying database final
+state, not just HTTP codes. Frontend typecheck (strict), Vite build, and
+the workbench unit smoke all pass.

@@ -1,0 +1,324 @@
+/* DESIGN-LAB Workbench — 权威视觉系统（UI套件 B04 Design Tokens + B07 data-theme 治理）
+   来源：UI套件/DESIGN-LAB 批次 B04 design tokens（#060A14 + Electric Blue #316CFF）
+   + B07 前端治理（theme values only via CSS variables; data-theme 隔离）。
+   视觉铁律：黑/深灰 + 白 + Electric Blue；紫色只进创意内容，不作系统主色。
+   本文件为 DESIGN-LAB 单产品 Workbench，:root 即 design_lab 主题挂载点。 */
+
+:root{
+  /* 主题：DESIGN-LAB（UI套件 B04/L4 权威 Tokens，B07 tokens.css 同值） */
+  color-scheme:dark;
+  --color-bg:#060A14;            /* 背景 深黑 */
+  --color-surface:#0D1221;      /* 面板 */
+  --color-surface-2:#11182A;    /* 输入/次级面板 */
+  --color-border:#213D66;       /* 边框 冷蓝灰 */
+  --color-primary:#316CFF;     /* Electric Blue 主色（action/focus/selection） */
+  --color-secondary:#4BAFFF;   /* 次级蓝 */
+  --color-text:#F5F7FC;        /* 文本 白/冷灰 */
+  --color-muted:#9AA3B8;       /* 次级文本 */
+  --color-success:#2FC58D;
+  --color-warning:#F4B942;
+  --color-error:#F05252;
+  --color-info:#4BAFFF;
+
+  /* 几何（B04 radius） */
+  --radius-md:8px;
+  --radius-lg:14px;
+
+  /* 动效（B04 motion，柔和克制） */
+  --motion-fast:120ms;
+  --motion-base:180ms;
+  --motion-slow:280ms;
+  --motion-emphasis:420ms;
+
+  /* Workbench 内部语义别名（旧变量名保留，值重指到权威色） */
+  --ink:var(--color-text);
+  --muted:var(--color-muted);
+  --line:var(--color-border);
+  --accent:var(--color-primary);
+  --accent-hover:#2558DB;
+  --paper:var(--color-bg);
+  --surface:var(--color-surface);
+  --surface-2:var(--color-surface-2);
+  --glow:0 0 14px rgba(49,108,255,.30);
+
+  font-family:system-ui,"Microsoft YaHei",sans-serif;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink)}
+
+header{
+  background:var(--surface);
+  color:var(--ink);
+  padding:30px max(28px,calc((100vw - 1240px)/2));
+  display:flex;align-items:center;gap:18px;
+  border-bottom:1px solid var(--line);
+}
+header h1{margin:2px 0;font-size:26px}
+.mark{
+  font-size:27px;font-weight:800;
+  border:1px solid var(--line);
+  color:var(--accent);
+  padding:13px;
+  text-shadow:0 0 10px rgba(49,108,255,.45);
+}
+header .badge{margin-left:auto}
+.eyebrow{font-size:10px;letter-spacing:2px;font-weight:750;margin:0 0 10px;color:var(--muted)}
+header .eyebrow{color:var(--muted)}
+
+main{max-width:1240px;margin:28px auto;padding:0 22px}
+.panel{
+  padding:26px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg);
+  margin-bottom:20px;
+  box-shadow:0 4px 18px rgba(0,0,0,.35);
+}
+.narrow{max-width:620px;margin:56px auto}
+h2{font-size:21px;margin:0 0 14px}
+p{line-height:1.65;color:var(--muted);font-size:13px}
+label{display:grid;gap:7px;font-size:12px;font-weight:650;color:var(--ink)}
+
+input,select,button{font:inherit;border-radius:var(--radius-md)}
+input,select{
+  padding:11px;border:1px solid var(--line);max-width:100%;
+  background:var(--surface-2);color:var(--ink);
+}
+input:focus,select:focus,button:focus-visible{
+  outline:3px solid var(--color-secondary);outline-offset:2px;
+}
+button{
+  padding:11px 17px;
+  background:var(--accent);color:#fff;
+  border:1px solid transparent;cursor:pointer;font-weight:650;
+  transition:background var(--motion-base),box-shadow var(--motion-base);
+}
+button:hover{background:var(--accent-hover);box-shadow:var(--glow)}
+button.secondary{
+  background:var(--surface-2);color:var(--ink);border-color:var(--line);
+}
+button.secondary:hover{box-shadow:var(--glow)}
+button:disabled{opacity:.45;cursor:not-allowed}
+
+form{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+form label{flex:1}
+#connect-form{margin-top:26px}
+#token{width:100%}
+
+.toolbar{display:flex;align-items:end;gap:15px;flex-wrap:wrap}
+.toolbar>div{margin-right:auto}
+.toolbar form{width:100%;padding-top:12px;border-top:1px solid var(--line)}
+
+.grid{display:grid;grid-template-columns:1fr 1.35fr;gap:20px}
+.preview{
+  min-height:280px;display:grid;place-items:center;
+  /* 暗色棋盘（替代原浅色） */
+  background:repeating-conic-gradient(var(--surface) 0% 25%,var(--surface-2) 0% 50%) 50%/20px 20px;
+  border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;
+}
+.preview img{max-width:100%;max-height:430px;object-fit:contain}
+.preview p{padding:22px;background:rgba(13,18,33,.85)}
+
+.mono{font-family:ui-monospace,monospace;font-size:11px;overflow-wrap:anywhere}
+.items{padding:0;list-style:none;display:grid;gap:9px}
+.items button{
+  text-align:left;width:100%;
+  background:var(--surface-2);color:var(--ink);
+  border:1px solid var(--line);font-size:12px;overflow-wrap:anywhere;
+}
+.items button:hover{border-color:var(--color-primary)}
+
+.section-head,.future{display:flex;justify-content:space-between;align-items:center;gap:18px}
+.badge{
+  border:1px solid var(--line);
+  border-radius:30px;padding:7px 12px;font-size:11px;white-space:nowrap;
+  color:var(--muted);
+}
+.events{font:12px/1.8 ui-monospace,monospace;overflow-wrap:anywhere}
+
+#status{
+  border-left:3px solid var(--accent);
+  padding:10px 16px;background:var(--surface-2);
+}
+.error{color:var(--color-error)!important}
+
+footer{
+  max-width:1240px;margin:30px auto;padding:0 22px 30px;
+  font-size:11px;color:var(--muted);
+  display:flex;justify-content:space-between;
+}
+[hidden]{display:none!important}
+
+@media(max-width:760px){
+  .grid{grid-template-columns:1fr}
+  header{padding:22px}
+  .panel{padding:20px}
+  .section-head,.future{align-items:start;flex-direction:column}
+  form{align-items:stretch;flex-direction:column}
+  footer{gap:15px;flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){
+  *{transition:none!important;box-shadow:none!important}
+}
+
+:is(#plan-form,#patch-form){display:grid;grid-template-columns:1fr;align-items:stretch}
+:is(#plan-form,#patch-form) textarea{
+  width:100%;resize:vertical;padding:12px;
+  border:1px solid var(--line);border-radius:var(--radius-md);
+  font:12px/1.6 ui-monospace,monospace;color:var(--ink);background:var(--surface-2);
+}
+:is(#plan-form,#patch-form) textarea:focus{
+  outline:3px solid var(--color-secondary);outline-offset:2px;
+}
+:is(#plan-submit,#patch-submit){justify-self:start}
+.design-form{margin:14px 0;gap:10px}
+.design-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.design-grid>p.eyebrow{margin-top:8px}
+#design-systems,#design-bindings{margin:8px 0}
+#design-binding-active{color:var(--muted);font-size:12px}
+
+/* F-2b revision flow: each brief/direction row carries its own 新版本 / 版本链
+   entries and the two revision blocks reuse the existing Workbench language —
+   same ink/line/accent tokens, same restraint, no second style system. */
+#design-briefs li,#design-directions li{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#design-briefs li>button,#design-directions li>button{width:auto;flex:0 0 auto;padding:6px 11px;font-size:12px}
+#design-briefs li.highlight,#design-directions li.highlight{
+  background:var(--surface-2);
+  box-shadow:inset 3px 0 0 var(--accent);
+  border-radius:var(--radius-md);
+  padding:8px 10px;
+}
+
+/* UI convergence slice 2: AppShell navigation (B07 12-route IA, B04 tokens).
+   Purely additive — no existing selector above is altered. */
+.app-nav{
+  position:fixed;inset:0 auto 0 0;width:168px;z-index:60;
+  background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:8px;overflow-y:auto;
+  padding:20px 14px;
+}
+.app-nav-brand{font-size:15px;font-weight:800;letter-spacing:1px;color:var(--accent)}
+.app-nav-item{
+  display:block;width:100%;text-align:left;
+  background:transparent;border:1px solid transparent;
+  color:var(--muted);font-size:13px;font-weight:600;
+  padding:8px 10px;cursor:pointer;border-radius:var(--radius-md);
+}
+.app-nav-item:hover{color:var(--ink);background:var(--surface-2)}
+.app-nav-item.active{
+  color:var(--ink);background:var(--surface-2);
+  border-color:var(--line);
+  box-shadow:inset 3px 0 0 var(--accent);
+}
+.app-nav-meta{font-size:11px;color:var(--muted);padding:0 4px;margin-top:auto}
+/* Gutter is scoped to the mounted shell only: without .dl-shell (the E2E /
+   unmounted default path) the layout stays the original centered flow.
+   Root-cause geometry: the fixed nav (0..168) never participates in flow, so
+   every flow element is re-anchored to the 168px gutter with ONE shared left
+   content edge at 192px (168 gutter + 24 inner gap, matching the nav items'
+   own 14+10 padding) instead of 100vw-based centering calcs that misalign
+   inside the narrower post-nav region. */
+.dl-shell header{position:relative;z-index:50;max-width:none;padding:30px 24px 30px 192px}
+.dl-shell main{max-width:1240px;margin:28px 24px 28px 192px;padding:0}
+.dl-shell footer{max-width:none;margin:30px 24px 30px 192px;padding:0}
+@media(max-width:760px){
+  .dl-shell header{padding:22px 16px}
+  .dl-shell main{margin:16px 16px 88px}
+  .dl-shell footer{margin:16px 16px 88px;padding:0}
+  .app-nav{
+    inset:auto 0 0 0;width:auto;height:auto;
+    display:flex;flex-direction:row;gap:6px;overflow-x:auto;overflow-y:hidden;
+    padding:8px 10px;border-right:0;border-top:1px solid var(--line);
+  }
+  .app-nav-brand,.app-nav-meta{display:none}
+  .app-nav-item{
+    flex:0 0 auto;width:auto;min-width:max-content;
+    padding:8px 10px;text-align:center;font-size:11px;white-space:nowrap;
+  }
+}
+.route-panel{
+  position:fixed;inset:0 0 0 168px;z-index:20;
+  background:var(--paper);overflow:auto;
+  /* uniform padding; the 130px top clears the floating header. No 100vw-based
+     centering calc on a panel that starts at 168px (that was the "left-gap"
+     bug) — the view left-anchors to the same 192px edge as header/main. */
+  padding:130px 24px 40px 24px;
+}
+@media(max-width:760px){.route-panel{inset:0 0 64px 0;padding:100px 16px 30px}}
+.route-view{max-width:960px}
+.route-view h2{font-size:24px}
+.view-loading{color:var(--muted);font-size:13px}
+.view-hint{font-size:12px;color:var(--muted);line-height:1.7}
+.view-unopened{
+  border:1px dashed var(--line);border-radius:var(--radius-lg);
+  padding:22px;font-size:13px;color:var(--muted);line-height:1.7;
+}
+.kpi-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:14px;margin:18px 0 26px;
+}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius-lg);padding:16px 18px;
+}
+.kpi-value{font-size:28px;margin:4px 0;font-weight:750;color:var(--ink)}
+.kpi-note{font-size:11px;color:var(--muted);line-height:1.6}
+.state-machine{
+  display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:10px 0 24px;
+}
+.state-machine-step{
+  border:1px solid var(--line);border-radius:30px;
+  padding:7px 14px;font-size:12px;font-weight:650;color:var(--muted);
+  background:var(--surface-2);
+  font-family:ui-monospace,monospace;
+}
+.state-machine-step[data-state="approved"],.state-machine-step[data-state="delivered"]{
+  color:var(--ink);border-color:var(--color-success);
+}
+.resource-table{
+  width:100%;border-collapse:collapse;margin:12px 0 22px;font-size:12px;
+}
+.resource-table th,.resource-table td{
+  text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);
+  color:var(--ink);overflow-wrap:anywhere;
+}
+.resource-table thead th{color:var(--muted);font-weight:650;font-size:11px}
+.resource-table td{color:var(--muted)}
+.preflight-input{width:100%;min-width:min(320px,100%)}
+.preflight-verdict{font-size:13px;color:var(--ink);font-weight:650;margin:14px 0 4px}
+.revision{
+  margin:14px 0;padding:14px 16px;
+  border:1px solid var(--line);border-radius:10px;
+  background:var(--surface);
+}
+.revision .eyebrow{margin:0 0 8px}
+.revision .mono{font-size:12px;margin:6px 0}
+.revision form{margin:10px 0 4px}
+.items.lineage{margin-top:6px}
+.items.lineage li{font-size:12px;color:var(--muted);border-left:2px solid var(--line);padding-left:10px;overflow-wrap:anywhere}
+#brief-lineage-title,#direction-lineage-title{font-size:12px;margin:4px 0}
+#design-binding-active.warn{color:var(--color-warning)}
+/* UI real-data routes (projects / creative-tools / deliverables / evidence) */
+.project-picker{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:650;color:var(--ink);
+  margin:0 0 14px;padding:10px 14px;
+  background:var(--surface-2);border:1px solid var(--line);
+  border-radius:var(--radius-md);
+}
+.project-select{
+  font:inherit;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--radius-md);
+  padding:6px 10px;cursor:pointer;
+}
+.project-select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.route-view-body{margin-top:8px}
+.items{list-style:none;padding:0;margin:10px 0;display:flex;flex-wrap:wrap;gap:8px}
+.items li{
+  font-size:12px;color:var(--ink);
+  background:var(--surface-2);border:1px solid var(--line);
+  border-radius:var(--radius-md);padding:8px 12px;
+}
+.items li.view-hint{background:transparent;border-style:dashed;color:var(--muted)}
+.error{color:var(--color-error);font-size:13px;margin:12px 0}

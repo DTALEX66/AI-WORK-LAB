@@ -17,11 +17,18 @@ acceptance_blocked_by_boundary = 2
 acceptance_confirmed = 41
 acceptance_deferred_p3 = 3
 acceptance_partial = 2
+archive_manifest_rows = 7108
 archive_objects = 1212
 archive_only_objects = 1131
 archive_registered_not_migrated = 80
 archive_source_hints = 1212
 archive_unclassified_residue = 1
+archived_excluded_cache_and_build = 390
+archived_linked_in_archive = 85
+archived_linked_in_repo = 1108
+archived_objects_copied = 5225
+archived_objects_duplicated = 300
+authority_index_entries = 23
 blocker_items = 7
 byte_copy_rows = 1132
 capability_families = 30
@@ -47,6 +54,16 @@ unsettled_files = 237
 - 历史资产去向已逐条登记：来源仓逐仓去重 `2638`（WORK）+ `4049`（DESIGN）条不同路径，
   跨仓并集 `6676` 条（有 11 条路径两边都出现，所以并集小于两数之和），共 `7108` 行去向，
   与登记枚举差集为 0；本项目按字节持有其中 `1132` 行对应的副本。
+- 置顶区已立：根级 `AUTHORITY-INDEX.md` 收 `23` 条 2026-10 当时两仓各自的"任务·规划·权威索引"，
+  原件逐字节复制进 `docs/authority-202610/`；每条记来源仓、原路径、版本或日期、SHA-256、字节、
+  现在的定性与替代关系。检查器会**重算每个原件的摘要**并与表里记的比对，摘要一旧就红。
+- 历史区已迁入：按 owner 规则（缓存与构建不要、其他按历史/文档归档进本仓）把来源内容复制进
+  `docs/history/sources-20261101/`，逐条去向在 `MANIFEST.csv`（`7108` 行全覆盖）：
+  `5225` 行逐字节复制、`300` 行同字节去重指向已复制件、`1108` 行本仓已按字节持有、
+  `85` 行与统一归档逐摘要相同（不搬第二份）、`390` 行为缓存/构建按规则不要。
+  两处缺陷是复验时抓到并修好的：`37` 行原判"本仓已持有"只凭台账 `sha256_source`，而改后文件让
+  本仓实际持有的是修复版本、原始字节无处可寻（已补采并逐行复验摘要）；`1` 个 260 字符以上的
+  长路径文件首轮静默丢失（已用 `\\?\` 前缀重写，并按行复验，不再用集合式抽查）。
 - 统一归档（`D:\All projects\Project Archiving`，只读）与本仓已逐摘要对账：`1212` 个唯一对象中
   `1131` 个**只在归档里有一份副本**（约 `1.06 GB`），`80` 个已登记但未迁入，`1` 个停在未归类；
   本仓 `migration/copies.json` 的 `962` 个来源摘要与归档对象摘要**交集为 0**——两边的字节不是同一批。

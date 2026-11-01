@@ -1,0 +1,44 @@
+产品边界与知识交换补充审计
+审计基线：2026年10月11日。结论限定下列固定源码，不代表用户电脑当前安装版本。
+
+总体判断
+没有足够证据说三个项目已整体偏离定位。主要已见风险是状态显示不真实、回执丢失后的重复写入、前后端字段不一致、安装资源缺失和失败后的用户输入损失。应先修这些问题，再评价动画与视觉细化，不必因此把三项目推倒重做。
+
+AAOS
+当前代码确有来源、转换、引文、候选、人工审核及受控学习流程，不应降格为普通笔记工具。普通保存与正式知识接受分离，模型核验不应成为基础保存门槛。
+用户新要求的“本地转换管线＋适合日常对话的基座＋云端真实检索核验”尚不能仅由已有单问答页面证明完成。日常多轮会话是需求差距，不是已证实的既有功能回归。具体模型、量化、提供方和实现结构保持可配置，不能因出现4B或27B测试记录就固定最终方案。
+模型只能标记来源、权威性、事实核验及冲突，正式入库由用户决定。这些状态需要独立，用户选择保存不等于认定材料为真。
+当前 SYSTEM_BOUNDARY 与 worker README 仍有暂停措辞，而活动执行指针已恢复，属于需统一的当前权威文档矛盾；历史状态应保留日期并指向唯一当前入口。
+
+WORK-LAB
+观察项目、软件运行与可复用实践的定位应保留。只读观察器的禁用执行和审批按钮不应为“闭环”而擅自开放。连接状态LIVE不等于每个软件、进程和端口均健康；项目级Git/CI必须有身份与采样依据，不能借另一项目状态填空。
+存在两条需区分的开发线：50dab560 是本次核实的当前登记开发线；71b1ae86 是另测的UI分支。71上的截图和缺陷不能直接说成50的当前表现。50已修enum tuple和未知深链，不能沿用旧结论要求重修。
+
+DESIGN-LAB
+应围绕现有软件能力、设计知识应用、提示词和可读回成果，而非另造通用编辑器。明确标为未接线或禁止执行的入口是能力差距，不能一律称死链。现有60条能力记录不等于60条已验证可调用能力，空分类也不能用模型猜值来假装闭环。
+可按一条具体设计任务验收：选品类→输入与约束→选择能力→提示词或批准的原生计划→成果读回→用户选择回流知识候选。不能用更多页面和说明文字代替这条流程。
+
+跨项目知识交换
+以下核查使用AAOS d6c2bbe、WORK 71b1ae86、DESIGN 835fa880；WORK50已有自身回归结果，但本节不把71的联邦适配细节外推50。
+1. WORK存在候选门控和多种候选/信封对象，所审字段与AAOS当前Rust接收不同。门控通过不等于用户正式接受，仍需明确字段映射和接收回执。
+2. AAOS当前Rust接收确有机器只能candidate、人工versioned review和来源/job/transform/quote绑定。
+3. AAOS manual-context-packet校验来源、版本、consumer、purpose、operation、过期及撤回；回执明确PREPARED_NOT_SENT_TO_PEER。包准备成功不证明DESIGN收到或使用。
+4. DESIGN名为federation_e2e的脚本检查硬编码本地memory ID，没有执行真实AAOS查询。fixture通过不能称三服务联通。
+5. AAOS本地能拒绝撤回后的重新准备；已导出副本在DESIGN使用前如何重新核验、过期或接收撤回通知，本轮未取得完整闭环证据。不能声称全仓一定不存在其他适配器，也不能用“没有报错”代替消费回执。
+6. 旧AAOS Python federation幂等重放已在隔离SQLite复现同key异body/submitter仍返回旧回执；这是兼容层问题，不得混称当前Rust漏洞。
+
+跨项目最小验收条件
+合成WORK候选→AAOS候选ID/来源版本回执→明确人工审核→授权包hash→DESIGN消费确认→AAOS撤回→DESIGN下一次受限使用拒绝。记录三仓库SHA、候选/审核/授权版本及实际状态。缺少适配器时标“映射或消费证据未完成”，不要创建假回执。
+
+精确源码参考
+AAOS正式接收与审核：
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/d6c2bbeef722f82a02a3f18e1b4296ad5e37c58b/crates/archeaxis-api/src/lib.rs#L2188-L2410
+AAOS授权包：
+https://github.com/DTALEX66/ArcheAxis-Knowledge-OS/blob/d6c2bbeef722f82a02a3f18e1b4296ad5e37c58b/crates/archeaxis-domain/src/asset_context_grant.rs#L112-L217
+WORK候选薄契约：
+https://github.com/DTALEX66/WORK-LAB/blob/71b1ae86bc2f9b1a756d5367bb149a7263604c9f/integrations/archeaxis/contracts/promotion_contract.py#L26-L96
+DESIGN联邦fixture：
+https://github.com/DTALEX66/DESIGN-LAB/blob/835fa88001198e9ef7d405360f4541fbb7b899fa/design-lab/scripts/verify_federation_e2e.py#L13-L32
+
+后续实施原则
+以实际代码、当前权威要求和可验收用户任务决定前后端如何改，不预先写死表结构、页面数、框架或模型。先让不确定状态诚实可见，再恢复稳定写入与证据读回，最后优化视觉层次、导航密度和动效。保留长期能力索引，不把审计误用为删除能力或跨项目集中控制的理由。

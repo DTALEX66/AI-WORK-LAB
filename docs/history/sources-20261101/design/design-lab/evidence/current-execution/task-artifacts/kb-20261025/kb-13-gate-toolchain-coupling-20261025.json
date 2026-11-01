@@ -1,0 +1,40 @@
+{
+  "axis": "browser",
+  "ci_failure": {
+    "cause": "新的 DL-KB-13 读数为了拿 ROUTES 去 import design_lab.http_service，该 import 链到达 image_assets 并需要 Pillow；而 strict-TS 是 node 作业，不装任何 Python 第三方包",
+    "head_sha": "1d86e877",
+    "job": "Workbench strict-TS product gate",
+    "job_id": 121150712090,
+    "line_verbatim": "MEASURE_SOURCE_MOVED cannot import the route table: ModuleNotFoundError: No module named 'PIL'",
+    "run_id": 40187301910,
+    "step": "python3 scripts/measure_workbench_weight.py --check",
+    "why_local_missed_it": "本机 .venv 有 Pillow，所以同一脚本本地绿、远端红——与今天早些时候那条\"只在远端出现的 AA\"同一类平台依赖假绿"
+  },
+  "evidence_grade": "E2 controlled-runtime；本条是闸门工具链耦合的修复与复现，不含任何产品功能变化，也不宣称远端已绿（远端以推送后的 exact-SHA 作业为准）。",
+  "fix": {
+    "accepts_contract": "解析出的路由对象实现 accepts()：带 when= 的路由无法从文本求值，抛 ValueError（调用方本就按 dynamic call shape 处理），而不是答 True 造成静默过匹配",
+    "error_channels": "readerError 只表示\"读不到路由表\"（致命）；callSiteError 表示\"规范匹配器不可用\"（如实报告为缺失，绝不当成 0）",
+    "route_table": "改回复用本脚本已有的 AST 静态读取（parse/module_tables），不 import 产品码"
+  },
+  "guards_added": [
+    "test_the_check_path_stays_stdlib_only：函数体之外不得模块级 import 任何非标准库模块",
+    "test_the_reader_sees_the_route_table_it_claims：客户端列若因缺依赖而不可用必须失败并点名，不许把 0 读成\"页面没要东西\"",
+    "test_a_when_bearing_route_is_not_guessed_at：when= 路由必须拒绝求值"
+  ],
+  "id": "kb-13-gate-toolchain-coupling-20261025",
+  "local_suite": "tests.test_workbench_weight Ran 22 OK；聚合 VERIFY_DESIGN_LAB=OK total=76 failed=0",
+  "measured_at_head": "318628008248d61e3ac0a2994c170ffa8cd65a55",
+  "observed_at": "2026-10-25T11:23:30Z",
+  "outcome": "PASS",
+  "subject": "scripts/measure_workbench_weight.py + design-lab/tests/test_workbench_weight.py",
+  "task_id": "DL-KB-13",
+  "verification_bare_interpreter": {
+    "command": "python3 scripts/measure_workbench_weight.py --check （无 Pillow 的裸解释器，即 CI 条件）",
+    "exit_code": 0,
+    "output_lines": [
+      "LISTROWS list_routes=18 bounded=9 without_limit=9 frontend_call_sites_scanned=0",
+      "WORKBENCH_WEIGHT_GATE=OK remote=0 bundle_gzip=160052"
+    ],
+    "under_venv_same_core_numbers": "list_routes=18 bounded=9 without_limit=9，另加 frontend_call_sites_scanned=142"
+  }
+}

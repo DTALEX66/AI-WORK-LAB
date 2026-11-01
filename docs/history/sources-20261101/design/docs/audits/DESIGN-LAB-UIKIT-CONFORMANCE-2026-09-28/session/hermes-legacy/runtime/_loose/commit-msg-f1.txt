@@ -1,0 +1,46 @@
+feat(release-gate): measure capability floors against effective evidence (Batch F-1)
+
+P1-B separated recorded from effective evidence, but the Release Gate still compared
+the RECORDED level against minimumRequiredEvidence, so creative-toolchain's stale
+runtime recording (E3, bound to lastVerifiedTree 70dfc35c) satisfied its E3 floor even
+though its effective level on this tree is E1.
+
+capability_floor_findings() now loads the sibling effective_evidence.py (importlib, the
+same idiom verify_capability_evidence_v4.py uses) and compares
+meets_floor(effective, minimum), taking the current SHA from `git rev-parse HEAD`
+(guarded: an unresolvable HEAD yields "" so every SHA-bound record is downgraded).
+Floor lines now carry both levels:
+
+  EVIDENCE-BELOW-MINIMUM <id> actual=<effective> minimum=<floor> recorded=<rec> effective=<eff>
+
+and a downgrade additionally emits the distinguishable
+
+  EVIDENCE-REQUALIFICATION-REQUIRED <id> recorded=<rec> effective=<eff>
+
+so "needs fresh runtime evidence" is never read as "never reached the floor". An
+unavailable module now BLOCKS (EFFECTIVE-EVIDENCE-MODULE-UNAVAILABLE) instead of
+silently falling back to recorded-only, and the closing contract
+RELEASE_GATE=<verdict> findings=N is unchanged.
+
+Live effect on this tree:
+  before: RELEASE_GATE=BLOCKED findings=7  (creative-toolchain passed its own floor)
+  after:  RELEASE_GATE=BLOCKED findings=9
+    new: EVIDENCE-BELOW-MINIMUM creative-toolchain actual=E1 minimum=E3 recorded=E3 effective=E1
+    new: EVIDENCE-REQUALIFICATION-REQUIRED creative-toolchain recorded=E3 effective=E1
+The other four BELOW-MINIMUM findings are unchanged in substance (design-intelligence,
+production-handoff, professional-visual-domains, visual-quality) and
+EVIDENCE-CARDS-PENDING / HUMAN-ACCEPTANCE-PENDING (DL-REL-001) stay as they were.
+
+Tests: design-lab/tests/test_release_gate_effective.py (15 cases: requalified E3 against
+an E3 floor flagged; requalified-but-at-floor and clean subjectSha==HEAD not
+over-blocked; foreign subjectSha downgrade; E0 fallback; unknown floor / missing level /
+missing index / non-list capabilities / unavailable module all fail-closed; the committed
+index end to end; and a regression guard proving the recorded-only comparison would have
+missed it). The two pre-existing call sites in design-lab/tests/test_release_gate.py were
+updated to the new three-argument signature and their expectation STRENGTHENED — the
+assertion now also pins recorded= and effective= — while the P1-B suite (27 cases) is
+untouched.
+
+Evidence: release-gate test modules 20/20 OK; test_effective_evidence 27/27 OK;
+VERIFY_DESIGN_LAB=OK total=49 failed=0; AUTHORITY_GATES=PASS gates=7 failed=none;
+verify_release_gate.py output read back on this tree.

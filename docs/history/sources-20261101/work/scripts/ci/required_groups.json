@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "note": "P0-01 CI Truth Repair: required-command groups for the fail-fast group runner (scripts/ci/failfast_group.py). Each group runs strictly in sequence without a shell; the first non-zero command stops the group and its exit code becomes the group (and step) exit code, so a later successful command can never mask an earlier failure. Paths are repository-root relative; working_dir is relative to the repo root. Group env values may be module-relative path lists (e.g. PYTHONPATH 'src:scripts'); the runner expands relative segments against the group working_dir into absolute paths, so a step's working directory can never drift the environment.",
+  "groups": {
+    "observer-python-skeleton": {
+      "working_dir": "apps/observer",
+      "env": {
+        "PYTHONPATH": "src:scripts"
+      },
+      "commands": [
+        ["python", "scripts/verify_observer_skeleton.py"],
+        ["python", "tests/test_observer_skeleton.py"],
+        ["python", "tests/test_observer_runtime.py"],
+        ["python", "tests/test_observer_evidence.py"],
+        ["python", "tests/test_observer_store.py"],
+        ["python", "tests/test_artifact_freshness.py"],
+        ["python", "scripts/verify_usage_rollup.py"],
+        ["python", "tests/test_usage_rollup.py"],
+        ["python", "tests/test_observer_events_migration.py"]
+      ]
+    },
+    "observer-web-contracts": {
+      "working_dir": "apps/observer",
+      "commands": [
+        ["node", "tests/run_all_tests.js"]
+      ]
+    },
+    "observer-frontend-install": {
+      "working_dir": "apps/observer/frontend",
+      "commands": [
+        ["npm", "ci"]
+      ]
+    },
+    "observer-frontend-typecheck": {
+      "working_dir": "apps/observer/frontend",
+      "commands": [
+        ["npm", "run", "typecheck"]
+      ]
+    },
+    "observer-frontend-build": {
+      "working_dir": "apps/observer/frontend",
+      "commands": [
+        ["npm", "run", "build"]
+      ]
+    },
+    "observer-frontend-test": {
+      "working_dir": "apps/observer/frontend",
+      "commands": [
+        ["npm", "run", "test"]
+      ]
+    },
+    "observer-desktop-crate": {
+      "working_dir": "apps/observer/src-tauri",
+      "commands": [
+        ["cargo", "test", "--locked"],
+        ["cargo", "check", "--locked"]
+      ]
+    }
+  }
+}

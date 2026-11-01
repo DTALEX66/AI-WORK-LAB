@@ -1,0 +1,40 @@
+workbench(style): scope the legacy p rule so B10 paragraph type stops shrinking
+
+SECOND LEAK OF THE SAME ROOT CAUSE
+
+The legacy `p{line-height:1.65;color:var(--muted);font-size:13px}` was never
+scoped. B10 ships NO `p` rule at all -- only `.page-head p` and `.muted` -- so
+paragraphs inside `.app` must fall back to the browser default. Unscoped, this
+rule made every B10 paragraph 13px instead of 16px.
+
+MEASURED AGAINST THE B10 REFERENCE IN THE SAME BROWSER
+
+A comparative probe loads the DESIGN-LAB-specific B10 original and the workbench
+and diffs computed text styles element by element (14 elements x 5 properties).
+Before the fix, 6 of those properties differed:
+
+  .page-head p  font-size    16px    -> 13px     (line-height 24.8px -> 20.15px)
+  .muted        font-size    16px    -> 13px     (line-height normal -> 21.45px)
+  .muted        margin-top   0px     -> 13px     (1em of the shrunken font)
+  .muted        margin-bottom 0px    -> 13px
+
+After the fix the only remaining entries are a probe artefact, not a defect:
+B10's `.muted` first match is a `<div>` while the app's is a `<p>` (the dev-mode
+offline notice), so their default margins are not comparable. Font-size,
+line-height and colour now match exactly on every comparable element
+(page-head h2 32px, panel h3 15px, kpi strong 35px, tag 12px, brand h1 17px,
+nav label 16px, search 16px, ghost-btn 16px -- all already ok and still ok).
+
+ROOT CAUSE, NOT A PATCH
+
+Identical to the header/main/footer leak and the button:hover leak fixed earlier:
+a pre-B10 element selector reaching into `.app`. Now scoped to
+`body > header p`, `body > main p`, `body > footer p`, so nothing inside `.app`
+inherits it. No B10 declaration was changed and no class was invented.
+
+Side effect worth noting: the B10 drawer's own `<p class="muted">` is a body-level
+overlay, not inside `.app`, so it keeps the legacy 13px paragraph type -- and B10
+itself applies no `p` rule to it either, so that stays consistent.
+
+Local gates: tsc --noEmit, vite build, tests/unit.mjs, tests/appshell.mjs all
+green; no apps/workbench/build drift. CSS brace balance 281/281.

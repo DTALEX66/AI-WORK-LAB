@@ -1,0 +1,46 @@
+workbench: implement B07 route /projects/:id (project-detail)
+
+W01 diffed B07's routes.json against the implementation: B07 declares 12 routes
+and the app had 11 — the missing one is route #3, `/projects/:id`
+(project-detail). It is also the entry point W03 ("项目中心") needs.
+
+WHY IT IS NOT A ROUTE_VIEWS ENTRY
+
+Two independently verified constraints forbid adding a 13th entry:
+
+  * design-lab/tests/e2e/browser_design_layer_e2e.mjs:385 asserts
+    `.app-nav-item` length === 12. ROUTE_VIEWS already has exactly 12; a 13th
+    would redden the Workbench browser E2E required check.
+  * B10's sidebar has 11 items and no detail page, so a nav button for it would
+    break the 1:1 sidebar (the B10 dom-diff compares `.nav button` counts).
+
+So the parameterized route is resolved separately (projectDetailId /
+projectDetailHash + an `AppView = RouteView | 'project-detail'` union) and is
+reachable only by navigating from a project row — which is how a detail page
+should work anyway.
+
+WHAT
+
+  * `renderProjectDetail(id, target)`: B10-classed page-head + kpi-grid +
+    two-col panels, reading back `/api/projects`, `/projects/<id>/tasks` and
+    `/projects/<id>/design-layer` through the existing apiOrEmpty seam, so it
+    renders honest EMPTY payloads in dev/offline mode instead of 401-ing.
+  * The projects table gains a 4th column with a per-row 打开 button
+    (`ghost-btn`, matching B10's per-row action button) that navigates to the
+    detail route.
+  * `sync()` keeps the 项目 nav item highlighted while a detail page is open
+    (the detail page has no nav button of its own).
+
+VERIFIED IN REAL CHROMIUM (production CSP, committed build/main.js)
+
+  * `.app-nav-item` === 12 and B10 `.nav button` === 11 on EVERY route
+    (list, detail, encoded detail, dashboard) — both hard invariants intact
+  * `#/projects/proj-abc123` renders page-head (h2 = the id), 4 KPIs, 6 panels
+  * `#/projects/a%2Fb` decodes to h2 = `a/b` (encodeURIComponent round-trip)
+  * detail page highlights the 项目 nav item
+  * 0 CSP violations on all four routes (the style-src 'self' contract holds)
+  * dashboard unchanged (regression)
+
+Local gates: tsc --noEmit, vite build, tests/unit.mjs, tests/appshell.mjs all
+green. build/main.js rebuilt (86.51 -> 90.85 kB) and committed for the
+workbench-gate no-drift + generated-artifact clean-tree gates.

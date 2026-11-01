@@ -1,0 +1,41 @@
+feat(workbench): revision flows in the product UI (Batch F-2b)
+
+F-2a landed the revision semantics in the data/API layer only, so a person could not
+revise a brief or a direction and, after revising a chosen direction, the UI had no way
+to say that the design-system binding no longer applies. This lands the user-facing half.
+
+apps/workbench/{main.ts,index.html,style.css,contracts.ts}:
+- every brief/direction row gains 「新版本」 (prefilled from that version's own content)
+  and 「版本链」, posting to the project-scoped revision routes and reading .../lineage.
+  After a successful revision the list re-reads the server read model, highlights and
+  focuses the new version, and expands its chain.
+- the version chain renders 「版本 N · 当前」 / 「版本 N · 已取代 → 版本 M（短id）」 with
+  the created time and spec hash; a superseded version warns that the server will reject
+  a revision with STALE_REVISION.
+- binding honesty: only the read model's active_binding is presented as in force; every
+  other binding row says 「未生效 · 绑定留在已被取代的方向版本上，需重新建立」, and when
+  active_binding is null while binding history exists, #design-binding-active states that
+  the binding must be rebuilt — an old binding is never shown as current. After revising
+  a chosen direction the UI also says the choice travelled to the new version while the
+  binding did not.
+- 409/404/401 go through the existing status surface (class=error), fail-closed.
+- contracts.ts adds the six revision/lineage response types under strict TS.
+- existing style tokens only (teal ink/line/accent/paper); no purple, no gradients, no
+  second styling system.
+
+build/main.js is rebuilt from these sources and is deterministic: two consecutive
+`pnpm --filter @design-lab/workbench build` runs both emit
+sha256 bb13f6738a9a3d54fb86fa39ec0295b73f9c7750a52331bc36662bb2c470c4eb (41.86 kB), so
+the committed bundle is exactly what a fresh build emits — the CI workbench-gate
+no-drift check.
+
+design-lab/tests/e2e/browser_design_layer_e2e.mjs gains four steps (revise brief, revise
+the chosen direction, binding-rebuild readback, reload-persisted readback) and
+test_workbench_native_ui.py gains two vm-DOM cases (prefill + real route + visible
+STALE_REVISION/401 errors without adding a row; binding-rebuild rendering when
+active_binding is null).
+
+Evidence on this tree: workbench test modules 16/16 OK (including the REAL browser E2E —
+BROWSER_E2E ran=2 skipped=0 failed=0, not skipped); verify_workbench_packaging 5/5;
+VERIFY_DESIGN_LAB=OK total=49 failed=0; AUTHORITY_GATES=PASS gates=7 failed=none; and the
+rebuild produced the identical bundle hash.

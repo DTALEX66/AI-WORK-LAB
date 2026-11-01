@@ -1,0 +1,3 @@
+import {createRequire} from 'node:module';import path from 'node:path';import {fileURLToPath} from 'node:url';
+const {chromium}=createRequire(import.meta.url)('playwright');const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const b=await chromium.launch({headless:true,executablePath:process.env.UI_CHROMIUM_PATH||undefined,args:['--no-sandbox','--allow-file-access-from-files']});const p=await b.newPage({viewport:{width:3840,height:2160},deviceScaleFactor:1});await p.goto(`file://${root}/overview.html`);await p.evaluate(()=>document.fonts.ready);await p.screenshot({path:`${root}/DESIGN-LAB_UI_总览_20261009.png`,fullPage:true});await b.close();

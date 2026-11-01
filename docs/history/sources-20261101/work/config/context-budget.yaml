@@ -1,0 +1,22 @@
+# Token and tool-output policy for portable Workflow-assistance usage.
+schema_version: 1
+session:
+  default_tokens: 12000
+  warning_tokens: 18000
+  hard_tokens: 24000
+  action_at_warning: summarize_and_start_new_session
+  action_at_hard_limit: block_unbounded_context
+context_pack:
+  default_chars: 12000
+  hard_chars: 30000
+  include: paths_and_targeted_excerpts
+  avoid: full_logs_and_unrelated_files
+tool_output:
+  default_chars: 6000
+  failure_chars: 12000
+  log_tail_lines: 200
+  overflow_action: write_project_artifact_and_return_summary
+principles:
+  - Prefer file path plus line range over full-file injection.
+  - Preserve failure tails and artifact paths, not successful full logs.
+  - Regenerate context packs per target project and task.

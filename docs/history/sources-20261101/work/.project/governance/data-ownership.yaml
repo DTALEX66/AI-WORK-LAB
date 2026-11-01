@@ -1,0 +1,34 @@
+schema_version: work-lab/data-ownership/v1
+# COMPATIBILITY-ONLY PROJECTION — NOT a machine authority.
+# Machine authority for the data boundary is
+# .project/governance/project-data-boundary.json (sole boundary authority:
+# E: + F: protected, cacheRoot = .project-local/runs/cache). This YAML is a
+# frozen legacy projection and must not be read as a second boundary model.
+# See GOAL P0-05: project-data-boundary.json vs data-ownership.yaml
+# de-duplication.
+platform_neutral: true
+runtime_root: .project-local/runs
+artifacts_root: .project-local/artifacts
+logs_root: .project-local/runs/logs
+cache_root: .project-local/cache  # frozen legacy path; live truth = .project-local/runs/cache (boundary JSON cacheRoot)
+evidence_root: .project-local/artifacts
+responsibilities:
+  runtime_root: temporary task state, caches, logs and reproducible local runtime artifacts
+  artifacts_root: sanitized task evidence and machine-readable assessment records
+  evidence_root: stable ignored evidence packages intended for project handoff
+legacy_aliases:
+  - .project-local/runs
+  - .project-local/artifacts
+  - 80-evidence
+forbidden_external_roots:
+  # Frozen legacy list (E: only). Superseded by project-data-boundary.json
+  # forbiddenExternalRoots = E: + F:.
+  - "E:/"
+  - "E:\\"
+spill_governance:
+  rule: Every project artifact stays inside the project Git root; any write outside it is a spill and must be traceable, locatable, cleanable and migratable.
+  protected_data_volume:
+    # Frozen legacy (E: only); live truth = boundary JSON (E: + F:).
+    roots: ["E:/", "E:\\"]
+    policy: forbidden without explicit per-path, per-operation user authorization
+    access_default: deny

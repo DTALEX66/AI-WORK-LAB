@@ -1,0 +1,32 @@
+Linux 专项补充审计（2026-10-11）
+范围：沿用原固定SHA，仅AAOS d6c2bbe、WORK50dab56、DESIGN835fa88。原证据不删除。本文覆盖原报告中“Rust未运行”“DESIGN构建受阻”的状态，以本附录最终日志为准，不倒改历史运行事实。
+
+环境与操作
+原环境无cargo/rustc；从官方https://sh.rustup.rs安装minimal stable Rust1.99.0至/tmp/tri-audit/cargo与rustup，--no-modify-path，无系统包/安全设置修改。官方来源说明https://rust-lang.org/tools/install/。初次并发带调试编译临时磁盘99%，LLVM链接Bus error；清理仅本次rust-target，改-j1、CARGO_PROFILE_DEV_DEBUG=0、CARGO_PROFILE_TEST_DEBUG=0、CARGO_INCREMENTAL=0后重跑有界集合。此初始失败属环境资源，不归为源码错误。
+DESIGN使用命令级--registry=https://registry.npmjs.org、--frozen-lockfile、--ignore-scripts，未改源码或锁文件，未安装浏览器/模型。pnpm实际11.19.0，packageManager声明11.22.0：此轮可复现构建通过不等于完全相同包管理器版本验证。
+
+平台边界
+AAOS vnext-ci明确Windows runner，原生桌面、NSIS及Windows长路径专用断言不能用Linux替代。此次只验证可运行的Rust跨平台后端，不安装Linux GUI依赖。WORK CI同时有Ubuntu与Windows，Tauri Windows-first；mbcs测试无Linux保护，Linux确会编码报错，但不是Windows快捷方式解析失败。DESIGN Python/Node工作台在Ubuntu CI，Adobe宿主不可用属平台不适用，并不构成Python后端失败。
+
+三项目覆盖矩阵（通过/产品失败/环境阻塞/平台不适用）
+AAOS 构建：初次环境阻塞，低资源重试见最终结果；服务：独立Rust服务烟测见aaos-service.json；联调：实际HTTP鉴权、导入、草稿、读回；恢复：重启/maintenance backup+restore，仅合成对象，无AI/Windows。
+WORK 构建：复用同SHA frontend build/672tests通过；服务：Linux no-worker sidecar两次真实启动，snapshot200；联调：真实前端连接侧车+存储错误故障注入，纯函数验证投影；恢复：相同canonical runtime再次启动可读，未做有执行任务的崩溃恢复；SIGINT退出0，SIGTERM退出-15，两者端口均释放。SIGTERM默认终止不代表应用级优雅排空。
+DESIGN 构建：官方源安装成功，pnpm typecheck、build、test:workbench-unit全通过（包括先前缺依赖的shape-notice组）；服务：仓库外独立wheel两次启动；联调：创建项目并GET读回200；恢复：SIGINT退出后重启仍见相同项目ID，SIGTERM退出-15且端口释放。wheel研究/权利500及domain包缺失继续属于产品失败，详见原D09/D10，不重复计数。
+三服务同时互联：未测/未接通；没有将各组件fixture当成联邦真实联调。
+
+发行资源、路径与权限
+三仓库所有tracked文件casefold无碰撞；实际Linux文件系统区分AGENTS.md/agents.md。此项不是穷尽运行时每个大小写引用。WORK SQLite及endpoint文件、DESIGN state.db在当前环境实际权限0600；未改变umask，不能把该环境结果当作所有安装默认权限保证。服务监听loopback随机端口，退出后连接拒绝。原wheel缺失资源在大小写敏感Linux源树外真实复现；未通过复制源码资源来掩盖。
+
+WORK50新增确认问题（不复用71专属LIVE/画布问题，不重复原W03/W04）
+WL-L01 / P1 项目Git错归属：packages/client-neutral-core/scripts/snapshot_api.py:232-234与services/orchestration/composition_root.py:518-521。合成项目B没有自己的git，A全局localSha=synthetic-A；调用真实_project_projection后B展示A的SHA/branch。预期缺失时UNKNOWN并保留归属来源，不回退别的仓库。影响对项目版本/CI判断。证据work-projection.json、work_projection_probe.py。建议只允许同项目回退或显式workspace级展示。
+WL-L02 / P2 项目CI丢失：composition_root.py:335-349的_ci_rows丢project_id，snapshot_api.py:249按projectId筛选。合成store返回A的成功run，真实mapper输出无projectId，A投影ci=[]。预期保留归属ID并显示成功run。证据同上；建议映射保留projectId并加跨层合同检查。
+WL-L03 / P2 用量精度夸大：snapshot_api.py:328-341；同项目EXACT4+ESTIMATED7得到total11且costQuality EXACT，全局_token_summary却ESTIMATED。预期部分估计不能提升为精确。证据同上；建议统一合并精度规则。
+WL-L04 / P2 存储失败仍声称保存：apps/observer/frontend/src/views/WorkflowEditorView.tsx:49-60,80-86。在真实Chromium启动前让Storage.setItem抛QuotaExceededError，打开保留的实验深链workflow-editor；localStorage为空但显示“已自动保存/本地编辑已自动持久化”。该页不在默认导航，仍保留可达实验入口，不代表正式执行器。预期明确未保存并可重试。证据services.json、work-storage-error.png、service_probe.py。建议持久化成功状态由写入结果决定。此复现已证明初始模型保存失败下错误状态；未宣称实际磁盘已满。
+
+已完成原问题复查：WORK50 enum tuple与未知深链问题不沿用旧结论；71断流LIVE和画布仍仅绑定71。DESIGN TS build通过消除了先前构建环境阻碍，但未修复用户流程问题。全部操作无源码修复/提交/推送、无模型或Adobe宿主执行。
+
+最终结果（本节优先于上文编译中的描述）
+AAOS低资源编译通过：domain库41、store库2，contracts库0实际用例；domain选定backup_safety10、context_grants3、document_create_retry2、learning_state_persistence6全部通过；API document_draft_loop首次8通过1失败（测试815行读取ARCHEAXIS_PYTHON缺失而unwrap），设置/tmp/tri-audit/venv/bin/python后该单项通过；workspace_ownership3通过。选定唯一Rust用例总计76通过，0未解决失败。没有运行整个Rust workspace，原始全面编译失败日志保留。文本识别用例只处理测试内original text纯文本，无模型/OCR大包下载或云调用。
+真实AAOS Rust二进制：GET version200、缺token401、带浏览器Origin403；合成文本import202、建稿201、列表200；终止后重启读回相同文档集合；maintenance backup和restore均退出0且verified=true。SIGINT=-2/SIGTERM=-15，端口均关闭，这是默认信号终止，不能宣称有优雅排空。SQLite/对象备份验证不等于Windows安装恢复。
+A01证据升级（不新增同根因问题）：真实Linux API连续发送相同无create_request_id建稿payload，两次201，document_id分别doc_95be2a8a679ff899a388af0459a060b0与doc_b910aebb1cf52ad0c9f1bd5a2a520b0c；重启列表保留二者。前端丢ACK重试与Core双落盘现在分别有组件与实际API证据；仍未把浏览器Tauri→Rust全链串成一次E2E。见aaos-service.json、aaos_service_probe.py。
+最终状态：AAOS构建/选定后端/服务/合成恢复通过；原A01产品问题进一步确认。WORK构建/服务通过，mbcs与投影/虚假保存属产品或测试可移植性失败；有执行任务的恢复未测。DESIGN构建/服务/项目重启恢复通过，wheel资源路径和原用户流程问题仍失败。Windows GUI/Adobe宿主为平台不适用；真实AI与三服务联邦为未测，不记通过。

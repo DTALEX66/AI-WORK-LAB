@@ -1,0 +1,46 @@
+feat(evidence): preset the host-E3 harness so a fabricated E3 cannot pass (Batch F-4)
+
+The audit is explicit that real Adobe E3 is not a completion criterion for this phase:
+without owner authorization and a real host, only the contract / test / evidence harness may
+be prepared, and E3 must never be fabricated. What the tree had was a static structural check
+of the UXP adapter packages (manifest v5, no wildcard network permission, required UXP
+tokens) and no machine-checkable form of an E3 record at all — nothing that could tell a real
+host run from a claim.
+
+design-lab/schemas/evidence-record.schema.json (additive, +33/-2): the existing EvidenceRecord
+contract gains an optional `host` block (strict: product / productVersion / adapterId /
+adapterVersion / adapterSha256 / invocation / readback / artifacts[{path,sha256}], both hashes
+pinned to ^[0-9a-f]{64}$), and the root gains `if level == E3 then required: [host]`. An E3
+record without host provenance is now invalid at the contract layer; records that are not E3
+stay legal.
+
+design-lab/scripts/verify_host_e3_evidence.py (new, stdlib only, no network, no writes):
+HOST_E3=<NO_RECORD|VALID|INVALID> records=N findings=[...]. It validates the contract (the
+repo's jsonschema, or an equivalent built-in subset validator when that is unavailable),
+requires level E3, a non-empty approver, a boundTreeSha that is HEAD or a real ancestor
+(git merge-base --is-ancestor), and every host.artifacts[i].sha256 against the actual file.
+No record reports NO_RECORD, exits 0, and states that the capability level must not be raised
+because of it; an invalid record exits 1. The module exposes no promotion or write helper, so
+it cannot mint a level even by accident.
+
+design-lab/scripts/host_e3_probe.py (new): read-only host-surface probe. HOST_PRESENT only
+from an explicitly authorized bridge endpoint (DL_HOST_E3_ENDPOINT); an installed app or our
+own adapter package does not count as a host run, and no host software is ever launched.
+
+design-lab/tests/test_host_e3_harness.py (new, 20 cases): a fake E3 without the host block is
+rejected by both validator engines (including when jsonschema is missing, so the fallback
+cannot open a hole), a host block with a wrong or missing artifact hash is rejected, an
+unrelated boundTreeSha is rejected, an empty approver is rejected, a non-E3 level is not
+counted, no records is NO_RECORD and never VALID/E3 (the "silence becomes a level" guard), and
+the verifier writes nothing into the evidence store.
+
+Evidence: 20/20 OK; verify_host_e3_evidence.py -> HOST_E3=NO_RECORD records=0 with the "no
+host E3 evidence, the level must not be raised" statement; host_e3_probe.py ->
+HOST_E3_PROBE=HOST_ABSENT (adapter packages present, endpoint unset, host_launched=false); a
+negative-control E3 record -> HOST_E3=INVALID, exit 1; VERIFY_DESIGN_LAB=OK total=49
+failed=0; AUTHORITY_GATES=PASS gates=7 failed=none.
+
+No E3 exists or is claimed here, and no capability level was changed. Wiring this verifier
+into the 49-item aggregate (which would make a committed fake E3 turn the gate red) is an
+explicit follow-up: it would change the aggregate count, and it is not smuggled into this
+batch.

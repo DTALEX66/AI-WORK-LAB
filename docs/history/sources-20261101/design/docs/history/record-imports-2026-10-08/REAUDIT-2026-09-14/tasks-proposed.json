@@ -1,0 +1,267 @@
+{
+  "authority": "PROPOSED_NOT_ACTIVATED",
+  "baseline": "f82f17ee5ec1d0e2973414ad673b00191324c68b",
+  "note": "这是独立审计增量建议，不替代仓库现行TaskPack；落仓时以完整身份映射现有任务，并补充机器验收结构。",
+  "tasks": [
+    {
+      "id": "DL-AUDIT-20260914-01",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0",
+      "title": "证据摘要绑定修复",
+      "existing_mapping": "DLDS-H000/B050；R5-001",
+      "owner": "DeepSeek",
+      "depends_on": [],
+      "implementation": "以规范化路径、文件内容哈希、删除标记、基准提交生成工作树摘要；覆盖 tracked 修改和任务授权 untracked；统一两套摘要实现，显式声明生成文件排除范围。",
+      "acceptance": "同路径不同内容必须不同摘要；同内容重算相同；删除与未跟踪内容变化可识别。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-02",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0",
+      "title": "完成状态与验收证据核验",
+      "existing_mapping": "DLDS-A000/H030/K040；R5-001",
+      "owner": "DeepSeek",
+      "depends_on": [
+        "DL-AUDIT-20260914-01"
+      ],
+      "implementation": "逐项对照58任务原文；DONE必须有可解析证据、内容哈希、源码绑定、验收项与执行结果；本地缺失证据记MISSING/UNVERIFIED；完整性与语义通过分开。不得把现有58项一律清零。",
+      "acceptance": "不存在证据、旧源码、只完成子集、缺安装验收不能总体DONE；C030/G000/H010/H020逐项裁定；任何缩小范围需明确变更记录。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-03",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0",
+      "title": "零外溢检测修复",
+      "existing_mapping": "DLDS-E010/E050/K010；R5-002",
+      "owner": "DeepSeek",
+      "depends_on": [
+        "DL-AUDIT-20260914-01"
+      ],
+      "implementation": "区分仓库代码允许写路径与禁止的项目旧运行目录；对授权观察范围内新增、修改、删除判定；路径规范化与链接边界；检测深度/数量截断返回不完整。仅对项目所有文件哈希，不读取私人会话。",
+      "acceptance": "仓库.hermes新增与已有外部项目文件修改都被检出；显式合法根通过；观察范围外不得宣称零外溢；代理原生数据保持排除。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-04",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0",
+      "title": "任务资源预检落地",
+      "existing_mapping": "R5-006/007；DLDS-J000",
+      "owner": "DeepSeek",
+      "depends_on": [
+        "DL-AUDIT-20260914-02"
+      ],
+      "implementation": "保留.project/paths.json；设计可选资源注册引用与版本契约；增加CLI doctor --task FULL_ID及工作台/worker入口调用；输出工具真实路径、任务权威、权限、机器和宿主范围。注册不可达时仍支持独立运行的本地配置。",
+      "acceptance": "临时Windows路径夹具验证非默认安装位置；缺资源只阻塞依赖该资源的任务；CLI和工作台结果一致；不重复安装已登记软件。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-05",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0",
+      "title": "来源锁与启用资格",
+      "existing_mapping": "DLDS-D010/G000/G040；R5-006/023",
+      "owner": "DeepSeek",
+      "depends_on": [
+        "DL-AUDIT-20260914-02"
+      ],
+      "implementation": "46条来源逐项追溯；当前实际启用供体必须URL、精确revision、内容digest和许可证证据；不可恢复旧副本标UNRESOLVED/INERT并禁止执行，不编造commit，不要求无关历史资料阻塞M1。",
+      "acceptance": "实际启用来源缺任一身份字段被拒绝；39/46 URL、0/46 revision债务有逐项处置；改动绑定到CI。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-06",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0",
+      "title": "可安装与干净环境验证",
+      "existing_mapping": "DLDS-H020/C030；R5-003/009",
+      "owner": "DeepSeek",
+      "depends_on": [
+        "DL-AUDIT-20260914-02"
+      ],
+      "implementation": "用新虚拟环境由锁文件安装；构建wheel并在仓库之外执行资源加载/CLI/最小任务；移除测试验证器对旧.venv/Scripts/python.exe的硬依赖；安装未执行输出PARTIAL/NOT_VERIFIED。",
+      "acceptance": "不继承原工作区依赖、PYTHONPATH、缓存；缺包真实失败；Linux基础门和Windows路径门分别记录；安装缺失不能总PASS。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-07",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0",
+      "title": "CI接入与延期测试拆分",
+      "existing_mapping": "DLDS-H010/H030；R5-003",
+      "owner": "DeepSeek",
+      "depends_on": [
+        "DL-AUDIT-20260914-01",
+        "DL-AUDIT-20260914-02",
+        "DL-AUDIT-20260914-03",
+        "DL-AUDIT-20260914-05",
+        "DL-AUDIT-20260914-06"
+      ],
+      "implementation": "把Authority、来源、契约、语言和边界所需检查显式纳入流水线或可追溯调用链；绑定测试清单hash、平台、顺序、seed、失败/skip；全量多顺序在健康执行环境补验。",
+      "acceptance": "新增门的反例能使对应CI失败；关键220重复结果保留；1392全量顺序延期单独记状态；不能把Linux通过当Windows专业宿主通过。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-08",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P1",
+      "title": "语言与遗留目录收尾",
+      "existing_mapping": "DLDS-B010/C030/C040/C050/D040；R5-028",
+      "owner": "DeepSeek",
+      "depends_on": [
+        "DL-AUDIT-20260914-02",
+        "DL-AUDIT-20260914-06"
+      ],
+      "implementation": "保留Python/TS/Host JS职责；ruff/pytest按当前TaskPack落实，或用正式变更批准unittest方案；117编码点按子进程实际编码分批修；旧core/备份按引用核验迁移；明确workbench TS检查或源码可执行约束。",
+      "acceptance": "未授权新主语言为0；lint实际执行；中文子进程正常、失败输出可诊断；安装/测试不依赖旧core；空目录问题区分本地与Git树。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-09",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P1",
+      "title": "运行证据持久保存与回收",
+      "existing_mapping": "DLDS-D030/E020/E040；R5-002/023",
+      "owner": "DeepSeek",
+      "depends_on": [
+        "DL-AUDIT-20260914-03"
+      ],
+      "implementation": "对本机证据目录做新census；记录资产归属、持久位置、digest、重开与恢复；先保留替代副本再回收。历史316.79MiB只作为清单回收量，不伪造目录before/after。",
+      "acceptance": "每个拟处理对象有保留/迁移/删除理由和恢复路径；无法证明归属的.hermes文件不动；不得在云端声称已清理用户D盘。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-10",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0",
+      "title": "最终候选独立审计与PR收敛",
+      "existing_mapping": "DLDS-H050/K040；R5-001",
+      "owner": "独立GPT审计；执行者准备PR",
+      "depends_on": [
+        "DL-AUDIT-20260914-07"
+      ],
+      "implementation": "固定代码候选SHA/源码树摘要；更新Final Audit并区分生成提交；审查本轮发现及剩余例外；创建PR后核查合并结果与提交绑定；合并后分类旧分支。08/09非关键遗留须明确例外，不隐藏。",
+      "acceptance": "无未处置P0；每个例外有owner/范围/截止与不阻塞理由；main含被审成果；不得等所有E3才合结构；不得按分支名称批量合并/删除。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-11",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0产品",
+      "title": "工作台到原生任务全过程",
+      "existing_mapping": "R5-004/005/010",
+      "owner": "Codex",
+      "depends_on": [
+        "DL-AUDIT-20260914-04",
+        "DL-AUDIT-20260914-06"
+      ],
+      "implementation": "核验现有提交、授权、worker、事件、取消、未知结果对账和导出；补真实缺口而非重写；UI显示能力与证据范围。",
+      "acceptance": "从页面运行任务，重启服务仍可恢复状态；未知结果先对账；取消有确认；资产版本原子更新，失败不遗留假ACTIVE。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-12",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0产品",
+      "title": "Photoshop真实可编辑闭环",
+      "existing_mapping": "R5-012/013",
+      "owner": "Codex",
+      "depends_on": [
+        "DL-AUDIT-20260914-11"
+      ],
+      "implementation": "使用已登记PS版本；受控fixture后跑一个真实brief；读回文本/图层/图像对象，连续两次局部修改，保存重开；失败与恢复；保留PSD与动作记录。",
+      "acceptance": "对象可独立修改；未选中对象保持预期；宿主读回与保存重开验证通过；不能用扁平图片或截图替代PSD验收。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-13",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0产品",
+      "title": "Illustrator真实可编辑闭环",
+      "existing_mapping": "R5-011/013",
+      "owner": "Codex",
+      "depends_on": [
+        "DL-AUDIT-20260914-11"
+      ],
+      "implementation": "使用已登记AI版本；验证文本、路径、图层、链接图像；两次局部修改，保存重开与故障恢复。",
+      "acceptance": "文字真实可编辑、路径对象存在、尺寸与布局符合brief；修改影响范围可核查；独立保存AI与读回证据。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-14",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P0产品",
+      "title": "M1人工验收与交付",
+      "existing_mapping": "R5-014/015",
+      "owner": "Codex+用户",
+      "depends_on": [
+        "DL-AUDIT-20260914-12",
+        "DL-AUDIT-20260914-13"
+      ],
+      "implementation": "统一参考、需求约束、对象结构、原生工程、预览、rights与交付清单；检验一次完整工作台体验；保留人工意见与修订版本。",
+      "acceptance": "真实参考→AI及PSD→两次修改→保存重开→交付完成；字体/链接/尺寸等预检通过；人工确认设计质量。Comfy/H3/UIA不是前置。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-15",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P1扩展",
+      "title": "Comfy真实生成与局部重跑",
+      "existing_mapping": "R5-008/025/026",
+      "owner": "Codex",
+      "depends_on": [
+        "DL-AUDIT-20260914-04",
+        "DL-AUDIT-20260914-11"
+      ],
+      "implementation": "保留模型无关HTTP证据并单独验收模型推理；固定checkpoint/workflow/node版本；取消ACK、断线恢复、结果hash、局部重跑与透明通道。",
+      "acceptance": "10次完整记录含失败；真实模型推理与空图传输分开；透明度逐像素检查；不把本地MCP配置当生产完成。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-16",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P1扩展",
+      "title": "音频视频原生工程",
+      "existing_mapping": "R5-016/017/019",
+      "owner": "Codex",
+      "depends_on": [
+        "DL-AUDIT-20260914-04",
+        "DL-AUDIT-20260914-11"
+      ],
+      "implementation": "按资源可用性选择一个TTS与音乐方案；产物回收入项目；Premiere验证独立轨道、字幕、时间线、重开与导出；OTIO按宿主往返验收。",
+      "acceptance": "逐句重做、音轨独立编辑；PRPROJ重开与MP4播放有效；音视频同步、素材缺失与失败恢复可检查。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-17",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P1扩展",
+      "title": "Blender与跨媒体更新",
+      "existing_mapping": "R5-020/022/027",
+      "owner": "Codex",
+      "depends_on": [
+        "DL-AUDIT-20260914-04",
+        "DL-AUDIT-20260914-11"
+      ],
+      "implementation": "在已核验模型/场景上验证对象、材质、相机、单位与局部修改；平面变动仅更新关联场景/镜头；游戏交互按独立案例验收。",
+      "acceptance": "BLEND重开保留对象结构，GLB结构验证不替代宿主验收；未关联对象不受影响；游戏可运行和资产可编辑分别证明。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    },
+    {
+      "id": "DL-AUDIT-20260914-18",
+      "status": "PROPOSED_NOT_ACTIVATED",
+      "priority": "P2按需",
+      "title": "可选宿主、H3与控制后备",
+      "existing_mapping": "R5-018/021/024；DLDS-J000",
+      "owner": "Codex；DeepSeek仅结构",
+      "depends_on": [
+        "DL-AUDIT-20260914-04"
+      ],
+      "implementation": "OpenDesign/Penpot/MiniMax Design逐宿主资格验证；H3保持仓库rights限制；UIA仅原生接口不足时按案例启用；为每个领域提供真实命令、fixture与回退，不再只交大纲。",
+      "acceptance": "每宿主独立create/edit/readback/reopen；不可用明确记录；H3模型与MiniMax软件分开；不拖慢M1。",
+      "rollback": "按独立任务提交回退；保留原始台账与证据；数据变更须先备份并验证恢复，不删除未归属对象。"
+    }
+  ]
+}

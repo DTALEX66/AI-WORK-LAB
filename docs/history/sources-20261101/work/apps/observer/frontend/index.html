@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WORK-LAB Observer · AI Agent Control Tower</title>
+    <!-- The tab icon is the same WORK mark the shells carry. It was missing entirely: index.html declared no
+         `rel=icon` and there was no public/ directory, so the browser drew a generic glyph -- and
+         scripts/brand/build_work_brand.py never listed a favicon target, which is why "all the brand
+         surfaces are reproduced by one command" was true of 28 files and false of this one. -->
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <!-- U05: theme is URL-driven (?theme=dark|light), NOT a hardcoded class.
+         Pre-render script sets the class before React mounts so there is no
+         theme flash. Default = dark (the design language). Read from the query
+         so the same static build serves both themes. Deliberately nothing is
+         stored: `apps/observer/tests/test_production_surface_static_contract.js`
+         forbids web storage in the UI layer, so the URL is the only state carrier
+         and any view this shell shows is reproducible from its address alone.
+         WUI-03: `?palette=master` opts into the 20261009 pack's colours on the SAME rule. It is set
+         before paint for the same reason the theme is — a first frame in the wrong colours — and it is
+         absent rather than "worklab" when not asked for, so the shipped sheets stay the single source
+         for the default. src/theme/paletteMode.ts applies the identical rule after mount. -->
+    <script>
+      (function () {
+        try {
+          var t = new URLSearchParams(location.search).get('theme');
+          var light = t === 'light';
+          var root = document.documentElement;
+          root.classList.toggle('light', light);
+          root.style.colorScheme = light ? 'light' : 'dark';
+          if (new URLSearchParams(location.search).get('palette') === 'master') {
+            root.setAttribute('data-palette', 'master');
+          }
+        } catch (e) { document.documentElement.classList.add('dark'); }
+      })();
+    </script>
+  </head>
+  <body class="bg-bg text-ink">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

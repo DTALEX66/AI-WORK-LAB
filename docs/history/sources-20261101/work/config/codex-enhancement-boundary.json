@@ -1,0 +1,148 @@
+{
+  "schema_version": "workflow/codex-enhancement-boundary/v1",
+  "module_id": "workflow-assistance.codex-global-enhancement",
+  "status": "BOUNDARY_CONTRACT",
+  "purpose": "Provide a portable, client-neutral Codex user overlay without becoming a Codex runtime or taking ownership of private Codex state.",
+  "responsibility": {
+    "owns": [
+      "repository-controlled, secret-free Codex guidance overlay",
+      "declared user skill roots under $HOME/.agents/skills",
+      "one repository-controlled command rules file under $CODEX_HOME/rules",
+      "three field-level config defaults when the user has not already set them",
+      "plan/apply/verify/rollback evidence for its own managed assets",
+      "read-only project-local opaque machine identity status and configuration review plan"
+    ],
+    "does_not_own": [
+      "Codex runtime or CLI installation",
+      "provider, model, base URL, routing, quota, or billing",
+      "authentication, tokens, cookies, credentials, or private keys",
+      "MCP servers, plugins, sessions, private memory including $CODEX_HOME/memories, Desktop state, or sandbox internals",
+      "project source trees, project task ledgers, project telemetry, or project sidecars",
+      "user identity, account identity, authentication state, hardware fingerprints, or device authorization",
+      "Git commits, pushes, pull requests, releases, or external project writes"
+    ]
+  },
+  "capabilities": {
+    "detect": {
+      "mode": "READ_ONLY",
+      "allowed": [
+        "Codex executable version when available",
+        "declared target paths",
+        "managed asset hashes",
+        "owned-state metadata",
+        "secret-free user environment inventory (Hermes/Codex config keys + skill lists via user_profile_export.py)",
+        "read-only project-local opaque machine identity status and profile-digest comparison via machine_identity.py",
+        "read-only Git/Python/Markdown execution preflight via execution_preflight.py",
+        "redacted Codex performance timelines without prompt, response, auth, or memory bodies"
+      ],
+      "forbidden": [
+        "private config body disclosure",
+        "credential or session inspection"
+      ]
+    },
+    "plan": {
+      "mode": "READ_ONLY",
+      "allowed": [
+        "produce a redacted action plan",
+        "classify preserved user fields",
+        "fail closed on conflicts or unsafe paths",
+        "skills-only plan does not read or write native config/guidance/rules"
+      ],
+      "writes": false
+    },
+    "apply": {
+      "mode": "USER_APPROVAL_REQUIRED",
+      "allowed": [
+        "atomic update of owned guidance block",
+        "replace owned rules file",
+        "replace the declared owned skill roots",
+        "write missing managed config fields only",
+        "explicitly requested personal-guidance replacement through the same syncer, with project-local backup and target/source digest"
+      ],
+      "writes": true,
+      "preserves": [
+        "all existing user config fields",
+        "provider/model/routing",
+        "MCP/plugins",
+        "auth/session/memory/Desktop state"
+      ],
+      "fails_closed_on": [
+        "unknown ownership",
+        "duplicate or malformed markers",
+        "symlink/junction/reparse traversal",
+        "concurrent modification",
+        "unsafe target path"
+      ]
+    },
+    "verify": {
+      "mode": "READ_ONLY",
+      "allowed": [
+        "TOML entry parsing",
+        "managed marker/hash readback",
+        "owned skill count and hash readback",
+        "idempotent plan"
+      ],
+      "writes": false
+    },
+    "rollback": {
+      "mode": "OWNED_HASH_FENCED",
+      "allowed": [
+        "remove or restore only assets still matching this overlay's recorded ownership/hash"
+      ],
+      "writes": true,
+      "never": [
+        "delete user-modified managed-looking content",
+        "rollback private Codex state",
+        "restore from untrusted or unrecorded content"
+      ]
+    },
+    "invoke": {
+      "mode": "NOT_PROVIDED",
+      "allowed": [],
+      "reason": "The overlay configures Codex; it does not launch tasks, call providers, or perform project work."
+    }
+  },
+  "managed_surfaces": {
+    "codex_home": [
+      "AGENTS.md managed block",
+      "rules/workflow-assistance.rules",
+      "config.toml:approval_policy when absent",
+      "config.toml:sandbox_mode when absent",
+      "config.toml:project_doc_max_bytes when absent"
+    ],
+    "agent_home": [
+      "skills/workflow-assistance-github-delivery",
+      "skills/workflow-assistance-project-data-boundary",
+      "skills/workflow-assistance-safe-project-execution",
+      "skills/workflow-assistance-update-safety",
+      "skills/workflow-assistance-windows-development"
+    ]
+  },
+  "approval_policy": {
+    "repository_read": "allowed",
+    "local_plan": "allowed",
+    "user_home_apply": "explicit_user_request_required",
+    "rollback": "explicit_scope_required",
+    "git_publish": "separate_explicit_approval_required",
+    "live_provider_or_external_project_write": "forbidden_by_this_module"
+  },
+  "evidence_requirements": [
+    "redacted plan before apply",
+    "apply result with managed field names only",
+    "verify status PASS and issues empty",
+    "idempotent plan write_set_count=0",
+    "native Windows path readback on Windows",
+    "no credentials, tokens, sessions, or config正文 in evidence",
+    "skills-only verification is not whole-overlay or runtime behavior verification",
+    "personal-guidance publication preserves native config and is verified independently of legacy managed-block ownership"
+  ],
+  "non_goals": [
+    "global agent personality or chat product",
+    "automatic task execution",
+    "provider/model selection",
+    "credential or auth management",
+    "MCP/plugin installation",
+    "universal project governance without project-local contracts",
+    "production release or portable Codex installer"
+  ]
+}

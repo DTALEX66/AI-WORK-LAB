@@ -1,0 +1,20 @@
+{
+  "id": "dl-kb-02-supersede-fallback-names-successor-20261026",
+  "task_id": "DL-KB-02",
+  "axis": "unit",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T14:47:00Z",
+  "subject_sha": "7b9a4f37d7382198db763501c69696b9243315c0",
+  "audit_finding": "self-registered in section 5.76: the trigger-fallback refusal for the single-successor rule did not name the existing successor, while the application guard did",
+  "reproduced_before_fix": "the new case run against the pre-fix commit in a scratch worktree: FAILED with the successor id absent from the fallback detail",
+  "changed": [
+    "src/design_lab/knowledge_library.py: _superseded_detail() is the single formatter for the 409; _supersedes_guard and the sqlite3.IntegrityError fallback in _insert_entry_row both call it, and the fallback re-queries the successor (RAISE(ABORT) rolls back only the failed statement, so the row is still readable on that connection)",
+    "design-lab/tests/test_knowledge_library.py: arrives at the fallback deliberately by silencing the guard, asserts identical wording across the two paths, and reads the chain back after the refusal"
+  ],
+  "measured": {
+    "suite": "Ran 27 tests in 3.246s OK",
+    "non_vacuity": "red on ac97cc71 (the pre-fix bytes), green on 7b9a4f37",
+    "head": "7b9a4f37d7382198db763501c69696b9243315c0"
+  },
+  "not_claimed": "no new gate was added in this section, and no owner-facing decision was taken: the capacity register and the CSV safe mode stay with the owner"
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "anomaly-content.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "category", "roundType", "difficulty", "duration", "decision", "screenData", "panelData", "primaryConflict", "explanation", "visualState", "audioCue", "resolutionAction", "highRisk", "availableTools", "protocolTags", "protocolDependent", "contaminationEffects", "silentEvidence", "normalVariants", "evidence"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "category": { "enum": ["person", "count", "space", "time", "device", "dynamic"] },
+    "roundType": { "enum": ["quick", "investigation", "identity", "highRisk"] },
+    "difficulty": { "type": "integer", "minimum": 1, "maximum": 3 },
+    "duration": { "type": "number", "exclusiveMinimum": 0 },
+    "decision": { "const": "anomaly" },
+    "screenData": { "type": "object" },
+    "panelData": { "type": "object" },
+    "primaryConflict": { "type": "string", "minLength": 1 },
+    "explanation": { "type": "string", "minLength": 1 },
+    "visualState": { "type": "string" },
+    "audioCue": { "type": ["string", "null"] },
+    "resolutionAction": { "type": "string" },
+    "highRisk": { "type": "boolean" },
+    "availableTools": { "type": "array", "items": { "enum": ["camera", "thermal", "replay", "protocol"] }, "uniqueItems": true },
+    "protocolTags": { "type": "array", "items": { "type": "string" } },
+    "protocolDependent": { "type": "boolean" },
+    "contaminationEffects": { "type": "object" },
+    "silentEvidence": { "type": "array", "minItems": 2, "items": { "type": "string" }, "uniqueItems": true },
+    "normalVariants": { "type": "array", "minItems": 2, "items": { "type": "string" } },
+    "evidence": { "type": "object" }
+  }
+}

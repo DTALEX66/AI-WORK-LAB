@@ -1,0 +1,648 @@
+name: Canonical Verify
+
+# Required gates apply to all changes, including new directories and root policy.
+# Per-job optional adapter checks remain below; never skip the whole workflow.
+#
+# D01 (2026-10-14). `on: [push, pull_request]` started the full eleven-job set twice for one
+# SHA the moment a development branch was open as a pull request -- two check-runs, two
+# `uv sync`, two 9-minute unit-test steps, for one tree. The heavy set now runs on a pull
+# request, on a push to `main`, and on demand; a push to any other branch runs the light
+# structural gate below instead, so a development branch still gets a signal without paying
+# for the suite twice. Nothing is skipped on `main`: a push there is the real merge tree and
+# still runs everything.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# One group per pull request, one per ref otherwise. A PR edit cancels its own earlier run (the
+# newest tree is the one worth testing) but can never cancel another PR's run, and a push to a
+# branch cannot cancel `main`. The previous file had no `concurrency:` at all, so a fast series
+# of pushes queued every intermediate run to completion.
+concurrency:
+  group: canonical-verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  python-gate:
+    name: Python gate (V3 verifiers + unit tests)
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install deps (uv.lock; PR115 audit F04)
+        run: |
+          python -m pip install uv
+          uv sync --locked
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Install resvg renderer (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          archive_dir="$GITHUB_WORKSPACE/.project-local/task-runtime/ci-resvg"
+          mkdir -p "$archive_dir"
+          archive="$archive_dir/resvg-linux-x86_64.tar.gz"
+          curl --fail --show-error --silent --location --retry 3 --connect-timeout 20 --max-time 180 \
+            --output "$archive" https://github.com/linebender/resvg/releases/download/v0.47.0/resvg-linux-x86_64.tar.gz
+          printf '%s  %s\n' '5c84dcbcd032fe7e8d96e616fd6807a2f9df6561d2e6582b37e91e63c6cb4fe7' "$archive" | sha256sum --check --strict -
+          mkdir -p /opt/resvg/v0.47.0
+          tar -xzf "$archive" -C /opt/resvg/v0.47.0
+          chmod +x /opt/resvg/v0.47.0/resvg
+      # D03: the cheap source-structure contracts run before anything expensive. The failing
+      # sample behind this step spent 990.101s on 3011 tests to report `52 != 50` -- an inventory
+      # a static read settles in ~2s. This step enumerates its modules by name and fails if the
+      # selection is empty, so "ran zero tests" can never read as a pass.
+      - name: Early structure contracts (source/DOM inventory, stage anchors, gate register)
+        run: python scripts/run_structure_contracts.py
+      - name: DESIGN-LAB unified verify
+        # D05 (2026-10-15). This step already runs all 74 verifiers, and seven steps that used to
+        # be listed here individually ran scripts from that same list with the same arguments and
+        # no extra flags -- measured, not assumed: identity-boundary, host-adapter-matrix, V3
+        # product manifest, state vocabularies, V3 runtime contracts, V3 visual scoring, and the
+        # V2/V2.1 trio (three scripts in one step). Nine redundant invocations are gone; blocking
+        # is unchanged, because the aggregate runs the same scripts and fails the same job with
+        # rc=1. Proven by breaking `state-vocabularies.json` and watching this step report
+        # `VERIFY_DESIGN_LAB=FAIL` with `verify_state_vocabularies.py` in the failed list.
+        #
+        # Four same-named steps were deliberately KEPT, and they are not duplicates by this rule:
+        # `top-authority-gate` (project drift) and `license-secret-gate` (SBOM) live in their own
+        # jobs, so deleting them would move a failure out of the job that names it;
+        # `open-design-host-gate` runs the adapter verifier conditionally on a changed path, which
+        # the aggregate does not; and `branch-light-gate` runs the identity gate on development
+        # branches, where the aggregate never runs at all.
+        run: python design-lab/scripts/verify_design_lab.py
+      - name: Evidence boundTree freshness
+        if: github.event_name == 'push'
+        run: python design-lab/scripts/update_evidence_binding.py --check
+      - name: Task ledger contract gate (R5)
+        # The projections bind a generation-time git snapshot, so
+        # `generate_current_reports.py --check` can never pass on a clean
+        # checkout. This validates the part that can, and it is exactly the
+        # check that would have caught the 1acbfa1 ledger break instead of
+        # letting reports/current freeze behind a crashing generator.
+        run: python design-lab/scripts/verify_task_ledger_contract.py
+      - name: Evidence artefact presence gate
+        # A tracked artefact that has gone is a hard break; a `.project-local`
+        # runtime artefact is expected to be absent on a clean checkout, and a
+        # mutable source file used as an artefact decays on every edit. Those
+        # two report WARN, so this documents how much of the ledger is actually
+        # readable back without turning the gate permanently red.
+        run: python design-lab/scripts/verify_evidence_artifact_presence.py
+      - name: Repo classification index freshness
+        run: python scripts/classify_repo.py --check
+      - name: Candidate taxonomy anti-fabrication rules
+        run: python design-lab/scripts/verify_candidate_taxonomy.py
+      - name: Domain Pack V2 contract
+        run: python design-lab/scripts/verify_domain_pack_v2.py design-lab/domain-packs/uiux-design
+      - name: Library index 4-file consistency guard (P1-3)
+        # Cross-checks the four library/index documents agree with each other
+        # and every declared shared root is on the local D: drive (E: is
+        # protected, C: is not the declared library drive). Pure-stdlib,
+        # read-only, fail-closed; no external root is probed.
+        run: python design-lab/scripts/verify_library_index_consistency.py
+      - name: Python unit tests (sharded; the union of the shards must be the suite)
+        # D04. The suite runs once, through the shard orchestrator rather than as one process:
+        # three sequential shards, each its own process with its own project-local run root, and
+        # a check that the union of the test ids they ran equals discovery -- a split that is
+        # quick but drops a module fails here with rc=2. Sequential on purpose: the recovery /
+        # archive / port / environment tests must not be parallelised, and `--jobs` stays 1 until
+        # the phases have been separated. `--emit-module-timings` publishes the complete
+        # per-module table, which is the input a balanced plan is built from.
+        run: python scripts/run_python_tests_all.py --shards 3 --jobs 1 --emit-module-timings
+      - name: MiniGame fixture boundary test
+        run: python -m unittest design-lab.tests.test_minigame_visual_fixture_boundary -v
+      - name: Visual Quality Jury deterministic check
+        run: python packages/capabilities/quality/jury/check_anti_slop.py design-lab/ --skip-prefixes templates/,evals/,exports/,domain-packs/uiux-design/benchmarks/,design-systems/,docs/history/,reports/history/
+      - name: JSON/Schema parse check
+        run: python -m compileall -q design-lab/scripts
+
+  authority-gate:
+    name: DeepSeek authority gate chain (DLDS-H010 / DL-AUDIT-20260914-07)
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install deps (uv.lock; PR115 audit F04)
+        run: |
+          python -m pip install uv
+          uv sync --locked
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Run the bound authority gate chain
+        # One traceable call chain: ledger verify -> authority chain -> source lock ->
+        # contract graph -> language boundary -> test gate. Any gate failing makes
+        # this job fail. In a fresh checkout the local bound-test history is
+        # gitignored, so the test gate executes the 220-test critical set bound
+        # (order + seed + repeat + platform fingerprint recorded per run).
+        run: python scripts/verify_authority_gates.py --zero-spill
+      - name: 1392 full-suite orders remain recorded DEFERRED, not absorbed
+        # The deferral is a state of its own. Read the generated gate record and
+        # assert its deferred field is present, so a future run cannot quietly
+        # pretend the full-suite orders were executed.
+        run: |
+          python - <<'PY'
+          import json
+          report = json.load(open(".project-local/task-artifacts/authority-gates/latest.json"))
+          deferred = report["full_suite_1392"]
+          print(f"FULL_SUITE_1392={deferred.get('state')}")
+          assert deferred.get("state") in {"DEFERRED", "NOT_RECORDED"}, "full-suite state lost"
+          PY
+
+  top-authority-gate:
+    name: Top-level Authority consistency gate (DL-AUTHORITY-2026-09-18-R2)
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # The demoted-handoff check reads a document that was removed from the tree on owner
+          # order, through the removal manifest's restoreAt. A depth-1 checkout has no such commit,
+          # so the gate would report the bytes unreadable and go red on a shallow clone while
+          # passing locally. Every other job that touches history already does this.
+          fetch-depth: 0
+      - name: Run the R2 top-level Authority consistency gate
+        # Deterministic, stdlib-only: verifies AUTHORITY.md / authority-index.json /
+        # AGENTS.md / current taskpack / demoted handoff / single Ruff fact / R2
+        # release hashes are all mutually consistent. No network, no untrusted
+        # input; reads the working tree plus, for a removed document, the object
+        # database (see fetch-depth above).
+        run: python scripts/verify_top_level_authority.py
+      - name: Language/product drift guard (DL-GOV-130)
+        # G-B: wire the existing DL-GOV-130 guard into CI. Fail-closed,
+        # pure-stdlib, read-only; blocks default-host language and
+        # overstated early-stage (E0/E1) adapter evidence.
+        run: python design-lab/scripts/verify_project_drift.py
+      - name: Path-reference drift + machine policy gate (GA-1, G-A/G-C)
+        # Fail-closed: authority docs' path references must all resolve on
+        # disk (no unapproved drift), and the machine install policy
+        # (allowAutoInstall=false, officialReleaseOnly, E-drive protected,
+        # D-drive external roots) must be present and consistent.
+        run: python scripts/verify_path_refs.py
+      - name: Archive-wave record register gate
+        # Fail-closed, stdlib-only, read-only: parses the register section of
+        # docs/RECORD-ARCHIVE-INDEX.md back out as a reader sees it and re-derives every
+        # cited blob SHA-1, byte count and SHA-256 from `git cat-file blob HEAD:<path>`.
+        # A digest that no longer matches the repository, a table row disagreeing with its
+        # own full-digest bullet, or a path that does not resolve in the document whose
+        # purpose is to stop stale paths being re-indexed, all fail the run.
+        run: python scripts/verify_archive_record_register.py
+      - name: Cross-wave archive pointer register gate
+        # Read-only, stdlib-only: re-derives design-lab/config/record-archive-crosswave.json from the
+        # six archive manifests and the committed blobs under docs/history/** (--check never writes).
+        # It is the register that says which archived material several waves claim and where the
+        # committed bytes actually sit, so a wave that starts pointing at a digest no tracked file
+        # carries, or a register that quietly stops matching its own inputs, fails the run. Frozen
+        # originals are never opened for writing by anything in this chain.
+        run: python design-lab/scripts/verify_record_archive_crosswave.py --check
+
+  node-gate:
+    name: MiniGame node gate (+ drift check)
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Run MiniGame unit tests
+        run: node scripts/run-tests.cjs
+        working-directory: fixtures/domains/game-visual
+      - name: Rebuild android + webview and assert no drift
+        run: node scripts/check-android-drift.mjs
+        working-directory: fixtures/domains/game-visual
+      - name: Confirm worktree clean after build
+        run: git diff --exit-code -- fixtures/domains/game-visual
+
+  workbench-gate:
+    name: Workbench strict-TS product gate (taskpack 12.2/12.3/12.4/12.5)
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    # Independent of the Python gate: verifies the Workbench front end as a
+    # strict-TypeScript product (D002), the D003 Build Output Truth
+    # (apps/workbench/build is the single committed Vite outDir), and the
+    # D004 "no .ts-treated-as-.js production path" contract.
+    # Browser-level E2E (real Chromium driving the full Product->Brief->
+    # ...->DesignSystem vertical slice, served by the Python backend) is owned
+    # by the E-slice gate, not this static node gate; it is NOT silently dropped.
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: "Install pinned pnpm (matches root package.json packageManager)"
+        run: npm install -g pnpm@11.22.0
+      - name: "pnpm frozen-lockfile install"
+        run: pnpm install --frozen-lockfile
+      - name: "strict typecheck (tsc --noEmit)"
+        run: pnpm --filter @design-lab/workbench typecheck
+      - name: "Vite build (Build Output Truth -> apps/workbench/build)"
+        run: pnpm --filter @design-lab/workbench build
+      - name: "node unit smoke (deterministic, no browser)"
+        run: pnpm --filter @design-lab/workbench test:unit
+      - name: "Workbench Build-Output-Truth / packaging static verifier"
+        run: python3 design-lab/scripts/verify_workbench_packaging.py
+      - name: "Workbench weight and remote-reference baseline (DL-KB-13)"
+        # The delivered plan (§14) caps first-screen JS gzip at 150 KB and forbids third-party
+        # remote fonts. Only the remote-reference half is a rule today, so --check fails the job on
+        # a remote fetch and publishes the size reading without gating it: design.qa.yaml declares
+        # no budget, and the measured 155,787 B against that ceiling is an open owner decision
+        # (see DL-KB-13's PARTIAL row), not something to buy back by minifying a bundle the
+        # native-UI contract tests must read un-minified.
+        run: python3 scripts/measure_workbench_weight.py --check
+      - name: "No-drift: rebuilt bundle is byte-identical to committed"
+        run: git diff --exit-code -- apps/workbench/build
+
+  workbench-browser-e2e:
+    name: Workbench browser E2E (exact-SHA controlled-runtime, no-skip)
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    # P0-08: make the browser-level vertical slice a REAL CI job. The shell test
+    # (test_workbench_design_layer_e2e.py) is probe-driven and HONESTLY skips on
+    # a clean checkout that lacks the toolchain. This job installs the pinned
+    # `playwright` workspace dependency + its matching Chromium (recorded in the
+    # lockfile, not the user's local cache) and then REQUIRES the browser test
+    # to actually RUN and PASS — a skip is a fail-closed red, never a silent
+    # green. It claims E2 controlled-runtime evidence only (not E3/E4/E5).
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install deps (uv.lock; PR115 audit F04)
+        run: |
+          python -m pip install uv
+          uv sync --locked
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: "Install pinned pnpm (matches root package.json packageManager)"
+        run: npm install -g pnpm@11.22.0
+      - name: "pnpm frozen-lockfile install (registers the pinned playwright)"
+        run: pnpm install --frozen-lockfile
+      - name: "Install the lockfile-pinned Chromium (supply-chain recorded)"
+        # `playwright` is a workspace devDependency; installing its matching
+        # browser via the pinned package (not the user's local ms-playwright
+        # cache) keeps the browser version bound to the committed lockfile.
+        run: pnpm --filter @design-lab/workbench exec npx playwright install chromium
+      - name: "Browser E2E must RUN and PASS (no-skip policy)"
+        # E2E_REQUIRED makes the shell test fail-closed on missing evidence;
+        # E2E_SUBJECT_SHA / E2E_WORKFLOW_RUN_ID stamp the exact-SHA and run
+        # identity into browser-e2e-summary.json for the artifact below.
+        # NOTE: github.sha / github.run_id are trusted identity fields
+        # computed by GitHub (not attacker-controlled event inputs), so
+        # they are safe in env: / with: contexts.
+        env:
+          E2E_REQUIRED: "1"
+          E2E_SUBJECT_SHA: ${{ github.sha }}
+          E2E_WORKFLOW_RUN_ID: ${{ github.run_id }}
+        run: python design-lab/scripts/verify_browser_e2e_ran.py
+      - name: "Upload E2 evidence artifact (summary + fail screenshot)"
+        # P0-G: the no-skip job must leave download-proof. The mjs driver
+        # writes browser-e2e-summary.json (and fail.png on a mid-chain
+        # failure) into the gitignored .project-local/ tree; on a clean
+        # runner nothing exists yet, so if-no-files-found=error keeps a
+        # "green-but-empty" upload from being silently possible.
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: workbench-e2-${{ github.sha }}
+          path: .project-local/task-artifacts/browser-e2e/
+          if-no-files-found: error
+
+  wheel-install-gate:
+    name: Clean wheel install + Workbench launch gate
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    # C7.1 / C7.2: the Workbench must be reachable from an installed package
+    # with no repo CWD or sys.path trick. Build the wheel, install it into a
+    # clean environment, then run the launch + restart-persistence tests
+    # against that install (DL_LAUNCH_INSTALLED=1 stops the test from
+    # re-injecting the source tree).
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Build the source distribution, then rebuild the wheel FROM it
+        # Owner audit at 7671ec70: this job used to `uv build --wheel` straight from the checkout,
+        # so the distribution this project publishes was never actually exercised -- the sdist was
+        # missing 54 of the 71 paths the wheel force-includes and `uv build --wheel` inside the
+        # unpacked tree died at `FileNotFoundError: Forced include not found:
+        # …/design-lab/domain-packs`. Installing a wheel rebuilt from the shipped source is the
+        # acceptance; comparing the two wheels' member sets and per-member bytes says the source
+        # path is not a second, silently different build.
+        run: |
+          python -m pip install uv
+          uv build --sdist
+          ls -l dist/*.tar.gz
+          mkdir -p from-sdist dist-from-sdist dist-from-repo
+          tar -xzf dist/*.tar.gz -C from-sdist
+          ( cd from-sdist/design_lab-* && uv build --wheel --out-dir "$GITHUB_WORKSPACE/dist-from-sdist" )
+          uv build --wheel --out-dir dist-from-repo
+          echo "SDIST_WHEEL_REBUILT $(ls dist-from-sdist/*.whl)"
+          python - <<'PY'
+          import glob, hashlib, pathlib, zipfile
+          def fingerprint(path):
+              with zipfile.ZipFile(path) as handle:
+                  joined = '\n'.join('%s:%s' % (i.filename,
+                             hashlib.sha256(handle.read(i.filename)).hexdigest())
+                             for i in sorted(handle.infolist(), key=lambda i: i.filename))
+              return len(handle.infolist()), hashlib.sha256(joined.encode()).hexdigest()
+          a = glob.glob('dist-from-sdist/*.whl')[0]
+          b = glob.glob('dist-from-repo/*.whl')[0]
+          fa, fb = fingerprint(a), fingerprint(b)
+          print('WHEEL_FROM_SDIST bytes=%d members=%d fingerprint=%s'
+                % (pathlib.Path(a).stat().st_size, fa[0], fa[1][:16]))
+          print('WHEEL_FROM_REPO  bytes=%d members=%d fingerprint=%s'
+                % (pathlib.Path(b).stat().st_size, fb[0], fb[1][:16]))
+          # The member set and every member's bytes are what the published distribution has to
+          # reproduce. The container's own bytes are NOT compared: two hatchling builds of identical
+          # members came out with different compressed streams on this project, and asserting on
+          # those would test a deflate setting instead of the artefact.
+          assert fa == fb, ('the wheel rebuilt from the source distribution does not contain the '
+                            'same files with the same bytes as the wheel the repository produces')
+          PY
+      - name: Install it into a clean environment
+        run: |
+          uv venv .venv-clean
+          uv pip install --python .venv-clean/bin/python dist-from-sdist/*.whl
+          .venv-clean/bin/python -c "import design_lab, PIL, jsonschema, numpy, skimage; print('IMPORTS_OK', design_lab.__file__)"
+      - name: Launch the installed Workbench and read it back
+        env:
+          DL_LAUNCH_INSTALLED: "1"
+        # Assert the outcome instead of trusting the exit code: three tests must
+        # run, and the packaged-resource test must actually execute rather than
+        # skip (a skip here would mean the "installed" layout was never tested).
+        run: |
+          .venv-clean/bin/python -m unittest design-lab.tests.test_workbench_launch -v > launch.log 2>&1
+          tail -20 launch.log
+          grep -q "Ran 3 tests" launch.log
+          grep -q "^OK$" launch.log
+          ! grep -q "skipped" launch.log
+
+      - name: Walk the acceptance chain against the installed package
+        env:
+          DL_LAUNCH_INSTALLED: "1"
+        # A source checkout cannot see this class of defect at all. `PROJECT_ROOT` is parents[3] of
+        # the module -- the repository here, the interpreter's own Lib inside a wheel -- so every
+        # route that opens its contract through it answers 500/503 only once the product is
+        # installed. Measured on 2026-10-23: the design-layer read-back answered `500 INTERNAL` and
+        # a delivery bundle answered `409 NATIVE_BUNDLE_UNVERIFIED` (a semantic verdict about the
+        # work, caused by a missing packaged file), and preflight answered
+        # `503 PROJECT_STORE_UNAVAILABLE`, pointing the operator at their database.
+        # Assert the outcome and that the hop table was actually printed; do not pin the case
+        # count, because a brittle "Ran N tests" is how a green job hides a suite that drifted.
+        run: |
+          .venv-clean/bin/python -m unittest design-lab.tests.test_standalone_chain_http -v > chain.log 2>&1
+          tail -40 chain.log
+          grep -qE "^Ran [1-9][0-9]* tests" chain.log
+          grep -q "^OK" chain.log
+          ! grep -q "skipped" chain.log
+          grep -q "CHAIN_HOPS" chain.log
+          grep -q "DELIVERY_HOPS" chain.log
+          # The GET sweep prints its own denominator. Requiring the installed line keeps a future
+          # refactor from turning the case into a no-op while the job still reads green.
+          grep -q "GET_SWEEP layout=installed" chain.log
+          # The native-asset verify route re-reads stored bytes; the line names all three verdicts it
+          # must produce in this layout, so a check that quietly stopped hashing cannot pass.
+          grep -q "NATIVE_VERIFY layout=installed clean=HASH_VERIFIED tampered=NATIVE_ARTIFACT_UNVERIFIED unknown=NATIVE_ASSET_NOT_FOUND" chain.log
+
+      - name: Walk every POST row against the installed package
+        env:
+          DL_LAUNCH_INSTALLED: "1"
+        # The read sweep proves the packaged contract files are readable from a wheel. This proves the
+        # write routes can still assemble their envelopes and persist what they answered there: every
+        # POST row in design-lab/config/contract-bindings.json is performed against the installed
+        # package and read back through a GET, and the coverage is asserted in both directions, so a
+        # route added to the ledger cannot appear only in the product and never in a run.
+        run: |
+          .venv-clean/bin/python -m unittest design-lab.tests.test_installed_write_surface -v > write.log 2>&1
+          tail -40 write.log
+          grep -qE "^Ran [1-9][0-9]* tests" write.log
+          grep -q "^OK$" write.log
+          ! grep -q "skipped" write.log
+          grep -q "POST_SWEEP layout=installed" write.log
+          # The walk must enumerate what it claims, and an unearned 5xx is the failure this step
+          # exists to catch -- its message says so explicitly, so grep for the absence of the verdict.
+          grep -q "POST_SWEEP_WRITTEN" write.log
+          grep -q "POST_SWEEP_EXCLUDED" write.log
+          ! grep -q "unearned 5xx" write.log
+
+  generated-artifact-gate:
+    name: Generated-artifact clean-tree gate
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Rebuild and assert committed bundles unchanged
+        run: |
+          cd fixtures/domains/game-visual
+          node build.js android
+          node scripts/prepare-android-webview.mjs
+          git diff --exit-code -- android-minigame android-webview/app/src/main/assets
+      - name: Assert full tree clean
+        run: |
+          dirt=$(git status --porcelain --ignored=no)
+          if [ -n "$dirt" ]; then
+            echo "FAIL-CLOSED: worktree is dirty after rebuild"
+            echo "$dirt"
+            exit 1
+          fi
+          echo "clean tree confirmed"
+
+  license-secret-gate:
+    name: License & secret hygiene gate
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    steps:
+      # fetch-depth: 0 — the secret-history scan (DL-CLOUDAUDIT-B1 / G-1)
+      # walks every ref's blob revisions, so the job needs full history.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Root license present
+        run: test -f LICENSE && echo "LICENSE present"
+      - name: SPDX mirror present
+        run: test -f LICENSES/MIT.txt && echo "LICENSES/MIT.txt present"
+      - name: License coverage (SPDX headers + binary sidecars)
+        run: python design-lab/scripts/verify_license_coverage.py
+      # G-2 / B2: real SBOM verification, not just presence — SPDX structure,
+      # vendored coverage, and lockfile-level bindings (pnpm/uv/requirements
+      # sha256 + integrity manifests). Pure-stdlib (tomllib, no PyYAML needed),
+      # so it runs on this job's bare python without uv sync. If a lockfile
+      # changes without regenerating the binding, the sha256 check fails
+      # closed until scripts/generate_sbom_lockfiles.py is re-run.
+      - name: SPDX SBOM verify (structure + lockfile bindings)
+        run: python design-lab/scripts/verify_sbom.py
+      - name: No obvious secret files tracked
+        run: |
+          set +e
+          git ls-files | grep -iE '(auth\.json|\.env$|id_rsa|\.pem$|credentials)'
+          code=$?
+          set -e
+          if [ "$code" -eq 1 ]; then echo "no secret-like files tracked"; else echo "SECRET-LIKE FILE FOUND"; exit 1; fi
+      # G-1 / B1: credential pattern scan over the full git history.
+      # --max-blobs 0 = explicit unlimited scope (hitting the default cap
+      # would fail closed; CI scans everything, ~11k blobs, ~5s).
+      - name: Secret history scan (all revisions, redacted report)
+        run: python scripts/verify_secret_history.py --max-blobs 0
+      # The redacted report is the evidence trail: keep it on FAIL too.
+      - name: Upload secret history report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: secret-history-report
+          path: reports/current/SECRET-HISTORY-REPORT.json
+      - name: No CRLF-forbidden diff whitespace
+        run: git diff --check
+
+  open-design-host-gate:
+    name: Open Design host adapter gate
+    runs-on: ubuntu-latest
+    # D01: this job is part of the heavy set. It runs for a pull request, for a push to
+    # `main`, and on demand; a push to a development branch runs the light gate instead.
+    if: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
+    # Platform-neutral CI: the global Python gate always runs the structural
+    # Open Design verifier. This conditional job remains as an explicit
+    # host-surface audit when plugin/adapter files change.
+    outputs:
+      run-gate: ${{ steps.changes.outputs.open-design }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - id: changes
+        name: Detect Open Design surface changes
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+          else
+            base="${{ github.event.before }}"
+            head="${{ github.sha }}"
+          fi
+          changed=$(git diff --name-only "$base" "$head" || true)
+          echo "$changed" | grep -qE '^(design-lab/(plugins|skills)|packages/capabilities/(plugins|skills)|integrations/hosts/open-design)/' && echo "open-design=true" >> "$GITHUB_OUTPUT" || echo "open-design=false" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install deps (uv.lock; PR115 audit F04)
+        if: steps.changes.outputs.open-design == 'true'
+        run: |
+          python -m pip install uv
+          uv sync --locked
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Open Design host adapter structural gate
+        if: steps.changes.outputs.open-design == 'true'
+        run: python integrations/hosts/open-design/verifier/verify_open_design_host_adapter.py
+
+  ci-artifact-proof:
+    name: "CI artifact proof (H001: main-run upload readback)"
+    runs-on: ubuntu-latest
+    # DL-CLOUDAUDIT-H001 (FINAL TaskPack section H): the main-branch side of
+    # the release layer's real API readback chain. The canonical verify run
+    # uploads artifacts (secret-history-report from license-secret-gate;
+    # workbench-e2-<sha> from workbench-browser-e2e) but previously nothing
+    # proved those uploads reached GitHub with identical bytes bound to this
+    # exact run/SHA. This job runs that proof after both uploaders.
+    #
+    # Deliberately NON-required / ADVISORY (additive, on top of the existing
+    # required checks): the gate is tri-state and INCOMPLETE whenever the
+    # Actions API has not indexed the upload yet -- a re-dispatch of this job
+    # is the recovery, never a silently-rewritten PASS. Promoting it to a
+    # required check is H003 / an owner step, not part of this landing.
+    #
+    # Advisory isolation (DL-CLOUDAUDIT-2026-09-25 H001 / Prompt G #5/#6):
+    # the gate's contract line and proof record carry an explicit
+    # gate=ADVISORY marker so a red advisory lane can never be read as "main
+    # is red" in the required-green signal; reports distinguish
+    # required_gate / advisory_gate / proof_incomplete. The release layer's
+    # own artifact proof stays fail-closed independently of this marking.
+    #
+    # H001 proves main-run uploads only. On pull_request, GITHUB_SHA is the
+    # synthetic merge commit while the run's head_sha is the PR head, so the
+    # identity check would always report RUN-SHA-MISMATCH. Keep always() on
+    # main so failed uploader jobs still produce an honest readback verdict.
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [license-secret-gate, workbench-browser-e2e]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: "Artifact proof (run/SHA identity + /artifacts query + download + sha256)"
+        # Pure-stdlib gate (no uv sync). All inputs are GitHub's trusted
+        # default env vars (GITHUB_REPOSITORY / GITHUB_RUN_ID / GITHUB_SHA /
+        # GITHUB_TOKEN) -- never attacker-controlled event inputs, and
+        # never interpolated into this run body. The default artifact set is
+        # derived from GITHUB_SHA: "secret-history-report,workbench-e2-<sha>".
+        # Security: the only expression in this job is github.token via env:
+        # (trusted); the run body is static text.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          python design-lab/scripts/verify_ci_artifact_proof.py
+
+  # D01: the light gate for a push to a development branch. It exists so that restricting the
+  # heavy set (above) does not leave a branch push with no signal at all -- and so that the
+  # signal it does give is the cheap one: a syntax/compile pass over the verifier tree and the
+  # identity boundary, both of which need no dependency install. The pull request that opens
+  # (or updates) against this branch still runs the full set, once.
+  branch-light-gate:
+    name: Branch light gate (compile + identity boundary; development branches only)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: JSON/Schema parse check
+        run: python -m compileall -q design-lab/scripts
+      # Kept, unlike the same step in `python-gate`: on a development-branch push the
+      # aggregate does NOT run, so this is the only identity-boundary check that branch
+      # gets. Deleting it as a "duplicate" would leave the light gate covering syntax only.
+      - name: Identity boundary gate
+        run: python design-lab/scripts/verify_identity_gate.py

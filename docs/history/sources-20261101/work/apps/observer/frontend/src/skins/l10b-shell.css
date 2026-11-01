@@ -1,0 +1,721 @@
+/* L10b (2026-09-27) — shell reinforcement layer.
+ *
+ * Loaded AFTER src/skins/b10.css. The B10 skin is unlayered, so it wins over
+ * Tailwind's @layer utilities; that means utility classes such as `hidden`,
+ * `md:flex` or `md:w-[280px]` can no longer express the responsive shell.
+ * This file carries ONLY those shell-level overrides, in one place, so
+ * src/skins/b10.css stays a verbatim copy of the B10 single-file <style>.
+ */
+
+/* The rail is the only navigation surface, so it is a flex column at every width
+ * the app runs at. b10.css hides `.sidebar` below 840px and that query stays
+ * verbatim (D-11), so this layer re-shows it with a two-class selector, which
+ * wins on specificity regardless of order. A CSS viewport under 840px is a real
+ * desktop case, not a phone: the display runs at 125% scale, so a 1024px window
+ * measures ~819 CSS px. */
+.sidebar-slot { display: flex; flex-direction: column; }
+@media (max-width: 840px) {
+  .sidebar.sidebar-slot { display: flex; flex-direction: column; }
+}
+
+/* The compact HUD renders no rail, so it collapses to a single track. */
+.app-compact { grid-template-columns: 1fr; }
+
+/* B10 `.sidebar` padding is 22px 18px; the rail's content box is then too
+ * narrow for the B10 brand lockup ("AI WORKFLOW CONTROL PLANE" at 10px with
+ * .12em tracking needs ~186px, leaving only ~184px usable). The shell layer
+ * trims the horizontal padding by 2px per side so the B10 lettering fits on one
+ * line — same 280px rail, same B10 lockup, no shrunk type. */
+.sidebar { padding-left: 16px; padding-right: 16px; }
+
+/* The rail's scroll container was dead, and nothing in the skin looks wrong until you count what you
+ * can reach. B10 declares `.nav{overflow:auto}` (b10.css:98), but `.app` is laid out with
+ * `min-height:100vh` (b10.css:36), so the grid row grows to whatever the nav asks for: measured in a real
+ * browser at a 1386x807 viewport, `.sidebar` was 1707px tall with `overflow-y: visible`, `.nav` reported
+ * `clientHeight == scrollHeight == 1496` (a scroll box that has nothing to scroll), and
+ * `body{overflow:hidden}` (b10.css:27) removed the document as a fallback. 14 of 23 nav items were
+ * unreachable by pointer, keyboard or wheel — the last group simply ended at the window edge.
+ *
+ * Pinning the shell to the viewport height is what lets the existing `overflow:auto` engage;
+ * `min-height:0` is required because a flex/grid item's default minimum is its content size, which is
+ * exactly the assumption that produced the bug. The brand block and the footer keep their height and the
+ * nav absorbs the rest. `dvh` is the primary unit so a resized window reflows, with `vh` behind it for
+ * any engine that predates it. */
+.app { height: 100dvh; height: 100vh; min-height: 0; }
+@supports (height: 100dvh) { .app { height: 100dvh; } }
+.sidebar.sidebar-slot { min-height: 0; }
+.sidebar .brand { flex: 0 0 auto; }
+.sidebar .sidebar-footer { flex: 0 0 auto; }
+.nav { flex: 1 1 auto; min-height: 0; }
+.main { min-height: 0; }
+
+/* The rail's group captions became disclosure buttons (ARIA APG). `.nav button` in B10 styles EVERY
+ * button in the rail as a nav row — padding, height, surface, radius — so the toggle is re-declared
+ * here at a specificity that beats it. The caption's OWN typography deliberately stays on the element
+ * as Tailwind classes in Sidebar.tsx, at the 12px DESIGN.md floor: `text-[10px]` there is what the
+ * legibility instrument measured, and it is what this sheet must not silently re-narrow. */
+.nav .nav-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: auto;
+  min-height: 24px;
+  padding: 4px 14px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  line-height: 1.5;
+  text-align: left;
+}
+.nav .nav-group-toggle:hover { background: none; color: var(--ink); }
+.nav-group-caret {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 4px solid currentColor;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  transition: transform 180ms ease;
+}
+.nav-group-toggle[aria-expanded="true"] .nav-group-caret { transform: rotate(90deg); }
+
+/* The action row folds instead of stacking (see ActionOverflow.tsx). B10's `.top-actions` is a plain
+ * flex row; `nowrap` plus the measured fit is what replaces the wrap-into-a-column behaviour, and the
+ * row keeps `overflow: visible` so the folded menu can leave it. Colours come from the index.css role
+ * variables, not from the B10 aliases, so the menu is correct in both themes. */
+/* Two classes, not one. The single-class form lost: this file already carries a later rule that wraps
+ * the band (`.topbar { flex-wrap: wrap }` below), and equal specificity is decided by order, so the
+ * fold measured as a stack at 430px and 360px until the selector was raised. Measured after this rule:
+ * one row at every width from 1400 down to 360.
+ *
+ * Separate fact, still open: b10.css:519-521 hides `.sidebar` AND `.top-actions` with `display:none`
+ * below 840px, and this layer re-shows the rail (line 17) but not the actions. A width-based rail
+ * collapse is the remaining half of the band contract. */
+.top-actions.top-actions-fit { flex-wrap: nowrap; overflow: visible; }
+/* The band must not starve its own controls. As `flex: 0 1 auto` the row was squeezed to 204px at a
+ * 1400px window while its four controls need 296px, and the search field kept 388px of a 320px
+ * flex-basis; the fold then measured the shrunken row and hid a control the band could have shown.
+ * Intrinsic width here means the row is either satisfied or visibly folded, never silently crushed. */
+.topbar .top-actions { flex: 0 0 auto; }
+.action-sizer {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  display: flex;
+  gap: 8px;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.action-overflow { position: relative; display: flex; }
+.action-more { letter-spacing: 0.14em; min-width: 40px; }
+.action-overflow-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+  padding: 6px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.22);
+}
+.action-overflow-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  min-height: 32px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.action-overflow-item:hover { background: var(--color-panel2); }
+
+/* B10 `.toast` is a single fixed element (right/bottom 18px). The repo keeps a
+ * small stack, so the container is a transparent flex column anchored to the
+ * same corner; each child is the verbatim B10 `.toast.show` element. */
+.toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: auto;
+}
+.toast-stack .toast { position: static; right: auto; bottom: auto; }
+.toast-stack .toast:hover { border-color: color-mix(in srgb, var(--primary) 55%, white 5%); }
+
+/* L10b: visually-hidden helper. Tailwind's `sr-only` utility is layered and
+ * cannot be relied on next to the unlayered B10 skin, so the contract for the
+ * pinned-but-hidden native controls lives here. */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border-width: 0 !important;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * 2026-10-06 — window chrome and fluid scaling.
+ *
+ * Both windows set `decorations: false`, so the OS draws no title bar: the rail
+ * has to supply the drag surface and the min / maximize / close controls, and
+ * without them the window is neither movable nor closable from inside the app.
+ * These rules live in the shell layer because src/skins/b10.css stays a verbatim
+ * copy of the B10 source (UI_DECISIONS D-11).
+ * ------------------------------------------------------------------------- */
+.drag-region {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 24px;
+}
+
+.winctl {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  margin-left: 12px;
+}
+.winctl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.winctl-btn:hover { border-color: var(--border); background: var(--panel2); color: var(--ink); }
+.winctl-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.winctl-close:hover { border-color: #7f1d1d; background: #7f1d1d; color: #fff; }
+
+/* The daily shell's top bar keeps its own controls in the same corner the caption cluster
+   paints into (measured natively 2026-10-25: the HUD pill sat under the close button).
+   When the cluster is present the bar reserves its width instead of overlapping it. */
+body:has(.winctl) header[data-landmark="topbar"] { padding-right: 284px; }
+
+.winctl-zoom {
+  min-width: 38px;
+  /* 10px read this role used to claim as a sanctioned micro part. The instrument measured it as text
+   * a user must read (it is the only place the zoom level appears) and DESIGN.md floors such text at
+   * 12px, so the role is no longer an exception and the legibility gate's allowlist is empty. */
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--muted);
+}
+.winctl-sep { width: 1px; height: 16px; margin: 0 4px; background: var(--border); }
+
+/* First-frame loading strip: sits above the lane content, which keeps rendering
+ * its UNKNOWN values (B5 rule), so this only answers "still fetching?". */
+.load-strip {
+  flex: 0 0 auto;
+  margin: 10px clamp(14px, 2.4cqi, 28px) 0;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel2);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Fluid shell: query the CONTAINER, not the viewport.
+ *
+ * The B10 skin hard-codes a 4-column `.kpi-grid`, fixed fr ratios for
+ * `.two-col/.three-col/.split` and fixed padding, with only two viewport
+ * breakpoints (1160 / 840). Between 841 and 1160px nothing re-steps, so every
+ * panel compresses at once - that is the "挤在一起" behaviour.
+ *
+ * `1vw` would be the wrong unit here: the content column is the viewport MINUS
+ * the 210-280px rail, and in the compact layout the rail is gone entirely, so
+ * viewport-relative sizing mis-scales exactly when the shell changes shape.
+ * `.content` is a scroll box whose width comes from its parent, so it can own a
+ * containment context safely.
+ *
+ * Type sizes are deliberately NOT made fluid: b10.css is a verbatim copy of the
+ * B10 reference (UI_DECISIONS D-11) and pixel QA keys on it. Reading text at a
+ * smaller window is the new zoom level's job, not a re-typed scale. */
+.content {
+  container-type: inline-size;
+  container-name: page;
+}
+
+/* The content column must be able to SHRINK. B10's `.app{grid-template-columns:
+ * 280px 1fr}` sizes `1fr` against min-content, so an unshrinkable KPI row pushed
+ * the whole column past the window edge and clipped the third card and every
+ * window control off-screen. minmax(0,1fr) is what makes the rest of this layer
+ * observable at all. The declaration itself lives with the two-track rule at the
+ * end of this file, where it is stated unconditionally. */
+.main { min-width: 0; }
+
+/* Continuous reflow for card grids: the minimum track is a fraction of the
+ * content column, clamped to a readable floor, so columns are added as space
+ * appears instead of waiting for a cliff. */
+.kpi-grid {
+  /* `min(100%, 1fr)` as the maximum track is rejected by the parser, which
+   * discarded this whole declaration and fell back to the B10 fixed four
+   * columns - the KPI row then overflowed and clipped the third card. */
+  grid-template-columns: repeat(auto-fit, minmax(max(150px, 20cqi), 1fr));
+  gap: clamp(10px, 1.6cqi, 20px);
+}
+
+/* The top bar WRAPS instead of overflowing.
+ *
+ * Sequence of evidence: with the B10 defaults the action buttons were squeezed
+ * into one-glyph columns; forcing `nowrap` fixed that but pushed the fourth KPI
+ * card, the layout/theme buttons and the whole window-control cluster past the
+ * right edge, because the CSS viewport is narrower than the physical window
+ * (2048x1104 work area with display scaling). Wrapping keeps every control
+ * reachable at any width and costs nothing at wide sizes, where the row still
+ * fits on one line. */
+.topbar { flex-wrap: wrap; min-width: 0; height: auto; min-height: 78px; row-gap: 8px; }
+.topbar .search { flex: 1 1 320px; width: auto; min-width: 200px; }
+.top-actions { flex: 0 1 auto; white-space: nowrap; }
+.top-actions .ghost-btn { white-space: nowrap; flex: 0 0 auto; }
+.winctl { flex: 0 0 auto; margin-left: auto; }
+.winctl-zoomgroup { display: flex; align-items: center; gap: 2px; }
+/* The zoom cluster is a convenience; min / maximize / close are not. Under a
+ * 1240px window the cluster yields so the window buttons stay on screen, and
+ * Ctrl +/−/0 keeps working without them. */
+@media (max-width: 1240px) {
+  .winctl-zoomgroup { display: none; }
+}
+.drag-region { min-width: 8px; }
+/* No `display` here: this rule is unlayered and would override the layered
+ * `.hidden` / `lg:flex` utilities that gate the strip by width. */
+.truth-strip { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+@container page (max-width: 820px) {
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Paired/triple/split rows collapse inside the container, not the viewport. */
+@container page (max-width: 900px) {
+  .three-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container page (max-width: 760px) {
+  .two-col, .three-col, .split { grid-template-columns: 1fr; }
+  .metric-row { grid-template-columns: 1fr; }
+}
+
+.panel { min-width: 0; }
+.panel h3 { overflow-wrap: anywhere; }
+
+/* THE overflow cause: B10 declares `.two-col{1.2fr 1fr}`, `.split{1.35fr .95fr}`
+ * and `.three-col{repeat(3,minmax(0,1fr))}`. A bare `fr` track has a min-content
+ * floor, so a 720px `.table` inside one of those panels forced the whole track -
+ * and therefore the page - wider than the window, which is what pushed the
+ * fourth KPI card and the window controls past the right edge. Every fr track
+ * that holds projected data needs an explicit zero minimum. */
+.two-col { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.split { grid-template-columns: minmax(0, 1.35fr) minmax(0, .95fr); }
+.main, .content, .sidebar-slot { min-width: 0; }
+
+/* Tables keep the B10 720px intrinsic width and scroll horizontally inside
+ * `.table-wrap{overflow:auto}`. Forcing min-width:0 here would collapse the
+ * columns instead, which reads worse than a scrollbar. */
+.table-wrap { max-width: 100%; }
+@media (max-width: 840px) {
+  .content { padding: 16px 14px 20px; }
+}
+
+/* Narrow screens stay operable: the top actions keep their meaning at reduced
+ * size rather than disappearing, and the bar wraps instead of overlapping. */
+@media (max-width: 840px) {
+  .topbar { height: auto; min-height: 62px; flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
+  .top-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .top-actions .ghost-btn { padding: 6px 10px; font-size: 12px; }
+  .search { flex: 1 1 220px; }
+  .winctl { margin-left: auto; }
+}
+
+/* ---------------------------------------------------------------------------
+ * 2026-10-06 accessibility repair (parallel audit).
+ * All of it lives in this shell layer; b10.css stays verbatim (D-11).
+ * ------------------------------------------------------------------------- */
+
+/* Light theme was unusable: index.css:76-93 redefines only the Tailwind
+ * --color-* tokens, while the B10 skin reads its OWN variable set
+ * (--bg/--surface/--surface2/--border/--text/--muted/...). Those kept their dark
+ * values, so layered text flipped to near-black on an unchanged #081420 surface
+ * — measured 1.03:1 for .text-ink, effectively invisible. Mirror the light
+ * palette into the names the skin actually consumes. */
+html.light {
+  --bg: #F4F7FA;
+  --sidebar: #E4EBF2;
+  --surface: #FFFFFF;
+  --surface2: #EAF0F6;
+  --border: #D5E2EC;
+  --text: #0B1420;
+  --muted: #4A6172;
+  --primary: #1B7FE6;
+  /* A text-role accent, distinct from --primary the fill. Material Blue 800: 4.78:1 on --sidebar,
+   * where --primary is 3.74:1. Darkening --primary itself would darken every filled control and the
+   * brand mark to fix one caption, so the role gets its own token instead. */
+  --primary-text: #1565C0;
+  --success: #15803D;
+  --warning: #B45309;
+  --error: #B91C1C;
+}
+
+/* Two light-theme roles were unreadable because the pinned skin paints them with values that only
+ * work on a dark surface. b10.css is verbatim (D-11), so both are answered in this layer.
+ *   .avatar — `color:#fff` over `--surface2` measured 1.13:1, i.e. the glyph did not render visibly.
+ *   .brand small — `color:var(--primary)` measured 3.74:1, and it also carries b10's 10px, which the
+ *     DESIGN.md floor forbids for text that names the product. */
+html.light .avatar { color: var(--text); }
+html.light .brand small { color: var(--primary-text); }
+.brand small { font-size: 12px; }
+
+/* Status pills set white text at 12px/700 over #27c86a (2.2:1), #f2b541 (1.8:1),
+ * #f86b6b (2.9:1) and #2A91FF (3.2:1) — every one fails AA. Darkening the
+ * background to these values reaches 5.3-7.7:1 against the same white label and
+ * keeps B10's radius, padding and gradient treatment. */
+.tag.ok { background: #0D7A38; }
+.tag.warn { background: #7A4A00; }
+.tag.bad { background: #A11D1D; }
+.tag.info { background: #1B6CC4; }
+/* The segmented filter's selected state had the same shape as the pills: b10 paints it with a
+ * primary→cyan gradient and keeps `color:#fff`, which measured 2.56:1 in dark and 2.88:1 in light on
+ * a 16px label — the tab the user just chose was the least readable word in the toolbar, in both
+ * themes. One solid fill answers both because it does not depend on the theme's accent. */
+.toolbar .seg button.active { background: #1B6CC4; }
+
+/* There was no global focus indicator anywhere except .winctl-btn, and
+ * b10.css:381 `.palette{overflow:hidden}` clips the UA ring. */
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.palette :focus-visible { outline-offset: -2px; }
+/* b10.css:392 kills the outline on the palette input with no replacement. */
+.palette input:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+/* modal.tsx deleted its own only cue with `focus:outline-none`. */
+.modal:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+/* Chrome buttons were 26x24 with a 2px gap — including close and maximise.
+ * The 78px top bar absorbs the larger size at no layout cost. */
+.winctl { gap: 4px; }
+.winctl-btn { width: 32px; height: 32px; }
+
+/* ---------------------------------------------------------------------------
+ * 2026-10-06 ordering repair. Read-only audit found this file defeating
+ * itself: equal-specificity rules declared LATER in the same file win, so the
+ * unconditional `.two-col` / `.split` rewrites above cancelled the `@container`
+ * collapse above them, and `.app-compact` was overridden before the compact
+ * layout ever applied. Everything that must win is therefore stated once, here,
+ * at the end. b10.css remains untouched.
+ * ------------------------------------------------------------------------- */
+
+/* A theme switch is a state change, not a performance. The pinned skin eases colour over ~200-300ms,
+ * and the intermediate palettes are colours nobody chose: nav text was measured passing through 1.22:1.
+ * App.tsx holds this class on <html> for exactly the frames the swap needs, so the change lands in one
+ * frame and hover/press motion keeps animating. `!important` is the point: it has to outrank b10's
+ * per-element `transition:.2s ease` without editing a file that is pinned verbatim (D-11). */
+.theme-instant *,
+.theme-instant *::before,
+.theme-instant *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Paired / triple / split rows keep B10's proportions but can always shrink,
+ * and collapse to one column inside a narrow content container. */
+.two-col { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.split { grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.95fr); }
+.three-col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@container page (max-width: 900px) {
+  .three-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container page (max-width: 760px) {
+  .two-col, .three-col, .split { grid-template-columns: minmax(0, 1fr); }
+  .metric-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Reduced-motion floor for the complete production shell. The older skin-level
+ * rules cover selected B10 animations but leave the drawer, toast, and several
+ * transitions moving. Keep system accessibility preferences effective across
+ * every component, including future CSS additions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Flex/grid children that carry projected data need an explicit zero minimum,
+ * otherwise their min-content width pushes the page past the window and the
+ * `.app{overflow:hidden}` + `body{overflow:hidden}` pair makes the excess
+ * permanently unreachable rather than scrollable. */
+.page-head { flex-wrap: wrap; }
+.page-actions { min-width: 0; flex-wrap: wrap; }
+.list-item > * { min-width: 0; }
+.metric-box { min-width: 0; }
+.top-actions { flex-wrap: wrap; min-width: 0; }
+
+/* Install roots, working-area paths and SHAs are evidence-bearing and have no
+ * spaces to break on; `.panel{overflow:hidden}` was clipping them mid-token. */
+.mono, .font-mono, code { overflow-wrap: anywhere; }
+
+/* Decisive correction. The `.app` track fix was once wrapped in
+ * `@media (min-width: 841px)`; a screenshot measured the content column at
+ * ~1132px inside a 990px column, i.e. the second track was still B10's bare
+ * `1fr` with its min-content floor, so the media query was not the right gate.
+ *
+ * 2026-10-07, measured with a CDP layout probe rather than inferred from a
+ * screenshot: below 841px the rail was `display:none`, which means it is not a
+ * grid item at all, so `.main` was auto-placed into the FIRST track and the
+ * whole application column collapsed to 210px inside a 320/560/840px viewport
+ * (`.app` computed `210px 110px` at 320px, `.main` w=210, topbar h=263 with the
+ * four action buttons stacked one per row). That collapse was a property of the
+ * mobile shell, and the mobile shell is gone: the rail is a grid item at every
+ * width, so the two-track form is stated once, unconditionally, and last.
+ * b10.css's `@media (max-width:840px){.app{grid-template-columns:1fr}}` is
+ * earlier and less specific, so it no longer wins. */
+.app { grid-template-columns: clamp(210px, 17vw, 280px) minmax(0, 1fr); }
+.app.app-compact { grid-template-columns: minmax(0, 1fr); }
+
+/* Stacked detail rows were rendering centered. The cause is load order, not the component:
+ * `.list-item{align-items:center}` in the pinned b10 skin and Tailwind's `items-stretch` in index.css
+ * have the same specificity, and skins/b10.css is imported AFTER index.css (src/main.tsx), so the skin
+ * won and every `flex-col items-stretch` row shrank its children to the middle of the line. The fix has
+ * to live in this layer because D-11 pins b10.css verbatim; the two-class selector is what beats a
+ * one-class rule without touching it. Measured 2026-10-09 on the usage and project-detail pages. */
+.list-item.flex-col { align-items: stretch; text-align: left; }
+html, body, #root { max-width: 100vw; overflow-x: hidden; }
+.content { max-width: 100%; }
+
+/* The measured cause, at last. This display runs at 125% scale (GetDpiForWindow
+ * = 120), so a 1200px physical window is a 960px CSS viewport: minus the 210px
+ * rail, the top bar has ~750 CSS px, while its unshrinkable floor is
+ * search(200) + action labels(~400) + window controls(~200) + truth strip.
+ * That is why the controls were pushed past the right edge at every width I
+ * tested - I had been reasoning in physical pixels. Below 1000 CSS px the strip
+ * yields first, the labels become icon-capable, and the search box shrinks
+ * further, so the window controls always keep their place. */
+@media (max-width: 1000px) {
+  .truth-strip { display: none; }
+  .topbar .search { flex: 1 1 160px; min-width: 140px; }
+  .top-actions .ghost-btn { padding: 8px 10px; }
+}
+
+/* Window controls are pinned to the window corner instead of living inside the
+ * top bar's flex row.
+ *
+ * Every viewport-width estimate I had made was wrong in one direction or
+ * another, and as long as the cluster sat in a row competing with the search box
+ * and the action labels, any mis-estimate pushed it off-screen - which is
+ * exactly how it looked in six consecutive captures. A frameless window's
+ * caption buttons belong to the window, not to the flow, so they are fixed here
+ * and can no longer be displaced by overflow anywhere else. The top bar reserves
+ * matching right padding so nothing slides underneath them.
+ *
+ * Vertical padding on the bar, and the 18px cluster offset, come from measuring
+ * the rendered boxes at a 1280-wide viewport rather than from a guess: B10's
+ * `padding: 0 24px` gives the bar no breathing room, and with `decorations:
+ * false` the top of the bar IS the window edge, so once the row wrapped the
+ * command field sat at top:0 against the OS border. Padding-top 12 puts the
+ * first row's centre at 12 + 50/2 = 37; the cluster is 38 tall, so top: 18
+ * centres it on the same line. Padding only on the vertical axis, because every
+ * horizontal reserve below is hand-calculated against the cluster width. */
+.topbar { padding-top: 12px; padding-bottom: 12px; }
+.winctl {
+  position: fixed;
+  top: 18px;
+  right: 12px;
+  z-index: 120;
+  margin: 0;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+
+/* KPI cards: a grid track can shrink, but an item inside it is still sized by its own
+ * min-content unless told otherwise - which is what let a wide value like UNKNOWN
+ * push a card past the container edge. */
+.kpi-grid > * { min-width: 0; }
+.kpi strong, .kpi .truncate { max-width: 100%; }
+/* `max-width:100%` above stopped the card overflowing and, without noticing, moved the failure into
+ * the text: the HUD's KPI value renders at b10's 35px display size, and "UNKNOWN" needs 193px inside
+ * the 184px the 440px window leaves a two-up card. All four read `UNKNO…`. A truncated UNKNOWN is
+ * worse than an absent one — it looks like the prefix of a real value, which is precisely the guess
+ * this product refuses to make — so the HUD gets the size the component itself asked for (22px,
+ * measured 121px wide: fits with 63px to spare). The desktop is untouched: 0 clipped nodes at 1262px. */
+.compact-hud .kpi strong { font-size: 22px; }
+
+/* The caption cluster is fixed to the viewport, so the top bar has to reserve its
+ * width by hand - and 210px was a guess that was only right when the zoom group was
+ * hidden. Box model, from the rules above: three 32px caption buttons + 2x4px gaps
+ * + 8px padding + 2px border = 114px; the zoom group adds 32+38+32+32+9px of content
+ * with 4x2px gaps and one more 4px gap to its sibling = another 155px. Plus the 12px
+ * right offset. The zoom group disappears at <=1240px, so the reserve switches at the
+ * same width - below it the transport truth strip would otherwise lose 155px for
+ * nothing on a 946px viewport. */
+.topbar { padding-right: 130px; }
+@media (min-width: 1241px) {
+  .topbar { padding-right: 285px; }
+}
+
+/* Narrow CSS viewport (<=560 px) on a desktop window, measured rather than
+ * guessed. The app ships no phone layout, but at 125% display scale a small
+ * desktop window still measures this narrow: the top bar reserves 130px for the
+ * fixed caption cluster and the search box wants
+ * 160px, which leaves `.top-actions` a column about 60px wide — so every action
+ * button wrapped onto its own row and the bar ate roughly 40% of the first screen
+ * (docs/audits/OBSERVER_UI_RENDER_AUDIT_2026-10-07.md). The action cluster now
+ * takes a full row and stays horizontal, and the search shrinks to what is
+ * actually left instead of clipping to "搜...". */
+@media (max-width: 560px) {
+  .topbar { row-gap: 6px; }
+  .topbar .search { flex: 1 1 120px; min-width: 0; }
+  .top-actions { flex: 1 1 100%; order: 3; gap: 4px; }
+  .top-actions .ghost-btn,
+  .top-actions .primary-btn { flex: 1 1 auto; padding: 5px 6px; font-size: 12px; }
+}
+
+/* Disabled controls must look disabled. b10.css ships no `:disabled` rule and
+ * keeps `button{cursor:pointer}` plus a hover lift, so 导出状态 / 新建执行 — which
+ * the read-only iron law freezes permanently — rendered exactly like working
+ * controls that silently do nothing. D-11 pins b10 verbatim, so the shell owns
+ * this. Opacity is bounded rather than aggressive: the label has to stay
+ * readable, because the tooltip is the only other place the reason is written. */
+button:disabled,
+button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+button:disabled:hover,
+button[aria-disabled="true"]:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* …but opacity alone is not enough for a FILLED control. `.primary-btn` keeps b10's bright two-stop
+ * gradient, so white text at 55% over it measured 1.62:1 in dark and 1.71:1 in light — the label that
+ * carries the refusal ("新建执行") became the least readable thing on the screen. The disabled state is
+ * now signalled by a neutral surface instead of by see-through ink, which also clears the contract's
+ * own floor for disabled text (≥3:1, DESIGN.md). */
+button.primary-btn:disabled,
+button.danger-btn:disabled,
+button[aria-disabled="true"].primary-btn,
+button[aria-disabled="true"].danger-btn {
+  opacity: 1;
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* b10's `.tag` sets `color:#fff` for the filled status pills, and because the skin sheet is unlayered
+ * it beats the Tailwind `text-muted` utility on the neutral chips that also carry `.tag` for its shape.
+ * The result was white text on a light panel: "Transport DELAYED" and "Freshness UNKNOWN" measured
+ * 1.15:1 in light — status text nobody could read, in the one strip that reports whether the data is
+ * trustworthy. The chip keeps its pill shape; its ink comes from the role it declares. */
+.tag.bg-panel2,
+.tag.bg-panel {
+  color: var(--muted);
+}
+
+/* G2 — the brand mark the top bar never had. It now carries the real cut-out artwork instead of a
+ * gradient square: the mark's own ratio is 1.9033:1 (measured 1043x548 ink box), so the 22px line height
+ * gives it 42px of width rather than the old 22px chip. Painted through a mask from the skin's accent
+ * variables -- there is still no literal brand hex in the component.
+ *
+ * The glyph is drawn by ::before and the glow by the element's own filter, deliberately split: per CSS
+ * painting order a mask is applied *after* a filter, so `filter: drop-shadow()` on the masked element
+ * glows and then clips the glow away. Putting the mask on the child and the filter on the parent makes
+ * the halo survive, which is the effect the proof sheet showed. The wordmark is dropped in the compact
+ * HUD because that surface is 440px and the mark alone carries identity there. */
+.topbar-brand { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; min-width: 0; }
+.topbar-brand-mark {
+  width: 42px; height: 22px; flex: 0 0 auto;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 50%, transparent));
+}
+.topbar-brand-mark::before {
+  content: ""; display: block; width: 100%; height: 100%;
+  background: linear-gradient(120deg,
+    color-mix(in srgb, var(--primary) 88%, white 4%),
+    color-mix(in srgb, var(--secondary) 62%, var(--primary)));
+  -webkit-mask: url("../assets/brand/work-lab-mark.png") center / contain no-repeat;
+  mask: url("../assets/brand/work-lab-mark.png") center / contain no-repeat;
+}
+
+/* The rail carries the same cut-out mark at 48px of line height (91x48 keeps its 1.9033:1 ratio).
+ * This is an OVERRIDE, not an edit: `b10.css` is the pinned skin and stays verbatim (decision D-11), so
+ * the shell layer restates the rule with two classes to win on specificity, exactly as the mobile-rail
+ * override above does. The pinned `box-shadow` and gradient plate are cleared here because a masked
+ * element would otherwise clip the plate's ring into the glyph's silhouette. */
+.brand .brand-mark {
+  width: 91px; height: 48px; border-radius: 0; background: none; box-shadow: none;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--primary) 45%, transparent));
+}
+.brand .brand-mark::before {
+  content: ""; display: block; width: 100%; height: 100%;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--primary) 88%, white 4%),
+    color-mix(in srgb, var(--secondary) 62%, var(--primary)));
+  -webkit-mask: url("../assets/brand/work-lab-mark.png") center / contain no-repeat;
+  mask: url("../assets/brand/work-lab-mark.png") center / contain no-repeat;
+}
+.topbar-brand-word {
+  font-size: 12px; letter-spacing: .14em; color: var(--muted); white-space: nowrap;
+}
+.app-compact .topbar-brand-word { display: none; }
+
+/* CL-15's mark never reached the DAILY shell. The desktop main window opens `surface=daily`
+ * (tauri.conf.json), whose top bar rendered a lucide `Boxes` glyph and whose rail had no brand slot at all,
+ * so the one surface an operator actually looks at carried no identity -- while the brand gate stayed green
+ * because it only ever mounted the professional `TopStatusBar`. Same cut-out mask and gradient as the
+ * professional bar. `data-brand-mark` is the contract hook: an attribute survives a class rename, so the
+ * identity check cannot be erased again by editing a stylesheet.
+ */
+.daily-brand-mark {
+  width: 42px; height: 22px; flex: 0 0 auto;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 50%, transparent));
+}
+.daily-rail-brand {
+  width: 72px; height: 38px; flex: 0 0 auto; margin: 0 0 12px 6px;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--primary) 45%, transparent));
+}
+.daily-brand-mark::before,
+.daily-rail-brand::before {
+  content: ""; display: block; width: 100%; height: 100%;
+  background: linear-gradient(120deg,
+    color-mix(in srgb, var(--primary) 88%, white 4%),
+    color-mix(in srgb, var(--secondary) 62%, var(--primary)));
+  -webkit-mask: url("../assets/brand/work-lab-mark.png") center / contain no-repeat;
+  mask: url("../assets/brand/work-lab-mark.png") center / contain no-repeat;
+}
+
+/* D2 承接屏的标题层级。被挂载视图的 page-head 是按「整页只有它一个标题」画的（实测 32px），
+   放进承接卡就同时比本页页标题（20px）大、又与卡自己的标签重复；卡标签是签字包 §3 命名的那一个，
+   所以降级子视图自带的标题、保留它的说明段。选择器锁在 daily-governance 面内，专业壳同一批视图不动。 */
+[data-landmark="daily-governance"] [data-carried] > h2 { font-size: 16px; }
+[data-landmark="daily-governance"] [data-carried] .page-head h2 { display: none; }

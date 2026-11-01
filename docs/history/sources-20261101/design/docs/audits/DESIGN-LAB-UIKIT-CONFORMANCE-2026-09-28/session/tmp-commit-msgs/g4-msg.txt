@@ -1,0 +1,47 @@
+G-4/B4: Adapter 硬编码路径审计 — locator 改造清单 + fail-closed 漂移门
+
+对应 CROSSWALK B4（R10）：扫 adapter/integration 运行时源码的绝对路径/机位
+假设，输出 locator 改造清单（只出清单，改造走 owner-gated TaskPack）。
+
+实现（对齐 P1-3 library-index guard：stdlib、read-only、fail-closed、
+TAG=PASS/FAIL）：
+
+- design-lab/scripts/verify_adapter_locator_audit.py：结构审计门。
+  * 固定版本化的扫描范围（adapter/integration 运行时源码 6 目录 + 7 文件；
+    测试/fixture 故意排除——它们可以命名具体路径，不是机器集成面）+
+    固定高信号模式（drive-rooted path/exe、Windows home/appdata env、
+    expanduser、真 Win32 注册表/COM token）；模式与范围都在代码里，
+    不能静默漂移。
+  * 每条真代码命中按 file+kind+归一化片段 做 fingerprint（行号无关，
+    编辑只移行的话指纹不变）。
+  * 强制不变式：每个 live 命中必须被 inventory triage（新出现的未 triage
+    硬编码即 FAIL）；pinned=true 的条目必须仍 live（改造掉了要重新
+    triage，不能静默消失）；inventory 的 triage_kinds 与 gate 一致
+    （审计范围漂移即 FAIL）；不可读源文件 fail-closed（审计门不得静默
+    缩小范围）。
+  * --emit-inventory：inventory 由扫描器自己生成 fingerprint，triage 者
+    只填分类字段，永不手抄指纹（唯一能静默弄坏门的错误类别）。
+  * 关键教训（本次已实证修掉）：com_registry 模式最初匹配裸词
+    "registry"，把仓内 116 处领域名词（model registry / Open Design UI
+    注册表 / validate_registry）误报成 Windows 注册表引用；已收窄到真
+    Win32 token（HKLM/HKCU/HKEY_/winreg/CLSID/ProgID），并在代码注释
+    留痕。
+- design-lab/config/adapter-locator-inventory.json：8 条 triage 清单
+  （2 violation / 2 guard / 4 locator），逐条基于已读真实代码上下文分类：
+  * violation ×2：configure/doctor 的 default_open_design_exe() 硬编码
+    D:\Programs\Open Design\Open Design.exe 可覆盖默认值——推荐 locator
+    改造顺序 env OPEN_DESIGN_EXE → Win32 App Paths 注册表 → PATH
+    shutil.which，fail-closed 消息（对齐 find_codex_bin 既有的 Codex
+    CLI 自动检测）；且两处重复实现应合并成单点。
+  * guard ×2：wide_exact deny-set（D:\All projects / C:\Users 禁作目标根）
+    ——机位值是守卫的全部意义，不能转成 locator（否则安全洞）。
+  * locator ×4：USERPROFILE/APPDATA env-first + 可移植 fallback——正确
+    模式，记录以证明被考虑过而非漏掉。
+- design-lab/scripts/verify_design_lab.py：登记进 SCRIPTS 链（python-gate
+  每日 CI 经 verify_design_lab 自动执行）。
+- design-lab/tests/test_adapter_locator_audit.py：16 项 hermetic 测试
+  （分类器 6 + 归一化 2 + triage 不变式 6 + bootstrap 1 + 经 monkeypatch
+  repo-root 的扫描器行为 1；临时目录构造源文件，不碰真实 git 仓库）。
+
+改造本身（env/registry/PATH locator 替换硬编码默认值）是 owner-gated
+TaskPack 工作——本 PR 交付的是清单 + 漂移门，不碰运行时行为。

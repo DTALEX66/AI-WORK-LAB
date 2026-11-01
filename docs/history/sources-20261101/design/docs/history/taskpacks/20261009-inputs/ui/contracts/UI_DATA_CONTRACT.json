@@ -1,0 +1,318 @@
+{
+  "version": "DL-UI-SEMANTICS-1",
+  "status": "PROPOSED_SEMANTICS_NOT_EXISTING_API",
+  "rule": "Read and map existing objects and endpoints first. All examples are fictional; do not copy them into production state.",
+  "mapping_required": [
+    "existing_object",
+    "existing_schema_version",
+    "actual_read_endpoint",
+    "actual_write_endpoint",
+    "auth_and_permission_rule",
+    "field_transform",
+    "error_mapping",
+    "evidence_reference"
+  ],
+  "data_states": [
+    "loading",
+    "ready",
+    "empty",
+    "unknown",
+    "offline",
+    "forbidden",
+    "error",
+    "timeout_uncertain",
+    "conflict",
+    "cancelled",
+    "queued"
+  ],
+  "contracts": {
+    "capability": {
+      "reuse": [
+        "DomainPack",
+        "Method",
+        "Adapter",
+        "Quality",
+        "existing capability API"
+      ],
+      "read_fields": [
+        "id",
+        "revision",
+        "name",
+        "problem",
+        "input_summary",
+        "output_summary",
+        "examples",
+        "applicability",
+        "non_applicability",
+        "existing_seven_axis_values",
+        "knowledge_refs",
+        "adapter_implementations",
+        "qualifications",
+        "cost_permission_conditions",
+        "restrictions",
+        "evidence_refs"
+      ],
+      "qualification_dimensions": [
+        "analysis",
+        "target_package",
+        "host_execution",
+        "native_delivery"
+      ],
+      "rule": "Qualification per action/software/version; unknown is not false or true. Permission filtering before metadata, media and counts."
+    },
+    "input_and_analysis": {
+      "reuse": [
+        "Project",
+        "Brief",
+        "Reference",
+        "Direction",
+        "DesignSystem"
+      ],
+      "read_write_fields": [
+        "task_id",
+        "brief_revision",
+        "inputs_with_roles",
+        "output_goal",
+        "must_keep",
+        "may_change",
+        "exact_text",
+        "dimensions_units",
+        "software_constraints",
+        "knowledge_refs",
+        "direction_refs",
+        "analysis_findings",
+        "inferred_structure",
+        "corrections"
+      ],
+      "rule": "Short task can omit full project flow. Revision changes are explicit."
+    },
+    "target_package_and_native_plan": {
+      "reuse": [
+        "existing target-package mechanism",
+        "native plans"
+      ],
+      "fields": [
+        "plan_id",
+        "revision",
+        "input_refs",
+        "knowledge_refs",
+        "target_software_actual_version",
+        "adapter_revision",
+        "actual_parameters",
+        "local_masks_or_ranges",
+        "structure_constraints",
+        "actions_with_pre_post_conditions",
+        "verification",
+        "losses",
+        "fallback",
+        "required_permissions",
+        "budget"
+      ],
+      "rule": "No unsupported parameters or silent upgrade from prompt to native engineering."
+    },
+    "run_and_recovery": {
+      "reuse": [
+        "NativeWorkers",
+        "native run/patch/cancel",
+        "existing observer and recovery"
+      ],
+      "fields": [
+        "run_id",
+        "revision",
+        "status",
+        "current_action",
+        "action_receipts",
+        "lease_scope_owner",
+        "document_identity",
+        "idempotency_key",
+        "request_digest",
+        "cost_budget",
+        "checkpoint",
+        "observations",
+        "verified_results",
+        "uncertainties",
+        "remaining_work"
+      ],
+      "commands": [
+        "pause_when_supported",
+        "cancel",
+        "reconcile",
+        "resume_when_safe",
+        "recover_or_handoff"
+      ],
+      "rule": "Readback before retry. Same key plus different input is conflict. UI status never authorizes actions."
+    },
+    "artifact": {
+      "reuse": [
+        "existing artifact state",
+        "bundle/download"
+      ],
+      "fields": [
+        "artifact_id",
+        "revision",
+        "hash",
+        "actual_format",
+        "goal",
+        "preview_ref",
+        "native_structure_refs",
+        "dependency_refs",
+        "rights_status",
+        "visual_check",
+        "native_check",
+        "jury_ref",
+        "preflight_ref",
+        "delivery_scope",
+        "source_lineage",
+        "patch_base_revision"
+      ],
+      "rule": "Actual file format and editable structure must agree with claims; revision changes invalidate previous review applicability."
+    },
+    "human_review": {
+      "reuse": [
+        "existing Human Jury object/API where present"
+      ],
+      "write_fields": [
+        "artifact_id",
+        "artifact_revision",
+        "artifact_hash",
+        "decision",
+        "comment",
+        "review_scope"
+      ],
+      "server_fields": [
+        "actual_reviewer_identity",
+        "server_timestamp",
+        "receipt_id",
+        "permission_result"
+      ],
+      "decision_values": [
+        "accept",
+        "reject",
+        "request_changes"
+      ],
+      "rule": "Drafts have no real review receipt. Agent cannot fill human identity or acceptance on their behalf."
+    },
+    "delivery": {
+      "reuse": [
+        "bundle/download",
+        "existing delivery and preflight"
+      ],
+      "fields": [
+        "artifact_revision",
+        "requested_deliverable_type",
+        "draft_or_test_or_formal",
+        "required_checks",
+        "check_evidence",
+        "missing_requirements",
+        "rights",
+        "jury",
+        "native_structure",
+        "preflight",
+        "BOM",
+        "dependencies",
+        "file_versions_hashes",
+        "isolated_reopen"
+      ],
+      "rule": "Only requested deliverable checks are mandatory; formal requires actual evidence. Download existence is not delivery approval."
+    },
+    "knowledge_candidate_and_feedback": {
+      "reuse": [
+        "KnowledgeCandidate",
+        "existing candidate submission and receipts"
+      ],
+      "fields": [
+        "candidate_or_feedback_id",
+        "idempotency_key",
+        "base_knowledge_revision",
+        "artifact_content_revision",
+        "task_scene_question",
+        "observation",
+        "evidence_and_counterexamples",
+        "environment",
+        "applicability",
+        "correction_preference_candidate_scope",
+        "allow_improvement",
+        "allowed_outbound_scope",
+        "category",
+        "responsibility",
+        "source_lineage",
+        "receipt",
+        "verification",
+        "revision_link"
+      ],
+      "categories": [
+        "knowledge_technical",
+        "expression_teaching",
+        "runtime_integration"
+      ],
+      "rule": "Save candidates before verification; accepted receipt is not verified knowledge. Same source-derived media are not independent evidence."
+    },
+    "teaching_request_and_content": {
+      "reuse": [
+        "existing task/brief objects",
+        "public teaching request/delivery contracts"
+      ],
+      "fields": [
+        "request_id",
+        "revision",
+        "audience",
+        "prerequisites",
+        "learning_goals",
+        "misconceptions",
+        "knowledge_refs",
+        "practice_refs_and_permission",
+        "output_form",
+        "constraints",
+        "acceptance",
+        "feedback_requirements",
+        "content_revision_hash",
+        "display_asset_refs",
+        "editable_source_refs",
+        "text_transcript",
+        "captions",
+        "necessary_visual_description",
+        "exercise_feedback_rules",
+        "knowledge_mapping",
+        "runtime_dependencies",
+        "limits"
+      ],
+      "rule": "AAOS owns learning/course state; DESIGN-LAB owns expression/source recipe; WORK-LAB supplies technical evidence. No inherited desktop execution permission."
+    },
+    "connections_and_snapshot": {
+      "reuse": [
+        "existing provider/adapter manifests",
+        "authority index"
+      ],
+      "fields": [
+        "provider_status",
+        "actual_supported_operations",
+        "software_version",
+        "qualification_evidence",
+        "knowledge_snapshot_revision",
+        "allowed_uses",
+        "freshness",
+        "revocations",
+        "read_only",
+        "current_rule_version",
+        "diagnostics"
+      ],
+      "rule": "Cache is bounded read-only fallback, not a second knowledge writer. Actual status is visible; not-tested integration is not connected."
+    }
+  },
+  "empty_api_mapping_template": {
+    "existing_object": null,
+    "existing_schema_version": null,
+    "actual_read_endpoint": null,
+    "actual_write_endpoint": null,
+    "auth_and_permission_rule": null,
+    "field_transform": null,
+    "error_mapping": null,
+    "evidence_reference": null
+  },
+  "integration_status": {
+    "AAOS": "NOT_TESTED",
+    "WORK-LAB": "NOT_TESTED",
+    "Adobe_hosts": "NOT_TESTED",
+    "Human_Jury": "NOT_SUBMITTED"
+  }
+}

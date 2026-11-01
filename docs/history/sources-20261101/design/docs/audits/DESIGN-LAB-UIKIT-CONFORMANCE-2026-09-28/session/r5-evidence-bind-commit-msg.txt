@@ -1,0 +1,58 @@
+r5-ledger: bind static+unit evidence for the 21 tasks that had none
+
+W00's code-level scan showed every one of the 28 R5 tasks already has real
+implementing modules AND real test modules in this checkout (0 missing candidate
+paths, 28/28 with a test module). But only 3 of 112 axes carried any evidence
+receipt. The gap was evidence binding, not implementation -- exactly the
+"补证据" dispatch W00 calls for, and this closes it.
+
+WHAT
+
+  * 28 new receipts (36 total). Each cites, as subject_files, the task's real
+    implementing modules and test modules with their sha256, plus the W00 scan
+    JSON as the artifact that authorises the path list.
+  * Bound axes: implementation +22, unit +25 -> 10/112 => 57/112.
+
+WHAT IS DELIBERATELY NOT BOUND
+
+  * host_live -- there is no real Adobe host run. Nothing honest to cite.
+  * delivery  -- there is no delivered package. Nothing honest to cite.
+  So the hard part of the ledger stays unbound rather than being filled with
+  static evidence dressed up as runtime proof.
+
+NO COMPLETION IS CLAIMED
+
+  * every axis state stays PARTIAL and every reassessment stays
+    PENDING_EVIDENCE_REVIEW: r5_contract.py:100-101 forbids PASS /
+    IMPLEMENTED_LOCAL while reassessment != REVIEWED, and this change does not
+    touch reassessment.
+  * the frozen fields (definition / title / depends_on / predecessor_task_ids /
+    required_axes) are untouched and the R5 contract validator still passes.
+  * subject_sha is 4c9f18493e909283a5448763f704b3f838531d0a -- the HEAD at which
+    the canonical suite was actually executed (exit 0), not an older SHA
+    promoted to the current one (AUTHORITY section 6).
+
+CONSTRAINT DISCOVERED WHILE DOING THIS
+
+  subject_files must be FILES. The projection pipeline reads each one
+  (reporting.Reader.read) and a directory raises PermissionError on Windows, so
+  the first attempt (which put `src/design_lab/readiness/` in subject_files)
+  broke `generate_current_reports.py`. Directory subjects are now expanded into
+  their own files. Recorded because it silently turns a green ledger into a red
+  projection gate.
+
+Regenerated with it: reports/current/** (13 files) and
+design-lab/config/current-report-index.json, plus
+reports/current/DEEPSEEK-AUTHORITY-CHAIN.json whose recorded ledger digest
+drifts with the ledger.
+
+Local verification:
+  R5 contract validator                         VALID
+  design-lab.tests.test_r5_migration +
+    test_current_reporting (the ledger contract tests)   43 tests, OK
+  run_python_tests.py                           exit 0 at 4c9f184 (full suite)
+  generate_current_reports.py --check           CURRENT_REPORTS=PASS
+  verify_authority_gates.py --zero-spill        AUTHORITY_GATES=PASS gates=7
+  verify_top_level_authority.py                 TOP_AUTHORITY_GATE=PASS checks=10
+  verify_project_drift.py                       PROJECT_DRIFT=PASS findings=0
+  verify_no_overclaim.py                        NO_OVERCLAIM=PASS unsupported=0

@@ -1,0 +1,26 @@
+{
+  "id": "dl-kb-06-reference-tile-stops-reading-unserved-fields-20261028",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-28T12:02:10Z",
+  "subject_sha": "766f48d2c91724797854f562f0f6c252bb52df5a",
+  "owner_instruction": "本轮接续指令来自下一轮提示词的工程刀①（附件 tile 的名称与大小）；实测把该刀的前提改写了，见 reproduced_before_fix。",
+  "reproduced_before_fix": "live HTTP read of GET /api/projects/<id>/assets this turn returned keys byte_size,height,id,media_type,rights,sha256,version_id,width -- byte_size WAS served; kind and version_no were never served yet were declared on AssetRecord. Real Chromium on the committed bundle painted option text \"undefined · img-222ed47b…\" in #as-reference-select and \"vundefined\" on the intake asset row; the browser E2E asserted option VALUES only, so nothing was red.",
+  "changed": [
+    "apps/workbench/contracts.ts: AssetRecord now declares the measured key set; the phantom kind/version_no are gone, so the compiler owns the rule that a tile cannot read them",
+    "apps/workbench/shell.ts: byte formatter + served-field option text + resolved caption per reference kind; two call sites convicted by tsc once the phantom keys were removed",
+    "apps/workbench/style.css: .as-ref-caption sized from existing tokens only",
+    "apps/workbench/tests/appshell.mjs: PLAN_ASSET fixture rebuilt on the served key set",
+    "build/main.js: the committed bundle the gates read"
+  ],
+  "not_claimed": "No name is displayed for an asset because none exists: every stored artifact filename is a publish-time constant (image_assets.py:144 reference.png/.jpg, native_tasks.py:172 native.<ext>, bundle_store.py:121 delivery.zip). Adding a caption would widen the closed reference contract (assistance_plan.py:367 rejects extra keys) and is an owner/contract decision.",
+  "readings": {
+    "tsc": "exit 0",
+    "vite_build": "build/main.js 624070 bytes reported by vite",
+    "node_unit": "WORKBENCH SMOKE: all checks passed",
+    "node_appshell": "APPSHELL REGRESSION: all checks passed",
+    "browser_e2e_local": "Ran 2 tests in 12.583s OK",
+    "ci_at_subject": "NOT YET ATTESTED as a completed PR run: 40682327441 (head 766f48d2, the commit that carries this fix) was cancelled by a later push, and 40684908337 (head 737307f3) failed on no-undeclared-task-document. Individual jobs that finished success inside a cancelled run are not cited as a pass. The proof recorded here is the local real-Chromium run plus the node suites; the verbatim PR-run reading lands in the closeout receipt of the head that carries all of this round's bytes."
+  }
+}

@@ -1,0 +1,174 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "master-guided-art-direction",
+  "title": "Master-guided Art Direction",
+  "version": "0.2.1",
+  "publishedAt": "2026-08-04T00:00:00Z",
+  "description": "Research design lineages and masters, then synthesize original project-specific art directions without copying signature styles.",
+  "author": {
+    "name": "DTALEX66 OPEN-DESIGN-Assistance"
+  },
+  "license": "MIT",
+  "tags": [
+    "scenario",
+    "visual-quality",
+    "art-direction"
+  ],
+  "compat": {
+    "agentSkills": [
+      {
+        "path": "./SKILL.md"
+      }
+    ]
+  },
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "scenario",
+    "useCase": {
+      "query": {
+        "en": "Research design lineages and masters, then synthesize original project-specific art directions without copying signature styles.",
+        "zh-CN": "Research design lineages and masters, then synthesize original project-specific art directions without copying signature styles."
+      }
+    },
+    "inputs": [
+      {
+        "name": "brief",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "discipline",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "master_or_lineage_seeds",
+        "type": "text",
+        "required": false
+      },
+      {
+        "name": "applications",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "capabilities": [
+      "prompt:inject",
+      "pipeline:*",
+      "media:image",
+      "fs:write"
+    ],
+    "pipeline": {
+      "stages": [
+        {
+          "id": "intake",
+          "atoms": [
+            "discovery-question-form",
+            "brief-normalizer"
+          ]
+        },
+        {
+          "id": "lineage-research",
+          "atoms": [
+            "research-search",
+            "style-lineage-mapper",
+            "master-method-researcher"
+          ]
+        },
+        {
+          "id": "recipe",
+          "atoms": [
+            "art-direction-synthesizer",
+            "file-write"
+          ]
+        },
+        {
+          "id": "directions",
+          "atoms": [
+            "direction-picker",
+            "media-image",
+            "live-artifact"
+          ]
+        },
+        {
+          "id": "craft",
+          "atoms": [
+            "typography-composition-director",
+            "color-material-light-director"
+          ]
+        },
+        {
+          "id": "critique",
+          "atoms": [
+            "visual-taste-jury",
+            "anti-ai-slop-diagnostician",
+            "critique-theater"
+          ],
+          "repeat": true,
+          "until": "critique.score>=8.5 && blockers==0 || iterations>=4",
+          "onFailure": "retry"
+        },
+        {
+          "id": "handoff",
+          "atoms": [
+            "delivery-packager"
+          ]
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        }
+      ],
+      "craft": [
+        "art-direction",
+        "typography",
+        "composition",
+        "color",
+        "material-light",
+        "master-method",
+        "anti-ai-slop"
+      ],
+      "atoms": [
+        "master-method-researcher",
+        "style-lineage-mapper",
+        "art-direction-synthesizer",
+        "typography-composition-director",
+        "color-material-light-director",
+        "visual-taste-jury",
+        "anti-ai-slop-diagnostician",
+        "visual-polish-loop"
+      ]
+    },
+    "genui": {
+      "surfaces": [
+        {
+          "id": "research-scope",
+          "kind": "form",
+          "persist": "project",
+          "trigger": {
+            "stageId": "lineage-research",
+            "atom": "master-method-researcher"
+          },
+          "prompt": "Confirm research subjects and what must not be imitated.",
+          "onTimeout": "default"
+        },
+        {
+          "id": "direction-choice",
+          "kind": "choice",
+          "persist": "project",
+          "trigger": {
+            "stageId": "directions",
+            "atom": "direction-picker"
+          },
+          "prompt": "Choose a structural direction, not merely a palette.",
+          "onTimeout": "abort"
+        }
+      ]
+    }
+  }
+}

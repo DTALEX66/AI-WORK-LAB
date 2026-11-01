@@ -1,0 +1,22 @@
+name: Verify Open Design Assistance V2
+on:
+  push:
+    paths:
+      - 'opendesign-assistance/**'
+      - '.github/workflows/verify-open-design-assistance-v2.yml'
+  pull_request:
+    paths:
+      - 'opendesign-assistance/**'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python opendesign-assistance/scripts/verify_source_registry_v2.py
+      - run: python opendesign-assistance/scripts/verify_v2_protocols.py
+      - run: python -m compileall -q opendesign-assistance/scripts

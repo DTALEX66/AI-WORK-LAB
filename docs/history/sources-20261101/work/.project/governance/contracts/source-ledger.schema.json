@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DTALEX66/WORK-LAB/schema/source-ledger/v4",
+  "title": "WORK-LAB Source Ledger V3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "ledgerVersion", "scope", "entries"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schemaVersion": {"const": "work-lab/source-ledger/v4"},
+    "ledgerVersion": {"const": 4},
+    "scope": {"const": ["workflow-assistance", "work-lab-observer"]},
+    "entries": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/entry"}
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "decisionStatus", "implementationStatus", "canonicalUrl", "reviewedCommit", "license", "spdx", "owner", "targetPaths", "tests", "controls", "freshness", "rollback"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "decisionStatus": {"enum": ["derive", "adapter", "vendor-adapt", "external-optional", "reference", "defer", "reject"]},
+        "implementationStatus": {"enum": ["local-verified", "local-partial", "not-implemented", "blocked", "transferred-out"]},
+        "canonicalUrl": {"type": "string", "format": "uri"},
+        "reviewedCommit": {"type": ["string", "null"]},
+        "reviewedTag": {"type": ["string", "null"]},
+        "sourceHash": {"type": ["string", "null"]},
+        "licenseFileHash": {"type": ["string", "null"]},
+        "license": {"type": "string"},
+        "spdx": {"type": "string"},
+        "codeLicense": {"type": "string"},
+        "modelDataLicense": {"type": ["string", "null"]},
+        "windowsSupport": {"type": "string"},
+        "runtimeWeight": {"type": ["string", "integer", "null"]},
+        "integrationMode": {"enum": ["VENDOR", "DEPENDENCY", "EXTERNAL_TOOL", "ADAPTER", "DERIVE", "REFERENCE", "QUARANTINE", "REJECT"]},
+        "integrationNote": {"type": "string"},
+        "owner": {"type": "string", "minLength": 1},
+        "targetPaths": {"type": "array", "items": {"type": "string"}},
+        "tests": {"type": "array", "items": {"type": "string"}},
+        "controls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["network", "telemetry", "credentials", "scripts", "sizeBytes"],
+          "properties": {
+            "network": {"type": "boolean"},
+            "telemetry": {"type": "boolean"},
+            "credentials": {"type": "boolean"},
+            "scripts": {"type": "boolean"},
+            "sizeBytes": {"type": ["integer", "null"], "minimum": 0}
+          }
+        },
+        "freshness": {"type": "string", "enum": ["current-head", "review-required", "unknown"]},
+        "rollback": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

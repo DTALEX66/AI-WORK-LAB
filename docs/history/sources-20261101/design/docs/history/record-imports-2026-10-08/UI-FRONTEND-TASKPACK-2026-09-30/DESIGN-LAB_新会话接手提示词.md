@@ -1,0 +1,3 @@
+# DESIGN-LAB 新会话接手提示词
+
+你接手的是 DESIGN-LAB 的既有正式前端。请完整读取同包《DESIGN-LAB_商业级未来兼容Workbench任务包.md》，把它作为本轮执行要求，并先核对 LIVE origin/main、AUTHORITY.md、AGENTS.md、现有 TaskPack、9/28–29 Master Atlas/历史/UI 文件、真实前端和 API/contracts。不要只复述方案，直接在独立 UI worktree 改造现有产品到可验证的商业级候选。不要另起前端、runtime、账本或配置权威；保留全部 route/API/contract/index/path/deep link。历史蓝图能力可暂不开发，但必须有来源、状态、权限和未来接入位置，不能伪装 available。开源成品组件、UI blocks、动态星空/星环/轨道等优先按任务文档官方索引下载最小源码、查许可、锁版本、映射现有 VI tokens 后集成，不换框架。静态生成配图不能代替真实交互、数据或执行状态。完成核心流程、失败恢复、动效降级、Windows/IME/a11y、真实生产打包和 E2E，产出测试/截图/接口兼容/源码来源/回滚与 merge-ready 证据。不要自行 merge/release。缺少资料或平台时明确记录 MISSING/BLOCKED，继续完成不依赖该项的工作，不编造测试或 RC_READY。WORK-LAB 超级入口本轮直接并入同一 Shell；AAOS 保留 Current Core + Future Capability；DESIGN-LAB 保留 Lite + Workbench 项目内完整专业流程。最终遵守本项目任务文档的 DoD。

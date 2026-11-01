@@ -1,0 +1,99 @@
+{
+  "id": "dl-kb-06-ci-red-orphaned-crosswave-gate-run-20261028",
+  "task_id": "DL-KB-06",
+  "axis": "verification",
+  "outcome": "PASS",
+  "outcome_wording": "PASS = this attribution record is sound; the run it records did not pass (run_conclusion carries the run's own word, counts.failed=1 job). Nothing is being graded green.",
+  "observed_at": "2026-10-28T21:21:12Z",
+  "subject_sha": "32ac0bd5b6fed722a47a9779ec2ade1aa0a20455",
+  "run_id": 40763980787,
+  "run_conclusion": "failure",
+  "run_head_sha": "32ac0bd5b6fed722a47a9779ec2ade1aa0a20455",
+  "head_matches_run": true,
+  "counts": {
+    "total": 12,
+    "success": 9,
+    "skipped": 2,
+    "failed": 1
+  },
+  "jobs": [
+    {
+      "name": "MiniGame node gate (+ drift check)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Python gate (V3 verifiers + unit tests)",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "name": "Top-level Authority consistency gate (DL-AUTHORITY-2026-09-18-R2)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Workbench browser E2E (exact-SHA controlled-runtime, no-skip)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Workbench strict-TS product gate (taskpack 12.2/12.3/12.4/12.5)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "DeepSeek authority gate chain (DLDS-H010 / DL-AUDIT-20260914-07)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Generated-artifact clean-tree gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Clean wheel install + Workbench launch gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "License & secret hygiene gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Open Design host adapter gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Branch light gate (compile + identity boundary; development branches only)",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "CI artifact proof (H001: main-run upload readback)",
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  ],
+  "verbatim_from_the_run": {
+    "failing_case": [
+      "FAIL: test_every_read_only_form_is_invoked_or_declared_with_its_measured_verdict (tests.test_gate_reachability.ReadOnlyModeTests.test_every_read_only_form_is_invoked_or_declared_with_its_measured_verdict)"
+    ],
+    "assertion": [
+      "AssertionError: Lists differ: ['verify_record_archive_crosswave.py'] != []"
+    ],
+    "verdict_lines": [
+      "STRUCTURE_CONTRACTS=FAIL tests=31 failures=1 errors=0",
+      "FAILED (failures=1)",
+      "Ran 31 tests in 3.791s"
+    ]
+  },
+  "what_stopped": "the failing step is the cheap Early structure contracts step, so this job never reached the union: the population prediction 3453 -> 3466 was not tested by this run and stays a prediction until a green head reads it.",
+  "root_cause": "I added design-lab/scripts/verify_record_archive_crosswave.py, which declares a read-only --check form, and wired it nowhere. test_gate_reachability.ReadOnlyModeTests exists precisely for that: a --check that no CI table, chain entry or test invokes is a gate that exists on paper. The same module's by-name rule did NOT fire because my own new test names the script, so only the mode-level rule caught it -- which is why fixing this by adding an exemption would have been the wrong move: the register would then say \"this gate cannot be required\" about a gate that has a clean, cheap, stdlib-only CI home next to the sibling record register gate.",
+  "fix": "Add the step `python design-lab/scripts/verify_record_archive_crosswave.py --check` to the top-authority-gate job, immediately after \"Archive-wave record register gate\". Reproduced and re-verified locally: `scripts/run_structure_contracts.py` -> STRUCTURE_CONTRACTS=PASS tests=31 failures=0 errors=0.",
+  "process_gap": "Second CI red in two rounds, same shape: I ran the gates that grade my change and not the repository-level invariants my change perturbs. Last round it was the vm suite that drives the shared function I edited; this round it is the gate that audits gates. The pre-push list has to be \"every governance module over the whole repo\", not \"the checks about my feature\".",
+  "not_claimed": "No release, no host launch, no human acceptance, no change to the 34 FROZEN_DEFERRED rows. The green reading for this cut is the run carrying the fix head, recorded separately."
+}

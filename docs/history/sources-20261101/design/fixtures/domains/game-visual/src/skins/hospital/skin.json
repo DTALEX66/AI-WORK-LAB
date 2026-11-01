@@ -1,0 +1,297 @@
+{
+  "meta": {
+    "id": "hospital",
+    "name": "深夜医院值班台",
+    "subtitle": "NIGHT WARD · VITALS ANOMALY DESK"
+  },
+  "monitor": {
+    "initial": "WARD-CCTV：03 号病区进入夜间值守。护士台无人，生命体征仪仍显示 1 名患者在线。",
+    "actions": {
+      "openDoor": "监控：隔离门已开启。病房走廊的感应灯延迟亮起。",
+      "closeDoor": "监控：隔离门已闭合。门缝下方的冷雾正在回收。",
+      "moveUp": "监控：转运梯请求转入上层病区。心电波形短暂抖动。",
+      "moveDown": "监控：转运梯请求转回下层病区。呼叫铃显示未登记床号。",
+      "emergencyStop": "监控：急停触发。走廊灯带冻结一帧后恢复。",
+      "restartSystem": "监控：护士站系统重启。生命体征曲线被重新校准。"
+    }
+  },
+  "actionLabels": {
+    "openDoor": "开隔离门",
+    "closeDoor": "关隔离门",
+    "moveUp": "转上层病区",
+    "moveDown": "转下层病区",
+    "emergencyStop": "急停转运",
+    "restartSystem": "重启护士站",
+    "inspectLog": "查看护理日志",
+    "unlockHiddenLog": "解码病历封存"
+  },
+  "doorLabels": {
+    "open": "开启",
+    "closed": "关闭"
+  },
+  "directionLabels": {
+    "up": "上转",
+    "down": "下转",
+    "idle": "待命"
+  },
+  "statusLabels": {
+    "panelTitle": "值班状态",
+    "floor": "病区",
+    "door": "隔离门",
+    "direction": "转运",
+    "passengers": "患者",
+    "power": "备用电",
+    "stability": "生命体征",
+    "anomalyLevel": "异常等级",
+    "reviveCount": "复活",
+    "adHintsCount": "病历解码",
+    "hiddenLogsCount": "待解码"
+  },
+  "canvasLabels": {
+    "countdown": "夜班值守",
+    "monitorPanel": "病区 CCTV",
+    "actionPanel": "护士台",
+    "logPanel": "护理日志",
+    "forceAnomaly": "触发异常测试",
+    "failureTitle": "值班失控",
+    "failureEyebrow": "VITALS FAILURE",
+    "monitorSignalStable": "VITALS: STABLE",
+    "monitorSignalUnstable": "VITALS: IRREGULAR",
+    "monitorSignalCorrupted": "VITALS: FLATLINE",
+    "monitorThreat": "CODE: {level}",
+    "failureMetricStability": "体征",
+    "failureMetricAnomaly": "事件",
+    "failureMetricRemaining": "剩余"
+  },
+  "actionFailMessages": {
+    "openDoor_moving": "转运中禁止开启隔离门。",
+    "moveUp_doorNotClosed": "隔离门未关闭，禁止转入上层病区。",
+    "moveDown_doorNotClosed": "隔离门未关闭，禁止转入下层病区。",
+    "unknownAction": "未知护理指令：{actionId}",
+    "gameOver": "值班系统已失控，必须复活或重新开始。",
+    "systemBusy": "当前处置尚未完成，请等待设备状态稳定。"
+  },
+  "actionFeedback": {
+    "openDoor": "隔离门已开启。",
+    "closeDoor": "隔离门已关闭。",
+    "moveUp": "上层病区转运指令已执行。",
+    "moveDown": "下层病区转运指令已执行。",
+    "emergencyStop": "急停转运已执行。",
+    "emergencyStop_fail": "急停转运回路失效。",
+    "restartSystem": "护士站系统重启完成。",
+    "inspectLog": "已查看护理日志。",
+    "unlockHiddenLog_noLocked": "没有待解码的封存病历。",
+    "unlockHiddenLog_limit": "本局已解码 {count} 条封存病历，达到上限。"
+  },
+  "actionLogMessages": {
+    "openDoor": "隔离门已在 {floor} 号病区开启。",
+    "closeDoor": "隔离门已关闭。",
+    "moveUp": "患者转入上层病区，当前病区 {floor}。",
+    "moveDown": "患者转入下层病区，当前病区 {floor}。",
+    "emergencyStop": "执行急停转运：担架已停靠，生命体征稳定度下降。",
+    "emergencyStop_fail": "急停转运无响应。异常等级上升。",
+    "restartSystem": "护士站系统重启完成：异常等级下降，但消耗 {cost} 点备用电。",
+    "inspectLog": "值班员查看护理日志：最近 30 秒存在未登记呼叫铃。",
+    "inspectLog_hiddenRecords": "发现 {count} 条待解码封存病历。可解码完整内容。",
+    "unlockHiddenLog_ok": "解码完成。封存病历已解码。"
+  },
+  "anomalies": [
+    {
+      "id": "bed_13_call",
+      "title": "不存在的 13 号病床呼叫",
+      "severity": 2,
+      "monitor": "监控：呼叫铃显示 13 号病床请求协助，但夜班床位表没有该编号。",
+      "adHint": "出现未登记病床呼叫时不要开隔离门，先重启护士站。",
+      "effects": { "floor": 13, "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "vitals_delay",
+      "title": "生命体征延迟",
+      "severity": 1,
+      "monitor": "监控：心电曲线比病房画面延迟 3 秒，患者抬手动作与曲线不同步。",
+      "adHint": "体征延迟时先查护理日志，不要连续转运。",
+      "effects": { "anomalyLevel": 1, "stability": -6 }
+    },
+    {
+      "id": "empty_bed_heat",
+      "title": "空病床出现热源",
+      "severity": 2,
+      "monitor": "监控：病床画面为空，热成像仍显示 1 个目标。",
+      "adHint": "空床热源出现时保持隔离门关闭，先急停再查日志。",
+      "effects": { "passengers": 0, "anomalyLevel": 2, "stability": -12 }
+    },
+    {
+      "id": "nurse_call_echo",
+      "title": "呼叫铃重复响起",
+      "severity": 1,
+      "monitor": "监控：走廊呼叫铃重复播放同一段铃声，时间戳早于本次夜班。",
+      "adHint": "呼叫铃回声通常是轻度异常，重启护士站可降低风险。",
+      "effects": { "anomalyLevel": 1, "stability": -5 }
+    },
+    {
+      "id": "auto_transfer",
+      "title": "无人下达转运指令",
+      "severity": 2,
+      "monitor": "监控：护士台无人触碰，转运灯自动亮起。",
+      "adHint": "自动转运请求出现时不要跟随，先关闭隔离门并急停。",
+      "effects": { "anomalyLevel": 2, "power": -8 }
+    },
+    {
+      "id": "stretcher_brake_failure",
+      "title": "担架急停失效",
+      "severity": 3,
+      "monitor": "监控：急停按钮指示灯熄灭，转运回路拒绝确认。",
+      "adHint": "急停失效时不要反复点击，优先重启护士站系统。",
+      "effects": { "anomalyLevel": 3, "stability": -15 }
+    },
+    {
+      "id": "negative_ward",
+      "title": "病区编号显示 -1",
+      "severity": 2,
+      "monitor": "监控：病区编号显示 -1。走廊尽头出现未登记隔离门。",
+      "adHint": "负数病区不是正常转运路径，立即重启护士站。",
+      "effects": { "floor": -1, "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "backup_power_drain",
+      "title": "备用电异常下降",
+      "severity": 2,
+      "monitor": "监控：备用电已接管，病区照明仍持续闪烁并快速耗电。",
+      "adHint": "备用电下降时减少转运，优先关门与重启。",
+      "effects": { "anomalyLevel": 2, "power": -22 }
+    },
+    {
+      "id": "isolation_door_refuse",
+      "title": "隔离门拒绝关闭",
+      "severity": 2,
+      "monitor": "监控：关门指令已发送，隔离门在闭合前自动弹开。",
+      "adHint": "隔离门拒绝关闭时不要连按关门，先急停再重启。",
+      "effects": { "door": "open", "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "patient_count_mismatch",
+      "title": "腕带人数与热源不一致",
+      "severity": 1,
+      "monitor": "监控：腕带登记为 0 人，病床热源识别仍显示 1。",
+      "adHint": "人数异常时优先查日志，患者计数可能被重置。",
+      "effects": { "passengers": 0, "anomalyLevel": 1, "stability": -7 }
+    },
+    {
+      "id": "ward_jump",
+      "title": "转运路径跳号",
+      "severity": 2,
+      "monitor": "监控：转运路径从 5 号病区直接跳到 9 号病区，缺失 4 段走廊画面。",
+      "adHint": "路径跳号时减少移动，用护士站重启恢复显示。",
+      "effects": { "floor": "+4", "anomalyLevel": 2, "stability": -12, "power": -10 }
+    },
+    {
+      "id": "surgery_lights",
+      "title": "手术灯自行点亮",
+      "severity": 3,
+      "monitor": "监控：空置手术间灯组无触发信号自行点亮，备用电消耗加速。",
+      "adHint": "手术灯启动时避免转运，立即重启护士站系统。",
+      "effects": { "anomalyLevel": 3, "stability": -14, "power": -20 }
+    }
+  ],
+  "hiddenLogs": {
+    "bed_13_call": {
+      "title": "13 号病床封存病历",
+      "content": "内部记录：13 号病床曾用于夜间隔离观察，事故后从床位表中删除。呼叫系统没有完成注销。"
+    },
+    "vitals_delay": {
+      "title": "生命体征仪校准记录",
+      "content": "校准日志：03 号病区心电曲线存在 3 秒差值。技术备注：延迟只在午夜后出现。"
+    },
+    "empty_bed_heat": {
+      "title": "热成像异常说明",
+      "content": "传感器手册补录：空病床热源曾在 02:17 反复出现，人工复核未发现患者。建议不要开启隔离门。"
+    },
+    "nurse_call_echo": {
+      "title": "呼叫铃诊断报告",
+      "content": "诊断报告：重复铃声来自旧护士站服务器。该服务器在三年前的夜间事故后已停用。"
+    },
+    "auto_transfer": {
+      "title": "自动转运审计追踪",
+      "content": "审计追踪：转运请求来自未登记终端。终端备注只有一行：患者还没有回房。"
+    },
+    "stretcher_brake_failure": {
+      "title": "担架回路维护日志",
+      "content": "维护日志：转运急停回路 B 被标记为状态不稳定。签署人为空，时间为事故后一小时。"
+    },
+    "negative_ward": {
+      "title": "隔离区勘测报告",
+      "content": "勘测报告：-1 标记对应一段未公开隔离走廊。走廊供电仍接入夜班护士站。"
+    },
+    "backup_power_drain": {
+      "title": "备用电异常报告",
+      "content": "异常报告：备用电源存在非授权分接线，线缆标签写着“维持观察室照明，不得切断”。"
+    },
+    "isolation_door_refuse": {
+      "title": "隔离门保护日志",
+      "content": "门控模块记录：识别到外部拉力，拒绝闭合。摄像头没有拍到任何走廊人员。"
+    },
+    "patient_count_mismatch": {
+      "title": "腕带与热源比对",
+      "content": "比对记录：腕带人数为 0，热源为 1。热源坐标固定在 03 号病区靠窗病床。"
+    },
+    "ward_jump": {
+      "title": "转运定位缺帧日志",
+      "content": "定位日志：5 至 9 病区画面缺失，门禁回传连续四次为空。末端记录显示曾经过不存在的观察室。"
+    },
+    "surgery_lights": {
+      "title": "手术灯测试报告",
+      "content": "测试报告：手术灯在无触发信号时自行启动。终端设备编号无法匹配任何已登记手术间设备。"
+    }
+  },
+  "failure": {
+    "summaries": {
+      "power": "备用电耗尽",
+      "stability": "生命体征归零",
+      "anomalyLevel": "异常事件失控",
+      "passengers": "患者记录出现负数",
+      "default": "值班系统拒绝继续响应"
+    },
+    "defaultHint": "先关隔离门，再重启护士站，避免连续转运。",
+    "firstRunAdvice": "下次先核对画面和三项数据；一致放行，矛盾封锁。",
+    "hintPrefix": "提示：{hint}",
+    "adReviveRollback": "复活完成：回滚 {seconds} 秒，恢复至可控值班状态。",
+    "adReviveMonitor": "复活完成：回滚到 {seconds} 秒前的病区状态。",
+    "snapshotFallback": "可观看复活，回滚到 {seconds} 秒前的值班状态。",
+    "noSnapshotFallback": "可观看复活，回滚到初始值班状态。"
+  },
+  "fakeEnding": {
+    "text": "第 3 次值班失败后，护士站弹出一份未签名病历。\n病历姓名栏不是患者，而是：夜班值守员。\n系统提示：你不是在看监控。你在被监控。",
+    "truthContent": "封存真相：03 号病区的夜班系统会把每一任值守员加入观察名单。连续失败意味着系统判定你已经出现异常体征。"
+  },
+  "ui": {
+    "viewAd": "复活",
+    "revealTruth": "揭示真相",
+    "decodePrefix": "[病历解码]",
+    "anomalyEventLog": "病区异常：{title}。{hint}",
+    "startTitle": "等待接管深夜医院值班台",
+    "startCopy": "目标：值守 60 秒，观察病区监控、处理异常呼叫、避免生命体征归零。接管后倒计时才会启动。",
+    "startChecklist": "先读病区监控和护理日志\n异常出现时按提示执行操作\n失败后可通过模拟复活",
+    "startFailureRulesTitle": "失败条件",
+    "startFailureRules": "备用电归零\n生命体征归零\n异常等级失控",
+    "startButton": "开始值守",
+    "sidebarEntry": "侧边栏入口",
+    "pausedTitle": "值守已暂停",
+    "pausedCopy": "返回前台后继续，不计算后台时间",
+    "audioOn": "声音开",
+    "audioOff": "已静音",
+    "rewardUnavailable": "奖励暂不可用，请稍后重试",
+    "reportNormal": "判为正常",
+    "reportAnomaly": "报告异常",
+    "inspectionLabel": "巡检判定 {seconds}s",
+    "baselineInspectionTitle": "当前监护画面未见异常",
+    "anomalyInspectionTitle": "监护信号发生变化，请判断画面",
+    "anomalyResolved": "处置完成：{action} 已解除当前异常。",
+    "anomalyResolvedMonitor": "监护画面恢复稳定，等待下一轮巡检。",
+    "inspectionPrompt": "巡检判定：{title}（{seconds}秒内响应）",
+    "inspectionCorrectNormal": "判定正确：当前监护画面正常。",
+    "inspectionCorrectAnomaly": "判定正确：异常已上报，系统压力下降。",
+    "inspectionWrong": "判定错误：生命体征稳定度下降，异常压力上升。",
+    "inspectionTimeout": "判定超时：未完成本次巡检。",
+    "hiddenLogCaptured": "已捕获封存病历：{title}。"
+  }
+}

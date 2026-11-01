@@ -1,0 +1,97 @@
+{
+  "id": "dl-kb-06-ci-reds-adapter-rows-and-clipped-contrast-run-20261028",
+  "task_id": "DL-KB-06",
+  "axis": "verification",
+  "outcome": "PASS",
+  "observed_at": "2026-10-28T13:58:15Z",
+  "subject_sha": "b5804dd527331e15d15dfb2d5a186aacad898b27",
+  "ci_verdict_at_subject_sha": {
+    "run": "40694692860",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "job_tally": {
+      "success": 8,
+      "failure": 2,
+      "skipped": 2
+    },
+    "failing_jobs": [
+      "Python gate (V3 verifiers + unit tests)",
+      "Workbench browser E2E (exact-SHA controlled-runtime, no-skip)"
+    ],
+    "failing_job_ids": [
+      122838866464,
+      122838866794
+    ],
+    "python_shard_lines_read_from_the_job_log": [
+      "PYTHON_TESTS_SHARD_RESULT shard=1/3 exit=1 tests=1203 wall_seconds=371.617 outcomes={'ERROR': 1, 'FAIL': 1, 'PASS': 1196, 'SKIP': 5}",
+      "PYTHON_TESTS_SHARD_RESULT shard=2/3 exit=0 tests=1072 wall_seconds=526.941 outcomes={'PASS': 1060, 'SKIP': 12}",
+      "PYTHON_TESTS_SHARD_RESULT shard=3/3 exit=0 tests=1151 wall_seconds=86.743 outcomes={'PASS': 1141, 'SKIP': 10}",
+      "PYTHON_TESTS_SHARD_FAILURES shard=1/3 n=2 ids=test_oda4_0206_adapters.AdapterRegistryTest.test_large_tools_process_isolated, test_oda4_0206_adapters.AdapterRegistryTest.test_registry_schema_validates"
+    ],
+    "python_union_line_read_from_the_job_log": [
+      "PYTHON_TESTS_UNION=OK expected=3426 distinct=3426 ran=3426 duplicates=0 missing=0 unexpected=0"
+    ],
+    "browser_e2e_lines": [
+      "CT_FAIL: 14 text run(s) below WCAG 2.1 AA contrast",
+      "Ran 31 tests in 313.886s",
+      "FAILED (failures=5)"
+    ],
+    "note": "PYTHON_TESTS_UNION=OK means the three shards covered the suite; it is not a pass verdict -- the same log line carries shard 1/3 exit=1 with two named failures. Reading the union word as the verdict would have hidden this red."
+  },
+  "red_a_registry_rows_i_authored": {
+    "tests": [
+      "test_oda4_0206_adapters.AdapterRegistryTest.test_registry_schema_validates",
+      "test_oda4_0206_adapters.AdapterRegistryTest.test_large_tools_process_isolated"
+    ],
+    "causes": [
+      "hostAdapter was written as null; the key is absent from schema `required` and must be a minLength:1 string when present (1 of the 30 pre-existing rows carries it at all), so the key was removed rather than filled with an invented host name",
+      "the delivery Blender row said status=declared while this repository guard asserts any adapter whose tool name contains Blender is missing (its own comment: \"honest: not proven\")"
+    ],
+    "resolution": "the assertion was not touched; the row was lowered to the word the guard requires, plus fallback=\"none yet\", and the reason is written into that row evidence note",
+    "also_fixed": "test_automation_connectors asserted all eleven rows are declared, which contradicted the guard it now cites; it asserts the rule (no availability word, Blender must be missing) instead of the word",
+    "readings": {
+      "test_oda4_0206_adapters": "Ran 10 tests OK",
+      "test_automation_connectors": "Ran 11 tests OK",
+      "verify_documented_counts": "DOCUMENTED_COUNTS=PASS claims=21 route_views=25 cli=24 adapters=41 routes=89",
+      "run_structure_contracts": "STRUCTURE_CONTRACTS=PASS tests=31 failures=0 errors=0"
+    }
+  },
+  "red_b_gate_graded_unpainted_text": {
+    "offender": "span :: 项目  got=1.5:1 need>=4.5:1 fg=rgb(245, 247, 252)",
+    "routes": [
+      "1440:components",
+      "1440:domain-detail",
+      "1920 same two",
+      "plus their CT_MOTION frames"
+    ],
+    "measured_geometry_reproducing_it_locally": {
+      "nav_is_the_only_scroller": "sidebarTop=0, navTop=817, navScroll=1497, navClient=616",
+      "label_rect_vs_scroller_box": "[55,20,32,21] inside box [18,125,243,616]",
+      "element_from_point_at_the_label_centre": "div.brand",
+      "veil_the_gate_composited_against": "coveredExamples [\"div a=0.86\"]"
+    },
+    "attribution": "the baseline head 58abdc69 reported LOWCONTRAST=0 on the same Linux runner (0 hits in that job log, gate tests ok), so this is a delta from this branch, not a platform disagreement; adding one nav item moved the scroll position onto a latent blind spot",
+    "fix": "audit_workbench_contrast.mjs now tests whether a run lies wholly outside the box of an ancestor that really clips it before it enters the population, counts the result as clippedOutOfScroller, prints every excluded name even on a green run, and honours the position:fixed containing-block rule so fixed overlays are not silently dropped",
+    "falsification": {
+      "planted_excluded": "#ct-clipped (white-on-white inside a zero-height overflow:hidden host) lands in clippedOutExamples and never in productFails",
+      "planted_still_convicted": "#ct-control (same colour pair, painted in the open) remains a reported failure in every route",
+      "anti_blanket": "clipped count must stay under half of the population it saw, and checked must remain >= 500"
+    },
+    "local_readings_on_the_bytes_that_become_the_next_head": {
+      "gate_tests": "Ran 2 tests in 90.571s OK",
+      "routes_in_receipt": 191,
+      "checked_after": 48819,
+      "clippedOutOfScroller": 3319,
+      "population_this_pass_look_at": 52138,
+      "productFails_after": 0,
+      "every_excluded_container": [
+        "div#ct-clipped-host",
+        "nav.nav.nav-open.has-scroll-more"
+      ]
+    },
+    "comparison_disclosed": "the 14 -> 0 product-fail half of this sentence is CI Linux at subject_sha against this machine after the fix; the 52,138 -> 48,819 coverage pair is one single local run read out of its own receipt fields, so the two comparisons are not the same platform and neither is offered as the other"
+  },
+  "what_this_receipt_does_not_attest": "No CI verdict exists for the fix yet: these bytes were not the head that run tested. The authoritative reading is the next PR run at the head that carries this file, and it must be quoted with its own SHA. Nothing here claims a real host launch, a probe, a tool call, E3, E4 or a release.",
+  "boundaries_unchanged": "windows connector NOT ACTIVATED; brand templates unadjudicated; pack SKILL.md bodies inert; three daily nav entries unchanged; E 盘不动; old 34 rows FROZEN_DEFERRED; mobile stays excluded; no assertion was weakened to reach this state -- the AA threshold, the 4.5:1 need and the large-tools guard are all untouched"
+}

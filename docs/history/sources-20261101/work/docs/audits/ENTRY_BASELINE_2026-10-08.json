@@ -1,0 +1,664 @@
+{
+  "schema": "work-lab/entry-baseline-readback/v1",
+  "tool": "scripts/audit/entry_baseline_readback.py",
+  "rerun_command": ".project-local/toolchains/wl-py311/Scripts/python.exe scripts/audit/entry_baseline_readback.py --out docs/audits/ENTRY_BASELINE_2026-10-08.json",
+  "observed_at": "2026-10-08T03:22:30+08:00",
+  "readOnly": true,
+  "launchedProcesses": false,
+  "authority_sources": [
+    "config/capability-matrix.json#clients[].registry_status",
+    "config/software-registry.json#software[].officialSource",
+    "config/config-ownership.json#adapter_defaults",
+    "AGENTS.md#five-dimension-runtime-baseline dimensions 1-2"
+  ],
+  "vocabulary": {
+    "location_status_enum": [
+      "NOT_INSTALLED",
+      "SINGLE_VERIFIED",
+      "SINGLE_UNVERIFIED",
+      "LOCATION_DRIFT",
+      "DUAL_INSTALLATION",
+      "MISSING_EXPECTED_INSTALL",
+      "RELOCATION_REQUESTED",
+      "OS_MANAGED"
+    ],
+    "enum_source": "packages/contracts/schemas/workflow/software-installation-identity.schema.json",
+    "extra_state": "ENTRY_NOT_RESOLVED",
+    "extra_state_source": "scripts/audit/executor_live_probe.py (probe-level could-not-measure state)"
+  },
+  "desktop_dirs_read": [
+    {
+      "label": "user_desktop",
+      "path": "C:\\Users\\ALEX\\Desktop",
+      "registrySource": "HKCU\\...\\User Shell Folders\\Desktop"
+    },
+    {
+      "label": "public_desktop",
+      "path": "C:\\Users\\Public\\Desktop",
+      "registrySource": "%PUBLIC%\\Desktop"
+    }
+  ],
+  "hkcu_environment_layers": {
+    "DSH_HOME": {
+      "in_hkcu_environment": true,
+      "value": "D:\\All projects\\DSH\\.dsh",
+      "resolved": "D:\\All projects\\DSH\\.dsh",
+      "exists": true
+    },
+    "HERMES_HOME": {
+      "in_hkcu_environment": false,
+      "value": null,
+      "resolved": null,
+      "exists": null
+    },
+    "CODEX_CLI": {
+      "in_hkcu_environment": false,
+      "value": null,
+      "resolved": null,
+      "exists": null
+    }
+  },
+  "counts": {
+    "SINGLE_VERIFIED": 6,
+    "SINGLE_UNVERIFIED": 1
+  },
+  "out_of_scope_declared": {
+    "ids": [
+      "cursor",
+      "claude-code",
+      "workbuddy"
+    ],
+    "basis": "capability-matrix manifest_only_clients[] registry_status=blocked — no declared local launch entry form"
+  },
+  "not_verified": [
+    "chain resolves but no binary was launched — 'opens correctly' is unproven",
+    "file version resources / hashes not read — version agreement is not asserted here",
+    "Start Menu launchers not adjudicated (desktop is the dimension-2 authority)",
+    "Store (AppX) runtime layer for the codex wrapper was not queried by this tool",
+    "working-dir/icon agreement between hand parser and WScript is recorded but only TargetPath disagreement downgrades a row"
+  ],
+  "safety_note": "No process launch, no registry write, no shortcut change, no file-content read. .lnk TargetPath parsed from bytes ([MS-SHLLINK] LinkInfo) and cross-checked with a WScript.Shell stdin field read (CreateShortcut fields only; the target is never Run).",
+  "rows": [
+    {
+      "surface": "hermes",
+      "display_name": "Hermes",
+      "declared_form": "official desktop app (apps/desktop/release/win-unpacked/Hermes.exe, AGENTS.md dim1) + hermes CLI",
+      "scope": {
+        "registry_status": "active",
+        "ownership_mode": "MANAGE",
+        "official_source": "desktop-shortcut",
+        "legacy_observe": false
+      },
+      "verdict": "SINGLE_VERIFIED",
+      "reason": "exactly one entry and its chain resolves end to end",
+      "canonical_candidate": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+      "install_roots": [],
+      "expected_roots": [
+        "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent"
+      ],
+      "shortcut": {
+        "lnk_path": "C:\\Users\\ALEX\\Desktop\\Hermes.lnk",
+        "origin": "user_desktop",
+        "target": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+        "target_exists": true,
+        "arguments": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\resources\\icon.ico",
+        "working_dir": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked",
+        "working_dir_exists": true,
+        "icon": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\resources\\icon.ico",
+        "icon_named": true,
+        "icon_exists": true,
+        "hand_parse_ok": true,
+        "wscript_agree": true,
+        "hand_parse_error": null
+      },
+      "shortcuts": [
+        {
+          "lnk_path": "C:\\Users\\ALEX\\Desktop\\Hermes.lnk",
+          "origin": "user_desktop",
+          "target": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\Hermes.exe",
+          "target_exists": true,
+          "arguments": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\resources\\icon.ico",
+          "working_dir": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked",
+          "working_dir_exists": true,
+          "icon": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\apps\\desktop\\release\\win-unpacked\\resources\\icon.ico",
+          "icon_named": true,
+          "icon_exists": true,
+          "hand_parse_ok": true,
+          "wscript_agree": true,
+          "hand_parse_error": null
+        }
+      ],
+      "cli_paths": [
+        "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe",
+        "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.cmd"
+      ],
+      "entry_points": null,
+      "auxiliary_layers": [
+        {
+          "kind": "declared_entry_candidate",
+          "path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe",
+          "exists": true
+        }
+      ],
+      "readback": [
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall + HKLM equivalents (read-only enumeration)",
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "desktop .lnk scan",
+          "dirs": [
+            "C:\\Users\\ALEX\\Desktop",
+            "C:\\Users\\Public\\Desktop"
+          ],
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "declared entry candidate",
+          "path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe",
+          "exists": true
+        },
+        {
+          "source": "PATH dirs from HKLM Session Manager + HKCU Environment",
+          "hits": [
+            "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.exe",
+            "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\hermes.cmd"
+          ]
+        },
+        {
+          "source": "config/software-registry.json",
+          "softwareId": "hermes",
+          "officialSource": "desktop-shortcut"
+        }
+      ],
+      "observed_at": "2026-10-08T03:22:30+08:00"
+    },
+    {
+      "surface": "codex",
+      "display_name": "Codex",
+      "declared_form": "single repo wrapper: packages/client-neutral-core/bin/codex (bash) + packages/client-neutral-core/bin/codex.cmd (AGENTS.md dim1)",
+      "scope": {
+        "registry_status": "quarantined",
+        "ownership_mode": "MANAGE",
+        "official_source": "cli",
+        "legacy_observe": false
+      },
+      "verdict": "SINGLE_UNVERIFIED",
+      "reason": "entry resolves once but not fully confirmable read-only: declared Hermes overlay launcher absent at C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\codex (AGENTS.md managed bin/ asset; repo wrapper remains the only resolvable entry); declared Hermes overlay launcher absent at C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\codex.cmd (AGENTS.md managed bin/ asset; repo wrapper remains the only resolvable entry)",
+      "canonical_candidate": "C:\\Users\\ALEX\\AppData\\Local\\OpenAI\\Codex\\bin\\9691020b546a15b2",
+      "install_roots": [
+        "C:\\Users\\ALEX\\AppData\\Local\\OpenAI\\Codex\\bin\\9691020b546a15b2"
+      ],
+      "expected_roots": [],
+      "shortcut": null,
+      "shortcuts": [],
+      "cli_paths": [],
+      "entry_points": [
+        {
+          "kind": "repo_wrapper",
+          "path": "D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex",
+          "exists": true
+        },
+        {
+          "kind": "repo_wrapper",
+          "path": "D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd",
+          "exists": true
+        }
+      ],
+      "auxiliary_layers": [
+        {
+          "kind": "hermes_overlay_launcher",
+          "path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\codex",
+          "exists": false
+        },
+        {
+          "kind": "hermes_overlay_launcher",
+          "path": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\bin\\codex.cmd",
+          "exists": false
+        }
+      ],
+      "readback": [
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall + HKLM equivalents (read-only enumeration)",
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "desktop .lnk scan",
+          "dirs": [
+            "C:\\Users\\ALEX\\Desktop",
+            "C:\\Users\\Public\\Desktop"
+          ],
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "declared candidate glob",
+          "glob": "%LOCALAPPDATA%\\OpenAI\\Codex\\bin\\*\\codex.exe",
+          "hit": "C:\\Users\\ALEX\\AppData\\Local\\OpenAI\\Codex\\bin\\9691020b546a15b2\\codex.exe"
+        },
+        {
+          "source": "repo wrapper",
+          "path": "D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex",
+          "exists": true
+        },
+        {
+          "source": "repo wrapper",
+          "path": "D:\\All projects\\WORK-LAB\\packages\\client-neutral-core\\bin\\codex.cmd",
+          "exists": true
+        },
+        {
+          "source": "PATH dirs from HKLM Session Manager + HKCU Environment",
+          "hits": []
+        },
+        {
+          "source": "config/software-registry.json",
+          "softwareId": "codex",
+          "officialSource": "cli"
+        }
+      ],
+      "observed_at": "2026-10-08T03:22:30+08:00"
+    },
+    {
+      "surface": "cc-switch",
+      "display_name": "CC Switch",
+      "declared_form": "single desktop shortcut to the installed official executable (AGENTS.md dim1)",
+      "scope": {
+        "registry_status": "legacy_observe",
+        "ownership_mode": "OBSERVE",
+        "official_source": "desktop-shortcut",
+        "legacy_observe": true
+      },
+      "verdict": "SINGLE_VERIFIED",
+      "reason": "exactly one entry and its chain resolves end to end",
+      "canonical_candidate": "D:\\Programs\\CC Switch\\cc-switch.exe",
+      "install_roots": [
+        "D:\\Programs\\CC Switch\\"
+      ],
+      "expected_roots": [],
+      "shortcut": {
+        "lnk_path": "C:\\Users\\ALEX\\Desktop\\CC Switch.lnk",
+        "origin": "user_desktop",
+        "target": "D:\\Programs\\CC Switch\\cc-switch.exe",
+        "target_exists": true,
+        "arguments": "\u0000\u0007ꀀ䄥偐䅄䅔尥楍牣獯景屴湉瑳污敬屲㍻䈶㙂䌹ⴶ㔹㌰㐭䄷ⵂ㌹㙆㘭㕂䘴㠴㙄ぁ紵停潲畤瑣捉湯\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000%APPDATA%\\Microsoft\\Installer\\{36BB69C6-9503-47AB-93F6-6B54F48D6A05}\\ProductIcon\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000`\u0000\u0003ꀀX\u0000\u0000\u0000敤歳潴⵰㉬收愳c⟘豼逢俳䎻⩋఼籇熒ᇱ쀘橍赳⟘豼逢俳䎻⩋఼籇熒ᇱ쀘橍赳\u0000\tꀀY\u0000匱卐⡕齌齹䬹킨퓡=\u0000\u0005\u0000ἀ\u0000ᔀ\u0000挀漀洀⸀挀挀猀眀椀琀挀栀⸀搀攀猀欀琀漀瀀\u0000\u0000\u0000\u0000㤀\u0000㄀偓녓洖굄炍Ꝉ䁈ꐮ砽ᶌ\u0000栀\u0000\u0000H\u0000㖤導\u0000\u0000\u0000\u0010\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000",
+        "working_dir": "D:\\Programs\\CC Switch\\",
+        "working_dir_exists": true,
+        "icon": "C:\\Users\\ALEX\\AppData\\Roaming\\Microsoft\\Installer\\{36BB69C6-9503-47AB-93F6-6B54F48D6A05}\\ProductIcon",
+        "icon_named": true,
+        "icon_exists": true,
+        "hand_parse_ok": true,
+        "wscript_agree": true,
+        "hand_parse_error": null
+      },
+      "shortcuts": [
+        {
+          "lnk_path": "C:\\Users\\ALEX\\Desktop\\CC Switch.lnk",
+          "origin": "user_desktop",
+          "target": "D:\\Programs\\CC Switch\\cc-switch.exe",
+          "target_exists": true,
+          "arguments": "\u0000\u0007ꀀ䄥偐䅄䅔尥楍牣獯景屴湉瑳污敬屲㍻䈶㙂䌹ⴶ㔹㌰㐭䄷ⵂ㌹㙆㘭㕂䘴㠴㙄ぁ紵停潲畤瑣捉湯\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000%APPDATA%\\Microsoft\\Installer\\{36BB69C6-9503-47AB-93F6-6B54F48D6A05}\\ProductIcon\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000`\u0000\u0003ꀀX\u0000\u0000\u0000敤歳潴⵰㉬收愳c⟘豼逢俳䎻⩋఼籇熒ᇱ쀘橍赳⟘豼逢俳䎻⩋఼籇熒ᇱ쀘橍赳\u0000\tꀀY\u0000匱卐⡕齌齹䬹킨퓡=\u0000\u0005\u0000ἀ\u0000ᔀ\u0000挀漀洀⸀挀挀猀眀椀琀挀栀⸀搀攀猀欀琀漀瀀\u0000\u0000\u0000\u0000㤀\u0000㄀偓녓洖굄炍Ꝉ䁈ꐮ砽ᶌ\u0000栀\u0000\u0000H\u0000㖤導\u0000\u0000\u0000\u0010\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000",
+          "working_dir": "D:\\Programs\\CC Switch\\",
+          "working_dir_exists": true,
+          "icon": "C:\\Users\\ALEX\\AppData\\Roaming\\Microsoft\\Installer\\{36BB69C6-9503-47AB-93F6-6B54F48D6A05}\\ProductIcon",
+          "icon_named": true,
+          "icon_exists": true,
+          "hand_parse_ok": true,
+          "wscript_agree": true,
+          "hand_parse_error": null
+        }
+      ],
+      "cli_paths": null,
+      "entry_points": null,
+      "auxiliary_layers": [],
+      "readback": [
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall + HKLM equivalents (read-only enumeration)",
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "desktop .lnk scan",
+          "dirs": [
+            "C:\\Users\\ALEX\\Desktop",
+            "C:\\Users\\Public\\Desktop"
+          ],
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "registry",
+          "key": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{36BB69C6-9503-47AB-93F6-6B54F48D6A05}",
+          "DisplayName": "CC Switch",
+          "DisplayVersion": "3.20.0",
+          "InstallLocation": "D:\\Programs\\CC Switch\\"
+        },
+        {
+          "source": "config/software-registry.json",
+          "softwareId": "cc-switch",
+          "officialSource": "desktop-shortcut"
+        }
+      ],
+      "observed_at": "2026-10-08T03:22:30+08:00"
+    },
+    {
+      "surface": "github",
+      "display_name": "GitHub",
+      "declared_form": "official GitHub CLI executable (delivery platform; not a desktop client)",
+      "scope": {
+        "registry_status": "quarantined",
+        "ownership_mode": "OBSERVE",
+        "official_source": "api",
+        "legacy_observe": false
+      },
+      "verdict": "SINGLE_VERIFIED",
+      "reason": "exactly one entry and its chain resolves end to end",
+      "canonical_candidate": "C:\\Program Files\\GitHub CLI\\gh.exe",
+      "install_roots": [],
+      "expected_roots": [],
+      "shortcut": null,
+      "shortcuts": [],
+      "cli_paths": [
+        "C:\\Program Files\\GitHub CLI\\gh.exe"
+      ],
+      "entry_points": null,
+      "auxiliary_layers": [],
+      "readback": [
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall + HKLM equivalents (read-only enumeration)",
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "desktop .lnk scan",
+          "dirs": [
+            "C:\\Users\\ALEX\\Desktop",
+            "C:\\Users\\Public\\Desktop"
+          ],
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "registry",
+          "key": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0788B172-EA4C-4BB2-B6DE-CF425BDFA8A7}",
+          "DisplayName": "GitHub CLI",
+          "DisplayVersion": "2.98.0",
+          "InstallLocation": ""
+        },
+        {
+          "source": "PATH dirs from HKLM Session Manager + HKCU Environment",
+          "hits": [
+            "C:\\Program Files\\GitHub CLI\\gh.exe"
+          ]
+        },
+        {
+          "source": "config/software-registry.json",
+          "softwareId": "github",
+          "officialSource": "api"
+        }
+      ],
+      "observed_at": "2026-10-08T03:22:30+08:00"
+    },
+    {
+      "surface": "openhuman",
+      "display_name": "OpenHuman",
+      "declared_form": "single desktop shortcut to the installed official executable (AGENTS.md dim1)",
+      "scope": {
+        "registry_status": "quarantined",
+        "ownership_mode": "OBSERVE",
+        "official_source": "desktop-shortcut",
+        "legacy_observe": false
+      },
+      "verdict": "SINGLE_VERIFIED",
+      "reason": "exactly one entry and its chain resolves end to end",
+      "canonical_candidate": "C:\\Users\\ALEX\\AppData\\Local\\OpenHuman\\OpenHuman.exe",
+      "install_roots": [
+        "C:\\Users\\ALEX\\AppData\\Local\\OpenHuman"
+      ],
+      "expected_roots": [
+        "C:\\Users\\ALEX\\AppData\\Local\\OpenHuman"
+      ],
+      "shortcut": {
+        "lnk_path": "C:\\Users\\ALEX\\Desktop\\OpenHuman.lnk",
+        "origin": "user_desktop",
+        "target": "C:\\Users\\ALEX\\AppData\\Local\\OpenHuman\\OpenHuman.exe",
+        "target_exists": true,
+        "arguments": "--lang=zh-CN",
+        "working_dir": "C:\\Users\\ALEX\\AppData\\Local\\OpenHuman",
+        "working_dir_exists": true,
+        "icon": "",
+        "icon_named": false,
+        "icon_exists": false,
+        "hand_parse_ok": true,
+        "wscript_agree": true,
+        "hand_parse_error": null
+      },
+      "shortcuts": [
+        {
+          "lnk_path": "C:\\Users\\ALEX\\Desktop\\OpenHuman.lnk",
+          "origin": "user_desktop",
+          "target": "C:\\Users\\ALEX\\AppData\\Local\\OpenHuman\\OpenHuman.exe",
+          "target_exists": true,
+          "arguments": "--lang=zh-CN",
+          "working_dir": "C:\\Users\\ALEX\\AppData\\Local\\OpenHuman",
+          "working_dir_exists": true,
+          "icon": "",
+          "icon_named": false,
+          "icon_exists": false,
+          "hand_parse_ok": true,
+          "wscript_agree": true,
+          "hand_parse_error": null
+        }
+      ],
+      "cli_paths": null,
+      "entry_points": null,
+      "auxiliary_layers": [],
+      "readback": [
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall + HKLM equivalents (read-only enumeration)",
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "desktop .lnk scan",
+          "dirs": [
+            "C:\\Users\\ALEX\\Desktop",
+            "C:\\Users\\Public\\Desktop"
+          ],
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenHuman",
+          "DisplayName": "OpenHuman",
+          "DisplayVersion": "0.63.12",
+          "InstallLocation": "\"C:\\Users\\ALEX\\AppData\\Local\\OpenHuman\""
+        },
+        {
+          "source": "config/software-registry.json",
+          "softwareId": "openhuman",
+          "officialSource": "desktop-shortcut"
+        }
+      ],
+      "observed_at": "2026-10-08T03:22:30+08:00"
+    },
+    {
+      "surface": "open-design",
+      "display_name": "Open Design",
+      "declared_form": "single desktop shortcut to the installed official executable (AGENTS.md dim1)",
+      "scope": {
+        "registry_status": "quarantined",
+        "ownership_mode": "OBSERVE",
+        "official_source": "desktop-shortcut",
+        "legacy_observe": false
+      },
+      "verdict": "SINGLE_VERIFIED",
+      "reason": "exactly one entry and its chain resolves end to end",
+      "canonical_candidate": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe",
+      "install_roots": [
+        "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design"
+      ],
+      "expected_roots": [
+        "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design"
+      ],
+      "shortcut": {
+        "lnk_path": "C:\\Users\\ALEX\\Desktop\\Open Design.lnk",
+        "origin": "user_desktop",
+        "target": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe",
+        "target_exists": true,
+        "arguments": "\u0000\u0007ꀀ唥䕓偒佒䥆䕌尥灁䑰瑡屡潌慣屬牐杯慲獭作数⁮敄楳湧作数⁮敄楳湧攮數\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000%USERPROFILE%\\AppData\\Local\\Programs\\Open Design\\Open Design.exe\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u001c\u0000\u000bꀀོ䤁䫌䢆퓕ы迯:\u0000`\u0000\u0003ꀀX\u0000\u0000\u0000敤歳潴⵰㉬收愳c䵼拖係욵函ᅿ᫆�銄븨ᇱᶣ斜㗫ᐈ䵼拖係욵函ᅿ᫆�銄븨ᇱᶣ斜㗫ᐈÎ\u0000\tꀀ\u0000匱卐諢䙘䲼䌸ﲻ錓頦칭m\u0000\u0004\u0000ἀ\u0000⸀\u0000匀ⴀ㄀ⴀ㔀ⴀ㈀㄀ⴀ㄀㐀㘀㄀㘀㘀㐀㘀　㤀ⴀ㈀㜀㘀㌀㤀㔀㔀㐀　ⴀ㄀㜀㘀㤀㌀㈀㄀㤀㌀㘀ⴀ㄀　　㄀\u0000\u0000\u0000㤀\u0000㄀偓녓洖굄炍Ꝉ䁈ꐮ砽ᶌ\u0000栀\u0000\u0000H\u0000ꄱ랚偄䤫᎓簈廧\u0000\u0000\u0000\u0000\u0000\u0000",
+        "working_dir": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design",
+        "working_dir_exists": true,
+        "icon": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe",
+        "icon_named": true,
+        "icon_exists": true,
+        "hand_parse_ok": true,
+        "wscript_agree": true,
+        "hand_parse_error": null
+      },
+      "shortcuts": [
+        {
+          "lnk_path": "C:\\Users\\ALEX\\Desktop\\Open Design.lnk",
+          "origin": "user_desktop",
+          "target": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe",
+          "target_exists": true,
+          "arguments": "\u0000\u0007ꀀ唥䕓偒佒䥆䕌尥灁䑰瑡屡潌慣屬牐杯慲獭作数⁮敄楳湧作数⁮敄楳湧攮數\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000%USERPROFILE%\\AppData\\Local\\Programs\\Open Design\\Open Design.exe\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u001c\u0000\u000bꀀོ䤁䫌䢆퓕ы迯:\u0000`\u0000\u0003ꀀX\u0000\u0000\u0000敤歳潴⵰㉬收愳c䵼拖係욵函ᅿ᫆�銄븨ᇱᶣ斜㗫ᐈ䵼拖係욵函ᅿ᫆�銄븨ᇱᶣ斜㗫ᐈÎ\u0000\tꀀ\u0000匱卐諢䙘䲼䌸ﲻ錓頦칭m\u0000\u0004\u0000ἀ\u0000⸀\u0000匀ⴀ㄀ⴀ㔀ⴀ㈀㄀ⴀ㄀㐀㘀㄀㘀㘀㐀㘀　㤀ⴀ㈀㜀㘀㌀㤀㔀㔀㐀　ⴀ㄀㜀㘀㤀㌀㈀㄀㤀㌀㘀ⴀ㄀　　㄀\u0000\u0000\u0000㤀\u0000㄀偓녓洖굄炍Ꝉ䁈ꐮ砽ᶌ\u0000栀\u0000\u0000H\u0000ꄱ랚偄䤫᎓簈廧\u0000\u0000\u0000\u0000\u0000\u0000",
+          "working_dir": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design",
+          "working_dir_exists": true,
+          "icon": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe",
+          "icon_named": true,
+          "icon_exists": true,
+          "hand_parse_ok": true,
+          "wscript_agree": true,
+          "hand_parse_error": null
+        }
+      ],
+      "cli_paths": null,
+      "entry_points": null,
+      "auxiliary_layers": [],
+      "readback": [
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall + HKLM equivalents (read-only enumeration)",
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "desktop .lnk scan",
+          "dirs": [
+            "C:\\Users\\ALEX\\Desktop",
+            "C:\\Users\\Public\\Desktop"
+          ],
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Open Design-release-stable-win",
+          "DisplayName": "Open Design",
+          "DisplayVersion": "0.24.1",
+          "InstallLocation": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design"
+        },
+        {
+          "source": "config/software-registry.json",
+          "softwareId": "open-design",
+          "officialSource": "desktop-shortcut"
+        }
+      ],
+      "observed_at": "2026-10-08T03:22:30+08:00"
+    },
+    {
+      "surface": "deepseek-harness",
+      "display_name": "DeepSeek Harness",
+      "declared_form": "official vendor build at the vendor default per-user path, resolved from the uninstall key / shortcut TargetPath (never hardcoded)",
+      "scope": {
+        "registry_status": "active",
+        "ownership_mode": null,
+        "official_source": "isolated-checkout",
+        "legacy_observe": false
+      },
+      "verdict": "SINGLE_VERIFIED",
+      "reason": "exactly one entry and its chain resolves end to end",
+      "canonical_candidate": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+      "install_roots": [
+        "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness"
+      ],
+      "expected_roots": [
+        "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness"
+      ],
+      "shortcut": {
+        "lnk_path": "C:\\Users\\ALEX\\Desktop\\DeepSeek Harness.lnk",
+        "origin": "user_desktop",
+        "target": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+        "target_exists": true,
+        "arguments": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+        "working_dir": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness",
+        "working_dir_exists": true,
+        "icon": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+        "icon_named": true,
+        "icon_exists": true,
+        "hand_parse_ok": true,
+        "wscript_agree": true,
+        "hand_parse_error": null
+      },
+      "shortcuts": [
+        {
+          "lnk_path": "C:\\Users\\ALEX\\Desktop\\DeepSeek Harness.lnk",
+          "origin": "user_desktop",
+          "target": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+          "target_exists": true,
+          "arguments": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+          "working_dir": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness",
+          "working_dir_exists": true,
+          "icon": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness\\DeepSeek Harness.exe",
+          "icon_named": true,
+          "icon_exists": true,
+          "hand_parse_ok": true,
+          "wscript_agree": true,
+          "hand_parse_error": null
+        }
+      ],
+      "cli_paths": null,
+      "entry_points": null,
+      "auxiliary_layers": [
+        {
+          "kind": "env_layer",
+          "var": "DSH_HOME",
+          "in_hkcu_environment": true,
+          "value": "D:\\All projects\\DSH\\.dsh",
+          "resolved": "D:\\All projects\\DSH\\.dsh",
+          "exists": true
+        }
+      ],
+      "readback": [
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall + HKLM equivalents (read-only enumeration)",
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "desktop .lnk scan",
+          "dirs": [
+            "C:\\Users\\ALEX\\Desktop",
+            "C:\\Users\\Public\\Desktop"
+          ],
+          "at": "2026-10-08T03:22:30+08:00"
+        },
+        {
+          "source": "registry",
+          "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\1bf39983-50d0-5fe0-9ef4-cece76f67c5e",
+          "DisplayName": "DeepSeek Harness 0.2.0-rc.2",
+          "DisplayVersion": "0.2.0-rc.2",
+          "InstallLocation": "C:\\Users\\ALEX\\AppData\\Local\\Programs\\DeepSeek Harness"
+        },
+        {
+          "source": "config/software-registry.json",
+          "softwareId": "deepseek-harness",
+          "officialSource": "isolated-checkout"
+        },
+        {
+          "source": "registry",
+          "key": "HKCU\\Environment\\DSH_HOME",
+          "value": "D:\\All projects\\DSH\\.dsh"
+        }
+      ],
+      "observed_at": "2026-10-08T03:22:30+08:00"
+    }
+  ]
+}

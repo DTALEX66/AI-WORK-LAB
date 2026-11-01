@@ -1,0 +1,25 @@
+feat(governance): GD-1 宿主资格矩阵 fail-closed 消费者面（G-D，DL-P0-070）
+
+CROSSWALK 2026-09-24 G-D：design-lab/readiness/adobe-host-matrix.json（8 宿主 E1
+STRUCTURAL 矩阵）此前无 CI 消费者，内部一致性无人把关。新增 fail-closed 验证器：
+
+- design-lab/scripts/verify_readiness_host_matrix.py（jsonschema 主路径 +
+  stdlib 内置子集验证器兜底，双路 fail-closed）：
+  · 矩阵 schema 校验（复用既有 readiness-host-matrix.schema.json，不建新 schema）
+  · 文档级 evidence_level 锁 E1（结构面不得自抬为 live 声明）
+  · inventory_ref 命中 + inventory_observed_at 与 MACHINE_INVENTORY observed_at
+    一致（观察日期≠测试时间；re-observed 库存而矩阵陈旧 = 漂移 FAIL）
+  · api verified=E2+ 必须 VERIFIED_LIVE + 命中仓内的 evidence_ref（live 证据指针，
+    缺指针/指针漂移即 FAIL）
+  · editable_delivery ↔ readback_method 双向一致；absent 宿主不得声明可编辑交付
+  · evidence_refs/verification.evidence_ref 仓内引用全部命中 tracked 文件
+- design-lab/scripts/verify_design_lab.py: 聚合器 SCRIPTS 追加 1 项（python-gate
+  已调聚合器；不改 canonical-verify.yml）
+- design-lab/tests/test_readiness_host_matrix_gate.py: 14 个 fail-closed 回归
+  （13 合成 fixture + 1 live 冒烟）
+
+本地验证：矩阵真值 8 宿主全 PASS（jsonschema 主路径 + fallback 双路）；
+测试 14/14 全绿。E3/E4 live 腿保持 owner-gated（验证器只防假声明，
+从不合成/提升 E3 记录）。
+
+Authority: DL-AUTHORITY-2026-09-18-R2 / base main 80b2ddc（#153 合后）

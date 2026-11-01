@@ -1,0 +1,132 @@
+{
+  "kind": "design-lab-w05-direction",
+  "project_id": "a979aace23554e4da03e9c26654d0d58",
+  "checks": [
+    {
+      "name": "before any direction exists the panel reports no choice",
+      "pass": true,
+      "detail": {
+        "consistency": "版本链 / 选定 / 绑定一致性：尚未选定方向"
+      }
+    },
+    {
+      "name": "two candidates are listed",
+      "pass": true,
+      "detail": {
+        "rowsAfterCreate": [
+          "方向甲 · v1\n（未填色感/字感） · direction-0c453c2690954be1bd3264068f4f4150\n尚未有人选定\n候选选定（人工）",
+          "方向乙 · v1\n（未填色感/字感） · direction-7f9012be1d3c45f490049aea34cd514c\n尚未有人选定\n候选选定（人工）",
+          "新建方向候选（绑定到某个简报版本）\n秋季品牌视觉 · v1 · 00a4b399\n新建方向候选"
+        ]
+      }
+    },
+    {
+      "name": "NO candidate is auto-chosen",
+      "pass": true,
+      "detail": {
+        "rowsAfterCreate": [
+          "方向甲 · v1\n（未填色感/字感） · direction-0c453c2690954be1bd3264068f4f4150\n尚未有人选定\n候选选定（人工）",
+          "方向乙 · v1\n（未填色感/字感） · direction-7f9012be1d3c45f490049aea34cd514c\n尚未有人选定\n候选选定（人工）",
+          "新建方向候选（绑定到某个简报版本）\n秋季品牌视觉 · v1 · 00a4b399\n新建方向候选"
+        ],
+        "consistency": "版本链 / 选定 / 绑定一致性：尚未选定方向"
+      }
+    },
+    {
+      "name": "the service readback also has no chosen direction",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "name": "the chosen candidate is marked chosen",
+      "pass": true,
+      "detail": {
+        "chosenRow": "方向甲 · v1\n（未填色感/字感） · direction-0c453c2690954be1bd3264068f4f4150\n选定人：workbench-user（human）\n已选定"
+      }
+    },
+    {
+      "name": "the choice records the HUMAN actor (actor_kind=human)",
+      "pass": true,
+      "detail": {
+        "chosenRow": "方向甲 · v1\n（未填色感/字感） · direction-0c453c2690954be1bd3264068f4f4150\n选定人：workbench-user（human）\n已选定"
+      }
+    },
+    {
+      "name": "the other candidate is still only a candidate",
+      "pass": true,
+      "detail": {
+        "otherRow": "方向乙 · v1\n（未填色感/字感） · direction-7f9012be1d3c45f490049aea34cd514c\n尚未有人选定\n候选选定（人工）"
+      }
+    },
+    {
+      "name": "验收1: the honest intermediate state is reported (chosen but not yet bound)",
+      "pass": true,
+      "detail": {
+        "consistency": "版本链 / 选定 / 绑定一致性：方向已选定，但尚未绑定设计系统（属正常中间态，不宣称已一致到交付）"
+      }
+    },
+    {
+      "name": "the panel does not claim full consistency without a binding",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "name": "验收3: directions bound to the superseded brief are flagged as needing re-review",
+      "pass": true,
+      "detail": {
+        "afterBriefChange": "方向（Direction）· 2 个候选\n\n版本链 / 选定 / 绑定一致性：方向已选定，但尚未绑定设计系统（属正常中间态，不宣称已一致到交付）\n\n方向甲 · v1\n（未填色感/字感） · direction-0c453c2690954be1bd3264068f4f4150\n选定人：workbench-user（human）\n绑定的简报版本 v1 已被取代 → 该方向需重新审查（不自动失效，也不自动沿用）\n已选定\n方向乙 · v1\n（未填色感/字感） · direction-7f9012be1d3c45f490049aea34cd514c\n尚未有人选定\n绑定的简报版本 v1 已被取代 → 该方向需重新审查（不自动失效，也不自动沿用）\n候选选定（人工）\n新建方向候选（绑定到某个简报版本）\n秋季品牌视觉 · v2 · 9245d020\n新建方向候选"
+      }
+    },
+    {
+      "name": "the flag is explicit expiry, NOT silent invalidation (the human choice stands)",
+      "pass": true,
+      "detail": {
+        "chosenRow": "方向甲 · v1\n（未填色感/字感） · direction-0c453c2690954be1bd3264068f4f4150\n选定人：workbench-user（human）\n绑定的简报版本 v1 已被取代 → 该方向需重新审查（不自动失效，也不自动沿用）\n已选定"
+      }
+    },
+    {
+      "name": "the expiry wording does not claim the direction was voided or auto-carried",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "name": "no console errors",
+      "pass": true,
+      "detail": {
+        "consoleErrors": []
+      }
+    }
+  ],
+  "console_errors": [],
+  "measured_at": "2026-09-28T19:33:11.060Z",
+  "vocab_cross_check": [
+    {
+      "name": "FAILED_STATES == TERMINAL - {RECEIPTED}",
+      "pass": true,
+      "detail": [
+        "CANCELLED",
+        "FAILED",
+        "TIMED_OUT"
+      ]
+    },
+    {
+      "name": "OUTCOME_UNKNOWN is 待审, NOT 失败",
+      "pass": true,
+      "detail": [
+        "CANCEL_REQUESTED",
+        "OUTCOME_UNKNOWN",
+        "RECONCILING"
+      ]
+    },
+    {
+      "name": "every ALLOWED attempt state is classified",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "no invented states beyond the service vocabulary",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "_note": "原计划子代理 D（Adobe 官方接口矩阵）因 429 免费档限流在发送最终答案的最后一跳失败（1356s）。但其完整 8-host 矩阵工作产物已在 transcript final 行保留——以下为从 transcript 重建的决策级结论（截至 2026-09）。逐 host 的 interface 明细表/完整 URL 清单在 transcript task-3.log，此处为结论层。",
+  "summary": "Adobe 8 个 Host 官方自动化接口矩阵（截至 2026-09）：Photoshop/InDesign/Premiere Pro 的 UXP 均已 GA，是首选官方接入路径（DIRECT_API/PLUGIN_HOSTED）；Illustrator 的 UXP 运行时已内置（官方版本矩阵 AI 23.0→UXP5.5、27.0→UXP6.3）但 Adobe 未向第三方开放公开 API/文档（社区 2026-02 确认）→ 稳定路径仍为 ExtendScript（SCRIPT_HOSTED）；After Effects 官方仅提供 C++ Plugin SDK + ExtendScript，UXP 未 GA（第三方称预计 2026 末，INFERRED）；Acrobat 官方提供 PDF Services REST（Document Cloud）+ Windows COM/OLE → DIRECT_API；Lightroom Classic 有 Lua SDK（CONFIRMED），Lightroom CC 无官方 SDK（机制未公开）；Bridge UXP13.0 版本矩阵有列但无独立 API 文档（UNCONFIRMED）→ 走 ExtendScript+BridgeTalk；Generator 官方仓库文档冻结、无 2025 后活跃维护、无官方弃用公告 → 不建议新项目。DESIGN-LAB 下一批只接 PS（UXP）+ Acrobat（PDF Services REST），不做全家桶。",
+  "hosts": [
+    {"host": "Photoshop", "recommended_class": "DIRECT_API (UXP plugin)", "status": "CONFIRMED_OFFICIAL", "details": "UXP 已 GA（PS 24.0→UXP 6.3，25.x→更高）；PS 有官方 UXP 文档 developer.adobe.com/photoshop/uxp + UXP Hub；ExtendScript/JSX legacy 仍支持。CEP 有迁移窗口（新项目直接 UXP）。读回：UXP 插件可读写文档/图层。"},
+    {"host": "Illustrator", "recommended_class": "SCRIPT_HOSTED (ExtendScript/JSX)", "status": "UXP_RUNTIME_BUT_NO_PUBLIC_API", "details": "UXP 运行时内置（官方版本矩阵 AI 23.0→UXP5.5、27.0→UXP6.3）但 Adobe 未向第三方开放公开 UXP API/文档（社区 2026-02 确认，mapsoft/Adobe community）。稳定可编程路径 = ExtendScript(.jsx，覆盖图层/路径/文本/文件）。UXP 对 AI 属 CONFIRMED_CODE(runtime 内置) 但 API 开放面 UNCONFIRMED。"},
+    {"host": "InDesign", "recommended_class": "DIRECT_API (UXP) + SCRIPT_HOSTED(ExtendScript)", "status": "CONFIRMED_OFFICIAL", "details": "ID 18.0+→UXP5.5+，20.0+→UXP8.0+；官方 UXP 文档 developer.adobe.com/indesign/uxp；完整 DOM API + .idjs 独立脚本；ExtendScript legacy（官方 UXP 迁移指南 developer.adobe.com/indesign/uxp/resources/migration-guides/extendscript）；InDesign Server 提供 Windows COM 远程 PDF 导出。"},
+    {"host": "After Effects", "recommended_class": "DIRECT_API (C++ Plugin SDK) + SCRIPT_HOSTED(ExtendScript)", "status": "CONFIRMED_OFFICIAL(UE/CEP SDK) / UXP_INFERRED", "details": "官方 = C++ U&I/CEP Plugin SDK + ExtendScript 脚本（developer.adobe.com/after-effects）；第三方称 UXP 预计 2026 末（INFERRED，机制未公开）；无公开 REST。"},
+    {"host": "Premiere Pro", "recommended_class": "DIRECT_API (UXP)", "status": "CONFIRMED_OFFICIAL", "details": "PP 25.6→UXP8.0，官方 UXP 文档 developer.adobe.com/premiere-pro/uxp；CEP 约 1 年迁移窗口。"},
+    {"host": "Adobe Acrobat (Pro)", "recommended_class": "DIRECT_API (PDF Services REST / Windows COM)", "status": "CONFIRMED_OFFICIAL", "details": "两条稳定路径：(1) PDF Services REST API（Document Cloud，developer.adobe.com/document-services/apis/pdf-services）跨平台，合并/拆页/转格式/表单/OCR；(2) Windows COM/OLE Automation（Distiller API + IAC，opensource.adobe.com/dc-acrobat-sdk-docs）。无 UXP/CEP。"},
+    {"host": "Lightroom Classic", "recommended_class": "SCRIPT_HOSTED (Lua SDK)", "status": "CONFIRMED_OFFICIAL", "details": "Lr 对象 API（developer.adobe.com/lightroom-classic）覆盖 catalog/photos/metadata/export；内置 Web 引擎可自定义 HTML 画廊；参考 github.com/Jaid/lightroom-sdk-8-examples。Lightroom CC（云版）无官方 SDK = UNCONFIRMED/机制未公开。"},
+    {"host": "Bridge", "recommended_class": "SCRIPT_HOSTED (ExtendScript + BridgeTalk)", "status": "UNCONFIRMED(uxp) / CONFIRMED(bridgetalk)", "details": "Bridge UXP 13.0 出现在官方版本矩阵但无独立 API 文档（UNCONFIRMED）；Bridge 自动化当前稳定走 ExtendScript + BridgeTalk（字符串总线跨 app 通信）。"}
+  ],
+  "protocol_table": [
+    "UXP | 跨PS/PP/ID/AME | 官方plugin宿主,可读写文档 | GA(PS/PP/ID/AE待确认) | 双向readback:是 | 官方支持,WebView限制(8.0起uxpHost仅主文档) | 中等 | 首选官方plugin接入",
+    "CEP | 多app | HTML/JS面板 | 冻结(CEP12),迁移UXP窗口 | 部分 | 维护风险高 | 存量迁移,新项目弃用",
+    "ExtendScript/JSX | PS/AI/ID/AE | app内脚本 | legacy但稳定 | 双向 | 官方长期保留+迁移指南 | 低 | SCRIPT_HOSTED稳定路径(AI/ID/AE首选脚本)",
+    "Photoshop Generator | PS | 模板化生成 | 官方仓库(adobe-photoshop/generator-core)文档冻结,无2025后维护,无官方弃用公告 | 单向 | 高(停滞) | 不建议新项目,存量评估迁UXP",
+    "Adobe IO / PDF Services REST | Acrobat | 云服务REST | GA | 双向(任务轮询) | 需Cloud账号+API key+网络 | Acrobat首选DIRECT_API",
+    "COM/OLE | Acrobat/InDesign Server(Windows) | 桌面自动化 | 稳定 | 双向 | 平台锁Windows | 离线Windows场景",
+    "BridgeTalk | Bridge | 字符串总线跨app | 稳定 | 单向为主 | 低 | Bridge自动化",
+    "Native C++ SDK(UE/CEP) | After Effects | 原生插件 | 稳定 | 双向 | 高(门槛) | AE深度集成(非DESIGN-LAB首选)"
+  ],
+  "call_chains": {
+    "A_direct": "DESIGN-LAB → PhotoshopAdapter(UXP plugin) / AcrobatAdapter(PDF Services REST) → 官方受控读写 + 双向 readback（首选，稳定官方接口）",
+    "B_minimax_relay": "DESIGN-LAB → MiniMax Design → Adobe（❌ 不成立：MiniMax Design 官方未披露任何 Adobe 控制协议，见 child-E；不得作为 Adobe 控制总线）",
+    "C_external_host_service": "DESIGN-LAB → 自托管 UXP/脚本宿主进程 → Adobe（可作兜底，但增加 2nd runtime，违反『减少控制层』原则，仅当官方 plugin 无法双向 readback 时启用）"
+  },
+  "three_way_comparison": "直连官方(UXP/REST)：低延迟/官方稳定/可测试/Host完全控制/双向readback/无供应商锁定/官方授权 → 推荐。MiniMax中转：不稳定/undocumented coupling/无法版本化/不推荐。外部Host Service：灵活但+1 runtime+readback需自证/仅兜底。结论：DESIGN-LAB 走方案A直连（PS=UXP，Acrobat=PDF Services REST，Illustrator/InDesign/AE=ExtendScript 脚本宿主），MiniMax Design 定位创意/资产桥，不进 Adobe 控制链。",
+  "defects_or_risks": [
+    "UXP 跨 Host 版本碎片化：PS 24.0→UXP6.3、ID 20.0→UXP8.0、PP 25.6→UXP8.0，同一 UXP 插件需按 Host 版本适配 API 子集，维护成本高于单一运行时",
+    "UXP 8.0 起 WebView 限制：第三方插件 uxpHost 对象仅限主文档，嵌入子帧无法访问插件消息 API（官方 changelog 记录）",
+    "Illustrator UXP 无公开 API：DESIGN-LAB 若坚持 UI 操作 Illustrator 属 UI_AUTOMATION_LAST_RESORT，应优先 ExtendScript 脚本宿主",
+    "Adobe 官方接口普遍需真实 Host + 授权，DESIGN-LAB CI 无法覆盖（owner-gated）"
+  ],
+  "evidence_refs": [
+    "https://developer.adobe.com/uxp (UXP Hub)",
+    "https://developer.adobe.com/photoshop/uxp (PS UXP)",
+    "https://developer.adobe.com/indesign/uxp (ID UXP + extendscript 迁移指南)",
+    "https://developer.adobe.com/after-effects (AE)",
+    "https://developer.adobe.com/premiere-pro/uxp (PP UXP)",
+    "https://developer.adobe.com/document-services (PDF Services REST)",
+    "https://developer.adobe.com/lightroom-classic (Lr Lua SDK)",
+    "https://github.com/adobe-photoshop/generator-core (Generator, 文档冻结)",
+    "https://github.com/Jaid/lightroom-sdk-8-examples (Lr SDK 参考)"
+  ],
+  "blocked": [
+    "After Effects UXP GA 时点 = INFERRED（第三方预计 2026 末），官方未披露，需 owner 真实 Host 验证",
+    "Illustrator 第三方 UXP 开放面 UNCONFIRMED，需 Adobe 官方确认；当前 DESIGN-LAB 走 ExtendScript",
+    "Bridge 独立 API UNCONFIRMED；稳定路径 BridgeTalk/ExtendScript"
+  ]
+}

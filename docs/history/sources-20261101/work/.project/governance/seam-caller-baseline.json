@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "work-lab/seam-caller-baseline/v1",
+  "title": "Declared seam-caller baseline for the three-project boundary",
+  "purpose": "Audit F19: the three-project-boundary verifier checked markers, seams and manifests, so a PASS could not show that a business boundary violation was absent. The SSOT's seams declare 'no new callers allowed', and that rule had no machine check. This baseline records the observed caller set so the verifier can fail if it GROWS.",
+  "authority": ".project/governance/three-project-boundary.json boundary_splits[].seam",
+  "direction": "ONE_DIRECTIONAL: removing a caller is progress; adding one is what the seam forbids and will fail the gate.",
+  "method": "Scanned *.py/*.sh/*.ps1/*.cmd/*.bat/*.js/*.ts/*.tsx under services, packages, apps, scripts, integrations, tests for each seam contract's module marker, skipping node_modules/.project-local/dist/build/__pycache__. The verifier's own path constants are excluded, because otherwise the baseline would describe the checker instead of the codebase.",
+  "established_at": "2026-10-01",
+  "established_by": "AG-06k (round 23) while reconciling audit F19",
+  "finding": "ZERO code callers of every seam contract. The only references anywhere were this verifier's own path constants. So the declared rule was simultaneously unenforced and trivially satisfiable, which is precisely when a silent regression is cheapest to introduce.",
+  "seams": {
+    "MEMORY_BACKEND": {
+      "contract": "integrations/archeaxis/contracts/memory-query-contract.py",
+      "declare_rule": "services/memory/__init__ boundary marker + integration seam (memory-query-contract); no new callers allowed",
+      "callers": []
+    },
+    "KNOWLEDGE_TRUTH": {
+      "contract": "integrations/archeaxis/contracts/promotion_contract.py",
+      "declare_rule": "services/knowledge/promotion_gate.py split into knowledge_export_guard (kept) + KnowledgeCandidate contract (emitted to ArcheAxis)",
+      "callers": []
+    },
+    "DESIGN_LAB": {
+      "contract": "integrations/archeaxis/contracts/open_design_client_seam.py",
+      "declare_rule": "Open Design client != DESIGN-LAB project (two distinct identities); design capability is not collected or managed in WORK-LAB",
+      "callers": []
+    }
+  },
+  "not_claimed": "This proves the caller set for the three declared seam CONTRACTS did not grow. It does not prove that no code anywhere writes into another project's paths by some other route; audit F19's wider point (a marker gate is not a full boundary acceptance) remains open and is recorded in the register rather than being papered over by this baseline.",
+  "verification_references": {
+    "MEMORY_BACKEND": [
+      "tests/workflow-assistance/nf28_seam_caller_baseline.py"
+    ],
+    "KNOWLEDGE_TRUTH": [],
+    "DESIGN_LAB": []
+  },
+  "verification_references_note": "Files that mention a seam contract's module marker ONLY to assert it has no code callers (the seam's own negative control). They are excluded from the `callers` set so the baseline keeps meaning 'code callers', and the verifier fails if such a declared reference stops referencing the contract, so the exemption cannot go stale and silently become an allowance."
+}

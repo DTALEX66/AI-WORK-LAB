@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "packages/capabilities/quality-pipeline/v1",
+  "note": "质量分层管道：deterministic -> visual-model -> expert-agent -> human-feedback。层间证据等级递进；human calibration 不可由模型自评替代。",
+  "layers": [
+    {
+      "id": "deterministic",
+      "title": "确定性规则",
+      "evidence_level": "E1",
+      "tools": [
+        "preflight checks",
+        "anti-slop",
+        "aesthetic rules (metadata)"
+      ],
+      "gate": "fail-closed",
+      "desc": "规则可复现，已知 blocker 100% 拦截"
+    },
+    {
+      "id": "visual-model",
+      "title": "视觉模型评估",
+      "evidence_level": "E2",
+      "tools": [
+        "provider:aesthetic/laion",
+        "provider:aesthetic/nima",
+        "provider:vision/florence2"
+      ],
+      "gate": "score >= profile minimum",
+      "desc": "模型打分；需 provider E0->E2 取证"
+    },
+    {
+      "id": "expert-agent",
+      "title": "专家评审",
+      "evidence_level": "E3",
+      "tools": [
+        "critique rubric",
+        "domain jury"
+      ],
+      "gate": "expert review record",
+      "desc": "结构化评审；维度评分 + 理由"
+    },
+    {
+      "id": "human-feedback",
+      "title": "人类反馈",
+      "evidence_level": "E4",
+      "tools": [
+        "professional jury (DL-QLT-002)",
+        "preference test"
+      ],
+      "gate": ">=82 + >=70% preference",
+      "desc": "人工校准；不可由模型/静态自评替代；FalsePassRate < 2% 目标"
+    }
+  ]
+}

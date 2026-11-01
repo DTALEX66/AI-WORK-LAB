@@ -1,0 +1,27 @@
+{
+  "id": "dl-final-t04-closing-surface-pointer-and-count-reaudit-20261026",
+  "task_id": "DL-FINAL-T04",
+  "axis": "unit",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T15:28:41Z",
+  "subject_sha": "2048cf2e85abf5807d7341a9f51b743d4f32a9fe",
+  "audit_finding": "self-audit of the closing surface after the owner's 7-finding round: three cross-references written by this round pointed at the wrong section, and one route count in prose had drifted away from the register it describes (same class as owner finding 6 -- a record whose agreement with the artefact was asserted, never re-measured)",
+  "reproduced_before_fix": "with the prose still saying 7, adding the claim printed `DOCUMENTED_COUNTS=FAIL claims=21 failed=1` and the finding line `FAIL docs/current/NEXT-AGENT-PROMPT.md: prose says nothing, measurement says 8 (expected the sentence \"**8 条无界路由**\")`; the three pointer fixes were each proved by resolving the target: §5.66 is the section whose body carries the LISTROWS table with client_calls, run 40315188651's own job log carries `PYTHON_TESTS_UNION=OK expected=3397`, and the only 待决策 sentence about CSV lives in §5.73",
+  "changed": [
+    "scripts/verify_documented_counts.py: unbounded_routes() counts the keys of UNBOUNDED_REGISTER by text slicing (no import -- the step that runs this gate lives in a node job without Pillow, the §5.57 constraint), plus the CLAIMS row that makes the prompt sentence carry the measured number",
+    "design-lab/tests/test_workbench_weight.py: the UnboundedListRoutesAreRegistered docstring no longer states a count; 'Nine of eighteen' had aged the moment _list_prompt_results was bounded, and nothing read the sentence",
+    "docs/audits/DESIGN-LAB-ARCHIVE-AND-REMOVAL-2026-10-19.md: §5.66 '其余 7 条' -> 8 with _list_jury re-attributed to what the register actually says (NOT MEASURED, not a Human Gate claim); §5.73's LISTROWS pointer 5.67 -> 5.66; §5.75's 3397 now cites run 40315188651 (head 5d603fe6) instead of a section that never printed it; §5.77's owner-attribution pointer 5.76 -> 5.73",
+    "docs/current/NEXT-AGENT-PROMPT.md: the same pointer fix, the §5.75-§5.77 CI and self-caused-red account quoted verbatim from those sections, and the capacity half of finding 7 split route by route instead of one blanket 'not an engineering gap'",
+    "docs: section 5.78 (a45dbe24) resolves the forward pointer §5.76 left dangling -- run 40346676032 (PR, head 5580f184) conclusion=success, expected_tests=3415, VERIFY_DESIGN_LAB=OK total=77 failed=0, BROWSER_E2E ran=44 skipped=0 failed=0; and records that the commit the owner named, 83448333, never produced a suite verdict at all (its PR run 40328675340 was cancelled on Python gate, browser E2E and artifact proof)"
+  ],
+  "measured": {
+    "documented_counts_after": "DOCUMENTED_COUNTS=PASS claims=21 route_views=24 cli=24 adapters=30 routes=88",
+    "weight_module": "Ran 22 tests in 2.821s OK",
+    "claim_honesty_gate": "Ran 6 tests in 4.987s OK",
+    "register_size_from_ast": 8,
+    "list_handlers_in_http_service": 17,
+    "closing_surface": "currentExecution.evidence rows 318 before this one, 21 dated 20261026, every artifact_path in the git index, 0 hash disagreements against HEAD blobs; dispatch histogram 34 FROZEN_DEFERRED / 13 DONE / 2 PARTIAL / 1 NOT_STARTED (old 34 untouched)",
+    "head": "2048cf2e85abf5807d7341a9f51b743d4f32a9fe"
+  },
+  "not_claimed": "no owner decision was taken in this change, and the CI verdict quoted in §5.78 belongs to the head it names (5580f184): the run that carries these bytes is read by the next round, not asserted here -- section 5.78 was written in a45dbe24, one commit after the gate bytes, so it carries no new measurement of its own beyond the readings quoted above"
+}

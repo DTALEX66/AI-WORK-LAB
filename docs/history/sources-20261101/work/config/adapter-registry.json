@@ -1,0 +1,773 @@
+{
+  "schema_version": "workflow/adapter-registry/v1",
+  "interface": [
+    "detect",
+    "capabilities",
+    "plan",
+    "apply",
+    "invoke",
+    "observe",
+    "rollback"
+  ],
+  "entries": [
+    {
+      "id": "hermes",
+      "display_name": "Hermes",
+      "support_level": "deep",
+      "operations": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "repository",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=hermes]",
+        "version": "0.22.2",
+        "version_readback": {
+          "observed_at": "2026-10-24",
+          "verified_version": "0.22.2",
+          "method": "install-stamp-readback",
+          "native_readback": "install-stamp.json displayVersion=0.22.2 baseVersion=0.22.2 distance=0 commit=d923a5eb487a17c0a68801bba9ef0f56c81040a8 builtAt=2026-10-24T11:03:57.576050+00:00 dirty=True",
+          "command": "python scripts/audit/tool_version_metadata_probe.py",
+          "source": "C:\\Users\\ALEX\\AppData\\Local\\hermes\\hermes-agent\\install-stamp.json",
+          "commit": "d923a5eb487a17c0a68801bba9ef0f56c81040a8",
+          "install_method": "git",
+          "authority_note": "Not a proxy for running the CLI: hermes_cli/version_info.py resolves runtime identity in the order install stamp, then live git, then unknown, and states the stamp is authoritative for packaged builds. So the stamp the updater writes on 2026-10-04 and the string `hermes.exe --version` would print come from the same file - and the CLI launcher itself carries no Windows version resource and times out at 25s under the live probe, which is why no launch-free source existed before this.",
+          "superseded_observation": {
+            "observed_at": "2026-10-20",
+            "verified_version": "0.21.7+472.gcba45e8",
+            "method": "install-stamp-readback",
+            "commit": "cba45e8a66d32fbeba0735257ac114fda3f5e230",
+            "note": "retained verbatim rather than deleted: this is the stamp the updater wrote on 2026-10-13"
+          },
+          "conflict_note": "TWO VERSION STRINGS EXIST FOR THE SAME COMMIT and both are recorded rather than reconciled by guesswork. (1) The CLI self-reports v0.21.5+3115.g10938a7, which is what the 2026-09-27 maintenance record (HERMES-UPDATE-AND-MAINTENANCE-20260927.md) also states. (2) `git describe --tags --always` in the same checkout returns v0.21.4+canary.20260926T065603Z-662-g10938a7cf9: it counts 662 commits from a v0.21.4 canary tag where the CLI counts 3115 from its own baseline tag. Both resolve to commit 10938a7cf9, so the identity is not in doubt; only the human-facing label differs by tag basis. `version` carries the CLI value because that is what a user sees. NOT a resolved discrepancy - do not treat either string as a typo of the other."
+        },
+        "version_historical": [
+          ">=0.19,<0.21 (previously declared support range; never natively verified on this machine)",
+          "0.21.2 (natively verified 2026-09-14: CLI version/status/doctor readback exit 0, registry-fresh PATH resolution, native discovery of all 13 managed skills, one non-tool completion; package hash still UNAVAILABLE so detection.evidence_state stays UNVERIFIED)",
+          "0.21.3 (2026.9.14) (superseded by the 2026-09-27 official `hermes update --yes --backup` round)",
+          "0.21.5+3115.g10938a7 (2026.9.24) (superseded on 2026-10-04 by the self-update now in install-stamp.json; recorded 2026-09-27, re-read natively 2026-10-01)",
+          "0.21.5+6948.gedd2476 (superseded 2026-10-20: the updater rewrote the install stamp)",
+          "0.21.7+472.gcba45e8 (superseded 2026-10-24: the updater rewrote the install stamp; self-update completed by the 2026-10-24 external-leg hermes -z attempt, updateMechanism=self)"
+        ],
+        "note": "The schema cannot express 'declared support range' separately from 'verified version', so `version` carries ONLY the natively verified value and production admission is limited to it. A wider range is deliberately not claimed: the earlier >=0.19,<0.21 declaration is retained in version_historical as history, not as current support. AG-07 (2026-10-01) corrected `version` from 0.21.2 to 0.21.5+3115.g10938a7: the registry had not been updated since the 2026-09-27 maintenance round, so it understated the installed engine by one round. detection.evidence_state deliberately REMAINS UNVERIFIED: the runtime package hash is still UNAVAILABLE (hash.state=UNAVAILABLE), and a version readback is not a hash verification, so it must not be promoted into one. | AG-19-adjacent 2026-10-07: `version` now carries the install stamp's displayVersion, read without launching anything. detection.evidence_state still deliberately remains UNVERIFIED - a version readback is not a package-hash check.",
+        "scope": "portable-workflow-adapter",
+        "risk": "high",
+        "status": "active",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "Hermes runtime package is not vendored in WORK-LAB",
+          "files": []
+        }
+      },
+      "policy_projection": {
+        "supported": true,
+        "projection_mode": "managed-overlay",
+        "detect_supported": true,
+        "plan_supported": true,
+        "apply_supported": true,
+        "readback_supported": true,
+        "rollback_supported": true,
+        "drift_supported": true,
+        "capability_states": {
+          "communication": "NATIVE_GUIDANCE",
+          "execution": "NATIVE_GUIDANCE",
+          "authority_discovery": "NATIVE_GUIDANCE",
+          "authorization": "NATIVE_GUIDANCE",
+          "task_grant": "WORKFLOW_GUARD",
+          "workspace_boundary": "WORKFLOW_GUARD",
+          "protected_storage": "NATIVE_ENFORCED",
+          "credentials": "WORKFLOW_GUARD",
+          "session_privacy": "OBSERVE_ONLY",
+          "network": "WORKFLOW_GUARD",
+          "git_safety": "WORKFLOW_GUARD",
+          "dependency_policy": "NATIVE_GUIDANCE",
+          "evidence_semantics": "WORKFLOW_GUARD",
+          "verification": "NATIVE_GUIDANCE",
+          "parallelism": "WORKFLOW_GUARD",
+          "skills": "NATIVE_GUIDANCE",
+          "model_neutrality": "OBSERVE_ONLY",
+          "tool_truth": "NATIVE_GUIDANCE",
+          "historical_record_policy": "NATIVE_GUIDANCE"
+        },
+        "maturity": "READBACK_VERIFIED",
+        "renderer": "integrations/executors/hermes/sync_hermes_workflow_assets.py",
+        "extensions_path": "integrations/executors/hermes/hermes-policy-extension.yaml",
+        "note": "Three-way managed_asset_baseline + curator_foldback. E/F-drive & credential boundary machine-enforced via e_drive_guard + terminal guard hooks. model/provider/auth OBSERVE, never overwritten.",
+        "capability_coverage_complete": true
+      }
+    },
+    {
+      "id": "codex",
+      "display_name": "Codex",
+      "support_level": "deep",
+      "operations": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "external-manifest",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=codex]",
+        "version": "0.160.1",
+        "scope": "portable-workflow-adapter",
+        "risk": "high",
+        "status": "quarantined",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "Codex runtime package is external and not vendored",
+          "files": []
+        },
+        "version_readback": {
+          "observed_at": "2026-10-07",
+          "verified_version": "0.160.1",
+          "method": "official-cli-version-readback",
+          "native_readback": "cmd.exe /d /c packages/client-neutral-core/bin/codex.cmd --version",
+          "source": "the repo's single codex wrapper resolved through the official runtime; the wrapper itself is a .cmd and has no version resource, so this number came from running it",
+          "note": "The previous value was the placeholder 'UNVERIFIED'. `windows-file-version-resource` reads the executable's own version table and starts no process, which is the only acceptable method on a machine whose owner asked not to be disturbed by launched windows. Evidence receipt: docs/audits/TOOL_VERSION_METADATA_PROBE_2026-10-07.json. This is a machine-scoped observation: it says what is installed here on this date, not what a different machine will find, and detection.evidence_state stays UNVERIFIED because a version is not a package hash."
+        }
+      },
+      "policy_projection": {
+        "supported": true,
+        "projection_mode": "managed-block",
+        "detect_supported": true,
+        "plan_supported": true,
+        "apply_supported": true,
+        "readback_supported": true,
+        "rollback_supported": true,
+        "drift_supported": true,
+        "capability_states": {
+          "communication": "NATIVE_GUIDANCE",
+          "execution": "NATIVE_GUIDANCE",
+          "authority_discovery": "NATIVE_GUIDANCE",
+          "authorization": "NATIVE_GUIDANCE",
+          "task_grant": "WORKFLOW_GUARD",
+          "workspace_boundary": "NATIVE_ENFORCED",
+          "protected_storage": "WORKFLOW_GUARD",
+          "credentials": "WORKFLOW_GUARD",
+          "session_privacy": "OBSERVE_ONLY",
+          "network": "WORKFLOW_GUARD",
+          "git_safety": "WORKFLOW_GUARD",
+          "dependency_policy": "NATIVE_GUIDANCE",
+          "evidence_semantics": "WORKFLOW_GUARD",
+          "verification": "NATIVE_GUIDANCE",
+          "parallelism": "WORKFLOW_GUARD",
+          "skills": "NATIVE_GUIDANCE",
+          "model_neutrality": "OBSERVE_ONLY",
+          "tool_truth": "NATIVE_GUIDANCE",
+          "historical_record_policy": "NATIVE_GUIDANCE"
+        },
+        "maturity": "APPLY_SUPPORTED",
+        "renderer": "integrations/executors/codex/sync_codex_global_assets.py",
+        "extensions_path": "integrations/executors/codex/codex-policy-extension.yaml",
+        "note": "Managed BEGIN/END block + hash fencing in CODEX_HOME/AGENTS.md + config.toml + rules + skills. Second-plan NOOP idempotency. provider/model/reasoning OBSERVE.",
+        "capability_coverage_complete": true,
+        "maturity_note": "AG-06h / audit F02 (2026-10-01): maturity DOWNGRADED from READBACK_VERIFIED to APPLY_SUPPORTED. The renderer channel is real and its apply path is implemented, so the implementation maturity is APPLY_SUPPORTED. What is NOT true is the readback claim: ERR-095 (2026-09-30, contract_drift, currentApplicability=DRIFT_OPEN_20260930) recorded that live CODEX_HOME/AGENTS.md contains ZERO managed overlay markers and zero WORK-LAB occurrences, and independently re-verified on 2026-10-01 (live file and its archived copy are both 16,805 bytes / 691 lines with the renderer marker absent). ERR-095's own repeat_prevention states that registry maturity must not be raised again until the block and skill targets are re-rendered AND read back, so leaving READBACK_VERIFIED in place was itself the ledger violation. Raise this back to READBACK_VERIFIED only after the sanctioned renderer runs (integrations/executors/codex/sync_codex_global_assets.py) AND a fresh native readback confirms the managed block and the declared skill targets.",
+        "deployment_observation": {
+          "status": "UNVERIFIED",
+          "reason": "ERR-095 drift open: no managed overlay marker in the live CODEX_HOME/AGENTS.md",
+          "observed_at": "2026-10-01",
+          "checked": [
+            "%USERPROFILE%/.codex/AGENTS.md (16,805 B / 691 lines, marker absent)",
+            "reports/audit-archive/20260930/codex/AGENTS.md (16,805 B / 691 lines, marker absent)"
+          ],
+          "authority": "taskpacks/current/error-ledger.json ERR-095"
+        }
+      }
+    },
+    {
+      "id": "cc-switch",
+      "display_name": "CC Switch",
+      "support_level": "deep",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "external-manifest",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=cc-switch]",
+        "version": "4.0.15",
+        "scope": "portable-workflow-adapter",
+        "risk": "high",
+        "status": "legacy_observe",
+        "note": "CC Switch is LEGACY_OBSERVE per WLR-010 (2026-08-26). Observe-only; no active writes unless evidence restores to active.",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "CC Switch runtime package is external and not vendored",
+          "files": []
+        },
+        "version_readback": {
+          "observed_at": "2026-10-20",
+          "verified_version": "4.0.15",
+          "method": "windows-file-version-resource",
+          "native_readback": "FileVersion=4.0.15 ProductVersion=4.0.15 of D:\\Programs\\CC Switch\\cc-switch.exe; uninstall entry \"CC Switch\" DisplayVersion=4.0.15 in HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall (verdict=INSTALLED_VERSION_FROM_UNINSTALL_KEY, launched=false)",
+          "source": "LEGACY_OBSERVE surface: recording an installed version is an observation, not a grant of active status",
+          "note": "The previous value was the placeholder 'UNVERIFIED'. `windows-file-version-resource` reads the executable's own version table and starts no process, which is the only acceptable method on a machine whose owner asked not to be disturbed by launched windows. Evidence receipt: docs/audits/TOOL_VERSION_METADATA_PROBE_2026-10-07.json. This is a machine-scoped observation: it says what is installed here on this date, not what a different machine will find, and detection.evidence_state stays UNVERIFIED because a version is not a package hash.",
+          "superseded_observation": {
+            "observed_at": "2026-10-07",
+            "verified_version": "3.20.0",
+            "method": "windows-file-version-resource",
+            "note": "retained verbatim rather than deleted: this is what was installed on that date"
+          }
+        },
+        "version_historical": [
+          "3.20.0 (superseded 2026-10-20: launch-free re-read of the uninstall key and the binary's version resource both answer 4.0.15)"
+        ]
+      },
+      "policy_projection": {
+        "supported": true,
+        "projection_mode": "observe-only",
+        "detect_supported": true,
+        "plan_supported": false,
+        "apply_supported": false,
+        "readback_supported": false,
+        "rollback_supported": false,
+        "drift_supported": false,
+        "capability_states": {
+          "communication": "UNSUPPORTED",
+          "execution": "UNSUPPORTED",
+          "authority_discovery": "UNSUPPORTED",
+          "authorization": "UNSUPPORTED",
+          "task_grant": "UNSUPPORTED",
+          "workspace_boundary": "UNSUPPORTED",
+          "protected_storage": "UNSUPPORTED",
+          "credentials": "UNSUPPORTED",
+          "session_privacy": "UNSUPPORTED",
+          "network": "UNSUPPORTED",
+          "git_safety": "UNSUPPORTED",
+          "dependency_policy": "UNSUPPORTED",
+          "evidence_semantics": "UNSUPPORTED",
+          "verification": "UNSUPPORTED",
+          "parallelism": "UNSUPPORTED",
+          "skills": "UNSUPPORTED",
+          "model_neutrality": "UNSUPPORTED",
+          "tool_truth": "UNSUPPORTED",
+          "historical_record_policy": "UNSUPPORTED"
+        },
+        "maturity": "OBSERVE_ONLY",
+        "note": "LEGACY_OBSERVE. detect + compare desired policy + report drift. Never writes global policy back.",
+        "capability_coverage_complete": true
+      }
+    },
+    {
+      "id": "github",
+      "display_name": "GitHub",
+      "support_level": "deep",
+      "operations": [
+        "detect",
+        "capabilities",
+        "plan",
+        "apply",
+        "invoke",
+        "observe",
+        "rollback"
+      ],
+      "detection": {
+        "mode": "static",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "external-manifest",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=github]",
+        "version": "2.98.0 (2026-08-20)",
+        "scope": "portable-workflow-adapter",
+        "risk": "high",
+        "status": "quarantined",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "GitHub CLI/API runtime package is external and not vendored",
+          "files": []
+        },
+        "version_readback": {
+          "observed_at": "2026-10-07",
+          "verified_version": "2.98.0 (2026-08-20)",
+          "method": "windows-file-version-resource",
+          "native_readback": "FileVersion '2.98.0 (2026-08-20)' / ProductVersion '2.98.0' of C:\\Program Files\\GitHub CLI\\gh.EXE",
+          "source": "official GitHub CLI install directory; no process was started for this number",
+          "note": "The previous value was the placeholder 'UNVERIFIED'. `windows-file-version-resource` reads the executable's own version table and starts no process, which is the only acceptable method on a machine whose owner asked not to be disturbed by launched windows. Evidence receipt: docs/audits/TOOL_VERSION_METADATA_PROBE_2026-10-07.json. This is a machine-scoped observation: it says what is installed here on this date, not what a different machine will find, and detection.evidence_state stays UNVERIFIED because a version is not a package hash."
+        }
+      },
+      "policy_projection": {
+        "supported": true,
+        "projection_mode": "git-delivery-projection",
+        "detect_supported": true,
+        "plan_supported": true,
+        "apply_supported": false,
+        "readback_supported": false,
+        "rollback_supported": false,
+        "drift_supported": false,
+        "capability_states": {
+          "communication": "UNSUPPORTED",
+          "execution": "UNSUPPORTED",
+          "authority_discovery": "UNSUPPORTED",
+          "authorization": "UNSUPPORTED",
+          "task_grant": "UNSUPPORTED",
+          "workspace_boundary": "UNSUPPORTED",
+          "protected_storage": "UNSUPPORTED",
+          "credentials": "UNSUPPORTED",
+          "session_privacy": "UNSUPPORTED",
+          "network": "UNSUPPORTED",
+          "git_safety": "UNSUPPORTED",
+          "dependency_policy": "UNSUPPORTED",
+          "evidence_semantics": "UNSUPPORTED",
+          "verification": "UNSUPPORTED",
+          "parallelism": "UNSUPPORTED",
+          "skills": "UNSUPPORTED",
+          "model_neutrality": "UNSUPPORTED",
+          "tool_truth": "UNSUPPORTED",
+          "historical_record_policy": "UNSUPPORTED"
+        },
+        "maturity": "PLAN_SUPPORTED",
+        "note": "Not an agent persona. Projects only git/delivery semantics: branch/PR/required-check/release/permission/evidence. Other capabilities UNSUPPORTED here.",
+        "capability_coverage_complete": true
+      }
+    },
+    {
+      "id": "openhuman",
+      "display_name": "OpenHuman",
+      "support_level": "experimental",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "external-manifest",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=openhuman]",
+        "version": "0.63.12",
+        "scope": "portable-workflow-adapter",
+        "risk": "medium",
+        "status": "quarantined",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "OpenHuman runtime package is external and not vendored",
+          "files": []
+        },
+        "version_readback": {
+          "observed_at": "2026-10-07",
+          "verified_version": "0.63.12",
+          "method": "windows-file-version-resource",
+          "native_readback": "FileVersion '0.63.12' of C:\\Users\\ALEX\\AppData\\Local\\OpenHuman\\OpenHuman.exe, agreeing with the uninstall key DisplayVersion '0.63.12'",
+          "source": "the desktop shortcut resolver finds no .lnk for this client, which is why the live probe previously reported ENTRY_NOT_RESOLVED while the tool is in fact installed",
+          "note": "2026-10-20: the launch-free read that backed this value can no longer be taken on this machine -- the uninstall entry is absent and no executable sits at the top of %LOCALAPPDATA%\\OpenHuman (only runtime directories remain), so the probe answers NOT_RESOLVED_AND_NOT_IN_UNINSTALL_REGISTRY. The version is kept as the last verified observation, not as a claim about the current install; the gate accepts this row only while it names the verdict the receipt actually produced.",
+          "reproducible": false,
+          "not_reproducible_since": "2026-10-20",
+          "not_reproducible_verdict": "NOT_RESOLVED_AND_NOT_IN_UNINSTALL_REGISTRY"
+        }
+      },
+      "policy_projection": {
+        "supported": false,
+        "projection_mode": "observe-only",
+        "detect_supported": true,
+        "plan_supported": false,
+        "apply_supported": false,
+        "readback_supported": false,
+        "rollback_supported": false,
+        "drift_supported": false,
+        "capability_states": {
+          "communication": "UNSUPPORTED",
+          "execution": "UNSUPPORTED",
+          "authority_discovery": "UNSUPPORTED",
+          "authorization": "UNSUPPORTED",
+          "task_grant": "UNSUPPORTED",
+          "workspace_boundary": "UNSUPPORTED",
+          "protected_storage": "UNSUPPORTED",
+          "credentials": "UNSUPPORTED",
+          "session_privacy": "UNSUPPORTED",
+          "network": "UNSUPPORTED",
+          "git_safety": "UNSUPPORTED",
+          "dependency_policy": "UNSUPPORTED",
+          "evidence_semantics": "UNSUPPORTED",
+          "verification": "UNSUPPORTED",
+          "parallelism": "UNSUPPORTED",
+          "skills": "UNSUPPORTED",
+          "model_neutrality": "UNSUPPORTED",
+          "tool_truth": "UNSUPPORTED",
+          "historical_record_policy": "UNSUPPORTED"
+        },
+        "maturity": "OBSERVE_ONLY",
+        "capability_coverage_complete": true
+      }
+    },
+    {
+      "id": "open-design",
+      "display_name": "Open Design",
+      "support_level": "experimental",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "external",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "external-manifest",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=open-design]",
+        "version": "0.24.1",
+        "scope": "portable-workflow-adapter",
+        "risk": "medium",
+        "status": "quarantined",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "Open Design client (nexu-io/open-design) is external and not vendored",
+          "files": []
+        },
+        "version_readback": {
+          "observed_at": "2026-10-07",
+          "verified_version": "0.24.1",
+          "method": "windows-file-version-resource",
+          "native_readback": "FileVersion '0.24.1' / ProductVersion '0.24.1.0' of C:\\Users\\ALEX\\AppData\\Local\\Programs\\Open Design\\Open Design.exe, agreeing with the uninstall key DisplayVersion '0.24.1'",
+          "source": "client identity only: design capability stays with DTALEX66/DESIGN-LAB per config/config-ownership.json",
+          "note": "The previous value was the placeholder 'UNVERIFIED'. `windows-file-version-resource` reads the executable's own version table and starts no process, which is the only acceptable method on a machine whose owner asked not to be disturbed by launched windows. Evidence receipt: docs/audits/TOOL_VERSION_METADATA_PROBE_2026-10-07.json. This is a machine-scoped observation: it says what is installed here on this date, not what a different machine will find, and detection.evidence_state stays UNVERIFIED because a version is not a package hash."
+        }
+      },
+      "policy_projection": {
+        "supported": false,
+        "projection_mode": "observe-only",
+        "detect_supported": true,
+        "plan_supported": false,
+        "apply_supported": false,
+        "readback_supported": false,
+        "rollback_supported": false,
+        "drift_supported": false,
+        "capability_states": {
+          "communication": "UNSUPPORTED",
+          "execution": "UNSUPPORTED",
+          "authority_discovery": "UNSUPPORTED",
+          "authorization": "UNSUPPORTED",
+          "task_grant": "UNSUPPORTED",
+          "workspace_boundary": "UNSUPPORTED",
+          "protected_storage": "UNSUPPORTED",
+          "credentials": "UNSUPPORTED",
+          "session_privacy": "UNSUPPORTED",
+          "network": "UNSUPPORTED",
+          "git_safety": "UNSUPPORTED",
+          "dependency_policy": "UNSUPPORTED",
+          "evidence_semantics": "UNSUPPORTED",
+          "verification": "UNSUPPORTED",
+          "parallelism": "UNSUPPORTED",
+          "skills": "UNSUPPORTED",
+          "model_neutrality": "UNSUPPORTED",
+          "tool_truth": "UNSUPPORTED",
+          "historical_record_policy": "UNSUPPORTED"
+        },
+        "maturity": "OBSERVE_ONLY",
+        "note": "Client USER_GLOBAL desired state (rules/skills/plugins/workflow-policy) MANAGE with apply_supported=false. DESIGN-LAB design domain OUT OF SCOPE. No stable official apply interface.",
+        "capability_coverage_complete": true
+      }
+    },
+    {
+      "id": "deepseek-harness",
+      "display_name": "DeepSeek Harness",
+      "support_level": "experimental",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "isolated",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "repository",
+        "source_ref": "https://github.com/deepseek-ai/deepseek-harness",
+        "version": "0.2.1-rc.2",
+        "version_readback": {
+          "observed_at": "2026-10-20",
+          "verified_version": "0.2.1-rc.2",
+          "method": "windows-installer-registry-and-start-menu-shortcut-readback",
+          "native_readback": "Uninstall entry \"DeepSeek Harness 0.2.1-rc.2\" DisplayVersion=0.2.1-rc.2; installed binary DeepSeek Harness.exe FileVersion=0.2.1-rc.2 ProductVersion=0.2.1.0 (verdict=LIVE_VERSION_FROM_FILE_METADATA, launched=false)",
+          "source": "read launch-free by scripts/audit/tool_version_metadata_probe.py; the app's own update feed (the channel named by its app-update.yml) advertises version=0.2.1-rc.2, releaseDate=2026-10-17T09:22:23.750Z, installer size=289385456",
+          "install_method": "official-nsis-per-user",
+          "note": "2026-10-20 re-readback. The declared build had gone stale twice over: the app self-updated from 0.2.0-rc.2 to 0.2.1-rc.2, and the vendor feed has advertised 0.2.1-rc.2 since 2026-10-17T09:22:23.750Z. Correction recorded while writing this: the 2026-10-13 note compared the feed's installer size (289,313,640 then / 289,385,456 now) with 'the installed build' and called them identical -- the feed entry is the NSIS installer, while the installed app binary here is 246,343,144 bytes, so that equality claim conflated two different artifacts. What is actually asserted now is weaker and true: the installed binary's own version resource and the uninstall entry both read the version the vendor currently publishes.",
+          "superseded_observation": {
+            "observed_at": "2026-10-13",
+            "verified_version": "0.2.0-rc.2",
+            "method": "windows-installer-registry-and-start-menu-shortcut-readback",
+            "note": "retained verbatim rather than deleted: this is what the machine ran before the update"
+          }
+        },
+        "version_historical": [
+          "0.1.0-rc.5 (governance pin, 2026-08-15)",
+          "0.1.0-rc.7 (superseded)",
+          "0.1.1-rc.2 (detected local 2026-08-23, eligibility UNVERIFIED)",
+          "2.0.13 (community DSH Desktop, anywhere-labs/deepseek-harness-desktop; SUPERSEDED 2026-10-01 by the official build; its distribution exe is deleted, while D:\\All projects\\DSH still holds the retired .dsh data directory plus a pnpm-store)",
+          "0.2.0-rc.2 (superseded 2026-10-20: the app self-updated; the vendor feed named 0.2.1-rc.2 on 2026-10-17T09:22:23.750Z)"
+        ],
+        "scope": "portable-agent-runtime-adapter",
+        "risk": "medium",
+        "status": "active",
+        "install_path_policy": "RESOLVE_AT_RUNTIME_NOT_HARDCODED",
+        "note": "DSH promoted to active per WLR-010 (2026-08-26). 2026-10-13 update (ERR-276), superseding the AG-07 wording: the install root is still derived, never pinned - %LOCALAPPDATA%\\Programs\\DeepSeek Harness per the uninstall entry (InstallLocation matches) and the resolving Start Menu shortcut. What AG-07 left UNKNOWN and this record now states: the official build's data root layer. Measured root = C:\\Users\\ALEX\\.dsh (the %USERPROFILE%\\.dsh default), carrying 15 session.v4.jsonl.zstd and the newest writes (2026-10-13 19:23); the former HKCU\\Environment DSH_HOME value pointing at D:\\All projects\\DSH\\.dsh was cleared so the default applies at the next logon, and the retired D: directory (13 session files, newest session 2026-10-03) stays as an untouched archive. ERR-088 and ERR-276 are the two directions of one layer - a declared data root diverging from the live one - and both are recorded. STILL TRUE and not touched: the SUPERSEDED \"DSH Desktop 2.0.13\" uninstall entry has a blank InstallLocation and its UninstallString points at the deleted .migration\\20260920\\restore-tmp\\install directory. MEASURED GAP, left to the owner: no Desktop shortcut for the official build, and no real GUI launch / session readback has been performed for the official build.",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "DSH source is external (official build); local install observed 2026-10-13",
+          "files": []
+        }
+      },
+      "policy_projection": {
+        "supported": true,
+        "projection_mode": "observe-plan",
+        "detect_supported": true,
+        "plan_supported": true,
+        "apply_supported": false,
+        "readback_supported": false,
+        "rollback_supported": false,
+        "drift_supported": false,
+        "capability_states": {
+          "communication": "UNSUPPORTED",
+          "execution": "UNSUPPORTED",
+          "authority_discovery": "UNSUPPORTED",
+          "authorization": "UNSUPPORTED",
+          "task_grant": "UNSUPPORTED",
+          "workspace_boundary": "UNSUPPORTED",
+          "protected_storage": "UNSUPPORTED",
+          "credentials": "UNSUPPORTED",
+          "session_privacy": "UNSUPPORTED",
+          "network": "UNSUPPORTED",
+          "git_safety": "UNSUPPORTED",
+          "dependency_policy": "UNSUPPORTED",
+          "evidence_semantics": "UNSUPPORTED",
+          "verification": "UNSUPPORTED",
+          "parallelism": "UNSUPPORTED",
+          "skills": "UNSUPPORTED",
+          "model_neutrality": "UNSUPPORTED",
+          "tool_truth": "UNSUPPORTED",
+          "historical_record_policy": "UNSUPPORTED"
+        },
+        "maturity": "PLAN_SUPPORTED",
+        "renderer": "services/execution-federation/dsh_adapter.py",
+        "note": "OBSERVE/PLAN only until stable official native interface + ownership def + isolated fixture + readback + rollback + negative tests all exist. native model/provider/reasoning user-owned.",
+        "capability_coverage_complete": true
+      }
+    },
+    {
+      "id": "cursor",
+      "display_name": "Cursor",
+      "support_level": "manifest-only",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "static",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "external-manifest",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=cursor]",
+        "version": "UNVERIFIED",
+        "scope": "manifest-only",
+        "risk": "medium",
+        "status": "blocked",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "No Cursor adapter package is vendored",
+          "files": []
+        }
+      },
+      "policy_projection": {
+        "supported": false,
+        "projection_mode": "manifest-only",
+        "detect_supported": true,
+        "plan_supported": false,
+        "apply_supported": false,
+        "readback_supported": false,
+        "rollback_supported": false,
+        "drift_supported": false,
+        "capability_states": {
+          "communication": "UNSUPPORTED",
+          "execution": "UNSUPPORTED",
+          "authority_discovery": "UNSUPPORTED",
+          "authorization": "UNSUPPORTED",
+          "task_grant": "UNSUPPORTED",
+          "workspace_boundary": "UNSUPPORTED",
+          "protected_storage": "UNSUPPORTED",
+          "credentials": "UNSUPPORTED",
+          "session_privacy": "UNSUPPORTED",
+          "network": "UNSUPPORTED",
+          "git_safety": "UNSUPPORTED",
+          "dependency_policy": "UNSUPPORTED",
+          "evidence_semantics": "UNSUPPORTED",
+          "verification": "UNSUPPORTED",
+          "parallelism": "UNSUPPORTED",
+          "skills": "UNSUPPORTED",
+          "model_neutrality": "UNSUPPORTED",
+          "tool_truth": "UNSUPPORTED",
+          "historical_record_policy": "UNSUPPORTED"
+        },
+        "maturity": "OBSERVE_ONLY",
+        "capability_coverage_complete": true
+      }
+    },
+    {
+      "id": "claude-code",
+      "display_name": "Claude Code",
+      "support_level": "manifest-only",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "static",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "external-manifest",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=claude-code]",
+        "version": "UNVERIFIED",
+        "scope": "manifest-only",
+        "risk": "medium",
+        "status": "blocked",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "No Claude Code adapter package is vendored",
+          "files": []
+        }
+      },
+      "policy_projection": {
+        "supported": false,
+        "projection_mode": "manifest-only",
+        "detect_supported": true,
+        "plan_supported": false,
+        "apply_supported": false,
+        "readback_supported": false,
+        "rollback_supported": false,
+        "drift_supported": false,
+        "capability_states": {
+          "communication": "UNSUPPORTED",
+          "execution": "UNSUPPORTED",
+          "authority_discovery": "UNSUPPORTED",
+          "authorization": "UNSUPPORTED",
+          "task_grant": "UNSUPPORTED",
+          "workspace_boundary": "UNSUPPORTED",
+          "protected_storage": "UNSUPPORTED",
+          "credentials": "UNSUPPORTED",
+          "session_privacy": "UNSUPPORTED",
+          "network": "UNSUPPORTED",
+          "git_safety": "UNSUPPORTED",
+          "dependency_policy": "UNSUPPORTED",
+          "evidence_semantics": "UNSUPPORTED",
+          "verification": "UNSUPPORTED",
+          "parallelism": "UNSUPPORTED",
+          "skills": "UNSUPPORTED",
+          "model_neutrality": "UNSUPPORTED",
+          "tool_truth": "UNSUPPORTED",
+          "historical_record_policy": "UNSUPPORTED"
+        },
+        "maturity": "OBSERVE_ONLY",
+        "capability_coverage_complete": true
+      }
+    },
+    {
+      "id": "workbuddy",
+      "display_name": "WorkBuddy",
+      "support_level": "manifest-only",
+      "operations": [
+        "detect",
+        "capabilities",
+        "observe"
+      ],
+      "detection": {
+        "mode": "static",
+        "evidence_state": "UNVERIFIED"
+      },
+      "provenance": {
+        "source_kind": "external-manifest",
+        "source_ref": "workflow-manifest.yaml#adapters.entries[id=workbuddy]",
+        "version": "UNVERIFIED",
+        "scope": "manifest-only",
+        "risk": "medium",
+        "status": "blocked",
+        "hash": {
+          "algorithm": "sha256",
+          "value": null,
+          "state": "UNAVAILABLE",
+          "basis": "No WorkBuddy adapter package is vendored",
+          "files": []
+        }
+      },
+      "policy_projection": {
+        "supported": false,
+        "projection_mode": "manifest-only",
+        "detect_supported": true,
+        "plan_supported": false,
+        "apply_supported": false,
+        "readback_supported": false,
+        "rollback_supported": false,
+        "drift_supported": false,
+        "capability_states": {
+          "communication": "UNSUPPORTED",
+          "execution": "UNSUPPORTED",
+          "authority_discovery": "UNSUPPORTED",
+          "authorization": "UNSUPPORTED",
+          "task_grant": "UNSUPPORTED",
+          "workspace_boundary": "UNSUPPORTED",
+          "protected_storage": "UNSUPPORTED",
+          "credentials": "UNSUPPORTED",
+          "session_privacy": "UNSUPPORTED",
+          "network": "UNSUPPORTED",
+          "git_safety": "UNSUPPORTED",
+          "dependency_policy": "UNSUPPORTED",
+          "evidence_semantics": "UNSUPPORTED",
+          "verification": "UNSUPPORTED",
+          "parallelism": "UNSUPPORTED",
+          "skills": "UNSUPPORTED",
+          "model_neutrality": "UNSUPPORTED",
+          "tool_truth": "UNSUPPORTED",
+          "historical_record_policy": "UNSUPPORTED"
+        },
+        "maturity": "OBSERVE_ONLY",
+        "capability_coverage_complete": true
+      }
+    }
+  ]
+}

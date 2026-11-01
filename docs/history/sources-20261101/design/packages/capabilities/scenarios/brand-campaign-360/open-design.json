@@ -1,0 +1,212 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "brand-campaign-360",
+  "title": "Brand Campaign 360",
+  "version": "0.2.0",
+  "publishedAt": "2026-08-04T00:00:00Z",
+  "description": "Create a complete commercial brand and campaign system.",
+  "author": {
+    "name": "DTALEX66 DESIGN-LAB"
+  },
+  "license": "MIT",
+  "tags": [
+    "scenario",
+    "brand",
+    "campaign",
+    "commercial-design"
+  ],
+  "compat": {
+    "agentSkills": [
+      {
+        "path": "./SKILL.md"
+      }
+    ]
+  },
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "scenario",
+    "useCase": {
+      "query": {
+        "en": "Create a complete commercial brand and campaign system.",
+        "zh-CN": "Create a complete commercial brand and campaign system."
+      }
+    },
+    "inputs": [
+      {
+        "name": "brand_name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "brief",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "applications",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "existing_assets",
+        "type": "file",
+        "required": false
+      },
+      {
+        "name": "production_profile",
+        "type": "select",
+        "options": [
+          "digital-ui",
+          "print-commercial",
+          "spatial-exhibition",
+          "packaging",
+          "presentation"
+        ],
+        "required": false
+      }
+    ],
+    "capabilities": [
+      "prompt:inject",
+      "pipeline:*",
+      "media:image",
+      "fs:write"
+    ],
+    "pipeline": {
+      "stages": [
+        {
+          "id": "intake",
+          "atoms": [
+            "source-intake-gate",
+            "discovery-question-form",
+            "brief-normalizer"
+          ]
+        },
+        {
+          "id": "research",
+          "atoms": [
+            "research-search",
+            "reference-dna-analyzer",
+            "file-write"
+          ]
+        },
+        {
+          "id": "strategy",
+          "atoms": [
+            "todo-write",
+            "file-write"
+          ]
+        },
+        {
+          "id": "directions",
+          "atoms": [
+            "design-direction-jury",
+            "direction-picker",
+            "media-image"
+          ]
+        },
+        {
+          "id": "system",
+          "atoms": [
+            "file-write",
+            "live-artifact"
+          ]
+        },
+        {
+          "id": "applications",
+          "atoms": [
+            "media-image",
+            "file-write",
+            "live-artifact"
+          ]
+        },
+        {
+          "id": "critique",
+          "atoms": [
+            "design-quality-jury",
+            "critique-theater"
+          ],
+          "repeat": true,
+          "until": "critique.score>=8 && blockers==0 || iterations>=3",
+          "onFailure": "retry"
+        },
+        {
+          "id": "preflight",
+          "atoms": [
+            "commercial-preflight"
+          ],
+          "onFailure": "abort"
+        },
+        {
+          "id": "handoff",
+          "atoms": [
+            "delivery-packager"
+          ]
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        }
+      ],
+      "craft": [
+        "brand-strategy",
+        "typography",
+        "color",
+        "art-direction",
+        "anti-ai-slop",
+        "production-preflight"
+      ],
+      "atoms": [
+        "source-intake-gate",
+        "brief-normalizer",
+        "reference-dna-analyzer",
+        "design-direction-jury",
+        "design-quality-jury",
+        "commercial-preflight",
+        "delivery-packager"
+      ]
+    },
+    "genui": {
+      "surfaces": [
+        {
+          "id": "brief-gap-form",
+          "kind": "form",
+          "persist": "project",
+          "trigger": {
+            "stageId": "intake",
+            "atom": "discovery-question-form"
+          },
+          "prompt": "Collect only material facts missing from the commercial design brief.",
+          "onTimeout": "abort"
+        },
+        {
+          "id": "direction-choice",
+          "kind": "choice",
+          "persist": "project",
+          "trigger": {
+            "stageId": "directions",
+            "atom": "direction-picker"
+          },
+          "prompt": "Choose one design direction or request a bounded revision.",
+          "onTimeout": "abort"
+        },
+        {
+          "id": "production-confirm",
+          "kind": "confirmation",
+          "persist": "project",
+          "trigger": {
+            "stageId": "preflight",
+            "atom": "commercial-preflight"
+          },
+          "prompt": "Confirm the target production profile and supplier requirements.",
+          "onTimeout": "abort"
+        }
+      ]
+    }
+  },
+  "hostAdapter": "open-design"
+}

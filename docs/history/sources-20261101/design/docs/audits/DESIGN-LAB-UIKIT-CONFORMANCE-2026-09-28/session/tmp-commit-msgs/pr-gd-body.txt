@@ -1,0 +1,29 @@
+## Scope
+
+CROSSWALK 2026-09-24 **G-D**：宿主资格矩阵（`adobe-host-matrix.json`, 8 宿主 E1）的
+fail-closed 消费者面。数据面已在仓（#138 E-SLICE-01 同期落地），但矩阵内部一致性
+**无 CI 把关**——本 PR 补齐，不建新 schema、不建第二系统。
+
+## 交付
+
+| 文件 | 作用 |
+|---|---|
+| `design-lab/scripts/verify_readiness_host_matrix.py` | 7 类不变量 fail-closed（schema、E1 锁定、inventory 一致性、live 证据指针、editable↔readback、absent 宿主、引用漂移）；jsonschema 主路径 + stdlib 子集兜底 |
+| `design-lab/scripts/verify_design_lab.py` | 聚合器 +1 项（python-gate 已调聚合器，**不改** canonical-verify.yml） |
+| `design-lab/tests/test_readiness_host_matrix_gate.py` | 14 个 fail-closed 回归（13 合成 + 1 live 冒烟） |
+
+## 纪律
+
+- 验证器**只读**：从不合成/提升 E3 记录（`verify_host_e3_evidence.py` 的 NO_RECORD 语义保持）
+- E3 真实 Host / E4 Human Jury 腿 = owner-gated，本 PR 仅写数据面校验，DECLARED 不 EXECUTE
+- 反漂移：复用既有 `readiness-host-matrix.schema.json`，不建平行 schema
+
+## 验证
+
+- 矩阵真值：`READINESS_HOST_MATRIX=PASS entries=8 live=0`（jsonschema + fallback 双路）
+- 测试：14/14 全绿
+- 本地聚合器 3 个 FAIL 均为既有环境缺 numpy/PIL/defusedxml（venv 无依赖，CI 走 uv sync 全有），非本 PR 回归
+
+## Rollback
+
+revert 单 commit；新验证器为 additive，聚合器删 1 行即还原。

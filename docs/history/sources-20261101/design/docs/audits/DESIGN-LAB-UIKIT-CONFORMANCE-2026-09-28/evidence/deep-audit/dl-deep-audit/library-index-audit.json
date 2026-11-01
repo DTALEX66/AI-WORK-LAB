@@ -1,0 +1,25 @@
+{
+  "_note": "用户红线：各外置库/模型库/专属库的权威索引路径必须被独立追踪并验证真实指向，勿硬编码。本文件为 DESIGN-LAB 库索引维度审计（main 6a16c40，in-repo 只读，遵守 DECLARED_NOT_PROBED 不探测 D: 库本体）。",
+  "index_files": [
+    "权威路径源: .project/paths.json (schema design-lab/project-paths/v1) → shared_inputs 4 根: model-library→D:/All projects/Model library, design-assets→D:/All projects/Design assets, os-toolchain→D:/All projects/OS External Configuration, design-toolchain→D:/All projects/Design External Configuration",
+    "库资产注册: design-lab/config/external-assets-index.json (shared_roots 仅 model-library+design-assets; H3 四权重 owned_by=DESIGN-LAB/active, 经 ComfyUI extra_model_paths.yaml 接入)",
+    "模型就绪: design-lab/readiness/model-radar.json (license+machine_state 5阶段+VRAM fit; 不加载不下载不hash; radar_state 门槛=QUALIFIED_LOCAL 需 machine_state>=LOAD_VERIFIED 且非空 weight hash)",
+    "任务资源: design-lab/config/task-resources.json (含 shared_inputs 引用)",
+    "消费不变量: src/design_lab/runtime/paths.py — shared_inputs=DECLARED_NOT_PROBED/writable:False(只声明不探测不写); 所有写根锁 .project-local; _no_links 拒绝 traverse junction"
+  ],
+  "key_findings": [
+    "H3 四组件在本机 = BLOCKED_BY_LICENSE + VRAM EXCEEDS：RTX 5060=8151MiB(8GiB)，H3 需 diffusion20/encoder12/vae8/audio4 GiB，全部 EXCEEDS；license=PENDING-OWNER-ADJUDICATION",
+    "→ Batch D（ComfyUI/H3 本地 provider）本机只到契约层；真实运行需 >=24GiB GPU 或云，属 owner-gated 硬件/授权项，不计入纯 CI 可完成工作",
+    "whisper-large-v3-turbo(MIT/FITS) 与 paddleocr-onnx(Apache-2.0/RESTRICTED-AGPL) 是 E2 可达的本地轻量模型；H3 不可达",
+    "一致性红线：4 索引文件须与 runtime/paths.py 不变量对齐——external-assets-index 的 shared_root 键必须在 paths.json shared_inputs 内；model-radar 的 ref 'model-library:...' 前缀必须匹配某 shared_inputs 键名；任何新增外置库须同步更新这 4 文件 + 消费方 verifier"
+  ],
+  "taskpack_task": "Batch F 新增任务 F-idx：库索引一致性守卫（verifier：paths.json shared_inputs ⊇ external-assets-index shared_roots 键名；model-radar ref 前缀合法；task-resources 引用存在；runtime/paths.py DECLARED_NOT_PROBED 不变量负控测试）—— 防漂移回归",
+  "evidence_refs": [
+    ".project/paths.json (10 lines)",
+    "design-lab/config/external-assets-index.json (67 lines)",
+    "design-lab/readiness/model-radar.json (386 lines)",
+    "src/design_lab/runtime/paths.py:172 (shared_inputs status=DECLARED_NOT_PROBED)",
+    "src/design_lab/runtime/paths.py:44-46 (_no_links 拒绝 junction)",
+    "design-lab/tests/test_project_paths.py (paths 消费方回归)"
+  ]
+}

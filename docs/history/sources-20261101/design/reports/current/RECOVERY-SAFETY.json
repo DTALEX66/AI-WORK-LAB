@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "design-lab/recovery-safety/v2",
+  "task_keys": [
+    "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-I000",
+    "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-I010"
+  ],
+  "checked_at": "2026-10-08T23:52:12+00:00",
+  "subject_sha": "14e99f03ae95d76d19bb91c3b70250c96ae567b4",
+  "verdict_rule": "answerable from tracked state: the archived receipts, the three tools in the repository, and the runtime state machine in src/. The live copies under .project-local are reported as machine state and are never compared, so a clean checkout judges the same as this disk.",
+  "I000_destructive_operations": {
+    "doctrine": "plan -> candidate list -> backup/digest -> verification -> rollback -> receipt",
+    "receipt_archive_root": "docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/session",
+    "manifests": [
+      {
+        "receipt": "docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/session/quarantine/deepseek-round1/RUNTIME-CLEANUP-MANIFEST.json",
+        "tool": "scripts/deepseek_runtime_cleanup.py",
+        "live_copy": ".project-local/quarantine/deepseek-round1/RUNTIME-CLEANUP-MANIFEST.json",
+        "exists": true,
+        "elements": {
+          "plan": true,
+          "candidate_list": true,
+          "backup_or_digest": true,
+          "verification": true,
+          "rollback": true,
+          "receipt": true
+        },
+        "ok": true,
+        "entries": 167,
+        "tool_modes": {
+          "plan_mode": true,
+          "restore_mode": true
+        },
+        "binding": {
+          "names_the_tools_operation": true,
+          "receipt_task_keys": [
+            "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-D030"
+          ],
+          "keys_outside_the_authority_pack": [],
+          "ids_the_producing_tool_never_declares": [],
+          "paths_are_repo_relative": true,
+          "non_repository_paths": [],
+          "receipt_is_versioned": true
+        },
+        "archived_digest": "sha256:8cdfcbfa42dc16230ace5f9a8fe12fd81c3c5d0d572c7de0b0f0b7be8348aecc",
+        "live_copy_state": "MATCHES_ARCHIVED_COPY"
+      },
+      {
+        "receipt": "docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/session/quarantine/deepseek-round1/DELETE-MANIFEST.json",
+        "tool": "scripts/deepseek_quarantine_out_of_pack.py",
+        "live_copy": ".project-local/quarantine/deepseek-round1/DELETE-MANIFEST.json",
+        "exists": true,
+        "elements": {
+          "plan": true,
+          "candidate_list": true,
+          "backup_or_digest": true,
+          "verification": true,
+          "rollback": true,
+          "receipt": true
+        },
+        "ok": true,
+        "entries": 7,
+        "tool_modes": {
+          "plan_mode": true,
+          "restore_mode": true
+        },
+        "binding": {
+          "names_the_tools_operation": true,
+          "receipt_task_keys": [
+            "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-A040"
+          ],
+          "keys_outside_the_authority_pack": [],
+          "ids_the_producing_tool_never_declares": [],
+          "paths_are_repo_relative": true,
+          "non_repository_paths": [],
+          "receipt_is_versioned": true
+        },
+        "archived_digest": "sha256:044f02b896883e27c9d5b0a48a563864b7133c879751c4b4c08b189b7934a0b1",
+        "live_copy_state": "MATCHES_ARCHIVED_COPY"
+      },
+      {
+        "receipt": "docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/session/hermes-legacy/MIGRATION-MANIFEST.json",
+        "tool": "scripts/deepseek_hermes_migration.py",
+        "live_copy": ".project-local/archive/hermes-legacy/MIGRATION-MANIFEST.json",
+        "exists": true,
+        "elements": {
+          "plan": true,
+          "candidate_list": true,
+          "backup_or_digest": true,
+          "verification": true,
+          "rollback": true,
+          "receipt": true
+        },
+        "ok": true,
+        "entries": 109,
+        "tool_modes": {
+          "plan_mode": true,
+          "restore_mode": true
+        },
+        "binding": {
+          "names_the_tools_operation": true,
+          "receipt_task_keys": [
+            "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-E020",
+            "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-E030",
+            "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-E040"
+          ],
+          "keys_outside_the_authority_pack": [],
+          "ids_the_producing_tool_never_declares": [],
+          "paths_are_repo_relative": true,
+          "non_repository_paths": [],
+          "receipt_is_versioned": true
+        },
+        "archived_digest": "sha256:5088e4766929b68f1dd68149b2a4f5f59f29e60b30b200313c9205479493cc3d",
+        "live_copy_state": "MATCHES_ARCHIVED_COPY"
+      }
+    ],
+    "failures": []
+  },
+  "I010_unknown_outcome": {
+    "rule": "an attempt with an unknown outcome is reconciled, never re-run; a failed or cancelled attempt is never reported as completed",
+    "outcome_unknown_successors": [
+      "CANCEL_REQUESTED",
+      "RECONCILING"
+    ],
+    "terminal_states": [
+      "CANCELLED",
+      "FAILED",
+      "RECEIPTED",
+      "TIMED_OUT"
+    ],
+    "reconcile_requires_proof": true,
+    "recovery_is_called_in_production": true,
+    "recovery_production_callers": [
+      "src/design_lab/service.py"
+    ],
+    "blind_scan_production_callers": [],
+    "execution_holds_attempt_lock": true,
+    "native_recovery_decision": {
+      "decision_entry_exists": true,
+      "decision_production_callers": [
+        "src/design_lab/cli.py"
+      ],
+      "start_up_readback_callers": [
+        "src/design_lab/cli.py"
+      ],
+      "decision_requires_authorization": true,
+      "decision_refuses_live_run": true,
+      "decision_reaches_verified_entries": true,
+      "decision_never_dispatches": true,
+      "readback_invents_no_verdict": true
+    },
+    "tests": [
+      "design-lab/tests/test_runtime_attempt_safety.py",
+      "design-lab/tests/test_boot_reconciliation.py",
+      "design-lab/tests/test_native_tasks.py"
+    ],
+    "findings": [],
+    "ok": true
+  },
+  "verdict": "PASS"
+}

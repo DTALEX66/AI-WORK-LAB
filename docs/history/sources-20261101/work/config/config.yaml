@@ -1,0 +1,64 @@
+# Workflow-assistance user overlay for a stock Hermes installation.
+#
+# This file intentionally contains no model, provider, base URL, API key,
+# fallback route, model picker lane, or model-switching command. Hermes setup
+# and built-in defaults own the base environment; this repository layers only
+# reviewed user workflow assets on top.
+
+# Keep terminal mutations inside each Git project's ignored .hermes boundary.
+# The synchronizer rewrites the portable path to the deployed Hermes home.
+hooks:
+  pre_tool_call:
+    - matcher: terminal
+      command: python ${HERMES_HOME}/bin/hermes-project-terminal-guard.py
+      timeout: 10
+
+# Context7 is the only repository-managed MCP. User-defined MCPs are preserved.
+mcp_servers:
+  context7:
+    command: hermes-npx
+    args:
+      - -y
+      # Keep the official package version pinned for reproducible portable installs.
+      - '@upstash/context7-mcp@3.2.2'
+    env:
+      HERMES_NPX_ALLOW_PATH_FALLBACK: '1'
+    timeout: 120
+    connect_timeout: 120
+
+# User-facing preferences layered on top of Hermes defaults.
+display:
+# Skin/theme remains user-selected and is intentionally not managed here.
+  language: zh
+  busy_input_mode: queue
+
+# The user explicitly requires durable conversation history.
+sessions:
+  auto_prune: false
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200
+  user_char_limit: 1375
+
+
+# Reviewed user workflow surface. This replaces only the CLI platform list;
+# the official core defaults and Desktop-managed capabilities remain intact.
+platform_toolsets:
+  cli:
+    - browser
+    - clarify
+    - code_execution
+    - computer_use
+    - cronjob
+    - delegation
+    - file
+    - image_gen
+    - memory
+    - session_search
+    - skills
+    - terminal
+    - todo
+    - vision
+    - web

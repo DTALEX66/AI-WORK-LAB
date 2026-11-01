@@ -1,0 +1,32 @@
+workbench(style): add the four token families B04/B07 define but the app never carried
+
+W01 diffed the DESIGN-LAB-specific UI-suite originals (B04 design_tokens.json +
+B07 shared-ui-core/base-tokens.css) against apps/workbench/style.css and found the
+colour, radius(md/lg) and motion families at 100% parity, but four families
+entirely absent from the variable layer:
+
+  space       0/8   --space-1..16
+  font        0/6   --font-display/h1/h2/h3/body/caption
+  breakpoint  0/3   --bp-mobile/tablet/desktop
+  density     0/3   B04 density comfortable/default/compact
+  radius.xl   0/1   B04 radius.xl = 20
+
+The layout instead hard-codes B10 values (padding:26px 28px 30px, gap:16px, ...),
+so it bypasses the token system the originals define. This adds the missing
+families as variables, with the originals' exact values.
+
+Deliberately NOT resolved here -- conflicts between the originals themselves are
+recorded in the block comment and left for the owner:
+
+  X-1  body    : B04 typography.body=18    vs B07 --font-body=16px
+  X-2  caption : B04 typography.caption=14 vs B07 --font-caption=13px
+       -> the B07 (front-end governance layer) values are used as the provisional
+          implementation value; no element consumes them yet, so nothing changes
+          visually either way.
+  X-3/X-4: three mobile breakpoints coexist today (B07 767px / app 760px / B10 840px)
+  X-7  --radius-sm is ALREADY 12px in the B10 bridge block, while B04 says 4.
+       Redefining it would break the B10 layer, so it is left untouched.
+
+Purely additive: no rule consumes these variables, so there is no visual or
+behavioural change. Verified: tsc --noEmit, vite build, tests/unit.mjs,
+tests/appshell.mjs all green; apps/workbench/build unchanged.

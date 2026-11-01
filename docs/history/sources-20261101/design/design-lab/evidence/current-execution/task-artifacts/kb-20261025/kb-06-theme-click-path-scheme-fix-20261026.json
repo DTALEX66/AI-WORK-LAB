@@ -1,0 +1,131 @@
+{
+  "id": "kb-06-theme-click-path-scheme-fix-20261026",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-25T17:22:00Z",
+  "subject_sha": "78eb296bf2b1bd29490cd8189187912e77a97409",
+  "defect": "the palette button inherited the CURRENT scheme when cycling palettes, and stitch declares only [\"light\"]; inheriting dark made applyTheme() remove data-scheme, so :root[data-palette=\"stitch\"][data-scheme=\"light\"] never matched and the click path painted the default charcoal face while the URL already said stitch",
+  "before_readings": [
+    "HOP 1 ui2026/(absent) ink=rgb(159, 177, 195) over=rgb(8, 14, 22) ratio=8.81 moved=yes",
+    "HOP 2 stitch/(absent) ink=rgb(154, 163, 184) over=rgb(6, 10, 20) ratio=7.83 moved=yes",
+    "HOP 3 design-lab/light ink=rgb(154, 163, 184) over=rgb(6, 10, 20) ratio=7.83 moved=NO"
+  ],
+  "after_readings": {
+    "hops": [
+      {
+        "hop": 1,
+        "palette": "ui2026",
+        "scheme": "(absent)",
+        "url": "?palette=ui2026&scheme=dark",
+        "probeText": "设计辅助",
+        "ink": "rgb(159, 177, 195)",
+        "backdrop": "rgb(8, 14, 22)",
+        "bgChain": [
+          "span=rgba(0, 0, 0, 0)",
+          "nav=rgba(0, 0, 0, 0)",
+          "aside#app-sidebar=rgba(0, 0, 0, 0)",
+          "div#b10-app=rgba(0, 0, 0, 0)",
+          "body=rgb(8, 14, 22)"
+        ],
+        "changeRatio": 8.81,
+        "ratioBasis": "opaque rgb() ink over opaque rgb() backdrop",
+        "moved": true,
+        "paletteMoved": true,
+        "paint": "rgb(159, 177, 195) on span=rgba(0, 0, 0, 0) | nav=rgba(0, 0, 0, 0) | aside#app-sidebar=rgba(0, 0, 0, 0) | div#b10-app=rgba(0, 0, 0, 0) | body=rgb(8, 14, 22)"
+      },
+      {
+        "hop": 2,
+        "palette": "stitch",
+        "scheme": "light",
+        "url": "?palette=stitch&scheme=light",
+        "probeText": "设计辅助",
+        "ink": "rgb(86, 100, 114)",
+        "backdrop": "rgb(244, 246, 248)",
+        "bgChain": [
+          "span=rgba(0, 0, 0, 0)",
+          "nav=rgba(0, 0, 0, 0)",
+          "aside#app-sidebar=rgba(0, 0, 0, 0)",
+          "div#b10-app=rgba(0, 0, 0, 0)",
+          "body=rgb(244, 246, 248)"
+        ],
+        "changeRatio": 5.6,
+        "ratioBasis": "opaque rgb() ink over opaque rgb() backdrop",
+        "moved": true,
+        "paletteMoved": true,
+        "paint": "rgb(86, 100, 114) on span=rgba(0, 0, 0, 0) | nav=rgba(0, 0, 0, 0) | aside#app-sidebar=rgba(0, 0, 0, 0) | div#b10-app=rgba(0, 0, 0, 0) | body=rgb(244, 246, 248)"
+      },
+      {
+        "hop": 3,
+        "palette": "design-lab",
+        "scheme": "(absent)",
+        "url": "?palette=design-lab&scheme=dark",
+        "probeText": "设计辅助",
+        "ink": "rgb(154, 163, 184)",
+        "backdrop": "rgb(6, 10, 20)",
+        "bgChain": [
+          "span=rgba(0, 0, 0, 0)",
+          "nav=rgba(0, 0, 0, 0)",
+          "aside#app-sidebar=rgba(0, 0, 0, 0)",
+          "div#b10-app=rgba(0, 0, 0, 0)",
+          "body=rgb(6, 10, 20)"
+        ],
+        "changeRatio": 7.83,
+        "ratioBasis": "opaque rgb() ink over opaque rgb() backdrop",
+        "moved": true,
+        "paletteMoved": true,
+        "paint": "rgb(154, 163, 184) on span=rgba(0, 0, 0, 0) | nav=rgba(0, 0, 0, 0) | aside#app-sidebar=rgba(0, 0, 0, 0) | div#b10-app=rgba(0, 0, 0, 0) | body=rgb(6, 10, 20)"
+      }
+    ],
+    "deep_link": {
+      "asked": "palette=stitch&scheme=light",
+      "status": 200,
+      "palette": "stitch",
+      "scheme": "light",
+      "ink": "rgb(86, 100, 114)",
+      "backdrop": "rgb(244, 246, 248)",
+      "bgChain": [
+        "span=rgba(0, 0, 0, 0)",
+        "nav=rgba(0, 0, 0, 0)",
+        "aside#app-sidebar=rgba(0, 0, 0, 0)",
+        "div#b10-app=rgba(0, 0, 0, 0)",
+        "body=rgb(244, 246, 248)"
+      ],
+      "paintsLikeDefault": false
+    },
+    "palette_table_read": [
+      {
+        "id": "design-lab",
+        "schemes": [
+          "dark"
+        ]
+      },
+      {
+        "id": "ui2026",
+        "schemes": [
+          "dark",
+          "light"
+        ]
+      },
+      {
+        "id": "stitch",
+        "schemes": [
+          "light"
+        ]
+      }
+    ]
+  },
+  "fix": "shell.ts palette button resolves the scheme against the palette being switched to and writes both palette and scheme to the URL; the affordance gate now reads the palette table from shell.ts independently in both realms and asserts hops == table length, every hop moved the painted ink, the walk returns to the start, and the stitch deep link paints something the default palette does not",
+  "authority_boundary": "per-hop ratios are a change detector, not an AA verdict; stitch light-side AA is owned by test_workbench_contrast_gate.py running UI_PALETTE=stitch",
+  "bytes_gzip_level9": {
+    "bundle": [
+      616351,
+      162258
+    ],
+    "stylesheet": [
+      121330,
+      41645
+    ]
+  },
+  "not_claimed": "audit_workbench_theme_geometry.mjs still carries a hardcoded palette list without stitch and was not touched; no persistence key was added (the existing ruling in shell.ts:10140 stands); no human visual acceptance"
+}

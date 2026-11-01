@@ -1,0 +1,3468 @@
+{
+  "schemaVersion": "design-lab/task-ledger/r3-v1",
+  "taskpack": "DL-TP-20260906-R3",
+  "plan_path": "docs/taskpacks/DESIGN-LAB-CLOUD-REAUDIT-TASKPACK-2026-09-06.md",
+  "baseline_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+  "updated_at": "2026-09-06T20:58:17Z",
+  "source": {
+    "archive_sha256": "f433f54bc52fdb00e5dd787dafade1af625e7323abf44fc4929eb21d73a39cf4",
+    "tasks_sha256": "85174ee8c3ff037aa08bdc4bafa435be768378be3420a179cac0735b4c69b8e4",
+    "body_sha256": "20bccdbf5ac830e6fb65467f00e5f17c284016ab36581024b4cdb20bee2df6ec"
+  },
+  "tasks": [
+    {
+      "id": "R3-01",
+      "title": "统一当前入口和证据状态",
+      "priority": "P1",
+      "environment": "仓库",
+      "depends_on": [],
+      "legacy_ids": [
+        "T01",
+        "T18",
+        "F09",
+        "F10"
+      ],
+      "baseline_existing": "PR115 已合并；保留 09-04 基线与 09-05 结构实现。",
+      "implementation": [
+        "登记本包为后继执行方案，旧包标 superseded 并保留原文。",
+        "以单一任务 ledger 生成 current 摘要；分 implementation、unit、host_live、delivery 四轴，绑定 subject_sha、软件版本、证据哈希。",
+        "删除“F01—F10 全部闭环”的概括；纠正 ASR READY 和常见目录未找到即未安装的表述；用相对仓库入口代替仅在某台 D 盘存在的 handoff。"
+      ],
+      "deliverables": [
+        "当前入口决策",
+        "单一任务 ledger 与派生状态",
+        "旧包后继链接"
+      ],
+      "acceptance": [
+        "从 README 与 AGENTS 能到同一执行包。",
+        "结构通过但未实机的能力显示待实机；旧证据仍可查，不能把更新时间当新测试时间。"
+      ],
+      "rollback": "回退入口提交即可，保留新增历史记录。",
+      "required_axes": [
+        "implementation",
+        "unit"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "IMPLEMENTED_LOCAL",
+          "evidence": [
+            "r3-normalization-reporting-20260907", "r3-current-entry-refresh-20260907"
+          ]
+        },
+        "unit": {
+          "state": "PASS",
+          "evidence": [
+            "r3-normalization-reporting-20260907", "r3-current-entry-refresh-20260907"
+          ]
+        },
+        "host_live": {
+          "state": "NOT_REQUIRED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-02",
+      "title": "运行目录、作品库与 .hermes 实际写入治理",
+      "priority": "P1",
+      "environment": "仓库＋Windows",
+      "depends_on": [
+        "R3-01"
+      ],
+      "legacy_ids": [
+        "T18",
+        "F06"
+      ],
+      "baseline_existing": "重建核心已转 .project-local，但活跃策略仍冲突。",
+      "implementation": [
+        "实现全项目路径解析器与来源诊断；区分 runtime、作品库、模型缓存、Agent profile。",
+        "修复审计列出的活跃策略／索引，旧资料标历史；检查 IDE、快捷方式、启动脚本与继承环境。",
+        "记录目标目录写入进程链，找到真正写入者；不得把调用器路径当作结论。",
+        "迁移旧数据先清单、备份、哈希验证；DB 迁移前停本项目写入，旧根只读过渡。"
+      ],
+      "deliverables": [
+        "paths 配置／解析器",
+        "doctor --paths",
+        "迁移预演清单与恢复说明",
+        "多入口写入追踪记录"
+      ],
+      "acceptance": [
+        "从任意 CWD 启动都得到同一项目配置。",
+        "已安装各 Agent、UI、CLI、Adobe 桥执行夹具后，旧根不增加项目运行数据；用户级 Agent 配置不受破坏。",
+        "取消／失败临时文件也落在任务根，作品在持久库。"
+      ],
+      "rollback": "恢复旧配置及备份 DB；回退期间只启用一条写入路径，禁止双写。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "PARTIAL",
+          "evidence": [
+            "r3-normalization-paths-20260907",
+            "r3-entry-write-trace-20260907",
+            "r3-test-entry-handoff-20260907"
+          ]
+        },
+        "unit": {
+          "state": "PASS",
+          "evidence": [
+            "r3-normalization-paths-20260907",
+            "r3-entry-write-trace-20260907",
+            "r3-test-entry-handoff-20260907", "r3-current-entry-refresh-20260907"
+          ]
+        },
+        "host_live": {
+          "state": "PARTIAL",
+          "evidence": ["r3-comfy-entry-controlled-20260907", "r3-ocr-preparation-boundary-20260907"]
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-03",
+      "title": "逐条闭合历史原文恢复和旧任务映射",
+      "priority": "P2",
+      "environment": "仓库＋已有归档存储",
+      "depends_on": [
+        "R3-01"
+      ],
+      "legacy_ids": [
+        "T01",
+        "T18",
+        "F09"
+      ],
+      "baseline_existing": "536 条 manifest 与 1450 条 occurrence crosswalk 已恢复；276 条清单记录匹配当前树。",
+      "implementation": [
+        "以 evidence/history-current-tree-coverage.json 的 260 条未匹配记录为队列，检索旧 Git 提交、已有归档及原持久文件。",
+        "为每条增加不可变 locator、archive/member、size、sha256、恢复时间和状态；重复原文共享对象但不删除记录。",
+        "保留 original_id／occurrence_key；把历史目标经旧包 ID 连接到本包 ID，不以同名任务覆盖。",
+        "找不到的明确列 unresolved，说明已查范围；所有资料未核验前不宣称全历史完整。"
+      ],
+      "deliverables": [
+        "追加式恢复 manifest",
+        "原文内容索引",
+        "未解决来源队列",
+        "历史→旧包→新包映射"
+      ],
+      "acceptance": [
+        "所有536条都有逐条状态，原536/1450份基线字节不变。",
+        "只有每个应有原文记录均可按 locator 取回且 hash 一致时，才允许标 history_complete。",
+        "placeholder 单列并说明；不从摘要编造原始对话。"
+      ],
+      "rollback": "回退新增检索索引版本，原件和原基线始终保留。",
+      "required_axes": [
+        "implementation",
+        "unit"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "PARTIAL",
+          "evidence": ["r3-history-public-overlay-20260907"]
+        },
+        "unit": {
+          "state": "PASS",
+          "evidence": ["r3-history-public-overlay-20260907"]
+        },
+        "host_live": {
+          "state": "NOT_REQUIRED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-04",
+      "title": "补 CI 触发、契约负例与环境一致性",
+      "priority": "P1",
+      "environment": "仓库／CI",
+      "depends_on": [
+        "R3-01"
+      ],
+      "legacy_ids": [
+        "T01",
+        "T18",
+        "F01",
+        "F02",
+        "F03",
+        "F04",
+        "F05",
+        "F07",
+        "F08"
+      ],
+      "baseline_existing": "main 五门绿色；uv.lock 已可用；本地 renderer 与浅克隆环境不同。",
+      "implementation": [
+        "优先取消不必要的 workflow 顶层路径过滤，或完整对齐 push／PR，覆盖新 apps、src、integrations、contracts、锁和 AGENTS。",
+        "保留现有测试；为本次真实语义漏洞添加回归负例，修改断言错误行为的旧测试。",
+        "固定 renderer 版本与校验哈希；bootstrap 探测环境后再测试；浅克隆缺祖先应诊断为证据不足，不能伪造绑定。",
+        "用唯一临时根和清理机制避免被全仓扫描；CI 的产物检查要另看被忽略运行目录。"
+      ],
+      "deliverables": [
+        "CI 触发覆盖表",
+        "锁定 bootstrap",
+        "缺陷回归用例",
+        "环境与隔离检查"
+      ],
+      "acceptance": [
+        "仅改 pyproject／uv.lock／integrations／AGENTS 的 PR 都触发必须门。",
+        "新缺陷用例修前失败、修后通过；当前完整 CI 不回归。",
+        "干净 checkout 可复现；本地缺软件显示前置条件，不报产品 READY。"
+      ],
+      "rollback": "可回退 workflow 配置；不得删除本来有效的门来变绿。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "delivery"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "PARTIAL",
+          "evidence": ["r3-identity-boundary-final-20260906", "r3-normalization-ci-local-20260907", "r3-test-entry-handoff-20260907"]
+        },
+        "unit": {
+          "state": "PARTIAL",
+          "evidence": ["r3-identity-boundary-final-20260906", "r3-normalization-ci-local-20260907", "r3-test-entry-handoff-20260907", "r3-visual-quality-runtime-scan-failure-20260907"]
+        },
+        "host_live": {
+          "state": "NOT_REQUIRED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-05",
+      "title": "修复 Operation、Attempt 与幂等重试",
+      "priority": "P1",
+      "environment": "Python",
+      "depends_on": [
+        "R3-01"
+      ],
+      "legacy_ids": [
+        "T05",
+        "F03"
+      ],
+      "baseline_existing": "已有 coordinator／job_store 和 SQLite 状态，需修业务语义。",
+      "implementation": [
+        "Operation 是逻辑工作，Attempt 是执行尝试；稳定 idempotency key 绑定规范化 request_hash。",
+        "相同键异请求明确冲突；失败重试创建 attempt_no+1，保留旧终态。",
+        "effect_not_started→可重试／待派发；只有输出及读回满足成功条件才 SUCCEEDED。",
+        "未知副作用先 reconcile；非法状态转移拒绝；取消先请求、宿主确认后对账。"
+      ],
+      "deliverables": [
+        "修正状态图和实现",
+        "DB 迁移",
+        "重试／重启 API",
+        "回归测试"
+      ],
+      "acceptance": [
+        "审计的未执行成功与异请求幂等键用例不再被接受。",
+        "派发后崩溃、回执丢失、重试三次、取消竞态都不重复修改目标。",
+        "终态历史不可覆写，重启后可解释每个 attempt。"
+      ],
+      "rollback": "迁移前备份 DB，先暂停 worker；用版本化 schema 回退，不丢弃旧尝试记录。",
+      "required_axes": [
+        "implementation",
+        "unit"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "IMPLEMENTED_LOCAL",
+          "evidence": [
+            "r3-normalization-runtime-20260907"
+          ]
+        },
+        "unit": {
+          "state": "PASS",
+          "evidence": [
+            "r3-normalization-runtime-20260907"
+          ]
+        },
+        "host_live": {
+          "state": "NOT_REQUIRED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-06",
+      "title": "修复资产版本事务与单写锁",
+      "priority": "P1",
+      "environment": "Python＋SQLite",
+      "depends_on": [
+        "R3-02",
+        "R3-05"
+      ],
+      "legacy_ids": [
+        "T05"
+      ],
+      "baseline_existing": "已有 asset_store；同名产物更新和事务回滚已复现缺陷。",
+      "implementation": [
+        "artifact_id 使用独立唯一身份，path 是版本内属性；关联 asset_id／version_id／hash。",
+        "版本与所有产物一个事务提交；任何失败 rollback，不得 ACTIVE 无产物。",
+        "临时文件先校验再原子发布，协调磁盘与 DB 的恢复日志。",
+        "原子抢锁、租约和 fencing token 在实际写入前校验；处理失联 worker 与过期锁。"
+      ],
+      "deliverables": [
+        "资产 schema 迁移",
+        "原子发布／恢复实现",
+        "锁与事务测试"
+      ],
+      "acceptance": [
+        "同一个 poster.psd 连续保存3版本，旧版本可读。",
+        "中途唯一键／I/O失败不会被下一次无关提交持久化为空 ACTIVE 版本。",
+        "并发 writer 仅一方能发布；崩溃重启无悬空引用。"
+      ],
+      "rollback": "保留旧资产字节与 DB 快照，未完成发布在隔离区恢复／撤销。",
+      "required_axes": [
+        "implementation",
+        "unit"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "IMPLEMENTED_LOCAL",
+          "evidence": [
+            "r3-normalization-runtime-20260907"
+          ]
+        },
+        "unit": {
+          "state": "PASS",
+          "evidence": [
+            "r3-normalization-runtime-20260907"
+          ]
+        },
+        "host_live": {
+          "state": "NOT_REQUIRED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-07",
+      "title": "用真实证据选择软件／模型／用途 profile",
+      "priority": "P1",
+      "environment": "Python",
+      "depends_on": [
+        "R3-01",
+        "R3-05"
+      ],
+      "legacy_ids": [
+        "T02",
+        "T05",
+        "T12"
+      ],
+      "baseline_existing": "现 resolver 仅静态格式评分，rights_scope 未生效。",
+      "implementation": [
+        "硬过滤格式、可编辑性、离线、可启动版本、当前实测能力、用途条件和资源；评分仅在合格候选之间。",
+        "删除硬编码成本结论和 H3 永久许可阻塞，使用可追溯配置和失效时间。",
+        "PERSONAL_RESEARCH_NONCOMMERCIAL 是默认用途；许可条件、地区、资源、依赖分别报告，未知不误报授权或可用。"
+      ],
+      "deliverables": [
+        "Profile evidence schema",
+        "可解释选择器",
+        "用途策略与阻塞分类"
+      ],
+      "acceptance": [
+        "DENIED 或不可启动 profile 不会进入自动执行。",
+        "安装不等于功能实测；支持手动指定候选但明确验证步骤。",
+        "H3 不再因商业产品条件一律被封锁；实际不满足条件时仍拒绝并说明。"
+      ],
+      "rollback": "保留旧配置仅用于历史读取，不回退到误报可用路径。",
+      "required_axes": [
+        "implementation",
+        "unit"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "IMPLEMENTED_LOCAL",
+          "evidence": [
+            "r3-normalization-profiles-20260907"
+          ]
+        },
+        "unit": {
+          "state": "PASS",
+          "evidence": [
+            "r3-normalization-profiles-20260907"
+          ]
+        },
+        "host_live": {
+          "state": "NOT_REQUIRED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-08",
+      "title": "重做 doctor 与模型就绪分级",
+      "priority": "P1",
+      "environment": "Python＋Windows",
+      "depends_on": [
+        "R3-02"
+      ],
+      "legacy_ids": [
+        "T02",
+        "T06"
+      ],
+      "baseline_existing": "Windows硬件记录已有；模型探测把少量字节当 READY。",
+      "implementation": [
+        "分 ABSENT／METADATA_ONLY／WEIGHTS_COMPLETE／LOAD_VERIFIED／INFERENCE_VERIFIED，不复用含混 READY。",
+        "按模型 manifest 验证分片、索引、链接目标、大小／hash与版本；真实短推理校验输出。",
+        "检测程序退出码、版本、插件、路径来源；ffmpeg 用正确参数，常见目录未发现仅表示搜索范围内未发现。",
+        "记录真实可用显存、PS占用、模型峰值；复用已有 cache。"
+      ],
+      "deliverables": [
+        "机器能力 JSON",
+        "模型清单与分级探测",
+        "最小推理证据"
+      ],
+      "acceptance": [
+        "仅 config.json、空 snapshot、缺分片、断符号链接均不 INFERENCE_VERIFIED。",
+        "OCR det＋rec 都要成功识别样例；ASR 必须实际转写，不能代表语音生成。",
+        "给出用户机器软件确切版本与可启动证据。"
+      ],
+      "rollback": "只读探测不改已有缓存；新下载按临时目录完成校验后发布。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "PARTIAL",
+          "evidence": [
+            "r3-readiness-refresh-readiness-20260906"
+          ]
+        },
+        "unit": {
+          "state": "PARTIAL",
+          "evidence": [
+            "r3-readiness-refresh-readiness-20260906"
+          ]
+        },
+        "host_live": {
+          "state": "PARTIAL",
+          "evidence": [
+            "r3-asr-cpu-vad-controlled-20260907",
+            "r3-ocr-preparation-boundary-20260907"
+          ]
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-09",
+      "title": "建立可安装 Python 服务与渐进迁移门面",
+      "priority": "P1",
+      "environment": "仓库",
+      "depends_on": [
+        "R3-02",
+        "R3-05",
+        "R3-06"
+      ],
+      "legacy_ids": [
+        "T04",
+        "T05",
+        "T17",
+        "T18"
+      ],
+      "baseline_existing": "已有 Python核心与锁；package=false 尚无完整产品服务入口。",
+      "implementation": [
+        "建立 installable src 包与 design-lab 命令；用门面调用受测旧 reconstruction，先避免大搬家。",
+        "本地 API 提供项目／导入／任务／事件／产物／修改／取消／导出，SQLite 单机即可。",
+        "Schema 单一来源生成 TS 类型；服务启动检查兼容版本并提供 health。",
+        "第一版锁定 Python3.12，3.11只在受测后声明支持；禁止复制旧算法另起重写。"
+      ],
+      "deliverables": [
+        "可安装包／CLI",
+        "本地 API／OpenAPI",
+        "旧入口转发与模块迁移表"
+      ],
+      "acceptance": [
+        "干净非仓库 CWD 可启动服务，前端不用 sys.path hack。",
+        "一条真实任务贯穿资产→状态→适配器→产物；服务重启任务仍可见。",
+        "旧CLI在兼容期行为一致，迁移逐模块可回退。"
+      ],
+      "rollback": "切回旧门面与 schema版本；使用备份恢复 DB，保留新产物。",
+      "required_axes": [
+        "implementation",
+        "unit"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_REQUIRED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-10",
+      "title": "交付独立工作台与 Codex 适配",
+      "priority": "P1",
+      "environment": "TypeScript＋本地服务",
+      "depends_on": [
+        "R3-07",
+        "R3-09"
+      ],
+      "legacy_ids": [
+        "T04",
+        "T05",
+        "T17"
+      ],
+      "baseline_existing": "已有 OpenDesign 适配资料，不等于自己的前端已可用。",
+      "implementation": [
+        "先交付项目工作页＋环境页：导入、参考／预览、对象、任务进度、修改、导出。",
+        "固定一个 OpenDesign 可复用 UI／连接切片做验证；若耦合过大用 React/Vite 薄页，记录采用决定后停止反复选型。",
+        "Codex App Server／SDK 封装 RuntimeAdapter；已有 Hermes／DSH可选，单任务单 runtime。",
+        "loopback服务校验 token／Origin，素材与指令分离；复用会话授权避免每步重复审批。"
+      ],
+      "deliverables": [
+        "apps/workbench",
+        "RuntimeAdapter",
+        "端到端用户流程与错误提示"
+      ],
+      "acceptance": [
+        "用户无需 CLI 可建项目、导入图、发任务、看真实失败／取消、下载工程。",
+        "拔掉WORK-LAB／ArcheAxis配置仍可用。",
+        "页面的成功状态来自服务证据；刷新和服务重启可恢复进度。"
+      ],
+      "rollback": "保留API契约，UI版本可单独回退；不得迁移或删除用户Agent profile。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-11",
+      "title": "Illustrator 稳定版真实控制闭环",
+      "priority": "P1",
+      "environment": "Windows Illustrator 29.5.1",
+      "depends_on": [
+        "R3-02",
+        "R3-05",
+        "R3-08"
+      ],
+      "legacy_ids": [
+        "T03",
+        "T07"
+      ],
+      "baseline_existing": "已有 JSX 入口，目前仅 createDocument。",
+      "implementation": [
+        "用固定样例比较已有 JSX／adb-mcp 桥的读写稳定性，选一个默认；Beta MCP单独评估不阻塞。",
+        "实现图层、路径、文字、位图、蒙版、AI保存、SVG/PNG导出、重开和对象读回。",
+        "操作绑定文档ID、run和对象ID，批量脚本优先；GUI只补明确缺口。"
+      ],
+      "deliverables": [
+        "可运行宿主桥",
+        "AI工程＋读回JSON＋预览",
+        "版本兼容记录"
+      ],
+      "acceptance": [
+        "文字保持可编辑，路径可逐点修改，蒙版与链接正确。",
+        "保存关闭重开后改标题／颜色再次导出成功。",
+        "拒绝误操作非任务文档；中断后不会创建重复图层。"
+      ],
+      "rollback": "在复制文档／新工程执行，回退桥版本与上个资产版本。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "PARTIAL",
+          "evidence": ["r3-illustrator-ui-smoke-20260907", "r3-illustrator-batch-diagnostic-20260907", "r3-illustrator-recovery-diagnostic-20260907"]
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-12",
+      "title": "Photoshop 分层工程真实控制闭环",
+      "priority": "P1",
+      "environment": "Windows Photoshop26.7",
+      "depends_on": [
+        "R3-02",
+        "R3-05",
+        "R3-08"
+      ],
+      "legacy_ids": [
+        "T03",
+        "T07"
+      ],
+      "baseline_existing": "现UXP明确NOT_EXECUTED，不能标实现完成。",
+      "implementation": [
+        "比较现UXP和一个候选MCP桥固定案例，选默认；实现文件token、modal、文档定位。",
+        "创建真实文本层、像素层、智能对象／蒙版和组；保存PSD、预览、关闭重开、结构读回。",
+        "实现可观察取消与对象更新；不用整张参考图伪装多层成品。"
+      ],
+      "deliverables": [
+        "可安装UXP／选定桥",
+        "分层PSD＋结构读回＋预览",
+        "Windows兼容记录"
+      ],
+      "acceptance": [
+        "至少一项文字、一项蒙版、一项独立图像对象可修改，修改后预览变化符合预期。",
+        "关闭重开图层与链接保留，用户原文档不被意外覆盖。",
+        "任务失败不会被包装成成功。"
+      ],
+      "rollback": "卸载本项目测试桥或回退版本，不更改其他插件；工程按资产版本恢复。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-13",
+      "title": "把现有拆解算法接进真实参考图流程",
+      "priority": "P1",
+      "environment": "Python＋OCR／分割",
+      "depends_on": [
+        "R3-07",
+        "R3-08",
+        "R3-09"
+      ],
+      "legacy_ids": [
+        "T06"
+      ],
+      "baseline_existing": "已有reconstruction／decomposition结构、对象锁与字体字段。",
+      "implementation": [
+        "保留现RIR/拆解契约，通过门面接OCR、区域、语义对象、层级与几何。",
+        "标识可矢量化区、需栅格纹理区、遮挡推断与置信度；允许用户更正字体／文字／区域。",
+        "字体匹配先查本地可用字体；替代字体透明标注，不把所有文字转曲冒充可编辑。"
+      ],
+      "deliverables": [
+        "真实参考图→对象计划",
+        "对象稳定ID与置信信息",
+        "用户更正接口"
+      ],
+      "acceptance": [
+        "用3类参考：文字几何海报、照片＋蒙版作品页、复杂纹理图。",
+        "结构不是预填fixture；关键对象能映射到AI/PS产物。",
+        "未知部分可修正，无法恢复内容不编造为源文件信息。"
+      ],
+      "rollback": "算法版本固定，保留用户修正和旧计划，不覆盖源参考图。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-14",
+      "title": "完成比较、对象局部修复和复刻验收",
+      "priority": "P1",
+      "environment": "工作台＋AI／PS",
+      "depends_on": [
+        "R3-10",
+        "R3-11",
+        "R3-12",
+        "R3-13"
+      ],
+      "legacy_ids": [
+        "T07",
+        "T08"
+      ],
+      "baseline_existing": "已有像素指标／修复与readback相关代码，需贯通真实宿主。",
+      "implementation": [
+        "参考与实际宿主导出统一尺寸／色彩条件；展示叠加、差异与局部错误。",
+        "先检查文字内容／几何／层结构，再辅助像素指标，不用单一SSIM证明可编辑。",
+        "用户选对象发patch，只改受影响对象；保留其他已确认层及版本。"
+      ],
+      "deliverables": [
+        "3类AI/PS案例包",
+        "修前修后对照",
+        "局部更新和重开记录"
+      ],
+      "acceptance": [
+        "两种宿主均能从UI完成导入→制作→至少2次局部修改→保存→重开。",
+        "分开报告视觉误差、结构完整性、可编辑性、人工修正；复杂样例允许有明确剩余误差。",
+        "热修正不重跑全部模型／重建整个文档。"
+      ],
+      "rollback": "一键恢复上一资产版本，保留后续修改为独立分支版本。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-15",
+      "title": "打包首个可正常使用版本",
+      "priority": "P1",
+      "environment": "Windows",
+      "depends_on": [
+        "R3-02",
+        "R3-04",
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-08",
+        "R3-09",
+        "R3-10",
+        "R3-11",
+        "R3-12",
+        "R3-13",
+        "R3-14"
+      ],
+      "legacy_ids": [
+        "T17"
+      ],
+      "baseline_existing": "本任务是第一可用里程碑，不等待整个多媒体全完成。",
+      "implementation": [
+        "提供一个启动入口和安装说明；构建前端静态资源，由本地服务提供。",
+        "复用已有软件和工具链；缺的组件明确安装路径／版本，不一次安装Adobe全家桶。",
+        "完成冷启动、升级前备份、关闭、重启恢复与错误诊断；输出可供个人使用的alpha包。"
+      ],
+      "deliverables": [
+        "Windows可用包",
+        "快速使用说明",
+        "M1验收证据与已知限制"
+      ],
+      "acceptance": [
+        "非开发者按说明启动，不需要切换多个Agent项目。",
+        "M1包含AI和PS各自真实原生工程闭环；没有前端或只有静态截图不得通过。",
+        "给出冷／热启动和案例耗时实测，基线CI通过且无旧根新增项目数据。"
+      ],
+      "rollback": "保留前一安装包和数据备份，应用回滚不删除作品库。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live",
+        "delivery"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-16",
+      "title": "ComfyUI真实任务协议与统一生成入口",
+      "priority": "P1",
+      "environment": "Windows GPU＋Python",
+      "depends_on": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-08",
+        "R3-09"
+      ],
+      "legacy_ids": [
+        "T09"
+      ],
+      "baseline_existing": "已有纯结构comfy_task，尚非真实服务器集成。",
+      "implementation": [
+        "连接真实REST/WebSocket，绑定prompt_id、client_id、历史与输出；完整工作流图、节点版本、模型revision/hash、参数组成指纹。",
+        "产物路径必须归属任务根，验证存在／媒体类型／hash；缓存命中明确标复用。",
+        "取消先请求，收到实际停止证据并对账后终止；处理断线、队列和重启。",
+        "UI按图像／音频／视频能力展示可用profile；一个默认Comfy实例。"
+      ],
+      "deliverables": [
+        "Comfy适配实现",
+        "固定工作流与模型清单",
+        "真实生成证据"
+      ],
+      "acceptance": [
+        "审计越界形式路径／伪指纹被拒绝；工作流拓扑改变必须改变指纹。",
+        "真实生成1图、重复命中缓存、取消运行、断线重连各通过。",
+        "产物进入同项目资产库，不另建重复工程树。"
+      ],
+      "rollback": "固定可回退工作流与节点版本；先停止任务后切换。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "PARTIAL",
+          "evidence": ["r3-comfy-entry-controlled-20260907"]
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-17",
+      "title": "首条语音生成闭环",
+      "priority": "P1",
+      "environment": "本地GPU／CPU",
+      "depends_on": [
+        "R3-10",
+        "R3-16"
+      ],
+      "legacy_ids": [
+        "T10"
+      ],
+      "baseline_existing": "已有ASR探测不能算语音生成。",
+      "implementation": [
+        "选一个本机可行TTS变体，例如Qwen3-TTS候选；先测支持语言和峰值资源。",
+        "文本→WAV→试听→修改一句重生成→资产版本；记录文本与模型版本。"
+      ],
+      "deliverables": [
+        "可运行TTS profile",
+        "音频UI切片",
+        "WAV与修改证据"
+      ],
+      "acceptance": [
+        "输入新的中文／中英混合短句真实合成可播放语音。",
+        "时长、采样率正确，无空白／破音等明显故障；CPU fallback如采用须标耗时。",
+        "ASR可选，不能把识别输出当本任务验收。"
+      ],
+      "rollback": "切换profile版本，保留旧音频与文本。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-18",
+      "title": "音乐生成与音轨资产管理",
+      "priority": "P2",
+      "environment": "本地GPU",
+      "depends_on": [
+        "R3-16",
+        "R3-17"
+      ],
+      "legacy_ids": [
+        "T11"
+      ],
+      "baseline_existing": "模型候选已有调研，本机未通过。",
+      "implementation": [
+        "选一个8GB预算内可验证的ACE-Step等变体；测offload与等待时间。",
+        "生成短音乐、试听、修改提示、导出WAV；若声称分轨则交付真实分轨，否则明确混音。"
+      ],
+      "deliverables": [
+        "音乐profile",
+        "短曲与参数",
+        "轨道／资产版本"
+      ],
+      "acceptance": [
+        "真实生成20—30秒可播放样例并保存版本。",
+        "不伪称混音文件可编辑每件乐器；与语音同项目可组合。"
+      ],
+      "rollback": "保留工作流和种子，失败不覆盖已接受音轨。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-19",
+      "title": "H3本地部署专项可行性与实测",
+      "priority": "P1（该能力启用前）",
+      "environment": "Windows本地GPU",
+      "depends_on": [
+        "R3-07",
+        "R3-08",
+        "R3-16"
+      ],
+      "legacy_ids": [
+        "T12"
+      ],
+      "baseline_existing": "固定本地需求；现有8GB显存不代表已能加载H3。",
+      "implementation": [
+        "固定公开模型revision、推理代码、许可证；区分基础H3和未公开／托管增强部件。",
+        "先核权重总量、RAM/VRAM预算、驱动算子兼容、最低输出参数；仅采用有依据的量化/offload实现。",
+        "满足条件后做最短受支持本地样例，记录加载、推理、峰值内存、输出音视频；不自动替换成云服务。",
+        "无法在现机运行时提供真实错误、资源差额、已验证与未验证替代实验；阻塞H3项而非整个项目。"
+      ],
+      "deliverables": [
+        "H3兼容／资源表",
+        "本地推理日志与输出或具体阻塞证据",
+        "后续硬件／实现选项"
+      ],
+      "acceptance": [
+        "只有本机推理完成且输出校验通过，才LOCAL_INFERENCE_VERIFIED。",
+        "输出缓存、远程API、其他模型视频不能冒充H3本地成功。",
+        "个人非商业条件与资源不足分开报告，不写永久泛化许可阻塞。"
+      ],
+      "rollback": "独立环境隔离，失败卸载临时依赖不破坏PS/Comfy既有链路；保留日志。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "PARTIAL",
+          "evidence": ["r3-h3-pinned-integrity-20260907"]
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-20",
+      "title": "视频组装与Premiere原生工程",
+      "priority": "P2",
+      "environment": "Windows Premiere",
+      "depends_on": [
+        "R3-10",
+        "R3-17",
+        "R3-18"
+      ],
+      "legacy_ids": [
+        "T13"
+      ],
+      "baseline_existing": "可先用已有参考视频或已验证生成视频，不强制等待H3成功。",
+      "implementation": [
+        "核对Premiere版本与可用控制API；生成可修改轨道、字幕、音量、转场与素材链接。",
+        "导出预览，保存原生工程，关闭重开及离线素材重连。",
+        "视频来源包括R3-19通过后的H3或用户已有媒体，保持来源标识。"
+      ],
+      "deliverables": [
+        "原生Premiere工程",
+        "MP4预览",
+        "素材与轨道清单"
+      ],
+      "acceptance": [
+        "20—30秒样片含视频、语音、音乐、字幕，均可在原生工程中修改。",
+        "重开无无故丢媒体；仅FFmpeg合成MP4不能算通过。"
+      ],
+      "rollback": "项目另存版本，媒体引用不可变旧版本，恢复上个工程。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-21",
+      "title": "OpenDesign与MiniMax Design可选软件协作",
+      "priority": "P2",
+      "environment": "本地桌面软件",
+      "depends_on": [
+        "R3-06",
+        "R3-07",
+        "R3-10",
+        "R3-16"
+      ],
+      "legacy_ids": [
+        "T14"
+      ],
+      "baseline_existing": "两者作为完整软件分别处理，不能和模型插件混淆。",
+      "implementation": [
+        "复用现OpenDesign adapter，核验安装、版本、导入／导出／任务回执；双向资产都回同项目。",
+        "MiniMax Design从官网产品实测有无API／CLI／深链／项目格式；有接口用接口，无接口只做明确人工或受限GUI接力。",
+        "不创建第二个总控队列；可选软件不可用不阻塞AI/PS。"
+      ],
+      "deliverables": [
+        "两软件能力矩阵",
+        "各一个真实协作用例或接口阻塞记录",
+        "资产回流映射"
+      ],
+      "acceptance": [
+        "能演示发任务／导出／回收资产才称自动联动。",
+        "MiniMax模型API调用不能冒充MiniMax Design软件控制；人工步骤在UI中可见。"
+      ],
+      "rollback": "禁用可选profile，核心项目与原生资产仍可使用。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-22",
+      "title": "Blender可编辑参考重建",
+      "priority": "P2",
+      "environment": "本地Blender",
+      "depends_on": [
+        "R3-06",
+        "R3-08",
+        "R3-09",
+        "R3-13"
+      ],
+      "legacy_ids": [
+        "T15"
+      ],
+      "baseline_existing": "无需等待音视频完成；三维模型不可从单图唯一恢复。",
+      "implementation": [
+        "先安装／核验一个Blender版本，用原生Python批操作加薄桥。",
+        "从展馆参考重建相机、主体空间、展台、材质、灯光和图文贴图；推断尺寸与隐藏面明确记录。",
+        "输出对象可编辑.blend与同视角渲染，允许替换海报材质。"
+      ],
+      "deliverables": [
+        "展馆样例.blend",
+        "相机／对象清单",
+        "渲染比较与推断标识"
+      ],
+      "acceptance": [
+        "可移动独立对象、改材质、换参考海报并重新渲染。",
+        "至少验证参考视角及一个侧视角；仅单面贴整图不通过三维结构验收。"
+      ],
+      "rollback": "另存blend版本，纹理引用固定资产版本。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-23",
+      "title": "跨媒体依赖更新与统一项目交付",
+      "priority": "P2",
+      "environment": "工作台＋多宿主",
+      "depends_on": [
+        "R3-14",
+        "R3-20",
+        "R3-22"
+      ],
+      "legacy_ids": [
+        "T16"
+      ],
+      "baseline_existing": "范围属于DESIGN-LAB内部，不依赖跨项目联动。",
+      "implementation": [
+        "用AssetVersion依赖图记录海报→展馆贴图→视频镜头及配音/字幕；上游变更计算受影响节点。",
+        "用户确认已接受修改后，只重建失效下游；循环依赖拒绝，失败可停在旧稳定版本。",
+        "打包同项目交付清单、原生工程、预览与相对媒体链接。"
+      ],
+      "deliverables": [
+        "依赖图／失效调度",
+        "海报到展馆到视频案例",
+        "跨媒体项目包"
+      ],
+      "acceptance": [
+        "改海报标题后可追踪更新贴图和相关视频片段，未涉及音轨不重生成。",
+        "同一素材保持身份与版本，导出迁移后可重连。"
+      ],
+      "rollback": "回滚项目版本指针和关联下游，保留生成历史。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "host_live"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "id": "R3-24",
+      "title": "持续发布、仓库体积与长期可维护性",
+      "priority": "P2",
+      "environment": "仓库＋Windows",
+      "depends_on": [
+        "R3-01",
+        "R3-04",
+        "R3-15"
+      ],
+      "legacy_ids": [
+        "T17",
+        "T18",
+        "F10"
+      ],
+      "baseline_existing": "当前树约24.16MiB，多数内容为docs/fixture；未证明需要重写Git历史。",
+      "implementation": [
+        "以可用里程碑生成readiness，绑定确切提交、宿主版本与测试；过期自动降为需复核。",
+        "检查重复大二进制、生成物与源码边界；归档内容按hash引用，不盲删历史，不无依据启用LFS全迁移。",
+        "发布附依赖／许可证清单、升级／回退说明；语言模块迁移继续小步进行。",
+        "收集冷／热启动、批操作、修正、推理和重开耗时，以瓶颈决定优化，不再扩张默认软件清单。"
+      ],
+      "deliverables": [
+        "发布证据索引",
+        "备份／恢复流程",
+        "性能基线",
+        "目录与迁移维护说明"
+      ],
+      "acceptance": [
+        "current数据自动从ledger投影，不保留伪新鲜旧head和旧测试数。",
+        "作品库可备份还原，升级可退；仓库不增长模型和个人运行产物。",
+        "每新增媒体能力独立验收，不以任务数量计算产品百分比。"
+      ],
+      "rollback": "回退应用版本和配置；不重写远端历史，原始归档持续可查。",
+      "required_axes": [
+        "implementation",
+        "unit",
+        "delivery"
+      ],
+      "axes": {
+        "implementation": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "unit": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        },
+        "host_live": {
+          "state": "NOT_REQUIRED",
+          "evidence": []
+        },
+        "delivery": {
+          "state": "NOT_EXECUTED",
+          "evidence": []
+        }
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "r3-current-entry-refresh-20260907",
+      "task_ids": [
+        "R3-01",
+        "R3-02"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T20:54:44.2920300Z",
+      "software": {
+        "os": "Windows",
+        "python": "3.13.14"
+      },
+      "subject_files": {
+        ".github/workflows/canonical-verify.yml": "ca9d33b5d244307c908c60fdd39cfc5288016dd69916d634ed3d5f5b654ef08a",
+        ".project-local/task-artifacts/normalization-20260907/verify.py": "53d5c893032afc697d4fb39b4be97d7c942b4af6bec59e7622a4053ee4d1cbc5",
+        ".project/manifest.yaml": "ecef8c99f3f2a94cfbb1f0191aa4c9f8065baa6237ed729d1a2c6d5644334ce9",
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        "AGENTS.md": "9fa02113ad3da7f5bdbb5900af154ce6b1cab340520c76904d4c309cfa818574",
+        "design-lab/schemas/task-ledger-r3.schema.json": "044f7cde2ccf893d21fad287b74ff0b56eca401c4e534a157d7f979603187529",
+        "design-lab/tests/test_current_reporting.py": "bea71321adfdcea62a99527851f44287832845c4f73120ff5b600d2a9a23e355",
+        "design-lab/tests/test_project_paths.py": "3a51537d560e46a20e3f9ab983da73ab81d92764a286f1661c6d274d83bbc8d5",
+        "docs/decisions/R3-CURRENT-ENTRY-REFRESH-2026-09-07.md": "4899fe2185e859335004c50943ca0f39a38611ed063644f0351bd36af6f32c8a",
+        "docs/history/taskpacks/r3-tasks-2026-09-06.json": "fd042fb4259c2fd06edbf9eea715ba03c0c869aeedbc0767270bac25e6e7a272",
+        "docs/LOCAL_ENVIRONMENT.md": "77b7c8b19d67a804e8b7ea3c1537ce2cd8fe32f2da8cdbbfa37171792106a28f",
+        "docs/taskpacks/DESIGN-LAB-CLOUD-REAUDIT-TASKPACK-2026-09-06.md": "3d6edf1a00f4f4f7eb19005a2acba2c73bd0dc71a6d2ec5ba9ed5ae689c6454c",
+        "docs/taskpacks/DESIGN-LAB-GPT-REMAINING-2026-09-06.md": "c340ea26a68c9b11e25035b8eb53e5bc2974c77db98f36e0c6c6ad2d2e29220a",
+        "README.md": "22122372cdcef32193c2fd4228e037f9a5ee43c77f29a99c653880dc734e8980",
+        "scripts/design_lab_doctor.py": "7054b9b56f8b45c3132f074cfb021a2f92b61a1e24ce55d91bff781a58fcda91",
+        "scripts/generate_current_reports.py": "2b8063c7f9a14e4397e6838165844fe5ff696c7b418a269096619785207b5a30",
+        "scripts/generate_project_status.py": "c6aa21cf378821d8ad57d674a00c9ad49eb08d03bb1e98a1f29d1046803fa339",
+        "src/design_lab/governance/__init__.py": "2ca2ae98720f3602b1f368d5c0c9d26cd7c2409090e42a6c9737a29b44ef4968",
+        "src/design_lab/governance/reporting.py": "3cb0c3aea7f0719808f7c0d14912e8ac1edb997b4c95e9410c6c3f60d283f98f",
+        "src/design_lab/runtime/doctor.py": "b18ac51f08def6f131cd19ec7a63660877228cba4f694a326d1aaa10b5fdae69",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0"
+      },
+      "artifacts": [
+        {
+          "sha256": "4e0a7251a6f7ba510e1833e39df88c6f553022ae08d10bc742729e523ca668e5",
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T205320957684Z/results.json"
+        },
+        {
+          "sha256": "9568fb37d2f4a29808721273de50bfb8b2026da1b1bd500f114824b62dc096b4",
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T205320957684Z/paths.log"
+        },
+        {
+          "sha256": "9f9534a64cab1ad96d71da53b63386c3cf2b49d1675bedf6dfcdc33c3d4f1b17",
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T205320957684Z/reporting.log"
+        },
+        {
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483",
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T205320957684Z/license.log"
+        },
+        {
+          "sha256": "4d96412b58dabdc52db8cc45e27e3af42d92bfbc25f1e7cce01ea45f08ce1f34",
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T205320957684Z/doctor-paths.log"
+        },
+        {
+          "sha256": "69dfdd21307c0d4e3b574e92b5614c3e4b23fa97312aef723a0e684de8e4de56",
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T205320957684Z/entry-document-readback.json"
+        }
+      ],
+      "note": "Scoped current-entry/path regression: 16 path and 24 reporting tests PASS; license and doctor paths PASS. Corrected stale ASR/H3/Comfy/Adobe handoff claims with existing receipts, 25 relative links and 6 receipt hash readbacks. Sources unchanged during checks; DP originals preserved. Unified gate separately FAILED 2 of 49 due to runtime JSON scanning, recorded under r3-visual-quality-runtime-scan-failure-20260907. No new host/model/full-Python/CI execution. Old receipts not rehashed. See docs/decisions/R3-CURRENT-ENTRY-REFRESH-2026-09-07.md."
+    },
+    {
+      "id": "r3-visual-quality-runtime-scan-failure-20260907",
+      "task_ids": [
+        "R3-04"
+      ],
+      "kind": "local_test",
+      "outcome": "FAIL",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T20:54:44.2920300Z",
+      "software": {
+        "os": "Windows",
+        "python": "3.13.14"
+      },
+      "subject_files": {
+        "design-lab/scripts/verify_visual_quality_v21.py": "fa187c3a87eee7f48130b91c0f841371d294f9385048be980452de0ad09ed210",
+        "integrations/hosts/open-design/verifier/verify_open_design_host_adapter.py": "4edb8cdbf11bb09e3fac4755a2ae6f06fb593d6ee71d7ac8f9aef0c1d539450c",
+        "design-lab/scripts/verify_design_lab.py": "df448da252254ff1a5c31f38fa25ad196a12ba4a3327919284de1870b5f13d5c",
+        "docs/decisions/R3-CURRENT-ENTRY-REFRESH-2026-09-07.md": "4899fe2185e859335004c50943ca0f39a38611ed063644f0351bd36af6f32c8a"
+      },
+      "artifacts": [
+        {
+          "sha256": "4e0a7251a6f7ba510e1833e39df88c6f553022ae08d10bc742729e523ca668e5",
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T205320957684Z/results.json"
+        },
+        {
+          "sha256": "c1ea75426abd215530590aced6b0331e8756044b7a090af3d88ca3b6c74102cf",
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T205320957684Z/unified.log"
+        }
+      ],
+      "note": "Actual 49-gate aggregate: 47 PASS / 2 FAIL. Unbounded ROOT.rglob JSON scan parsed project-local Paddle dependency tile_config data as repository JSON (18 Extra data errors); failure also propagates through Open Design secondary verifier. Runtime environment retained; no vendor file edits/deletions. Scan-boundary repair pending design confirmation; do not repeat this known broad scan unchanged. Scope is verifier boundary regression, not model corruption or host launch failure."
+    },
+    {
+      "id": "r3-illustrator-recovery-diagnostic-20260907",
+      "task_ids": [
+        "R3-11"
+      ],
+      "kind": "host_live",
+      "outcome": "PARTIAL",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T20:46:50Z",
+      "software": {
+        "host": "Adobe Illustrator 29.5.1",
+        "control": "bundled @oai/sky menu dispatch to local ExtendScript",
+        "python": "3.13.14",
+        "os": "Windows"
+      },
+      "subject_files": {
+        ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run.jsx": "925a8a192a6b3c9cbd59e131e39bd27dcc66b6405a1cb31198b9403706111de6",
+        ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/verify.py": "265a25ae9b985d2eb20a70e67a78c2105c17b5f1960e98d68d1e0f3e07fd6c7b",
+        "integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx": "f2ba20d98479cca301c47420f6d6dd30b4ce4d8166a429099191b30607ef4cd1",
+        "docs/decisions/R3-ILLUSTRATOR-RECOVERY-AUDIT-2026-09-07.md": "436573c0cb5e68cbc17d6b004bdadc4eba8603aefd3e14990d9d75b5ab77b0c4"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/1-start.json",
+          "sha256": "478ceffbfdd82c0950144c7c9009aca9e89c096dc38888ec03a9579217e74b99"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/10-restored.json",
+          "sha256": "927060dbed56514cc32b6542cb1731886426c28418d0bae97956e48b4e30af6a"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/11-sentinel-after.json",
+          "sha256": "9acdc38061ffd1c91b07782bcee4a5fa8cf5677b4ce9f12412012c593d24458e"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/12-result.json",
+          "sha256": "36dfa3e0ecb7b59c071729cf87ecf3f3a5195ef45385b7c4a3b10a3c4dc0c4bf"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/2-production-validator.json",
+          "sha256": "c0445bffda0ac80f631a9954dc8b9d8f2601ece8efc9f449b9331ee353230e52"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/3-sentinel-before.json",
+          "sha256": "89c0fa3fed6bc0d2d7547e32b08702cb42c44bef4a520297ed13e2c0a0f2b746"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/4-baseline.json",
+          "sha256": "93c31513e8affe43336c37e4424ef78000bbac6ad4858c5d7c241ba1dfc4a786"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/5-wrong-document.json",
+          "sha256": "5cdfbb8ca50ccb6fa3cfef29ed3e315ee7a8f394c7905d5f82fd8e6736b3662c"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/6-interrupted.json",
+          "sha256": "6de310c70171c730335013d02f308a6fda9d0c397889bad3a70eed762d15d707"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/7-reopened-interruption.json",
+          "sha256": "0b45400f05bb95d91ac65a635349667d8c68082035adb2975bcb7e88bfbec26c"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/8-recovered.json",
+          "sha256": "92177660b75e8c50d1b776aece3bba93e57985beb48ad4215d914707bb7febcb"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/9-retried.json",
+          "sha256": "0649995eb80256e4466f5fd64d9ec2cef4069dba728bce8f34258bb63b32a2e1"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/baseline.ai",
+          "sha256": "ecc22399d5da34ec882e4d9f78852f98aa8b90c5559e0ce84cb9e5432954c93b"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/baseline.png",
+          "sha256": "9c90fc6c7cfb887fb9d37fe3bc3089f800d15758841c50b1ee14dcff2904cc6e"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/independent-20260906T204650558825Z.json",
+          "sha256": "91f10fcbe755e61e7e00230e75fae01cf6bad3d3fb1ea6f7f923a1fbc5324fe0"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/interrupted.ai",
+          "sha256": "ec868158923fde9525df35f1bb298bcbf8e15a6c0eba53a2c0cad201756580f4"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/recovered.ai",
+          "sha256": "551379b9b6d373f0dd14d40f7b95dc2adcc37191139d370f92a626d4dd1166be"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/recovered.png",
+          "sha256": "a0800ca8e72c1cc6010d80c1e701fe8a68efed40735ac5f54b4d113145fcd601"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/restored.ai",
+          "sha256": "11dd3529f2fc7637b9e8e39b72488b8a603f2f33869cda5b6fadfc62251c7de3"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/restored.png",
+          "sha256": "9c90fc6c7cfb887fb9d37fe3bc3089f800d15758841c50b1ee14dcff2904cc6e"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/retried.ai",
+          "sha256": "8e7515270da8f801a66c015500607d67b3dcd86db72d95e610b2deb97a2b9e84"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/retried.png",
+          "sha256": "a0800ca8e72c1cc6010d80c1e701fe8a68efed40735ac5f54b4d113145fcd601"
+        },
+        {
+          "path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-recovery-v1/run-1788727466747/sentinel.ai",
+          "sha256": "84f9ee0053732c2a5025507651226cea9d6c81e888fafeffc3b78c4761013d28"
+        }
+      ],
+      "note": "Actual synthetic partial-mutation exception, native checkpoint/reopen, point/color/text update, three nonduplicating retries, protected sentinel and immutable-baseline restore. Independent 39 PASS / 1 FAIL: actual production validateJob rejects a valid Windows child path due to mixed separators. Fix pending design confirmation. Not production recovery, OS crash/cancellation, E3, rights/quality approval or delivery. See docs/decisions/R3-ILLUSTRATOR-RECOVERY-AUDIT-2026-09-07.md."
+    },
+    {
+      "kind": "host_live",
+      "software": {
+        "paddleocr": "3.7.0",
+        "os": "Microsoft Windows NT 10.0.26100.0",
+        "paddlepaddle": "3.3.1 CPU",
+        "paddlex": "3.7.2",
+        "python": "3.13.14"
+      },
+      "task_ids": [
+        "R3-02",
+        "R3-08"
+      ],
+      "outcome": "PARTIAL",
+      "id": "r3-ocr-preparation-boundary-20260907",
+      "note": "Official fixed-revision PP-OCRv6 medium det/rec: 8 source files, 139157714 bytes verified. RapidOCR ModelScope URL403 preserved; no bypass. Original native install failed at260-character ModelScope member; identical resolved package versions/hashes installed at215-character shorter project path, pip check PASS. Live Paddle import aborted by project guard at hardcoded user cache mkdir; no OCR model load or det/rec inference. Separate NUL-device false-positive guard denial disclosed. Independent34 readback checks PASS proves source/setup/blocker facts, not OCR or whole-entry qualification. No vendor patch, HOME remap, private cache access, global changes or production trust/profile enablement. R3-02/08 host_live remain PARTIAL; prior ASR/Comfy evidence retained.",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "observed_at": "2026-09-07T04:29:06.1214070+08:00",
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/config.yaml",
+          "sha256": "06623941e188461a0bc263fe16175cb5e5f6f6b01f4387e546d3a741569fc021"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/default_models.yaml",
+          "sha256": "db47df9d6b071721f1633667b41cfef1e40b5d7f09be030aaea8be801ca2f2f5"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/download-config.yaml.log",
+          "sha256": "291fe121b158907b0ca6616dd6425d5930283caead6549ffbae5179d63e4ee18"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/download-default_models.yaml.log",
+          "sha256": "9c9c16c9b8ab6adba81f9953bcf47b0f4bff2a508c42521f9956d13d554df6f4"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/download-LICENSE.source.txt.log",
+          "sha256": "8986d4bab36c1f6bc3855e8ffbcf7b0323c0d447baf4879b1a8752d3f2942aa3"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/download-PP-OCRv6_det_medium.onnx.log",
+          "sha256": "a9e2bd70a5a6eb8836bda792bbd59a902562f7cc72df8bedcaa518c9e702f887"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/download-rapidocr-pypi.json.log",
+          "sha256": "8a1fa2766933cdfc9e7b2db9e681a400fc3e8864252a6fdc21dcd5b3cd4c0518"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/LICENSE.source.txt",
+          "sha256": "3e0af25fdd06aa9586ae97adb00ea927ebe5a3805ac77d2d3a81ce5f55693333"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/preparation.json",
+          "sha256": "011ddc9133a7917b2b56e985aed1666ba633785642d807afecb0d4bc6cd0f4bc"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/20260906T201809209621Z/rapidocr-pypi.json",
+          "sha256": "8ea03fc3442b74b52025c97f5b7c86511e5878ae7230000b2c2255b8c7bfcc92"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det-inference.json.log",
+          "sha256": "bd5f99f00f32f502b439b904e8d608e0acc413080e49f80a1197cdb348980a30"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det-inference.pdiparams.log",
+          "sha256": "0ec2c7f1cafefc9f7bb839c89b728d1e02f8268a745739fc62e0ea923691f320"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det-inference.yml.log",
+          "sha256": "c76ae04c404890027720da109918d0ae01090e65a5786458b52cc28754decd27"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det-metadata.log",
+          "sha256": "38a994444bd851fb94763afd4a484a73feaf7b8f718acc47b17889b0c452e89c"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det-README.md.log",
+          "sha256": "ce006803b1bdd7128ade27e04c0676828e1948658a613ca358e440da77f08a12"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det-upstream.json",
+          "sha256": "8116eca5441a4c2d6ac189d83248f4d1df1da09c15e93d2149e20d1e26915692"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det/inference.json",
+          "sha256": "0f1a7ec35da36173529c7a60238b7f7919e3831929c3f700ad90ad4896adecd5"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det/inference.yml",
+          "sha256": "7298d5ead546584af2504d03355f881ac7a7bc0eb1e282d3e159277c1d0af871"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/det/README.md",
+          "sha256": "59f37b08a9a49aa6c1275e7b0363991353582f4dc7676539a5d2b05aab57e744"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/install-report.json",
+          "sha256": "a0e70b1e320ee44569d32e07ef4d1f7b351adae64f9dbadc8abb4ea831f0f79d"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/install.log",
+          "sha256": "b436db97596762b3657b69e505758eed32ebc4f3f1377340fb21b91ea1debddf"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/blank.png",
+          "sha256": "0277f57ca57a861c99a8a678fe8b4902edb2cce82cec2b3a9366f978782b3343"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/chinese.png",
+          "sha256": "d6e5b0331046a92b3964271de992a20e99c8f5b0f1081e5de78dd50b67510d53"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/commerce.png",
+          "sha256": "4bdaa6e08c31ec3204dc8cfb5220aae174c5866b09bcb55adcb5d30be2ae969a"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/english.png",
+          "sha256": "86bf9ea1996d24518fc31cc332199261dfbdf8517995f6aba22322c3dffc5989"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/error.json",
+          "sha256": "dba0bfeaaeaf324f5405dc6eb824518485ba76cc0432e11e477d0eb8642880c5"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/inverted.png",
+          "sha256": "ffa621e1e2bbfc0e99089f0c94fea036805a3233e9cc4a44912007537f39d3f9"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/protocol.json",
+          "sha256": "2f8724aaca4ced708208bd757d97682bf98b7886833436f6df205ad28db30b98"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/python-boundary.jsonl",
+          "sha256": "fdeceae1dc8a9d7aa8f309d4cae8b10b62442ec69ea28605d6eb9683bd9bbe56"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/live-20260906T202626725459Z/results.json",
+          "sha256": "f4c92c4bc7848a6f3220ad00288d4f51e5cbe0d082ce74301698d96e274fa3c3"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/paddleocr-pypi.json",
+          "sha256": "4c639433fe1162458c51df797e0190b5fa7141b276dc4c3e3da86fce22f25be5"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/paddleocr-pypi.log",
+          "sha256": "cc4a1671ea1b60582da87275dd1d33a4127d50db9e633e4ce4e23fb3dfc129e7"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/paddlepaddle-pypi.json",
+          "sha256": "9c1186f3c68ae0274139d6473ee0373d732b2980570d28a5f255e4e46c54e292"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/paddlepaddle-pypi.log",
+          "sha256": "779c7431531c259faabb321a2d206cc535da61bdc46c51d5ea1d7020377dd3b9"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/paddlex-pypi.json",
+          "sha256": "9cdc2449effa8fc80445798cb74ff81aaf3ac6be1f80a235ed2490cf2eb917f7"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/paddlex-pypi.log",
+          "sha256": "90a0c168b59718dec294ac55e00c126ebd962d087a41ea3fce68c12fee19fc46"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/preparation.json",
+          "sha256": "11b0732b5453fe5fb2fff3c9ade739c13bf1d7344d6f2dcff88c74be9e95d020"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec-inference.json.log",
+          "sha256": "7bd41e4c077e61ad3251f4e760baa3e910ec770bc4a62802e9399870c7f0f06e"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec-inference.pdiparams.log",
+          "sha256": "fbda1b842aacf8d9a19d6e36a5c871ed9581f58fea8294d9b802c4665786d122"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec-inference.yml.log",
+          "sha256": "e582a0ab97ae2b662f4fbd9a67bd35e451bbc4472280cb4b7b63d0bf9bd7ddce"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec-metadata.log",
+          "sha256": "fb37e63482ad4fca4b2a1606bbc2f8f951557351de45e37cb380a3f2f70aaa19"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec-README.md.log",
+          "sha256": "5665c47cbe4320aa7efa7b9ae9a44ad3fbff19016822252f34afa04d37187332"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec-upstream.json",
+          "sha256": "7c37ba6801363fc5a73afcef84185b8f2027523fa869041bd9147e516d936b9e"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec/inference.json",
+          "sha256": "0b2e25e990bd072f1bf77d59d67d508bce6c4bd44af6624e0fb27d6da2cd00e8"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec/inference.yml",
+          "sha256": "991b700facf5b50a7de193468207d5f4255b538dde0d312ae3b7c7a9b6873129"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/rec/README.md",
+          "sha256": "75ff9c4853ed171f36224127805062f9bcd1cfbbcacae3d577344866df74f6d3"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/short-env-20260906T202539513167Z/install-report.json",
+          "sha256": "7a2bf111564b14f7d809708aeed8e1244c0a18b78c6db1ec3d220ebdcdbfda1c"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/short-env-20260906T202539513167Z/install.log",
+          "sha256": "5a3980b069c03794f2518c3469f3c2d028abdfc8ac19392072e288f4bffaba4d"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/short-env-20260906T202539513167Z/pip-check.log",
+          "sha256": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/short-env-20260906T202539513167Z/preparation.json",
+          "sha256": "ffeabae982116dd1b210e5af84e2ba46342aa8f5761268b4f88acc3cdc879c95"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/short-env-20260906T202539513167Z/venv.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/venv.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": ".project-local/task-artifacts/ocr-qualification/paddle-20260906T202022263722Z/verified-20260906T202906121417Z.json",
+          "sha256": "69468f23648e04da16ec89e08e1c8810f3aa40c3a6e138e35e723cc202f0afbc"
+        }
+      ],
+      "subject_files": {
+      "docs/decisions/R3-OCR-PREPARATION-BOUNDARY-2026-09-07.md": "892bd4e71a0b52478a63f9e75b2f07c98c3e97ab19239e3746c52f752d09ba3f",
+        ".project-local/task-artifacts/ocr-qualification/download.ps1": "4143d543e7862ddf6e202c02b96c3a12ba02e1b514950a3ea42d0d22e58ae28d",
+        ".project-local/task-artifacts/ocr-qualification/verify_preparation.py": "5c59ba20b0682bb95b4d100e5ef660a3e5aeb4234eba23c5a41c55d4f6c316cb",
+        ".project-local/task-artifacts/ocr-qualification/download_paddle.ps1": "59c3168ac5d904645b007d2bfea91314508a3e4a53a4d1078c2656f3fc24a821",
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        ".project-local/task-artifacts/ocr-qualification/prepare_paddle.py": "2f458d4245c88ad304052eee340525b911f9c9ad0462c32fa5ad9c4179aaca2d",
+        "design-lab/config/profiles.json": "490aa929c1e61fe1328c1a9d4088d4f137a20a6bcba590b83219ae66f2da4a3c",
+        ".project-local/task-artifacts/ocr-qualification/prepare.py": "81b0642cc9a371613b758a1cfe333131ab43168f8b8a1f57c86afc5ad8e31e80",
+        ".project-local/task-artifacts/ocr-qualification/ocr_live.py": "da5099cf97007866baff0e3e80a6c98a4e5dffc50a0d87641b1f56c5febb3be3",
+        ".project-local/task-artifacts/ocr-qualification/recover_short_environment.py": "9e9838b5b5bec66f301bac05e4636e0f262e7105041b2719d14d1e6ee7327580"
+      },
+      "binding": "WORKTREE_FILES"
+    },
+    {
+      "binding": "WORKTREE_FILES",
+      "subject_files": {
+        ".project-local/task-artifacts/asr-qualification/prepare.py": "2206b8e5b36b9fd8dbe5882fca6f1a78b4284f1b8ac2577045c63b258b2ef608",
+        ".project-local/task-artifacts/asr-qualification/vad_comparison.py": "d49fddc1745aec1b5a15a1110cbe40c76f2d55af57d701c97b26676883a9220d",
+        ".project-local/task-artifacts/asr-qualification/verify_vad_comparison.py": "3d2f8dda9ccc6ee36bd1782e0058573564141a28d73582004e75fc314913c17e",
+        ".project-local/task-artifacts/asr-qualification/synthesize_fixture.ps1": "628b4e00d9a67b5837c40d578832e02e58b3d170308b6762e7ef6ea36f7957c6",
+        "docs/decisions/R3-ASR-CPU-VAD-AUDIT-2026-09-07.md": "08d5d8e73a36eb559a885ee1718d2b9e1087c05e0e44f73e2193e23d4e00c487",
+        "design-lab/config/profiles.json": "490aa929c1e61fe1328c1a9d4088d4f137a20a6bcba590b83219ae66f2da4a3c",
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        ".project-local/task-artifacts/asr-qualification/transcribe.py": "24904935aa5d5596f14e6df5195fab515076c964993660cca8974dc612b20f5b"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/chinese.wav",
+          "sha256": "edb1efb7463e2926b259941efbe0521fec5a491e9226fff6ba376d12ee3f0956"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/create-venv.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/english.wav",
+          "sha256": "201c61adbb375d4db8a90b64ff447b15b8e2c1a4d11c6f1c93d80029b956c316"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/fixture-creation.json",
+          "sha256": "05c3af80ff41541b74860ae79bb4aff4b239204542aea0b6dc4ec26093580176"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/fixtures.json",
+          "sha256": "228e3e69067983b6eca5002bdd333ee7ad5c7348bb6e0e188d57be31b8182717"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/import-preflight.log",
+          "sha256": "d6589b3d99911d3950073ac7f5cd8656c5fefeb0486b8bd2d8f37ccdef654d48"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/inference-20260906T200010211099Z/chinese-result.json",
+          "sha256": "b142907ce57c1bcf6936e00698199dbdd230a3d61710a02302cfea453cedd1ee"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/inference-20260906T200010211099Z/english-result.json",
+          "sha256": "3bcc06e1086f88a54ef83f9c834bcf7eaf795a48f9a1499f8d8a5f97bf60efbb"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/inference-20260906T200010211099Z/invalid.wav",
+          "sha256": "57ec06afecefe0a14d4704b9758870d9bc9d922403738d9ca35dbb520ae52771"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/inference-20260906T200010211099Z/python-boundary.jsonl",
+          "sha256": "3b1958ad32f4e05bd0a89f70c461a80355905acd68a14c328bd86d74ce452870"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/inference-20260906T200010211099Z/results.json",
+          "sha256": "21444b944eba2bfa1c4241b1f2c6821f876015742372ca413cc69764d91786d2"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/inference-20260906T200010211099Z/silence.wav",
+          "sha256": "20eaebffe1816e0ffa6f7f854f5ef4ea80d5349faaf0ce1fec1b713e7fde58fa"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/install-report.json",
+          "sha256": "ef6ebbbc741d528ba8b70f8a8b643e8f0af5baccf8a0a22570a171a58c17e852"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/install.log",
+          "sha256": "eaed7ac486b6aec548b68b879e4af26a5a49e0414a2445ddf49067ef88594751"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/manifest.json",
+          "sha256": "9d0d2ea8b6e3e611d52d0dd44696dcdd7c91594b7854d877f4e2b53560b9f42d"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/pip-check.log",
+          "sha256": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/preparation.json",
+          "sha256": "16de763f46b3d101122da21f6b766a383255e589baeb8bf6e40eaf3af7829054"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/upstream-api.json",
+          "sha256": "f0beadbcfbdcfe68c88cf603b7746d7e3befc3325abe24fffb008ae9f2288a85"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/upstream-config.json",
+          "sha256": "b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/upstream-preprocessor_config.json",
+          "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/upstream-README.md",
+          "sha256": "b3068692728faed23580cce5cd569fc47ff76c690c032b2641ffd5554ea64d8f"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/upstream-tokenizer.json",
+          "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/upstream-vocabulary.json",
+          "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/chinese_gain_0_1.wav",
+          "sha256": "3a87d502c2f88a533ad7753f6733a41bbe65b166008d9eed7e477098b0fa7179"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/chinese_quiet-vad-off.json",
+          "sha256": "30aa59498543f35cda7879c3acbc8778a9a7cbfdee2bd7e68ac91a1fd8f1ac2e"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/chinese_quiet-vad-on.json",
+          "sha256": "43e541cea43701027536691f65c4c36e37f5b7a9a6596db138cda9dda2ca1ee2"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/chinese-vad-off.json",
+          "sha256": "577c187759365e62ae4916f23b9392ec840a5d471ba59313577f0faf6a9dc348"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/chinese-vad-on.json",
+          "sha256": "cf7df5a3b494686b22324a48ccf059cc16d16bd77b153f193bdfdf89e6e9c381"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/english_padded-vad-off.json",
+          "sha256": "61e36dd7ee464708c0fd32daa03e0fd8084c257b0b195c879533a8c35f19538a"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/english_padded-vad-on.json",
+          "sha256": "e189f5ed423d246c88039c139fc95b6bebdb50d0978b507c8cc16ff004e7991b"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/english_padded.wav",
+          "sha256": "8ea00921dac67012fa43d49b9dcab40a7e2cdaa5f540324a497c9ba0e21c632a"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/english-vad-off.json",
+          "sha256": "6c7a865d1bc918a2320d30c746e455c53fcdcb25afda771da54011a3ea6ab928"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/english-vad-on.json",
+          "sha256": "4d9604018b21f711b27b4a72500a6b3099ace1a6657025693ecf0985456fc7be"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/independent-20260906T201031872880Z.json",
+          "sha256": "774b5ac3a5ae8cd146f3d3cac4c872c0cb4a058f864f64de0b9fa9edfdecc58f"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/noise_seed_20260907.wav",
+          "sha256": "1e091407a90780e16b1dc1b10683d63344961994c842e582f18a23ae9ceecea8"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/noise-vad-off.json",
+          "sha256": "f5369e754890614ae2c439c74777196b493c48ecd9a06c93cdeb17240558d04a"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/noise-vad-on.json",
+          "sha256": "ba707068001bf8bfa5232b165a016e4cbdcc8c0fadb0aac09d22253fa2d004df"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/protocol.json",
+          "sha256": "300d435b94bfc2795e7824c6fd7073c636c218adf0e4771dd25d8549059c31a3"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/python-boundary.jsonl",
+          "sha256": "e64a47bb6856a3e60297bf722362b194fa0f6bff11742d6454ae5830975fbfa4"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/results.json",
+          "sha256": "7226c3af84d015de1fd775d1ffa88721f9f3c86276481c37b607ab8b732c98b9"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/silence_en-vad-off.json",
+          "sha256": "e122204899c2cdec8f264b5e1ad8bb5011a214beb1bb59fabc60c839a386d874"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/silence_en-vad-on.json",
+          "sha256": "7aa9428bcfd03d96ad6d06b513eb53af9a576d0fd88457070a3eb01d37652856"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/silence_zh-vad-off.json",
+          "sha256": "6aeeca03b882b2defb1755e746478aaddc5c2dbc054e87d65b3d5303cde3c76b"
+        },
+        {
+          "path": ".project-local/task-artifacts/asr-qualification/20260906T195532284136Z/vad-comparison-20260906T200758490223Z/silence_zh-vad-on.json",
+          "sha256": "73e9f91c92ec9ebee56f4315c493eb3cd41851c4d62bcbe7402426dd937ee50f"
+        }
+      ],
+      "kind": "host_live",
+      "outcome": "PARTIAL",
+      "id": "r3-asr-cpu-vad-controlled-20260907",
+      "software": {
+        "onnxruntime": "1.29.0",
+        "os": "Microsoft Windows NT 10.0.26100.0",
+        "ctranslate2": "4.8.2",
+        "device": "CPU INT8 4 threads",
+        "python": "3.13.14 isolated",
+        "faster_whisper": "1.2.1"
+      },
+      "task_ids": [
+        "R3-08"
+      ],
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "note": "Actual pinned local Whisper CPU load/transcription. Original no-VAD run PARTIAL: English/Chinese pass, silence hallucination retained. Follow-up 7-case A/B (14 transcriptions) reproduces silent en/zh and noise failures without VAD; all 7 VAD-on cases pass with zero normalized WER/CER for speech, both invalid-media controls rejected. Independent readback 195 checks PASS. Five model hashes unchanged, observed Python network/denial count zero; not OS-wide trace. Controlled fixture evidence only: no production ASR integration, GPU, TTS, H3, OCR det+rec, trust/profile or Human Gate approval. R3-08 host_live PARTIAL, not whole-task completion.",
+      "observed_at": "2026-09-07T04:09:00.2729790+08:00"
+    },
+    {
+      "binding": "WORKTREE_FILES",
+      "task_ids": [
+        "R3-02",
+        "R3-16"
+      ],
+      "kind": "host_live",
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/independent-20260906T194359544174Z.json",
+          "sha256": "43ae9f5644cb9aa62853f94790e664c04fbea0160ad71efaf0a3b10ab2c6d692"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/prior-history-after-restart.json",
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/results.json",
+          "sha256": "44956ad25bb8881f47b30916f9627a457909981d04b01c7fd5a336e5adeb6f7f"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-baseline.json",
+          "sha256": "b97ce870b73887f32e61e24b56518d765ee7f681602f56442d0825ef8139e6c3"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-fixture-workflow.json",
+          "sha256": "5d060ccf85885e28501b7d7fb7baaf27b579cfda8633151d1264dcb2ba20e3fb"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-invalid-node.json",
+          "sha256": "cb514a0b39a9f4cf98f836c372c532a42480aaa932b0e4a7a6a30ba0698015d2"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-launch.json",
+          "sha256": "b6290612ba9f5a956fe25211d4b2aab08fed69202523943709bee7dd64d7d267"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-readback.png",
+          "sha256": "b0e49e6fdcd49c416d72513b0af959579be0788ccaed03bd99fab372e7134b2d"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-repeat.json",
+          "sha256": "2258e7713850924e118bda6692f0cd90c81249d216d8a5d6414fda90710f86c7"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-server.log",
+          "sha256": "dcdc03d00ddd9bf036feff0b760b0ea749438f323c36254fb36b3cbe782b9c50"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-system-stats.json",
+          "sha256": "88204b87877d1e65fb139c4bf03cd18ff53116002275ce21caa90c88058be0c4"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-1-writes.jsonl",
+          "sha256": "aa767a4c7bb6fdb9a02c75b2a9b70a539f2256fdc3d9699d072dd5c72dc2b50d"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-baseline.json",
+          "sha256": "62fde246c62fc729461337e46045b32b14de375a493de0b7eaad906d71de446e"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-fixture-workflow.json",
+          "sha256": "5d060ccf85885e28501b7d7fb7baaf27b579cfda8633151d1264dcb2ba20e3fb"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-invalid-node.json",
+          "sha256": "cb514a0b39a9f4cf98f836c372c532a42480aaa932b0e4a7a6a30ba0698015d2"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-launch.json",
+          "sha256": "c99d43b58fb078daec05e650a2d05e9296da9b0d8250f047ba5b609341362a9e"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-readback.png",
+          "sha256": "b0e49e6fdcd49c416d72513b0af959579be0788ccaed03bd99fab372e7134b2d"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-repeat.json",
+          "sha256": "c0b91e9b6134d2caaa8f4da934744607113c7cb7e002787a9b28267c03baa373"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-server.log",
+          "sha256": "1fe1e45f2d28b31944e3e882941c7efd7f3024d3bd0f33e60dd6d15b9174f2f8"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-system-stats.json",
+          "sha256": "1f29b16c43ed33c108fc92dd35239a52db3ab6377e4b766daebd10397e2904a9"
+        },
+        {
+          "path": ".project-local/task-artifacts/comfy-normalization/20260906T194131462525Z/round-2-writes.jsonl",
+          "sha256": "59ae363d1529c273c10a038b6e9287fa3d4243a6148a890026b9bbe63448bf2a"
+        }
+      ],
+      "outcome": "PASS",
+      "note": "Scoped model-free E2 host diagnostic: two actual installed ComfyUI processes with repo/foreign CWD, loopback REST+WS submission, prompt/client IDs, exact PNG pixels, explicit cache reuse, reconnect and invalid node rejection. 44 runtime checks and independent 129 readback checks PASS; 41 Python mutation events confined to dedicated run/evidence roots. This is guarded runpy, not raw CLI or OS-wide/native tracing. Both owned processes stopped via terminate after queue drained; not graceful recovery proof. Prior task history ABSENT after restart; persistent project receipt integration remains required. No H3/model inference, running cancellation, production adapter or all-entry qualification. R3-02/16 host_live remain PARTIAL.",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "observed_at": "2026-09-07T03:41:48.160882+08:00",
+      "subject_files": {
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        ".project-local/task-artifacts/comfy-normalization/run_probe.py": "5708c6c9230dc5376e9d68cb389178793a8d69e78246fdcde3add703cebef95e",
+        ".project-local/task-artifacts/comfy-normalization/server_observer.py": "8b6d21471ea20388d8842313a54c31cbe7f4150b3857e554e6e83ac1c04b90da",
+        ".project-local/task-artifacts/comfy-normalization/verify_probe.py": "fe618db1e9886bb5a4dad9b8dc2563ecb01ac6555d97d19ef20a0d1f9636506d",
+        "docs/decisions/R3-COMFY-ENTRY-LIVE-2026-09-07.md": "5e754b17d6aac54cd36e83a89c0347ce81cf397b6a7306f3d8064a16a0578ced"
+      },
+      "software": {
+        "os": "Microsoft Windows NT 10.0.26100.0",
+        "torch": "2.13.0+cu130",
+        "python": "3.13.14 embedded",
+        "comfyui": "0.33.1"
+      },
+      "id": "r3-comfy-entry-controlled-20260907"
+    },
+    {
+      "software": {
+        "gpu": "RTX 5060 compute 12.0",
+        "os": "Microsoft Windows NT 10.0.26100.0",
+        "cuda": "13.0",
+        "torch": "2.13.0+cu130",
+        "python": "3.13.14"
+      },
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "subject_files": {
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        ".project-local/task-artifacts/normalization-20260907/verify_h3_sources.py": "2f9f66bc76c0392208ee9e690552b8eff982ad2742e69ed778234909b10ac28f",
+        "docs/decisions/R3-READBACK-AND-H3-PREFLIGHT-2026-09-07.md": "0c6c3186c5a7cdbdd0b96c4ec2a89c0e36e7700078262013521e53434273e648",
+        "design-lab/config/profiles.json": "490aa929c1e61fe1328c1a9d4088d4f137a20a6bcba590b83219ae66f2da4a3c",
+        ".project-local/task-artifacts/normalization-20260907/capture_h3_license.py": "a6f12c2ccbf91757adbb2513d3a6e580806c55652a90970a9407a784d4f6fce9"
+      },
+      "outcome": "PASS",
+      "binding": "WORKTREE_FILES",
+      "id": "r3-h3-pinned-integrity-20260907",
+      "task_ids": [
+        "R3-19"
+      ],
+      "observed_at": "2026-09-07T03:30:55.022942+08:00",
+      "note": "Four existing H3 components fully hashed: 42470585471 bytes match Comfy-Org fixed revision 4cc1d817b6184899b41293954329f576cb5ae86b. Existing embedded Python imports Torch and queries CUDA successfully. Scope is source integrity and basic runtime preflight only; not complete node/operator qualification, model load, inference, peak resources or media output. No profile/trust enablement or license approval. R3-19 implementation preparation PARTIAL; unit and host_live NOT_EXECUTED. Photoshop GUI launch errors separately documented, not a product test failure.",
+      "artifacts": [
+        {
+          "sha256": "a4764cbbb8e6e77cedd38000dfd8643caa48ea2b1c5d38d17aa3d1851c274d19",
+          "path": ".project-local/task-artifacts/h3-qualification/20260906T193014699719Z/results.json"
+        },
+        {
+          "sha256": "51a7a54f452d962a5d72c52c9002c6e0d73a98b32ead16183bb865437052d9e3",
+          "path": ".project-local/task-artifacts/h3-qualification/20260906T193014699719Z/upstream-metadata.json"
+        },
+        {
+          "sha256": "85e1b393d4bd4f00ff0d9bd9ecd92e8ae3fa595cf33af08ba458f22a85bd1ee2",
+          "path": ".project-local/task-artifacts/h3-qualification/20260906T193014699719Z/embedded-runtime.json"
+        },
+        {
+          "sha256": "bcf5593442cba8c4d37fae9903fecaa0c159ceabd02aad45ae8c28cbd0518cb1",
+          "path": ".project-local/task-artifacts/h3-qualification/license-20260906T193212972936Z/results.json"
+        },
+        {
+          "sha256": "59b99642b95ea21630e311198ddbfffbfe05aadba0c2f5d884cbdf4efcc90f44",
+          "path": ".project-local/task-artifacts/h3-qualification/license-20260906T193212972936Z/LICENSE.source.txt"
+        }
+      ],
+      "kind": "local_test"
+    },
+    {
+      "observed_at": "2026-09-07T03:24:44.216565+08:00",
+      "kind": "local_test",
+      "note": "Fresh post-document verification: 85 targeted tests, zero skipped, Comfy policy and license gates PASS; current source hashes match previous terminal full 756 tests (755 PASS, 1 skipped), unified 49 PASS and startup/exception probes. Earlier full tests were not rerun or re-timestamped. Comfy gate examines historical evidence, not new inference. Only project test-entry environment and documentation slice; no all-entry/native scratch, host, Python 3.12, Linux, CI or delivery qualification. R3-02/04 remain PARTIAL.",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "id": "r3-test-entry-handoff-20260907",
+      "subject_files": {
+        "scripts/README.md": "1fc60d8341d8cc2185a1b6b4b0ad1334324c10db9522c16fd30e11b6ba7501fe",
+        "integrations/hosts/adobe/rights-and-provider-policy.md": "2ec09f019f98f32b4c87fecfa03d12e905edb1498397d069d3838080bdbf5ab9",
+        "integrations/hosts/adobe/evidence/README.md": "70baf026a88d4aa91bc82b398897cece1ae53f815ab7077c1491f8da552522fb",
+        "integrations/generators/comfyui/rights-and-provider-policy.md": "98bd1227ac4ba6f12789ae1ff27eaebc4c936710443c6932e47cea03cd8b93de",
+        "integrations/generators/minimax-h3/rights-and-provider-policy.md": "fbdff9adb4b00f571653d0cd583a86d8ba0325a52f0e9ff0cc5a5c9a42920553",
+        "docs/decisions/R3-TEST-ENTRY-ENVIRONMENT-2026-09-07.md": "306386a7719945e6b437cff3615f6b0188edb90d4b08ec9d5612ee00a59853b7",
+        "docs/history/r3-audit-inputs-2026-09-06/README.md": "819018a8d483883b2c4293def10f3f19c765da8f5be6ba56e29e750e73ba5296",
+        "design-lab/scripts/verify_comfyui_gate.py": "3f19a222203b5ebad0976bb1458ceff0b8fccc4117e9a9e21d497a8647315641",
+        "design-lab/tests/test_verifier_internals.py": "0171797d8ceddd49918d3354ce4458a013f91036260c6f368346f0cfb2b0f792",
+        "design-lab/scripts/verify_license_coverage.py": "0b46af58a1896e9c23dbf4f88f60bd6d20a7e2f324b82f112916e4e4b0f61cc3",
+        "scripts/run_python_tests.py": "c1127e1ebe16bcfe7b13b9d5571e93ef346c51717fcf4d3fd8a46d4ad84d532c",
+        "design-lab/scripts/run_test_isolation.py": "73b1da257b785e06a120b3748a4db4dca23c6cfe77687c36f4f097526d22318c",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        "src/design_lab/runtime/test_environment.py": "c59f6b0d15ed2fa44fd386ad3cce8c540e24be0e7a6644fc81f9e99c6a2258e8",
+        "design-lab/tests/test_test_entry_environment.py": "56c66fe72c60659589714217c3c987991e4d6ebf801bb2b9e4812e381c9f352d",
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        "src/design_lab/__init__.py": "6d510be0be30265c3e9aadae2974ef7e340e1d715fe470238d98318fef733d29",
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        ".project-local/task-artifacts/test-entry-20260907/verify_handoff.py": "1e39d3755e0abc8b894a369d54b349fb95281f8d1a2878caa2f57984be7029e0"
+      },
+      "task_ids": [
+        "R3-02",
+        "R3-04"
+      ],
+      "outcome": "PASS",
+      "software": {
+        "os": "Microsoft Windows NT 10.0.26100.0",
+        "python": "3.13.14"
+      },
+      "artifacts": [
+        {
+          "sha256": "c10aeefbe4944f61811646c2defa282fdee897721b700e04bb7ec616a3c69d80",
+          "path": ".project-local/task-artifacts/test-entry/handoff-20260906T192318127345Z/results.json"
+        },
+        {
+          "path": ".project-local/task-artifacts/test-entry/full-20260906T185503635278Z/results.json",
+          "sha256": "6ed7627b8338f2c785778b03cc4f974766ca3738955c0a308677f7e0d5b9ebb5"
+        },
+        {
+          "path": ".project-local/task-artifacts/test-entry/green-20260906T185420020280Z/results.json",
+          "sha256": "93e718a7e575e3b06c1c26867078d4164e6232baaeeec381727b0944859c29a8"
+        },
+        {
+          "path": ".project-local/task-artifacts/test-entry/bytecode-20260906T185926550068Z/results.json",
+          "sha256": "40a2ecf02c710427d044358e55fe80da86f7b888f738918a055d52c03c419de5"
+        },
+        {
+          "sha256": "ade2ab05733a933b230d624057a57267a1c16604aa1c2028fcce59b0d667e531",
+          "path": ".project-local/task-artifacts/test-entry/handoff-20260906T192318127345Z/comfy-policy.log"
+        },
+        {
+          "sha256": "322d5e85dfde9287a1a69d1cda16ffc75beab2fcbfef5756fd508591498610e5",
+          "path": ".project-local/task-artifacts/test-entry/handoff-20260906T192318127345Z/targeted.log"
+        },
+        {
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483",
+          "path": ".project-local/task-artifacts/test-entry/handoff-20260906T192318127345Z/license.log"
+        },
+        {
+          "sha256": "4361183b416cee7c7fa57d0d3264bfc3ae0c0f1820acb76d39b6834df5575135",
+          "path": ".project-local/task-artifacts/test-entry/full-20260906T185503635278Z/root-suite.log"
+        },
+        {
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78",
+          "path": ".project-local/task-artifacts/test-entry/full-20260906T185503635278Z/unified.log"
+        },
+        {
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483",
+          "path": ".project-local/task-artifacts/test-entry/full-20260906T185503635278Z/license.log"
+        }
+      ],
+      "binding": "WORKTREE_FILES"
+    },
+    {
+      "observed_at": "2026-09-07T03:24:04.160136+08:00",
+      "kind": "local_test",
+      "note": "Append-only public Git locator addendum adds 17 recoverable records. Independent fresh readback: 884 checks PASS, 145 actual blobs, 3 exact commit trees; effective 289 RETRIEVABLE, 4 TRANSPORT_PLACEHOLDER, 243 UNRESOLVED. Original 536/1450 and history baseline bytes unchanged. No private source bodies recovered/copied. history_complete remains false, R3-03 remains PARTIAL. This receipt supersedes the current-axis reference to the older 272-record observation; old receipt and base manifest retained.",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "id": "r3-history-public-overlay-20260907",
+      "subject_files": {
+        "reports/history-baseline.json": "04b00d452e06e7d070ace10750913108cf44e9df07652496c4a3af54323ac6ec",
+        "docs/history/DESIGN-LAB-HISTORY-EVIDENCE-MANIFEST-2026-09-04.csv": "58e54d90757d59eb81e07e6bc329312a962808ebff4fa62ce9ca69f6d49f10d1",
+        "docs/history/DESIGN-LAB-HISTORY-TASK-ID-CROSSWALK-2026-09-04.csv": "74c5b7cc132f626ad839e2a36566af92e650886cffeb4d7d41c290c657aa393c",
+        "docs/history/r3-public-history-locators-2026-09-07.json": "8dc9af048549e0e5575bfeff49c8d7e29ef3b46efc23ec67e51c6a1cee6bf01c",
+        "docs/history/r3-recovery-2026-09-07-public-complete.json": "9deb7aae4f24861017865c382991cad55e3a072c68e24c3224db640593b3ce1b",
+        ".project-local/task-artifacts/normalization-20260907/history-recovery/verify_public_history.py": "2a96ca90939afd038bcd48e794997884d150fbd8c8777db3f0ecb33a7dfc5ce2",
+        "docs/history/r3-audit-inputs-2026-09-06/README.md": "819018a8d483883b2c4293def10f3f19c765da8f5be6ba56e29e750e73ba5296"
+      },
+      "task_ids": [
+        "R3-03"
+      ],
+      "outcome": "PASS",
+      "software": {
+        "os": "Microsoft Windows NT 10.0.26100.0",
+        "python": "3.13.14"
+      },
+      "artifacts": [
+        {
+          "sha256": "6576779f8b190afe6080ae3aac9dffe9c1d7d80397e2d940cdf4871067be6fee",
+          "path": ".project-local/task-artifacts/history-public-git/verified-20260906T192404159811Z/results.json"
+        }
+      ],
+      "binding": "WORKTREE_FILES"
+    },
+    {
+      "observed_at": "2026-09-07T02:46:13.664584+08:00",
+      "task_ids": [
+        "R3-02"
+      ],
+      "outcome": "PASS",
+      "software": {
+        "os": "Windows-11-10.0.26100-SP0",
+        "python": "3.13.14"
+      },
+      "binding": "WORKTREE_FILES",
+      "id": "r3-entry-write-trace-20260907",
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/entry-trace/20260906T184313916756Z/results.json",
+          "sha256": "33e3892128b3feec2be447ef213fcffd8d10b5b27150deae941897a52b333a9a"
+        },
+        {
+          "path": ".project-local/task-artifacts/entry-trace/20260906T184203081358Z/results.json",
+          "sha256": "86be4f77c48235eccd5986f08e718d06475970e259727eb4ad313fbe6c22af13"
+        },
+        {
+          "path": ".project-local/task-artifacts/entry-trace-readback/20260906T184453743620Z/results.json",
+          "sha256": "648c85f97e3c6487aa611d49655ee7bd0bf3dc68bec6809557503888bbb20aaf"
+        },
+        {
+          "path": ".project-local/task-artifacts/entry-trace-readback/20260906T184453743620Z/paths.log",
+          "sha256": "cd044e62854d60026b0349d3eaa44872d720dbc345bd2fe2e57b793ae73bad7b"
+        },
+        {
+          "path": ".project-local/task-artifacts/entry-trace-readback/20260906T184453743620Z/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/entry-trace-readback/20260906T184453743620Z/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        }
+      ],
+      "kind": "local_test",
+      "note": "36 real doctor/reconstruction CLI invocations across two CWDs and configured/override roots; 212 checks plus 111 independent readback checks PASS. 760 Python path events bounded; four retained PNG/SVG pairs identical. Actual cancel/resume, intentional output-hash failure and exact rollback absence verified. Fresh 16 path tests, 49 unified gates and license check PASS. Initial trace tool failed on Windows executable=None; only observer fixed, failed evidence retained. Python audit events are not OS-wide or native child/Adobe scratch tracing. No UI/Agent-private configuration, data migration, semantic decomposition, host-live or delivery qualification; R3-02 stays PARTIAL.",
+      "subject_files": {
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        "design-lab/scripts/reconstruct_design.py": "35f3f29584d918d540f8786354e018b8add2bb2c77fcecc13de693c205ec5a6a",
+        "scripts/design_lab_doctor.py": "7054b9b56f8b45c3132f074cfb021a2f92b61a1e24ce55d91bff781a58fcda91",
+        ".project-local/task-artifacts/entry-trace-20260907/run_trace.py": "d273eda691d47ebf5503c9d791f23fae0e4f05990516dc6faa010a44c457e0f8",
+        ".project-local/task-artifacts/entry-trace-20260907/trace_child.py": "b57cbc779ea55a8344082f281d090216674d2fda6677f640c9812070b5025cc8",
+        "design-lab/tests/test_reconstruction_pipeline.py": "897dcafc4aa6cbfd5c083808970b6dcc9d9f062a8ae0a0b36400678969112a09",
+        "packages/capabilities/reconstruction/__init__.py": "fe4e39ba1cebec6e8cad455bbc86cbefb549a84785d430624a126238e13dceac",
+        "packages/capabilities/reconstruction/adobe_job.py": "cdb6a072867211a9ef9d7d1abdb38b885e146053d78a8e19f2a552f6697930ba",
+        "packages/capabilities/reconstruction/adobe_readback.py": "1198c022781bd0f4f18304091be5149a41a5f8dc09abdc576a8158a683de5c0c",
+        "packages/capabilities/reconstruction/contracts.py": "48a20c9707f32086f4b145947d3d056224948ebeb7e3e066b182399360297d52",
+        "packages/capabilities/reconstruction/evidence.py": "f55e1c816d916b274f784dcdc6fa07fb1541bdb039ed67678f7bbab4d8ee349d",
+        "packages/capabilities/reconstruction/font_match.py": "2b1e46fd0da77c3bd4d26da8ee246ed2925463f9e169dd2a480f2652f5abe1d7",
+        "packages/capabilities/reconstruction/fusion.py": "6f73e067161efa94423198dfbdd51c51d6f349b6e5c9700b25e9130564fe6ab5",
+        "packages/capabilities/reconstruction/geometry.py": "df49b6b3bfaac08586766e026baba7f2ae9751667d7baac14fb2f077371f089c",
+        "packages/capabilities/reconstruction/golden_corpus.py": "e86bfd5879b660d807e62b599ce58f20c302832e1c11465bfb87936bf0b337e2",
+        "packages/capabilities/reconstruction/intake.py": "d075fc1f0c75a3966f6a0be2640429957ccf1b656e953074d6665e50cdf65462",
+        "packages/capabilities/reconstruction/matting.py": "e824e164503257e4037baecdcf3683181b25006af8916c5fff6ef0f20678e377",
+        "packages/capabilities/reconstruction/metrics.py": "d7379d85cf727fc0a8402751e5240ebd7d4d116a22e357e60e47e5b321d1bb88",
+        "packages/capabilities/reconstruction/performance.py": "5fb44e0b6f2dd6485af4599b69483a8e0f834527a12efb37e03e626d1d2f6f6c",
+        "packages/capabilities/reconstruction/pipeline.py": "97abe7d6d395173b4d60b6e67175a14803b332a808c65fb675bc4b0b0ee32c85",
+        "packages/capabilities/reconstruction/qualification.py": "d85c751efa92f51efdbea1d8a42755b5b17ad196e143ec06440bd0cfd90e6393",
+        "packages/capabilities/reconstruction/release.py": "75fa4260e5bc2d3fe23ace89a3f68562700e8ea42556a838d17226797f6cec27",
+        "packages/capabilities/reconstruction/render.py": "471a74564780efef4120131343924ebe498da4da6f1bde3d14bf321b7cccf75f",
+        "packages/capabilities/reconstruction/repair.py": "7cf5c5dcb5872a5cf5f7c1a12f724b9c0d0d05b3cd6d0f9a4d2da5ce0df78a70",
+        "packages/capabilities/reconstruction/runtime_roots.py": "46b1efc88913075073b918ec3fc664636196c662275970fab728db9a54be3642",
+        "packages/capabilities/reconstruction/state.py": "27171b98f0bee289a758531a0a53486a256265d211975657e77789007e7df823",
+        "packages/capabilities/reconstruction/svg.py": "d0878b52c03947a1e1848288c8b1ad6bae9e88af68e9127e8f4ab8ee8d2ca7c6",
+        "packages/capabilities/reconstruction/svg_safety.py": "3476608db1173d0efaa25c057b31dab57de62e63d860a191f4b4dc566fc54833",
+        "packages/capabilities/reconstruction/vector_candidates.py": "befd0dae3e4271bf17da0707896dc9fa048634006f78b3382984a4b1de94e1f5",
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        "src/design_lab/runtime/asset_store.py": "9d66c4389d2c63d8061c93896d81788d669a67cea986dd610c163a5203db177f",
+        "src/design_lab/runtime/attempt_contract.py": "9fbe3377f8fda60f7f08070d84a0d8bb310ecf9c9a5f39dd35b15459d0068035",
+        "src/design_lab/runtime/doctor.py": "b18ac51f08def6f131cd19ec7a63660877228cba4f694a326d1aaa10b5fdae69",
+        "src/design_lab/runtime/job_store.py": "8a9e03ed417827d45abf3b443ca23b23922be09824c7ab7f3758bf0ed9624053",
+        "src/design_lab/runtime/migration_preview.py": "c5be64af8a932a5d23ffae920b9bbb78766ee30f9d7d3a9ea8776b2d954580c0",
+        "src/design_lab/runtime/operation_coordinator.py": "58f5f47df6f4995cd94cf33191e5cb7a261f8b5f204cde0fc722728a21ab4e10",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        "src/design_lab/runtime/profile_resolver.py": "316629cabfbdfcae42fc4bcbc4ef960341215340fe02fb51693b3018ea36062b",
+        "src/design_lab/runtime/state_store.py": "9c4a7562e645f6a9e0fdc8c78b160cc1e2a854167a2c45ae6901dc4e580582ab",
+        "design-lab/config/reconstruction-tools.json": "99c00e1d0be93ed28184f05aed2f11fa66c775a01532d99264a91f07a5705142",
+        "design-lab/tests/fixtures/reconstruction/flat-64.png": "98aae93570f4b8fc9ec1159dc713ff7d280d9eb5220fb5d3ff0b43233769cc5f",
+        ".project-local/task-artifacts/entry-trace-20260907/verify_trace.py": "447c0fab777c3c0ceb1d4cabd7ee23317ba731deb29e0617e65fa67249d05994",
+        "docs/decisions/R3-ENTRY-WRITE-TRACE-2026-09-07.md": "77f8f93f9f9cdeccc0afde335178ea6a7ba323fc62254a45c6484c90b265df99",
+        "design-lab/tests/test_project_paths.py": "3a51537d560e46a20e3f9ab983da73ab81d92764a286f1661c6d274d83bbc8d5"
+      },
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113"
+    },
+    {
+      "id": "r3-history-public-retrieval-20260907",
+      "task_ids": [
+        "R3-03"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-07T02:31:04.03646+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        "design-lab/tests/test_history_baseline_retrieval.py": "c941fbed5e8295ed170e7bc3a31dcf1582d4441ca2eb2b3b7d762f6cba0e95a9",
+        "docs/history/DESIGN-LAB-HISTORY-EVIDENCE-MANIFEST-2026-09-04.csv": "58e54d90757d59eb81e07e6bc329312a962808ebff4fa62ce9ca69f6d49f10d1",
+        "docs/history/DESIGN-LAB-HISTORY-TASK-ID-CROSSWALK-2026-09-04.csv": "74c5b7cc132f626ad839e2a36566af92e650886cffeb4d7d41c290c657aa393c",
+        "docs/history/r3-audit-inputs-2026-09-06/README.md": "1e85465b77e13e0e44650a5f122bca22fdb2eb0d99e412383c053a36adb3647d",
+        "docs/history/r3-audit-inputs-2026-09-06/history-current-tree-coverage.json": "46e2504f51caa61e7287b201da2977946f28324a38f7bc40cf9ebd386489ff96",
+        "docs/history/r3-audit-inputs-2026-09-06/old-new-crosswalk.csv": "a52e0a01e3cd3c89ea6dcc7d818e221676bdea5619a9acfe353dd2df7a942eea",
+        "docs/history/r3-recovery-2026-09-07-public-complete.json": "9deb7aae4f24861017865c382991cad55e3a072c68e24c3224db640593b3ce1b",
+        "docs/history/r3-recovery-2026-09-07.json": "df976a362d34c8b3972db25f5a3c70b9fcd64cdf39a0296dee05560088da03ae",
+        "reports/history-baseline.json": "04b00d452e06e7d070ace10750913108cf44e9df07652496c4a3af54323ac6ec",
+        ".project-local/task-artifacts/normalization-20260907/history-recovery/verify_history.py": "c68f22e5ebbfff9b3d60a58ffdec7eb090b350a0956eca6bfbbf497ca5397875"
+      },
+      "artifacts": [
+        {
+          "sha256": "29d5072886981ace14a401e3f969ceb4c40752b6c30c249c59eb624b1ceddcc0",
+          "path": ".project-local/task-artifacts/r3-history/20260906T182941196213Z/results.json"
+        },
+        {
+          "sha256": "9bea35667f7dae07972da493bf3c09cd40bb270f3487786c552f0901d0adc88b",
+          "path": ".project-local/task-artifacts/r3-history/20260906T182941196213Z/history.log"
+        },
+        {
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78",
+          "path": ".project-local/task-artifacts/r3-history/20260906T182941196213Z/unified.log"
+        },
+        {
+          "sha256": "1788124fc27594dba044fd9e1a1af2892c931c72e8a446513d35ecd94d074f30",
+          "path": ".project-local/task-artifacts/normalization-20260907/history-recovery/restoration-result.json"
+        },
+        {
+          "sha256": "5d950a0cbc6bcf26341f159f593e4fe162bb6408304d56f50c0706c4c2bf81ad",
+          "path": ".project-local/task-artifacts/normalization-20260907/history-recovery/reconciliation-public-result.json"
+        },
+        {
+          "sha256": "2251fc84cb20b422af283a35b338ed2e8f737d340bdcc909d61c882a2c43f988",
+          "path": ".project-local/task-artifacts/r3-history/20260906T182736492145Z/results.json"
+        }
+      ],
+      "note": "Scoped PASS: restored two reviewed public ZIP metadata indexes with exact size/SHA256; append-only 536-record manifest retains 272 retrievable records from 136 actually read public Git blobs, 4 transport placeholders, 260 unresolved. 8 targeted tests, 49 unified gates and license gate passed with unchanged bound sources. Initial harness omitted child TEMP/TMP directory, causing stderr warning and 4 CLI assertions; failed run retained, corrected environment rerun passed without changing product assertions. No old-commit/private-archive search, original conversation reconstruction, whole-history completion, host or delivery claim. history_complete remains false; see docs/history/r3-audit-inputs-2026-09-06/README.md. Root .gitattributes observation is in the run report/attributes.log, not a source-freshness claim for that root file."
+    },
+    {
+      "id": "r3-illustrator-batch-diagnostic-20260907",
+      "task_ids": ["R3-11"],
+      "kind": "host_live",
+      "outcome": "PARTIAL",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T18:13:55Z",
+      "software": {"host": "Adobe Illustrator 29.5.1", "os": "Windows 11", "control": "bundled @oai/sky menu dispatch to local ExtendScript", "python": "3.13.14"},
+      "subject_files": {
+        ".project-local/task-artifacts/adobe-live-20260907/illustrator-batch/run-fixture.jsx": "c520c69b8ccd76d7a44fb7e97a976dd6a5270d087804557ccab9dea2d0ee94c6",
+        ".project-local/task-artifacts/adobe-live-20260907/illustrator-batch/fixture.png": "b957f69c5db42b973beb44d3e7b63de125002d396af99245ecf0cdde83846520",
+        ".project-local/task-artifacts/adobe-live-20260907/illustrator-batch/verify_outputs.py": "b8c9a031d55148ef5d4d0c402f7b0e2e1a34963c25dd88af2a5eb3f025b4ab26",
+        ".project-local/task-artifacts/adobe-live-20260907/illustrator-batch/diagnose_svg_ids.py": "f993029ca40cd20a2edbdca020e72b7c51bb9f48be9844dab000e82a80f62137"
+      },
+      "artifacts": [
+        {"path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-batch/run-1788717978664/17-result.json", "sha256": "471a8369f1d7e30284cb4f796ea68faa3d50dd84c8fd7370683703f746dfcabf"},
+        {"path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-batch/run-1788717978664/independent-verification.json", "sha256": "81c9b811d551c11377ddc52e25d9e9996ae691f568baccb18ca2c7de26d6af9c"},
+        {"path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-batch/run-1788717978664/svg-id-diagnosis.json", "sha256": "bf5c902a7832232865955d54b6ed0cc54ecd0be3872614881ae9c9ebefb1af77"},
+        {"path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-batch/run-1788717978664/repeat-1/restored.ai", "sha256": "12a7950e707a8f8348cecfcd9e1a8fa5df87d70116b4ae73bf9f3bbea9a5a716"}
+      ],
+      "note": "Three actual synthetic create/edit/native-save/reopen/DOM-readback/PNG+SVG-export/backup-restore runs completed in 327.176s. Independent checks 105 PASS, 1 FAIL: raw SVG IDs nondeterministic; in-memory diagnosis confines differences to generated clip IDs/references, originals preserved. DOM and PNG repeatability plus rollback passed. NOT production adapter, interrupted-job recovery, E3, reference reconstruction, publication or Human Gate acceptance. No existing document mutation; prior source.ai hash unchanged. See docs/decisions/R3-ILLUSTRATOR-BATCH-AUDIT-2026-09-07.md."
+    },
+    {
+      "id": "r3-illustrator-ui-smoke-20260907",
+      "task_ids": ["R3-11"],
+      "kind": "host_live",
+      "outcome": "PARTIAL",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T17:52:32Z",
+      "software": {"host": "Adobe Illustrator 2025 29.5.1", "os": "Windows 11 10.0.26100", "control": "bundled @oai/sky window2 UI API"},
+      "subject_files": {
+        ".project-local/task-artifacts/adobe-live-20260907/illustrator-smoke/source.svg": "4c152ab80fd70f7dddbb2c3071059d1bbc5084f79916d0ed0f3c6ebb3cbec5b0"
+      },
+      "artifacts": [
+        {"path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-smoke/source.ai", "sha256": "bd7a05dfd0f4d0b93861fd9ed706c0465c5c27539ba659796a936b057c34398a"},
+        {"path": ".project-local/task-artifacts/adobe-live-20260907/illustrator-smoke/observations.json", "sha256": "f5a9b24ac907a2880c1042897ef7c25cd981a64757f1938fd7ab685b589dafdd"}
+      ],
+      "note": "Actual synthetic SVG import, native AI save, close/reopen and visual Layers observation. Group/text entries retained visibly. Import Tiny clipping warning retained; no structured DOM, actual text edit, preview export, rollback or three-run repeatability yet. This is NOT the existing JSX bridge implementation and NOT E3/R3-11 complete. Human acceptance pending; user documents untouched."
+    },
+    {
+      "id": "r3-normalization-runtime-20260907",
+      "task_ids": [
+        "R3-05",
+        "R3-06"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-07T01:42:43.903669+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        "design-lab/schemas/state/design-lab-state-assets-v1.sql": "e841d37997585fc14efeb708c3ad642dd82332d72b8217bb23e441a79df2c07e",
+        "design-lab/schemas/state/design-lab-state-assets-v2.sql": "ce13458001b3dfdc13bb4c5d00f10088fc212414e3f03a90943c5a3483f1b307",
+        "design-lab/schemas/state/design-lab-state-attempt-v1.sql": "5b633779e4b9a3490cb1aa15bbff919fc466a2e658538aee8e0e71229f0c948c",
+        "design-lab/schemas/state/design-lab-state-attempt-v2.sql": "d13cbfd58860d3990132f6e923d60c02dec5af77a9916e8790394c774117f996",
+        "design-lab/schemas/state/design-lab-state-v1.sql": "12a1c78842c1bf6ecb239c81616a8abc5614018d6d9dd9f2eb832a4499cc655f",
+        "design-lab/tests/test_asset_store.py": "6521b14d97db1f5b682c5b9cd2035ec580756d2018f165b70f744d85a065a296",
+        "design-lab/tests/test_job_store.py": "aac86a8610a914a67e0cff28ea932b24d2d8dd0540f1b8e937bebc1e7247a6e2",
+        "design-lab/tests/test_operation_coordinator.py": "59144ea4a2eb6edbbd01089e3d54b9b21855e10959adf43e485d89db4565f037",
+        "design-lab/tests/test_runtime_asset_safety.py": "ab5f1506834b1940b3c4e64dfb4ea4c9f97ce3afbeb3c70b3e7fc850580a29c2",
+        "design-lab/tests/test_runtime_attempt_safety.py": "7975490361f16ecc4cfab61a1d3d35e597c491dbc8d766d63f2f9e9518470887",
+        "design-lab/tests/test_state_store.py": "b3df15638dc554f0523086bcfb8f2d90dce471d2a28f9e93ce2bca1bb40bf488",
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        "src/design_lab/runtime/asset_store.py": "9d66c4389d2c63d8061c93896d81788d669a67cea986dd610c163a5203db177f",
+        "src/design_lab/runtime/attempt_contract.py": "9fbe3377f8fda60f7f08070d84a0d8bb310ecf9c9a5f39dd35b15459d0068035",
+        "src/design_lab/runtime/job_store.py": "8a9e03ed417827d45abf3b443ca23b23922be09824c7ab7f3758bf0ed9624053",
+        "src/design_lab/runtime/operation_coordinator.py": "58f5f47df6f4995cd94cf33191e5cb7a261f8b5f204cde0fc722728a21ab4e10",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        "src/design_lab/runtime/state_store.py": "9c4a7562e645f6a9e0fdc8c78b160cc1e2a854167a2c45ae6901dc4e580582ab"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T174240133108Z/results.json",
+          "sha256": "c620f250a7f0970f1d3503b1ef52d106f6881675c293e9c651fcff5aae4f3385"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T174240133108Z/runtime.log",
+          "sha256": "f782fe473ed5aa758d3a756979a6aa0f5852de70c40499e412677e0557ac3ac3"
+        }
+      ],
+      "note": "Fresh 62 runtime tests passed without skips after four-root configuration update; before/after hashes match. Prior receipts preserved. Local synthetic runtime/contracts only; no live host, model inference, cloud CI or publication. R3-06 remains dependent on unfinished R3-02."
+    },
+    {
+      "id": "r3-normalization-profiles-20260907",
+      "task_ids": [
+        "R3-07"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-07T01:42:43.903669+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        "src/design_lab/runtime/profile_resolver.py": "316629cabfbdfcae42fc4bcbc4ef960341215340fe02fb51693b3018ea36062b",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        "design-lab/config/profiles.json": "490aa929c1e61fe1328c1a9d4088d4f137a20a6bcba590b83219ae66f2da4a3c",
+        "design-lab/schemas/profile-evidence.schema.json": "60d8e772c82f8daf545f793560b0d394f2e2986214c67099b7859eb4bf3934ac",
+        "design-lab/tests/test_profile_resolver.py": "5cdac044dc8e10b68f03839938d75e2688ce09f504b9542d6adaae0e0b8f91d0",
+        "design-lab/tests/test_profile_evidence.py": "26834385eab6e9a5a3ae7b998ecc661f3cca10c8a0d0348852b542aa1caed02b",
+        "docs/decisions/R3-PROFILE-EVIDENCE-2026-09-06.md": "496ff8c565173ab2c7179d8dd6d41d39eb49bd48229945344524eee2de79f8cb"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T174240133108Z/profiles.log",
+          "sha256": "a8313980b645f4b48614027bc7931450d4a3f268fad46ceddfeb7d16f759c4ba"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T174240133108Z/results.json",
+          "sha256": "c620f250a7f0970f1d3503b1ef52d106f6881675c293e9c651fcff5aae4f3385"
+        }
+      ],
+      "note": "Fresh 29 profile tests passed without skips after four-root configuration update; before/after hashes match. Prior receipts preserved. Local synthetic runtime/contracts only; no live host, model inference, cloud CI or publication. R3-06 remains dependent on unfinished R3-02."
+    },
+    {
+      "id": "r3-normalization-reporting-20260907",
+      "task_ids": [
+        "R3-01"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-07T01:36:49.031953+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/manifest.yaml": "ecef8c99f3f2a94cfbb1f0191aa4c9f8065baa6237ed729d1a2c6d5644334ce9",
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        "AGENTS.md": "9fa02113ad3da7f5bdbb5900af154ce6b1cab340520c76904d4c309cfa818574",
+        "README.md": "22122372cdcef32193c2fd4228e037f9a5ee43c77f29a99c653880dc734e8980",
+        "design-lab/schemas/task-ledger-r3.schema.json": "044f7cde2ccf893d21fad287b74ff0b56eca401c4e534a157d7f979603187529",
+        "design-lab/tests/test_current_reporting.py": "bea71321adfdcea62a99527851f44287832845c4f73120ff5b600d2a9a23e355",
+        "docs/history/taskpacks/r3-tasks-2026-09-06.json": "fd042fb4259c2fd06edbf9eea715ba03c0c869aeedbc0767270bac25e6e7a272",
+        "docs/taskpacks/DESIGN-LAB-CLOUD-REAUDIT-TASKPACK-2026-09-06.md": "3d6edf1a00f4f4f7eb19005a2acba2c73bd0dc71a6d2ec5ba9ed5ae689c6454c",
+        "scripts/generate_current_reports.py": "2b8063c7f9a14e4397e6838165844fe5ff696c7b418a269096619785207b5a30",
+        "scripts/generate_project_status.py": "c6aa21cf378821d8ad57d674a00c9ad49eb08d03bb1e98a1f29d1046803fa339",
+        "src/design_lab/governance/__init__.py": "2ca2ae98720f3602b1f368d5c0c9d26cd7c2409090e42a6c9737a29b44ef4968",
+        "src/design_lab/governance/reporting.py": "3cb0c3aea7f0719808f7c0d14912e8ac1edb997b4c95e9410c6c3f60d283f98f",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        ".github/workflows/canonical-verify.yml": "ca9d33b5d244307c908c60fdd39cfc5288016dd69916d634ed3d5f5b654ef08a",
+        "docs/LOCAL_ENVIRONMENT.md": "f98abbad313780d03c5c1061b29e0b28f70ea95c63a364db4a2d3b847c2852d6"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/results.json",
+          "sha256": "7d751315a8d67a84dde8aefbd336088005121954619a0f39bd136ffada2f5d7a"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/doctor-paths.log",
+          "sha256": "4d96412b58dabdc52db8cc45e27e3af42d92bfbc25f1e7cce01ea45f08ce1f34"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/reporting.log",
+          "sha256": "822034d7d74a2eab77d25a4e771dd1d19ade7ad346d78041e05999add488436f"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/paths.log",
+          "sha256": "6f6d42afb8cc045cd83512dd5ee0249232f06a899b649b52a00e9a846f68ea64"
+        }
+      ],
+      "note": "24 reporting tests PASS, including workflow source mutation and private-path rejection; 16 path tests, 49 unified gates, license and doctor-paths PASS. Fresh frozen source hashes. Earlier full 743-case run is preserved separately, not rerun on this slice. No host or delivery qualification."
+    },
+    {
+      "id": "r3-normalization-paths-20260907",
+      "task_ids": [
+        "R3-02"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-07T01:36:49.031953+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/paths.json": "166dc075bdb26d4313405e03920d83b90ca52fb8c3f6b237c00ce0a25d048896",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        "src/design_lab/runtime/doctor.py": "b18ac51f08def6f131cd19ec7a63660877228cba4f694a326d1aaa10b5fdae69",
+        "scripts/design_lab_doctor.py": "7054b9b56f8b45c3132f074cfb021a2f92b61a1e24ce55d91bff781a58fcda91",
+        "design-lab/tests/test_project_paths.py": "3a51537d560e46a20e3f9ab983da73ab81d92764a286f1661c6d274d83bbc8d5",
+        "docs/LOCAL_ENVIRONMENT.md": "f98abbad313780d03c5c1061b29e0b28f70ea95c63a364db4a2d3b847c2852d6"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/results.json",
+          "sha256": "7d751315a8d67a84dde8aefbd336088005121954619a0f39bd136ffada2f5d7a"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/doctor-paths.log",
+          "sha256": "4d96412b58dabdc52db8cc45e27e3af42d92bfbc25f1e7cce01ea45f08ce1f34"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/reporting.log",
+          "sha256": "822034d7d74a2eab77d25a4e771dd1d19ade7ad346d78041e05999add488436f"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/paths.log",
+          "sha256": "6f6d42afb8cc045cd83512dd5ee0249232f06a899b649b52a00e9a846f68ea64"
+        }
+      ],
+      "note": "16 path tests and --paths diagnostic PASS. Four declared external roots remain read-only; project runtime boundary retained. Resolver/config slice only; full actual entrypoint tracing, migration and host workflows remain incomplete. R3-02 remains PARTIAL."
+    },
+    {
+      "id": "r3-normalization-ci-local-20260907",
+      "task_ids": [
+        "R3-04"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-07T01:36:49.031953+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".github/workflows/canonical-verify.yml": "ca9d33b5d244307c908c60fdd39cfc5288016dd69916d634ed3d5f5b654ef08a",
+        "src/design_lab/governance/reporting.py": "3cb0c3aea7f0719808f7c0d14912e8ac1edb997b4c95e9410c6c3f60d283f98f",
+        "design-lab/tests/test_current_reporting.py": "bea71321adfdcea62a99527851f44287832845c4f73120ff5b600d2a9a23e355"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/renderer-20260906T173900372571Z/results.json",
+          "sha256": "b85c963c29466c6467cd84093e44cb8126c0a0b0d867be5ed22c80f2264fba69"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/results.json",
+          "sha256": "7d751315a8d67a84dde8aefbd336088005121954619a0f39bd136ffada2f5d7a"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/doctor-paths.log",
+          "sha256": "4d96412b58dabdc52db8cc45e27e3af42d92bfbc25f1e7cce01ea45f08ce1f34"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/reporting.log",
+          "sha256": "822034d7d74a2eab77d25a4e771dd1d19ade7ad346d78041e05999add488436f"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/normalization-20260907/20260906T173524875720Z/paths.log",
+          "sha256": "6f6d42afb8cc045cd83512dd5ee0249232f06a899b649b52a00e9a846f68ea64"
+        }
+      ],
+      "note": "Local Bash syntax/checksum command accepts official archive downloaded by PowerShell and rejects corrupted bytes; actual SHA matches upstream. Initial Git Bash curl connection reset preserved separately. 24 reporting tests and 49 local unified gates PASS. No Linux binary execution, clean Linux checkout or exact-SHA CI. R3-04 remains PARTIAL."
+    },
+    {
+      "id": "r3-readiness-refresh-reporting-20260906",
+      "task_ids": [
+        "R3-01"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T11:10:05+00:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/manifest.yaml": "ecef8c99f3f2a94cfbb1f0191aa4c9f8065baa6237ed729d1a2c6d5644334ce9",
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "AGENTS.md": "55e2b85e45705cec91f45c2a794d48ad12d8823a926d52521f0651d727d16414",
+        "README.md": "824c8679b7b8147e6ddc987db9e4ed738cf4ea53580a4c1b1e93087d1a1f5c37",
+        "design-lab/schemas/task-ledger-r3.schema.json": "044f7cde2ccf893d21fad287b74ff0b56eca401c4e534a157d7f979603187529",
+        "design-lab/tests/test_current_reporting.py": "4e3e8e4f178c816ce4c17157e34b1828c3b3a67d64c2483c6bf5776b80847a70",
+        "docs/history/taskpacks/r3-tasks-2026-09-06.json": "fd042fb4259c2fd06edbf9eea715ba03c0c869aeedbc0767270bac25e6e7a272",
+        "docs/taskpacks/DESIGN-LAB-CLOUD-REAUDIT-TASKPACK-2026-09-06.md": "3d6edf1a00f4f4f7eb19005a2acba2c73bd0dc71a6d2ec5ba9ed5ae689c6454c",
+        "scripts/generate_current_reports.py": "2b8063c7f9a14e4397e6838165844fe5ff696c7b418a269096619785207b5a30",
+        "scripts/generate_project_status.py": "c6aa21cf378821d8ad57d674a00c9ad49eb08d03bb1e98a1f29d1046803fa339",
+        "src/design_lab/governance/__init__.py": "2ca2ae98720f3602b1f368d5c0c9d26cd7c2409090e42a6c9737a29b44ef4968",
+        "src/design_lab/governance/reporting.py": "39447d4ba1aaf6962b3b0a01df0cd3473b724e0b2330858181b1cdb33bc4d577",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/results.json",
+          "sha256": "628032d4e9f5dd19d58b3735a71b75a476b0b5d1139bf95c9b067363affd7506"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/focused.log",
+          "sha256": "0856c09b94b34c5afe3dec41aac12cad1234ef6d3e3aa718f846ba1db4cee77d"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        }
+      ],
+      "note": "22 reporting tests passed after central path reparse hardening; no reporting tests skipped."
+    },
+    {
+      "id": "r3-readiness-refresh-runtime-20260906",
+      "task_ids": [
+        "R3-05",
+        "R3-06"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T11:10:05+00:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "design-lab/schemas/state/design-lab-state-assets-v1.sql": "e841d37997585fc14efeb708c3ad642dd82332d72b8217bb23e441a79df2c07e",
+        "design-lab/schemas/state/design-lab-state-assets-v2.sql": "ce13458001b3dfdc13bb4c5d00f10088fc212414e3f03a90943c5a3483f1b307",
+        "design-lab/schemas/state/design-lab-state-attempt-v1.sql": "5b633779e4b9a3490cb1aa15bbff919fc466a2e658538aee8e0e71229f0c948c",
+        "design-lab/schemas/state/design-lab-state-attempt-v2.sql": "d13cbfd58860d3990132f6e923d60c02dec5af77a9916e8790394c774117f996",
+        "design-lab/schemas/state/design-lab-state-v1.sql": "12a1c78842c1bf6ecb239c81616a8abc5614018d6d9dd9f2eb832a4499cc655f",
+        "design-lab/tests/test_asset_store.py": "6521b14d97db1f5b682c5b9cd2035ec580756d2018f165b70f744d85a065a296",
+        "design-lab/tests/test_job_store.py": "aac86a8610a914a67e0cff28ea932b24d2d8dd0540f1b8e937bebc1e7247a6e2",
+        "design-lab/tests/test_operation_coordinator.py": "59144ea4a2eb6edbbd01089e3d54b9b21855e10959adf43e485d89db4565f037",
+        "design-lab/tests/test_runtime_asset_safety.py": "ab5f1506834b1940b3c4e64dfb4ea4c9f97ce3afbeb3c70b3e7fc850580a29c2",
+        "design-lab/tests/test_runtime_attempt_safety.py": "7975490361f16ecc4cfab61a1d3d35e597c491dbc8d766d63f2f9e9518470887",
+        "design-lab/tests/test_state_store.py": "b3df15638dc554f0523086bcfb8f2d90dce471d2a28f9e93ce2bca1bb40bf488",
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        "src/design_lab/runtime/asset_store.py": "9d66c4389d2c63d8061c93896d81788d669a67cea986dd610c163a5203db177f",
+        "src/design_lab/runtime/attempt_contract.py": "9fbe3377f8fda60f7f08070d84a0d8bb310ecf9c9a5f39dd35b15459d0068035",
+        "src/design_lab/runtime/job_store.py": "8a9e03ed417827d45abf3b443ca23b23922be09824c7ab7f3758bf0ed9624053",
+        "src/design_lab/runtime/operation_coordinator.py": "58f5f47df6f4995cd94cf33191e5cb7a261f8b5f204cde0fc722728a21ab4e10",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        "src/design_lab/runtime/state_store.py": "9c4a7562e645f6a9e0fdc8c78b160cc1e2a854167a2c45ae6901dc4e580582ab"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/results.json",
+          "sha256": "628032d4e9f5dd19d58b3735a71b75a476b0b5d1139bf95c9b067363affd7506"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/focused.log",
+          "sha256": "0856c09b94b34c5afe3dec41aac12cad1234ef6d3e3aa718f846ba1db4cee77d"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        }
+      ],
+      "note": "60 runtime persistence/publication tests passed after central path reparse hardening; no runtime tests skipped."
+    },
+    {
+      "id": "r3-readiness-refresh-paths-20260906",
+      "task_ids": [
+        "R3-02"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T11:10:05+00:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "design-lab/config/capability-evidence-index.json": "6dc8201c0b152dea052e9f1260f5da1719358c23c81a2e1612fa26b69013f99a",
+        "design-lab/config/external-assets-index.json": "927c11b404955a0f5870d8397b5d09cf1cd67e24f1527a7949318a0299a5976c",
+        "design-lab/schemas/state/design-lab-state-assets-v1.sql": "e841d37997585fc14efeb708c3ad642dd82332d72b8217bb23e441a79df2c07e",
+        "design-lab/schemas/state/design-lab-state-assets-v2.sql": "ce13458001b3dfdc13bb4c5d00f10088fc212414e3f03a90943c5a3483f1b307",
+        "design-lab/schemas/state/design-lab-state-attempt-v1.sql": "5b633779e4b9a3490cb1aa15bbff919fc466a2e658538aee8e0e71229f0c948c",
+        "design-lab/schemas/state/design-lab-state-attempt-v2.sql": "d13cbfd58860d3990132f6e923d60c02dec5af77a9916e8790394c774117f996",
+        "design-lab/schemas/state/design-lab-state-v1.sql": "12a1c78842c1bf6ecb239c81616a8abc5614018d6d9dd9f2eb832a4499cc655f",
+        "design-lab/scripts/external_asset_intake.py": "3dff917ebeb735326ef98424a07dd94f39aa72c64a40726425e9dd99de8f3f43",
+        "design-lab/scripts/update_evidence_binding.py": "ae28447d2f0a452decc846004d548863c32b1066876b39563068c0606ab6ce38",
+        "design-lab/scripts/upgrade_asset_sidecars.py": "3fb6980eb0e7190eab60396d14dc173841b31254b9a3819cce708553e23420b5",
+        "design-lab/tests/test_asset_store.py": "6521b14d97db1f5b682c5b9cd2035ec580756d2018f165b70f744d85a065a296",
+        "design-lab/tests/test_core_gates.py": "73d7635038dac18cf9c36c97d0da3eb0ca99d8a9f02fc7d47e272a0a3913e862",
+        "design-lab/tests/test_current_reporting.py": "4e3e8e4f178c816ce4c17157e34b1828c3b3a67d64c2483c6bf5776b80847a70",
+        "design-lab/tests/test_evidence_helpers.py": "340dcb1bed8c6a7f1c55519d216ded9b9aaaef1fba7625b93975c91a8264e4c6",
+        "design-lab/tests/test_governance_antidrift.py": "e63370167fead3e5c4b2fff23b74541505aa2dd5794d066f9ec8582ce3b2495e",
+        "design-lab/tests/test_identity_scan_boundary.py": "038633b27aac3540c68dd36c4f82e26ff831d42a27fb1f71b54f821ef427bfff",
+        "design-lab/tests/test_job_store.py": "aac86a8610a914a67e0cff28ea932b24d2d8dd0540f1b8e937bebc1e7247a6e2",
+        "design-lab/tests/test_migration_preview.py": "b75d7e76d738ac43701f425bb6b3ce2b23dd5d6421d27c7161cb1b7389171ce9",
+        "design-lab/tests/test_operation_coordinator.py": "59144ea4a2eb6edbbd01089e3d54b9b21855e10959adf43e485d89db4565f037",
+        "design-lab/tests/test_path_clients.py": "95b4a00e6605b06fc711ab3274f8f9e197b95f59cc17d7a83ce14f6ec0742ead",
+        "design-lab/tests/test_profile_evidence.py": "26834385eab6e9a5a3ae7b998ecc661f3cca10c8a0d0348852b542aa1caed02b",
+        "design-lab/tests/test_profile_resolver.py": "5cdac044dc8e10b68f03839938d75e2688ce09f504b9542d6adaae0e0b8f91d0",
+        "design-lab/tests/test_project_paths.py": "a2d65bcca4f25a0071e3e08077bb4424ca7c382f0e3ba2253e4564874676f72e",
+        "design-lab/tests/test_reconstruction_contracts.py": "03ba8cfab0f8c114c7a1de2bdfe3c3fd92bdf3f826d480ae0e5d7fe2c4e314ff",
+        "design-lab/tests/test_reconstruction_intake.py": "e61056e1df3148c25b54590f31fc7e62d9d354680fc4101247166cbd95e5299b",
+        "design-lab/tests/test_runtime_asset_safety.py": "ab5f1506834b1940b3c4e64dfb4ea4c9f97ce3afbeb3c70b3e7fc850580a29c2",
+        "design-lab/tests/test_runtime_attempt_safety.py": "7975490361f16ecc4cfab61a1d3d35e597c491dbc8d766d63f2f9e9518470887",
+        "design-lab/tests/test_state_store.py": "b3df15638dc554f0523086bcfb8f2d90dce471d2a28f9e93ce2bca1bb40bf488",
+        "docs/decisions/R3-PROJECT-PATHS-2026-09-06.md": "a8b9417ac95aa41e3aa14e01dcc24566469cd62a9487b188e93524392b025e14",
+        "packages/capabilities/reconstruction/contracts.py": "48a20c9707f32086f4b145947d3d056224948ebeb7e3e066b182399360297d52",
+        "packages/capabilities/reconstruction/runtime_roots.py": "46b1efc88913075073b918ec3fc664636196c662275970fab728db9a54be3642",
+        "packages/capabilities/reconstruction/state.py": "27171b98f0bee289a758531a0a53486a256265d211975657e77789007e7df823",
+        "scripts/design_lab_doctor.py": "7054b9b56f8b45c3132f074cfb021a2f92b61a1e24ce55d91bff781a58fcda91",
+        "src/design_lab/governance/reporting.py": "39447d4ba1aaf6962b3b0a01df0cd3473b724e0b2330858181b1cdb33bc4d577",
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        "src/design_lab/runtime/asset_store.py": "9d66c4389d2c63d8061c93896d81788d669a67cea986dd610c163a5203db177f",
+        "src/design_lab/runtime/attempt_contract.py": "9fbe3377f8fda60f7f08070d84a0d8bb310ecf9c9a5f39dd35b15459d0068035",
+        "src/design_lab/runtime/doctor.py": "b18ac51f08def6f131cd19ec7a63660877228cba4f694a326d1aaa10b5fdae69",
+        "src/design_lab/runtime/job_store.py": "8a9e03ed417827d45abf3b443ca23b23922be09824c7ab7f3758bf0ed9624053",
+        "src/design_lab/runtime/migration_preview.py": "c5be64af8a932a5d23ffae920b9bbb78766ee30f9d7d3a9ea8776b2d954580c0",
+        "src/design_lab/runtime/operation_coordinator.py": "58f5f47df6f4995cd94cf33191e5cb7a261f8b5f204cde0fc722728a21ab4e10",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        "src/design_lab/runtime/state_store.py": "9c4a7562e645f6a9e0fdc8c78b160cc1e2a854167a2c45ae6901dc4e580582ab"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/results.json",
+          "sha256": "628032d4e9f5dd19d58b3735a71b75a476b0b5d1139bf95c9b067363affd7506"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/focused.log",
+          "sha256": "0856c09b94b34c5afe3dec41aac12cad1234ef6d3e3aa718f846ba1db4cee77d"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        }
+      ],
+      "note": "Affected path/CLI/reporting/reconstruction regressions and new reparse metadata rejection passed. Scope excludes model native symlink qualification."
+    },
+    {
+      "id": "r3-readiness-refresh-profiles-20260906",
+      "task_ids": [
+        "R3-07"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T11:10:05+00:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        "src/design_lab/runtime/profile_resolver.py": "316629cabfbdfcae42fc4bcbc4ef960341215340fe02fb51693b3018ea36062b",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "design-lab/config/profiles.json": "490aa929c1e61fe1328c1a9d4088d4f137a20a6bcba590b83219ae66f2da4a3c",
+        "design-lab/schemas/profile-evidence.schema.json": "60d8e772c82f8daf545f793560b0d394f2e2986214c67099b7859eb4bf3934ac",
+        "design-lab/tests/test_profile_resolver.py": "5cdac044dc8e10b68f03839938d75e2688ce09f504b9542d6adaae0e0b8f91d0",
+        "design-lab/tests/test_profile_evidence.py": "26834385eab6e9a5a3ae7b998ecc661f3cca10c8a0d0348852b542aa1caed02b",
+        "docs/decisions/R3-PROFILE-EVIDENCE-2026-09-06.md": "496ff8c565173ab2c7179d8dd6d41d39eb49bd48229945344524eee2de79f8cb"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/results.json",
+          "sha256": "628032d4e9f5dd19d58b3735a71b75a476b0b5d1139bf95c9b067363affd7506"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/focused.log",
+          "sha256": "0856c09b94b34c5afe3dec41aac12cad1234ef6d3e3aa718f846ba1db4cee77d"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        }
+      ],
+      "note": "29 profile qualification tests passed after central path reparse hardening; no profile tests skipped."
+    },
+    {
+      "id": "r3-readiness-refresh-readiness-20260906",
+      "task_ids": [
+        "R3-08"
+      ],
+      "kind": "local_test",
+      "outcome": "PARTIAL",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T11:10:05+00:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        "src/design_lab/analysis/model_manifest.py": "0a1b837efaa455b60e443c404fb1bb98f8106d0d35467a640704c204ca2e24f8",
+        "src/design_lab/analysis/model_cache.py": "0e19fe710c3c3c38486fe7400524cadc5e27d6909ca2161cab3fdcf5a911ed7b",
+        "src/design_lab/runtime/doctor.py": "b18ac51f08def6f131cd19ec7a63660877228cba4f694a326d1aaa10b5fdae69",
+        "src/design_lab/runtime/paths.py": "d2fef41d998f15d3fb86b769f11122decf0fc3ccf8e52828708138f4679fd6b0",
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "design-lab/config/model-manifest-trust.json": "fa58a96bfe9ce45e1d35f93b717ea67dd8850244abdb85834ebfeaa455d9d1e0",
+        "design-lab/schemas/model-manifest.schema.json": "6333459345c8ef58966800aa97aefe07dcbbd1c4e966013131eeefb953cdb9f2",
+        "scripts/design_lab_doctor.py": "7054b9b56f8b45c3132f074cfb021a2f92b61a1e24ce55d91bff781a58fcda91",
+        "design-lab/tests/test_model_cache.py": "785a8e8b81356080260e620fce9dcf7d9c0319eec71bde1b21a8bc82ba43d58d",
+        "design-lab/tests/test_model_manifest.py": "4ffb5e90b10b376fe1ca367a711d7d18a236cd210e1ccff5c5a5a9d3e6fd9646",
+        "design-lab/tests/test_doctor.py": "fd59902574dcc23be5c9faad5d7b241d9d152ca7f3e00c6b2835ceff85dde8c1",
+        "design-lab/tests/test_doctor_evidence.py": "09a6ebb07450753774c200ce3532ea2b78432c17aa9f025e87e3649cdc49d803",
+        "docs/decisions/R3-MODEL-READINESS-2026-09-06.md": "9141a4742e36dcb51552e87e452b5e920cb18b0dc00e370ed691f50531ff8322"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/results.json",
+          "sha256": "628032d4e9f5dd19d58b3735a71b75a476b0b5d1139bf95c9b067363affd7506"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/focused.log",
+          "sha256": "0856c09b94b34c5afe3dec41aac12cad1234ef6d3e3aa718f846ba1db4cee77d"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/doctor-live.log",
+          "sha256": "406187677d69d2f8661b2c0a6aa953d045c4af0667678cc0e8f5125ddfde4548"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/model-readiness-final/machine-sample.json",
+          "sha256": "2372c9f02853ca53d0d0badb3b30b008fa6247e6fd3784b5ac93fbe38692ebc2"
+        }
+      ],
+      "note": "Model/cache/doctor slice implemented. Aggregate 281 tests: 280 passed, 1 native symlink integration test NOT EXECUTED due Windows privilege 1314. 49 gates/license passed. Live uv/git/ffmpeg/node version queries passed; GPU memory snapshot captured. Photoshop query exit 1/no result is not qualified process or GPU memory evidence. Real model manifest approval, full weight probe, load, OCR/ASR/H3 inference and model peak memory NOT EXECUTED."
+    },
+    {
+      "id": "r3-profile-reviewed-final-20260906",
+      "task_ids": [
+        "R3-07"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T10:46:39+00:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        "src/design_lab/runtime/profile_resolver.py": "316629cabfbdfcae42fc4bcbc4ef960341215340fe02fb51693b3018ea36062b",
+        "src/design_lab/runtime/paths.py": "15f9f848c178c126a7b3b43944c5200d5abd783df610abf1c82b844591e6f4cb",
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "design-lab/config/profiles.json": "490aa929c1e61fe1328c1a9d4088d4f137a20a6bcba590b83219ae66f2da4a3c",
+        "design-lab/schemas/profile-evidence.schema.json": "60d8e772c82f8daf545f793560b0d394f2e2986214c67099b7859eb4bf3934ac",
+        "design-lab/tests/test_profile_resolver.py": "5cdac044dc8e10b68f03839938d75e2688ce09f504b9542d6adaae0e0b8f91d0",
+        "design-lab/tests/test_profile_evidence.py": "26834385eab6e9a5a3ae7b998ecc661f3cca10c8a0d0348852b542aa1caed02b",
+        "docs/decisions/R3-PROFILE-EVIDENCE-2026-09-06.md": "496ff8c565173ab2c7179d8dd6d41d39eb49bd48229945344524eee2de79f8cb"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/r3-execution/profile-reviewed-final/results.json",
+          "sha256": "92b1cbafc16b76a84e96fbd07d7501da608d1c7510057dadc02d3119197f364d"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/profile-reviewed-final/focused.log",
+          "sha256": "7fe3eefca6ba3ec9ecb45f9922e8ef61377a7c8a30854b72c9678fa6d2ba9ec0"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/profile-reviewed-final/unified.log",
+          "sha256": "bb5537988be00c9023f898d37d4c18bc11c840ba9e1b8c6924af92423df6bb78"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/profile-reviewed-final/license.log",
+          "sha256": "f32a5856455432d7b1b18a9c80a32f5929e6ae54f7bcfa725983ff73547d3483"
+        }
+      ],
+      "note": "29 profile tests within 239 related tests; 49 unified gates and license PASS; unchanged bound sources. Read-only review native-format rejection fixed and regressed; NaN receipt rejected. Synthetic receipts only: no host/GPU execution, legal approval, service integration, CI or publication qualification."
+    },
+    {
+      "id": "r3-reporting-path-clients-final-20260906",
+      "task_ids": [
+        "R3-01"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T17:54:52+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/manifest.yaml": "ecef8c99f3f2a94cfbb1f0191aa4c9f8065baa6237ed729d1a2c6d5644334ce9",
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "AGENTS.md": "55e2b85e45705cec91f45c2a794d48ad12d8823a926d52521f0651d727d16414",
+        "README.md": "824c8679b7b8147e6ddc987db9e4ed738cf4ea53580a4c1b1e93087d1a1f5c37",
+        "design-lab/schemas/task-ledger-r3.schema.json": "044f7cde2ccf893d21fad287b74ff0b56eca401c4e534a157d7f979603187529",
+        "design-lab/tests/test_current_reporting.py": "4e3e8e4f178c816ce4c17157e34b1828c3b3a67d64c2483c6bf5776b80847a70",
+        "docs/history/taskpacks/r3-tasks-2026-09-06.json": "fd042fb4259c2fd06edbf9eea715ba03c0c869aeedbc0767270bac25e6e7a272",
+        "docs/taskpacks/DESIGN-LAB-CLOUD-REAUDIT-TASKPACK-2026-09-06.md": "3d6edf1a00f4f4f7eb19005a2acba2c73bd0dc71a6d2ec5ba9ed5ae689c6454c",
+        "scripts/generate_current_reports.py": "2b8063c7f9a14e4397e6838165844fe5ff696c7b418a269096619785207b5a30",
+        "scripts/generate_project_status.py": "c6aa21cf378821d8ad57d674a00c9ad49eb08d03bb1e98a1f29d1046803fa339",
+        "src/design_lab/governance/__init__.py": "2ca2ae98720f3602b1f368d5c0c9d26cd7c2409090e42a6c9737a29b44ef4968",
+        "src/design_lab/governance/reporting.py": "39447d4ba1aaf6962b3b0a01df0cd3473b724e0b2330858181b1cdb33bc4d577",
+        "src/design_lab/runtime/paths.py": "15f9f848c178c126a7b3b43944c5200d5abd783df610abf1c82b844591e6f4cb"
+      },
+      "artifacts": [
+        {
+          "sha256": "267d379718d40d8d51025090e0a0316a9b61687890f691893b6229164cc44c29",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/results.json"
+        },
+        {
+          "sha256": "4a33f6f66e8b74c6e773ef1db7f8196ae14b64bb2f348b47d3def2bd9dca1713",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/focused.log"
+        },
+        {
+          "sha256": "5b60df85f3f3a0ab89254a8afbb311c70e112d5ffdf6cabc48600cb0225e1635",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/migration-preview.log"
+        }
+      ],
+      "note": "210 combined focused tests, no skips; 49 unified gates and license PASS. Bound sources unchanged. Report staging honors selected roots; old project evidence remains readable. No host/release qualification."
+    },
+    {
+      "id": "r3-runtime-path-clients-final-20260906",
+      "task_ids": [
+        "R3-05",
+        "R3-06"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T17:54:52+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "design-lab/schemas/state/design-lab-state-assets-v1.sql": "e841d37997585fc14efeb708c3ad642dd82332d72b8217bb23e441a79df2c07e",
+        "design-lab/schemas/state/design-lab-state-assets-v2.sql": "ce13458001b3dfdc13bb4c5d00f10088fc212414e3f03a90943c5a3483f1b307",
+        "design-lab/schemas/state/design-lab-state-attempt-v1.sql": "5b633779e4b9a3490cb1aa15bbff919fc466a2e658538aee8e0e71229f0c948c",
+        "design-lab/schemas/state/design-lab-state-attempt-v2.sql": "d13cbfd58860d3990132f6e923d60c02dec5af77a9916e8790394c774117f996",
+        "design-lab/schemas/state/design-lab-state-v1.sql": "12a1c78842c1bf6ecb239c81616a8abc5614018d6d9dd9f2eb832a4499cc655f",
+        "design-lab/tests/test_asset_store.py": "6521b14d97db1f5b682c5b9cd2035ec580756d2018f165b70f744d85a065a296",
+        "design-lab/tests/test_job_store.py": "aac86a8610a914a67e0cff28ea932b24d2d8dd0540f1b8e937bebc1e7247a6e2",
+        "design-lab/tests/test_operation_coordinator.py": "59144ea4a2eb6edbbd01089e3d54b9b21855e10959adf43e485d89db4565f037",
+        "design-lab/tests/test_runtime_asset_safety.py": "ab5f1506834b1940b3c4e64dfb4ea4c9f97ce3afbeb3c70b3e7fc850580a29c2",
+        "design-lab/tests/test_runtime_attempt_safety.py": "7975490361f16ecc4cfab61a1d3d35e597c491dbc8d766d63f2f9e9518470887",
+        "design-lab/tests/test_state_store.py": "b3df15638dc554f0523086bcfb8f2d90dce471d2a28f9e93ce2bca1bb40bf488",
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        "src/design_lab/runtime/asset_store.py": "9d66c4389d2c63d8061c93896d81788d669a67cea986dd610c163a5203db177f",
+        "src/design_lab/runtime/attempt_contract.py": "9fbe3377f8fda60f7f08070d84a0d8bb310ecf9c9a5f39dd35b15459d0068035",
+        "src/design_lab/runtime/job_store.py": "8a9e03ed417827d45abf3b443ca23b23922be09824c7ab7f3758bf0ed9624053",
+        "src/design_lab/runtime/operation_coordinator.py": "58f5f47df6f4995cd94cf33191e5cb7a261f8b5f204cde0fc722728a21ab4e10",
+        "src/design_lab/runtime/paths.py": "15f9f848c178c126a7b3b43944c5200d5abd783df610abf1c82b844591e6f4cb",
+        "src/design_lab/runtime/state_store.py": "9c4a7562e645f6a9e0fdc8c78b160cc1e2a854167a2c45ae6901dc4e580582ab"
+      },
+      "artifacts": [
+        {
+          "sha256": "267d379718d40d8d51025090e0a0316a9b61687890f691893b6229164cc44c29",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/results.json"
+        },
+        {
+          "sha256": "4a33f6f66e8b74c6e773ef1db7f8196ae14b64bb2f348b47d3def2bd9dca1713",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/focused.log"
+        },
+        {
+          "sha256": "5b60df85f3f3a0ab89254a8afbb311c70e112d5ffdf6cabc48600cb0225e1635",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/migration-preview.log"
+        }
+      ],
+      "note": "210 combined focused tests, no skips; 49 unified gates and license PASS. Bound sources unchanged. DB/publication roots enforced; runtime semantics and recovery rechecked. Full task dependencies remain separate. No host/release qualification."
+    },
+    {
+      "id": "r3-path-clients-final-20260906",
+      "task_ids": [
+        "R3-02"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T17:54:52+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "design-lab/config/capability-evidence-index.json": "6dc8201c0b152dea052e9f1260f5da1719358c23c81a2e1612fa26b69013f99a",
+        "design-lab/config/external-assets-index.json": "927c11b404955a0f5870d8397b5d09cf1cd67e24f1527a7949318a0299a5976c",
+        "design-lab/schemas/state/design-lab-state-assets-v1.sql": "e841d37997585fc14efeb708c3ad642dd82332d72b8217bb23e441a79df2c07e",
+        "design-lab/schemas/state/design-lab-state-assets-v2.sql": "ce13458001b3dfdc13bb4c5d00f10088fc212414e3f03a90943c5a3483f1b307",
+        "design-lab/schemas/state/design-lab-state-attempt-v1.sql": "5b633779e4b9a3490cb1aa15bbff919fc466a2e658538aee8e0e71229f0c948c",
+        "design-lab/schemas/state/design-lab-state-attempt-v2.sql": "d13cbfd58860d3990132f6e923d60c02dec5af77a9916e8790394c774117f996",
+        "design-lab/schemas/state/design-lab-state-v1.sql": "12a1c78842c1bf6ecb239c81616a8abc5614018d6d9dd9f2eb832a4499cc655f",
+        "design-lab/scripts/external_asset_intake.py": "3dff917ebeb735326ef98424a07dd94f39aa72c64a40726425e9dd99de8f3f43",
+        "design-lab/scripts/update_evidence_binding.py": "ae28447d2f0a452decc846004d548863c32b1066876b39563068c0606ab6ce38",
+        "design-lab/scripts/upgrade_asset_sidecars.py": "3fb6980eb0e7190eab60396d14dc173841b31254b9a3819cce708553e23420b5",
+        "design-lab/tests/test_asset_store.py": "6521b14d97db1f5b682c5b9cd2035ec580756d2018f165b70f744d85a065a296",
+        "design-lab/tests/test_core_gates.py": "73d7635038dac18cf9c36c97d0da3eb0ca99d8a9f02fc7d47e272a0a3913e862",
+        "design-lab/tests/test_current_reporting.py": "4e3e8e4f178c816ce4c17157e34b1828c3b3a67d64c2483c6bf5776b80847a70",
+        "design-lab/tests/test_evidence_helpers.py": "340dcb1bed8c6a7f1c55519d216ded9b9aaaef1fba7625b93975c91a8264e4c6",
+        "design-lab/tests/test_governance_antidrift.py": "e63370167fead3e5c4b2fff23b74541505aa2dd5794d066f9ec8582ce3b2495e",
+        "design-lab/tests/test_identity_scan_boundary.py": "038633b27aac3540c68dd36c4f82e26ff831d42a27fb1f71b54f821ef427bfff",
+        "design-lab/tests/test_job_store.py": "aac86a8610a914a67e0cff28ea932b24d2d8dd0540f1b8e937bebc1e7247a6e2",
+        "design-lab/tests/test_migration_preview.py": "b75d7e76d738ac43701f425bb6b3ce2b23dd5d6421d27c7161cb1b7389171ce9",
+        "design-lab/tests/test_operation_coordinator.py": "59144ea4a2eb6edbbd01089e3d54b9b21855e10959adf43e485d89db4565f037",
+        "design-lab/tests/test_path_clients.py": "95b4a00e6605b06fc711ab3274f8f9e197b95f59cc17d7a83ce14f6ec0742ead",
+        "design-lab/tests/test_project_paths.py": "e5200dcdf21aded81fc7e18f7fa938ba96281673b6bd0692e9581f56d2f15cf7",
+        "design-lab/tests/test_reconstruction_contracts.py": "03ba8cfab0f8c114c7a1de2bdfe3c3fd92bdf3f826d480ae0e5d7fe2c4e314ff",
+        "design-lab/tests/test_reconstruction_intake.py": "e61056e1df3148c25b54590f31fc7e62d9d354680fc4101247166cbd95e5299b",
+        "design-lab/tests/test_runtime_asset_safety.py": "ab5f1506834b1940b3c4e64dfb4ea4c9f97ce3afbeb3c70b3e7fc850580a29c2",
+        "design-lab/tests/test_runtime_attempt_safety.py": "7975490361f16ecc4cfab61a1d3d35e597c491dbc8d766d63f2f9e9518470887",
+        "design-lab/tests/test_state_store.py": "b3df15638dc554f0523086bcfb8f2d90dce471d2a28f9e93ce2bca1bb40bf488",
+        "docs/decisions/R3-PROJECT-PATHS-2026-09-06.md": "a8b9417ac95aa41e3aa14e01dcc24566469cd62a9487b188e93524392b025e14",
+        "packages/capabilities/reconstruction/contracts.py": "48a20c9707f32086f4b145947d3d056224948ebeb7e3e066b182399360297d52",
+        "packages/capabilities/reconstruction/runtime_roots.py": "46b1efc88913075073b918ec3fc664636196c662275970fab728db9a54be3642",
+        "packages/capabilities/reconstruction/state.py": "27171b98f0bee289a758531a0a53486a256265d211975657e77789007e7df823",
+        "scripts/design_lab_doctor.py": "7054b9b56f8b45c3132f074cfb021a2f92b61a1e24ce55d91bff781a58fcda91",
+        "src/design_lab/governance/reporting.py": "39447d4ba1aaf6962b3b0a01df0cd3473b724e0b2330858181b1cdb33bc4d577",
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        "src/design_lab/runtime/asset_store.py": "9d66c4389d2c63d8061c93896d81788d669a67cea986dd610c163a5203db177f",
+        "src/design_lab/runtime/attempt_contract.py": "9fbe3377f8fda60f7f08070d84a0d8bb310ecf9c9a5f39dd35b15459d0068035",
+        "src/design_lab/runtime/doctor.py": "785b7d11be331670136aff6572da188cd66dfc3550486d1c2a2227ebd80ef8a5",
+        "src/design_lab/runtime/job_store.py": "8a9e03ed417827d45abf3b443ca23b23922be09824c7ab7f3758bf0ed9624053",
+        "src/design_lab/runtime/migration_preview.py": "c5be64af8a932a5d23ffae920b9bbb78766ee30f9d7d3a9ea8776b2d954580c0",
+        "src/design_lab/runtime/operation_coordinator.py": "58f5f47df6f4995cd94cf33191e5cb7a261f8b5f204cde0fc722728a21ab4e10",
+        "src/design_lab/runtime/paths.py": "15f9f848c178c126a7b3b43944c5200d5abd783df610abf1c82b844591e6f4cb",
+        "src/design_lab/runtime/state_store.py": "9c4a7562e645f6a9e0fdc8c78b160cc1e2a854167a2c45ae6901dc4e580582ab"
+      },
+      "artifacts": [
+        {
+          "sha256": "267d379718d40d8d51025090e0a0316a9b61687890f691893b6229164cc44c29",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/results.json"
+        },
+        {
+          "sha256": "4a33f6f66e8b74c6e773ef1db7f8196ae14b64bb2f348b47d3def2bd9dca1713",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/focused.log"
+        },
+        {
+          "sha256": "5b60df85f3f3a0ab89254a8afbb311c70e112d5ffdf6cabc48600cb0225e1635",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/migration-preview.log"
+        }
+      ],
+      "note": "210 combined focused tests, no skips; 49 unified gates and license PASS. Bound sources unchanged. Path callers and explicit-file migration preview tested with synthetic data; no destination created. Actual migration, installed Agent/UI/Adobe traces and service integration remain pending. No host/release qualification."
+    },
+    {
+      "id": "r3-identity-boundary-final-20260906",
+      "task_ids": [
+        "R3-04"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T17:54:52+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        "design-lab/scripts/verify_identity_gate.py": "d317477c3f135afd05318f1554413159ff69324fc8a58877eff110d550c2758b",
+        "design-lab/tests/test_identity_scan_boundary.py": "038633b27aac3540c68dd36c4f82e26ff831d42a27fb1f71b54f821ef427bfff",
+        "design-lab/tests/test_core_gates.py": "73d7635038dac18cf9c36c97d0da3eb0ca99d8a9f02fc7d47e272a0a3913e862"
+      },
+      "artifacts": [
+        {
+          "sha256": "267d379718d40d8d51025090e0a0316a9b61687890f691893b6229164cc44c29",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/results.json"
+        },
+        {
+          "sha256": "4a33f6f66e8b74c6e773ef1db7f8196ae14b64bb2f348b47d3def2bd9dca1713",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/focused.log"
+        },
+        {
+          "sha256": "5b60df85f3f3a0ab89254a8afbb311c70e112d5ffdf6cabc48600cb0225e1635",
+          "path": ".project-local/task-artifacts/r3-execution/path-clients-final/migration-preview.log"
+        }
+      ],
+      "note": "210 combined focused tests, no skips; 49 unified gates and license PASS. Bound sources unchanged. Identity scan prunes ignored/private trees before enumeration; active source and workflows still checked. CI triggers, exact-SHA cloud CI, renderer and Python 3.12 qualification remain pending. No host/release qualification."
+    },
+    {
+      "id": "r3-runtime-refresh-local-20260906",
+      "task_ids": [
+        "R3-05",
+        "R3-06"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T17:30:06+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        "src/design_lab/runtime/attempt_contract.py": "9fbe3377f8fda60f7f08070d84a0d8bb310ecf9c9a5f39dd35b15459d0068035",
+        "src/design_lab/runtime/operation_coordinator.py": "58f5f47df6f4995cd94cf33191e5cb7a261f8b5f204cde0fc722728a21ab4e10",
+        "src/design_lab/runtime/job_store.py": "cd4466a7d828f4f06b9dfb8ea3e440da5395928d9855e9f14e962048ec407639",
+        "src/design_lab/runtime/asset_store.py": "670f3c21ec9bafc39dcef7ac5911e5e98e24f78e1b4f426a2ae98cbdca3a2834",
+        "src/design_lab/runtime/state_store.py": "1da62e6ad07f718f1809c541a34f33f61ae2989217abb1fc4fdb8ddfa8f19c9b",
+        "design-lab/schemas/state/design-lab-state-assets-v1.sql": "e841d37997585fc14efeb708c3ad642dd82332d72b8217bb23e441a79df2c07e",
+        "design-lab/schemas/state/design-lab-state-assets-v2.sql": "ce13458001b3dfdc13bb4c5d00f10088fc212414e3f03a90943c5a3483f1b307",
+        "design-lab/schemas/state/design-lab-state-attempt-v1.sql": "5b633779e4b9a3490cb1aa15bbff919fc466a2e658538aee8e0e71229f0c948c",
+        "design-lab/schemas/state/design-lab-state-attempt-v2.sql": "d13cbfd58860d3990132f6e923d60c02dec5af77a9916e8790394c774117f996",
+        "design-lab/schemas/state/design-lab-state-v1.sql": "12a1c78842c1bf6ecb239c81616a8abc5614018d6d9dd9f2eb832a4499cc655f",
+        "design-lab/tests/test_operation_coordinator.py": "59144ea4a2eb6edbbd01089e3d54b9b21855e10959adf43e485d89db4565f037",
+        "design-lab/tests/test_job_store.py": "3ddb725e173e5df7e198aca09715de0dd3964a242769b3188418f565968a21be",
+        "design-lab/tests/test_asset_store.py": "413df40e7f4797f614b6afe034d747bb44f85fd656d97025844cad6a73a55631",
+        "design-lab/tests/test_runtime_attempt_safety.py": "7975490361f16ecc4cfab61a1d3d35e597c491dbc8d766d63f2f9e9518470887",
+        "design-lab/tests/test_runtime_asset_safety.py": "ab5f1506834b1940b3c4e64dfb4ea4c9f97ce3afbeb3c70b3e7fc850580a29c2"
+      },
+      "artifacts": [
+        {
+          "sha256": "67dd93fef3b4d55da0e99aee4702c0fdae8c0dd158d43aa6288efbae89d7d2be",
+          "path": ".project-local/task-artifacts/r3-execution/runtime-refresh/results.json"
+        },
+        {
+          "sha256": "10234d16dab2c05b36026c734ce888c70ee596e4d60bf45fd5c47b361e7437b6",
+          "path": ".project-local/task-artifacts/r3-execution/runtime-refresh/focused.log"
+        }
+      ],
+      "note": "Fresh 60-test runtime regression: PASS, no skips, bound source hashes unchanged. This receipt binds runtime execution modules and their SQL/tests, not the unrelated doctor/profile modules. Prior receipt preserved as stale. No host/GPU/release evidence."
+    },
+    {
+      "id": "r3-paths-local-20260906",
+      "task_ids": [
+        "R3-02"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T17:28:22+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        ".project/paths.json": "fd55dc61e0e61a5742e9314e6902d77dc44a55292cc4bf090ab8c926c13d6359",
+        "src/design_lab/runtime/paths.py": "238648fc2a4d09b90825ad7166078a363a4c3590fc84c30080a18a887da26664",
+        "src/design_lab/runtime/doctor.py": "dbfab6080532a25139e5084fa3773a9b4dee5c66a9d8b3353bec41c9a6f6fe89",
+        "scripts/design_lab_doctor.py": "7054b9b56f8b45c3132f074cfb021a2f92b61a1e24ce55d91bff781a58fcda91",
+        "packages/capabilities/reconstruction/runtime_roots.py": "46b1efc88913075073b918ec3fc664636196c662275970fab728db9a54be3642",
+        "packages/capabilities/reconstruction/contracts.py": "48a20c9707f32086f4b145947d3d056224948ebeb7e3e066b182399360297d52",
+        "packages/capabilities/reconstruction/state.py": "27171b98f0bee289a758531a0a53486a256265d211975657e77789007e7df823",
+        "design-lab/tests/test_project_paths.py": "e5200dcdf21aded81fc7e18f7fa938ba96281673b6bd0692e9581f56d2f15cf7",
+        "design-lab/tests/test_reconstruction_contracts.py": "03ba8cfab0f8c114c7a1de2bdfe3c3fd92bdf3f826d480ae0e5d7fe2c4e314ff",
+        "design-lab/tests/test_reconstruction_intake.py": "e61056e1df3148c25b54590f31fc7e62d9d354680fc4101247166cbd95e5299b",
+        "design-lab/config/external-assets-index.json": "927c11b404955a0f5870d8397b5d09cf1cd67e24f1527a7949318a0299a5976c",
+        "design-lab/config/capability-evidence-index.json": "6dc8201c0b152dea052e9f1260f5da1719358c23c81a2e1612fa26b69013f99a",
+        "docs/decisions/R3-PROJECT-PATHS-2026-09-06.md": "4839907bb623260da3faf821c0db2c87bec8ac5d1f64ff6c68e6851ed29267dc"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/r3-execution/paths/results.json",
+          "sha256": "429d94c9e0e01a1648f58f0c7d932bb028af1b745c2b54e148747f7165c76007"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/paths/focused.log",
+          "sha256": "40b5c86ddc82d7cb90d34b6567777aaff346daede29487f690a067331f983e50"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/paths/doctor.log",
+          "sha256": "cb54156e4c982d21822efe17550bfc765e8442e2acc923ae2f6b4ae0b9dde2cc"
+        }
+      ],
+      "note": "86 focused tests passed without skips; 49 unified subgates and license check passed. Python audit traces record actual reconstruction atomic-writer PID/PPID/open/rename and readback from two CWDs. Only the paths/doctor/reconstruction slice is implemented; other entrypoints, host UI/Adobe, cancellation migration and backups remain unverified. No user data migration or global profile access."
+    },
+    {
+      "id": "r3-reporting-local-20260906",
+      "task_ids": [
+        "R3-01"
+      ],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T17:16:09+08:00",
+      "software": {
+        "python": "3.13.14",
+        "os": "Windows-11-10.0.26100-SP0"
+      },
+      "subject_files": {
+        "src/design_lab/governance/reporting.py": "3f7049c96ac4fe491094222d834a89b117aeecf15a21d1aea49c6497ce1df247",
+        "src/design_lab/governance/__init__.py": "2ca2ae98720f3602b1f368d5c0c9d26cd7c2409090e42a6c9737a29b44ef4968",
+        "design-lab/tests/test_current_reporting.py": "678e6b82061de51713559766a73d937b7295662c9594e695b9330041fe8d03ac",
+        "design-lab/schemas/task-ledger-r3.schema.json": "044f7cde2ccf893d21fad287b74ff0b56eca401c4e534a157d7f979603187529",
+        "scripts/generate_current_reports.py": "2b8063c7f9a14e4397e6838165844fe5ff696c7b418a269096619785207b5a30",
+        "scripts/generate_project_status.py": "c6aa21cf378821d8ad57d674a00c9ad49eb08d03bb1e98a1f29d1046803fa339",
+        "AGENTS.md": "55e2b85e45705cec91f45c2a794d48ad12d8823a926d52521f0651d727d16414",
+        "README.md": "824c8679b7b8147e6ddc987db9e4ed738cf4ea53580a4c1b1e93087d1a1f5c37",
+        ".project/manifest.yaml": "ecef8c99f3f2a94cfbb1f0191aa4c9f8065baa6237ed729d1a2c6d5644334ce9",
+        "docs/taskpacks/DESIGN-LAB-CLOUD-REAUDIT-TASKPACK-2026-09-06.md": "3d6edf1a00f4f4f7eb19005a2acba2c73bd0dc71a6d2ec5ba9ed5ae689c6454c",
+        "docs/history/taskpacks/r3-tasks-2026-09-06.json": "fd042fb4259c2fd06edbf9eea715ba03c0c869aeedbc0767270bac25e6e7a272",
+        "reports/history/r3-predecessors-2026-09-06/ADAPTER_EVIDENCE_RECONCILIATION.json": "03f3472a870ced3a5eeb896a683bff8b20626756e488351334f3367ab3a85cec",
+        "reports/history/r3-predecessors-2026-09-06/CLOUD_BASELINE.json": "4b178b21ee99aa024d65815973f003243d07fe7f39ebd47165525291de0db2e1",
+        "reports/history/r3-predecessors-2026-09-06/CLOUD_BASELINE.md": "91fbfd130f7b747b16236660142515dc21e498b31931e202d5270b7007e1851a",
+        "reports/history/r3-predecessors-2026-09-06/current-report-index.json": "de995cffd25790741c169540814248ca55d4b157015909553aacf18ec7cbdcfd",
+        "reports/history/r3-predecessors-2026-09-06/DL-TP-20260904-EXECUTION-HANDOFF.md": "2dba35fe32221e427245c1baaef35f73df525157d15f9207280e946967671994",
+        "reports/history/r3-predecessors-2026-09-06/DOMAIN_PACK_READINESS.json": "155337dc939b0fb06d254abe7e2063b1cb4f12af7100c57710fe5f03e1b73899",
+        "reports/history/r3-predecessors-2026-09-06/KNOWLEDGE_INVENTORY.json": "2fc27cff3d8ddeaa33323a3ac76e1743228811e6e9d9eea100b133b886ff2adf",
+        "reports/history/r3-predecessors-2026-09-06/MULTIMODAL_PROGRESS-2026-09-05.json": "f699e719e38a93c6ef37f8ac9f604ae837994105eb88c2a2431d16d6faed0e44",
+        "reports/history/r3-predecessors-2026-09-06/PR115-AUDIT-FIX-STATUS-2026-09-05.md": "d3834efde80d6f05e275ff15609e3bade65c335c61cedaae5dcdfb1a9a525997",
+        "reports/history/r3-predecessors-2026-09-06/PROJECT_STATUS.json": "e6c3042f75cc38c66dcc2467c24a03d555c494ae8ac98c61e444fbef703689aa",
+        "reports/history/r3-predecessors-2026-09-06/PROJECT_STATUS.md": "dc68c99632f295a5a00a1fd76699641a4b2fc91278bbc6763c408945826c5dd6",
+        "reports/history/r3-predecessors-2026-09-06/RELEASE_READINESS.json": "4b1f6ccf282156d30fa9470b0ccd051298a44c5bd13a7a48c5145f94e8007676",
+        "reports/history/r3-predecessors-2026-09-06/T01-REPO-BASELINE-2026-09-05.md": "8ec3938a830d599bf1b7eb33c616b698f5b8850b0d47e4c2cb80bac8e69edfbc",
+        "reports/history/r3-predecessors-2026-09-06/T02-MACHINE-INVENTORY-2026-09-05.md": "9179ba2de36e766edd2ed37e8b4a9e50f40e7ab4190be330077a9141b78da211",
+        "reports/history/r3-predecessors-2026-09-06/TASKPACK_PROGRESS-2026-09-04.json": "c49258a5062c8d9fff7a505ecea161d07f24a408324baaf43d42b7010dd6c1ce"
+      },
+      "artifacts": [
+        {
+          "sha256": "406d753396f16d0a506ea8066bd7dac8de05fdc4c2c075171f5e35c227d10bbb",
+          "path": ".project-local/task-artifacts/r3-execution/reporting/results.json"
+        },
+        {
+          "sha256": "01305a88204761df62e7683591e72369ea03f776d8c649f84c63521170c6c4db",
+          "path": ".project-local/task-artifacts/r3-execution/reporting/focused.log"
+        },
+        {
+          "sha256": "1ec759dfdbbb7f29b44ff3ead1cdc18338d20c8ee92d8fba9b299456adf30946",
+          "path": ".project-local/task-artifacts/r3-execution/reporting/archive-results.json"
+        }
+      ],
+      "note": "20 reporting tests and 8 commands passed; unchanged bound sources. The initial harness returned 1 solely because checkout CRLF bytes differ from Git LF blobs: archive-results.json independently verifies all 15 texts with CRLF normalization. No host or delivery qualification."
+    },
+    {
+      "id": "r3-runtime-final-local-20260906",
+      "task_ids": ["R3-05", "R3-06"],
+      "kind": "local_test",
+      "outcome": "PASS",
+      "subject_sha": "c4dccd58331bc4561eb89265283d924b7630d113",
+      "binding": "WORKTREE_FILES",
+      "observed_at": "2026-09-06T08:37:17.8947931Z",
+      "software": {
+        "python": "3.13.14",
+        "sqlite": "3.53.1",
+        "os": "Windows",
+        "host": "synthetic file/SQLite fixture"
+      },
+      "subject_files": {
+        "src/design_lab/runtime/asset_store.py": "670f3c21ec9bafc39dcef7ac5911e5e98e24f78e1b4f426a2ae98cbdca3a2834",
+        "src/design_lab/runtime/attempt_contract.py": "9fbe3377f8fda60f7f08070d84a0d8bb310ecf9c9a5f39dd35b15459d0068035",
+        "src/design_lab/runtime/doctor.py": "c09e422f3ef0bfbb8bdf9d65e5cd6804e5ca04c42df2d61f17ab1e1055001d84",
+        "src/design_lab/runtime/job_store.py": "cd4466a7d828f4f06b9dfb8ea3e440da5395928d9855e9f14e962048ec407639",
+        "src/design_lab/runtime/operation_coordinator.py": "58f5f47df6f4995cd94cf33191e5cb7a261f8b5f204cde0fc722728a21ab4e10",
+        "src/design_lab/runtime/profile_resolver.py": "1eb8fffe444dd6061bf58d3156d0b50b6fa3dba0410554b2099987cf26020e1c",
+        "src/design_lab/runtime/state_store.py": "1da62e6ad07f718f1809c541a34f33f61ae2989217abb1fc4fdb8ddfa8f19c9b",
+        "src/design_lab/runtime/__init__.py": "2bdc23e9096aa8bf7081b21e5ddff469d68975e14ba8243750632ba5efd21b59",
+        "design-lab/schemas/state/design-lab-state-assets-v1.sql": "e841d37997585fc14efeb708c3ad642dd82332d72b8217bb23e441a79df2c07e",
+        "design-lab/schemas/state/design-lab-state-assets-v2.sql": "ce13458001b3dfdc13bb4c5d00f10088fc212414e3f03a90943c5a3483f1b307",
+        "design-lab/schemas/state/design-lab-state-attempt-v1.sql": "5b633779e4b9a3490cb1aa15bbff919fc466a2e658538aee8e0e71229f0c948c",
+        "design-lab/schemas/state/design-lab-state-attempt-v2.sql": "d13cbfd58860d3990132f6e923d60c02dec5af77a9916e8790394c774117f996",
+        "design-lab/schemas/state/design-lab-state-v1.sql": "12a1c78842c1bf6ecb239c81616a8abc5614018d6d9dd9f2eb832a4499cc655f",
+        "design-lab/tests/test_operation_coordinator.py": "59144ea4a2eb6edbbd01089e3d54b9b21855e10959adf43e485d89db4565f037",
+        "design-lab/tests/test_job_store.py": "3ddb725e173e5df7e198aca09715de0dd3964a242769b3188418f565968a21be",
+        "design-lab/tests/test_asset_store.py": "413df40e7f4797f614b6afe034d747bb44f85fd656d97025844cad6a73a55631",
+        "design-lab/tests/test_runtime_attempt_safety.py": "7975490361f16ecc4cfab61a1d3d35e597c491dbc8d766d63f2f9e9518470887",
+        "design-lab/tests/test_runtime_asset_safety.py": "ab5f1506834b1940b3c4e64dfb4ea4c9f97ce3afbeb3c70b3e7fc850580a29c2"
+      },
+      "artifacts": [
+        {
+          "path": ".project-local/task-artifacts/r3-execution/final-results.json",
+          "sha256": "85cb40a089370d4f37c66cb4d78003c0ced4c8cf77872c3bea1d6acaf138074d"
+        },
+        {
+          "path": ".project-local/task-artifacts/r3-execution/final-focused.log",
+          "sha256": "0bd7b83a0df675321db7934fd59fa2cf2a3d9781d72b4193a58fe0636fc600ca"
+        }
+      ],
+      "note": "60 final runtime tests passed, no skips. Host applications and GPU were not executed."
+    }
+  ]
+}

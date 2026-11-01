@@ -1,0 +1,137 @@
+{
+  "schemaVersion": "design-lab/deepseek-independent-audit/v1",
+  "auditor": "independent worker (different context from the implementer)",
+  "audited_at": "2026-09-14T00:46:53+08:00",
+  "subject_sha": "e7c03bf7134c6e64b187d8bff66602f19798cb2b",
+  "subject_note": "HEAD was 2cf76413ad1a27af8767037058dc38a8c5ce6d56 when this audit opened and e7c03bf7134c6e64b187d8bff66602f19798cb2b when it closed; the implementer committed Wave 7 (H/I/J) during the audit and rewrote reports/current/DEEPSEEK-AUTHORITY-LEDGER-2026-09-14.json (ledger updated_at 2026-09-13T16:41:48+00:00 -> 2026-09-13T16:46:47+00:00, DONE 43/58 -> 50/58). Artifact hashes below are point-in-time.",
+  "areas": [
+    {
+      "area": "Authority",
+      "claim": "The taskpack is landed and its sha256 still matches; the ledger verifies; only one current DeepSeek taskpack is named in AGENTS.md.",
+      "method": "Get-FileHash docs/taskpacks/DESIGN-LAB-DEEPSEEK-AUTHORITY-TASKPACK-2026-09-14.md; .venv/Scripts/python.exe scripts/deepseek_authority_ledger.py verify; scripts/deepseek_authority_chain.py --check; grep AGENTS.md",
+      "finding": "PARTIAL",
+      "evidence": "taskpack sha256 = d9fdaa3ad7ad0055a3f451c853756be41036b32112cacc4d1c17b314c005a2f9, identical to ledger taskpack.taskpack_sha256. 'LEDGER=PASS tasks=58 taskpack_sha256_ok=true' (exit 0). 'AUTHORITY_CHAIN=DRIFT entries changed since generation' (exit 1). AGENTS.md line 96 is the only line naming a current DeepSeek taskpack: '**DeepSeek 执行权威（唯一 current DeepSeek TaskPack）**：docs/taskpacks/DESIGN-LAB-DEEPSEEK-AUTHORITY-TASKPACK-2026-09-14.md'.",
+      "note": "The hash and the ledger verify are CONFIRMED. The reconciliation artifact the taskpack itself declares (DEEPSEEK-AUTHORITY-CHAIN.json, DLDS-A010) FAILS its own --check on the pristine committed file. Cause established by reading scripts/deepseek_authority_chain.py:222 - --check compares the stored 'entries' array against a fresh scan; the stored entries record .project/manifest.yaml at 573 bytes and the ledger at 17736 bytes, while the tree now has 809 bytes and ~39718 bytes because DLDS-B040 fixed the manifest and DLDS-B010..G040 appended ledger notes after the chain was generated at 2026-09-13T16:14:21+00:00. AGENTS.md additionally names the R5 product pack as '当前有效任务包', which is a product pack, not a second DeepSeek pack."
+    },
+    {
+      "area": "Worktree attribution",
+      "claim": "97 files were attributed, none UNATTRIBUTED.",
+      "method": "read reports/current/DEEPSEEK-WORKTREE-INVENTORY.json and re-hashed four entries against the working tree in Python; verified the 7 parked files against .project-local/quarantine/deepseek-round1/DELETE-MANIFEST.json",
+      "finding": "CONFIRMED",
+      "evidence": "entries=97; classification tally {'KEEP_WITH_FIX': 87, 'OUT_OF_PACK': 7, 'KEEP': 3} (sums to 97 and matches the declared counts); unproven_paths=[]; no entry carries the classification UNATTRIBUTED; 0 duplicate paths. Spot-checks: src/design_lab/readiness/vector_provider.py -> OUT_OF_PACK and absent from the tree, with an exact-hash quarantine copy present; design-lab/readiness/model-radar.json -> KEEP_WITH_FIX, on disk, sha256 matches the recorded value; DELETE-MANIFEST.json holds exactly those 7 paths with 7/7 quarantine copies digest-ok, 0 mismatched, 0 missing, sources removed, 'action: removed from the tracked tree after an exact-hash copy into quarantine', restore_command 'python scripts/deepseek_quarantine_out_of_pack.py --restore', no_active_refs_verified=true.",
+      "note": "Attribution is structural and holds. Two caveats: (1) the inventory is a 2026-09-13T16:16:24+00:00 snapshot and its recorded digests are stale for files later waves touched - design-lab/config/current-report-index.json and design-lab/schemas/assurance-jury-record-v2.schema.json no longer hash to the recorded values (model-radar.json still does), so the hashes must not be read as current; (2) design-lab/config/current-report-index.json is classified KEEP_WITH_FIX yet its own producer and consumer fields say 'unattributed' - it is attributed to DLDS-H030, so the claim holds, but that single entry is internally inconsistent."
+    },
+    {
+      "area": "Cleanup",
+      "claim": "Cache deletion and legacy runtime migration are recorded with hashes and a restore path; .hermes/skill-call-index.json was deliberately refused and nothing else was removed from .hermes.",
+      "method": "read .project-local/archive/hermes-legacy/MIGRATION-MANIFEST.json and .project-local/quarantine/deepseek-round1/RUNTIME-CLEANUP-MANIFEST.json and re-hashed/counted every record on disk; listed .hermes recursively; cross-read reports/current/RUNTIME-CLEANUP-PLAN.json",
+      "finding": "PARTIAL",
+      "evidence": "MIGRATION: 10 records, bytes sum 11565138 (exactly the claimed 11,565,138), all 10 archive targets present with matching file counts (287/287, 192/192, 7/7, 3/3, 2/2, 2/2, 1/1...), single-file digests match, every source gone from .hermes, per-record 'restore' text plus restore_command 'python scripts/deepseek_hermes_migration.py --restore', and refused=[{'path': '.hermes/skill-call-index.json', 'reason': 'agent-native artifact, DO_NOT_TOUCH'}]. .hermes now contains exactly 1 file (.hermes/skill-call-index.json, 13638 bytes, mtime 2026-08-24 00:02:11, i.e. untouched); .hermes/task-runtime and .hermes/task-artifacts remain as empty directories only. CLEANUP MANIFEST: 167 records, bytes_reclaimed=332173158, all 167 carry a digest; set equality with RUNTIME-CLEANUP-PLAN.json['temp_cache'] members is True (167/167) and overlap with the plan's 15 evidence_bearing members is 0; 15/15 evidence_bearing members are still on disk.",
+      "note": "The migration half is fully verified. The cache-deletion half records hashes but its per-record labels are wrong: every one of the 167 deleted entries carries \"classification\": \"EVIDENCE_BEARING\" and \"reason\": \"referenced as run output or evidence; owner approval required\" - the label and reason that belong to the 15 untouched directories. Read on its own, the manifest asserts that 167 owner-approval-required evidence objects were deleted; the ledger (DLDS-D030) says the deleted set was 167 TEMP_CACHE entries (316.8 MiB) and that the evidence-bearing runs were left untouched, which is what the buckets and the disk state actually show (166/167 now absent, 1 present). Also, the 'restore path' for a deleted cache is a recreation note keyed by cache kind ('recreation': {'__pycache__', 'tmp', '.pytest_cache', 'pip-cache', '.cache'}) plus a --restore mode that states outright that no file copy can restore a cache."
+    },
+    {
+      "area": "Contract graph",
+      "claim": "No broken link across 11 concepts.",
+      "method": ".venv/Scripts/python.exe scripts/verify_contract_graph.py --check (read-only, avoids rewriting the artifact); read reports/current/CONTRACT-GRAPH.json; hand-grepped two declared consumer edges in the sources",
+      "finding": "PARTIAL",
+      "evidence": "'CONTRACT_GRAPH=PASS' (exit 0). Artifact: verdict NO_BROKEN_LINK, counts {'concepts': 11, 'complete': 11, 'breaks': 0}, breaks=[]. Hand-check 1 - Job -> src/design_lab/creative/requirement_ledger.py: the file imports 'require_job' from .store (line 14) and calls 'require_job(conn, job_id)' (lines 65, 137), so it genuinely consumes the Job concept. Hand-check 2 - QA -> src/design_lab/assurance/human_jury.py: the only 'qa' occurrences in that file are comments (line 11 'the frozen QA policy of DLDS-F070', line 68 'Alias used by the QA plane'); the file never imports or calls qa_plane.",
+      "note": "The verdict is reproducible, but the gate's definition of a link is weaker than the claim suggests: scripts/verify_contract_graph.py:176 sets complete = 'not missing_files and not missing_tables and bool(spec['models'])', i.e. it verifies that every declared path exists and every declared table is declared by exactly one state schema. The GRAPH itself (lines 32-129) is a hand-written declaration table; no consumer edge is checked for an actual reference to the producer. Of the two edges I checked by hand, Job is real and the QA one is not - human_jury.py restates the QA vocabulary but does not consume qa_plane. Also, --check only compares the 'counts' object, so it cannot detect any change that leaves the counts unchanged."
+    },
+    {
+      "area": "Migration",
+      "claim": "creative-v1 was rehearsed on a copy, not on the live database, and the live database under .project-local/state/ was not modified.",
+      "method": "snapshot every *.db under .project-local (path, size, mtime_ns) before and after running scripts/deepseek_migration_rehearsal.py, then diff; check whether .project-local/state exists",
+      "finding": "CONFIRMED",
+      "evidence": "'MIGRATION_REHEARSAL=PASS steps=15 status=REHEARSED_PASS_PENDING_ACCEPTANCE', exit 0, elapsed 0.3s, all 15 steps ok (legacy_database_built, backup, migration, migration_backup, legacy_readback, artifact_readback, new_write, rejection_write, restart, restart_readback, rerun_migration, job_requirement_decision_writes, triggers, rollback, rollback_then_migrate). DB snapshot diff across the run: 'DB changed: []  DB new: []  DB gone: []' over 13 pre-existing *.db files. The artifact states 'database': 'a copy under .project-local/task-runtime/; the live state database was never opened'.",
+      "note": "The rehearsal half is CONFIRMED: it operates inside a tempfile.TemporaryDirectory under .project-local/task-runtime/creative-migration-rehearsal and touched no pre-existing database. The second half is NOT_VERIFIABLE as literally stated because .project-local/state/ does not exist in this checkout (Test-Path returns False), so the live database named by src/design_lab/creative/store.py ('the .project-local/state/design-lab.db remains the single ...') is absent and its mtime cannot be compared. The substitution I ran - no *.db anywhere under .project-local changed size or mtime - is the strongest available proxy. Left behind from an earlier rehearsal: .project-local/task-runtime/creative-migration-rehearsal/tmptpoi00zq/legacy.db, i.e. the temp directory is not always cleaned up on Windows."
+    },
+    {
+      "area": "Spill",
+      "claim": "Zero spill detected, and the probe really compares snapshots.",
+      "method": ".venv/Scripts/python.exe scripts/verify_zero_spill.py --self-test; read the emitted snapshot and diff JSON and the probe's diff() logic; independently ran the wrapped command",
+      "finding": "PARTIAL",
+      "evidence": "'ZERO_SPILL=NO_SPILL_DETECTED spill=0 repo_new=19 repo_changed=17' (exit 0). The snapshot stores a real path map: repo_entries=37500 and agent_entries=401, each entry [size, mtime]; scan() walks with depth limits and SKIP_DIRS; diff() computes new = set(current) - set(previous), removed, and changed by comparing the [size, mtime] pairs, then flags a new path as spill unless it is inside ALLOWED_ROOTS or (for agent homes) named in AGENT_NATIVE_NAMES - so the 19 new and 17 changed repo paths were all inside .project-local and correctly not counted as spill. Diff at .project-local/task-artifacts/zero-spill/self-test-before-diff.json: repo new=19 removed=15 changed=17 spill=0; agent:.hermes/.codex/.dsh new=0 removed=0 changed=0.",
+      "note": "The probe genuinely compares snapshots, so the comparison claim holds. But the self-test is weaker than 'wraps a real DESIGN-LAB command' implies: the wrapped command is 'python scripts/generate_current_reports.py --check' and it exited 1 during the self-test ('task under test: python.exe generate_current_reports.py --check exit=1'), while self_test() (scripts/verify_zero_spill.py:159-170) returns diff(before_id) without ever inspecting result.returncode. The probe therefore demonstrated 'no spill while a command FAILED', not 'no spill while a command succeeded'. Independently re-running that command still fails: 'CURRENT_REPORTS=DRIFT reports/current/PROJECT_STATUS.json, ... design-lab/config/current-report-index.json' (exit 1, 9 projections)."
+    },
+    {
+      "area": "Language",
+      "claim": "No forbidden primary language in product scope; vocabulary copies agree with their schemas.",
+      "method": ".venv/Scripts/python.exe scripts/verify_language_boundary.py (hash of the artifact captured before and after, then restored); scripts/deepseek_language_inventory.py --check",
+      "finding": "PARTIAL",
+      "evidence": "'LANGUAGE_BOUNDARY=PASS files=1886 forbidden=0 fixture_scoped=1 conditional=0 python_roots=1 node_manifests=1 lockfiles=0 vocab_copies=13 disagreeing=0' (exit 0). The single fixture-scoped file is the Java Android shell fixtures/domains/game-visual/android-webview/app/src/main/java/com/dtalex/minigame/MainActivity.java, reported as a note.",
+      "note": "The boundary claim is CONFIRMED: zero forbidden product-scope languages, zero disagreeing vocabulary copies. Two discrepancies: (1) the fresh scan finds vocab_copies=13 while the committed artifact (generated 2026-09-13T16:24:22+00:00, hash 0101b3198da9aebe169c30a130a2c2d66d0916537f3eb91d83b3efcc71391b67) and the DLDS-C050 ledger note both say 14 - one copy left the tree after that run; (2) scripts/deepseek_language_inventory.py --check prints 'LANGUAGE_INVENTORY=DRIFT' (exit 1). I restored LANGUAGE-BOUNDARY-SCAN.json byte-exactly (hash re-checked equal to 0101b319...) after my run rewrote it."
+    },
+    {
+      "area": "Size",
+      "claim": "The budget status and the reclaimed bytes are measured, and bytes_before cites the artifact it came from.",
+      "method": ".venv/Scripts/python.exe scripts/generate_repository_size_report.py --check; read reports/current/POST-CLEANUP-AUDIT.json, reports/current/UNTRACKED-RUNTIME.json, RUNTIME-CLEANUP-MANIFEST.json; recomputed the reclaimed bytes from the manifest",
+      "finding": "PARTIAL",
+      "evidence": "'REPOSITORY_SIZE=CHECK_PASS pack_mib=210.40 status=OK' (exit 0). POST-CLEANUP-AUDIT.json: 'before_measurement_source': 'reports/current/UNTRACKED-RUNTIME.json (DLDS-D000, measured before the cleanup)', 'before_measured_mib': 4448.46, runtime_roots_after {'.project-local': 4257.23, '.hermes': 0.01}, bytes_reclaimed.temp_cache_deleted = 332173158 (= 316.79 MiB), verdict PASS. UNTRACKED-RUNTIME.json really does contain total_mib = 4448.46, so the citation is accurate. I re-derived the reclaimed bytes independently from the deletion manifest: 167 records, digest present on 167/167, sum = 332173158 bytes, and 166/167 of those paths are now absent from disk.",
+      "note": "The reclaimed figure is independently confirmed and the citation is real, but the before/after pair is not like-for-like and its own artifact's timestamp contradicts 'before'. UNTRACKED-RUNTIME.json was measured at 2026-09-13T16:26:39+00:00, ten seconds AFTER RUNTIME-CLEANUP-MANIFEST.json recorded deleted_at 2026-09-13T16:26:29+00:00, so the cited 'before' number is a post-deletion measurement; it is also a four-root total (.project-local 4241.03 + .hermes 11.04 + .venv 196.33 + .pytest_cache 0.06) while the 'after' figure covers .project-local only (+ .hermes). Consequently 4448.46 - 316.79 = 4131.67 does not equal the recorded 4257.23, leaving 125.56 MiB unexplained, and .project-local (4241.03 at 16:26:39) is 16.20 MiB LARGER at 16:32:52 (4257.23), i.e. the root grew during the window. Separately, the DLDS-D030 ledger note claims '.project-local 4557.7 -> 4241.0 MiB', but 4557.7 appears in no artifact I can read (the only other '4557' hit in reports/current is an unrelated 'bytes': 45571 in RUNTIME-CLEANUP-PLAN.json)."
+    },
+    {
+      "area": "Evidence overclaim",
+      "claim": "No DeepSeek artifact claims Adobe/OpenDesign/ComfyUI-design/Blender E3 or Human Jury E4.",
+      "method": ".venv/Scripts/python.exe scripts/verify_evidence_levels.py --check and --self-test; independent case-sensitive ripgrep for \\bE[34]\\b over docs/handoffs/DEEPSEEK-* and reports/current/DEEPSEEK-*; read each hit",
+      "finding": "CONFIRMED",
+      "evidence": "Fresh classification (module imported, counts recomputed without writing): 8 claims examined, all 8 HISTORICAL_EVIDENCE_KEPT, 0 OVERCLAIM, 0 REVIEW. 'EVIDENCE_LEVEL_SELF_TEST=PASS' (exit 0) - the classifier is not vacuous. Case-sensitive grep found 14 hits in docs/handoffs/DEEPSEEK-* and 6 in reports/current/DEEPSEEK-*; judged individually: docs/handoffs/DEEPSEEK-OPEN-DESIGN-E3-READINESS-2026-09-13.md explicitly refuses the claim ('| E3 REAL_WORKFLOW | ... | **not met** |', '## Why E3 cannot be produced here', 'delivery | NOT_DELIVERED | E3 evidence does not exist; this document is a plan'); DEEPSEEK-DEEP-ADAPTATION-EXECUTION-2026-09-13.md:112 only names the task id 'OPEN_DESIGN_E3' and points at that readiness doc; DEEPSEEK-RIGHTS-REFRESH-MINIMAX-H3-2026-09-13.md lines 66-85 concern MiniMax H3 (not in the forbidden host set) and state that the historical run '**not** promoted to current capability'; the reports/current hits are file paths, the ledger's own notes about fixing the H3 over-claim, and the gate's description.",
+      "note": "No forbidden E3/E4 claim exists in the audited surface. Caveat: the gate's stored artifact is itself stale - it records claims_examined=4 while a fresh run yields 8, so 'EVIDENCE_LEVELS=DRIFT' (exit 1); and the gate's claim surface is narrow (8 claims, with docs/history/, reports/history/ and docs/taskpacks/ declared out of scope), so the confirmation is 'no overclaim found in the audited surface', not a proof about every file in the repository. My audit of the two DeepSeek artifact families was done independently of the gate."
+    },
+    {
+      "area": "Supply chain",
+      "claim": "Nine checks pass, and the secret-scan exemption cannot swallow a real credential.",
+      "method": ".venv/Scripts/python.exe scripts/verify_supply_chain.py --check; read reports/current/SUPPLY-CHAIN-REPORT.json; read the exemption rule (scripts/verify_supply_chain.py:162-194) and called the real is_synthetic() function directly",
+      "finding": "PARTIAL",
+      "evidence": "'SUPPLY_CHAIN=PASS' (exit 0). The report holds exactly 9 checks, all ok=true: G000_sources_lock, G010_adapter_status, G030_h3_blocked, G040_license_audit, G040_secret_scan, G040_lockfile_audit, G040_generated_artifacts, G040_binary_inventory, G040_third_party_sources; G040_secret_scan {ok: true, hit_count: 0, synthetic_values_exempted: 1}. Calling the module's own function: is_synthetic('design-lab/tests/test_runtime_asset_safety.py', 'AKIA3XJ7QZ2LMN4PQRST') -> True; is_synthetic('fixtures/domains/game-visual/config.json', 'AKIA3XJ7QZ2LMN4PQRST') -> True; is_synthetic('docs/x.md', 'example_api_key = \"AKIA3XJ7QZ2LMN4PQRST\"') -> True; is_synthetic('docs/x.md', 'token = \"<AKIA3XJ7QZ2LMN4PQRST>\"') -> True; while the same value in docs/architecture/LANGUAGE-POLICY.md -> False.",
+      "note": "The 'nine checks pass' claim is CONFIRMED. The exemption claim is CONTRADICTED. is_synthetic() has two independent escape hatches: (a) a blanket path rule - 'return path.startswith((\"fixtures/\", \"design-lab/tests/\", \"tests/\"))' returns True for ANY matched value in any of those trees, regardless of content, so a real key committed to a test file or fixture is silently exempted and never counted; (b) substring markers tested over the whole match, including the very broad '<' and 'xxxx' plus 'example'/'dummy'/'placeholder'/'fake' - because the generic-secret pattern's match spans the assignment (name = value), a real credential assigned to a variable whose name contains any such word is exempted. There is no entropy check, no allowlist by exact value, and no counter that fails the gate when the exemption count grows."
+    }
+  ],
+  "contradictions": [
+    {
+      "item": "AUTHORITY_CHAIN: the declared authority-reconciliation artifact fails its own --check.",
+      "evidence": "scripts/deepseek_authority_chain.py --check -> 'AUTHORITY_CHAIN=DRIFT entries changed since generation' (exit 1), reproduced after restoring the file byte-exactly to its committed state; stored entries record .project/manifest.yaml at 573 bytes / ledger at 17736 bytes vs 809 / ~39718 now."
+    },
+    {
+      "item": "RUNTIME-CLEANUP-MANIFEST labels the deleted set as evidence-bearing, contradicting the ledger and its own plan bucket.",
+      "evidence": "All 167 records in .project-local/quarantine/deepseek-round1/RUNTIME-CLEANUP-MANIFEST.json['deleted'] carry \"classification\": \"EVIDENCE_BEARING\" and \"reason\": \"...owner approval required\", yet 166/167 are absent from disk, bytes_reclaimed=332173158, and the path set equals RUNTIME-CLEANUP-PLAN.json['temp_cache'] (167/167) with 0 overlap with the plan's 15 evidence_bearing members."
+    },
+    {
+      "item": "The supply-chain secret scan can swallow a real credential.",
+      "evidence": "is_synthetic() returns True for any match under fixtures/, design-lab/tests/ or tests/, and for any match containing '<', 'xxxx', 'example', 'dummy', 'fake', 'placeholder', etc. - demonstrated by calling the function: is_synthetic('design-lab/tests/test_runtime_asset_safety.py', 'AKIA3XJ7QZ2LMN4PQRST') == True."
+    },
+    {
+      "item": "DLDS-E050's recorded post-cleanup PASS is not reproducible.",
+      "evidence": "POST-CLEANUP-AUDIT.json verdict PASS with stage 'CURRENT_REPORTS=PASS mode=check'; the same command now returns 'CURRENT_REPORTS=DRIFT reports/current/PROJECT_STATUS.json, ... design-lab/config/current-report-index.json' (exit 1, 9 projections). HEAD advanced from 0e109ab to a65b22d to e7c03bf after that artifact was written, so the drift is explained by later commits, but the artifact's PASS no longer holds for the current tree."
+    },
+    {
+      "item": "Two stored gate artifacts are already stale (their own --check fails).",
+      "evidence": "'LANGUAGE_INVENTORY=DRIFT' (exit 1) from scripts/deepseek_language_inventory.py --check; 'EVIDENCE_LEVELS=DRIFT' (exit 1) from scripts/verify_evidence_levels.py --check, whose stored artifact records claims_examined=4 against a fresh 8."
+    },
+    {
+      "item": "One declared contract-graph consumer edge does not exist in the code.",
+      "evidence": "CONTRACT-GRAPH.json declares QA.consumers = ['src/design_lab/assurance/human_jury.py'], but human_jury.py contains no reference to qa_plane - only comments (lines 11 and 68) and 'from . import AssuranceError, ...'. The verifier cannot catch this because it only checks that declared paths exist."
+    },
+    {
+      "item": "An unsourced 'before' figure in the ledger.",
+      "evidence": "DLDS-D030 note: 'Measured .project-local 4557.7 -> 4241.0 MiB'. The value 4557.7 appears in no readable artifact; the measured artifacts give .project-local = 4241.03 (UNTRACKED-RUNTIME.json) and 4257.23 (POST-CLEANUP-AUDIT.json)."
+    },
+    {
+      "item": "The spill self-test exercised a failing command.",
+      "evidence": "'task under test: python.exe generate_current_reports.py --check exit=1' inside the self-test that reported 'ZERO_SPILL=NO_SPILL_DETECTED spill=0'; self_test() never inspects result.returncode."
+    }
+  ],
+  "unverifiable": [
+    "The live state database named by the task cannot be checked: .project-local/state/ does not exist in this checkout, so 'the live database under .project-local/state/ was not modified' is NOT_VERIFIABLE as stated. Proxy used instead: no pre-existing *.db under .project-local changed size or mtime across the rehearsal (13 files compared, 0 changed).",
+    "The frozen delta 9f34b53..5631963 used by the worktree inventory was not re-walked: I re-hashed only four current paths, and two of those recorded digests are already stale because later waves modified the files. Whether each of the 97 recorded hashes matched at 16:16 is NOT_VERIFIABLE without checking out that historical range.",
+    "That every byte of the 316.79 MiB deleted under TEMP_CACHE was genuinely recreatable is not provable from inside the checkout: I confirmed the paths are cache-shaped and that the deleted set equals the plan's temp_cache bucket, not that each could be regenerated.",
+    "Cloud/CI state, exact-SHA remote checks, host/runtime launches, GPU inference and any E3/E4 workflow are outside what this checkout can decide, and were not attempted.",
+    "The correctness of the implementer's commits made DURING this audit (Wave 7: H000/H020/H040, I000/I010/I020, J000) was not audited; the ledger's DONE count moved 43 -> 50 while I worked.",
+    "Whether an audit-time DRIFT in a generated artifact reflects a defect or only the concurrent writer cannot be fully separated here: HEAD moved 2cf76413 -> a65b22d -> e7c03bf during the audit and the ledger was rewritten twice."
+  ],
+  "verdict": "CLAIMS_PARTLY_SUPPORTED",
+  "limitations": "An auditor inside this checkout can verify that declared files exist, that hashes and digests agree, that recorded numbers sum correctly, and that tools reproduce their own verdicts on the current tree. It cannot decide whether a recorded decision was the right one, whether a 'before' measurement was taken at the right moment, whether cache data was truly recreatable, or whether a passing local gate corresponds to any external outcome. Every finding here is bound to the tree as it stood between HEAD 2cf76413ad1a27af8767037058dc38a8c5ce6d56 (audit open) and HEAD e7c03bf7134c6e64b187d8bff66602f19798cb2b (audit close) with ledger sha256 a4dd0e05abb524facfe623084d674a8faf6fca2d2802cc7a1680d130881dd0a0 (updated_at 2026-09-13T16:46:47+00:00); a concurrent implementer kept committing throughout, so any later re-run may legitimately differ. Disclosure: three artifacts were rewritten by the blessed tools I was instructed to run (DEEPSEEK-AUTHORITY-CHAIN.json, CREATIVE-MIGRATION-REHEARSAL.json, LANGUAGE-BOUNDARY-SCAN.json); all three were restored to the exact state found (git status clean for each; LANGUAGE-BOUNDARY-SCAN.json re-hashed equal to its pre-audit value 0101b3198da9aebe169c30a130a2c2d66d0916537f3eb91d83b3efcc71391b67). The only files this audit leaves behind are reports/current/DEEPSEEK-INDEPENDENT-AUDIT.json and reports/current/DEEPSEEK-INDEPENDENT-AUDIT.md.",
+  "projection": true,
+  "subjectSha": "042ac635ae7a6042db366f7fb19508fc5db7bc65",
+  "fresh": false,
+  "generatedBy": "unattributed"
+}

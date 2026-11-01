@@ -1,0 +1,260 @@
+{
+  "summary": {
+    "schemaVersion": "design-lab/deepseek-r3/ds-09/v1",
+    "task_id": "DS-09",
+    "r3_ids": [
+      "R3-09",
+      "R3-10",
+      "R3-16"
+    ],
+    "observed_at": "2026-09-06T14:52:44+00:00",
+    "verified_interfaces": 11,
+    "notes": {
+      "package_false": true,
+      "no_product_service_yet": "no verified product server/workbench entry point; adapters/manifests are not server connectivity",
+      "future_api": "待 GPT 提供 (not fabricated here)",
+      "no_preflight_script": "scripts/workflow/execution_preflight.py does not exist in this tree (confirmed) - not referenced as runnable"
+    }
+  },
+  "records": [
+    {
+      "record_id": "DS-09-DOCTOR-CLI",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-02",
+        "R3-08"
+      ],
+      "source_locator": "src/design_lab/runtime/doctor.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "kind": "cli",
+        "flags": [
+          "--check",
+          "--json",
+          "--migration-preview",
+          "--model-manifest",
+          "--model-root",
+          "--offline",
+          "--paths",
+          "--version"
+        ],
+        "entry": "python -m design_lab.runtime.doctor --help (module main)",
+        "thin_wrapper": "scripts/design_lab_doctor.py calls runtime main() with no own args",
+        "verified": "argparse present; flags parsed from source"
+      }
+    },
+    {
+      "record_id": "DS-09-PYPROJECT",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-09"
+      ],
+      "source_locator": "pyproject.toml",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "package": false,
+        "dependencies": [
+          "jsonschema>=4.18,<5",
+          "Pillow>=11.3,<13",
+          "numpy>=2.2,<3",
+          "scikit-image>=0.25,<0.27",
+          "defusedxml>=0.7,<1"
+        ],
+        "no_installable_package_entry": true,
+        "python_requirement": ">=3.11; R3-09 pins 3.12 product qualification -> GPT scope"
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-asset_store",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/asset_store.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "asset_store",
+        "responsibility": "Local asset metadata, fenced leases and recoverable immutable publication.",
+        "matching_tests": [
+          "test_asset_store.py"
+        ]
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-attempt_contract",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/attempt_contract.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "attempt_contract",
+        "responsibility": "Validation of verifier receipts, not a substitute for host readback.",
+        "matching_tests": []
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-doctor",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/doctor.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "doctor",
+        "responsibility": "DL-TP-R2-016: design-lab doctor (portable workspace).",
+        "matching_tests": [
+          "test_doctor.py",
+          "test_doctor_evidence.py"
+        ]
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-job_store",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/job_store.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "job_store",
+        "responsibility": "Durable operation/attempt ledger with explicit reconciliation and retries.",
+        "matching_tests": [
+          "test_job_store.py"
+        ]
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-migration_preview",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/migration_preview.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "migration_preview",
+        "responsibility": "Bounded, explicit-file migration inventory. No copy, delete, mkdir or DB writes.",
+        "matching_tests": [
+          "test_migration_preview.py"
+        ]
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-operation_coordinator",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/operation_coordinator.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "operation_coordinator",
+        "responsibility": "DL-TP-R2-018: Operation / Attempt state machine.",
+        "matching_tests": [
+          "test_operation_coordinator.py"
+        ]
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-paths",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/paths.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "paths",
+        "responsibility": "Project-owned paths with provenance; resolution itself never creates files.",
+        "matching_tests": [
+          "test_project_paths.py"
+        ]
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-profile_resolver",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/profile_resolver.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "profile_resolver",
+        "responsibility": "R3-07 evidence-qualified selection. Never launches or grants execution authority.",
+        "matching_tests": [
+          "test_profile_resolver.py"
+        ]
+      }
+    },
+    {
+      "record_id": "DS-09-MOD-state_store",
+      "task_id": "DS-09",
+      "r3_ids": [
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-09"
+      ],
+      "source_locator": "src/design_lab/runtime/state_store.py",
+      "observed_at": "2026-09-06T14:52:44+00:00",
+      "status": "VERIFIED",
+      "evidence_locator": "docs/handoffs/deepseek-r3-20260906/09-existing-interfaces.json",
+      "notes": {
+        "module": "state_store",
+        "responsibility": "DL-TP-R2-013: LocalStateStore initializer.",
+        "matching_tests": [
+          "test_state_store.py"
+        ]
+      }
+    }
+  ]
+}

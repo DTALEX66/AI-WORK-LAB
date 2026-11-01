@@ -1,0 +1,18 @@
+chore(contract-graph): re-record the snapshot for the design-layer event table
+
+The predecessor chain's contract graph snapshots declared_tables from every state SQL, so
+the new design-lab-state-design-layer-v3.sql drifts it by construction:
+
+  BEFORE: CONTRACT_GRAPH=PASS (full document matches)
+  AFTER : FAIL contract-graph CONTRACT_GRAPH=DRIFT fields changed since generation: ['declared_tables']
+
+Root cause confirmed independently: `grep -c design_layer_event
+reports/current/CONTRACT-GRAPH.json` was 0, i.e. the snapshot predates the new table.
+
+Re-recorded with the file's own generator (scripts/verify_contract_graph.py, no --check)
+exactly as the repo has done for earlier design-layer tables:
+
+  CONTRACT_GRAPH=NO_BROKEN_LINK concepts=11 complete=11 breaks=0
+
+Nothing else changed in the document — the drift was the new declared table plus the
+generation-time fields.

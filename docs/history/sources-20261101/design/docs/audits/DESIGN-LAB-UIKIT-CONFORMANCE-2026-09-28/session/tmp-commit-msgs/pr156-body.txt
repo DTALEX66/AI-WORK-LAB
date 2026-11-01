@@ -1,0 +1,20 @@
+## Scope
+
+G-4/B4 落地补齐 — 该分支 09-24 已推远端但**从未开 PR/合入 main**（3 个 UNIQUE 文件缺失于 main）：
+
+- `design-lab/config/adapter-locator-inventory.json`（locator 改造清单，8 live / 8 inventory / 0 untriaged）
+- `design-lab/scripts/verify_adapter_locator_audit.py`（fail-closed 漂移门：硬编码路径→locator 违规扫描）
+- `design-lab/tests/test_adapter_locator_audit.py`（单测）
+
+本 PR 将 main（059a5d5）合入 B4 并 union-解 `verify_design_lab.py` SCRIPTS 列表冲突
+（B4 的 `verify_adapter_locator_audit` + main 的 `verify_readiness_host_matrix` 共存，additive，不弱化任何门）。
+
+## 证据
+
+- 本地门：`ADAPTER_LOCATOR_AUDIT=PASS scanned_files=2 live=8 inventory=8 untriaged=0 stale=0 violations=2 guards=2`（exit 0）
+- 聚合器 union 树：`verify_adapter_locator_audit.py PASS` + `verify_readiness_host_matrix.py PASS`
+- 本地 reconstruction 失败集（47 项）与 main-tip 基线**逐条一致**（既有 PIL/numpy 环境噪声，非本 PR 回归；CI Python gate 在 fresh clone + uv-sync 下验证）
+
+## Rollback
+
+revert 单 commit；B4 三文件 + union 行删除即还原，不影响既有 9 required 检查。

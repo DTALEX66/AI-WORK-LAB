@@ -1,0 +1,316 @@
+{
+  "schemaVersion": "design-lab/task-document-states/v1",
+  "declaredAt": "2026-10-08",
+  "taskId": "DL-REC-29",
+  "subordinateTo": [
+    "AUTHORITY.md",
+    ".project/governance/authority-index.json",
+    "docs/current/HISTORY-FREEZE-RULES.md"
+  ],
+  "why": "authority-index 只用 globs 与 current 列表分类，docs/taskpacks 里 22 个未列入 current 的任务包长期停在 unclassifiedFallback 的 HISTORICAL_UNTIL_CLASSIFIED；本表把它们逐个定态，并给每个定态一个可核验的依据与被取代后的替代品。本表是登记记录，不是 Authority，也不是第二派工账本：唯一可变状态编辑源仍是 design-lab/config/task-ledger-r3.json，唯一派工入口由 index 的 taskpackClassificationRule.currentIntegrated 决定。",
+  "vocabulary": {
+    "CURRENT": "AUTHORITY.md §11 词汇：当前权威/当前入口",
+    "CURRENT_BUT_DRIFTED": "AUTHORITY.md §11 词汇",
+    "PROJECTION": "生成器产物，须先做新鲜度校验",
+    "SUPERSEDED": "被后续任务包取代，只作血统与差分",
+    "HISTORICAL": "历史面，用于 lineage/理由/回滚",
+    "REFERENCE": "参考件，不派工",
+    "NON_AUTHORITATIVE": "自述或按规则无权威效力（含 HANDOFF/PLAN_ONLY）",
+    "REQUESTED": "owner 已受理但未采纳为 Authority，待 owner 裁决",
+    "FROZEN": "逐字节冻结原件，禁止改写（与上面任一状态可并存，用 frozen 字段表达）"
+  },
+  "roles": {
+    "DISPATCH_ENTRY": "唯一派工入口，必须恰有一个且 state=CURRENT",
+    "AUTHORITY_SURFACE": "顶层权威/治理面文件",
+    "LEDGER": "可变机器账本",
+    "DEFINITION": "产品与路线图定义（需人裁决，不可再生）",
+    "LINEAGE": "被 index 明确保留的执行血统",
+    "RECORD": "历史/登记记录",
+    "IMPORTED_RECORD": "从外部卷导入的冻结件，定态见导入清单"
+  },
+  "prefixRules": [
+    {
+      "glob": "docs/handoffs/**",
+      "state": "NON_AUTHORITATIVE",
+      "role": "RECORD",
+      "basis": "authority-index historicalGlobs 含 docs/handoffs/**；HISTORY-FREEZE-RULES 明写“Handoff 永远不是顶层 Authority”。",
+      "replacement": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md"
+    },
+    {
+      "glob": "docs/history/**",
+      "state": "FROZEN",
+      "role": "RECORD",
+      "basis": "authority-index historicalGlobs 含 docs/history/**；HISTORY-FREEZE-RULES 已冻结 docs/history/** 家族，逐字节不得改写。",
+      "replacement": null
+    },
+    {
+      "glob": "docs/history/record-imports-2026-10-08/**",
+      "state": "FROZEN",
+      "role": "IMPORTED_RECORD",
+      "basis": "任务 DL-REC-29 从 D:\\All projects\\Record 导入的冻结原件；逐文件的定态（SUPERSEDED/HISTORICAL/NON_AUTHORITATIVE/FROZEN）由同目录 RECORD-IMPORT-MANIFEST.json 的 entries[].state 声明，落地字节由 scripts/record_import_verify.py 复验。",
+      "perFileStateSource": "docs/history/record-imports-2026-10-08/RECORD-IMPORT-MANIFEST.json",
+      "replacement": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md"
+    },
+    {
+      "glob": "docs/taskpacks/03_DESIGN-LAB_*",
+      "state": "REQUESTED",
+      "role": "RECORD",
+      "basis": "2026-10-06 权威修复/双端描述同步请求包及其 sidecar；owner 尚未裁决采纳，按 INDEX §3 的 REQUESTED 口径登记，且豁免 byte-digest 漂移。",
+      "ownerActionPending": "接受该请求包为派工入口，或把它改判为 NON_AUTHORITATIVE",
+      "replacement": null
+    },
+    {
+      "glob": "docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/pack/**",
+      "state": "FROZEN",
+      "role": "RECORD",
+      "basis": "2026-09-28 能力闭环包 5 个成员已在此逐字节存在；任务 #29 的导入清单据此判定该包无需重复落地（ALREADY-IN-REPO）。",
+      "replacement": null
+    }
+  ],
+  "documents": [
+    {
+      "path": "AUTHORITY.md",
+      "state": "CURRENT",
+      "role": "AUTHORITY_SURFACE",
+      "frozen": true,
+      "basis": "DL-AUTHORITY-2026-09-18-R2 顶层权威；由 scripts/verify_top_level_authority.py 按 SHA-256 钉死。"
+    },
+    {
+      "path": "AGENTS.md",
+      "state": "CURRENT",
+      "role": "AUTHORITY_SURFACE",
+      "frozen": false,
+      "basis": "根执行规则；index current 列表内，Authority-first 检查守卫其段落顺序与路径引用。"
+    },
+    {
+      "path": ".project/governance/authority-index.json",
+      "state": "CURRENT",
+      "role": "AUTHORITY_SURFACE",
+      "frozen": true,
+      "indexOmitted": "该文件是 index 本身，index.current 不自列；mandatoryAuditBootOrder 第 2 位与 verify_top_level_authority 的哈希钉死都按 CURRENT 对待它。记录此自指不对称，不靠改 index 消除它（改 index 会破坏被钉哈希，须 owner 裁决后重钉）。",
+      "basis": "分类真值表本身；按 SHA-256 钉死，故其引用路径不可搬迁（INDEX §7）。"
+    },
+    {
+      "path": "docs/current/HISTORY-FREEZE-RULES.md",
+      "state": "CURRENT",
+      "role": "AUTHORITY_SURFACE",
+      "frozen": true,
+      "indexOmitted": "该文件被 verify_top_level_authority.py 按哈希钉死并充当分类规则真值，却不在 index 的 current 数组里；这是 index 的不对称，记录而非掩盖，改动 index 会破坏被钉哈希，需 owner 裁决后重钉。",
+      "basis": "冻结与检索规则；已冻结家族清单。"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md",
+      "state": "CURRENT",
+      "role": "DISPATCH_ENTRY",
+      "frozen": true,
+      "basis": "index taskpackClassificationRule.currentIntegrated 所指的唯一当前统一派工入口；按 SHA-256 钉死。"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-DEEPSEEK-AUTHORITY-TASKPACK-2026-09-14.md",
+      "state": "CURRENT",
+      "role": "LINEAGE",
+      "frozen": false,
+      "basis": "index 同时把它列入 current 与 taskpackClassificationRule.lineage：STRUCTURAL_PREDECESSOR，只作结构/治理血统，不作派工入口（AGENTS.md 同条）。"
+    },
+    {
+      "path": "docs/history/taskpacks/r5-20260908/tasks.json",
+      "state": "FROZEN",
+      "role": "LINEAGE",
+      "frozen": true,
+      "basis": "index current + lineage：产品血统 DL-TP-20260908-R5 的冻结任务定义；原件禁止用作当前状态编辑源（同目录 ADOPTION-STATUS.md）。"
+    },
+    {
+      "path": "design-lab/config/task-ledger-r3.json",
+      "state": "CURRENT",
+      "role": "LEDGER",
+      "frozen": false,
+      "basis": "唯一可变任务账本；AGENTS.md 规定按 depends_on 派工，其他任何台账不得充当状态源。"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-GLOBAL-DESIGN-CAPABILITY-INTELLIGENCE-TASKPACK-2026-10-06.md",
+      "state": "REQUESTED",
+      "role": "RECORD",
+      "frozen": false,
+      "ownerActionPending": "采纳为 Authority 或判为 NON_AUTHORITATIVE（INDEX §3 已登记为 REQUESTED，豁免 byte-digest 漂移）",
+      "basis": "已受理未采纳；其机器骨架由 design-lab/scripts/verify_candidate_taxonomy.py 把关。"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-CLOUD-REAUDIT-TASKPACK-2026-09-06.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-CODEX-REAL-HOST-HANDOFF.md",
+      "state": "NON_AUTHORITATIVE",
+      "role": "RECORD",
+      "basis": "名义是 handoff 却放在 docs/taskpacks/；按 HISTORY-FREEZE-RULES handoff 不作权威。未搬迁：搬迁需先确认 replacement/callers/link update（INDEX §7），且本任务只定态不动字节。"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-DEEPSEEK-EXECUTION-2026-09-06.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-DEEPSEEK-AUTHORITY-TASKPACK-2026-09-14.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-DIRECTORY-MIGRATION-CLEANUP-TASKPACK-2026-09-01.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-DIRECTORY-MIGRATION-CLEANUP-TASKPACK-2026-09-01-2.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-DIRECTORY-MIGRATION-CLEANUP-TASKPACK-2026-09-01-2.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-DIRECTORY-MIGRATION-CLEANUP-TASKPACK-2026-09-01-3.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-DIRECTORY-MIGRATION-CLEANUP-TASKPACK-2026-09-01-3.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-DP-CORRECTION-TASKPACK-V2-2026-09-06.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-FINAL-TASKPACK-2026-08-25.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-TASKPACK-2026-08-25-2.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-FINAL-TASKPACK-2026-08-25-2.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DLR-FINAL-20260826-R2-OSS-FAST-TRACK.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-GPT-REMAINING-2026-09-06.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-MULTIMODAL-TASK-PLAN-2026-09-05.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md",
+      "basis": "AGENTS.md 明写 09-05 多模态方案为 SUPERSEDED 历史分工来源。"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-MULTIMODAL-CODEX-HANDOFF-2026-09-05.md",
+      "state": "NON_AUTHORITATIVE",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md",
+      "basis": "AGENTS.md 同条：交接不作顶层权威。"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-SPLIT-HANDOFF-2026-09-06.md",
+      "state": "NON_AUTHORITATIVE",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-TODAY-EXECUTION-TASKPACK-2026-09-04.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md",
+      "basis": "AGENTS.md 列为 superseded 历史任务包（后继 DL-TP-20260906-R3）。"
+    },
+    {
+      "path": "docs/taskpacks/DESIGN-LAB-TODAY-JOB-LEDGER-2026-09-04.yaml",
+      "state": "FROZEN",
+      "role": "RECORD",
+      "frozen": true,
+      "basis": "旧 job ledger，不得充当第二可变账本；唯一状态编辑源是 design-lab/config/task-ledger-r3.json。"
+    },
+    {
+      "path": "docs/taskpacks/DLR-FINAL-20260826-R2-OSS-FAST-TRACK.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md",
+      "basis": "AGENTS.md 列为 superseded 历史任务包（2026-08-26）。"
+    },
+    {
+      "path": "docs/taskpacks/R4.1-R3-INCREMENTAL-ALIGNMENT-2026-09-07.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md",
+      "basis": "同一字节另存两处：docs/history/taskpacks/r5-20260908/references/ 与导入清单里的 R4.1 包成员（crc 386d899c），三份互为副本。"
+    },
+    {
+      "path": "docs/taskpacks/TRI-OSS-FAST-TRACK-20260826-R1.md",
+      "state": "SUPERSEDED",
+      "role": "RECORD",
+      "supersededBy": "docs/taskpacks/DESIGN-LAB-FINAL-AUTHORITY-CONVERGENCE-TASKPACK-2026-09-18.md",
+      "basis": "AGENTS.md：三项目总规划，被 standalone-first ADR-001 取代。"
+    },
+    {
+      "path": "docs/current/PRODUCT_DEFINITION.md",
+      "state": "CURRENT",
+      "role": "DEFINITION",
+      "basis": "index current 列表内，且属 mandatoryAuditBootOrder。"
+    },
+    {
+      "path": "docs/architecture/BOUNDARY_CONTRACT.md",
+      "state": "CURRENT",
+      "role": "AUTHORITY_SURFACE",
+      "basis": "index current + mandatoryAuditBootOrder：边界合同。"
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE.md",
+      "state": "CURRENT",
+      "role": "AUTHORITY_SURFACE",
+      "basis": "index current + mandatoryAuditBootOrder：ACTIVE 架构（AUTHORITY §14 已核实对齐当前目录）。"
+    },
+    {
+      "path": "docs/architecture/DIRECTORY-AUTHORITY.md",
+      "state": "CURRENT",
+      "role": "AUTHORITY_SURFACE",
+      "basis": "index current：目录权威。"
+    },
+    {
+      "path": "docs/architecture/LANGUAGE-POLICY.md",
+      "state": "CURRENT",
+      "role": "AUTHORITY_SURFACE",
+      "basis": "index current + mandatoryAuditBootOrder；verify_top_level_authority 的语言单事实检查守卫其 CONFIGURED_NOT_ENFORCED 表述。"
+    },
+    {
+      "path": "design-lab/config/product-manifest.json",
+      "state": "CURRENT",
+      "role": "DEFINITION",
+      "basis": "index current：产品清单真值（version 0.1.0-alpha.0）。"
+    },
+    {
+      "path": "docs/current/PROJECT_DEFINITION.md",
+      "state": "REFERENCE",
+      "role": "DEFINITION",
+      "indexOmitted": "不在 index current 数组；INDEX §3 说 docs/current/ 是需人裁决的定义面。",
+      "basis": "项目定义；与 PRODUCT_DEFINITION 的分工未由 owner 裁决。"
+    },
+    {
+      "path": "docs/current/ROADMAP.md",
+      "state": "REFERENCE",
+      "role": "DEFINITION",
+      "indexOmitted": "不在 index current 数组。",
+      "basis": "路线图定义面，需人裁决；投影件不得冒充它。"
+    },
+    {
+      "path": "docs/current/USER_MODES.md",
+      "state": "REFERENCE",
+      "role": "DEFINITION",
+      "indexOmitted": "不在 index current 数组。",
+      "basis": "用户模式定义面。"
+    },
+    {
+      "path": "docs/history/record-imports-2026-10-08/RECORD-IMPORT-MANIFEST.json",
+      "state": "REFERENCE",
+      "role": "IMPORTED_RECORD",
+      "basis": "任务 #29 的导入台账：逐条源路径/字节/sha256/crc32/目标/定态，可复核；由 scripts/record_import_verify.py 复验。它登记事实，不派工，也不是 Authority。"
+    }
+  ]
+}

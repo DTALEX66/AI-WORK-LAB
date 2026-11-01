@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DESIGN-LAB · 最终版</title>
+<style>
+:root{
+--bg:#060A14;--sidebar:#090E1A;--surface:#0D1221;--surface2:#11182A;--border:#213D66;
+--primary:#316CFF;--secondary:#4BAFFF;--text:#F5F7FC;--muted:#9AA3B8;--success:#2FC58D;--warning:#F4B942;--error:#F05252;
+}
+
+:root{
+  --radius:18px;
+  --radius-sm:12px;
+  --blur:18px;
+  --shadow:0 20px 80px rgba(0,0,0,.35);
+  --shadow-soft:0 12px 48px rgba(0,0,0,.22);
+  --grid:rgba(255,255,255,.05);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:Inter,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow:hidden;
+}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+a{text-decoration:none;color:inherit}
+.app{
+  position:relative;
+  display:grid;
+  grid-template-columns:280px 1fr;
+  min-height:100vh;
+  isolation:isolate;
+  overflow:hidden;
+}
+.ambient,.ambient::before,.ambient::after{
+  content:"";
+  position:absolute;
+  inset:auto;
+  border-radius:999px;
+  filter:blur(80px);
+  z-index:-2;
+  opacity:.45;
+  animation:floatGlow 12s ease-in-out infinite;
+}
+.ambient{
+  width:360px;height:360px;left:-100px;top:-80px;
+  background:color-mix(in srgb,var(--primary) 40%, transparent);
+}
+.ambient::before{
+  width:320px;height:320px;right:-20vw;top:8vh;
+  background:color-mix(in srgb,var(--secondary) 30%, transparent);
+  animation-delay:-4s;
+}
+.ambient::after{
+  width:280px;height:280px;left:35vw;bottom:-100px;
+  background:color-mix(in srgb,var(--primary) 22%, transparent);
+  animation-delay:-7s;
+}
+.grid-bg{
+  position:absolute;inset:0;z-index:-3;opacity:.22;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px, transparent 1px);
+  background-size:32px 32px;
+  mask-image:radial-gradient(circle at center, black 45%, transparent 95%);
+}
+.sidebar{
+  position:relative;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--sidebar) 85%, #fff 2%),var(--sidebar));
+  border-right:1px solid color-mix(in srgb,var(--border) 75%, transparent);
+  padding:22px 18px;
+  display:flex;
+  flex-direction:column;
+  backdrop-filter:blur(18px);
+}
+.brand{
+  display:flex;gap:14px;align-items:center;
+  padding:8px 10px 22px;
+  border-bottom:1px solid color-mix(in srgb,var(--border) 55%, transparent);
+  margin-bottom:16px;
+}
+.brand-mark{
+  width:48px;height:48px;border-radius:16px;
+  display:grid;place-items:center;
+  color:#fff;font-weight:900;letter-spacing:.04em;
+  background:
+    radial-gradient(circle at 30% 30%,color-mix(in srgb,var(--primary) 80%, white 6%),transparent 45%),
+    linear-gradient(135deg,color-mix(in srgb,var(--primary) 80%, #fff 3%),color-mix(in srgb,var(--secondary) 55%, var(--primary)));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--primary) 25%, white 5%),0 10px 30px color-mix(in srgb,var(--primary) 38%, transparent);
+}
+.brand h1{margin:0;font-size:17px;line-height:1.15}
+.brand small{display:block;margin-top:4px;color:var(--primary);font-size:10px;letter-spacing:.12em}
+.nav{display:flex;flex-direction:column;gap:7px;overflow:auto;padding-right:4px}
+.nav button{
+  position:relative;
+  display:flex;gap:12px;align-items:center;
+  width:100%;
+  padding:12px 14px;
+  border-radius:14px;
+  color:var(--text);
+  background:transparent;
+  border:1px solid transparent;
+  text-align:left;
+  transition:.22s ease;
+}
+.nav button:hover{
+  background:color-mix(in srgb,var(--surface2) 78%, transparent);
+  border-color:color-mix(in srgb,var(--border) 70%, transparent);
+  transform:translateX(3px);
+}
+.nav button.active{
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--primary) 26%, transparent),color-mix(in srgb,var(--primary) 16%, transparent)),
+    color-mix(in srgb,var(--surface2) 68%, transparent);
+  border-color:color-mix(in srgb,var(--primary) 45%, white 5%);
+  box-shadow:0 8px 28px color-mix(in srgb,var(--primary) 18%, transparent), inset 0 0 0 1px color-mix(in srgb,var(--primary) 10%, white 4%);
+}
+.nav button.active::before{
+  content:"";
+  position:absolute;left:-4px;top:10px;bottom:10px;width:3px;border-radius:999px;
+  background:linear-gradient(180deg,var(--secondary),var(--primary));
+  box-shadow:0 0 16px color-mix(in srgb,var(--primary) 70%, transparent);
+}
+.nav-dot{
+  width:10px;height:10px;border-radius:50%;
+  border:2px solid currentColor;opacity:.9;flex:0 0 auto;
+}
+.sidebar-footer{
+  margin-top:auto;
+  border-top:1px solid color-mix(in srgb,var(--border) 55%, transparent);
+  padding:16px 8px 4px;
+  display:flex;align-items:center;gap:12px;
+}
+.avatar{
+  width:40px;height:40px;border-radius:50%;
+  display:grid;place-items:center;
+  background:color-mix(in srgb,var(--surface2) 82%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 72%, transparent);
+  color:#fff;
+}
+.sidebar-footer small{display:block;color:var(--muted);margin-top:3px}
+.main{
+  display:flex;flex-direction:column;min-width:0;
+}
+.topbar{
+  height:78px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;
+  border-bottom:1px solid color-mix(in srgb,var(--border) 60%, transparent);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 82%, transparent),color-mix(in srgb,var(--surface) 72%, transparent));
+  backdrop-filter:blur(18px);
+}
+.search{
+  width:min(620px,54vw);
+  display:flex;align-items:center;gap:10px;
+  background:color-mix(in srgb,var(--surface2) 72%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 72%, transparent);
+  border-radius:14px;
+  padding:12px 14px;
+  color:var(--muted);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+}
+.search:hover{border-color:color-mix(in srgb,var(--primary) 45%, white 3%)}
+.top-actions{display:flex;gap:10px}
+.ghost-btn,.soft-btn,.primary-btn,.danger-btn{
+  border-radius:12px;padding:10px 14px;
+  transition:.2s ease;
+}
+.ghost-btn,.soft-btn{
+  border:1px solid color-mix(in srgb,var(--border) 72%, transparent);
+  background:color-mix(in srgb,var(--surface2) 62%, transparent);
+  color:var(--text);
+}
+.ghost-btn:hover,.soft-btn:hover{
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb,var(--primary) 38%, white 3%);
+  box-shadow:0 8px 28px rgba(0,0,0,.15);
+}
+.primary-btn{
+  border:0;color:#fff;font-weight:700;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 92%, white 4%),color-mix(in srgb,var(--secondary) 55%, var(--primary)));
+  box-shadow:0 12px 30px color-mix(in srgb,var(--primary) 28%, transparent);
+}
+.primary-btn:hover{transform:translateY(-1px) scale(1.01)}
+.danger-btn{
+  border:0;color:#fff;font-weight:700;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--error) 88%, white 3%),color-mix(in srgb,var(--error) 60%, #000));
+}
+.content{
+  flex:1;overflow:auto;padding:26px 28px 30px;
+}
+.page-head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:20px;
+  margin-bottom:22px;
+}
+.page-head h2{margin:0 0 6px;font-size:32px;letter-spacing:.01em}
+.page-head p{margin:0;color:var(--muted);max-width:760px;line-height:1.55}
+.page-actions{display:flex;gap:10px;align-items:center}
+.kpi-grid,.two-col,.three-col,.split{
+  display:grid;gap:16px;
+}
+.kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.two-col{grid-template-columns:1.2fr 1fr}
+.three-col{grid-template-columns:repeat(3,minmax(0,1fr))}
+.split{grid-template-columns:1.35fr .95fr}
+.panel{
+  position:relative;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 82%, white 1%),color-mix(in srgb,var(--surface) 94%, #000 2%));
+  border:1px solid color-mix(in srgb,var(--border) 70%, transparent);
+  border-radius:var(--radius);
+  padding:18px;
+  box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.02);
+  overflow:hidden;
+}
+.panel::before{
+  content:"";
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 18%);
+  pointer-events:none;
+}
+.panel:hover{
+  border-color:color-mix(in srgb,var(--primary) 44%, white 3%);
+  box-shadow:0 18px 44px rgba(0,0,0,.22), 0 0 0 1px color-mix(in srgb,var(--primary) 10%, white 2%);
+}
+.panel h3{
+  margin:0 0 14px;font-size:15px;letter-spacing:.02em
+}
+.kpi strong{
+  display:block;font-size:35px;line-height:1.05;margin-bottom:10px;color:var(--primary)
+}
+.kpi small{color:var(--muted)}
+.kpi .trend{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-top:10px;color:var(--muted)}
+.kpi .trend.up{color:var(--success)}
+.kpi .trend.warn{color:var(--warning)}
+.list{display:flex;flex-direction:column;gap:10px}
+.list-item{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:13px 14px;border-radius:14px;
+  background:color-mix(in srgb,var(--surface2) 74%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 68%, transparent);
+  transition:.18s ease;
+}
+.list-item:hover{
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb,var(--primary) 34%, white 3%);
+}
+.list-item small{display:block;color:var(--muted);margin-top:3px}
+.tag{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;
+  white-space:nowrap;
+}
+.tag.ok{background:linear-gradient(135deg,#27c86a,#11a74d)}
+.tag.warn{background:linear-gradient(135deg,#f2b541,#c98c00)}
+.tag.bad{background:linear-gradient(135deg,#f86b6b,#cb3e3e)}
+.tag.info{background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--secondary) 45%, var(--primary)))}
+.table-wrap{overflow:auto}
+.table{
+  width:100%;border-collapse:collapse;min-width:720px;
+}
+.table th,.table td{
+  text-align:left;padding:12px 10px;border-bottom:1px solid color-mix(in srgb,var(--border) 60%, transparent);font-size:13px;vertical-align:middle
+}
+.table th{color:var(--muted);font-weight:600}
+.table tbody tr:hover td{background:color-mix(in srgb,var(--surface2) 74%, transparent)}
+.toolbar{
+  display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px
+}
+.toolbar input,.toolbar textarea,.toolbar select,.input{
+  width:auto;min-width:0;
+  border:1px solid color-mix(in srgb,var(--border) 72%, transparent);
+  background:color-mix(in srgb,var(--surface2) 72%, transparent);
+  color:var(--text);padding:11px 12px;border-radius:12px;
+  outline:none;
+}
+.toolbar input:focus,.toolbar textarea:focus,.toolbar select:focus,.input:focus{
+  border-color:color-mix(in srgb,var(--primary) 48%, white 4%);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 12%, transparent);
+}
+.toolbar .seg{
+  display:flex;gap:8px;flex-wrap:wrap
+}
+.toolbar .seg button{
+  border:1px solid color-mix(in srgb,var(--border) 70%, transparent);
+  background:color-mix(in srgb,var(--surface2) 68%, transparent);
+  color:var(--text);padding:10px 12px;border-radius:12px
+}
+.toolbar .seg button.active{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 86%, white 3%),color-mix(in srgb,var(--secondary) 44%, var(--primary)));
+  border-color:color-mix(in srgb,var(--primary) 48%, white 4%);
+  color:#fff;
+}
+.muted{color:var(--muted)}
+.big-number{
+  font-size:42px;font-weight:900;letter-spacing:-.02em;color:var(--primary);
+  text-shadow:0 0 24px color-mix(in srgb,var(--primary) 32%, transparent)
+}
+.spark{
+  width:100%;height:180px;
+}
+.progress{
+  width:100%;height:10px;border-radius:999px;overflow:hidden;
+  background:color-mix(in srgb,var(--surface2) 82%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 55%, transparent)
+}
+.progress > div{
+  height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--primary),color-mix(in srgb,var(--secondary) 45%, var(--primary)));
+  box-shadow:0 0 20px color-mix(in srgb,var(--primary) 30%, transparent);
+}
+.canvas{
+  position:relative;
+  min-height:520px;
+  border-radius:18px;
+  border:1px solid color-mix(in srgb,var(--border) 60%, transparent);
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px, transparent 1px),
+    radial-gradient(circle at 30% 20%, color-mix(in srgb,var(--primary) 8%, transparent), transparent 40%);
+  background-size:30px 30px,30px 30px,auto;
+  overflow:hidden;
+}
+.flow-svg{
+  position:absolute;inset:0;pointer-events:none;z-index:0;
+}
+.flow-svg path{
+  stroke:color-mix(in srgb,var(--primary) 62%, white 3%);
+  stroke-width:3;fill:none;stroke-linecap:round;
+  stroke-dasharray:10 14;
+  animation:dashMove 3.6s linear infinite;
+  filter:drop-shadow(0 0 10px color-mix(in srgb,var(--primary) 40%, transparent));
+}
+.node{
+  position:absolute;z-index:2;
+  min-width:150px;max-width:190px;
+  padding:14px 16px;border-radius:16px;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--surface2) 82%, white 1%),color-mix(in srgb,var(--surface2) 96%, #000 2%));
+  border:1px solid color-mix(in srgb,var(--primary) 42%, white 3%);
+  box-shadow:0 16px 34px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.03);
+  user-select:none;cursor:grab;
+  transition:.18s ease;
+}
+.node:hover{transform:translateY(-2px)}
+.node:active{cursor:grabbing}
+.node .title{font-weight:800}
+.node .meta{color:var(--muted);font-size:12px;margin-top:5px}
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:20px;z-index:90;
+}
+.overlay.open{display:flex}
+.modal{
+  width:min(760px,96vw);
+  border-radius:22px;padding:22px 22px 18px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 90%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  border:1px solid color-mix(in srgb,var(--primary) 35%, white 4%);
+  box-shadow:var(--shadow);
+}
+.modal h3{margin:0 0 10px}
+.modal .body{color:var(--muted);line-height:1.6}
+.modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.drawer{
+  position:fixed;top:0;right:-540px;height:100vh;width:min(520px,95vw);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 90%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  border-left:1px solid color-mix(in srgb,var(--primary) 28%, white 4%);
+  box-shadow:-18px 0 50px rgba(0,0,0,.25);
+  z-index:88;
+  padding:24px;
+  transition:right .28s cubic-bezier(.2,0,0,1);
+}
+.drawer.open{right:0}
+.palette{
+  position:fixed;left:50%;top:11vh;transform:translateX(-50%);
+  width:min(820px,96vw);
+  border-radius:20px;overflow:hidden;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 90%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  border:1px solid color-mix(in srgb,var(--primary) 34%, white 4%);
+  box-shadow:var(--shadow);
+  display:none;z-index:95;
+}
+.palette.open{display:block}
+.palette input{
+  width:calc(100% - 24px);margin:12px;
+  border:1px solid color-mix(in srgb,var(--border) 70%, transparent);
+  background:color-mix(in srgb,var(--surface2) 74%, transparent);
+  color:var(--text);padding:14px;border-radius:14px;outline:none;
+}
+.palette .item{
+  display:flex;justify-content:space-between;gap:12px;align-items:center;
+  padding:13px 16px;border-top:1px solid color-mix(in srgb,var(--border) 55%, transparent);
+}
+.palette .item:hover{
+  background:color-mix(in srgb,var(--surface2) 74%, transparent)
+}
+.toast{
+  position:fixed;right:18px;bottom:18px;z-index:110;
+  min-width:220px;max-width:420px;
+  padding:13px 15px;border-radius:16px;
+  border:1px solid color-mix(in srgb,var(--primary) 34%, white 4%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 88%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  box-shadow:var(--shadow-soft);
+  opacity:0;transform:translateY(12px) scale(.98);pointer-events:none;
+  transition:.22s ease;
+}
+.toast.show{opacity:1;transform:translateY(0) scale(1)}
+.review-card{
+  perspective:1200px;
+  width:min(680px,100%);height:360px;margin:auto;
+}
+.review-inner{
+  position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transition:transform .55s cubic-bezier(.2,.6,.1,1);
+}
+.review-card.flipped .review-inner{transform:rotateY(180deg)}
+.review-face{
+  position:absolute;inset:0;border-radius:20px;padding:28px;
+  backface-visibility:hidden;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 88%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  border:1px solid color-mix(in srgb,var(--primary) 34%, white 4%);
+  box-shadow:var(--shadow-soft);
+}
+.review-face.back{transform:rotateY(180deg)}
+.metric-ring{
+  position:relative;width:120px;height:120px;margin:auto;
+}
+.metric-ring svg{transform:rotate(-90deg)}
+.metric-ring .label{
+  position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:24px
+}
+.graph-stage{
+  position:relative;
+  min-height:380px;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb,var(--primary) 12%, transparent), transparent 45%),
+    linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+  border:1px solid color-mix(in srgb,var(--border) 58%, transparent);
+  overflow:hidden;
+}
+.graph-stage svg{width:100%;height:100%}
+.graph-stage circle.node-dot{
+  fill:color-mix(in srgb,var(--surface2) 88%, transparent);
+  stroke:color-mix(in srgb,var(--secondary) 65%, white 2%);
+  stroke-width:2;
+  cursor:pointer;
+  transition:.2s ease;
+  filter:drop-shadow(0 0 8px color-mix(in srgb,var(--primary) 18%, transparent));
+}
+.graph-stage circle.node-dot:hover,
+.graph-stage circle.node-dot.active{
+  stroke:var(--secondary);
+  stroke-width:3;
+  transform:scale(1.06);
+  filter:drop-shadow(0 0 14px color-mix(in srgb,var(--secondary) 40%, transparent));
+}
+.graph-stage .core{
+  fill:var(--primary);
+  filter:drop-shadow(0 0 18px color-mix(in srgb,var(--primary) 48%, transparent));
+  animation:pulse 3s ease-in-out infinite;
+}
+.metric-row{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px
+}
+.metric-box{
+  padding:14px;border-radius:14px;
+  background:color-mix(in srgb,var(--surface2) 74%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 62%, transparent);
+}
+.comment{
+  padding:12px 14px;border-radius:14px;
+  background:color-mix(in srgb,var(--surface2) 74%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 62%, transparent);
+}
+.comment strong{display:block;margin-bottom:6px}
+.scan-line{
+  position:relative;overflow:hidden
+}
+.scan-line::after{
+  content:"";position:absolute;left:0;right:0;top:-20%;
+  height:36%;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--primary) 18%, white 3%),transparent);
+  animation:scanSweep 2.4s linear infinite;
+  pointer-events:none;
+}
+.status-stack{display:flex;gap:10px;flex-wrap:wrap}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.empty{
+  text-align:center;padding:56px 20px;color:var(--muted)
+}
+.empty .icon{
+  width:64px;height:64px;margin:0 auto 14px;border-radius:50%;
+  border:1px solid color-mix(in srgb,var(--primary) 38%, white 3%);
+  display:grid;place-items:center;color:var(--primary);font-size:28px;
+  box-shadow:0 0 24px color-mix(in srgb,var(--primary) 18%, transparent);
+}
+@keyframes floatGlow{
+  0%,100%{transform:translateY(0) translateX(0) scale(1)}
+  50%{transform:translateY(20px) translateX(12px) scale(1.06)}
+}
+@keyframes dashMove{to{stroke-dashoffset:-48}}
+@keyframes pulse{
+  0%,100%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.05);opacity:.86}
+}
+@keyframes scanSweep{
+  0%{transform:translateY(-120%)}
+  100%{transform:translateY(420%)}
+}
+@media (max-width:1160px){
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two-col,.three-col,.split,.metric-row{grid-template-columns:1fr}
+}
+@media (max-width:840px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .top-actions{display:none}
+  .search{width:100%}
+  .content{padding:18px}
+  .kpi-grid{grid-template-columns:1fr}
+  .page-head{flex-direction:column}
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="ambient"></div>
+  <div class="grid-bg"></div>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">DL</div>
+      <div>
+        <h1>DESIGN-LAB</h1>
+        <small>AI-NATIVE DESIGN INTELLIGENCE</small>
+      </div>
+    </div>
+    <div class="nav"><button data-route="dashboard"><span class="nav-dot"></span><span>仪表盘</span></button>
+<button data-route="projects"><span class="nav-dot"></span><span>项目</span></button>
+<button data-route="research"><span class="nav-dot"></span><span>研究洞察</span></button>
+<button data-route="brand"><span class="nav-dot"></span><span>品牌系统</span></button>
+<button data-route="domains"><span class="nav-dot"></span><span>设计领域</span></button>
+<button data-route="tools"><span class="nav-dot"></span><span>创作工具</span></button>
+<button data-route="preflight"><span class="nav-dot"></span><span>预检 / QA</span></button>
+<button data-route="deliverables"><span class="nav-dot"></span><span>交付中心</span></button>
+<button data-route="evidence"><span class="nav-dot"></span><span>证据系统</span></button>
+<button data-route="collab"><span class="nav-dot"></span><span>团队协作</span></button>
+<button data-route="settings"><span class="nav-dot"></span><span>设置</span></button></div>
+    <div class="sidebar-footer">
+      <div class="avatar">A</div>
+      <div><strong>Alex</strong><small>Personal Workspace</small></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="search" id="openPalette">⌘ K　搜索页面 / 命令 / 资源</div>
+      <div class="top-actions">
+        <button class="ghost-btn" id="topNotice">通知</button>
+        <button class="ghost-btn" id="openDrawer">工作区</button>
+      </div>
+    </header>
+    <section class="content" id="content"></section>
+  </main>
+</div>
+
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">确认操作</h3>
+    <div class="body" id="modalBody">该操作将写入本地状态。</div>
+    <div class="actions">
+      <button class="ghost-btn" data-close-modal>取消</button>
+      <button class="primary-btn" id="modalConfirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer">
+  <h3 style="margin:0 0 8px">工作区 / Context</h3>
+  <p class="muted" style="margin-top:0">当前演示支持 localStorage 持久化、Command Palette、Toast、Modal、Drawer 与动画反馈。</p>
+  <div class="status-stack" style="margin:14px 0 20px">
+    <span class="tag info">Live UI</span>
+    <span class="tag ok">Local State</span>
+    <span class="tag warn">Static Deploy</span>
+  </div>
+  <div class="panel">
+    <h3>界面状态</h3>
+    <div class="list">
+      <div class="list-item"><span>Rendering</span><span class="tag ok">Ready</span></div>
+      <div class="list-item"><span>Motion Effects</span><span class="tag ok">Enabled</span></div>
+      <div class="list-item"><span>Palette</span><span class="tag info">Ctrl/Cmd + K</span></div>
+    </div>
+  </div>
+  <button class="primary-btn" id="closeDrawer" style="margin-top:18px;width:100%">关闭</button>
+</aside>
+
+<div class="palette" id="palette">
+  <input id="paletteInput" placeholder="搜索页面、命令或模块…">
+  <div id="paletteItems"><div class="item" data-go="dashboard"><span>仪表盘</span><small>Open</small></div>
+<div class="item" data-go="projects"><span>项目</span><small>Open</small></div>
+<div class="item" data-go="research"><span>研究洞察</span><small>Open</small></div>
+<div class="item" data-go="brand"><span>品牌系统</span><small>Open</small></div>
+<div class="item" data-go="domains"><span>设计领域</span><small>Open</small></div>
+<div class="item" data-go="tools"><span>创作工具</span><small>Open</small></div>
+<div class="item" data-go="preflight"><span>预检 / QA</span><small>Open</small></div>
+<div class="item" data-go="deliverables"><span>交付中心</span><small>Open</small></div>
+<div class="item" data-go="evidence"><span>证据系统</span><small>Open</small></div>
+<div class="item" data-go="collab"><span>团队协作</span><small>Open</small></div>
+<div class="item" data-go="settings"><span>设置</span><small>Open</small></div></div>
+</div>
+
+<div class="toast" id="toast">Done</div>
+
+<script>
+const APP_KEY = "design-lab-final";
+const NAV = [["dashboard", "仪表盘"], ["projects", "项目"], ["research", "研究洞察"], ["brand", "品牌系统"], ["domains", "设计领域"], ["tools", "创作工具"], ["preflight", "预检 / QA"], ["deliverables", "交付中心"], ["evidence", "证据系统"], ["collab", "团队协作"], ["settings", "设置"]];
+const content = document.getElementById("content");
+const modal = document.getElementById("modal");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+const modalConfirm = document.getElementById("modalConfirm");
+const drawer = document.getElementById("drawer");
+const palette = document.getElementById("palette");
+const paletteInput = document.getElementById("paletteInput");
+const toast = document.getElementById("toast");
+
+function getHash(){return location.hash.replace("#","") || NAV[0][0];}
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>toast.classList.remove("show"),1800);
+}
+function activateNav(id){
+  document.querySelectorAll("[data-route]").forEach(btn=>btn.classList.toggle("active", btn.dataset.route === id));
+}
+function setRoute(id){location.hash = id; render(id);}
+function openModal(title, html, onConfirm){
+  modalTitle.textContent = title;
+  modalBody.innerHTML = html;
+  modal.classList.add("open");
+  modalConfirm.onclick = ()=>{ modal.classList.remove("open"); onConfirm && onConfirm(); };
+}
+function closeModal(){ modal.classList.remove("open"); }
+function openDrawer(){ drawer.classList.add("open"); }
+function closeDrawer(){ drawer.classList.remove("open"); }
+function openPalette(){ palette.classList.add("open"); paletteInput.focus(); paletteInput.select(); }
+function closePalette(){ palette.classList.remove("open"); paletteInput.value=""; document.querySelectorAll("#paletteItems .item").forEach(el=>el.style.display="flex"); }
+function renderPageHead(title, desc, actionText="", secondary=""){
+  return `
+    <div class="page-head">
+      <div>
+        <h2>${title}</h2>
+        <p>${desc}</p>
+      </div>
+      <div class="page-actions">
+        ${secondary ? `<button class="ghost-btn" data-action="${secondary}">${secondary}</button>` : ""}
+        ${actionText ? `<button class="primary-btn" data-action="${actionText}">${actionText}</button>` : ""}
+      </div>
+    </div>
+  `;
+}
+function sparkline(values){
+  const width = 100, height = 100;
+  const step = width / (values.length - 1);
+  const points = values.map((v,i)=>`${(i*step).toFixed(1)},${(100-v).toFixed(1)}`).join(" ");
+  return `<svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <defs><linearGradient id="spark-grad" x1="0" x2="1"><stop offset="0%" stop-color="var(--primary)"/><stop offset="100%" stop-color="var(--secondary)"/></linearGradient></defs>
+    <polyline points="${points}" fill="none" stroke="url(#spark-grad)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+function animateCounters(){
+  document.querySelectorAll("[data-count]").forEach(el=>{
+    const raw = el.dataset.count;
+    const suffix = el.dataset.suffix || "";
+    const target = parseFloat(raw);
+    const decimals = (raw.includes(".")) ? raw.split(".")[1].length : 0;
+    let current = 0;
+    const duration = 900;
+    const start = performance.now();
+    function tick(now){
+      const p = Math.min(1,(now-start)/duration);
+      const eased = 1 - Math.pow(1-p,3);
+      current = target * eased;
+      el.textContent = current.toFixed(decimals) + suffix;
+      if(p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+document.getElementById("openPalette").onclick = openPalette;
+document.getElementById("openDrawer").onclick = openDrawer;
+document.getElementById("closeDrawer").onclick = closeDrawer;
+document.getElementById("topNotice").onclick = ()=>showToast("暂无新的通知");
+document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.onclick = closeModal);
+document.querySelectorAll("[data-route]").forEach(btn=>btn.onclick = ()=>setRoute(btn.dataset.route));
+document.querySelectorAll("#paletteItems .item").forEach(el=>el.onclick = ()=>{ setRoute(el.dataset.go); closePalette(); });
+paletteInput.addEventListener("input", ()=>{
+  const q = paletteInput.value.toLowerCase();
+  document.querySelectorAll("#paletteItems .item").forEach(el=>el.style.display = el.textContent.toLowerCase().includes(q) ? "flex" : "none");
+});
+window.addEventListener("keydown",(e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==="k"){ e.preventDefault(); palette.classList.contains("open") ? closePalette() : openPalette(); }
+  if(e.key==="Escape"){ closePalette(); closeModal(); closeDrawer(); }
+});
+window.addEventListener("hashchange", ()=>render(getHash()));
+
+let projects = JSON.parse(localStorage.getItem(APP_KEY + ":projects") || "null") || [
+  {name:"Aurora 品牌升级", domain:"Branding", status:"进行中", quality:96},
+  {name:"Nebula App", domain:"UI/UX", status:"评审中", quality:92},
+  {name:"Motion Reel 2024", domain:"Motion", status:"已完成", quality:98},
+  {name:"Spatial Exhibit", domain:"3D", status:"进行中", quality:90}
+];
+let comments = JSON.parse(localStorage.getItem(APP_KEY + ":comments") || "null") || [
+  {author:"Alex", text:"调整首页 Hero 的层级与节奏。"},
+  {author:"Taylor", text:"更新 UI Kit 里按钮与状态标签。"},
+];
+const checks = [
+  {name:"图片分辨率", cat:"资产", level:"pass", msg:"全部满足要求"},
+  {name:"字体缺失", cat:"字体", level:"warn", msg:"Page 04 缺少 1 个字体"},
+  {name:"出血设置", cat:"印刷", level:"error", msg:"Poster A2 缺少 3mm 出血"},
+  {name:"版权来源", cat:"合规", level:"pass", msg:"授权记录完整"},
+  {name:"色彩空间", cat:"输出", level:"pass", msg:"CMYK 配置正确"},
+  {name:"导出命名", cat:"交付", level:"warn", msg:"2 个文件命名不规范"}
+];
+
+function head(title, desc, primary="", secondary=""){ return renderPageHead(title, desc, primary, secondary); }
+function kpiCard(num, label, suffix=""){
+  return `<div class="panel kpi"><strong data-count="${num}" data-suffix="${suffix}">0${suffix}</strong><small>${label}</small><div class="trend up">Updated</div></div>`;
+}
+function statusTag(status){
+  if(status === "已完成") return `<span class="tag ok">已完成</span>`;
+  if(status === "评审中") return `<span class="tag warn">评审中</span>`;
+  return `<span class="tag info">进行中</span>`;
+}
+function renderDashboard(){
+  const avg = Math.round(projects.reduce((a,b)=>a+b.quality,0) / projects.length);
+  content.innerHTML = `
+    ${head("仪表盘","项目、研究、品牌、预检与交付被整合为一个设计智造工作台。","+ 新建项目","导出周报")}
+    <div class="kpi-grid">
+      ${kpiCard(projects.filter(p=>p.status==="进行中").length,"进行中项目")}
+      ${kpiCard(projects.filter(p=>p.status==="评审中").length,"待审核")}
+      ${kpiCard(avg,"质量评分")}
+      ${kpiCard("24","本周完成")}
+    </div>
+    <div class="two-col" style="margin-top:16px">
+      <div class="panel">
+        <h3>最近项目</h3>
+        <div class="list">
+          ${projects.map(p=>`<div class="list-item"><div><strong>${p.name}</strong><small>${p.domain}</small></div><span class="tag ${p.status==="评审中"?"warn":p.status==="已完成"?"ok":"info"}">${p.quality}</span></div>`).join("")}
+        </div>
+      </div>
+      <div class="panel">
+        <h3>设计质量趋势</h3>
+        ${sparkline([56,60,66,70,73,78,82,86,89,92,96])}
+      </div>
+    </div>
+    <div class="three-col" style="margin-top:16px">
+      ${["Research","Brand","Delivery"].map(x=>`<div class="panel"><h3>${x}</h3><div class="muted">可直接对接真实数据与业务逻辑的页面母版。</div><div class="progress" style="margin-top:14px"><div style="width:${x==="Research"?72:x==="Brand"?84:65}%"></div></div></div>`).join("")}
+    </div>
+  `;
+  wireButtons();
+  animateCounters();
+}
+function renderProjects(){
+  content.innerHTML = `
+    ${head("项目","支持筛选、编辑与本地持久化。","+ 新建项目","导出项目")}
+    <div class="toolbar">
+      <input id="pSearch" class="input" placeholder="搜索项目…" style="min-width:240px;flex:1">
+      <select id="pStatus" class="input">
+        <option value="">全部状态</option>
+        <option>进行中</option><option>评审中</option><option>已完成</option>
+      </select>
+    </div>
+    <div class="panel">
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>项目</th><th>领域</th><th>状态</th><th>质量</th><th></th></tr></thead>
+          <tbody id="pBody"></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  const body = document.getElementById("pBody");
+  const search = document.getElementById("pSearch");
+  const status = document.getElementById("pStatus");
+  function draw(){
+    const q = search.value.toLowerCase();
+    body.innerHTML = projects.filter(p=>(!status.value || p.status===status.value) && p.name.toLowerCase().includes(q)).map((p,i)=>`<tr>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.domain}</td>
+      <td>${statusTag(p.status)}</td>
+      <td>${p.quality}</td>
+      <td><button class="ghost-btn editProject" data-i="${i}">编辑</button></td>
+    </tr>`).join("");
+    document.querySelectorAll(".editProject").forEach(btn=>btn.onclick = ()=>editProject(parseInt(btn.dataset.i)));
+  }
+  search.oninput = draw;
+  status.onchange = draw;
+  draw();
+  wireButtons();
+}
+function editProject(i){
+  const p = projects[i];
+  openModal("编辑项目", `
+    <div style="display:grid;gap:10px;margin-top:12px">
+      <input class="input" id="editName" value="${p.name}">
+      <select class="input" id="editStatus">
+        ${["进行中","评审中","已完成"].map(s=>`<option ${s===p.status?"selected":""}>${s}</option>`).join("")}
+      </select>
+      <input class="input" id="editQuality" type="number" min="0" max="100" value="${p.quality}">
+    </div>
+  `, ()=>{
+    p.name = document.getElementById("editName").value;
+    p.status = document.getElementById("editStatus").value;
+    p.quality = parseInt(document.getElementById("editQuality").value || "0");
+    localStorage.setItem(APP_KEY + ":projects", JSON.stringify(projects));
+    showToast("项目已更新");
+    renderProjects();
+  });
+}
+function renderPreflight(){
+  content.innerHTML = `
+    ${head("预检 / QA","不是静态截图，而是带扫描过程和结果反馈的最终版演示。","运行预检","导出报告")}
+    <div class="kpi-grid">
+      ${kpiCard("0","通过项")}
+      ${kpiCard("0","警告项")}
+      ${kpiCard("0","错误项")}
+      ${kpiCard("0","质量得分")}
+    </div>
+    <div class="panel scan-line" style="margin-top:16px">
+      <h3>检查结果</h3>
+      <div id="checkList" class="list"><div class="muted">点击“运行预检”开始扫描。</div></div>
+    </div>
+  `;
+  wireButtons(action=>{
+    if(action === "运行预检"){
+      const list = document.getElementById("checkList");
+      const nums = document.querySelectorAll("[data-count]");
+      let idx = 0;
+      list.innerHTML = "";
+      const timer = setInterval(()=>{
+        if(idx >= checks.length){
+          clearInterval(timer);
+          const pass = checks.filter(c=>c.level==="pass").length;
+          const warn = checks.filter(c=>c.level==="warn").length;
+          const err = checks.filter(c=>c.level==="error").length;
+          nums[0].dataset.count = pass; nums[1].dataset.count = warn; nums[2].dataset.count = err; nums[3].dataset.count = Math.max(0, 100 - err*12 - warn*4);
+          nums.forEach(el=>el.textContent = "0");
+          animateCounters();
+          showToast("预检完成");
+          return;
+        }
+        const c = checks[idx++];
+        const tag = c.level==="pass" ? "ok" : c.level==="warn" ? "warn" : "bad";
+        list.insertAdjacentHTML("beforeend", `<div class="list-item"><div><strong>${c.name}</strong><small>${c.cat} · ${c.msg}</small></div><span class="tag ${tag}">${c.level.toUpperCase()}</span></div>`);
+      }, 380);
+    } else {
+      showToast(action + " 已触发");
+    }
+  });
+}
+function renderBrand(){
+  content.innerHTML = `
+    ${head("品牌系统","延续你前面锁定的高级、发光、动感产品表达。","导出资产")}
+    <div class="three-col">
+      ${["Logo","Color","Typography","Icon","Graphic Language","Templates"].map((name,i)=>`
+        <div class="panel">
+          <h3>${name}</h3>
+          <div style="height:150px;border-radius:16px;border:1px dashed color-mix(in srgb,var(--border) 70%, transparent);background:
+            radial-gradient(circle at ${20 + i*10}% ${26 + i*5}%, color-mix(in srgb,var(--primary) 18%, transparent), transparent 26%),
+            linear-gradient(135deg,rgba(255,255,255,.02),rgba(255,255,255,0)); position:relative;overflow:hidden">
+            <div style="position:absolute;left:${18+i*8}px;top:${20+i*6}px;width:${82+i*12}px;height:${82-i*2}px;border:2px solid var(--primary);border-radius:${14+i*2}px;box-shadow:0 0 18px color-mix(in srgb,var(--primary) 18%, transparent)"></div>
+            <div style="position:absolute;right:${24+i*3}px;bottom:${18+i*5}px;width:${66+i*5}px;height:${66+i*3}px;border:2px solid var(--secondary);border-radius:999px;opacity:.8"></div>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  wireButtons();
+}
+function renderCollab(){
+  content.innerHTML = `
+    ${head("团队协作","评论、审批、版本活动一体化。","发送评论")}
+    <div class="split">
+      <div class="panel">
+        <h3>评论流</h3>
+        <div id="commentList" class="list">
+          ${comments.map(c=>`<div class="comment"><strong>${c.author}</strong><div class="muted">${c.text}</div></div>`).join("")}
+        </div>
+        <textarea id="commentText" class="input" style="width:100%;min-height:120px;margin-top:14px" placeholder="写下新的协作评论…"></textarea>
+      </div>
+      <div class="panel">
+        <h3>审批阶段</h3>
+        <div class="list">
+          <div class="list-item"><div><strong>Research Complete</strong><small>洞察已提交</small></div><span class="tag ok">Done</span></div>
+          <div class="list-item"><div><strong>Design Review</strong><small>等待负责人确认</small></div><span class="tag warn">Pending</span></div>
+          <div class="list-item"><div><strong>Delivery Pack</strong><small>准备导出</small></div><span class="tag info">Queued</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+  wireButtons(action=>{
+    if(action === "发送评论"){
+      const txt = document.getElementById("commentText").value.trim();
+      if(!txt) return showToast("请输入评论内容");
+      comments.unshift({author:"Alex", text:txt});
+      localStorage.setItem(APP_KEY + ":comments", JSON.stringify(comments));
+      showToast("评论已发送");
+      renderCollab();
+    }
+  });
+}
+function renderGeneric(id){
+  const label = NAV.find(x=>x[0]===id)?.[1] || "模块";
+  content.innerHTML = `
+    ${head(label,"沿用 DESIGN-LAB 最终版的电蓝光效、模块卡片和高级交互。","主要操作","导出")}
+    <div class="three-col">
+      ${["概览","资源","活动"].map(x=>`<div class="panel"><h3>${x}</h3>
+        <div class="list">
+          <div class="list-item"><div><strong>${x} 01</strong><small>Design intelligence</small></div><span class="tag info">Live</span></div>
+          <div class="list-item"><div><strong>${x} 02</strong><small>Production ready</small></div><span class="tag ok">Ready</span></div>
+          <div class="list-item"><div><strong>${x} 03</strong><small>Review workflow</small></div><span class="tag warn">Pending</span></div>
+        </div>
+      </div>`).join("")}
+    </div>
+  `;
+  wireButtons();
+}
+function wireButtons(customHandler){
+  document.querySelectorAll("[data-action]").forEach(btn=>{
+    btn.onclick = ()=>{
+      if(customHandler){ customHandler(btn.dataset.action); return; }
+      showToast(btn.dataset.action + " 已触发");
+    };
+  });
+}
+function render(id){
+  activateNav(id);
+  if(id === "dashboard") return renderDashboard();
+  if(id === "projects") return renderProjects();
+  if(id === "preflight") return renderPreflight();
+  if(id === "brand") return renderBrand();
+  if(id === "collab") return renderCollab();
+  return renderGeneric(id);
+}
+
+render(getHash());
+</script>
+</body>
+</html>

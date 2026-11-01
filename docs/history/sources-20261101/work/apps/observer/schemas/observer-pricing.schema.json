@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/observer-pricing/v1",
+  "title": "WORK-LAB Observer Pricing Catalog",
+  "type": "object",
+  "additionalProperties": {"$ref": "#/$defs/pricing"},
+  "$defs": {
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alias", "provider", "model", "billing", "source", "effective_at", "currency", "version", "stale"],
+      "properties": {
+        "alias": {"type": "string", "minLength": 1},
+        "provider": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1},
+        "billing": {"enum": ["metered", "subscription"]},
+        "source": {"type": "string", "minLength": 1},
+        "effective_at": {"type": "string", "minLength": 1},
+        "currency": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "stale": {"type": "boolean"},
+        "input_per_million": {"type": "number", "minimum": 0},
+        "output_per_million": {"type": "number", "minimum": 0}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"billing": {"const": "metered"}}},
+          "then": {"required": ["input_per_million", "output_per_million"]}
+        }
+      ]
+    }
+  }
+}

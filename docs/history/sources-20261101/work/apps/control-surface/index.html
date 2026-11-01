@@ -1,0 +1,90 @@
+<!doctype html>
+<!-- Control Surface thin shell (P1-06 / AG-15). Dependency-free: no package manager, no build step,
+     no second copy of the Observer. It is served by the Control service itself, so its origin IS the
+     write boundary, and the Observer's own read-only UI stays where it is.
+     Hard boundary: there is no login, token, key, or account field here, and none will be added. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; form-action 'none'">
+<title>WORK-LAB · Control Surface</title>
+<link rel="stylesheet" href="/control-shell.css">
+</head>
+<body>
+<header class="bar">
+  <h1>Control Surface</h1>
+  <p class="sub">唯一的写入口 · loopback-only · Observer 保持只读</p>
+  <p id="transport" class="tag" role="status" aria-live="polite">状态 UNKNOWN（尚未读到 descriptor）</p>
+</header>
+
+<main>
+  <section class="panel" aria-labelledby="ops-title">
+    <h2 id="ops-title">操作与真实支持度</h2>
+    <p class="hint">支持度来自后端 descriptor，不由界面推断。未实现的动作不可提交，并逐条给出原因与下一步。</p>
+    <p id="grant-record" class="warn">本地授权记录 UNKNOWN（尚未读到 descriptor）</p>
+    <ul id="operations" class="ops"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="form-title">
+    <h2 id="form-title">新建 Work Unit（直接写路径）</h2>
+    <form id="create-form" autocomplete="off">
+      <label>项目 ID<input id="project-id" name="project-id" value="work-lab" required></label>
+      <label>任务 ID（确定性标识，幂等重放靠它）<input id="task-id" name="task-id" placeholder="WL-…" required></label>
+      <label>目标<input id="goal" name="goal" placeholder="这条工作单元要完成什么" required></label>
+      <label>边界（仓库内相对路径）<input id="boundary" name="boundary" value="services/control" required></label>
+      <label>授权来源（谁授予这次操作，文本即可）<input id="granted-by" name="granted-by" value="owner 2026-10-08 批次 C 授权" required></label>
+      <p class="hint">幂等身份默认由本页生成；带 <code>?operation=</code> 重新打开时改为读回账本里已存在的那一个，绝不自造新键重写。重放同一个值才会得到同一条记录；目标正文只进后端账本，不回显到只读投影。</p>
+      <div class="row">
+        <span id="idem" class="mono">idempotency UNKNOWN</span>
+        <button type="submit" id="submit">提交</button>
+        <button type="button" id="regen">换一个幂等身份</button>
+      </div>
+      <p id="create-support" class="hint">后端支持度 UNKNOWN（尚未读到 descriptor）</p>
+    </form>
+    <div id="pending" class="pending" hidden>提交中 · 状态 RUNNING（这不是完成）</div>
+    <pre id="result" class="result mono" role="status" aria-live="assertive"></pre>
+    <p id="readback" class="readback">读回 UNKNOWN（尚未提交，没有可读回的记录）</p>
+  </section>
+
+  <section class="panel wide" aria-labelledby="cand-title">
+    <h2 id="cand-title">物化已授权的规划候选（AG-16 handoff 的消费端）</h2>
+    <p class="hint">
+      粘贴 PlanningCandidate 原文，由后端复核授权后落为 QUEUED 工作单元。
+      这一页与候选文本里的任何 authorized / scope / approved 声明都不构成授权：
+      后端每次都用自己那份本地授权记录重跑 check_candidate，声明只会被点名忽略。
+      能落盘的是工作单元（含候选的变更与验收正文，只进账本）；<strong>候选描述的变更没有被执行</strong>，
+      派发仍是 work-unit.dispatch 的 NOT_IMPLEMENTED。
+    </p>
+    <form id="materialize-form" autocomplete="off">
+      <label>候选 JSON（planningSoftware / workUnitId / taskRevision / baseline / contextRef / contextDigest / changes / verification）
+        <textarea id="candidate-json" name="candidate-json" rows="12" spellcheck="false">{
+  "planningSoftware": "planning-end-name",
+  "workUnitId": "WL-CANDIDATE-1",
+  "taskRevision": 1,
+  "baseline": {"commit": "填 HEAD 的确切 40 位"},
+  "contextRef": "docs/current/workflow-assistance",
+  "contextDigest": "填该上下文的 sha256",
+  "changes": ["这条计划要做的具体改动"],
+  "verification": ["跑哪条门才算验证过"],
+  "unresolved": [],
+  "targetCapability": "store",
+  "authorizationRef": "人方签署的 grant id"
+}</textarea>
+      </label>
+      <div class="row">
+        <span id="materialize-idem" class="mono">idempotency UNKNOWN</span>
+        <button type="submit" id="materialize">复核并物化</button>
+        <button type="button" id="regen-materialize">换一个幂等身份</button>
+      </div>
+      <p id="materialize-support" class="hint">后端支持度 UNKNOWN（尚未读到 descriptor）</p>
+    </form>
+    <div id="materialize-pending" class="pending" hidden>提交中 · 状态 RUNNING（这不是完成）</div>
+    <pre id="materialize-result" class="result mono" role="status" aria-live="assertive"></pre>
+    <p id="materialize-readback" class="readback">读回 UNKNOWN（尚未提交，没有可读回的记录）</p>
+  </section>
+</main>
+
+<script src="/control-shell.js"></script>
+</body>
+</html>

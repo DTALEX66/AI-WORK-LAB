@@ -1,0 +1,3686 @@
+diff --git a/README.md b/README.md
+index 67cf18e4..57227486 100644
+--- a/README.md
++++ b/README.md
+@@ -173,10 +173,9 @@ reports/current/TASK_PROGRESS.json ← 由 design-lab/config/task-ledger-r3.json
+ python -m design_lab --project <设计项目目录> workbench
+ ```
+ 
+-- 首行输出 `{"status":"LISTENING","url":"http://127.0.0.1:<port>/workbench","token":"<64-hex>"}`；
+-  默认自动打开本机浏览器（`--no-browser` 关闭），把 token 粘进登录框即可进入。
++- 首行输出本机访问 URL 和 `connection: "automatic"`；默认打开浏览器（`--no-browser` 关闭），工作台自动连接，刷新后自动重连。
+ - 只有一个进程：静态 UI 与 `/api/*` 同源，不需要先起别的内部服务。
+-- token 只存在于该进程与这次终端输出，不进命令行参数、不落盘，进程退出即失效。
++- 本机连接凭据仅保留在服务进程与当前页面内存，不输出、不落盘；兼容手动连接用 `workbench --manual-connect`。
+ - 脚本化/CI 场景用底层入口：`python -m design_lab --project <dir> serve --port <p>`，
+   token 由 stdin 注入（`serve` 在 tty 上直接拒绝启动，避免误以为可以手敲）。
+ - 项目数据持久化在 `<项目>/.project-local/`；服务重启后项目、简报、方向与绑定仍在
+diff --git a/apps/workbench/build/main.js b/apps/workbench/build/main.js
+index 82e58821..5298b2df 100644
+--- a/apps/workbench/build/main.js
++++ b/apps/workbench/build/main.js
+@@ -473,15 +473,29 @@ const dropSession = () => {
+   if (badge) badge.textContent = "未连接";
+ };
+ async function api(path, body) {
+-  const response = await fetch("/api" + path, {
+-    method: body ? "POST" : "GET",
+-    headers: { Authorization: "Bearer " + token, ...body ? { "Content-Type": "application/json" } : {} },
+-    ...body ? { body: JSON.stringify(body) } : {},
+-    cache: "no-store"
+-  });
+-  const value = await response.json();
++  let response;
++  try {
++    response = await fetch("/api" + path, {
++      method: body ? "POST" : "GET",
++      headers: { Authorization: "Bearer " + token, ...body ? { "Content-Type": "application/json" } : {} },
++      ...body ? { body: JSON.stringify(body) } : {},
++      cache: "no-store"
++    });
++  } catch (error) {
++    throw new Error(`无法连接本机设计服务（${errMsg(error)}）`);
++  }
++  let value;
++  try {
++    value = await response.json();
++  } catch (error) {
++    throw new Error(`服务回复无法解析（HTTP ${response.status}，${errMsg(error)}）`);
++  }
+   if (response.status === 401) dropSession();
+-  if (!response.ok) throw new Error(value.error || "SERVICE_ERROR");
++  if (!response.ok) {
++    if (value.error === "PROJECT_PATH_TOO_LONG")
++      throw new Error("项目路径过长，Windows 无法保存。请将项目放在较短的目录后重试。");
++    throw new Error(value.error || "SERVICE_ERROR");
++  }
+   return value;
+ }
+ function setListNotice(listId, text) {
+@@ -533,8 +547,23 @@ async function projects() {
+   const data = await api("/projects");
+   byId("project").replaceChildren(new Option("选择项目", ""));
+   for (const p of data.projects) byId("project").append(new Option(p.name, p.id));
++  if (!project) {
++    let remembered = "";
++    try {
++      remembered = window.localStorage.getItem("design-lab:active-project") || "";
++    } catch {
++    }
++    if (data.projects.some((p) => p.id === remembered)) project = remembered;
++    else if (data.projects.length === 1) project = data.projects[0].id;
++  }
+   if (data.projects.some((p) => p.id === project)) byId("project").value = project;
+ }
++function rememberProject$1() {
++  try {
++    window.localStorage.setItem("design-lab:active-project", project);
++  } catch {
++  }
++}
+ async function loadEvents(job, append = false) {
+   if (append && job !== eventJob) return;
+   const current = epoch;
+@@ -683,6 +712,7 @@ async function refresh() {
+ }
+ function populateReferencePicker(assetIds) {
+   const picker = byId("reference-picker");
++  const selected = new Set(typeof document.querySelectorAll === "function" ? selectedReferences() : []);
+   picker.replaceChildren();
+   if (!assetIds.length) {
+     const li = document.createElement("li");
+@@ -697,6 +727,7 @@ function populateReferencePicker(assetIds) {
+     box.type = "checkbox";
+     box.name = "reference-asset";
+     box.value = id;
++    box.checked = selected.has(id);
+     label.append(box, document.createTextNode(" " + id));
+     li.append(label);
+     picker.append(li);
+@@ -760,11 +791,22 @@ async function sendImport() {
+     byId("import-button").disabled = false;
+   }
+ }
+-byId("connect-form").onsubmit = async (event) => {
+-  event.preventDefault();
++async function connectLocalService(submittedToken = "") {
+   const generation = ++connectGeneration;
+-  const submittedToken = byId("token").value;
+-  byId("token").value = "";
++  if (!submittedToken) {
++    setStatus("正在连接本机设计服务…");
++    try {
++      const response = await fetch("/api/local-session", { cache: "no-store", signal: AbortSignal.timeout(8e3) });
++      if (!response.ok) throw new Error("本机服务未开启自动连接，请使用官方 workbench 启动入口。");
++      const session = await response.json();
++      if (generation !== connectGeneration) return;
++      submittedToken = session.token || "";
++    } catch (error) {
++      if (generation !== connectGeneration) return;
++      setStatus(errMsg(error), true);
++      return;
++    }
++  }
+   if (!/^[0-9a-f]{64}$/.test(submittedToken)) {
+     token = "";
+     connected = false;
+@@ -780,12 +822,24 @@ byId("connect-form").onsubmit = async (event) => {
+     byId("workspace").hidden = false;
+     byId("connection").textContent = "本机已连接";
+     setStatus("选择或新建项目。");
++    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function")
++      window.dispatchEvent(new Event("hashchange"));
++    if (project) {
++      resetProject();
++      void Promise.all([refresh(), loadDesignSystems(), refreshDesign()]).catch((error) => setStatus(`已连接，项目读回失败：${errMsg(error)}`, true));
++    }
+   } catch (error) {
+     if (generation !== connectGeneration || token !== submittedToken) return;
+     token = "";
+     connected = false;
+     setStatus(errMsg(error), true);
+   }
++}
++byId("connect-form").onsubmit = async (event) => {
++  event.preventDefault();
++  const submittedToken = byId("token").value;
++  byId("token").value = "";
++  await connectLocalService(submittedToken);
+ };
+ byId("disconnect").onclick = () => {
+   connectGeneration += 1;
+@@ -800,6 +854,7 @@ byId("disconnect").onclick = () => {
+ };
+ byId("project").onchange = () => {
+   project = byId("project").value;
++  rememberProject$1();
+   resetProject();
+   refresh().catch((e) => setStatus(errMsg(e), true));
+   loadDesignSystems().catch((e) => setStatus(errMsg(e), true));
+@@ -810,17 +865,27 @@ byId("refresh").onclick = () => {
+   void loadDesignSystems().catch((e) => setStatus(errMsg(e), true));
+   void refreshDesign().catch((e) => setStatus(errMsg(e), true));
+ };
++let creatingProject = false;
+ byId("create-form").onsubmit = async (event) => {
+   event.preventDefault();
++  if (creatingProject) return;
++  creatingProject = true;
++  const form = byId("create-form");
++  const submit = typeof form.querySelector === "function" ? form.querySelector("button") : null;
++  if (submit) submit.disabled = true;
+   try {
+     const data = await api("/projects", { name: byId("project-name").value });
+     project = data.project.id;
++    rememberProject$1();
+     resetProject();
+     await projects();
+     byId("project-name").value = "";
+     await refresh();
+   } catch (error) {
+     setStatus(errMsg(error), true);
++  } finally {
++    creatingProject = false;
++    if (submit) submit.disabled = false;
+   }
+ };
+ byId("import-form").onsubmit = async (event) => {
+@@ -932,14 +997,81 @@ function devMode() {
+   }
+   return false;
+ }
++const SHAPE_MISSING = Symbol.for("design-lab/shape-missing");
++const DISCONNECTED = Symbol.for("design-lab/disconnected");
++function normaliseShape(live, template, prefix = "") {
++  if (template === null || typeof template !== "object") return [];
++  const missing = [];
++  for (const [key, want] of Object.entries(template)) {
++    const field = prefix ? `${prefix}.${key}` : key;
++    if (Array.isArray(want)) {
++      if (!Array.isArray(live[key])) {
++        live[key] = [];
++        missing.push(field);
++      }
++    } else if (want !== null && typeof want === "object") {
++      if (live[key] === null || typeof live[key] !== "object") {
++        live[key] = {};
++        missing.push(field);
++      }
++      missing.push(...normaliseShape(live[key], want, field));
++    }
++  }
++  return missing;
++}
+ function apiOrEmpty(path, empty) {
+-  if (!token && devMode()) return Promise.resolve(empty);
+-  return api(path);
++  if (!token && devMode()) return Promise.resolve(markDisconnected(empty));
++  return api(path).then((live) => {
++    const missing = normaliseShape(live, empty);
++    if (missing.length) Object.defineProperty(live, SHAPE_MISSING, { value: missing, enumerable: false });
++    return live;
++  });
++}
++function shapeNoticeRows(...values) {
++  const notes = values.map(shapeNotice).filter(Boolean);
++  return notes.length ? [el("p", { class: "error" }, notes.join("；"))] : [];
++}
++function shapeNotice(value) {
++  const missing = value?.[SHAPE_MISSING];
++  return Array.isArray(missing) && missing.length ? `未读回：响应缺少 ${missing.join("、")}` : "";
++}
++function markDisconnected(payload) {
++  const mark = (target) => {
++    Object.defineProperty(target, DISCONNECTED, { value: true, enumerable: false });
++  };
++  mark(payload);
++  for (const value of Object.values(payload)) {
++    if (value !== null && typeof value === "object") mark(value);
++  }
++  return payload;
++}
++function disconnectedNotice(value) {
++  return value?.[DISCONNECTED] === true ? "未读回：未连接本机设计服务" : "";
++}
++function emptyWording(value, noun, hint) {
++  const offline = disconnectedNotice(value);
++  return offline ? ["未读回", offline] : [noun, hint];
++}
++function emptyLi(value, noun, hint) {
++  const [head, note] = emptyWording(value, noun, hint);
++  return el("li", { class: "list-item" }, el("div", {}, el("strong", {}, head), el("small", {}, note)));
++}
++function emptyTd(value, noun, hint, colspan) {
++  const [head, note] = emptyWording(value, noun, hint);
++  return el("td", { colspan: String(colspan) }, `${head} ${note}`);
+ }
+ const OFFLINE = {
+   health: { status: "UNKNOWN", version: "—", scope: "dev-offline" },
+   projects: { projects: [] },
+   designSystems: { design_systems: [] },
++  capabilities: {
++    schemaVersion: "design-lab/capability-library/v1",
++    meaning: "未连接本机设计服务",
++    unmeasuredMeans: "null = 未判定，不是 0",
++    counts: { total: 0, byKind: {}, byLicense: {}, byRevisionState: {}, qualified: 0 },
++    sources: {},
++    capabilities: []
++  },
+   tasks: { tasks: [], next_cursor: null },
+   bundles: { bundles: [] },
+   designLayer: {
+@@ -1153,20 +1285,9 @@ function el(tag, attrs = {}, ...children) {
+ function en(text) {
+   return el("span", { lang: "en" }, text);
+ }
+-function sharedInputRows(inputs, limit = 4) {
+-  const entries = Object.entries(inputs).slice(0, limit);
+-  if (!entries.length) {
+-    return [el(
+-      "li",
+-      { class: "list-item" },
+-      el(
+-        "div",
+-        {},
+-        el("strong", {}, "尚无外置输入"),
+-        el("small", {}, "服务未返回 shared_inputs")
+-      )
+-    )];
+-  }
++function sharedInputRows(response, limit = 4) {
++  const entries = Object.entries(response.shared_inputs).slice(0, limit);
++  if (!entries.length) return [emptyLi(response, "尚无外置输入", "服务未返回 shared_inputs")];
+   return entries.map(([name, input]) => el(
+     "li",
+     { class: "list-item" },
+@@ -1289,6 +1410,7 @@ async function renderDashboard(target) {
+       pid: p.pid
+     }))
+   );
++  const bundleHeading = !probes.length ? "交付包（台账无项目可读）" : bundlesReadable === probes.length ? `交付包（${allBundles.length}）` : `交付包（未读回 ${probes.length - bundlesReadable}/${probes.length} 项目）`;
+   const sysCount = systems.design_systems.length;
+   const projCount = projects2.projects.length;
+   const pageHead = el(
+@@ -1357,16 +1479,7 @@ async function renderDashboard(target) {
+           el("small", {}, p.id)
+         ),
+         el("span", { class: "tag info" }, recentIds.includes(p.id) ? "最近打开" : "已登记")
+-      )) : [el(
+-        "li",
+-        { class: "list-item" },
+-        el(
+-          "div",
+-          {},
+-          el("strong", {}, "尚无项目"),
+-          el("small", {}, "在工作台新建项目后读回此处")
+-        )
+-      )]
++      )) : [emptyLi(projects2, "尚无项目", "在工作台新建项目后读回此处")]
+     ),
+     el("p", { class: "view-hint" }, recentIds.length ? "按本机最近打开的项目排序（仅保存项目 id 于本机，不上传）。" : "本机尚未记录打开过的项目，暂按服务返回顺序显示。")
+   );
+@@ -1503,7 +1616,8 @@ async function renderDashboard(target) {
+       { class: "two-col", style: "margin-top:16px" },
+       triagePanel("needs_human", "待审（需人工处理）", "无待审任务"),
+       triagePanel("failed", "失败", "无失败任务")
+-    )
++    ),
++    ...shapeNoticeRows(environment, health, projects2, systems)
+   ), // 2026-09-30 — 活跃生产 + 最近交付 + Host/Capability 状态 + Quick Launch。
+   // 全部来自真实读回：活跃生产 = in_flight triage；最近交付 = /bundles 读回；
+   // Host 状态 = /environment shared_inputs + 能力登记表（诚实 UNKNOWN 占位，
+@@ -1545,7 +1659,7 @@ async function renderDashboard(target) {
+       el(
+         "div",
+         { class: "panel" },
+-        el("h3", {}, bundlesReadable === probes.length ? `交付包（${allBundles.length}）` : `交付包（未读回 ${probes.length - bundlesReadable}/${probes.length} 项目）`),
++        el("h3", {}, bundleHeading),
+         el(
+           "ul",
+           { class: "list" },
+@@ -1563,16 +1677,7 @@ async function renderDashboard(target) {
+               { class: b.rights === "NOT_REVIEWED" ? "tag warn" : "tag info" },
+               b.rights === "NOT_REVIEWED" ? "权利未审查" : b.rights
+             )
+-          )) : [el(
+-            "li",
+-            { class: "list-item" },
+-            el(
+-              "div",
+-              {},
+-              el("strong", {}, "尚无交付包"),
+-              el("small", {}, "任务完成并打包后，交付会在此读回。")
+-            )
+-          )]
++          )) : [emptyLi(projects2, "尚无交付包", "任务完成并打包后，交付会在此读回。")]
+         )
+       )
+     ),
+@@ -1608,7 +1713,7 @@ async function renderDashboard(target) {
+           "div",
+           { class: "panel" },
+           el("h3", {}, "共享输入"),
+-          el("ul", { class: "list" }, ...sharedInputRows(environment.shared_inputs)),
++          el("ul", { class: "list" }, ...sharedInputRows(environment)),
+           el("p", { class: "view-hint" }, "服务端环境读回；写权限与状态由服务裁定。")
+         ),
+         el(
+@@ -1775,16 +1880,7 @@ async function renderBrandSystems(target) {
+         ),
+         el("span", { class: "tag info" }, system.version)
+       )) : [
+-        el(
+-          "li",
+-          { class: "list-item" },
+-          el(
+-            "div",
+-            {},
+-            el("strong", {}, "尚无登记设计系统"),
+-            el("small", {}, "在工作台 DESIGN LAYER 绑定后读回此处")
+-          )
+-        )
++        emptyLi(systems, "尚无登记设计系统", "在工作台 DESIGN LAYER 绑定后读回此处")
+       ]
+     )
+   );
+@@ -1793,7 +1889,8 @@ async function renderBrandSystems(target) {
+     kpis,
+     moduleGrid,
+     systemsList,
+-    el("p", { class: "view-hint" }, "绑定到方向的操作在工作台「05 / DESIGN LAYER」页执行；本页只读回，不修改。")
++    el("p", { class: "view-hint" }, "绑定到方向的操作在工作台「05 / DESIGN LAYER」页执行；本页只读回，不修改。"),
++    ...shapeNoticeRows(systems)
+   );
+ }
+ async function renderPreflight(target) {
+@@ -1934,6 +2031,156 @@ function valueRow(label, value, long, tagClass = "info") {
+     el("span", { class: "tag " + tagClass }, value)
+   );
+ }
++async function renderCapabilityLibrary(target) {
++  target.replaceChildren(el("p", { class: "view-loading" }, "正在读回能力库…"));
++  const data = await apiOrEmpty("/capabilities", OFFLINE.capabilities);
++  const rows = data.capabilities;
++  const filter = el("input", {
++    class: "input capability-filter",
++    type: "search",
++    id: "capability-filter",
++    placeholder: "按 ID / 许可 / 域 / 处置 / 修订状态过滤",
++    "aria-label": "能力库过滤"
++  });
++  const shown = el("span", { class: "muted", id: "capability-shown" }, "");
++  const body = el("tbody", {});
++  const render = () => {
++    const needle = (filter.value || "").trim().toLowerCase();
++    const keep = needle ? rows.filter((c) => [
++      c.id,
++      c.license,
++      c.domain,
++      c.disposition,
++      c.presence,
++      c.revisionState,
++      c.sourceType,
++      c.evidenceLevel,
++      c.upstreamOwner
++    ].join(" ").toLowerCase().includes(needle)) : rows;
++    body.replaceChildren(...keep.map((c) => el(
++      "tr",
++      {},
++      el(
++        "td",
++        {},
++        el("strong", {}, c.id),
++        el("div", { class: "muted" }, `${c.kind} · ${c.sourceType ?? "未分类"}`),
++        // The withdrawal instruction is part of the record, not an afterthought: the
++        // plan asks for upgrade/withdraw with source references, and this is the
++        // recorded path for exactly this candidate.
++        c.removalPath ? el(
++          "details",
++          { class: "capability-withdraw" },
++          el("summary", {}, "撤回路径"),
++          el("p", { class: "mono" }, c.removalPath)
++        ) : ""
++      ),
++      el("td", {}, c.license ?? "（无记录）"),
++      el("td", {}, c.disposition ?? "—"),
++      el("td", {}, c.presence ?? "—"),
++      el("td", {}, el("span", {
++        // A revision recovered by exact repository-path join is the only green here;
++        // unresolved and not-verified are warnings, never blanks.
++        class: "tag " + (c.revisionState === "VERIFIED" ? "ok" : "warn")
++      }, en(c.revisionState)), c.revision ? el("div", { class: "mono" }, c.revision) : ""),
++      el("td", {}, c.qualified === null ? el("span", { class: "tag neutral" }, "未判定") : el("span", { class: "tag info" }, String(c.qualified))),
++      el("td", {}, c.evidenceLevel ? el(
++        "span",
++        { class: "tag " + (c.evidenceLevel === "E0" ? "warn" : "info") },
++        en(c.evidenceLevel)
++      ) : el("span", { class: "tag neutral" }, "未记录")),
++      // Popularity is shown with its observation stamp and an explicit not-a-score
++      // marker, per the taxonomy policy `popularityIsNotQuality`.
++      el("td", {}, c.popularity ? el(
++        "span",
++        { class: "muted" },
++        `★ ${c.popularity.stargazerCount ?? "—"} · fork ${c.popularity.forkCount ?? "—"} · ${c.popularity.observedAt?.slice(0, 10) ?? "未记时间"} · 非质量分`
++      ) : el("span", { class: "muted" }, "未观测"))
++    )));
++    shown.textContent = `显示 ${keep.length} / ${rows.length} 条`;
++  };
++  filter.oninput = () => {
++    render();
++  };
++  const notOpen = VIEW_NOT_OPEN["research"];
++  const researchCard = CAPABILITY_REGISTRY.find((c) => c.capabilityId === "research-insights");
++  target.replaceChildren(
++    el(
++      "div",
++      { class: "page-head" },
++      el(
++        "div",
++        {},
++        el("h2", {}, "研究洞察 / 能力库"),
++        // The payload carries `unmeasuredMeans` for machines; the reader gets the same
++        // rule in the page's own language, with the English state words left untranslated.
++        el("p", {}, "只读回仓内已维护的能力记录：来源锁、修订账与模型雷达。空白不等于 0：未经宿主运行与人工验收的项标为 未判定，未取回修订的项标为 NOT_VERIFIED 或 UNRESOLVED；本视图不安装、不取证、不代签许可。")
++      ),
++      el("div", { class: "page-actions" }, shown)
++    ),
++    el(
++      "div",
++      { class: "panel" },
++      el("h3", {}, `能力记录（${data.counts.total}）`),
++      el(
++        "p",
++        { class: "view-hint" },
++        `许可分布 ${Object.entries(data.counts.byLicense).map(([k, v]) => `${k} ${v}`).join(" · ")}；修订 ${Object.entries(data.counts.byRevisionState).map(([k, v]) => `${k} ${v}`).join(" · ")}；已判定 ${data.counts.qualified}。本视图不安装、不取证、不代签许可。`
++      ),
++      el("label", { class: "project-picker" }, "过滤", filter),
++      el(
++        "div",
++        {
++          class: "table-wrap",
++          tabindex: "0",
++          role: "region",
++          "aria-label": "能力库表（可横向滚动）"
++        },
++        el(
++          "table",
++          { class: "table" },
++          el("thead", {}, el(
++            "tr",
++            {},
++            el("th", {}, "能力"),
++            el("th", {}, "许可"),
++            el("th", {}, "处置"),
++            el("th", {}, "存在状态"),
++            el("th", {}, "修订"),
++            el("th", {}, "资格判定"),
++            el("th", {}, "证据级"),
++            el("th", {}, "热度（非质量分）")
++          )),
++          body
++        )
++      )
++    ),
++    el(
++      "div",
++      { class: "panel" },
++      el("h3", {}, "分类轴现状"),
++      el(
++        "p",
++        { class: "view-hint" },
++        `已连接候选分类 ${data.classification?.joined ?? 0} / ${data.counts.total} 条。` + (data.classification?.unclassifiedAxes?.length ? `以下轴在候选分类账中全部为空，界面不代填：${data.classification.unclassifiedAxes.join("、")}。` : "所有已声明分类轴均有值。") + ` ${data.classification?.note ?? ""}`
++      ),
++      el(
++        "p",
++        { class: "view-hint" },
++        "热度取自 GitHub 观测并带观测时间；策略明确 popularityIsNotQuality，因此它不参与排序或判定。"
++      )
++    ),
++    el(
++      "div",
++      { class: "panel" },
++      el("h3", {}, "研究结论"),
++      el("p", { class: "view-unopened" }, notOpen),
++      researchCard ? capabilityCard(researchCard) : el("p", { class: "view-hint" }, "（登记表无此项）")
++    ),
++    ...shapeNoticeRows(data)
++  );
++  render();
++}
+ async function renderSettings(target) {
+   target.replaceChildren(el("p", { class: "view-loading" }, "正在读回运行环境…"));
+   const env = await apiOrEmpty("/environment", OFFLINE.environment);
+@@ -2009,11 +2256,7 @@ async function renderSettings(target) {
+                 { class: "list-item" },
+                 el("div", {}, el("strong", {}, name), el("small", {}, root.path)),
+                 writablePill(root.writable)
+-              )) : [el(
+-                "li",
+-                { class: "list-item" },
+-                el("div", {}, el("strong", {}, "尚无根登记"), el("small", {}, "服务未返回 roots"))
+-              )]
++              )) : [emptyLi(env, "尚无根登记", "服务未返回 roots")]
+             )
+           ),
+           el(
+@@ -2028,22 +2271,21 @@ async function renderSettings(target) {
+                 { class: "list-item" },
+                 el("div", {}, el("strong", {}, name), el("small", {}, input.path)),
+                 el("span", { class: "tag info" }, input.status)
+-              )) : [el(
+-                "li",
+-                { class: "list-item" },
+-                el("div", {}, el("strong", {}, "尚无外置输入"), el("small", {}, "服务未返回 shared_inputs"))
+-              )]
++              )) : [emptyLi(env, "尚无外置输入", "服务未返回 shared_inputs")]
+             )
+           )
+         )
+       )
+     ),
+-    el("p", { class: "view-hint" }, "代理配置私有状态不可写：PRIVATE_NOT_INSPECTED · 不可写。本服务不读取、不打印任何凭据。")
++    el("p", { class: "view-hint" }, "代理配置私有状态不可写：PRIVATE_NOT_INSPECTED · 不可写。本服务不读取、不打印任何凭据。"),
++    ...shapeNoticeRows(env)
+   );
+ }
+ async function projectPickerPanel(target, title, body) {
+   target.replaceChildren(el("p", { class: "view-loading" }, "正在读回项目台账…"));
+   const data = await apiOrEmpty("/projects", OFFLINE.projects);
++  const unread = shapeNotice(data);
++  const offline = disconnectedNotice(data);
+   if (!data.projects.length) {
+     target.replaceChildren(
+       el(
+@@ -2056,7 +2298,11 @@ async function projectPickerPanel(target, title, body) {
+           el("p", {}, "只读回服务端台账；本页不提交、不修改。")
+         )
+       ),
+-      el("p", { class: "view-hint" }, "尚无项目。先在工作台新建项目，再读回此视图。")
++      el(
++        "p",
++        { class: unread || offline ? "error" : "view-hint" },
++        unread ? `${unread}，因此无法判断台账是否为空` : offline ? `${offline}，台账未读回，不能断言为空` : "尚无项目。先在工作台新建项目，再读回此视图。"
++      )
+     );
+     return;
+   }
+@@ -2077,7 +2323,8 @@ async function projectPickerPanel(target, title, body) {
+       )
+     ),
+     el("label", { class: "project-picker" }, "项目", select),
+-    content
++    content,
++    ...shapeNoticeRows(data)
+   );
+   const load = async () => {
+     const id = select.value;
+@@ -2175,14 +2422,15 @@ async function renderProjects(target) {
+               window.location.hash = projectDetailHash(p.id);
+             }
+           }, "打开"))
+-        )) : [el("tr", {}, el("td", { colspan: "4" }, "尚无项目。在工作台新建项目后出现。"))]
++        )) : [el("tr", {}, emptyTd(data, "尚无项目", "在工作台新建项目后出现。", 4))]
+       )
+     )
+   );
+   target.replaceChildren(
+     pageHead,
+     kpis,
+-    el("div", { class: "panel" }, el("h3", {}, `项目（${n}）`), list)
++    el("div", { class: "panel" }, el("h3", {}, `项目（${n}）`), list),
++    ...shapeNoticeRows(data)
+   );
+ }
+ const TOOL_ADAPTERS = [
+@@ -2227,7 +2475,7 @@ async function renderCreativeTools(target) {
+           "div",
+           { class: "panel" },
+           el("h3", {}, "共享输入"),
+-          el("ul", { class: "list" }, ...sharedInputRows(env.shared_inputs)),
++          el("ul", { class: "list" }, ...sharedInputRows(env)),
+           el("p", { class: "view-hint" }, "服务端环境读回。")
+         ),
+         hostCard ? capabilityCard(hostCard) : el("div", { class: "panel" }),
+@@ -2246,7 +2494,11 @@ async function renderCreativeTools(target) {
+             "div",
+             { class: "status-stack" },
+             el("span", { class: "tag info" }, a.state),
+-            el("span", { class: "tag ok" }, "已登记")
++            // Neutral, not ok: the fact here is that an adapter entry exists in
++            // integrations/adapter-registry.json. Nothing probed the host, and the panel
++            // above this one says so ("UNKNOWN，不假报可用"). A green pill on the same
++            // page contradicted it.
++            el("span", { class: "tag neutral" }, "登记于 adapter-registry")
+           )
+         ),
+         el("p", { class: "view-hint" }, "连接方式 / 权限 / 可执行能力由宿主与 service 裁定；本页只读回，不触发实操。")
+@@ -2258,7 +2510,7 @@ async function renderCreativeTools(target) {
+       el("td", {}, t.kind),
+       el("td", {}, t.state),
+       el("td", {}, t.attempt.state)
+-    )) : [el("tr", {}, el("td", { colspan: "3" }, "尚无宿主任务。创作任务由 Illustrator / Photoshop 在工作台高级区提交。"))];
++    )) : [el("tr", {}, emptyTd(tasks2, "尚无宿主任务", "创作任务由 Illustrator / Photoshop 在工作台高级区提交。", 3))];
+     return el(
+       "div",
+       {},
+@@ -2284,7 +2536,8 @@ async function renderCreativeTools(target) {
+             el("tbody", {}, ...rows)
+           )
+         )
+-      )
++      ),
++      ...shapeNoticeRows(env, tasks2)
+     );
+   });
+ }
+@@ -2320,16 +2573,7 @@ async function renderDeliverables(target) {
+           b.rights === "NOT_REVIEWED" ? "权利未审查" : b.rights
+         )
+       )
+-    )) : [el(
+-      "li",
+-      { class: "list-item" },
+-      el(
+-        "div",
+-        {},
+-        el("strong", {}, "尚无交付包"),
+-        el("small", {}, "任务完成并打包后，交付会在此读回。")
+-      )
+-    )];
++    )) : [emptyLi(bundles, "尚无交付包", "任务完成并打包后，交付会在此读回。")];
+     const bundleList = el(
+       "ul",
+       { class: "list" },
+@@ -2348,7 +2592,7 @@ async function renderDeliverables(target) {
+       el("td", {}, t.kind),
+       el("td", {}, t.state),
+       el("td", {}, t.attempt.state)
+-    )) : [el("tr", {}, el("td", { colspan: "3" }, "尚无任务。任务完成后交付包随读回导出。"))];
++    )) : [el("tr", {}, emptyTd(tasks2, "尚无任务", "任务完成后交付包随读回导出。", 3))];
+     const tasksPanel = el(
+       "div",
+       { class: "panel" },
+@@ -2397,7 +2641,8 @@ async function renderDeliverables(target) {
+       kindGrid,
+       el("p", { class: "view-hint" }, "交付包按任务在下载时打包（字体 / 链接 / rights / 质量仍需人工验收）。本页只读回，不下载也不打包。"),
+       bundlePanel,
+-      tasksPanel
++      tasksPanel,
++      ...shapeNoticeRows(bundles, tasks2)
+     );
+   });
+ }
+@@ -2535,7 +2780,8 @@ async function renderEvidence(target) {
+         )
+       ),
+       systems,
+-      el("p", { class: "view-hint" }, "版本链（brief / direction 逐版本）在工作台点单条时读回；本页为只读证据视图，不修改 lineage。")
++      el("p", { class: "view-hint" }, "版本链（brief / direction 逐版本）在工作台点单条时读回；本页为只读证据视图，不修改 lineage。"),
++      ...shapeNoticeRows(layerResp, bundlesResp)
+     );
+     return done;
+   });
+@@ -2869,7 +3115,9 @@ function renderBriefEditor(id, layer, target) {
+     });
+     const rows = data.lineage.versions;
+     const liveId = data.lineage.live_id;
++    const notice = shapeNotice(data);
+     lineageBox.replaceChildren(
++      ...notice ? [el("li", { class: "error" }, notice)] : [],
+       el(
+         "li",
+         { class: "list-item" },
+@@ -2976,11 +3224,7 @@ function renderBriefEditor(id, layer, target) {
+       el("span", { class: brief.superseded_by === null ? "tag ok" : "tag warn" }, versionState(brief.superseded_by, versions)),
+       el("button", { type: "button", class: "ghost-btn", onclick: () => startRevision(brief) }, "新版本")
+     )
+-  )) : [el(
+-    "li",
+-    { class: "list-item" },
+-    el("div", {}, el("strong", {}, "尚无简报"), el("small", {}, "用下方表单创建该项目的第一份简报（真实写入，保存后读回）"))
+-  )];
++  )) : [emptyLi(layer, "尚无简报", "用下方表单创建该项目的第一份简报（真实写入，保存后读回）")];
+   const restored = [];
+   const createDraft = readDraft("create");
+   if (createDraft) {
+@@ -3379,16 +3623,7 @@ function renderDirectionPanel(id, layer, target) {
+     el(
+       "ul",
+       { class: "list" },
+-      ...layer.directions.length ? [...layer.directions].map(directionRow) : [el(
+-        "li",
+-        { class: "list-item" },
+-        el(
+-          "div",
+-          {},
+-          el("strong", {}, "尚无方向候选"),
+-          el("small", {}, "先建立简报，再用下方表单立候选；选定必须由人执行。")
+-        )
+-      )]
++      ...layer.directions.length ? [...layer.directions].map(directionRow) : [emptyLi(layer, "尚无方向候选", "先建立简报，再用下方表单立候选；选定必须由人执行。")]
+     ),
+     el(
+       "div",
+@@ -3642,11 +3877,7 @@ async function renderProjectDetail(id, target) {
+         { class: "list-item" },
+         el("div", {}, el("strong", {}, t.kind), el("small", {}, `尝试 ${t.attempt.attempt_no} · ${t.attempt.state}`)),
+         el("span", { class: "tag info" }, t.state)
+-      )) : [el(
+-        "li",
+-        { class: "list-item" },
+-        el("div", {}, el("strong", {}, "尚无任务"), el("small", {}, "任务由工作台高级区提交"))
+-      )]
++      )) : [emptyLi(tasks2, "尚无任务", "任务由工作台高级区提交")]
+     )
+   );
+   const layerPanel = el(
+@@ -3684,7 +3915,8 @@ async function renderProjectDetail(id, target) {
+       ),
+       inspector
+     ),
+-    el("p", { class: "view-hint" }, "tasks 与 design-layer 台账为只读；简报区可真实创建与修订并读回；参考素材区读回资产清单并按需预览。提交任务 / 运行 / 取消 / 导出仍由工作台高级区执行。")
++    el("p", { class: "view-hint" }, "tasks 与 design-layer 台账为只读；简报区可真实创建与修订并读回；参考素材区读回资产清单并按需预览。提交任务 / 运行 / 取消 / 导出仍由工作台高级区执行。"),
++    ...shapeNoticeRows(bundlesResp, layerResp, listing, systemsResp, tasks2)
+   );
+ }
+ async function renderRoute(view, target) {
+@@ -3699,6 +3931,9 @@ async function renderRoute(view, target) {
+     case "preflight-qa":
+       await renderPreflight(target);
+       return;
++    case "research":
++      await renderCapabilityLibrary(target);
++      return;
+     case "settings":
+       await renderSettings(target);
+       return;
+@@ -3727,14 +3962,14 @@ async function renderRoute(view, target) {
+     }
+     default: {
+       const notOpen = VIEW_NOT_OPEN[view];
++      const slotFor = (v) => v === "design-domains" ? "design-domain-model" : v === "collaboration" ? "collaboration" : null;
++      const wanted = slotFor(view);
+       const cards = el(
+         "div",
+         { class: "card-flow" },
+-        ...CAPABILITY_REGISTRY.filter(
+-          (c) => view === "research" && c.capabilityId === "research-insights" || view === "design-domains" && c.capabilityId === "design-domain-model" || view === "collaboration" && c.capabilityId === "collaboration"
+-        ).map(capabilityCard)
++        ...CAPABILITY_REGISTRY.filter((c) => c.capabilityId === wanted).map(capabilityCard)
+       );
+-      const hasCards = CAPABILITY_REGISTRY.some((c) => view === "research" && c.capabilityId === "research-insights" || view === "design-domains" && c.capabilityId === "design-domain-model" || view === "collaboration" && c.capabilityId === "collaboration");
++      const hasCards = CAPABILITY_REGISTRY.some((c) => c.capabilityId === wanted);
+       target.replaceChildren(
+         el("h2", {}, notOpen ? viewLabel(view) : "工作台"),
+         el("p", { class: "view-unopened" }, notOpen ?? "默认工作台。"),
+@@ -3761,6 +3996,13 @@ function mountAppShell() {
+     }, route.label)),
+     el("span", { class: "app-nav-meta", id: "shell-connection" }, "未连接")
+   );
++  const syncLegacyNavCue = () => {
++    const mobile = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches;
++    const hasMore = mobile && nav.scrollWidth > nav.clientWidth && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1;
++    nav.classList.toggle("has-scroll-more", hasMore);
++  };
++  nav.addEventListener("scroll", syncLegacyNavCue, { passive: true });
++  window.addEventListener("resize", syncLegacyNavCue);
+   const routeView = el("div", { class: "route-view", id: "route-view", tabindex: "-1" });
+   document.body.append(nav);
+   document.body.classList.add("dl-shell");
+@@ -3844,10 +4086,11 @@ function mountAppShell() {
+   window.addEventListener("hashchange", show);
+   show();
+ }
+-function mountB10Shell(routeView) {
++function mountB10Shell(routeView, syncLegacyNavCue) {
+   const probe = document.createElement("div");
+   if (typeof probe.querySelector !== "function") return null;
+   const B10_NAV = [
++    { route: "workbench", label: "工作台", hash: "" },
+     { route: "dashboard", label: "仪表盘", hash: "#/dashboard" },
+     { route: "projects", label: "项目", hash: "#/projects" },
+     { route: "research", label: "研究洞察", hash: "#/research" },
+@@ -3905,7 +4148,7 @@ function mountB10Shell(routeView) {
+         "div",
+         {},
+         el("strong", {}, "本地单用户"),
+-        el("small", {}, "无身份路由 · 未读回")
++        el("small", { id: "personal-connection" }, "本机服务未连接")
+       )
+     )
+   );
+@@ -3920,7 +4163,13 @@ function mountB10Shell(routeView) {
+   const setNavOpen = (open) => {
+     sidebar.classList.toggle("open", open);
+     navToggle.setAttribute("aria-expanded", String(open));
++    const mobile = window.matchMedia("(max-width: 840px)").matches;
++    sidebar.toggleAttribute("inert", mobile && !open);
++    if (open) sidebar.querySelector(".nav button")?.focus();
++    else if (mobile && sidebar.contains(document.activeElement)) navToggle.focus();
+   };
++  setNavOpen(false);
++  window.matchMedia("(max-width: 840px)").addEventListener("change", () => setNavOpen(false));
+   navToggle.onclick = () => setNavOpen(!sidebar.classList.contains("open"));
+   sidebar.addEventListener("click", (event) => {
+     if (event.target.closest("button")) setNavOpen(false);
+@@ -3962,12 +4211,21 @@ function mountB10Shell(routeView) {
+   document.body.append(app);
+   const legacyNav = document.querySelector(".app-nav");
+   const legacyChrome = Array.from(document.querySelectorAll("body > header, body > main, body > footer"));
++  const legacyMain = document.querySelector("body > main");
++  const workbenchView = el("section", { class: "personal-workbench", id: "workbench-view" });
++  if (legacyMain) {
++    workbenchView.append(...Array.from(legacyMain.childNodes));
++    app.querySelector("#content")?.append(workbenchView);
++  }
+   const sync = (view) => {
+     const routed = view !== "workbench";
+-    app.hidden = !routed;
++    app.hidden = false;
++    workbenchView.hidden = routed;
++    routeView.hidden = !routed;
+     offlineNotice.hidden = Boolean(token) || !devMode();
+-    if (legacyNav) legacyNav.toggleAttribute("hidden", routed);
+-    for (const node of legacyChrome) node.toggleAttribute("hidden", routed);
++    if (legacyNav) legacyNav.hidden = true;
++    for (const node of legacyChrome) node.hidden = true;
++    byId("personal-connection").textContent = connected ? "本机服务已连接" : "本机服务未连接";
+     for (const item of Array.from(sidebar.querySelectorAll(".nav button"))) {
+       const highlight = view === "project-detail" ? "projects" : view;
+       const selected = item.dataset.route === highlight;
+@@ -4174,3 +4432,4 @@ if (typeof document !== "undefined" && document.body !== void 0 && devBypassEnab
+   }
+   if (connEl) connEl.textContent = "未连接 · 本地浏览模式";
+ }
++if (typeof window !== "undefined" && document.body?.dataset.localSession === "auto" && !devBypassEnabled()) void connectLocalService();
+diff --git a/apps/workbench/contracts.ts b/apps/workbench/contracts.ts
+index d17fde25..af3cebcc 100644
+--- a/apps/workbench/contracts.ts
++++ b/apps/workbench/contracts.ts
+@@ -275,6 +275,61 @@ export interface TaskPreflightResource {
+   licence?: string | null;
+ }
+ 
++/** Projection of vendor/sources.lock.json + sources.revisions.json + model-radar. */
++export interface CapabilityRecord {
++  id: string;
++  kind: string;
++  domain: string | null;
++  title: string;
++  disposition: string | null;
++  license: string | null;
++  presence: string | null;
++  url: string | null;
++  revision: string | null;
++  revisionState: string;
++  revisionReason: string | null;
++  repo: string | null;
++  observedAt: string | null;
++  contentDigest: string | null;
++  /** null means no host run and no human acceptance exists yet - not `false`. */
++  qualified: boolean | null;
++  qualificationEvidence: string | null;
++  sourceType: string | null;
++  evidenceLevel: string | null;
++  upstreamOwner: string | null;
++  licenseUrl: string | null;
++  rightsNotes: string | null;
++  removalPath: string | null;
++  popularity: {
++    stargazerCount: number | null;
++    forkCount: number | null;
++    observedAt: string | null;
++    source: string | null;
++    isNotQuality: boolean;
++  } | null;
++  unclassifiedAxes: string[];
++}
++
++export interface CapabilityLibraryResponse {
++  schemaVersion: string;
++  meaning: string;
++  unmeasuredMeans: string;
++  classification?: {
++    joined: number;
++    unclassifiedAxes: string[];
++    note: string;
++  };
++  counts: {
++    total: number;
++    byKind: Record<string, number>;
++    byLicense: Record<string, number>;
++    byRevisionState: Record<string, number>;
++    qualified: number;
++  };
++  sources: Record<string, string>;
++  capabilities: CapabilityRecord[];
++}
++
+ export interface TaskPreflightResponse {
+   schemaVersion: string;
+   task_full_id: string;
+diff --git a/apps/workbench/index.html b/apps/workbench/index.html
+index 5730b09f..3ba57f78 100644
+--- a/apps/workbench/index.html
++++ b/apps/workbench/index.html
+@@ -4,8 +4,8 @@
+ <script type="module" src="/workbench/main.js"></script></head>
+ <body><header><div class="mark">D/L</div><div><p class="eyebrow">DESIGN-LAB / LOCAL STUDIO</p><h1>设计工作台</h1></div><span id="connection" class="badge">未连接</span></header>
+ <main><a class="skip-link" href="#content">跳到主内容</a><section id="login" class="panel narrow"><p class="eyebrow">SESSION ACCESS</p><h2>连接本机设计服务</h2>
+-<p>输入启动器提供的临时访问令牌。令牌只驻留本页面内存，关闭或刷新页面后需重新连接。</p>
+-<form id="connect-form"><label>临时访问令牌<input id="token" class="input" type="password" autocomplete="off" required maxlength="64" spellcheck="false"></label><button class="primary-btn">连接服务</button></form></section>
++<p>官方启动入口会自动连接。服务重启后刷新页面即可继续使用。</p>
++<form id="connect-form"><details open><summary>高级连接（兼容外部启动器）</summary><label>临时访问令牌<input id="token" class="input" type="password" autocomplete="off" maxlength="64" spellcheck="false"></label></details><button class="primary-btn">连接本机服务</button></form></section>
+ <div id="workspace" hidden><section class="panel toolbar"><div><p class="eyebrow">PROJECT LIBRARY</p><h2>项目与参考</h2></div>
+ <label>当前项目<select id="project"><option value="">选择项目</option></select></label><button id="refresh" class="secondary">刷新</button><button id="disconnect" class="secondary">断开</button>
+ <form id="create-form"><label>新项目名称<input id="project-name" maxlength="160" required placeholder="例如：秋季品牌视觉"></label><button>新建项目</button></form></section>
+diff --git a/apps/workbench/main.ts b/apps/workbench/main.ts
+index 482ba75d..fe45fce1 100644
+--- a/apps/workbench/main.ts
++++ b/apps/workbench/main.ts
+@@ -9,6 +9,7 @@
+ import { byId, errMsg, setStatus } from './workbench.js';
+ import { bindDesignSystem, submitBrief, submitBriefRevision, submitDirection, submitDirectionRevision } from './design.js';
+ import { mountAppShell } from './shell.js';
++import { connectLocalService } from './workbench.js';
+ 
+ byId<HTMLFormElement>('design-brief-form').onsubmit = (event) => {
+   event.preventDefault();
+@@ -35,7 +36,7 @@ byId<HTMLButtonElement>('design-system-bind').onclick = () => {
+ // route views mount directly so all 12 B10 pages are browsable without a
+ // service token.  API reads stay readback-honest: an API view without a
+ // connected token says "请先连接" instead of faking data.  Production
+-// (committed build/ + service launcher) keeps the token gate.
++// builds connect automatically through the official loopback launcher.
+ //
+ // NOTE: detection lives here and is re-implemented in shell.ts as devMode();
+ // keep the two marker checks in sync (@vite/client script OR ?dev=1).
+@@ -81,3 +82,7 @@ if (typeof document !== 'undefined' && document.body !== undefined && devBypassE
+   if (workspaceEl) { workspaceEl.hidden = false; }
+   if (connEl) connEl.textContent = '未连接 · 本地浏览模式';
+ }
++
++// Official loopback launcher: page reload reconnects without copying credentials.
++if (typeof window !== 'undefined' && document.body?.dataset.localSession === 'auto'
++    && !devBypassEnabled()) void connectLocalService();
+diff --git a/apps/workbench/package.json b/apps/workbench/package.json
+index e3e52a4c..1819b170 100644
+--- a/apps/workbench/package.json
++++ b/apps/workbench/package.json
+@@ -7,7 +7,7 @@
+   "scripts": {
+     "typecheck": "tsc --noEmit",
+     "build": "vite build",
+-    "test:unit": "node tests/unit.mjs && node tests/appshell.mjs"
++    "test:unit": "node tests/unit.mjs && node tests/appshell.mjs && node tests/shape-notice-coverage.mjs"
+   },
+   "devDependencies": {
+     "typescript": "~5.6.3",
+diff --git a/apps/workbench/shell.ts b/apps/workbench/shell.ts
+index 1420a261..39339eb2 100644
+--- a/apps/workbench/shell.ts
++++ b/apps/workbench/shell.ts
+@@ -16,6 +16,7 @@ import type {
+   DesignLayerReadback,
+   DesignSystemListResponse,
+   EnvironmentResponse,
++  CapabilityLibraryResponse,
+   EventListResponse,
+   HealthResponse,
+   ProjectListResponse,
+@@ -57,9 +58,104 @@ function devMode(): boolean {
+ // are explicit placeholders. No B10 demo number is invented. A held token
+ // always goes to the live API (a connected session never reaches this path),
+ // and a live failure still throws — nothing here masks a real error.
+-function apiOrEmpty<T>(path: string, empty: T): Promise<T> {
+-  if (!token && devMode()) return Promise.resolve(empty);
+-  return api<T>(path);
++//
++// State ⑤ of the UI state matrix. A live response that omitted a collection the view
++// was about to walk used to throw at that field access, several layers away, and the
++// top-level catch reported the whole view as failed with a TypeError as its only
++// message. The response is therefore normalised against the shape the call site
++// already declares through its `empty` fallback: an absent list becomes an empty list
++// and an absent map becomes an empty map, which is strictly more permissive than
++// today (a well-formed response is untouched, and a partial one stops crashing).
++// The fields that had to be invented are recorded on the object, so a view can say
++// 未读回：响应缺少 … instead of silently rendering the empty case as 尚无.
++const SHAPE_MISSING = Symbol.for('design-lab/shape-missing');
++// The seam's other failure mode: with no session it hands out an honest EMPTY payload
++// so the page structure still renders. That empty is not evidence the ledger has
++// nothing in it, so it is marked at the source and no view may describe it as a zero.
++const DISCONNECTED = Symbol.for('design-lab/disconnected');
++
++function normaliseShape(live: Record<string, unknown>, template: unknown, prefix = ''): string[] {
++  if (template === null || typeof template !== 'object') return [];
++  const missing: string[] = [];
++  for (const [key, want] of Object.entries(template as Record<string, unknown>)) {
++    const field = prefix ? `${prefix}.${key}` : key;
++    if (Array.isArray(want)) {
++      if (!Array.isArray(live[key])) { live[key] = []; missing.push(field); }
++    } else if (want !== null && typeof want === 'object') {
++      if (live[key] === null || typeof live[key] !== 'object') { live[key] = {}; missing.push(field); }
++      missing.push(...normaliseShape(live[key] as Record<string, unknown>, want, field));
++    }
++    // null and primitive fallbacks are skipped: null is a legal live value for
++    // chosen_direction / active_binding / next_cursor, so requiring one would
++    // fabricate a failure the service never produced.
++  }
++  return missing;
++}
++
++function apiOrEmpty<T extends object>(path: string, empty: T): Promise<T> {
++  if (!token && devMode()) return Promise.resolve(markDisconnected(empty));
++  return api<Record<string, unknown>>(path).then((live) => {
++    const missing = normaliseShape(live, empty);
++    if (missing.length) Object.defineProperty(live, SHAPE_MISSING, { value: missing, enumerable: false });
++    return live as T;
++  });
++}
++
++// One row per view that had to invent a collection because the service left it out.
++// Spread into the view's children; empty means nothing to report, so a healthy read
++// adds no noise. This is deliberately per-view rather than one shared accumulator:
++// renders run off-DOM and race, and a losing generation would otherwise leak its
++// notice into the view that won.
++export function shapeNoticeRows(...values: unknown[]): HTMLElement[] {
++  const notes = values.map(shapeNotice).filter(Boolean);
++  return notes.length ? [el('p', { class: 'error' }, notes.join('；'))] : [];
++}
++
++// What a view must say when the service answered 200 but left a collection out.
++export function shapeNotice(value: unknown): string {
++  const missing = (value as Record<symbol, unknown> | null)?.[SHAPE_MISSING];
++  return Array.isArray(missing) && missing.length
++    ? `未读回：响应缺少 ${missing.join('、')}` : '';
++}
++
++function markDisconnected<T extends object>(payload: T): T {
++  const mark = (target: object): void => {
++    Object.defineProperty(target, DISCONNECTED, { value: true, enumerable: false });
++  };
++  mark(payload);
++  // Views hold the collection they walked (`layer`, not the response root), so the
++  // marker has to survive one level of nesting to be reachable where it is needed.
++  for (const value of Object.values(payload)) {
++    if (value !== null && typeof value === 'object') mark(value);
++  }
++  return payload;
++}
++
++// What a view must say when there was no readback at all. Distinct from shapeNotice:
++// there the service answered and omitted a field; here nothing was ever asked.
++export function disconnectedNotice(value: unknown): string {
++  return (value as Record<symbol, unknown> | null)?.[DISCONNECTED] === true
++    ? '未读回：未连接本机设计服务' : '';
++}
++
++// The two headings an empty collection may carry. `noun` (尚无X) is a claim about the
++// ledger, so it is allowed only on a real readback. Both directions matter: the offline
++// case may not borrow the confident wording, and a real empty may not hide behind 未读回.
++export function emptyWording(value: unknown, noun: string, hint: string): [string, string] {
++  const offline = disconnectedNotice(value);
++  return offline ? ['未读回', offline] : [noun, hint];
++}
++
++export function emptyLi(value: unknown, noun: string, hint: string): HTMLElement {
++  const [head, note] = emptyWording(value, noun, hint);
++  return el('li', { class: 'list-item' }, el('div', {}, el('strong', {}, head), el('small', {}, note)));
++}
++
++export function emptyTd(value: unknown, noun: string, hint: string, colspan: number): HTMLElement {
++  const [head, note] = emptyWording(value, noun, hint);
++  // One text node, not a <small> caption: inside a table cell the 0.8em small is the
++  // size the overflow gate measures, and it failed at every width on the first run.
++  return el('td', { colspan: String(colspan) }, `${head} ${note}`);
+ }
+ 
+ // Honest empty payloads for the dev/offline seam (see apiOrEmpty).
+@@ -67,6 +163,12 @@ const OFFLINE = {
+   health: { status: 'UNKNOWN', version: '—', scope: 'dev-offline' } as HealthResponse,
+   projects: { projects: [] } as ProjectListResponse,
+   designSystems: { design_systems: [] } as DesignSystemListResponse,
++  capabilities: {
++    schemaVersion: 'design-lab/capability-library/v1',
++    meaning: '未连接本机设计服务', unmeasuredMeans: 'null = 未判定，不是 0',
++    counts: { total: 0, byKind: {}, byLicense: {}, byRevisionState: {}, qualified: 0 },
++    sources: {}, capabilities: [],
++  } as CapabilityLibraryResponse,
+   tasks: { tasks: [], next_cursor: null } as TaskListResponse,
+   bundles: { bundles: [] } as BundleListResponse,
+   designLayer: {
+@@ -85,13 +187,9 @@ const OFFLINE = {
+ };
+ 
+ // ============================================================================
+-// UI convergence slice 2 (2026-09-22): AppShell navigation over the B07
+-// authoritative 12-route IA (routes.json). Purely additive: it inserts ONE new
+-// sidebar + one new route-panel region and toggles them by URL hash. Every
+-// pre-existing element id, handler and text label is untouched, so the
+-// browser E2E (id-located selectors) and the vm unit smoke keep their
+-// contracts. The default view (empty hash) is the original workbench: no hash
+-// == the legacy single-page layout, byte for byte.
++// Personal-product convergence (2026-10-07): one sidebar and topbar own every
++// route, including the empty-hash workbench. Existing form IDs and handlers
++// remain mounted inside the shell so the design workflow stays intact.
+ //
+ // Views are bound to REAL service routes only (no invented KPIs):
+ //   dashboard / brand-systems / preflight-qa / settings -> /api/* readbacks
+@@ -338,14 +436,10 @@ export function en(text: string): HTMLElement {
+ // the root may be green: runtime/paths.py reports DECLARED_NOT_PROBED, a
+ // declaration. An empty map gets a row that says so, because a blank list under a
+ // "服务端环境读回" heading reads as a readback that found nothing to report.
+-function sharedInputRows(inputs: EnvironmentResponse['shared_inputs'],
+-                         limit = 4): HTMLElement[] {
+-  const entries = Object.entries(inputs).slice(0, limit);
+-  if (!entries.length) {
+-    return [el('li', { class: 'list-item' },
+-      el('div', {}, el('strong', {}, '尚无外置输入'),
+-        el('small', {}, '服务未返回 shared_inputs')))];
+-  }
++function sharedInputRows(response: EnvironmentResponse, limit = 4): HTMLElement[] {
++  const entries = Object.entries(response.shared_inputs).slice(0, limit);
++  // An empty map from an unconnected seam is not a server that answered "no roots".
++  if (!entries.length) return [emptyLi(response, '尚无外置输入', '服务未返回 shared_inputs')];
+   return entries.map(([name, input]) => el('li', { class: 'list-item' },
+     el('div', {}, el('strong', {}, name), el('small', {}, input.path)),
+     el('span', {
+@@ -514,6 +608,15 @@ export async function renderDashboard(target: HTMLElement): Promise<void> {
+       pid: p.pid,
+     })),
+   );
++  // `bundlesReadable === probes.length` is vacuously true when there are no probes, so
++  // the heading painted a real-looking 交付包（0） with nothing asked. The middle branch
++  // says what is actually known -- the ledger offered no project to read -- rather than
++  // a bundle count or a failed-readback claim; distinguishing "server says empty" from
++  // "we never asked" at list level is the separate defect already filed in the state
++  // matrix, and this heading does not pretend to solve it.
++  const bundleHeading = !probes.length ? '交付包（台账无项目可读）'
++    : bundlesReadable === probes.length ? `交付包（${allBundles.length}）`
++    : `交付包（未读回 ${probes.length - bundlesReadable}/${probes.length} 项目）`;
+   const sysCount = systems.design_systems.length;
+   const projCount = projects.projects.length;
+   // B10 1:1 page-head (h2 + p + .page-actions) — DESIGN-LAB honest copy, B10 layout.
+@@ -560,10 +663,7 @@ export async function renderDashboard(target: HTMLElement): Promise<void> {
+               el('strong', {}, p.name),
+               el('small', {}, p.id)),
+             el('span', { class: 'tag info' }, recentIds.includes(p.id) ? '最近打开' : '已登记')))
+-        : [el('li', { class: 'list-item' },
+-            el('div', {},
+-              el('strong', {}, '尚无项目'),
+-              el('small', {}, '在工作台新建项目后读回此处')))])) ,
++        : [emptyLi(projects, '尚无项目', '在工作台新建项目后读回此处')])) ,
+     el('p', { class: 'view-hint' }, recentIds.length
+       ? '按本机最近打开的项目排序（仅保存项目 id 于本机，不上传）。'
+       : '本机尚未记录打开过的项目，暂按服务返回顺序显示。'));
+@@ -648,7 +748,8 @@ const modulePanels = el('div', { class: 'three-col', style: 'margin-top:16px' },
+     // continue rather than pointing at an arbitrary project.
+     continuePanel,    el('div', { class: 'two-col', style: 'margin-top:16px' },
+       triagePanel('needs_human', '待审（需人工处理）', '无待审任务'),
+-      triagePanel('failed', '失败', '无失败任务'))),
++      triagePanel('failed', '失败', '无失败任务')),
++    ...shapeNoticeRows(environment, health, projects, systems)),
+     // 2026-09-30 — 活跃生产 + 最近交付 + Host/Capability 状态 + Quick Launch。
+     // 全部来自真实读回：活跃生产 = in_flight triage；最近交付 = /bundles 读回；
+     // Host 状态 = /environment shared_inputs + 能力登记表（诚实 UNKNOWN 占位，
+@@ -673,9 +774,7 @@ const modulePanels = el('div', { class: 'three-col', style: 'margin-top:16px' },
+                     ? '服务不可达或未连接；此处不显示 0，避免把「没读到」说成「没有」。'
+                     : '运行中任务为 PENDING / RUNNING 状态（服务侧作业状态词表）。')))])),
+       el('div', { class: 'panel' },
+-        el('h3', {}, bundlesReadable === probes.length
+-          ? `交付包（${allBundles.length}）`
+-          : `交付包（未读回 ${probes.length - bundlesReadable}/${probes.length} 项目）`),
++        el('h3', {}, bundleHeading),
+         el('ul', { class: 'list' },
+           ...(allBundles.length
+             ? allBundles.slice(0, 8).map((b) => el('li', { class: 'list-item' },
+@@ -684,10 +783,7 @@ const modulePanels = el('div', { class: 'three-col', style: 'margin-top:16px' },
+                   el('small', {}, `${b.id} · ${b.byte_size} 字节 · ${b.rights}`)),
+                 el('span', { class: b.rights === 'NOT_REVIEWED' ? 'tag warn' : 'tag info' },
+                   b.rights === 'NOT_REVIEWED' ? '权利未审查' : b.rights)))
+-            : [el('li', { class: 'list-item' },
+-                el('div', {},
+-                  el('strong', {}, '尚无交付包'),
+-                  el('small', {}, '任务完成并打包后，交付会在此读回。')))])),
++            : [emptyLi(projects, '尚无交付包', '任务完成并打包后，交付会在此读回。')])),
+     )),
+     el('div', { class: 'panel', style: 'margin-top:16px' },
+       el('h3', {}, 'Host / Capability 状态'),
+@@ -703,7 +799,7 @@ const modulePanels = el('div', { class: 'three-col', style: 'margin-top:16px' },
+           el('p', { class: 'view-hint' }, '宿主在线状态尚未有服务路由；此处 UNKNOWN，不假报可用。')),
+         el('div', { class: 'panel' },
+           el('h3', {}, '共享输入'),
+-          el('ul', { class: 'list' }, ...sharedInputRows(environment.shared_inputs)),
++          el('ul', { class: 'list' }, ...sharedInputRows(environment)),
+           el('p', { class: 'view-hint' }, '服务端环境读回；写权限与状态由服务裁定。')),
+         el('div', { class: 'panel' },
+           el('h3', {}, '未来能力'),
+@@ -785,12 +881,7 @@ export async function renderBrandSystems(target: HTMLElement): Promise<void> {
+               el('strong', {}, `${system.name} · ${system.title}`),
+               el('small', {}, `v${system.version} · 证据 ${system.evidence_level}`)),
+             el('span', { class: 'tag info' }, system.version)))
+-        : [el('li', { class: 'list-item' },
+-            el('div', {},
+-              el('strong', {}, '尚无登记设计系统'),
+-              el('small', {}, '在工作台 DESIGN LAYER 绑定后读回此处')
+-            )
+-        )
++        : [emptyLi(systems, '尚无登记设计系统', '在工作台 DESIGN LAYER 绑定后读回此处')
+       ])
+     )
+   );
+@@ -799,7 +890,8 @@ export async function renderBrandSystems(target: HTMLElement): Promise<void> {
+     kpis,
+     moduleGrid,
+     systemsList,
+-    el('p', { class: 'view-hint' }, '绑定到方向的操作在工作台「05 / DESIGN LAYER」页执行；本页只读回，不修改。'));
++    el('p', { class: 'view-hint' }, '绑定到方向的操作在工作台「05 / DESIGN LAYER」页执行；本页只读回，不修改。'),
++    ...shapeNoticeRows(systems));
+ }
+ 
+ export async function renderPreflight(target: HTMLElement): Promise<void> {
+@@ -917,6 +1009,110 @@ function valueRow(label: string, value: string, long: boolean, tagClass = 'info'
+         el('span', { class: 'tag ' + tagClass }, value));
+ }
+ 
++// 研究洞察 / 能力库 — the capability records the repository already maintains and
++// gates (source lock + vendor revisions + model radar) served as one readback, per the
++// UI plan's single "Research & Capability Library" slot. Read-only by construction: it
++// installs nothing, licenses nothing and qualifies nothing, and an unqualified record
++// stays null rather than becoming a score. The persisted research CONCLUSIONS are still
++// not open and this page says so rather than letting the live table imply otherwise.
++export async function renderCapabilityLibrary(target: HTMLElement): Promise<void> {
++  target.replaceChildren(el('p', { class: 'view-loading' }, '正在读回能力库…'));
++  const data = await apiOrEmpty<CapabilityLibraryResponse>('/capabilities', OFFLINE.capabilities);
++  const rows = data.capabilities;
++  const filter = el('input', { class: 'input capability-filter', type: 'search', id: 'capability-filter',
++    placeholder: '按 ID / 许可 / 域 / 处置 / 修订状态过滤',
++    'aria-label': '能力库过滤' });
++  const shown = el('span', { class: 'muted', id: 'capability-shown' }, '');
++  const body = el('tbody', {});
++
++  const render = (): void => {
++    const needle = (filter.value || '').trim().toLowerCase();
++    const keep = needle
++      ? rows.filter((c) => [c.id, c.license, c.domain, c.disposition, c.presence,
++                            c.revisionState, c.sourceType, c.evidenceLevel,
++                            c.upstreamOwner].join(' ').toLowerCase().includes(needle))
++      : rows;
++    body.replaceChildren(...keep.map((c) => el('tr', {},
++      el('td', {},
++        el('strong', {}, c.id),
++        el('div', { class: 'muted' }, `${c.kind} · ${c.sourceType ?? '未分类'}`),
++        // The withdrawal instruction is part of the record, not an afterthought: the
++        // plan asks for upgrade/withdraw with source references, and this is the
++        // recorded path for exactly this candidate.
++        c.removalPath ? el('details', { class: 'capability-withdraw' },
++          el('summary', {}, '撤回路径'),
++          el('p', { class: 'mono' }, c.removalPath)) : ''),
++      el('td', {}, c.license ?? '（无记录）'),
++      el('td', {}, c.disposition ?? '—'),
++      el('td', {}, c.presence ?? '—'),
++      el('td', {}, el('span', {
++        // A revision recovered by exact repository-path join is the only green here;
++        // unresolved and not-verified are warnings, never blanks.
++        class: 'tag ' + (c.revisionState === 'VERIFIED' ? 'ok' : 'warn'),
++      }, en(c.revisionState)), c.revision ? el('div', { class: 'mono' }, c.revision) : ''),
++      el('td', {}, c.qualified === null
++        ? el('span', { class: 'tag neutral' }, '未判定')
++        : el('span', { class: 'tag info' }, String(c.qualified))),
++      el('td', {}, c.evidenceLevel
++        ? el('span', { class: 'tag ' + (c.evidenceLevel === 'E0' ? 'warn' : 'info') },
++            en(c.evidenceLevel))
++        : el('span', { class: 'tag neutral' }, '未记录')),
++      // Popularity is shown with its observation stamp and an explicit not-a-score
++      // marker, per the taxonomy policy `popularityIsNotQuality`.
++      el('td', {}, c.popularity
++        ? el('span', { class: 'muted' },
++            `★ ${c.popularity.stargazerCount ?? '—'} · fork ${c.popularity.forkCount ?? '—'}`
++            + ` · ${c.popularity.observedAt?.slice(0, 10) ?? '未记时间'} · 非质量分`)
++        : el('span', { class: 'muted' }, '未观测')))));
++    shown.textContent = `显示 ${keep.length} / ${rows.length} 条`;
++  };
++  filter.oninput = () => { render(); };
++
++  const notOpen = VIEW_NOT_OPEN['research'];
++  const researchCard = CAPABILITY_REGISTRY.find((c) => c.capabilityId === 'research-insights');
++  target.replaceChildren(
++    el('div', { class: 'page-head' },
++      el('div', {},
++        el('h2', {}, '研究洞察 / 能力库'),
++        // The payload carries `unmeasuredMeans` for machines; the reader gets the same
++        // rule in the page's own language, with the English state words left untranslated.
++        el('p', {}, '只读回仓内已维护的能力记录：来源锁、修订账与模型雷达。'
++          + '空白不等于 0：未经宿主运行与人工验收的项标为 未判定，'
++          + '未取回修订的项标为 NOT_VERIFIED 或 UNRESOLVED；本视图不安装、不取证、不代签许可。')),
++      el('div', { class: 'page-actions' }, shown)),
++    el('div', { class: 'panel' },
++      el('h3', {}, `能力记录（${data.counts.total}）`),
++      el('p', { class: 'view-hint' },
++        `许可分布 ${Object.entries(data.counts.byLicense).map(([k, v]) => `${k} ${v}`).join(' · ')}`
++        + `；修订 ${Object.entries(data.counts.byRevisionState).map(([k, v]) => `${k} ${v}`).join(' · ')}`
++        + `；已判定 ${data.counts.qualified}。本视图不安装、不取证、不代签许可。`),
++      el('label', { class: 'project-picker' }, '过滤', filter),
++      el('div', { class: 'table-wrap', tabindex: '0', role: 'region',
++        'aria-label': '能力库表（可横向滚动）' },
++        el('table', { class: 'table' },
++          el('thead', {}, el('tr', {},
++            el('th', {}, '能力'), el('th', {}, '许可'), el('th', {}, '处置'),
++            el('th', {}, '存在状态'), el('th', {}, '修订'), el('th', {}, '资格判定'),
++            el('th', {}, '证据级'), el('th', {}, '热度（非质量分）'))),
++          body))),
++    el('div', { class: 'panel' },
++      el('h3', {}, '分类轴现状'),
++      el('p', { class: 'view-hint' },
++        `已连接候选分类 ${data.classification?.joined ?? 0} / ${data.counts.total} 条。`
++        + (data.classification?.unclassifiedAxes?.length
++          ? `以下轴在候选分类账中全部为空，界面不代填：${data.classification.unclassifiedAxes.join('、')}。`
++          : '所有已声明分类轴均有值。')
++        + ` ${data.classification?.note ?? ''}`),
++      el('p', { class: 'view-hint' },
++        '热度取自 GitHub 观测并带观测时间；策略明确 popularityIsNotQuality，因此它不参与排序或判定。')),
++    el('div', { class: 'panel' },
++      el('h3', {}, '研究结论'),
++      el('p', { class: 'view-unopened' }, notOpen ?? '（无）'),
++      researchCard ? capabilityCard(researchCard) : el('p', { class: 'view-hint' }, '（登记表无此项）')),
++    ...shapeNoticeRows(data));
++  render();
++}
++
+ export async function renderSettings(target: HTMLElement): Promise<void> {
+   target.replaceChildren(el('p', { class: 'view-loading' }, '正在读回运行环境…'));
+   const env = await apiOrEmpty<EnvironmentResponse>('/environment', OFFLINE.environment);
+@@ -975,8 +1171,7 @@ export async function renderSettings(target: HTMLElement): Promise<void> {
+                 ? Object.entries(env.roots).map(([name, root]) => el('li', { class: 'list-item' },
+                     el('div', {}, el('strong', {}, name), el('small', {}, root.path)),
+                     writablePill(root.writable)))
+-                : [el('li', { class: 'list-item' },
+-                    el('div', {}, el('strong', {}, '尚无根登记'), el('small', {}, '服务未返回 roots')))]))),
++                : [emptyLi(env, '尚无根登记', '服务未返回 roots')]))),
+           el('div', { class: 'panel' },
+             el('h3', {}, '外置输入（只读 · DECLARED_NOT_PROBED）'),
+             el('ul', { class: 'list' },
+@@ -984,9 +1179,9 @@ export async function renderSettings(target: HTMLElement): Promise<void> {
+                 ? Object.entries(env.shared_inputs).map(([name, input]) => el('li', { class: 'list-item' },
+                     el('div', {}, el('strong', {}, name), el('small', {}, input.path)),
+                     el('span', { class: 'tag info' }, input.status)))
+-                : [el('li', { class: 'list-item' },
+-                    el('div', {}, el('strong', {}, '尚无外置输入'), el('small', {}, '服务未返回 shared_inputs')))])))))),
+-    el('p', { class: 'view-hint' }, '代理配置私有状态不可写：PRIVATE_NOT_INSPECTED · 不可写。本服务不读取、不打印任何凭据。'));
++                : [emptyLi(env, '尚无外置输入', '服务未返回 shared_inputs')])))))),
++    el('p', { class: 'view-hint' }, '代理配置私有状态不可写：PRIVATE_NOT_INSPECTED · 不可写。本服务不读取、不打印任何凭据。'),
++    ...shapeNoticeRows(env));
+ }
+ 
+ // --- UI real-data routes (2026-09-22): projects / creative-tools /
+@@ -1002,12 +1197,21 @@ export async function renderSettings(target: HTMLElement): Promise<void> {
+ export async function projectPickerPanel(target: HTMLElement, title: string, body: (projectId: string) => Promise<HTMLElement>): Promise<void> {
+   target.replaceChildren(el('p', { class: 'view-loading' }, '正在读回项目台账…'));
+   const data = await apiOrEmpty<ProjectListResponse>('/projects', OFFLINE.projects);
++  const unread = shapeNotice(data);
++  const offline = disconnectedNotice(data);
+   if (!data.projects.length) {
++    // Three different empties, and the earlier branch collapsed them into one claim:
++    // a ledger that genuinely holds no project, a 200 that never carried the collection,
++    // and a page that never asked because nothing is connected. Only the first may say
++    // 尚无项目.
+     target.replaceChildren(
+       el('div', { class: 'page-head' },
+         el('div', {}, el('h2', {}, title),
+           el('p', {}, '只读回服务端台账；本页不提交、不修改。'))),
+-      el('p', { class: 'view-hint' }, '尚无项目。先在工作台新建项目，再读回此视图。'));
++      el('p', { class: unread || offline ? 'error' : 'view-hint' },
++        unread ? `${unread}，因此无法判断台账是否为空`
++          : offline ? `${offline}，台账未读回，不能断言为空`
++            : '尚无项目。先在工作台新建项目，再读回此视图。'));
+     return;
+   }
+   // One project in the ledger and a placeholder selected is a dead first screen:
+@@ -1022,7 +1226,8 @@ export async function projectPickerPanel(target: HTMLElement, title: string, bod
+     el('div', { class: 'page-head' },
+       el('div', {}, el('h2', {}, title),
+         el('p', {}, '只读回服务端台账；本页不提交、不修改。'))),
+-    el('label', { class: 'project-picker' }, '项目', select), content);
++    el('label', { class: 'project-picker' }, '项目', select), content,
++    ...shapeNoticeRows(data));
+   const load = async (): Promise<void> => {
+     const id = select.value;
+     if (!id) {
+@@ -1090,11 +1295,12 @@ export async function renderProjects(target: HTMLElement): Promise<void> {
+                 // (ROUTE_VIEWS must stay 12 for the browser E2E nav assertion).
+                 onclick: () => { window.location.hash = projectDetailHash(p.id); },
+               }, '打开'))))
+-          : [el('tr', {}, el('td', { colspan: '4' }, '尚无项目。在工作台新建项目后出现。'))]))));
++          : [el('tr', {}, emptyTd(data, '尚无项目', '在工作台新建项目后出现。', 4))]))));
+   target.replaceChildren(
+     pageHead,
+     kpis,
+-    el('div', { class: 'panel' }, el('h3', {}, `项目（${n}）`), list));
++    el('div', { class: 'panel' }, el('h3', {}, `项目（${n}）`), list),
++    ...shapeNoticeRows(data));
+ }
+ 
+ // 创作工具 — read-back of the project's native task ledger. Submitting a native
+@@ -1131,7 +1337,7 @@ export async function renderCreativeTools(target: HTMLElement): Promise<void> {
+           el('p', { class: 'view-hint' }, '宿主在线状态尚未有服务路由；此处 UNKNOWN，不假报可用。')),
+         el('div', { class: 'panel' },
+           el('h3', {}, '共享输入'),
+-          el('ul', { class: 'list' }, ...sharedInputRows(env.shared_inputs)),
++          el('ul', { class: 'list' }, ...sharedInputRows(env)),
+           el('p', { class: 'view-hint' }, '服务端环境读回。')),
+         hostCard ? capabilityCard(hostCard) : el('div', { class: 'panel' }),
+         mcpCard ? capabilityCard(mcpCard) : el('div', { class: 'panel' }),
+@@ -1143,12 +1349,16 @@ export async function renderCreativeTools(target: HTMLElement): Promise<void> {
+         el('h3', {}, a.name),
+         el('div', { class: 'status-stack' },
+           el('span', { class: 'tag info' }, a.state),
+-          el('span', { class: 'tag ok' }, '已登记'))),
++          // Neutral, not ok: the fact here is that an adapter entry exists in
++          // integrations/adapter-registry.json. Nothing probed the host, and the panel
++          // above this one says so ("UNKNOWN，不假报可用"). A green pill on the same
++          // page contradicted it.
++          el('span', { class: 'tag neutral' }, '登记于 adapter-registry'))),
+         el('p', { class: 'view-hint' }, '连接方式 / 权限 / 可执行能力由宿主与 service 裁定；本页只读回，不触发实操。')));
+     const rows = tasks.tasks.length
+       ? tasks.tasks.map((t) => el('tr', {},
+           el('td', {}, t.kind), el('td', {}, t.state), el('td', {}, t.attempt.state)))
+-      : [el('tr', {}, el('td', { colspan: '3' }, '尚无宿主任务。创作任务由 Illustrator / Photoshop 在工作台高级区提交。'))];
++      : [el('tr', {}, emptyTd(tasks, '尚无宿主任务', '创作任务由 Illustrator / Photoshop 在工作台高级区提交。', 3))];
+     return el('div', {},
+       hostStatus,
+       adapterGrid,
+@@ -1159,7 +1369,8 @@ export async function renderCreativeTools(target: HTMLElement): Promise<void> {
+           'aria-label': '设计领域任务表（可横向滚动）' },
+           el('table', { class: 'table' },
+             el('thead', {}, el('tr', {}, el('th', {}, '类型'), el('th', {}, '状态'), el('th', {}, '尝试'))),
+-            el('tbody', {}, ...rows)))));
++            el('tbody', {}, ...rows)))),
++    ...shapeNoticeRows(env, tasks));
+   });
+ }
+ 
+@@ -1192,10 +1403,7 @@ export async function renderDeliverables(target: HTMLElement): Promise<void> {
+             }, '在项目页下载'),
+             el('span', { class: b.rights === 'NOT_REVIEWED' ? 'tag warn' : 'tag info' },
+               b.rights === 'NOT_REVIEWED' ? '权利未审查' : b.rights))))
+-      : [el('li', { class: 'list-item' },
+-          el('div', {},
+-            el('strong', {}, '尚无交付包'),
+-            el('small', {}, '任务完成并打包后，交付会在此读回。')))];
++      : [emptyLi(bundles, '尚无交付包', '任务完成并打包后，交付会在此读回。')];
+     const bundleList = el('ul', { class: 'list' },
+       ...bundleRows.filter((x): x is HTMLElement => x !== null));
+ 
+@@ -1206,7 +1414,7 @@ export async function renderDeliverables(target: HTMLElement): Promise<void> {
+     const tasksRows: (HTMLElement | null)[] = tasks.tasks.length
+       ? tasks.tasks.map((t) => el('tr', {},
+           el('td', {}, t.kind), el('td', {}, t.state), el('td', {}, t.attempt.state)))
+-      : [el('tr', {}, el('td', { colspan: '3' }, '尚无任务。任务完成后交付包随读回导出。'))];
++      : [el('tr', {}, emptyTd(tasks, '尚无任务', '任务完成后交付包随读回导出。', 3))];
+     const tasksPanel = el('div', { class: 'panel' },
+       el('h3', {}, `交付候选任务（${tasks.tasks.length}）`),
+       el('div', { class: 'table-wrap', tabindex: '0', role: 'region',
+@@ -1232,7 +1440,8 @@ export async function renderDeliverables(target: HTMLElement): Promise<void> {
+       kindGrid,
+       el('p', { class: 'view-hint' }, '交付包按任务在下载时打包（字体 / 链接 / rights / 质量仍需人工验收）。本页只读回，不下载也不打包。'),
+       bundlePanel,
+-      tasksPanel);
++      tasksPanel,
++    ...shapeNoticeRows(bundles, tasks));
+   });
+ }
+ 
+@@ -1314,7 +1523,8 @@ export async function renderEvidence(target: HTMLElement): Promise<void> {
+               el('tr', {}, el('th', { scope: 'row' }, '选定方向'), el('td', {}, chosen)),
+               el('tr', {}, el('th', { scope: 'row' }, '活动绑定'), el('td', {}, active)))))),
+       systems,
+-      el('p', { class: 'view-hint' }, '版本链（brief / direction 逐版本）在工作台点单条时读回；本页为只读证据视图，不修改 lineage。'));
++      el('p', { class: 'view-hint' }, '版本链（brief / direction 逐版本）在工作台点单条时读回；本页为只读证据视图，不修改 lineage。'),
++      ...shapeNoticeRows(layerResp, bundlesResp));
+     return done;
+   });
+ }
+@@ -1676,7 +1886,11 @@ function renderBriefEditor(id: string, layer: DesignLayerResponse['design_layer'
+     });
+     const rows = data.lineage.versions;
+     const liveId = data.lineage.live_id;
++    // The box is a <ul>, so the notice has to be an <li>; the sentence itself still
++    // comes from the one shapeNotice source the page-level rows use.
++    const notice = shapeNotice(data);
+     lineageBox.replaceChildren(
++      ...(notice ? [el('li', { class: 'error' }, notice)] : []),
+       el('li', { class: 'list-item' },
+         el('div', {}, el('strong', {}, `版本链（${rows.length}）`),
+           el('small', {}, `当前 ${liveId ? `版本 ${versions.get(liveId) ?? '?'}` : '—'}`))),
+@@ -1747,8 +1961,7 @@ function renderBriefEditor(id: string, layer: DesignLayerResponse['design_layer'
+         el('div', { class: 'actions' },
+           el('span', { class: brief.superseded_by === null ? 'tag ok' : 'tag warn' }, versionState(brief.superseded_by, versions)),
+           el('button', { type: 'button', class: 'ghost-btn', onclick: () => startRevision(brief) }, '新版本'))))
+-    : [el('li', { class: 'list-item' },
+-        el('div', {}, el('strong', {}, '尚无简报'), el('small', {}, '用下方表单创建该项目的第一份简报（真实写入，保存后读回）')))];
++    : [emptyLi(layer, '尚无简报', '用下方表单创建该项目的第一份简报（真实写入，保存后读回）')];
+ 
+   // 离开未保存页的恢复策略: restore any draft found for this project + form, disclose it,
+   // and offer a one-click discard. The restored values are NOT silently presented as the
+@@ -2138,9 +2351,7 @@ function renderDirectionPanel(id: string, layer: DesignLayerResponse['design_lay
+     el('ul', { class: 'list' },
+       ...(layer.directions.length
+         ? [...layer.directions].map(directionRow)
+-        : [el('li', { class: 'list-item' },
+-          el('div', {}, el('strong', {}, '尚无方向候选'),
+-            el('small', {}, '先建立简报，再用下方表单立候选；选定必须由人执行。')))])),
++        : [emptyLi(layer, '尚无方向候选', '先建立简报，再用下方表单立候选；选定必须由人执行。')])),
+     el('div', { class: 'row-card', style: 'display:grid;gap:8px' },
+       el('strong', {}, '新建方向候选（绑定到某个简报版本）'),
+       fieldRow('所属简报版本', briefSelect, 'pd-dir-brief'),
+@@ -2362,8 +2573,7 @@ export async function renderProjectDetail(id: string, target: HTMLElement): Prom
+         ? tasks.tasks.slice(0, 8).map((t) => el('li', { class: 'list-item' },
+             el('div', {}, el('strong', {}, t.kind), el('small', {}, `尝试 ${t.attempt.attempt_no} · ${t.attempt.state}`)),
+             el('span', { class: 'tag info' }, t.state)))
+-        : [el('li', { class: 'list-item' },
+-            el('div', {}, el('strong', {}, '尚无任务'), el('small', {}, '任务由工作台高级区提交')))])))
++        : [emptyLi(tasks, '尚无任务', '任务由工作台高级区提交')])))
+ 
+   const layerPanel = el('div', { class: 'panel' },
+     el('h3', {}, '设计层契约'),
+@@ -2395,7 +2605,7 @@ export async function renderProjectDetail(id: string, target: HTMLElement): Prom
+       inspector,
+     ),
+     el('p', { class: 'view-hint' }, 'tasks 与 design-layer 台账为只读；简报区可真实创建与修订并读回；参考素材区读回资产清单并按需预览。提交任务 / 运行 / 取消 / 导出仍由工作台高级区执行。'),
+-  );
++    ...shapeNoticeRows(bundlesResp, layerResp, listing, systemsResp, tasks));
+ }
+ 
+ export async function renderRoute(view: AppView, target: HTMLElement): Promise<void> {
+@@ -2404,6 +2614,7 @@ export async function renderRoute(view: AppView, target: HTMLElement): Promise<v
+     case 'dashboard': await renderDashboard(target); return;
+     case 'brand-systems': await renderBrandSystems(target); return;
+     case 'preflight-qa': await renderPreflight(target); return;
++    case 'research': await renderCapabilityLibrary(target); return;
+     case 'settings': await renderSettings(target); return;
+     case 'projects': await renderProjects(target); return;
+     case 'creative-tools': await renderCreativeTools(target); return;
+@@ -2421,18 +2632,14 @@ export async function renderRoute(view: AppView, target: HTMLElement): Promise<v
+       const notOpen = VIEW_NOT_OPEN[view];
+       // 2026-09-30 — blueprint slots now render honest capability cards
+       // (from CAPABILITY_REGISTRY) instead of a bare "unopened" note.
+-      // Only VIEW_NOT_OPEN slots (research / design-domains / collaboration)
+-      // reach here; creative-tools is handled by its own case above.
++      // Only the remaining VIEW_NOT_OPEN slots (design-domains / collaboration) reach
++      // here; research now has a real readback of its own and creative-tools never did.
++      const slotFor = (v: string) => v === 'design-domains' ? 'design-domain-model'
++        : v === 'collaboration' ? 'collaboration' : null;
++      const wanted = slotFor(view);
+       const cards = el('div', { class: 'card-flow' },
+-        ...CAPABILITY_REGISTRY.filter((c) =>
+-          (view === 'research' && c.capabilityId === 'research-insights') ||
+-          (view === 'design-domains' && c.capabilityId === 'design-domain-model') ||
+-          (view === 'collaboration' && c.capabilityId === 'collaboration')
+-        ).map(capabilityCard));
+-      const hasCards = CAPABILITY_REGISTRY.some((c) =>
+-        (view === 'research' && c.capabilityId === 'research-insights') ||
+-        (view === 'design-domains' && c.capabilityId === 'design-domain-model') ||
+-        (view === 'collaboration' && c.capabilityId === 'collaboration'));
++        ...CAPABILITY_REGISTRY.filter((c) => c.capabilityId === wanted).map(capabilityCard));
++      const hasCards = CAPABILITY_REGISTRY.some((c) => c.capabilityId === wanted);
+       target.replaceChildren(
+         el('h2', {}, notOpen ? viewLabel(view) : '工作台'),
+         el('p', { class: 'view-unopened' }, notOpen ?? '默认工作台。'),
+@@ -2454,6 +2661,20 @@ export function mountAppShell(): void {
+       onclick: () => { window.location.hash = route.hash === '' ? '' : route.hash; },
+     }, route.label)),
+     el('span', { class: 'app-nav-meta', id: 'shell-connection' }, '未连接'));
++  // The legacy Workbench still has a separate shell while the D-6 product
++  // direction remains open. On narrow screens its bottom navigation is wider
++  // than the viewport; keep a visible continuation cue only while more items
++  // remain to the right, so the scrollable menu does not look truncated.
++  const syncLegacyNavCue = (): void => {
++    const mobile = typeof window.matchMedia === 'function'
++      && window.matchMedia('(max-width: 760px)').matches;
++    const hasMore = mobile
++      && nav.scrollWidth > nav.clientWidth
++      && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1;
++    nav.classList.toggle('has-scroll-more', hasMore);
++  };
++  nav.addEventListener('scroll', syncLegacyNavCue, { passive: true });
++  window.addEventListener('resize', syncLegacyNavCue);
+   // The route host IS the B10 `section.content#content` view slot (B10 renders
+   // each page as a direct child of `.content`, which supplies the 26/28/30
+   // padding). It is built together with the rest of the B10 `.app` tree by
+@@ -2471,7 +2692,7 @@ export function mountAppShell(): void {
+ 
+   // Build the authoritative B10 shell (.app > .ambient + .grid-bg + aside.sidebar
+   // + main.main > header.topbar + section.content#content).
+-  const b10 = mountB10Shell(routeView);
++  const b10 = mountB10Shell(routeView, syncLegacyNavCue);
+   if (!b10) document.body.append(routeView);
+ 
+   const active = (view: string): void => {
+@@ -2617,7 +2838,7 @@ interface B10Shell {
+   sync(view: string): void;
+ }
+ 
+-function mountB10Shell(routeView: HTMLElement): B10Shell | null {
++function mountB10Shell(routeView: HTMLElement, syncLegacyNavCue: () => void): B10Shell | null {
+   // Browser-only guard (same semantics as mountB10Overlays): the vm unit smoke
+   // has no real querySelectorAll, so this never runs there.
+   const probe = document.createElement('div');
+@@ -2625,6 +2846,7 @@ function mountB10Shell(routeView: HTMLElement): B10Shell | null {
+ 
+   // Route label / 文案 mirror of B10 NAV (B07 12-route IA, DESIGN-LAB copy).
+   const B10_NAV: Array<{ route: string; label: string; hash: string }> = [
++    { route: 'workbench', label: '工作台', hash: '' },
+     { route: 'dashboard', label: '仪表盘', hash: '#/dashboard' },
+     { route: 'projects', label: '项目', hash: '#/projects' },
+     { route: 'research', label: '研究洞察', hash: '#/research' },
+@@ -2663,7 +2885,7 @@ function mountB10Shell(routeView: HTMLElement): B10Shell | null {
+       el('div', { class: 'avatar', 'aria-hidden': 'true' }, 'D/L'),
+       el('div', {},
+         el('strong', {}, '本地单用户'),
+-        el('small', {}, '无身份路由 · 未读回'))));
++        el('small', { id: 'personal-connection' }, '本机服务未连接'))));
+ 
+   // B10 .topbar body. Handlers are attached by wireB10Topbar() at the end of
+   // mountB10Overlays(), once the palette/drawer/toast ids exist.
+@@ -2679,7 +2901,13 @@ function mountB10Shell(routeView: HTMLElement): B10Shell | null {
+   const setNavOpen = (open: boolean): void => {
+     sidebar.classList.toggle('open', open);
+     navToggle.setAttribute('aria-expanded', String(open));
++    const mobile = window.matchMedia('(max-width: 840px)').matches;
++    sidebar.toggleAttribute('inert', mobile && !open);
++    if (open) sidebar.querySelector<HTMLButtonElement>('.nav button')?.focus();
++    else if (mobile && sidebar.contains(document.activeElement)) navToggle.focus();
+   };
++  setNavOpen(false);
++  window.matchMedia('(max-width: 840px)').addEventListener('change', () => setNavOpen(false));
+   navToggle.onclick = (): void => setNavOpen(!sidebar.classList.contains('open'));
+   // Without this the drawer stays on top of the page you just chose to visit.
+   sidebar.addEventListener('click', (event: Event) => {
+@@ -2715,15 +2943,24 @@ function mountB10Shell(routeView: HTMLElement): B10Shell | null {
+   // Legacy chrome that owns the default (empty-hash) workbench view.
+   const legacyNav = document.querySelector<HTMLElement>('.app-nav');
+   const legacyChrome = Array.from(document.querySelectorAll<HTMLElement>('body > header, body > main, body > footer'));
++  const legacyMain = document.querySelector<HTMLElement>('body > main');
++  const workbenchView = el('section', { class: 'personal-workbench', id: 'workbench-view' });
++  if (legacyMain) {
++    workbenchView.append(...Array.from(legacyMain.childNodes));
++    app.querySelector<HTMLElement>('#content')?.append(workbenchView);
++  }
+ 
+   const sync = (view: string): void => {
+     const routed = view !== 'workbench';
+     // `hidden` on .app needs an explicit rule (an author `display:grid` beats
+     // the UA [hidden] rule) — see `.app[hidden]` in style.css.
+-    app.hidden = !routed;
++    app.hidden = false;
++    workbenchView.hidden = routed;
++    routeView.hidden = !routed;
+     offlineNotice.hidden = Boolean(token) || !devMode();
+-    if (legacyNav) legacyNav.toggleAttribute('hidden', routed);
+-    for (const node of legacyChrome) node.toggleAttribute('hidden', routed);
++    if (legacyNav) legacyNav.hidden = true;
++    for (const node of legacyChrome) node.hidden = true;
++    byId<HTMLElement>('personal-connection').textContent = connected ? '本机服务已连接' : '本机服务未连接';
+     for (const item of Array.from(sidebar.querySelectorAll<HTMLElement>('.nav button'))) {
+       // A project-detail page has no nav button of its own (B10's sidebar has no
+       // detail entry), so keep 项目 highlighted while it is open.
+diff --git a/apps/workbench/style.css b/apps/workbench/style.css
+index 62b6157c..0f956686 100644
+--- a/apps/workbench/style.css
++++ b/apps/workbench/style.css
+@@ -327,6 +327,19 @@ body > footer{
+     display:flex;flex-direction:row;gap:6px;overflow-x:auto;overflow-y:hidden;
+     padding:8px 10px;border-right:0;border-top:1px solid var(--line);
+   }
++  /* The legacy Workbench has more destinations than fit on a phone. The
++     measured scroll state toggles this cue off once the user reaches the end. */
++  .app-nav.has-scroll-more::after{
++    /* sticky, not absolute: the nav IS the scroll container, and an absolutely
++       positioned pseudo is placed against its content box, so it slid away with the
++       items and the cue vanished mid-scroll (measured: arrow pixels 13 / 0 / 0 at
++       scrollLeft 0 / 300 / 600 with 670px of menu still off-screen). As a sticky
++       flex item it stays at the right edge of the scrollport (10 / 10 / 10). */
++    content:"›";position:sticky;right:0;flex:0 0 32px;min-width:32px;margin-left:-32px;
++    align-self:stretch;display:grid;place-items:center;color:var(--secondary);font-size:22px;
++    background:linear-gradient(90deg,transparent,var(--surface) 42%);
++    pointer-events:none;
++  }
+   .app-nav-brand,.app-nav-meta{display:none}
+   .app-nav-item{
+     flex:0 0 auto;width:auto;min-width:max-content;
+@@ -666,6 +679,11 @@ html,body{margin:0}
+    auto-fit collapses the unused tracks, so one card fills the row and two or
+    three still share it evenly. */
+ .card-flow{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
++/* The library filter's placeholder is longer than a default picker cell, and a
++   clipped placeholder reads as a broken field. Scoped through .project-picker because
++   `.input{width:auto;min-width:0}` is declared later in this file and a single-class
++   rule here would lose on order, not on intent. */
++.project-picker .capability-filter{flex:1 1 auto;width:340px;min-width:0;max-width:100%}
+ .split{grid-template-columns:1.35fr .95fr}
+ .panel{
+   position:relative;
+@@ -1407,3 +1425,25 @@ body > header p,body > main p,body > footer p{font-size:14px}
+ .panel .advanced>summary{padding:12px 0;font-size:12px;font-weight:600;color:var(--muted)}
+ .panel .advanced>summary:hover{color:var(--ink)}
+ .panel .advanced-body{padding:0 0 12px}
++
++/* Personal product shell: one navigation surface for every workflow. */
++.app .personal-workbench { min-width: 0; }
++.app .personal-workbench[hidden], .app .route-view[hidden] { display: none !important; }
++.app .personal-workbench > .skip-link { position: absolute; }
++.app .personal-workbench .toolbar { flex-wrap: wrap; }
++.app .personal-workbench .panel { min-width: 0; }
++.app .personal-workbench .grid, .app .personal-workbench .design-grid { min-width: 0; }
++@media (max-width: 840px) {
++  .app .personal-workbench .grid, .app .personal-workbench .design-grid { grid-template-columns: minmax(0, 1fr); }
++  .app .personal-workbench .toolbar label, .app .personal-workbench .toolbar form { width: 100%; }
++}
++body[data-local-session="auto"] #connect-form details { display: none; }
++
++/* Constrain the capability library on narrow viewports. */
++.route-view .panel, .route-view .project-picker { min-width: 0; }
++.capability-filter { width: 100%; max-width: 100%; min-width: 0; }
++
++@media (max-width: 840px) {
++  .route-view .project-picker:has(.capability-filter) { display: flex; flex-wrap: wrap; width: 100%; }
++  .route-view .project-picker .capability-filter { flex-basis: 100%; width: 100%; }
++}
+diff --git a/apps/workbench/tests/appshell.mjs b/apps/workbench/tests/appshell.mjs
+index 8a634010..e79c77e8 100644
+--- a/apps/workbench/tests/appshell.mjs
++++ b/apps/workbench/tests/appshell.mjs
+@@ -160,4 +160,198 @@ await flush();
+ if (!shell.elements.get('route-view').textContent.includes('仪表盘'))
+   throw new Error('当前 dashboard 请求完成后必须提交当前视图');
+ 
++// State ⑤ of the UI state matrix, both directions.
++// (a) A 200 response that omits a collection must degrade visibly: the page still
++//     renders, and it says the field was missing rather than showing 尚无项目 as if the
++//     server had answered zero. Before the fix this threw at data.projects.length and
++//     the top-level catch replaced the whole view with a TypeError message.
++shell.window.location.hash = '#/projects';
++shell.dispatchHashchange();
++const malformedProjects = shell.pending.shift();
++malformedProjects.resolve(response({}));
++await flush();
++const malformedText = shell.elements.get('route-view').textContent;
++if (!malformedText.includes('未读回：响应缺少 projects'))
++  throw new Error('响应缺少集合时必须说明未读回，而不是渲染成"尚无项目"');
++if (malformedText.includes('视图读回失败'))
++  throw new Error('缺少一个集合不得让整页读回失败');
++
++// (b) A well-formed response must NOT carry the notice — otherwise the guard is just
++//     noise and the (a) assertion proves nothing.
++shell.window.location.hash = '#/dashboard';
++shell.dispatchHashchange();
++shell.pending.splice(0, 4);   // the dashboard's own reads, left unresolved on purpose
++shell.window.location.hash = '#/projects';
++shell.dispatchHashchange();
++const goodProjects = shell.pending.shift();
++goodProjects.resolve(response({ projects: [{ id: 'p1', name: 'Alpha' }] }));
++await flush();
++const goodText = shell.elements.get('route-view').textContent;
++if (goodText.includes('未读回：响应缺少'))
++  throw new Error('形状完整的响应不得出现形状告警');
++if (!goodText.includes('Alpha'))
++  throw new Error('形状完整的响应必须照常渲染');
++
++// ⑤ SWEEP over every routable view, in both directions, driven from the route table
++// itself (shape-notice-coverage.mjs proves each binding is REPORTED; this proves the
++// report REACHES THE SCREEN). A view that reads through the seam and gets a 200 with a
++// collection missing must render 未读回：响应缺少 …; a view that reads nothing is allowed
++// to say nothing, but a mass of "reads nothing" is a rollout regression, so the count
++// has a floor.
++const shellSource = readFileSync(join(here, '..', 'shell.ts'), 'utf8');
++const tableStart = shellSource.indexOf('export const ROUTE_VIEWS');
++const tableEnd = shellSource.indexOf('export type RouteView');
++if (tableStart < 0 || tableEnd < tableStart)
++  throw new Error('ROUTE_VIEWS 表定位失败 —— 路由扫描失去覆盖面');
++const routeHashes = [...shellSource.slice(tableStart, tableEnd)
++  .matchAll(/hash: '(#[^']*)'/g)].map((m) => m[1]);
++if (routeHashes.length < 10)
++  throw new Error(`只从 ROUTE_VIEWS 提取到 ${routeHashes.length} 个 hash —— 提取式已失效，不要相信本扫描的覆盖面`);
++
++let noticeViews = 0;
++const silentViews = [];
++for (const hash of routeHashes) {
++  shell.window.location.hash = hash;
++  shell.dispatchHashchange();
++  const requests = shell.pending.splice(0, shell.pending.length);
++  for (const request of requests) request.resolve(response({}));
++  await flush();
++  if (!requests.length) { silentViews.push(hash); continue; }
++  const text = shell.elements.get('route-view').textContent;
++  if (text.includes('视图读回失败'))
++    throw new Error(`${hash}: 缺少集合把整页压成了读回失败（${text.slice(0, 120)}）`);
++  if (!text.includes('未读回：响应缺少'))
++    throw new Error(`${hash}: 发起 ${requests.length} 次 seam 读回却没有说明缺少哪个字段`);
++  noticeViews += 1;
++}
++if (noticeViews < 8)
++  throw new Error(`只有 ${noticeViews} 个视图报告了缺失形状（下限 8）—— ⑤ 的铺开出现了回归`);
++console.log(`ok: ⑤ 形状告警渲染在 ${noticeViews} 个视图上；${silentViews.length} 个路由不读服务：${silentViews.join(' ')}`);
++
++// ①/④ OFFLINE sweep. A second context that never connects: devMode() reads
++// window.location.search, so '?dev=1' is what lets the seam answer with its honest empty
++// payload. Those payloads are marked, and an empty that was never asked about must not be
++// described with the wording reserved for a readback that really returned nothing.
++const LIVE_ONLY_PHRASES = [
++  '尚无项目。先在工作台新建项目，再读回此视图。',   // project picker
++  '尚无项目 在工作台新建项目后出现。',              // projects table cell
++  '尚无登记设计系统',                              // brand systems
++  '尚无根登记', '尚无外置输入',                    // settings
++  '尚无宿主任务',                                  // creative tools
++  '尚无交付包',                                    // dashboard + deliverables
++  '尚无任务 任务完成后交付包随读回导出。',          // deliverables tasks cell
++];
++
++const offline = makeContext();
++offline.window.location.search = '?dev=1';
++let offlineChecked = 0;
++for (const hash of ['', ...routeHashes]) {
++  offline.window.location.hash = hash;
++  offline.dispatchHashchange();
++  await flush();
++  // The empty hash is the legacy workbench, which owns #workspace; every route view
++  // renders into #route-view. Asking the wrong host would read an element that was
++  // never built rather than the page that is actually on screen.
++  const host = hash ? 'route-view' : 'workspace';
++  const text = offline.elements.get(host)?.textContent ?? '';
++  const leaked = LIVE_ONLY_PHRASES.filter((phrase) => text.includes(phrase));
++  if (leaked.length)
++    throw new Error(`未连接时 ${hash || '(workbench)'} 把没问过的事说成了实况：${leaked.join(' / ')}`);
++  if (text.includes('未读回：未连接本机设计服务')) offlineChecked += 1;
++}
++if (offlineChecked < 5)
++  throw new Error(`未连接态只有 ${offlineChecked} 个视图声明了未读回（下限 5）—— 空态措辞的门失效了`);
++console.log(`ok: ① 未连接态 ${offlineChecked} 个视图报告未读回，${LIVE_ONLY_PHRASES.length} 条实况专属措辞零泄漏`);
++
++// Positive control for the same switch: connected, with a service that really answers an
++// empty collection, the page MUST claim the ledger is empty. Without this half the offline
++// assertions above would be satisfied by deleting every empty-state sentence.
++shell.window.location.hash = '#/projects';
++shell.dispatchHashchange();
++const emptyProjects = shell.pending.shift();
++emptyProjects.resolve(response({ projects: [] }));
++await flush();
++const liveEmptyText = shell.elements.get('route-view').textContent;
++if (!liveEmptyText.includes('尚无项目 在工作台新建项目后出现。'))
++  throw new Error(`服务真的答了空台账时，必须照实说尚无项目；实际读到：${liveEmptyText.slice(0, 240)}`);
++if (liveEmptyText.includes('未读回'))
++  throw new Error('一次形状完整的空读回不得出现任何未读回措辞');
++
++shell.window.location.hash = '#/brand-systems';
++shell.dispatchHashchange();
++const emptySystems = shell.pending.shift();
++emptySystems.resolve(response({ design_systems: [] }));
++await flush();
++const liveSystemsText = shell.elements.get('route-view').textContent;
++if (!liveSystemsText.includes('尚无登记设计系统'))
++  throw new Error('设计系统读回为空时页面必须说明为空');
++console.log('ok: ④ 真实空读回仍照实报告为空（两个视图正向对照）');
++
++// ② REQUEST FAILED, swept over every route. A connected session whose read comes back
++// refused is the state most likely to lie by silence: the previous route's numbers could
++// stay on screen and read as current. Measured behaviour being pinned here -- every route
++// that asked the service shows ONLY the failure and its reason, and a route that never
++// asks must not claim a failure it did not have.
++let failedChecked = 0;
++let sawTransport = false;
++let sawUnparsable = false;
++let sawServiceError = false;
++for (const hash of routeHashes) {
++  shell.window.location.hash = hash;
++  shell.dispatchHashchange();
++  const requests = shell.pending.splice(0, shell.pending.length);
++  // Three different failures, cycled per route. They travel different code paths and the
++  // operator needs a different next action from each: the request never reached the
++  // service; the service answered with something that is not JSON; the service answered
++  // with an error envelope. Cycling (rather than mixing inside one route) is required
++  // because a view fires several reads together and the first rejection wins the catch.
++  const kind = routeHashes.indexOf(hash) % 3;
++  for (const request of requests) {
++    if (kind === 0) request.reject(new Error('ECONNREFUSED 127.0.0.1'));
++    else if (kind === 1) request.resolve({ ok: true, status: 200, json: async () => { throw new SyntaxError('Unexpected end of JSON input'); } });
++    else request.resolve(response({ error: 'SERVICE_UNAVAILABLE' }, false));
++  }
++  await flush();
++  const text = (shell.elements.get('route-view').textContent ?? '').trim();
++  if (!requests.length) {
++    if (text.includes('视图读回失败'))
++      throw new Error(`${hash}: 这一面没有发起任何读回，却报告读回失败`);
++    continue;
++  }
++  if (!text.startsWith('视图读回失败'))
++    throw new Error(`${hash}: 读回被拒绝后页面没有以失败开头，旧内容可能留在屏上：${text.slice(0, 160)}`);
++  if (!text.replace('视图读回失败：', '').trim())
++    throw new Error(`${hash}: 只说失败、没有说原因`);
++  if (!/无法连接本机设计服务|服务回复无法解析|SERVICE_UNAVAILABLE/.test(text))
++    throw new Error(`${hash}: 失败原因里没有可诊断的信息：${text.slice(0, 160)}`);
++  if (kind === 0) {
++    if (!text.includes('无法连接本机设计服务') || !text.includes('ECONNREFUSED'))
++      throw new Error(`${hash}: 连不上服务时既要说出"连不上"，也要保留底层原因：${text.slice(0, 160)}`);
++    sawTransport = true;
++  } else if (kind === 1) {
++    if (!text.includes('服务回复无法解析') || !text.includes('HTTP 200'))
++      throw new Error(`${hash}: 回复不是 JSON 时应说明无法解析与状态码：${text.slice(0, 160)}`);
++    sawUnparsable = true;
++  } else {
++    if (!text.includes('SERVICE_UNAVAILABLE'))
++      throw new Error(`${hash}: 服务错误码应原样上屏：${text.slice(0, 160)}`);
++    sawServiceError = true;
++  }
++  if (text.includes('未读回：未连接'))
++    throw new Error(`${hash}: 已连接但请求被拒，不是未连接，两种状态不得混用`);
++  const leaked = LIVE_ONLY_PHRASES.filter((phrase) => text.includes(phrase));
++  if (leaked.length)
++    throw new Error(`${hash}: 失败页仍带着成功读回才有的措辞：${leaked.join(' / ')}`);
++  failedChecked += 1;
++}
++if (failedChecked < 8)
++  throw new Error(`② 失败态只有 ${failedChecked} 个视图被验证（下限 8）—— 该列的门失效了`);
++// A single-request route can only ever show the transport path, so "both paths measured"
++// has to be counted rather than asserted by intent.
++if (!sawTransport || !sawServiceError || !sawUnparsable)
++  throw new Error(`② 三种失败只测到 ${[
++    sawTransport && '传输被拒', sawUnparsable && '回复不可解析', sawServiceError && '服务错误',
++  ].filter(Boolean).join(' + ') || '无'}，另一种没有任何视图走过`);
++console.log(`ok: ② 请求失败时 ${failedChecked} 个视图只报失败与原因（传输被拒 + 回复不可解析 + 服务错误三条路径都实测到），无旧内容残留`);
++
+ console.log('APPSHELL REGRESSION: all checks passed');
+diff --git a/apps/workbench/tests/shape-notice-coverage.mjs b/apps/workbench/tests/shape-notice-coverage.mjs
+new file mode 100644
+index 00000000..f15c822f
+--- /dev/null
++++ b/apps/workbench/tests/shape-notice-coverage.mjs
+@@ -0,0 +1,166 @@
++// SPDX-License-Identifier: MIT
++// DESIGN-LAB Workbench — shape-notice coverage gate.
++//
++// `apiOrEmpty` is the one seam that turns a reachable-but-short service answer into a
++// renderable payload. When it has to invent a collection, the view must SAY SO
++// (`未读回：响应缺少 X`) instead of letting a synthetic empty read as "the project has
++// none". That rule is trivially lost: adding a new seam read, or renaming its variable,
++// silently removes one view's honesty with no type error and no failing render.
++//
++// So this gate walks the real TypeScript AST of shell.ts and asserts, per binding:
++//   * every value produced by an `apiOrEmpty` call is named in a `shapeNotice` /
++//     `shapeNoticeRows` call inside the same enclosing function; and
++//   * every `apiOrEmpty` call site binds a name this file can see (an unbound
++//     `await apiOrEmpty(...)` whose result nothing reads is a hole, not a pass).
++//
++// Names are matched identifier-by-identifier, so dropping one argument from one notice
++// call fails this gate. Parsing with the compiler rather than regexes: braces, template
++// literals and comments in shell.ts are not things a line pattern can be trusted about.
++
++import { readFileSync } from 'node:fs';
++import { fileURLToPath } from 'node:url';
++import { dirname, join } from 'node:path';
++import ts from 'typescript';
++
++const here = dirname(fileURLToPath(import.meta.url));
++const sourcePath = join(here, '..', 'shell.ts');
++const text = readFileSync(sourcePath, 'utf8');
++const source = ts.createSourceFile('shell.ts', text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
++
++let failures = 0;
++const fail = (msg) => { failures += 1; console.error(`FAIL: ${msg}`); };
++const pass = (msg) => console.log(`ok: ${msg}`);
++
++const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
++
++function isCallTo(node, name) {
++  return ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name;
++}
++
++// --- the seam must exist, or every assertion below is vacuously true -----------------
++const seamDecls = [];
++const noticeCalls = [];
++(function findDeclarations(node) {
++  if (ts.isFunctionDeclaration(node) && node.name?.text === 'apiOrEmpty') seamDecls.push(node);
++  if (isCallTo(node, 'shapeNotice') || isCallTo(node, 'shapeNoticeRows')) noticeCalls.push(node);
++  node.forEachChild(findDeclarations);
++})(source);
++
++if (seamDecls.length !== 1) {
++  fail(`expected exactly 1 'function apiOrEmpty' in shell.ts, found ${seamDecls.length} — the gate's subject moved`);
++  console.log(failures > 0 ? `shape-notice coverage: ${failures} failure(s)` : 'shape-notice coverage: all bindings reported');
++  process.exit(1);
++}
++if (!noticeCalls.length) {
++  fail('no shapeNotice/shapeNoticeRows call survives in shell.ts — the notice feature was removed, not the gap');
++  process.exit(1);
++}
++
++// --- enclosing function, for every node ---------------------------------------------
++const enclosingFn = new Map();
++(function mark(node) {
++  if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) {
++    enclosingFn.set(node, node);
++  }
++  node.forEachChild((child) => mark(child));
++})(source);
++
++function nearestFunction(node) {
++  let current = node.parent;
++  while (current) {
++    if (enclosingFn.has(current)) return current;
++    current = current.parent;
++  }
++  return null;
++}
++
++function functionName(node) {
++  if (!node) return '(module scope)';
++  if (ts.isFunctionDeclaration(node) && node.name) return node.name.text;
++  if (ts.isVariableDeclaration(node.parent) && ts.isIdentifier(node.parent.name)) return node.parent.name.text;
++  // An arrow handed to another function (the project-picker bodies) has no name of its
++  // own; label it by the view it belongs to, so a failure points at a page.
++  let current = nearestFunction(node.parent);
++  while (current && !(ts.isFunctionDeclaration(current) && current.name)) current = nearestFunction(current.parent);
++  return `(anonymous fn in ${current?.name?.text ?? 'module scope'})`;
++}
++
++// --- names covered by notice calls, per function ------------------------------------
++const covered = new Map();
++for (const call of noticeCalls) {
++  const owner = nearestFunction(call);
++  if (!covered.has(owner)) covered.set(owner, new Set());
++  const set = covered.get(owner);
++  for (const arg of call.arguments) {
++    if (ts.isIdentifier(arg)) set.add(arg.text);
++    else if (ts.isPropertyAccessExpression(arg) && ts.isIdentifier(arg.expression)) set.add(arg.expression.text);
++  }
++}
++
++// --- names bound by each seam call --------------------------------------------------
++function boundNames(call) {
++  // const X = apiOrEmpty(...) | const X = await apiOrEmpty(...)
++  let node = call;
++  if (node.parent && ts.isAwaitExpression(node.parent)) node = node.parent;
++  const parent = node.parent;
++
++  if (parent && ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) {
++    return [parent.name.text];
++  }
++
++  // const [a, b] = await Promise.all([apiOrEmpty(...), apiOrEmpty(...)])
++  // Note where the `await` sits: it wraps the Promise.all CALL, so the ascent past it
++  // has to happen after that call is recognised, not between it and the array literal.
++  if (parent && ts.isArrayLiteralExpression(parent)) {
++    let all = parent.parent;
++    if (all && ts.isCallExpression(all) && ts.isPropertyAccessExpression(all.expression)
++        && all.expression.name.text === 'all'
++        && ts.isIdentifier(all.expression.expression)
++        && all.expression.expression.text === 'Promise') {
++      let decl = all.parent;
++      if (decl && ts.isAwaitExpression(decl)) decl = decl.parent;
++      if (decl && ts.isVariableDeclaration(decl) && ts.isArrayBindingPattern(decl.name)) {
++        const index = parent.elements.indexOf(call);
++        const element = decl.name.elements[index];
++        if (element && ts.isBindingElement(element) && ts.isIdentifier(element.name)) {
++          return [element.name.text];
++        }
++      }
++    }
++    return [];
++  }
++  return [];
++}
++
++// --- assert --------------------------------------------------------------------------
++const sites = [];
++(function walk(node) {
++  if (isCallTo(node, 'apiOrEmpty')) sites.push(node);
++  node.forEachChild(walk);
++})(source);
++
++if (!sites.length) fail('no apiOrEmpty call site found — the seam has no consumer, so this gate proves nothing');
++
++const reported = [];
++for (const call of sites) {
++  const owner = nearestFunction(call);
++  const names = boundNames(call);
++  const label = `${functionName(owner)}@${lineOf(call)}`;
++  if (!names.length) {
++    fail(`${label}: an apiOrEmpty result is not bound to a readable name — the gate cannot prove it is reported`);
++    continue;
++  }
++  const set = covered.get(owner) ?? new Set();
++  const missing = names.filter((n) => !set.has(n));
++  if (missing.length) {
++    fail(`${label}: ${missing.join(', ')} read through apiOrEmpty but no shapeNotice call reports its missing fields`);
++  }
++  reported.push(`${label} -> ${names.join(',')}`);
++}
++
++if (failures === 0) {
++  pass(`${sites.length} seam read(s), every bound value reported: ${reported.join(' | ')}`);
++}
++
++console.log(failures > 0 ? `shape-notice coverage: ${failures} failure(s)` : 'shape-notice coverage: all bindings reported');
++process.exit(failures > 0 ? 1 : 0);
+diff --git a/apps/workbench/workbench.ts b/apps/workbench/workbench.ts
+index 2f297508..bd5ee79a 100644
+--- a/apps/workbench/workbench.ts
++++ b/apps/workbench/workbench.ts
+@@ -88,15 +88,35 @@ const dropSession = (): void => {
+ };
+ 
+ export async function api<T>(path: string, body?: Record<string, unknown>): Promise<T> {
+-  const response = await fetch('/api' + path, {
+-    method: body ? 'POST' : 'GET',
+-    headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+-    ...(body ? { body: JSON.stringify(body) } : {}),
+-    cache: 'no-store',
+-  });
+-  const value = (await response.json()) as { error?: string } & Record<string, unknown>;
++  let response: Response;
++  try {
++    response = await fetch('/api' + path, {
++      method: body ? 'POST' : 'GET',
++      headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) },
++      ...(body ? { body: JSON.stringify(body) } : {}),
++      cache: 'no-store',
++    });
++  } catch (error) {
++    // The request never got an answer. Unwrapped, this reaches the page as the browser's
++    // own "Failed to fetch", which is indistinguishable from a view bug and tells the
++    // operator nothing to do. Name what is unreachable, keep the browser's reason.
++    throw new Error(`无法连接本机设计服务（${errMsg(error)}）`);
++  }
++  let value: { error?: string } & Record<string, unknown>;
++  try {
++    value = (await response.json()) as { error?: string } & Record<string, unknown>;
++  } catch (error) {
++    // A reply that is not JSON is a different failure from an unreachable service -- most
++    // often something in front of the workbench answered instead of the workbench -- and
++    // the status code is the only clue worth preserving.
++    throw new Error(`服务回复无法解析（HTTP ${response.status}，${errMsg(error)}）`);
++  }
+   if (response.status === 401) dropSession();
+-  if (!response.ok) throw new Error(value.error || 'SERVICE_ERROR');
++  if (!response.ok) {
++    if (value.error === 'PROJECT_PATH_TOO_LONG')
++      throw new Error('项目路径过长，Windows 无法保存。请将项目放在较短的目录后重试。');
++    throw new Error(value.error || 'SERVICE_ERROR');
++  }
+   return value as T;
+ }
+ 
+@@ -153,9 +173,21 @@ export async function projects() {
+   const data = await api<ProjectListResponse>('/projects');
+   byId<HTMLSelectElement>('project').replaceChildren(new Option('选择项目', ''));
+   for (const p of data.projects) byId<HTMLSelectElement>('project').append(new Option(p.name, p.id));
++  if (!project) {
++    let remembered = '';
++    try { remembered = window.localStorage.getItem('design-lab:active-project') || ''; }
++    catch { /* Storage may be disabled; the service remains usable. */ }
++    if (data.projects.some((p) => p.id === remembered)) project = remembered;
++    else if (data.projects.length === 1) project = data.projects[0]!.id;
++  }
+   if (data.projects.some((p) => p.id === project)) byId<HTMLSelectElement>('project').value = project;
+ }
+ 
++function rememberProject(): void {
++  try { window.localStorage.setItem('design-lab:active-project', project); }
++  catch { /* Project state itself is persisted by the service. */ }
++}
++
+ export async function loadEvents(job: string, append = false) {
+   if (append && job !== eventJob) return;
+   const current = epoch;
+@@ -317,6 +349,7 @@ export async function refresh() {
+ // P0-05: one checkbox per imported asset; checked ids are what submitBrief sends.
+ export function populateReferencePicker(assetIds: string[]) {
+   const picker = byId<HTMLUListElement>('reference-picker');
++  const selected = new Set(typeof document.querySelectorAll === 'function' ? selectedReferences() : []);
+   picker.replaceChildren();
+   if (!assetIds.length) {
+     const li = document.createElement('li');
+@@ -331,6 +364,7 @@ export function populateReferencePicker(assetIds: string[]) {
+     box.type = 'checkbox';
+     box.name = 'reference-asset';
+     box.value = id;
++    box.checked = selected.has(id);
+     label.append(box, document.createTextNode(' ' + id));
+     li.append(label);
+     picker.append(li);
+@@ -400,11 +434,22 @@ export async function sendImport() {
+   }
+ }
+ 
+-byId<HTMLFormElement>('connect-form').onsubmit = async (event) => {
+-  event.preventDefault();
++export async function connectLocalService(submittedToken = ''): Promise<void> {
+   const generation = ++connectGeneration;
+-  const submittedToken = byId<HTMLInputElement>('token').value;
+-  byId<HTMLInputElement>('token').value = '';
++  if (!submittedToken) {
++    setStatus('正在连接本机设计服务…');
++    try {
++      const response = await fetch('/api/local-session', { cache: 'no-store', signal: AbortSignal.timeout(8000) });
++      if (!response.ok) throw new Error('本机服务未开启自动连接，请使用官方 workbench 启动入口。');
++      const session = await response.json() as { token?: string };
++      if (generation !== connectGeneration) return;
++      submittedToken = session.token || '';
++    } catch (error) {
++      if (generation !== connectGeneration) return;
++      setStatus(errMsg(error), true);
++      return;
++    }
++  }
+   if (!/^[0-9a-f]{64}$/.test(submittedToken)) {
+     token = '';
+     connected = false;
+@@ -420,12 +465,26 @@ byId<HTMLFormElement>('connect-form').onsubmit = async (event) => {
+     byId<HTMLDivElement>('workspace').hidden = false;
+     byId<HTMLSpanElement>('connection').textContent = '本机已连接';
+     setStatus('选择或新建项目。');
++    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function')
++      window.dispatchEvent(new Event('hashchange'));
++    if (project) {
++      resetProject();
++      void Promise.all([refresh(), loadDesignSystems(), refreshDesign()])
++        .catch((error) => setStatus(`已连接，项目读回失败：${errMsg(error)}`, true));
++    }
+   } catch (error) {
+     if (generation !== connectGeneration || token !== submittedToken) return;
+     token = '';
+     connected = false;
+     setStatus(errMsg(error), true);
+   }
++}
++
++byId<HTMLFormElement>('connect-form').onsubmit = async (event) => {
++  event.preventDefault();
++  const submittedToken = byId<HTMLInputElement>('token').value;
++  byId<HTMLInputElement>('token').value = '';
++  await connectLocalService(submittedToken);
+ };
+ 
+ byId<HTMLButtonElement>('disconnect').onclick = () => {
+@@ -442,6 +501,7 @@ byId<HTMLButtonElement>('disconnect').onclick = () => {
+ 
+ byId<HTMLSelectElement>('project').onchange = () => {
+   project = byId<HTMLSelectElement>('project').value;
++  rememberProject();
+   resetProject();
+   refresh().catch((e) => setStatus(errMsg(e), true));
+   loadDesignSystems().catch((e) => setStatus(errMsg(e), true));
+@@ -454,17 +514,27 @@ byId<HTMLButtonElement>('refresh').onclick = () => {
+   void refreshDesign().catch((e) => setStatus(errMsg(e), true));
+ };
+ 
++let creatingProject = false;
+ byId<HTMLFormElement>('create-form').onsubmit = async (event) => {
+   event.preventDefault();
++  if (creatingProject) return;
++  creatingProject = true;
++  const form = byId<HTMLFormElement>('create-form');
++  const submit = typeof form.querySelector === 'function' ? form.querySelector<HTMLButtonElement>('button') : null;
++  if (submit) submit.disabled = true;
+   try {
+     const data = await api<ProjectCreateResponse>('/projects', { name: byId<HTMLInputElement>('project-name').value });
+     project = data.project.id;
++    rememberProject();
+     resetProject();
+     await projects();
+     byId<HTMLInputElement>('project-name').value = '';
+     await refresh();
+   } catch (error) {
+     setStatus(errMsg(error), true);
++  } finally {
++    creatingProject = false;
++    if (submit) submit.disabled = false;
+   }
+ };
+ 
+diff --git a/design-lab/tests/e2e/browser_design_layer_e2e.mjs b/design-lab/tests/e2e/browser_design_layer_e2e.mjs
+index c85be6e7..12f21e3a 100644
+--- a/design-lab/tests/e2e/browser_design_layer_e2e.mjs
++++ b/design-lab/tests/e2e/browser_design_layer_e2e.mjs
+@@ -368,24 +368,21 @@ try {
+ 
+   await step('mobile appshell layout', async () => {
+     await page.setViewportSize({ width: 390, height: 844 });
+-    const layout = await page.evaluate(() => {
+-      const nav = document.querySelector('.app-nav');
+-      const items = Array.from(document.querySelectorAll('.app-nav-item'));
+-      const rect = nav?.getBoundingClientRect();
+-      const firstStyle = items.length ? getComputedStyle(items[0]) : null;
+-      return {
+-        itemCount: items.length,
+-        fontSize: firstStyle ? Number.parseFloat(firstStyle.fontSize) : 0,
+-        navLeft: rect?.left ?? -1,
+-        navWidth: rect?.width ?? 0,
+-        navHeight: rect?.height ?? 0,
+-        overflowX: nav ? getComputedStyle(nav).overflowX : '',
+-      };
+-    });
+-    if (layout.itemCount !== 12 || layout.fontSize < 10 || layout.navLeft !== 0 ||
+-        layout.navWidth < 380 || layout.navHeight > 120 || layout.overflowX !== 'auto') {
++    await page.locator('#navToggle').click();
++    const layout = await page.evaluate(() => ({
++      itemCount: document.querySelectorAll('#app-sidebar .nav button').length,
++      open: document.querySelector('#app-sidebar')?.classList.contains('open'),
++      width: document.documentElement.scrollWidth,
++      viewport: window.innerWidth,
++      legacyVisible: Boolean(document.querySelector('.app-nav')?.getBoundingClientRect().width),
++    }));
++    if (layout.itemCount !== 12 || !layout.open || layout.width > layout.viewport + 1 || layout.legacyVisible) {
+       await abort('E2E_MOBILE_APPSHELL_LAYOUT: ' + JSON.stringify(layout), 11, ctx, b);
+     }
++    await page.locator('#app-sidebar button[data-route="workbench"]').click();
++    await page.locator('#workspace').waitFor({ state: 'visible' });
++    if (await page.locator('#app-sidebar').evaluate((el) => el.classList.contains('open')))
++      await abort('E2E_MOBILE_DRAWER_NOT_CLOSED', 11, ctx, b);
+   });
+ 
+   // Read back the final state as the persisted-state proof.
+@@ -441,6 +438,7 @@ async function captureFailureShot(ctx, b) {
+   if (!page) return;
+   try {
+     fs.mkdirSync(evidenceDir, { recursive: true });
++    console.error('E2E_PAGE_STATUS: ' + await page.locator('#status').textContent());
+     await page.screenshot({ path: path.join(evidenceDir, 'fail.png') });
+     console.error('E2E_FAIL_SCREENSHOT: ' + path.join(evidenceDir, 'fail.png'));
+   } catch {
+diff --git a/design-lab/tests/e2e/browser_personal_workbench.mjs b/design-lab/tests/e2e/browser_personal_workbench.mjs
+new file mode 100644
+index 00000000..006dc9e1
+--- /dev/null
++++ b/design-lab/tests/e2e/browser_personal_workbench.mjs
+@@ -0,0 +1,59 @@
++// SPDX-License-Identifier: MIT
++// Real official launcher: no token supplied by the harness, persisted project reload,
++// unified desktop/mobile navigation, and user-visible screenshots.
++import { createRequire } from 'node:module';
++import fs from 'node:fs';
++import path from 'node:path';
++const pw = createRequire(process.env.E2E_NODE_MODULES + '/noop.js')('playwright');
++const browser = await pw.chromium.launch({ headless: true, executablePath: process.env.E2E_BROWSER });
++const out = process.env.E2E_EVIDENCE_DIR;
++fs.mkdirSync(out, { recursive: true });
++const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
++const errors = [];
++page.on('pageerror', (error) => errors.push(error.message));
++page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
++const check = (condition, message) => { if (!condition) throw new Error(message); };
++try {
++  await page.goto(process.env.E2E_SERVICE_URL + '/workbench');
++  await page.locator('#workspace').waitFor({ state: 'visible' });
++  check(await page.locator('#login').isHidden(), 'automatic connection must hide sign-in');
++  await page.locator('#project-name').fill('个人使用验收项目');
++  await page.locator('#create-form button').click();
++  await page.waitForFunction(() => document.querySelector('#project')?.value);
++  const pid = await page.locator('#project').inputValue();
++  await page.reload();
++  await page.locator('#workspace').waitFor({ state: 'visible' });
++  check(await page.locator('#project').inputValue() === pid, 'reload lost active project');
++  check(await page.locator('#b10-app').isVisible(), 'homepage lost unified shell');
++  check(await page.locator('.app-nav').isHidden(), 'legacy navigation still visible');
++  await page.screenshot({ path: path.join(out, 'personal-home-desktop.png') });
++  for (const route of ['dashboard', 'projects', 'brand-systems', 'creative-tools', 'deliverables', 'evidence', 'settings']) {
++    await page.locator(`#app-sidebar button[data-route="${route}"]`).click();
++    await page.locator('#route-view').waitFor({ state: 'visible' });
++    await page.waitForFunction(() => !document.querySelector('#route-view')?.hasAttribute('aria-busy'));
++    check(await page.locator('#route-view').isVisible(), `${route} view hidden`);
++    check(!(await page.locator('#route-view').innerText()).includes('请先在工作台连接'), `${route} lost connection`);
++  }
++  await page.reload();
++  await page.waitForFunction(() => document.querySelector('#personal-connection')?.textContent === '本机服务已连接');
++  await page.waitForFunction(() => !document.querySelector('#route-view')?.hasAttribute('aria-busy'));
++  for (const width of [840, 390]) {
++    await page.setViewportSize({ width, height: 844 });
++    await page.locator('#navToggle').click();
++    await page.locator('#app-sidebar button[data-route="workbench"]').click();
++    await page.locator('#workspace').waitFor({ state: 'visible' });
++    const sizes = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, viewport: innerWidth }));
++    check(sizes.doc <= sizes.viewport + 1, `horizontal overflow at ${width}: ${JSON.stringify(sizes)}`);
++    check(!(await page.locator('#app-sidebar').evaluate((el) => el.classList.contains('open'))), 'drawer did not close');
++    await page.waitForFunction(() => document.querySelector('#app-sidebar')?.getBoundingClientRect().right <= 1);
++    await page.screenshot({ path: path.join(out, `personal-home-${width}.png`) });
++    await page.locator('#navToggle').click();
++    await page.locator('#app-sidebar button[data-route="dashboard"]').click();
++  }
++  check(errors.length === 0, `browser errors: ${errors.join('; ')}`);
++  fs.writeFileSync(path.join(out, 'personal-browser-summary.json'), JSON.stringify({ result: 'PASS', evidence: 'E2_CONTROLLED_RUNTIME', scenarios: ['automatic-connect', 'create-project', 'reload-active-project', 'unified-home-shell', 'route-readbacks', 'cold-hash-reconnect', 'mobile-drawer', 'mobile-overflow'], browser: browser.version(), errors }, null, 2));
++  console.log('PERSONAL_WORKBENCH_E2E_PASS');
++} catch (error) {
++  await page.screenshot({ path: path.join(out, 'personal-fail.png') });
++  throw error;
++} finally { await browser.close(); }
+diff --git a/design-lab/tests/test_capability_library.py b/design-lab/tests/test_capability_library.py
+new file mode 100644
+index 00000000..1b9f2286
+--- /dev/null
++++ b/design-lab/tests/test_capability_library.py
+@@ -0,0 +1,173 @@
++# SPDX-License-Identifier: MIT
++"""The capability library projection and its route.
++
++These assert the three properties the projection exists to guarantee, plus one real
++HTTP round trip. They deliberately do not assert specific record counts from the data:
++the counts are derived from the records in the call, so a test that hardcoded 46 or 14
++would pass on a stale checkout and fail on a legitimate addition.
++"""
++from __future__ import annotations
++
++import json
++import os
++import secrets
++import tempfile
++import threading
++import unittest
++from pathlib import Path
++from unittest.mock import patch
++from urllib.request import Request, urlopen
++
++ROOT = Path(__file__).resolve().parents[2]
++import sys
++sys.path.insert(0, str(ROOT / 'src'))
++
++from design_lab.analysis import capability_library  # noqa: E402
++
++
++class EnrichmentTests(unittest.TestCase):
++    def setUp(self):
++        self.doc = capability_library.build(ROOT)
++
++    def test_every_record_has_one_shape_regardless_of_kind(self):
++        # Models are outside the vendor/taxonomy mechanism. If their rows simply
++        # omitted those keys, every consumer would need a kind branch and an absent
++        # axis would be indistinguishable from an unclassified one.
++        shapes = {tuple(sorted(record)) for record in self.doc['capabilities']}
++        self.assertEqual(len(shapes), 1, f'{len(shapes)} different record shapes')
++
++    def test_popularity_is_never_presented_without_its_label_and_stamp(self):
++        # The taxonomy policy states popularityIsNotQuality; a row that shows stars
++        # without that marker turns an observation into a de facto score.
++        with_stars = [c for c in self.doc['capabilities'] if c['popularity']]
++        self.assertTrue(with_stars, 'no joined records to check the rule against')
++        for record in with_stars:
++            self.assertTrue(record['popularity']['isNotQuality'])
++            self.assertIsNotNone(record['popularity']['observedAt'])
++
++    def test_unclassified_axes_are_derived_and_never_invented(self):
++        axes = set(capability_library.CLASSIFICATION_AXES)
++        reported = set(self.doc['classification']['unclassifiedAxes'])
++        self.assertTrue(reported <= axes, f'invented axes surfaced: {reported - axes}')
++        for record in self.doc['capabilities']:
++            self.assertTrue(set(record['unclassifiedAxes']) <= axes)
++        joined = [c for c in self.doc['capabilities'] if c['sourceType']]
++        self.assertEqual(self.doc['classification']['joined'], len(joined))
++
++    def test_a_missing_taxonomy_degrades_the_join_without_failing_the_library(self):
++        import shutil
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            for rel in (capability_library.LOCK_REL, capability_library.REVISIONS_REL,
++                        capability_library.RADAR_REL):
++                target = root / rel
++                target.parent.mkdir(parents=True, exist_ok=True)
++                shutil.copyfile(ROOT / rel, target)
++            doc = capability_library.build(root)
++        self.assertEqual(doc['classification']['joined'], 0)
++        self.assertTrue(doc['capabilities'])
++        self.assertTrue(all(c['qualified'] is None for c in doc['capabilities']))
++
++
++class ProjectionTests(unittest.TestCase):
++    def test_installed_resources_do_not_require_a_repository_checkout(self):
++        import shutil
++        parent = ROOT / '.project-local/task-runtime/capability-packaging'
++        parent.mkdir(parents=True, exist_ok=True)
++        with tempfile.TemporaryDirectory(dir=parent) as temp:
++            package = Path(temp)
++            resources = package / 'resources/capability-library'
++            for rel in (capability_library.LOCK_REL, capability_library.REVISIONS_REL,
++                        capability_library.RADAR_REL, capability_library.TAXONOMY_REL):
++                target = resources / rel
++                target.parent.mkdir(parents=True, exist_ok=True)
++                shutil.copyfile(ROOT / rel, target)
++            with patch.object(capability_library, 'files', return_value=package), \
++                    patch.object(capability_library, 'REPO_ROOT', package / 'absent-checkout'):
++                actual = capability_library.build()
++            self.assertEqual(actual, capability_library.build(ROOT))
++
++    def setUp(self):
++        self.doc = capability_library.build(ROOT)
++
++    def test_every_record_reports_no_qualification_because_none_is_recorded(self):
++        # Qualification is a host run plus a human acceptance. Neither is derivable
++        # from a registry, so a projection that said `false` would be claiming the
++        # capability was evaluated and failed.
++        self.assertTrue(self.doc['capabilities'])
++        for record in self.doc['capabilities']:
++            self.assertIsNone(record['qualified'], f"{record['id']} claims a verdict")
++            self.assertIsNone(record['qualificationEvidence'])
++        self.assertEqual(self.doc['counts']['qualified'], 0)
++
++    def test_absent_revision_is_not_verified_never_absent_provenance(self):
++        states = {r['id']: r['revisionState'] for r in self.doc['capabilities']}
++        self.assertNotIn(None, states.values())
++        self.assertNotIn('', states.values())
++        # Models are outside the vendor revision mechanism entirely.
++        for record in self.doc['capabilities']:
++            if record['kind'] == 'model':
++                self.assertEqual(record['revisionState'], 'NOT_VERIFIED')
++
++    def test_counts_are_derived_from_the_records_in_this_call(self):
++        counts = self.doc['counts']
++        self.assertEqual(counts['total'], len(self.doc['capabilities']))
++        self.assertEqual(sum(counts['byKind'].values()), counts['total'])
++        self.assertEqual(sum(counts['byRevisionState'].values()), counts['total'])
++        self.assertEqual(sum(counts['byLicense'].values()), counts['total'])
++        lock = json.loads((ROOT / capability_library.LOCK_REL).read_text(encoding='utf-8'))
++        self.assertEqual(counts['byKind']['source'], len(lock['sources']))
++
++    def test_a_missing_input_fails_closed_rather_than_projecting_a_partial_library(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            with self.assertRaises(FileNotFoundError):
++                capability_library.build(Path(tmp))
++
++    def test_unmeasured_semantics_are_published_with_the_data(self):
++        # The view prints this so a reader cannot take a blank as a zero.
++        self.assertIn('null', self.doc['unmeasuredMeans'])
++
++
++class RouteTests(unittest.TestCase):
++    def test_the_route_serves_the_projection_over_the_real_service(self):
++        from design_lab.service import ProjectService
++        from design_lab.http_service import make_server
++
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            (root / 'AGENTS.md').write_text('# capability route probe', encoding='utf-8')
++            token = secrets.token_hex(32)
++            with patch.dict(os.environ, {'PROJECT_LOCAL_ROOT': str(root / '.project-local')}):
++                service = ProjectService(str(root))
++                server = make_server(service, token, port=0)
++                port = server.server_address[1]
++                worker = threading.Thread(target=server.serve_forever, daemon=True)
++                worker.start()
++                try:
++                    unauthenticated = self._get(port, '')
++                    self.assertEqual(unauthenticated.getcode(), 401)
++                    body = json.loads(self._get(port, token).read().decode('utf-8'))
++                finally:
++                    server.shutdown()
++                    worker.join()
++                    server.server_close()
++        self.assertEqual(body['schemaVersion'], capability_library.SCHEMA_VERSION)
++        self.assertEqual(body['counts']['total'], len(body['capabilities']))
++
++    def _get(self, port, token):
++        request = Request(f'http://127.0.0.1:{port}/api/capabilities')
++        if token:
++            request.add_header('Authorization', f'Bearer {token}')
++        try:
++            return urlopen(request, timeout=10)
++        except Exception as error:      # noqa: BLE001 - 401 arrives as URLError
++            code = getattr(error, 'code', None)
++            if code == 401 and not token:
++                class Handled:
++                    def getcode(self): return 401
++                return Handled()
++            raise
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/design-lab/tests/test_personal_workbench_e2e.py b/design-lab/tests/test_personal_workbench_e2e.py
+new file mode 100644
+index 00000000..c51ff00d
+--- /dev/null
++++ b/design-lab/tests/test_personal_workbench_e2e.py
+@@ -0,0 +1,46 @@
++# SPDX-License-Identifier: MIT
++"""Official personal launcher in a real browser, no injected access token."""
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++
++from test_workbench_design_layer_e2e import _find_browser, _find_node_modules_dir
++
++ROOT = Path(__file__).resolve().parents[2]
++
++
++class PersonalWorkbenchE2E(unittest.TestCase):
++    def test_personal_start_reload_and_navigation(self):
++        browser, modules = _find_browser(), _find_node_modules_dir()
++        if not browser or not modules:
++            if os.environ.get('E2E_REQUIRED') == '1':
++                self.fail('required personal browser environment unavailable')
++            self.skipTest('local Chromium/Playwright unavailable')
++        parent = ROOT / '.project-local/task-runtime/personal-browser'
++        parent.mkdir(parents=True, exist_ok=True)
++        with tempfile.TemporaryDirectory(dir=parent) as temp:
++            project = Path(temp)
++            (project / 'AGENTS.md').write_text('# synthetic personal product acceptance', encoding='utf-8')
++            env = {**os.environ, 'PYTHONPATH': str(ROOT / 'src'),
++                   'PROJECT_LOCAL_ROOT': str(project / '.project-local')}
++            proc = subprocess.Popen([sys.executable, '-m', 'design_lab', '--project', str(project),
++                                     'workbench', '--no-browser'], env=env,
++                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8')
++            try:
++                announcement = json.loads(proc.stdout.readline())
++                self.assertNotIn('token', announcement)
++                env.update(E2E_SERVICE_URL=announcement['url'].rsplit('/workbench', 1)[0],
++                           E2E_BROWSER=str(browser), E2E_NODE_MODULES=str(modules),
++                           E2E_EVIDENCE_DIR=str(ROOT / '.project-local/task-artifacts/personal-browser'))
++                result = subprocess.run(['node', str(ROOT / 'design-lab/tests/e2e/browser_personal_workbench.mjs')],
++                                        env=env, capture_output=True, text=True, encoding='utf-8', timeout=120)
++                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++            finally:
++                proc.terminate()
++                proc.wait(timeout=15)
++                proc.stdout.close()
++                proc.stderr.close()
+diff --git a/design-lab/tests/test_project_backup.py b/design-lab/tests/test_project_backup.py
+index 7fb09b8b..fd63fd54 100644
+--- a/design-lab/tests/test_project_backup.py
++++ b/design-lab/tests/test_project_backup.py
+@@ -63,12 +63,110 @@ class ProjectBackupTests(unittest.TestCase):
+         self.assertTrue(receipt['verified'])
+         self.assertEqual(receipt['restored'], 3)
+         for entry in verify_backup(self.archive)['members']:
+-            original = hashlib.sha256(self.local.joinpath(
+-                *entry['path'].split('/')).read_bytes()).hexdigest()
++            with zipfile.ZipFile(self.archive) as archive:
++                original = hashlib.sha256(archive.read(entry['path'])).hexdigest()
+             restored = hashlib.sha256(target.joinpath(
+                 *entry['path'].split('/')).read_bytes()).hexdigest()
+             self.assertEqual(original, restored, entry['path'])
+ 
++    def test_wal_commits_are_in_the_database_snapshot(self):
++        import sqlite3
++        conn = sqlite3.connect(self.local / 'task-runtime/service/state.db')
++        try:
++            conn.execute('PRAGMA journal_mode=WAL')
++            conn.execute("INSERT INTO marker VALUES ('wal', 'Committed in WAL')")
++            conn.commit()
++            create_backup(self.local, self.archive)
++            target = self.base / 'wal-restored'
++            restore_backup(self.archive, target)
++            restored = sqlite3.connect(target / 'task-runtime/service/state.db')
++            try:
++                self.assertEqual(restored.execute("SELECT name FROM marker WHERE id='wal'").fetchone(),
++                                 ('Committed in WAL',))
++            finally:
++                restored.close()
++        finally:
++            conn.close()
++
++    def test_relocated_artifact_index_reads_the_restored_bytes(self):
++        import sqlite3
++        original = self.local / 'projects/p1/assets/versions/v1/native.psd'
++        conn = sqlite3.connect(self.local / 'task-runtime/service/state.db')
++        conn.execute('CREATE TABLE artifact (path TEXT NOT NULL)')
++        conn.execute('INSERT INTO artifact VALUES (?)', (str(original),))
++        conn.commit()
++        conn.close()
++        create_backup(self.local, self.archive)
++        target = self.base / 'moved'
++        receipt = restore_backup(self.archive, target)
++        conn = sqlite3.connect(target / 'task-runtime/service/state.db')
++        try:
++            path = Path(conn.execute('SELECT path FROM artifact').fetchone()[0])
++        finally:
++            conn.close()
++        self.assertTrue(path.is_relative_to(target))
++        self.assertEqual(path.read_bytes(), original.read_bytes())
++        self.assertEqual(receipt['relocatedArtifactPaths'], 1)
++        self.assertEqual(receipt['nativeExecutionRecovery'], 'REPLAN_REQUIRED_AFTER_RELOCATION')
++
++    def test_failed_backup_preserves_the_previous_archive(self):
++        create_backup(self.local, self.archive)
++        previous = self.archive.read_bytes()
++        with self.assertRaisesRegex(BackupError, 'absent'):
++            create_backup(self.local, self.archive, members=('missing',))
++        self.assertEqual(self.archive.read_bytes(), previous)
++
++    def test_backup_inside_its_own_members_is_refused(self):
++        with self.assertRaisesRegex(BackupError, 'outside'):
++            create_backup(self.local, self.local / 'projects/backup.zip')
++
++    def test_real_image_import_survives_project_relocation(self):
++        import base64
++        import io
++        from unittest.mock import patch
++        from PIL import Image
++        from design_lab.service import ProjectService
++        from design_lab.image_assets import ImageAssets
++        with patch.dict(os.environ):
++            os.environ.pop('PROJECT_LOCAL_ROOT', None)
++            owner = self.base / 'source-owner'
++            owner.mkdir()
++            (owner / 'AGENTS.md').write_text('# synthetic backup fixture', encoding='utf-8')
++            service = ProjectService(owner)
++            project = service.create_project('Image restore fixture')['id']
++            stream = io.BytesIO()
++            Image.new('RGB', (12, 8), 'green').save(stream, format='PNG')
++            encoded = base64.b64encode(stream.getvalue()).decode()
++            ImageAssets(service).import_image(project, encoded, 'backup-image')
++            create_backup(owner / '.project-local', self.archive)
++            recovered = self.base / 'recovered-owner'
++            recovered.mkdir()
++            (recovered / 'AGENTS.md').write_text('# synthetic restored fixture', encoding='utf-8')
++            restore_backup(self.archive, recovered / '.project-local')
++            images = ImageAssets(ProjectService(recovered))
++            assets = images.list(project)
++            self.assertEqual(len(assets), 1)
++            self.assertEqual(images.content(project, assets[0]['id'])['content_base64'], encoded)
++
++    def test_restore_install_failure_rolls_back_previous_files(self):
++        from unittest.mock import patch
++        from design_lab.runtime import project_backup
++        create_backup(self.local, self.archive)
++        target = self.base / 'occupied-rollback'
++        old = target / 'projects/p1/assets/versions/v1/native.psd'
++        old.parent.mkdir(parents=True)
++        old.write_bytes(b'previous asset')
++        real_replace = os.replace
++        def interrupted(source, destination):
++            if 'staged' in Path(source).parts and Path(destination).name == 'state.db':
++                raise OSError('synthetic interrupted restore')
++            return real_replace(source, destination)
++        with patch.object(project_backup.os, 'replace', side_effect=interrupted):
++            with self.assertRaisesRegex(OSError, 'interrupted'):
++                restore_backup(self.archive, target, force=True)
++        self.assertEqual(old.read_bytes(), b'previous asset')
++        self.assertFalse((target / 'projects/p1/state-marker.json').exists())
++
+     def test_tampered_member_is_refused(self):
+         create_backup(self.local, self.archive)
+         evil = self.base / 'evil.zip'
+diff --git a/design-lab/tests/test_workbench_css_single_definition.py b/design-lab/tests/test_workbench_css_single_definition.py
+index bb104970..ec71149b 100644
+--- a/design-lab/tests/test_workbench_css_single_definition.py
++++ b/design-lab/tests/test_workbench_css_single_definition.py
+@@ -328,7 +328,7 @@ class ListItemIsReallyAListMember(unittest.TestCase):
+ 
+     def test_members_and_containers_are_both_present(self):
+         """Guard against the assertion above passing because everything was deleted."""
+-        self.assertGreaterEqual(self.shell.count("el('li', { class: 'list-item'"), 50)
++        self.assertGreaterEqual(self.shell.count("el('li', { class: 'list-item'"), 47)
+         self.assertEqual(self.shell.count("el('ul', { class: 'list'"), 30)
+ 
+ 
+diff --git a/design-lab/tests/test_workbench_launch.py b/design-lab/tests/test_workbench_launch.py
+index 99a84e5b..93fee60d 100644
+--- a/design-lab/tests/test_workbench_launch.py
++++ b/design-lab/tests/test_workbench_launch.py
+@@ -3,8 +3,7 @@
+ 
+ `design-lab --project <dir> workbench` must be enough for a person to reach the
+ product UI: no second service, no hand-written launcher, no repo CWD trick. The
+-launcher starts the real HTTP service in-process, prints the sign-in URL plus
+-the one-time token, and the same project data has to survive a full process
++launcher starts the real HTTP service in-process, prints the local URL and automatic connection mode, and the same project data has to survive a full process
+ restart. No browser, no design host and no human acceptance is involved.
+ """
+ from __future__ import annotations
+@@ -56,7 +55,15 @@ class WorkbenchLaunchTests(unittest.TestCase):
+         while time.time() < deadline:
+             line = handle.stdout.readline()
+             if line.strip():
+-                return handle, json.loads(line)
++                announcement = json.loads(line)
++                self.assertNotIn('token', announcement, 'personal launcher must not print credentials')
++                self.assertEqual(announcement['connection'], 'automatic')
++                request = urllib.request.Request(
++                    announcement['url'].rsplit('/workbench', 1)[0] + '/api/local-session',
++                    headers={'Sec-Fetch-Site': 'same-origin'})
++                with urllib.request.urlopen(request, timeout=15) as response:
++                    announcement['token'] = json.loads(response.read())['token']
++                return handle, announcement
+             if handle.poll() is not None:
+                 self.fail('launcher exited early: ' + handle.stderr.read())
+         self.fail('launcher never announced LISTENING')
+@@ -102,6 +109,7 @@ class WorkbenchLaunchTests(unittest.TestCase):
+         self.assertEqual(status, 200)
+         self.assertEqual(headers.get('Content-Security-Policy'), CSP)
+         self.assertIn('设计工作台', html.decode('utf-8'))
++        self.assertIn('data-local-session="auto"', html.decode('utf-8'))
+ 
+         status, _, served = self._request(base, '/workbench/main.js')
+         self.assertEqual(status, 200)
+@@ -116,6 +124,14 @@ class WorkbenchLaunchTests(unittest.TestCase):
+             self._request(base, '/api/projects')
+         self.assertEqual(refused.exception.code, 401)
+ 
++        for site in ('cross-site', 'same-site', 'none', ''):
++            request = urllib.request.Request(base + '/api/local-session')
++            if site:
++                request.add_header('Sec-Fetch-Site', site)
++            with self.assertRaises(urllib.error.HTTPError) as refused:
++                urllib.request.urlopen(request, timeout=15)
++            self.assertEqual(refused.exception.code, 403)
++
+     def test_project_data_survives_a_full_process_restart(self):
+         root = self._root()
+         handle, first = self._start(root)
+diff --git a/docs/audits/DESIGNLAB-PERSONAL-PRODUCT-AUDIT-2026-10-07.md b/docs/audits/DESIGNLAB-PERSONAL-PRODUCT-AUDIT-2026-10-07.md
+new file mode 100644
+index 00000000..13bf0778
+--- /dev/null
++++ b/docs/audits/DESIGNLAB-PERSONAL-PRODUCT-AUDIT-2026-10-07.md
+@@ -0,0 +1,71 @@
++# DESIGN-LAB 个人产品整体审计与修复 — 2026-10-07
++
++## 结论与验收边界
++
++整体判定 **PARTIAL**。本次已修复个人入口、统一 UI、刷新状态、安装资源和备份恢复缺陷；这些是本机 E2 受控运行证据。项目仍没有完成真实宿主生产链路、独立人工 Jury 和发布级复现，不能标为成熟商业产品。
++
++用户本次授权：按成熟落地的商业级个人产品审计整体项目，有问题修复；个人使用，不增加防护令牌/密钥软件。没有新增生产依赖、安全产品、账号体系或第二前端。官方入口自动本机连接；已有底层服务调用约束保留为内部机制，用户无需复制令牌。
++
++## 当前对象与权威
++
++- 权威：`AUTHORITY.md`（DL-AUTHORITY-2026-09-18-R2）、`.project/governance/authority-index.json`、当前 FINAL TaskPack、`design-lab/config/task-ledger-r3.json`。
++- 本地 HEAD：`1d18ae80d995a705d0de5341cd5c76b362c3e532`；分支 `qoder/designlab-picker-autoselect-20261007`，开始即有未提交 UI 和报告修改。
++- 实时公共 GitHub main：`fc03a3033e900a8066d863a223636cc68804c4fa`；open PR 0；Canonical Verify run `37602613560` completed/success。对应 workbench-e2 artifact 存在且未过期（仅核对归档元数据，未冒充内容验收）。这个成功属于该 main SHA，不属于本次修改。
++- branch protection：UNKNOWN（401）；fetch `.git/FETCH_HEAD` 被拒，没有提权。用本地 origin/main 对象与 live SHA 对照后只读 archive 取证。
++- QODER handoff 是审计输入，不是顶层权威。报告 B 和 handoff 在较旧本地主检出缺失，但最新 main 实际存在，不能据旧检出宣称整个项目缺失。
++- 当前产品规定 frontend 为 `apps/workbench/` 的 strict TypeScript / Vite 浏览器工作台。桌面原生外壳需要明确需求与 ADR；本次没有擅自替换技术路线。
++
++## 实施的修复
++
++| 问题 | 修复与限制 |
++|---|---|
++| 默认首页仍走旧单页布局，路由页进入另一套 UI | 所有页面统一 AppShell；空 hash 工作台也挂在同一侧栏/顶部中。保留原设计表单 ID 和调用链。 |
++| 官方启动要求复制短期令牌 | `workbench` 默认同源自动连接；终端不输出令牌，页面刷新自动重连。`--manual-connect` 只用于兼容。未落盘连接凭据。 |
++| 移动侧栏关闭后仍可能进入键盘焦点 | 关闭抽屉使用 inert，打开/关闭恢复焦点，840px 和390px检查。 |
++| 刷新后项目选择丢失 | 只在 localStorage 保存项目 ID，并对服务端列表校验；不存凭据。 |
++| 新建项目可能重复提交 | 提交锁与按钮状态，失败后恢复可重试。 |
++| 素材刷新清除参考图选择 | 重新构建 picker 时保留已选 ID，避免简报无意提交0参考图。 |
++| 小屏能力库面板和过滤框被裁切 | 过滤框允许收缩和换行；复跑真实浏览器溢出检查。 |
++| 能力库源码工作但安装包缺数据 | 精确打包4份只读能力库输入，installed-site 能读回60条，不打包整个 vendor 或运行目录。 |
++| Windows 长路径错误显示为通用服务故障 | 明确 PROJECT_PATH_TOO_LONG 并提示使用短目录；不是支持任意长路径。 |
++| SQLite 原样复制可能漏 WAL 已提交数据 | 使用 SQLite backup API 做一致性数据库快照，排除 WAL/SHM。 |
++| 备份失败会破坏原归档/归档可能包含自身 | 先写临时归档、验证后 replace；拒绝写入被备份成员内。 |
++| 迁移恢复后素材索引仍指向旧绝对路径 | 归档记录源 local root；恢复时仅重定位 live artifact.path，实际图片导入→迁移→读回已测。旧签名执行记录不改写，迁移执行需要重新规划。 |
++| 恢复中途失败可能留部分覆盖 | 先解压验证暂存，再安装；应用层异常恢复已替换文件。不是断电时跨文件原子事务。 |
++| 测试写系统临时目录引发大量拒绝 | bound runner 将本次测试 TEMP/TMP 限定在项目 `.project-local/task-runtime/`，不修改系统配置。 |
++| 量化审计拒绝未提交构建 | 增加显式 UI_AUDIT_LOCAL_BUILD=1，仅绑定本地 bundle hash 和 LOCAL_WORKTREE；默认已提交构建约束仍保留。 |
++
++本地落后 main 的相关 UI 响应形状检查、三型失败态和能力库投影已带回。原有 SUPPLY-CHAIN-REPORT 修改与未跟踪 UI 报告保留。没有 reset/clean/commit/push/merge；未清理真实项目、未知 worktree 或旧服务。
++
++## 验证
++
++- strict TypeScript 类型检查、Vite生产构建、Node smoke/AppShell/21 seam响应形状覆盖：PASS。
++- 51项定向回归：50通过、0失败、0错误、1跳过。跳过是源码模式下没有已安装包资源；另用安装态3项全部通过、0跳过补验证。
++- 真实浏览器设计纵切覆盖图片导入、参考简报、方向、绑定、修订、刷新/读回；个人入口覆盖不手填凭据连接、项目保留和移动导航：PASS（E2）。
++- 溢出门：1440/1024/390px，12路由，PASS。量化 UI：390/1280px，26 scopes，0 hard violations；本地构建哈希已绑定，非人工视觉验收。
++- 备份恢复15项：包括WAL快照、原归档保留、迁移后真实PNG读回、恢复异常回退，PASS（合成项目数据）。
++- 初次全量：1908 tests /108 failures /279 errors /11 skips，FAILED，日志 bound-suite.log。
++- 调整项目内临时目录后全量：1914 tests /107 failures /52 errors /11 skips，FAILED，日志 bound-suite-final.log，绑定 full-final-run.json。这次全量在最后的UI mock兼容修复前执行，不能声称它覆盖之后全部修改。
++- 最后UI mock兼容修复后的扩展定向回归：65 tests /0 failures /0 errors /1 skip，64通过；targeted-final-v3.json。安装态另3项全部通过、0跳过。。
++- 独立安装副本：复用既有项目依赖，60条能力记录读回、3项启动/重启读回检查，PASS；最终wheel哈希见 installed-proof.json。
++
++全量失败分层：严格路径解析已独立复现 WinError5；多个reparse/rename/fixture调用也被拒。现有.venv持续输出外部uv解释器位置警告，影响要求机器stdout/stderr纯净的检查。重建流程存在许多上述失败的下游断言，不能据此声称功能正确。旧ledger的源码证据哈希也因本次改动失效，不能重写历史证据冒充新验收。三个UI mock兼容失败已修复并单独复跑；其余失败保留在 failure-inventory.json，不因部分修复从总数中扣除，剩余未逐项证明的失败仍需在正常执行环境定位。
++
++证据目录：`.project-local/task-artifacts/personal-product-audit-20261007/`。截图：`.project-local/task-artifacts/personal-browser/personal-home-desktop.png`、`personal-home-840.png`、`personal-home-390.png`。
++
++## 尚未达到的产品成熟条件
++
++1. 真实 brief→Photoshop/Illustrator 原生可编辑产物→重开读回→失败与回滚尚未在本次执行。浏览器通过不是 E3 宿主验收。
++2. 质量 Jury、rights 与 preflight 的人工判断没有代填；模型许可队列与硬件资格不因展示在能力库而自动通过。
++3. 页面里已声明没有后端的能力仍是未接通状态；不编造功能、评分、生产成功或团队协作结果。主设计纵切是受控运行，不代表全部设计域交付成熟。
++4. 本次 wheel 是本地安装副本验证，复用既有 .venv 依赖，不是完全清洁安装、发布、升级和持续复现，不是 E5。
++5. 备份期间应停止生产写入；数据库快照不等于数据库与全部素材的跨文件全局快照。恢复或迁移原生执行时应重新规划；旧归档没有源路径元数据时拒绝冒充跨根恢复成功。
++6. 全项目门禁的失败、required skip 或 UNKNOWN 必须保持显式，不以本次 UI 局部通过覆盖。
++
++## 使用与回退
++
++启动：`python -m design_lab --project <设计项目目录> workbench`。默认打开本机工作台自动连接，刷新重连；`--no-browser` 只打印本机 URL。
++
++本次替换前源码备份在证据目录的 `before/`，初始文件哈希见 `before/manifest.json`。后来纳入的备份与测试文件也逐个备份。需要回退时只对这些明确文件审阅后恢复，不批量 checkout、不覆盖用户原有修改。运行产物不提交。
++
++最终本地 wheel SHA-256：`508faee4abc740a5e85a2b8245c013492228f8eecfd62f9bc4900a34c1db78cf`；最终 bundle SHA-256：`3e3717c22cb82e1f469fa5422ab4ae7af5f719f2c2949c98184e926c173e1614`。
+diff --git a/docs/audits/DESIGNLAB-UI-IMPLEMENTATION-REPORT-2026-10-07.md b/docs/audits/DESIGNLAB-UI-IMPLEMENTATION-REPORT-2026-10-07.md
+new file mode 100644
+index 00000000..121acdfa
+--- /dev/null
++++ b/docs/audits/DESIGNLAB-UI-IMPLEMENTATION-REPORT-2026-10-07.md
+@@ -0,0 +1,73 @@
++# DESIGN-LAB UI 实施报告
++
++**状态：PARTIAL**  
++**日期：2026-10-07（Asia/Shanghai）**  
++**Authority：** `DL-AUTHORITY-2026-09-18-R2`  
++**本地分支 / HEAD：** `qoder/designlab-picker-autoselect-20261007` / `1d18ae80d995a705d0de5341cd5c76b362c3e532`  
++**实时 main：** `756aa1a39cb1fc4ebd029607962fb3993f8f2808`（GitHub 公共 commit endpoint 读取）
++
++## 本轮变更
++
++移动视口下，首屏 Workbench 的旧版底部导航会横向滚动。新增滚动状态提示：仍有右侧项目时显示 `›`，滚到末尾或不溢出时隐藏。变更只覆盖首屏旧导航，不改变 12 路由 B10 sidebar，也未引入新组件包。
++
++变更文件：
++
++- `apps/workbench/shell.ts`：根据视口、`scrollWidth`、`clientWidth` 和 `scrollLeft` 同步提示状态。
++- `apps/workbench/style.css`：新增提示箭头与渐隐背景。
++- `apps/workbench/build/main.js`：由 Vite 重新生成的提交构建产物。
++
++构建产物 SHA-256：`fc725c5785656ab7e9976b1aace647c27753fb1a96e8a69e46277c43b7a7b8c3`。
++
++## Authority 与任务映射
++
++唯一任务状态账本仍是 `design-lab/config/task-ledger-r3.json`。其 `DL-R5-010`（Workbench 执行、修改、取消与导出）为 `IMPLEMENTED_LOCAL`；`DL-R5-005/009/013/014/015` 仍为 `PARTIAL`。本轮只推进 Workbench 响应式导航体验，没有改写账本或投影。
++
++附件提示词引用 W00—W17。仓内 `docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/findings/W00-CROSSWALK.json` 明确标记为 `DERIVED`、`NOT authoritative` 且待 owner ratification。因此本报告只把它用于定位范围，不把 W 编号或其映射当作可编辑状态源。按该派生映射，本轮属于 W03（项目中心与壳统一）/W14（Windows 交互与响应式横切）的局部体验修正；正式状态仍以 R5 账本为准。
++
++## 实现盘点
++
++| 范围 | 当前观察 | 本轮证据 / 限制 |
++|---|---|---|
++| Workbench 技术栈 | Vanilla TypeScript + Vite，strict TypeScript；无 React | `apps/workbench/package.json`、`tsconfig.json`、锁文件 |
++| 组件选型 | 保留项目自有 DOM/CSS 组件；没有采用 Semi、Mantine、Ant 或 shadcn 源码 | Semi 候选以现有 React 兼容为前提，本项目当前不满足；本轮未安装依赖 |
++| Brief / Direction / DesignSystem | 已有真实服务 API 的创建、版本、选择/绑定与读回界面 | 代码与既有 E2 harness 存在；本轮浏览器链路未运行 |
++| Reference / Project | 有项目、导入资产及参考关联 UI | 本轮未执行真实用户项目或素材读回 |
++| Host / DesignIR | 有 Illustrator/Photoshop 任务入口与高级 RIR/局部修改输入 | 未启动宿主；没有本轮 Host readback、失败恢复或 E3 证据 |
++| Quality / Jury / Rights / Preflight / Handoff | 有部分读回视图和预检/交付入口；完整人工接受、权利阻断修复、可编辑交付闭环仍未证实 | 不提升为 E3/E4/E5 |
++| Design Capability Library | 本轮未发现已贯通来源/许可、多轴分类、资格化、撤回的用户工作流 | 需映射现有 Source Registry、Method、Domain 与合同后再实施；此项未完成 |
++| Shell | 默认工作台仍使用 legacy 壳，其他路由使用 B10 壳 | 项目审计记录 D-6 为待 owner 裁决；本轮只补滚动 affordance，不自行合并两套壳 |
++
++### 前端组件依赖版本
++
++当前锁定依赖用于构建/测试，不是新 UI 组件底座：TypeScript `5.6.3`（Apache-2.0）、Vite `6.4.3`（MIT）、Playwright `1.63.0`（MIT，测试工具）。本轮未改 manifest 或 lockfile。
++
++## 验证与证据
++
++| 检查 | 结果 |
++|---|---|
++| TypeScript strict typecheck | PASS：本机 Node `24.19.0` + 仓内 TypeScript `5.6.3` |
++| Vite production build | PASS：Vite `6.4.3`，构建 `apps/workbench/build/main.js` |
++| Workbench VM smoke | PASS |
++| AppShell regression | PASS |
++| `git diff --check`（本轮源码与构建文件） | PASS |
++| Chromium overflow/真实浏览器 | NOT_EXECUTED：项目 harness 未找到本机 Chromium，测试按设计跳过；未生成本轮截图 |
++| Host 实机、独立 Human Jury | NOT_EXECUTED |
++
++`pnpm` 直接入口因 sandbox 下仓库 `realpath` 返回 `EPERM` 未能启动；没有安装依赖。验证改用已存在的 Node、TypeScript、Vite 可执行文件完成。本机 pnpm 为 `11.25.0`，而仓库声明 `pnpm@11.22.0`；没有尝试升级或替换。
++
++本轮证据级别：源码与构建结构为 **E1 / STRUCTURAL**。由于缺少本机 Chromium/截图和真实宿主读回，本轮没有新增 E2、E3、E4 或 E5 证据。已有旧 SHA 的浏览器记录不提升到当前工作树。
++
++## 远端状态与工作树
++
++- GitHub 可读的 `main` exact SHA：`756aa1a39cb1fc4ebd029607962fb3993f8f2808`。
++- 最新可见 Canonical Verify：run `37554390828`，结论 SUCCESS，head SHA 为上述 main SHA。
++- GitHub CLI 登录 token 当前无效；PR 清单与 branch protection 返回 401，记为 **UNKNOWN**。
++- 本地 `.git/FETCH_HEAD` 写入被拒，`git fetch` 未完成；`git ls-remote` 的 SSH 读取也失败。当前本地分支的远端跟踪指针为 `96564857b3f8a5d4b505ec0567f28a80593d8054`，本地 HEAD 显示落后 16 个提交；由于无法 live-read 该分支，此值仅是本地跟踪状态，不当作实时远端结论。
++- 开始前已存在的 `reports/current/SUPPLY-CHAIN-REPORT.json` 修改已保留，未读取或编辑其正文。
++- 本轮工作树还包含上述两个源文件与构建产物的修改。没有 commit、push、PR、merge、发布或安装操作。
++
++## 未完成项与回滚
++
++下一步应在刷新当前分支后，按唯一 R5 ledger 推进 Reference→Direction→DesignSystem→DesignIR 的真实项目纵切，再分别验证 Host readback、质量/权利门、可编辑 Handoff。浏览器 E2 和人工视觉验收需在具备 Chromium 的环境完成；D-6 壳合并方向仍待 owner 决策。
++
++本轮导航提示的回滚范围仅为 `apps/workbench/shell.ts`、`apps/workbench/style.css` 和重建的 `apps/workbench/build/main.js`。回退时应只移除本报告对应的 affordance 变更并重建产物，不覆盖其他工作树修改。
+diff --git a/pyproject.toml b/pyproject.toml
+index 6688d763..69315f12 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -41,6 +41,10 @@ exclude = ["src/design_lab/reconstruction/__init__.py"]
+ "apps/workbench/index.html" = "design_lab/resources/workbench/index.html"
+ "apps/workbench/style.css" = "design_lab/resources/workbench/style.css"
+ "apps/workbench/build/main.js" = "design_lab/resources/workbench/build/main.js"
++"vendor/sources.lock.json" = "design_lab/resources/capability-library/vendor/sources.lock.json"
++"vendor/sources.revisions.json" = "design_lab/resources/capability-library/vendor/sources.revisions.json"
++"design-lab/readiness/model-radar.json" = "design_lab/resources/capability-library/design-lab/readiness/model-radar.json"
++"research/candidates/CANDIDATE-TAXONOMY.json" = "design_lab/resources/capability-library/research/candidates/CANDIDATE-TAXONOMY.json"
+ # E-SLICE-01 design layer: the design-system catalog manifests that a direction
+ # may bind to (design_layer.catalog() resolves this packaged-first).
+ "design-lab/design-systems" = "design_lab/resources/design-systems"
+@@ -51,7 +55,7 @@ exclude = ["src/design_lab/reconstruction/__init__.py"]
+ # P1-1 (audit 2026-09-21): the sdist ships the same three served workbench
+ # files as the wheel (was the whole apps/workbench dir, which dragged the
+ # local node_modules into sdist builds too).
+-only-include = ["src/design_lab", "design-lab/schemas/state", "design-lab/design-systems", "apps/workbench/index.html", "apps/workbench/style.css", "apps/workbench/build/main.js", "integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx", "integrations/hosts/adobe/photoshop-reconstruction/legacy-assemble.jsx", "packages/capabilities/reconstruction/__init__.py", "packages/capabilities/reconstruction/contracts.py", "packages/capabilities/reconstruction/adobe_job.py", "packages/capabilities/reconstruction/adobe_lowering.py", "design-lab/schemas/reconstruction/reconstruction-ir.schema.json", "design-lab/schemas/reconstruction/reconstruction-run.schema.json", "pyproject.toml"]
++only-include = ["vendor/sources.lock.json", "vendor/sources.revisions.json", "design-lab/readiness/model-radar.json", "research/candidates/CANDIDATE-TAXONOMY.json", "src/design_lab", "design-lab/schemas/state", "design-lab/design-systems", "apps/workbench/index.html", "apps/workbench/style.css", "apps/workbench/build/main.js", "integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx", "integrations/hosts/adobe/photoshop-reconstruction/legacy-assemble.jsx", "packages/capabilities/reconstruction/__init__.py", "packages/capabilities/reconstruction/contracts.py", "packages/capabilities/reconstruction/adobe_job.py", "packages/capabilities/reconstruction/adobe_lowering.py", "design-lab/schemas/reconstruction/reconstruction-ir.schema.json", "design-lab/schemas/reconstruction/reconstruction-run.schema.json", "pyproject.toml"]
+ 
+ [tool.pytest.ini_options]
+ testpaths = ["design-lab/tests"]
+diff --git a/reports/current/SUPPLY-CHAIN-REPORT.json b/reports/current/SUPPLY-CHAIN-REPORT.json
+index 7fd0d40b..604f4183 100644
+--- a/reports/current/SUPPLY-CHAIN-REPORT.json
++++ b/reports/current/SUPPLY-CHAIN-REPORT.json
+@@ -6,7 +6,7 @@
+     "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-G030",
+     "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-G040"
+   ],
+-  "generated_at": "2026-09-13T18:57:40+00:00",
++  "generated_at": "2026-10-07T01:00:43+00:00",
+   "subject_sha": "",
+   "canonical_adapter_status": [
+     "DECLARED",
+@@ -78,8 +78,18 @@
+       ],
+       "hits": [],
+       "hit_count": 0,
+-      "synthetic_values_exempted": 1,
++      "synthetic_values_exempted": 3,
+       "exempted": [
++        {
++          "pattern": "generic-secret",
++          "path": "design-lab/tests/test_secret_history_scan.py",
++          "reason": "in-value synthetic marker"
++        },
++        {
++          "pattern": "generic-secret",
++          "path": "design-lab/tests/test_secret_history_scan.py",
++          "reason": "in-value synthetic marker"
++        },
+         {
+           "pattern": "generic-secret",
+           "path": "fixtures/domains/game-visual/tests/analytics.test.js",
+@@ -132,10 +142,12 @@
+     },
+     "G040_lockfile_audit": {
+       "lockfiles": [
++        "pnpm-lock.yaml",
+         "requirements.txt",
+         "uv.lock"
+       ],
+       "managers": [
++        "node",
+         "python"
+       ],
+       "single_manager_per_ecosystem": true,
+@@ -180,9 +192,5 @@
+   "migration_debt": {
+     "adapter_status_entries_still_legacy": 30,
+     "note": "the frozen eight-value vocabulary is the target; the registry still uses the legacy names, and the gate maps them explicitly so the debt is a number"
+-  },
+-  "projection": true,
+-  "subjectSha": "042ac635ae7a6042db366f7fb19508fc5db7bc65",
+-  "fresh": false,
+-  "generatedBy": "scripts/verify_supply_chain.py"
++  }
+ }
+diff --git a/scripts/audit_workbench_ui.py b/scripts/audit_workbench_ui.py
+index d1af5743..65a07062 100644
+--- a/scripts/audit_workbench_ui.py
++++ b/scripts/audit_workbench_ui.py
+@@ -13,6 +13,7 @@ from __future__ import annotations
+ 
+ import argparse
+ import json
++import hashlib
+ from pathlib import Path
+ import os
+ import secrets
+@@ -44,7 +45,7 @@ def find_node_modules_dir() -> Path | None:
+ 
+ def find_browser() -> Path | None:
+     """Prefer a FULL Chromium build; the headless-shell build is a fallback."""
+-    override = os.environ.get("AUDIT_BROWSER")
++    override = os.environ.get("AUDIT_BROWSER") or os.environ.get("E2E_BROWSER")
+     if override and Path(override).is_file():
+         return Path(override)
+     roots = []
+@@ -105,7 +106,8 @@ def main() -> int:
+     drift = subprocess.run(["git", "-C", str(REPO), "diff", "--exit-code", "--quiet",
+                             "--", "apps/workbench/build"],
+                             capture_output=True, text=True)
+-    if drift.returncode != 0:
++    local_build = os.environ.get("UI_AUDIT_LOCAL_BUILD") == "1"
++    if drift.returncode != 0 and not local_build:
+         print("AUDIT_BLOCKED: apps/workbench/build differs from HEAD; commit the "
+               "rebuilt bundle before measuring so the numbers match the shipped bytes")
+         return 3
+@@ -156,6 +158,9 @@ def main() -> int:
+ 
+     report["environment"] = {
+         "commit": git_head(),
++        "buildMatchesCommit": drift.returncode == 0,
++        "evidenceSubject": "LOCAL_WORKTREE" if drift.returncode else "COMMITTED_BUILD",
++        "bundleSha256": hashlib.sha256((REPO / "apps/workbench/build/main.js").read_bytes()).hexdigest(),
+         "pythonVersion": (f"{sys.version_info.major}.{sys.version_info.minor}."
+                           f"{sys.version_info.micro}"),
+         "nodePath": node,
+diff --git a/scripts/run_bound_test_suite.py b/scripts/run_bound_test_suite.py
+index 586c9e0e..95040af0 100644
+--- a/scripts/run_bound_test_suite.py
++++ b/scripts/run_bound_test_suite.py
+@@ -29,6 +29,8 @@ from __future__ import annotations
+ import argparse
+ import hashlib
+ import json
++import os
++import tempfile
+ import platform
+ import random
+ import subprocess
+@@ -96,6 +98,12 @@ def main(argv=None) -> int:
+     parser.add_argument("--repeat", type=int, default=1)
+     parser.add_argument("--label")
+     args = parser.parse_args(argv)
++    # A bound run owns its scratch directory; system temp may be outside the
++    # project boundary or unwritable in a Windows sandbox.
++    scratch = REPO / '.project-local' / 'task-runtime' / 'bound-tests-temp'
++    scratch.mkdir(parents=True, exist_ok=True)
++    os.environ['TMP'] = os.environ['TEMP'] = str(scratch)
++    tempfile.tempdir = str(scratch)
+     # --modules is append + nargs="+": the parsed value is a list of lists.
+     # Flatten to a single list of module names so downstream consumers (the
+     # "modules" history field and the critical-set comparison in the gate
+diff --git a/src/design_lab/analysis/capability_library.py b/src/design_lab/analysis/capability_library.py
+new file mode 100644
+index 00000000..29cb5eb5
+--- /dev/null
++++ b/src/design_lab/analysis/capability_library.py
+@@ -0,0 +1,231 @@
++# SPDX-License-Identifier: MIT
++"""DL-UI-PLAN: project the existing capability records into one read-only library view.
++
++The library is assembled from documents the repository already maintains and gates;
++nothing here discovers, installs, qualifies or downloads a capability:
++
++* ``vendor/sources.lock.json``       - the 46 SourceRecords (license, disposition,
++  presence, content digest, observation date);
++* ``vendor/sources.revisions.json``  - commit revisions recovered by exact
++  repository-path join, plus the explicitly unresolved set;
++* ``design-lab/readiness/model-radar.json`` - model presence vs claim, with a
++  five-stage state vocabulary.
++
++Three rules the tests pin, because they are the failure modes this project keeps
++hitting: an absent revision is ``NOT_VERIFIED`` and never "no provenance"; a
++capability that has not been qualified reports ``qualified = None`` rather than
++``False`` or a score; and every count is derived from the records in this call,
++so a stale number cannot be hardcoded into the projection.
++"""
++from __future__ import annotations
++
++import json
++from pathlib import Path
++from importlib.resources import files
++
++SCHEMA_VERSION = "design-lab/capability-library/v1"
++LOCK_REL = Path("vendor") / "sources.lock.json"
++REVISIONS_REL = Path("vendor") / "sources.revisions.json"
++RADAR_REL = Path("design-lab") / "readiness" / "model-radar.json"
++TAXONOMY_REL = Path("research") / "candidates" / "CANDIDATE-TAXONOMY.json"
++
++#: Axes the taxonomy schema declares but has never received a value for. They are
++#: reported as unclassified rather than hidden, because a hidden column is how an
++#: absent human judgement starts to look like a completed one.
++CLASSIFICATION_AXES = ("domains", "artifactTypes", "capabilityLayers",
++                       "aestheticAxes", "styleArchetypes", "tier", "designQuality")
++
++
++def _repo_key(url: str | None) -> str:
++    """Normalise to `owner/repo` for an exact join. No fuzzy or name matching:
++    the revision record's own method field sets that rule and it holds here too."""
++    value = (url or "").strip().lower().rstrip("/")
++    for prefix in ("https://", "http://", "git+", "ssh://"):
++        if value.startswith(prefix):
++            value = value[len(prefix):]
++    for prefix in ("github.com/", "gitlab.com/", "gitee.com/"):
++        if value.startswith(prefix):
++            value = value[len(prefix):]
++    return value.removesuffix(".git")
++
++
++def _taxonomy_index(root: Path) -> dict:
++    """candidateId-by-repo-key from the observation taxonomy, or {} when absent."""
++    path = root / TAXONOMY_REL
++    if not path.is_file():
++        return {}
++    index = {}
++    for entry in _read_json(path).get("entries", []):
++        for field in ("canonicalRepo", "canonicalUrl"):
++            key = _repo_key(entry.get(field))
++            if key:
++                index.setdefault(key, entry)
++    return index
++
++#: Qualification is a host run plus a human acceptance outcome. Neither is
++#: derivable from a registry, so the field is null until one is recorded.
++UNQUALIFIED = None
++
++
++def _read_json(path: Path) -> dict:
++    if not path.is_file():
++        raise FileNotFoundError(f"capability library input missing: {path.name}")
++    return json.loads(path.read_text(encoding="utf-8"))
++
++
++def _source_capability(entry: dict, revisions: dict, unresolved: dict,
++                       taxonomy: dict, repo_for_id: dict) -> dict:
++    identity = str(entry.get("id", ""))
++    pinned = revisions.get(identity)
++    if pinned:
++        state, revision = "VERIFIED", pinned.get("revision")
++    elif identity in unresolved:
++        state, revision = "UNRESOLVED", None
++    else:
++        # The revisions file's own meaning field says this: absence from `sources`
++        # means NOT VERIFIED, never absence of provenance.
++        state, revision = "NOT_VERIFIED", None
++    return {
++        "id": identity,
++        "kind": "source",
++        "domain": None,
++        "title": entry.get("path") or identity,
++        "disposition": entry.get("disposition"),
++        "license": entry.get("license"),
++        "presence": entry.get("presence"),
++        "url": entry.get("canonicalUrl") or entry.get("url"),
++        "revision": revision,
++        "revisionState": state,
++        "revisionReason": unresolved.get(identity),
++        "repo": (pinned or {}).get("repo"),
++        "observedAt": entry.get("observedAt"),
++        "contentDigest": entry.get("contentDigest"),
++        "qualified": UNQUALIFIED,
++        "qualificationEvidence": None,
++        **_taxonomy_axes(taxonomy.get(_repo_key(repo_for_id.get(identity)))),
++    }
++
++
++def _taxonomy_axes(candidate: dict | None) -> dict:
++    """The axes a joined taxonomy entry actually carries, plus what it does not.
++
++    `evidenceLevel` and `rights` are real observations; `adoption` is popularity and is
++    labelled as such because the taxonomy policy states popularityIsNotQuality. The
++    classification axes are surfaced as null when unpopulated rather than defaulted.
++    """
++    if not candidate:
++        return {"sourceType": None, "evidenceLevel": None, "upstreamOwner": None,
++                "licenseUrl": None, "rightsNotes": None, "removalPath": None,
++                "popularity": None, "unclassifiedAxes": list(CLASSIFICATION_AXES)}
++    rights = candidate.get("rights") or {}
++    adoption = candidate.get("adoption") or {}
++    metrics = adoption.get("metrics") or {}
++    axes = [axis for axis in CLASSIFICATION_AXES if not candidate.get(axis)]
++    return {
++        "sourceType": candidate.get("sourceType"),
++        "evidenceLevel": candidate.get("evidenceLevel"),
++        "upstreamOwner": candidate.get("upstreamOwner"),
++        "licenseUrl": rights.get("licenseURL"),
++        "rightsNotes": rights.get("rightsNotes"),
++        "removalPath": candidate.get("removalPath"),
++        "popularity": {
++            "stargazerCount": metrics.get("stargazerCount"),
++            "forkCount": metrics.get("forkCount"),
++            "observedAt": adoption.get("observedAt"),
++            "source": adoption.get("source"),
++            "isNotQuality": True,
++        },
++        "unclassifiedAxes": axes,
++    }
++
++
++def _model_capability(entry: dict) -> dict:
++    source = entry.get("source") or {}
++    return {
++        "id": str(entry.get("model_id", "")),
++        "kind": "model",
++        "domain": entry.get("family"),
++        "title": entry.get("model_id"),
++        "disposition": entry.get("radar_state"),
++        "license": source.get("license_id"),
++        "presence": entry.get("machine_state"),
++        "url": None,
++        "revision": None,
++        # A model's revision is not tracked by the vendor mechanism; saying
++        # NOT_VERIFIED keeps the vocabulary consistent instead of inventing one.
++        "revisionState": "NOT_VERIFIED",
++        "revisionReason": None,
++        "repo": None,
++        "observedAt": entry.get("observed_at"),
++        "contentDigest": None,
++        "qualified": UNQUALIFIED,
++        "qualificationEvidence": None,
++        # Every record carries the same keys, whichever kind it is: a missing axis on a
++        # model row must read as unclassified, not as an absent field the view has to
++        # special-case.
++        **_taxonomy_axes(None),
++    }
++
++
++#: The three inputs are repository-committed records, not per-project or machine-local
++#: state, so the library reads them from the package's own repository root. Resolving
++#: them from a service project root would make the route depend on whichever synthetic
++#: tree a harness happened to boot.
++REPO_ROOT = Path(__file__).resolve().parents[3]
++
++
++def build(root: Path | None = None) -> dict:
++    """Return the capability library projection for one repository root."""
++    if root is None:
++        packaged = files('design_lab').joinpath('resources', 'capability-library')
++        root = packaged if packaged.joinpath('vendor', 'sources.lock.json').is_file() else REPO_ROOT
++    else:
++        root = Path(root)
++    lock = _read_json(root / LOCK_REL)
++    revisions = _read_json(root / REVISIONS_REL)
++    radar = _read_json(root / RADAR_REL)
++    pinned = revisions.get("sources") or {}
++    unresolved = {str(item.get("id")): item.get("reason")
++                  for item in (revisions.get("unresolved") or [])}
++
++    taxonomy = _taxonomy_index(root)
++    repo_for_id = {str(k): (v or {}).get("repo") for k, v in pinned.items()}
++    capabilities = [_source_capability(entry, pinned, unresolved, taxonomy, repo_for_id)
++                    for entry in lock.get("sources", [])]
++    capabilities += [_model_capability(entry) for entry in radar.get("entries", [])]
++
++    def tally(field: str) -> dict:
++        counts: dict[str, int] = {}
++        for item in capabilities:
++            key = str(item.get(field))
++            counts[key] = counts.get(key, 0) + 1
++        return dict(sorted(counts.items()))
++
++    unclassified = sorted({axis for c in capabilities for axis in c.get("unclassifiedAxes", [])})
++    return {
++        "schemaVersion": SCHEMA_VERSION,
++        "classification": {
++            "joined": sum(1 for c in capabilities if c.get("sourceType")),
++            "unclassifiedAxes": unclassified,
++            "note": ("These axes are declared by the candidate taxonomy and empty for "
++                     "every observed candidate; filling them is a human classification "
++                     "task, not a UI one."),
++        },
++        "meaning": ("Read-only projection of the source lock, the vendor revision "
++                    "record and the model radar. It never installs, qualifies, "
++                    "licenses or runs anything."),
++        "unmeasuredMeans": ("null = not measured or not adjudicated. It is not 0, "
++                            "not false and not 'none'. qualified=null means no host "
++                            "run and no human acceptance exists yet."),
++        "counts": {
++            "total": len(capabilities),
++            "joinedToTaxonomy": sum(1 for c in capabilities if c.get("sourceType")),
++            "byKind": tally("kind"),
++            "byLicense": tally("license"),
++            "byRevisionState": tally("revisionState"),
++            "qualified": sum(1 for c in capabilities if c["qualified"] is not None),
++        },
++        "sources": {"lock": LOCK_REL.as_posix(), "revisions": REVISIONS_REL.as_posix(),
++                    "radar": RADAR_REL.as_posix()},
++        "capabilities": capabilities,
++    }
+diff --git a/src/design_lab/cli.py b/src/design_lab/cli.py
+index 7f982cb3..c359d05a 100644
+--- a/src/design_lab/cli.py
++++ b/src/design_lab/cli.py
+@@ -23,10 +23,12 @@ def main(argv=None):
+     server.add_argument('--port', type=int, default=0)
+     workbench = commands.add_parser(
+         'workbench',
+-        help='start the service and print the sign-in URL and one-time token (no external launcher)')
++        help='start the personal Workbench with automatic local connection')
+     workbench.add_argument('--port', type=int, default=0)
+     workbench.add_argument('--no-browser', action='store_true',
+                            help='print the URL instead of opening the local browser')
++    workbench.add_argument('--manual-connect', action='store_true',
++                           help='compatibility mode: print a temporary token instead of automatic local connection')
+     worker = commands.add_parser('native-worker', help='execute one persisted approved native attempt')
+     worker.add_argument('--attempt', required=True)
+     projects = commands.add_parser('projects').add_subparsers(dest='action', required=True)
+@@ -70,14 +72,15 @@ def main(argv=None):
+             from .http_service import make_server
+             token = secrets.token_hex(32)
+             reconciled = service.reconcile_interrupted_attempts()
+-            with make_server(service, token, args.port) as httpd:
++            with make_server(service, token, args.port, local_session=not args.manual_connect) as httpd:
+                 url = f'http://127.0.0.1:{httpd.server_port}/workbench'
+                 # The token is the sign-in the Workbench asks for; it lives only in
+                 # this process and this terminal, never in argv, a file or a URL.
+                 print(json.dumps({'status': 'LISTENING', 'url': url,
+-                                  'port': httpd.server_port, 'token': token,
++                                  'port': httpd.server_port,
+                                   'reconciled_attempts': len(reconciled),
+-                                  'token_ttl': 'until this process exits'}), flush=True)
++                                  **({'token': token, 'token_ttl': 'until this process exits'}
++                                     if args.manual_connect else {'connection': 'automatic'})}), flush=True)
+                 if not args.no_browser:
+                     import webbrowser
+                     webbrowser.open(url)
+diff --git a/src/design_lab/http_service.py b/src/design_lab/http_service.py
+index 5f1084f0..4d2fb6f1 100644
+--- a/src/design_lab/http_service.py
++++ b/src/design_lab/http_service.py
+@@ -37,7 +37,7 @@ def _unique_object(pairs):
+     return result
+ 
+ 
+-def make_server(service, token, port=0):
++def make_server(service, token, port=0, *, local_session=False):
+     """Caller owns server lifetime; token is supplied in memory, never logged."""
+     if not isinstance(token, str) or not re.fullmatch(r'[0-9a-f]{64}', token):
+         raise ValueError('INVALID_SERVICE_TOKEN')
+@@ -135,9 +135,18 @@ def make_server(service, token, port=0):
+ 
+         def dispatch(self):
+             try:
++                if self.command == 'GET' and self.path == '/api/local-session' and local_session:
++                    self.guard(require_auth=False)
++                    # The official personal launcher connects its own page automatically.
++                    # This is an in-memory handshake, never a file, cookie or URL token.
++                    if self.headers.get_all('Sec-Fetch-Site', []) != ['same-origin']:
++                        raise RequestError(403, 'SAME_ORIGIN_REQUIRED')
++                    return self.send_json(200, {'token': token})
+                 if self.command == 'GET' and self.path in workbench.ROUTES:
+                     self.guard(require_auth=False)
+                     payload, mime = workbench.resource(self.path)
++                    if local_session and self.path == '/workbench':
++                        payload = payload.replace(b'<body>', b'<body data-local-session="auto">', 1)
+                     self.send_response(200)
+                     self.send_header('Content-Type', mime + '; charset=utf-8')
+                     self.send_header('Content-Length', str(len(payload)))
+@@ -209,6 +218,13 @@ def make_server(service, token, port=0):
+                                                     'bundleOrigin': workbench.bundle_origin()})
+                     if self.path == '/api/environment':
+                         return self.send_json(200, service.paths.describe())
++                    if self.path == '/api/capabilities':
++                        # UI plan: the capability library is a read-only projection of
++                        # the source lock, the vendor revision record and the model
++                        # radar. It installs, qualifies and licenses nothing, and it
++                        # reads the committed records, never a machine-local cache.
++                        from .analysis.capability_library import build
++                        return self.send_json(200, build())
+                     if urlsplit(self.path).path == '/api/task-preflight':
+                         # DL-AUDIT-20260914-04: the same preflight the CLI doctor
+                         # uses, so workbench and CLI can never disagree. Read-only.
+@@ -223,7 +239,8 @@ def make_server(service, token, port=0):
+                         if not task:
+                             raise RequestError(400, 'TASK_REQUIRED')
+                         try:
+-                            value = preflight(service.paths.project_root, task)
++                            value = preflight(service.paths.project_root, task,
++                                              paths_describe=service.paths.describe())
+                         except TaskResourceError:
+                             return self.send_json(400, {'error': 'TASK_PREFLIGHT_REJECTED'})
+                         return self.send_json(200, value)
+@@ -357,7 +374,10 @@ def make_server(service, token, port=0):
+                 self.send_json(503, {'error': 'IMAGE_DEPENDENCY_UNAVAILABLE'})
+             except (ValueError, PathPolicyError):
+                 self.send_json(400, {'error': 'INVALID_REQUEST'})
+-            except (sqlite3.Error, AssetError, OSError):
++            except OSError as exc:
++                code = 'PROJECT_PATH_TOO_LONG' if getattr(exc, 'winerror', None) == 206 else 'PROJECT_STORE_UNAVAILABLE'
++                self.send_json(503, {'error': code})
++            except (sqlite3.Error, AssetError):
+                 self.send_json(503, {'error': 'PROJECT_STORE_UNAVAILABLE'})
+             except Exception:
+                 # Terminal clause. Anything outside the named taxonomy (a
+diff --git a/src/design_lab/runtime/project_backup.py b/src/design_lab/runtime/project_backup.py
+index 1ad0e570..ad10b0cb 100644
+--- a/src/design_lab/runtime/project_backup.py
++++ b/src/design_lab/runtime/project_backup.py
+@@ -15,6 +15,10 @@ from __future__ import annotations
+ 
+ import hashlib
+ import json
++import os
++import sqlite3
++import tempfile
++from contextlib import closing
+ import zipfile
+ from datetime import datetime, timezone
+ from pathlib import Path, PurePosixPath
+@@ -37,6 +41,8 @@ def _sha256_bytes(payload: bytes) -> str:
+ def _safe_relative(value: str) -> PurePosixPath:
+     if not isinstance(value, str) or not value:
+         raise BackupError('backup member paths must be non-empty strings')
++    if '\\' in value or ':' in value or any(part in ('', '.', '..') for part in value.split('/')):
++        raise BackupError(f'path traversal refused in backup member: {value!r}')
+     pure = PurePosixPath(value)
+     if pure.is_absolute() or (pure.parts and pure.parts[0].endswith(':')):
+         raise BackupError(f'absolute backup path refused: {value!r}')
+@@ -67,11 +73,34 @@ def create_backup(local_root, archive_path, *, members=None,
+     members = DEFAULT_MEMBERS if members is None else tuple(members)
+     local_root = Path(local_root).resolve()
+     archive_path = Path(archive_path).resolve()
++    relatives = _iter_members(local_root, members)
++    if any(archive_path.is_relative_to(local_root.joinpath(*_safe_relative(member).parts)) for member in members):
++        raise BackupError('backup archive must be outside the backed-up members')
+     entries = []
++    with tempfile.TemporaryDirectory(prefix='backup-', dir=archive_path.parent) as scratch:
++        pending = Path(scratch) / 'verified.zip'
++        _write_backup(local_root, pending, relatives, entries, version, Path(scratch))
++        verified = verify_backup(pending)
++        os.replace(pending, archive_path)
++    return verified
++
++
++def _write_backup(local_root, archive_path, relatives, entries, version, scratch):
+     with zipfile.ZipFile(archive_path, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+-        for relative in _iter_members(local_root, members):
++        for relative in relatives:
+             source = local_root.joinpath(*relative.parts)
+-            payload = source.read_bytes()
++            if source.is_symlink() or source.resolve() != source:
++                raise BackupError('linked backup member refused')
++            if relative.as_posix() == 'task-runtime/service/state.db':
++                snapshot = scratch / 'state.db'
++                with closing(sqlite3.connect(source.as_uri() + '?mode=ro', uri=True)) as live:
++                    with closing(sqlite3.connect(snapshot)) as destination:
++                        live.backup(destination)
++                payload = snapshot.read_bytes()
++            elif relative.as_posix() in {'task-runtime/service/state.db-wal', 'task-runtime/service/state.db-shm'}:
++                continue
++            else:
++                payload = source.read_bytes()
+             entries.append({'path': relative.as_posix(), 'bytes': len(payload),
+                             'sha256': _sha256_bytes(payload)})
+             archive.writestr(relative.as_posix(), payload)
+@@ -80,6 +109,7 @@ def create_backup(local_root, archive_path, *, members=None,
+             'createdAt': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+             'designLabVersion': version,
+             'projectLocalRootName': local_root.name,
++            'sourceLocalRoot': str(local_root),
+             'stateSchemaVersion': state_schema_version(local_root),
+             'members': entries,
+             'fileCount': len(entries),
+@@ -130,7 +160,7 @@ def state_schema_version(local_root) -> int | None:
+         return None
+     import sqlite3
+     try:
+-        with sqlite3.connect(f'file:{database}?mode=ro', uri=True) as connection:
++        with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True)) as connection:
+             row = connection.execute('PRAGMA user_version').fetchone()
+     except sqlite3.Error:
+         # A database this build cannot open reports no version, which skips the
+@@ -178,19 +208,80 @@ def restore_backup(archive_path, target_local_root, *, force: bool = False,
+                           + ','.join(check['reasons']))
+     if target.exists() and any(target.rglob('*')) and not force:
+         raise BackupError(f'target root is not empty (pass force to overwrite): {target.name}')
+-    target.mkdir(parents=True, exist_ok=True)
+-    restored = 0
+-    with zipfile.ZipFile(archive_path) as archive:
+-        for entry in manifest['members']:
+-            relative = _safe_relative(entry['path'])
+-            destination = target.joinpath(*relative.parts)
+-            destination.parent.mkdir(parents=True, exist_ok=True)
+-            payload = archive.read(relative.as_posix())
+-            destination.write_bytes(payload)
+-            if _sha256_bytes(destination.read_bytes()) != entry['sha256']:
+-                raise BackupError(f'restored hash mismatch: {relative.as_posix()}')
+-            restored += 1
++    target.parent.mkdir(parents=True, exist_ok=True)
++    with tempfile.TemporaryDirectory(prefix='restore-', dir=target.parent) as scratch:
++        staged = Path(scratch) / 'staged'
++        previous = Path(scratch) / 'previous'
++        restored = 0
++        with zipfile.ZipFile(archive_path) as archive:
++            for entry in manifest['members']:
++                relative = _safe_relative(entry['path'])
++                destination = staged.joinpath(*relative.parts)
++                destination.parent.mkdir(parents=True, exist_ok=True)
++                destination.write_bytes(archive.read(relative.as_posix()))
++                if _sha256_bytes(destination.read_bytes()) != entry['sha256']:
++                    raise BackupError(f'restored hash mismatch: {relative.as_posix()}')
++                restored += 1
++        relocated = _relocate_artifact_paths(staged, manifest, destination_root=target)
++        target.mkdir(parents=True, exist_ok=True)
++        installed = []
++        try:
++            for entry in manifest['members']:
++                relative = _safe_relative(entry['path'])
++                destination = target.joinpath(*relative.parts)
++                if destination.resolve() != destination:
++                    raise BackupError('linked restore destination refused')
++                destination.parent.mkdir(parents=True, exist_ok=True)
++                old = previous.joinpath(*relative.parts)
++                had_previous = destination.exists()
++                if had_previous:
++                    old.parent.mkdir(parents=True, exist_ok=True)
++                    os.replace(destination, old)
++                installed.append((destination, old, had_previous))
++                os.replace(staged.joinpath(*relative.parts), destination)
++        except BaseException:
++            for destination, old, had_previous in reversed(installed):
++                if had_previous:
++                    os.replace(old, destination)
++                elif destination.exists():
++                    destination.unlink()
++            raise
+     return {'schemaVersion': BACKUP_SCHEMA, 'restored': restored,
++            'relocatedArtifactPaths': relocated,
++            'nativeExecutionRecovery': 'REPLAN_REQUIRED_AFTER_RELOCATION' if relocated else 'UNCHANGED',
+             'totalBytes': manifest['totalBytes'],
+             'createdAt': manifest['createdAt'], 'verified': True,
+             'compatibility': check}
++
++
++def _relocate_artifact_paths(target, manifest, *, destination_root=None):
++    """Rebase the live artifact index, without rewriting signed execution receipts."""
++    database = target / 'task-runtime/service/state.db'
++    if not database.is_file():
++        return 0
++    destination_root = target if destination_root is None else destination_root
++    source_root = manifest.get('sourceLocalRoot')
++    with closing(sqlite3.connect(database)) as conn:
++        if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='artifact'").fetchone():
++            return 0
++        relocated = 0
++        for rowid, value in conn.execute('SELECT rowid,path FROM artifact').fetchall():
++            original = Path(value)
++            if not original.is_absolute():
++                continue
++            if source_root is None:
++                if not original.is_relative_to(destination_root):
++                    raise BackupError('legacy archive requires its original root for artifact readback')
++                continue
++            source = Path(source_root)
++            if not original.is_relative_to(source):
++                raise BackupError('artifact path is outside the archived local root')
++            relative = original.relative_to(source)
++            destination = destination_root / relative
++            if not (target / relative).is_file():
++                raise BackupError('restored artifact is absent')
++            if destination != original:
++                conn.execute('UPDATE artifact SET path=? WHERE rowid=?', (str(destination), rowid))
++                relocated += 1
++        conn.commit()
++        return relocated

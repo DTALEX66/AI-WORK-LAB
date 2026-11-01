@@ -1,0 +1,67 @@
+# WORK-LAB Global Agent Policy — Codex native extension (U17.5)
+#
+# Software-specific knobs that are ALLOWED to live here, OUT of the neutral
+# config/global-agent-policy.yaml core. The renderer reads the neutral core
+# PLUS this extension and emits the Codex native surface
+# (CODEX_HOME/AGENTS.md managed block + config.toml managed fields + rules).
+#
+# Native enforcement model for Codex:
+# - sandbox_mode / approval_policy in config.toml are NATIVE_ENFORCED by the
+#   Codex runtime itself (the CLI enforces the sandbox).
+# - The managed guidance block in AGENTS.md is NATIVE_GUIDANCE: Codex reads
+#   AGENTS.md context but does not machine-enforce its prose.
+# - Skill-pack rules are NATIVE_GUIDANCE / WORKFLOW_GUARD (loaded on demand).
+# - model/provider/reasoning/auth are OBSERVE_ONLY: Codex extension never
+#   names a model id or an endpoint.
+
+schema_version: workflow/policy-extension/codex/v1
+adapter: codex
+renderer: integrations/executors/codex/codex_policy_renderer.py
+
+# --- Native config.toml managed fields (already owned by the syncer) ---
+# These are the only managed config fields; provider/model/reasoning/auth are
+# deliberately ABSENT because they are user-owned OBSERVE state.
+managed_config_fields:
+  - approval_policy
+  - sandbox_mode
+  - project_doc_max_bytes
+managed_config_values:
+  approval_policy: on-request
+  sandbox_mode: workspace-write
+  project_doc_max_bytes: 65536
+
+# --- Native targets the renderer writes ---
+native_targets:
+  - AGENTS.md
+  - config.toml
+  - rules/workflow-assistance.rules
+  - skills/workflow-assistance-*
+
+# --- Per-capability native classification for Codex (the loss report seed).
+# Every capability in the neutral core is classified here; the renderer turns
+# this into the machine-readable loss report. UNSUPPORTED/WORKFLOW_GUARD are
+# stated honestly — Codex guidance cannot machine-enforce a Git no-force-push
+# invariant, for example; that stays a workflow guard + guidance.
+capability_states:
+  communication: NATIVE_GUIDANCE
+  execution: NATIVE_GUIDANCE
+  authority_discovery: NATIVE_GUIDANCE
+  authorization: NATIVE_GUIDANCE
+  task_grant: WORKFLOW_GUARD
+  workspace_boundary: NATIVE_ENFORCED
+  protected_storage: WORKFLOW_GUARD
+  credentials: WORKFLOW_GUARD
+  session_privacy: OBSERVE_ONLY
+  network: WORKFLOW_GUARD
+  git_safety: WORKFLOW_GUARD
+  dependency_policy: NATIVE_GUIDANCE
+  evidence_semantics: WORKFLOW_GUARD
+  verification: NATIVE_GUIDANCE
+  parallelism: WORKFLOW_GUARD
+  skills: NATIVE_GUIDANCE
+  model_neutrality: OBSERVE_ONLY
+  tool_truth: NATIVE_GUIDANCE
+  historical_record_policy: NATIVE_GUIDANCE
+
+# General prose is derived from config/universal-agent/AGENT_CORE.md.
+# Legacy guidance_sections were removed; native config values above are unchanged.

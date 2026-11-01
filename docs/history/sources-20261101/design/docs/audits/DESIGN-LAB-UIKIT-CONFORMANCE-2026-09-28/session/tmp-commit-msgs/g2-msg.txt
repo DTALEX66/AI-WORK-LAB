@@ -1,0 +1,33 @@
+G-2/B2: SBOM 扩 lockfile 级绑定（pnpm+uv+requirements → integrity 校验）
+
+对应 CROSSWALK B2（R13）：sbom-v42.spdx.json 只列 64 个 package 条目
+（PNG 二进制 + 第三方声明），不覆盖真实依赖树；锁文件里的依赖版本/哈希
+不在 SBOM 范围内。本 PR 把 pnpm-lock / uv.lock / requirements.txt 三个
+锁文件提升为 lockfile 级 SBOM 绑定。
+
+设计（纯 stdlib，CI 的 bare python 无 PyYAML 也可跑）：
+- pnpm-lock.yaml：正则解析 `packages:` 段（严格限定到下一个 col-0 段
+  标记 `snapshots:` 为止），抓每条 `resolution.integrity` sha512 digest。
+- uv.lock：tomllib 解析（Py3.11+），抓 sdist/wheel hash。
+- requirements.txt：递归解析顶层 `-r` include，抓 pinned spec。
+
+改动：
+- design-lab/scripts/verify_sbom.py：新增 _parse_pnpm_lock /
+  _parse_uv_lock / _requirement_pins / _verify_lockfile_bindings /
+  build_lockfile_bindings；check() 追加 lockfile 完整性校验（sha256 失配
+  或 manifest 漂移即 fail-closed）。
+- design-lab/config/sbom-v42.spdx.json：写入 lockfileBindings 段
+  （pnpm 66 条含 66 integrity digest / uv 20 包 / requirements 6 pins）。
+- scripts/generate_sbom_lockfiles.py：幂等生成器（重跑不变则只重写绑定块；
+  改锁文件后必须重跑，否则 CI 门红）。
+- design-lab/tests/test_sbom_lockfiles.py：14 项 hermetic 单测，
+  含 fail-closed 负测试（sha 篡改 / manifest 漂移 / requirements 漂移）
+  与防 snapshot-overwrite 回归守卫。
+- .github/workflows/canonical-verify.yml：license-secret-gate 把
+  "SPDX SBOM present"（只查存在性）升级为 "SPDX SBOM verify"
+  （python design-lab/scripts/verify_sbom.py，真校验）。
+
+实证（本机 B2 分支）：
+- verify_sbom.py exit 0（CI 口径 bare python，无 uv sync）。
+- test_sbom_lockfiles 14/14，test_evidence_helpers 11/11，
+  test_core_gates 13/13（既有门全绿，check() 扩展无回归）。

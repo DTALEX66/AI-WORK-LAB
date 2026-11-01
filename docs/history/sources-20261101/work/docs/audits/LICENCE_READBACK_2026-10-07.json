@@ -1,0 +1,254 @@
+{
+  "schemaVersion": "work-lab/licence-readback/v1",
+  "readbackAt": "2026-10-07T22:23:00Z",
+  "ledger": ".project/governance/source-ledger.json",
+  "tool": "gh api (GitHub's own licence detection) and the licence file itself, fetched in this session",
+  "methodVocabulary": {
+    "gh-api-detection": "repos/{owner}/{name} .license.spdx_id — GitHub's scanner's verdict, the file bytes were not opened",
+    "license-file": "the LICENSE body decoded from api.github.com/repos/{owner}/{name}/license, quoted verbatim below",
+    "docs-page": "the project's own site, used for website-rooted rows"
+  },
+  "limits": [
+    "These values are about upstream licences, not about this repository's licence (see unlicensedSelfRows).",
+    "CORRECTED 2026-10-07: this line first read \"Only three rows were confirmed by opening the licence file\" while five were, and the commit message said five — the count and its scope disagreed inside a shipped record (ERR-134). It now states the measurable thing: all 14 named values are bound to the SHA-256 of the LICENSE bytes fetched by scripts/audit/licence_file_bytes.py, the detector's own verdict is still recorded per row, and three rows show that detector returning NOASSERTION where the file text names the licence.",
+    "Offline CI cannot re-fetch these URLs; the durable, checkable property is that each value has an entry here with a quote, a URL and a file hash — enforced by tests/workflow-assistance/test_source_ledger_licence_evidence.py."
+  ],
+  "rows": [
+    {
+      "id": "opa",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/open-policy-agent/opa",
+      "quote": "\"license\":\"Apache-2.0\",\"license_name\":\"Apache License 2.0\"",
+      "private": false,
+      "caveat": "canonicalUrl is the website; open-policy-agent/opa is the repository behind it",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 11358,
+      "licenseFileSha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+      "githubDetectionSpdx": "Apache-2.0",
+      "fileFirstLine": "Apache License"
+    },
+    {
+      "id": "conftest",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/open-policy-agent/conftest/license",
+      "quote": "Licensed under the Apache License, Version 2.0",
+      "private": false,
+      "caveat": "GitHub detection says NOASSERTION because the file opens with a custom preamble (\"Conftest - Write tests...\"); the file text governs",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 645,
+      "licenseFileSha256": "a3fc6a99a82b59b761a6b1aabe8fc540b7046d5f91377fc1d8897dbbf3bd18ac",
+      "githubDetectionSpdx": "NOASSERTION",
+      "fileFirstLine": "Conftest - Write tests against your config files"
+    },
+    {
+      "id": "trivy",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/aquasecurity/trivy",
+      "quote": "\"license\":\"Apache-2.0\"",
+      "private": false,
+      "caveat": "docs-site row",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 11357,
+      "licenseFileSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "githubDetectionSpdx": "Apache-2.0",
+      "fileFirstLine": "Apache License"
+    },
+    {
+      "id": "actionlint",
+      "valueWritten": "MIT",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/rhysd/actionlint",
+      "quote": "\"license\":\"MIT\",\"license_name\":\"MIT License\"",
+      "private": false,
+      "caveat": "",
+      "licenseFileName": "LICENSE.txt",
+      "licenseFileBytes": 1067,
+      "licenseFileSha256": "03a26b06d224380a02bf100e05fff3b2dfc71b14d4e2fa685ec9963a87563c22",
+      "githubDetectionSpdx": "MIT",
+      "fileFirstLine": "the MIT License"
+    },
+    {
+      "id": "zizmor",
+      "valueWritten": "MIT",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/zizmorcore/zizmor",
+      "quote": "\"license\":\"MIT\"",
+      "private": false,
+      "caveat": "recorded canonicalUrl github.com/woodruffw/zizmor 301-redirects to zizmorcore/zizmor after an org rename; the ledger URL was replaced and the old value kept in the row's integrationNote",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 1109,
+      "licenseFileSha256": "a6fd1bd18da7cec8284639d5b0d351b90934317be1b9f9ea94a077621c6f35af",
+      "githubDetectionSpdx": "MIT",
+      "fileFirstLine": "The MIT License (MIT)"
+    },
+    {
+      "id": "cosign",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/sigstore/cosign",
+      "quote": "\"license\":\"Apache-2.0\"",
+      "private": false,
+      "caveat": "",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 11357,
+      "licenseFileSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "githubDetectionSpdx": "Apache-2.0",
+      "fileFirstLine": "Apache License"
+    },
+    {
+      "id": "in-toto",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/in-toto/attestation/license",
+      "quote": "Copyright 2021 in-toto Developers / Licensed under the Apache License, Version 2.0",
+      "private": false,
+      "secondEvidence": {
+        "url": "https://api.github.com/repos/in-toto/in-toto/license",
+        "note": "the SDK repo carries the same Apache-2.0 file; in-toto.io itself says \"Apache-licensed libraries and tools\" without naming an SPDX id; GitHub detection on both repos is NOASSERTION"
+      },
+      "caveat": "the row's canonicalUrl is a website spanning several repositories, so the value rests on two licence files, and freshness deliberately stays review-required",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 559,
+      "licenseFileSha256": "b3a6ac899861c2c28a1abd5c7ea8733fefaed6938d730e099c42671386032aeb",
+      "githubDetectionSpdx": "NOASSERTION",
+      "fileFirstLine": "Copyright 2021 in-toto Developers"
+    },
+    {
+      "id": "openinference-reference",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/Arize-ai/openinference",
+      "quote": "Apache License / Version 2.0, January 2004",
+      "private": false,
+      "caveat": "spec+code monorepo with one root LICENSE; no separate CC-BY/CC0 clause found for the specification, and the docs page names no licence",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 11357,
+      "licenseFileSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "githubDetectionSpdx": "Apache-2.0",
+      "fileFirstLine": "Apache License"
+    },
+    {
+      "id": "opentelemetry-genai-reference",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/open-telemetry/semantic-conventions-genai",
+      "quote": "Apache License / Version 2.0, January 2004",
+      "private": false,
+      "caveat": "the gen-ai docs page itself states no licence; grep of the repository found no CC-BY/CC0 spec clause, so code and spec share this licence as far as the evidence goes",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 11357,
+      "licenseFileSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "githubDetectionSpdx": "Apache-2.0",
+      "fileFirstLine": "Apache License"
+    },
+    {
+      "id": "otel-semconv",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/open-telemetry/semantic-conventions-genai",
+      "quote": "Apache License / Version 2.0, January 2004",
+      "private": false,
+      "caveat": "DUPLICATE of opentelemetry-genai-reference — same canonicalUrl, same repository, same evidence. Merging or retiring one row is a human decision; both were kept and the duplication is recorded in the row's integrationNote",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 11357,
+      "licenseFileSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "githubDetectionSpdx": "Apache-2.0",
+      "fileFirstLine": "Apache License"
+    },
+    {
+      "id": "ccusage-external-optional",
+      "valueWritten": "MIT",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/ccusage/ccusage/license",
+      "quote": "MIT License / Copyright (c) 2025 ryoppippi",
+      "private": false,
+      "secondEvidence": {
+        "url": "https://github.com/ccusage/ccusage (README)",
+        "note": "README carries \"## License / [MIT](LICENSE)\""
+      },
+      "caveat": "GitHub's licence field for this repo returns NOASSERTION (\"Other\"), so the value comes from the file text; the repo moved from ryoppippi/ccusage (301), and the ledger canonicalUrl was updated with the old owner preserved in the row's integrationNote",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 1066,
+      "licenseFileSha256": "ffa4dd2d15c2e9f87d21367a007593002366c308d90b4a666d5bd43f57df7563",
+      "githubDetectionSpdx": "NOASSERTION",
+      "fileFirstLine": "MIT License"
+    },
+    {
+      "id": "superpowers",
+      "valueWritten": "MIT",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/obra/superpowers",
+      "quote": "\"license\":\"MIT\",\"license_name\":\"MIT License\"",
+      "private": false,
+      "caveat": "detection only; the docs-vs-code licence split was not examined for this row",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 1070,
+      "licenseFileSha256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+      "githubDetectionSpdx": "MIT",
+      "fileFirstLine": "MIT License"
+    },
+    {
+      "id": "promptfoo",
+      "valueWritten": "MIT",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/promptfoo/promptfoo",
+      "quote": "\"license\":\"MIT\"",
+      "private": false,
+      "caveat": "canonicalUrl is promptfoo.dev; only the OSS repository licence is evidenced, an enterprise/commercial tier is not covered by this value",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 1053,
+      "licenseFileSha256": "bf813686553f451e1b833fbd827488aee49b60b189626915bf3108d10b754e44",
+      "githubDetectionSpdx": "MIT",
+      "fileFirstLine": "Copyright (c) Promptfoo 2025"
+    },
+    {
+      "id": "mcp-inspector",
+      "valueWritten": null,
+      "method": "license-file",
+      "url": "https://api.github.com/repos/modelcontextprotocol/inspector/license",
+      "quote": "The MCP project is undergoing a licensing transition from the MIT License to the Apache License, Version 2.0… Documentation contributions (excluding specifications) are licensed under CC-BY-4.0… contributions… under the MIT License and who have not yet granted explicit permission to relicense remain licensed under the MIT License",
+      "private": false,
+      "caveat": "STAYS UNKNOWN ON EVIDENCE: three concurrent licences (Apache-2.0, MIT, CC-BY-4.0) inside one file during an in-flight relicensing. Picking one SPDX id would be an owner/legal decision, not a readback."
+    },
+    {
+      "id": "agent-skills",
+      "valueWritten": "Apache-2.0",
+      "method": "license-file",
+      "url": "https://api.github.com/repos/agentskills/agentskills",
+      "quote": "Apache-2.0 (GitHub API license field; the LICENSE bytes were not read on 2026-10-06, so licenseFileHash stays null and freshness stays review-required)",
+      "private": false,
+      "caveat": "read back on 2026-10-06 by the previous round, recorded here so every named licence in the ledger has one evidence entry",
+      "licenseFileName": "LICENSE",
+      "licenseFileBytes": 11344,
+      "licenseFileSha256": "993da3f8d330d69108e521636555f7783ef81d46b904394c59ec5ff651331fe5",
+      "githubDetectionSpdx": "Apache-2.0",
+      "fileFirstLine": "Apache License"
+    }
+  ],
+  "unlicensedSelfRows": {
+    "ids": [
+      "work-lab-workflow-module",
+      "work-lab-observer-module"
+    ],
+    "evidence": "git ls-files returns 0 tracked LICENSE/COPYING files and README.md has no licence section",
+    "value": "UNKNOWN",
+    "reason": "these rows describe this repository, which is unlicensed (all rights reserved by default). Declaring a licence is an owner decision; writing an SPDX id here would be fabrication."
+  },
+  "counts": {
+    "externalRows": 15,
+    "valuesWritten": 14,
+    "leftUnknownOnEvidence": 1,
+    "selfRowsLeftUnknown": 2,
+    "fileVerifiedRows": 14,
+    "detectionOnlyRows": 0,
+    "note": "valuesWritten counts ledger rows that now carry a named SPDX; the rows array has 15 entries because mcp-inspector is listed with valueWritten=null"
+  },
+  "notClaimed": [
+    "no commit, tag or release basis for any row — a file hash proves which document was read, not which commit the ledger's artefact corresponds to, so reviewedCommit stays null and freshness stays review-required",
+    "no windowsSupport re-grade (this readback looked at licences only)",
+    "no VENDOR/ABSORB decision changes — decisionStatus untouched"
+  ]
+}

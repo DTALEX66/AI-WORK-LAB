@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "design-lab/aesthetic-rules/v1",
+  "note": "美学评估分层：仓库内确定性规则（元数据级，标准库可算）+ 模型美学评分（LAION/NIMA provider，E0 声明，需外部运行时）。",
+  "rules": [
+    {
+      "id": "color-contrast",
+      "name": "前景/背景对比度",
+      "severity": "high",
+      "computable": "deterministic-metadata",
+      "desc": "文本与背景对比度（WCAG 思路）；像素级需模型，元数据级可算色深/色彩空间"
+    },
+    {
+      "id": "color-harmony",
+      "name": "色彩和谐",
+      "severity": "medium",
+      "computable": "model-aesthetic",
+      "desc": "主色/辅色和谐度；需 CLIP 特征 + 线性头（provider:vision/clip + provider:aesthetic/laion）"
+    },
+    {
+      "id": "rule-of-thirds",
+      "name": "三分构图",
+      "severity": "medium",
+      "computable": "deterministic-metadata",
+      "desc": "主元素位于三分线；像素级需检测（provider:vision/grounding-dino）"
+    },
+    {
+      "id": "negative-space",
+      "name": "负空间",
+      "severity": "low",
+      "computable": "model-aesthetic",
+      "desc": "留白充足度；需分割/编码（provider:vision/sam2）"
+    },
+    {
+      "id": "text-readability",
+      "name": "文本可读性",
+      "severity": "high",
+      "computable": "model-ocr",
+      "desc": "字号/行距/溢出；需 OCR（provider:ocr/paddle）"
+    },
+    {
+      "id": "edge-complexity",
+      "name": "边缘复杂度",
+      "severity": "low",
+      "computable": "deterministic-metadata",
+      "desc": "细节丰富度；像素级需解码，元数据级受限"
+    },
+    {
+      "id": "brand-color-drift",
+      "name": "品牌色偏差",
+      "severity": "blocker",
+      "computable": "model-aesthetic",
+      "desc": "与品牌色板偏差；需编码（provider:vision/*）"
+    },
+    {
+      "id": "fake-text",
+      "name": "假文字检测",
+      "severity": "blocker",
+      "computable": "model-ocr",
+      "desc": "AI 生成乱码文字；需 OCR（provider:ocr/paddle）"
+    }
+  ]
+}

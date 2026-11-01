@@ -1,0 +1,36 @@
+fix(reports): re-record the gate-owned reports so the authority chain stops drifting
+
+The DeepSeek authority gate chain failed on PR #126 (subject 74ef85d7, exact-SHA
+readback from the CI log): the only red gate was
+
+    CONTRACT_GRAPH=DRIFT fields changed since generation:
+    ['fresh','generatedBy','projection','subjectSha']
+
+Root cause: P1-C added the provenance envelope (projection/subjectSha/fresh/
+generatedBy) to reports/current/**, but the contract graph records the field set of
+those documents and was generated before that change, so it no longer matched. Two
+more gate-owned reports were stale the same way:
+
+- reports/current/CONTRACT-GRAPH.json — regenerated via scripts/verify_contract_graph.py
+  (NO_BROKEN_LINK, concepts=11 complete=11 breaks=0).
+- reports/current/DEEPSEEK-FINAL-TEST-GATE.json — regenerated via
+  scripts/deepseek_test_gate_report.py from the bound history (TEST_GATE=PASS,
+  orders=[forward,random,reverse], tests_per_order=[220], repetition=4400,
+  deferred=DEFERRED).
+- reports/current/LANGUAGE-BOUNDARY-SCAN.json — the committed copy was generated
+  2026-09-18, before the pnpm workspace landed, and its own generator
+  (scripts/verify_language_boundary.py) does not emit the provenance envelope, so the
+  P1-C edit to this file was wrong for it. The fresh scan records the real state:
+  tracked_files_scanned=1951, node_manifests now include the root and apps/workbench
+  manifests, node_lockfiles=[pnpm-lock.yaml], and second_node_backend classifies the
+  game-visual fixture manifest (fixture_scoped=1 → still allowed).
+
+scripts/generate_current_reports.py then rebinds the 9 bound outputs + the index on the
+current inputs.
+
+Evidence after the fix, running the same chain CI runs:
+  AUTHORITY_GATES=PASS gates=7 failed=none
+  CURRENT_REPORTS=PASS mode=check scope=bound-input-integrity
+CI for the parent commit had contract-graph as the only failure; its test gate passed by
+executing the critical 220-test set on Linux (three orders + a repeat, all OK), and the
+critical set passes locally too (Ran 220 tests OK).

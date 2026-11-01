@@ -1,0 +1,217 @@
+{
+  "kind": "design-lab-w04-batch-import",
+  "project_id": "9d085e73db4042fd9a3a982e3518d34d",
+  "checks": [
+    {
+      "name": "selection count is disclosed before importing",
+      "pass": true,
+      "detail": {
+        "selected": "已选择 3 个文件。"
+      }
+    },
+    {
+      "name": "partial failure is counted honestly (1 ok · 2 failed · 0 cancelled)",
+      "pass": true,
+      "detail": {
+        "summaryA": "导入 3 个：成功 1 · 失败 2 · 已取消 0（失败项未写入服务端）"
+      }
+    },
+    {
+      "name": "each failure states its own reason",
+      "pass": true,
+      "detail": {
+        "rowsA": [
+          {
+            "text": "good1.png\n0 KiB · 服务端已确认\n已导入",
+            "tag": "已导入"
+          },
+          {
+            "text": "bad.txt\n不支持的媒体类型 text/plain：仅 PNG / JPEG\n失败",
+            "tag": "失败"
+          },
+          {
+            "text": "good2.png\nFailed to fetch\n失败",
+            "tag": "失败"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a failed file is never reported as imported",
+      "pass": true,
+      "detail": {
+        "rowsA": [
+          {
+            "text": "good1.png\n0 KiB · 服务端已确认\n已导入",
+            "tag": "已导入"
+          },
+          {
+            "text": "bad.txt\n不支持的媒体类型 text/plain：仅 PNG / JPEG\n失败",
+            "tag": "失败"
+          },
+          {
+            "text": "good2.png\nFailed to fetch\n失败",
+            "tag": "失败"
+          }
+        ]
+      }
+    },
+    {
+      "name": "read-back list contains exactly the one successful import",
+      "pass": true,
+      "detail": {
+        "headingA": "参考素材（1）"
+      }
+    },
+    {
+      "name": "cancel stops the queue and reports the skipped files (not silently dropped)",
+      "pass": true,
+      "detail": {
+        "rowsB": [
+          {
+            "text": "c1.png\n0 KiB · 服务端已确认\n已导入",
+            "tag": "已导入"
+          },
+          {
+            "text": "c2.png\n取消后未开始\n已取消",
+            "tag": "已取消"
+          },
+          {
+            "text": "c3.png\n取消后未开始\n已取消",
+            "tag": "已取消"
+          }
+        ],
+        "summaryB": "导入 3 个：成功 1 · 失败 0 · 已取消 2"
+      }
+    },
+    {
+      "name": "the in-flight file still reports a REAL outcome",
+      "pass": true,
+      "detail": {
+        "rowsB": [
+          {
+            "text": "c1.png\n0 KiB · 服务端已确认\n已导入",
+            "tag": "已导入"
+          },
+          {
+            "text": "c2.png\n取消后未开始\n已取消",
+            "tag": "已取消"
+          },
+          {
+            "text": "c3.png\n取消后未开始\n已取消",
+            "tag": "已取消"
+          }
+        ]
+      }
+    },
+    {
+      "name": "summary matches the per-file rows",
+      "pass": true,
+      "detail": {
+        "summaryB": "导入 3 个：成功 1 · 失败 0 · 已取消 2"
+      }
+    },
+    {
+      "name": "cancel semantics are stated (in-flight completes, rest not started)",
+      "pass": true,
+      "detail": {
+        "rowsB": [
+          {
+            "text": "c1.png\n0 KiB · 服务端已确认\n已导入",
+            "tag": "已导入"
+          },
+          {
+            "text": "c2.png\n取消后未开始\n已取消",
+            "tag": "已取消"
+          },
+          {
+            "text": "c3.png\n取消后未开始\n已取消",
+            "tag": "已取消"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the list count equals 1 (phase A) + the files actually imported in phase B",
+      "pass": true,
+      "detail": {
+        "headingB": "参考素材（2）",
+        "okB": 1,
+        "summaryB": "导入 3 个：成功 1 · 失败 0 · 已取消 2"
+      }
+    },
+    {
+      "name": "console errors are limited to the deliberately aborted upload",
+      "pass": true,
+      "detail": {
+        "unexpected": [],
+        "all": 1
+      }
+    }
+  ],
+  "console_errors": [
+    {
+      "phase": "partial-failure",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    }
+  ],
+  "rows_partial_failure": [
+    {
+      "text": "good1.png\n0 KiB · 服务端已确认\n已导入",
+      "tag": "已导入"
+    },
+    {
+      "text": "bad.txt\n不支持的媒体类型 text/plain：仅 PNG / JPEG\n失败",
+      "tag": "失败"
+    },
+    {
+      "text": "good2.png\nFailed to fetch\n失败",
+      "tag": "失败"
+    }
+  ],
+  "rows_cancel": [
+    {
+      "text": "c1.png\n0 KiB · 服务端已确认\n已导入",
+      "tag": "已导入"
+    },
+    {
+      "text": "c2.png\n取消后未开始\n已取消",
+      "tag": "已取消"
+    },
+    {
+      "text": "c3.png\n取消后未开始\n已取消",
+      "tag": "已取消"
+    }
+  ],
+  "measured_at": "2026-09-28T19:13:14.903Z",
+  "vocab_cross_check": [
+    {
+      "name": "FAILED_STATES == TERMINAL - {RECEIPTED}",
+      "pass": true,
+      "detail": [
+        "CANCELLED",
+        "FAILED",
+        "TIMED_OUT"
+      ]
+    },
+    {
+      "name": "OUTCOME_UNKNOWN is 待审, NOT 失败",
+      "pass": true,
+      "detail": [
+        "CANCEL_REQUESTED",
+        "OUTCOME_UNKNOWN",
+        "RECONCILING"
+      ]
+    },
+    {
+      "name": "every ALLOWED attempt state is classified",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "no invented states beyond the service vocabulary",
+      "pass": true,
+      "detail": []
+    }
+  ]
+}

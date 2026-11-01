@@ -1,0 +1,58 @@
+{
+  "axis": "implementation",
+  "css_token": {
+    "block": "/* brand-mark:begin sha256=0dc0a7362f6fc192 */",
+    "consumers": "style.css:226 .mark、style.css:686 .brand-mark::after、新增 .app-nav-mark 22px",
+    "encodings": "--brand-mark-paper #EEF2F5 / --brand-mark-ink #17212B，默认 paper（炭黑），ui2026/light 与 stitch/light 各自翻成 ink",
+    "why_two_uris": "background-image 不吃 currentColor；而 CSP 是 img-src data: 且 workbench.py 只服务固定三条路径，加资源路由要同时放宽两者——那是 owner 的安全决定"
+  },
+  "derivation": {
+    "duplicate_name": "DESIGN F-LOGO.svg 与它逐字节相同（同 sha256），登记为同一素材的两个名字；owner 在 20:45 左右把该文件从目录中删除，内容仍由 DESIGN-1.svg 承载，故出处不丢",
+    "editor_master": "LOGO.ai (sha256 bad1c3c7db689c4d, 1339405 B) 不入库：仓库已过体积警戒线，且从 .ai 导出需要驱动 Illustrator，属 owner 冻结的外部软件自动化项",
+    "measured_split": "Chromium 解析源文件并逐条读 getBBox()：17 条非退化路径，在 20.97px 的垂直间隙处切开 → 单标 2 条（D + 星芒，框 76.41,26.96→232.63,178.93 = 160.22x155.97）、文字带 15 条",
+    "source": "D:/All projects/矢量LOGO/DESIGN-1.svg (sha256 9539268bf1711674, 11536 B, viewBox 0 0 310.01 284.69, 17 paths, fill #231815, Adobe Illustrator 29.5.1)",
+    "viewbox_sign_error": "把 (left,top) 移到原点的 min-x 应是 left-pad，写成 -left+pad 会把内容推到视口外；同样是看图才发现，数字上看不出来。",
+    "why_not_hand_parsed": "两次失败都是手解 SVG：正则抓 d=\"...\" 把 17 条抓成 18 条（含一条空路径，于是\"单标\"只剩那条空的）；按坐标奇偶配对 x/y 在 Illustrator 混合绝对/相对命令、每条命令参数个数不同的前提下无意义。第一版因此产出 4x4 viewBox 的不可见图形——是渲染把它暴露的。"
+  },
+  "evidence_grade": "E2 controlled-runtime：真实 Chromium 渲染复核素材与槽位，真实服务截图验证；不含宿主运行与真人验收。",
+  "gate_moved_with_the_asset": {
+    "first_run_convicted_a_correct_stylesheet": "light_flips 我多减了 1 —— 检查器算错，不是 CSS 错；读回 CSS 后修检查器",
+    "render_brand_asset.py --check": "改为校验矢量真值（digest、两枚 fill、路径条数、默认变体、两个浅色是否都 opt-in）；不改它，就会留下一把永远守着已废弃位图管线的闸"
+  },
+  "id": "kb-06-brand-mark-on-interface-20261025",
+  "measured_at_head": "e297f96704427e3bc9ddf8b3127773e02d610d36",
+  "observed_at": "2026-10-25T12:58:00Z",
+  "outcome": "PASS",
+  "owner_request": "把项目LOGO换上去（项目LOGO 名称DESIGN），来源 D:/All projects/矢量LOGO",
+  "previous_round_ci_green_now_recorded": {
+    "also": "Workbench strict-TS product gate = success（上一轮那条 PIL 依赖红已消失）；Python gate = success（漂移清单再钉后无 FAIL）",
+    "conclusion": "success",
+    "head_sha": "bdaf4883e5e12eebdaedfed7a9a0927a6451703a",
+    "note": "上一轮我说\"bdaf4883 的绿先不单独写档，并入这一轮\"——这就是那笔的结清。",
+    "run_id": 40191207017,
+    "verbatim": [
+      "BROWSER_E2E[test_workbench_contrast_gate] ran=6 skipped=0 failed=0",
+      "BROWSER_E2E[test_workbench_preflight_handoff_e2e] ran=1 skipped=0 failed=0",
+      "BROWSER_E2E ran=17 skipped=0 failed=0",
+      "PYTHON_TESTS_SHARD_RESULT shard=1/3 exit=0 outcomes={PASS: 1019, SKIP: 14}",
+      "PYTHON_TESTS_SHARD_RESULT shard=2/3 exit=0 outcomes={PASS: 1186, SKIP: 8}",
+      "PYTHON_TESTS_SHARD_RESULT shard=3/3 exit=0 outcomes={PASS: 1122, SKIP: 3}",
+      "PYTHON_TESTS_UNION=OK expected=3352 distinct=3352 ran=3352 duplicates=0 missing=0 unexpected=0"
+    ]
+  },
+  "subject": "apps/workbench/brand/{design-mark.svg,design-lockup.svg,PROVENANCE.json} + apps/workbench/{style.css,shell.ts,build/main.js} + design-lab/scripts/render_brand_asset.py + DESIGN.md",
+  "task_id": "DL-KB-06",
+  "verification": {
+    "aggregate": "VERIFY_DESIGN_LAB=OK total=76 failed=0",
+    "debt_sentence": "DESIGN.md §4 字面 px 517 → 521（新规则带来 4 个字面 px：22/22/8/-4），由 verify_projection_freshness 抓到并如实更新；字面色值那栏工具明写 agent 不得填写，未动",
+    "light_flip_rendered": "强制 data-palette=stitch + data-scheme=light 后：nav 底色 rgb(255,255,255)、brand 字色 rgb(53,107,146)、logo 呈深墨压白",
+    "mark_in_dom": "三套配色下 .app-nav-mark 均 present、box=[22,22]、background-image 为 svg data URI，且 .app-nav-brand 的 textContent 仍是 DESIGN-LAB（可访问名未被图形取代）",
+    "node_suites": "appshell / unit / shape-notice-coverage 全过（重建后的 bundle，零意外漂移）",
+    "python": "css_single_definition + theme_tokens + served_bundle + ui_layering 42 条 OK；LICENSE_COVERAGE=OK（sidecar 齐全）；BRAND_ASSET=OK svg=1110B paths=2 encodings=2 default=paper light_flips=2",
+    "theme_control_caveat": "应用自身的主题控制器会在启动后重写 data-palette，探针里注入的值被改回 design-lab；且落地视图上未找到可点的主题控件（clicked=null）。所以\"翻转渲染正确\"已验证，\"用户从当前视图一步切到珍珠白\"未验证——那是 S 系列里主题入口的活，不由本条冒充完成"
+  },
+  "what_was_actually_wrong": {
+    "brand_pipeline_had_no_consumer": "design-lab-mark.png 只被它自己的生成脚本与二进制清单引用；AppShell 导航头是纯文字；CSS 里给了 48px 的 .brand-mark 挂在被注释掉的旧版侧栏里，实测 rect 为 0x0。唯一真在画的是旧版页头那枚 52px .mark。",
+    "so_the_fix_is_not_one_file": "要\"看得见 logo\"必须同时补：矢量素材入库、导航槽位挂上、浅色主题翻墨色、以及把守着位图像管线的闸门一起改。"
+  }
+}

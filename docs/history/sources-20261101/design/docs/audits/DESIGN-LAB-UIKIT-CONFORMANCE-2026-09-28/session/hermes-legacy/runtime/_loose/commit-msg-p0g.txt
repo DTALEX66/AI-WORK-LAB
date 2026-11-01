@@ -1,0 +1,24 @@
+test(browser-e2): P0-G evidence summary + CI artifact for the workbench E2E
+
+The dedicated workbench-browser-e2e job now produces download-proof E2
+evidence instead of a silent no-artifact green:
+
+- browser_design_layer_e2e.mjs writes a machine-readable
+  browser-e2e-summary.json on EVERY exit path (PASS and FAIL, plus the
+  config-missing / token-shape paths), stamping subjectSha, workflowRunId and
+  the chromium engine/version; a mid-chain failure also captures fail.png
+  before teardown.
+- test_workbench_design_layer_e2e.py passes E2E_EVIDENCE_DIR into the driver
+  and, under E2E_REQUIRED=1 (the CI no-skip job), asserts the PASS summary
+  was actually written. Locally it stays honest: a missing summary is never a
+  failure, the honest answer is the skip reason.
+- canonical-verify.yml: the no-skip step now stamps E2E_REQUIRED /
+  E2E_SUBJECT_SHA / E2E_WORKFLOW_RUN_ID, and a new upload-artifact step
+  (if: always, if-no-files-found: error, pinned
+  actions/upload-artifact@65c4c4a1ddee5b7f698f8297e8f3f4f7e4b8c1a2) ships the
+  evidence as workbench-e2-<sha>. A clean runner that skips can no longer
+  upload an empty artifact and pass.
+
+Diff is confined to the workbench-browser-e2e job block + the two E2E test
+files; no other CI job touched. Local green chain: node --check clean,
+shell test 2/2 OK with real Chromium, summary on disk result=PASS.

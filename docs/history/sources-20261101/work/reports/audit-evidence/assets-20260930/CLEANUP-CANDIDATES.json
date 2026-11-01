@@ -1,0 +1,312 @@
+{
+  "schema": "workflow/neutral-cleanup-candidates/v1",
+  "generated_at_utc": "2026-09-30T14:08:44Z",
+  "policy": "CANDIDATES ONLY. No deletion/move/modification performed. Each item requires explicit per-path, per-operation authorization. E:/F: untouched.",
+  "totals": {
+    "candidates": 13,
+    "surfaces": [
+      "hermes",
+      "codex",
+      "dsh",
+      "repo"
+    ]
+  },
+  "candidates": [
+    {
+      "id": "CC-1",
+      "surface": "codex",
+      "path_token": "%USERPROFILE%\\.codex\\..codex-global-state.json[.bak].tmp-*",
+      "kind": "stale_temp",
+      "evidence": "14 个 Codex 全局状态临时/备份临时文件（含 0 字节残留）",
+      "bytes": null,
+      "count": 14,
+      "risk": "low",
+      "recommended_action": "删除（先备份清单，不触 config.toml / auth.json）",
+      "retention_note": "确认非当前进程占用（时间戳均早于最新状态文件）",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED",
+      "disposition_note": "Takes PRECEDENCE over CC-3 on overlap. Audit F13: CC-1 (.tmp-*) and CC-3 (*.bak*) are not mutually exclusive; files named *.bak.tmp-* match both, so a per-candidate sweep would double-count or double-operate on the same path.",
+      "overlaps_with": [
+        "CC-3"
+      ],
+      "precedence_over": [
+        "CC-3"
+      ]
+    },
+    {
+      "id": "CC-2",
+      "surface": "codex",
+      "path_token": "%USERPROFILE%\\.codex\\.codex-provisioning-*.guard",
+      "kind": "stale_guard",
+      "evidence": "6 个 0 字节 provisioning 守卫文件",
+      "bytes": 0,
+      "count": 6,
+      "risk": "low",
+      "recommended_action": "删除（守卫已失效，0 字节）",
+      "retention_note": "若 Codex 正在 provisioning 则跳过",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    },
+    {
+      "id": "CC-3",
+      "surface": "codex",
+      "path_token": "%USERPROFILE%\\.codex\\*.bak*",
+      "kind": "backup",
+      "evidence": "11 个历史备份（config.toml.bak-*×5、AGENTS.md.bak-*×2、state.bak 等）",
+      "bytes": null,
+      "count": 11,
+      "risk": "medium",
+      "recommended_action": "归档到项目外置归档或删除（保留最近 1 份）",
+      "retention_note": "config.toml 备份含用户私有配置，删除前确认当前配置可用",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED",
+      "disposition_note": "CC-1 takes precedence on overlap. The pattern *.bak* also matches *.bak.tmp-* files that CC-1 owns.",
+      "overlaps_with": [
+        "CC-1"
+      ],
+      "subordinate_to": [
+        "CC-1"
+      ],
+      "pattern_widened_by_catchall": true
+    },
+    {
+      "id": "CC-4",
+      "surface": "codex",
+      "path_token": "%USERPROFILE%\\.codex\\logs_2.sqlite + thread_history_1.sqlite",
+      "kind": "large_history",
+      "evidence": "两个 SQLite 历史库：logs_2=675,295,232B、thread_history_1=930,263,040B（合计约 1.5 GiB）",
+      "bytes": 1605558272,
+      "count": 2,
+      "risk": "medium",
+      "recommended_action": "按 Codex 官方机制清理历史（勿手工删活动库）",
+      "retention_note": "活动数据库不可直接删；用官方 prune/清理路径",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "REJECT_USER_DATA",
+      "disposition_reason": "This is live USER STATE (a session/history or state database), not redundant project output. Audit F14 is a blocker: including it in a list titled cleanup candidates invites a reinstall-time deletion that would destroy unrecoverable data. The already-recorded recommended_action was and remains non-destructive (official vendor prune path; never delete an active database; config change only, OBSERVE tier) - the defect is that this was expressed only in prose inside a deletion-flavoured list, so it is now stated as data. Decision: REJECTED for deletion. No automatic cleanup setting is changed by this record.",
+      "deletion_rejected": true,
+      "permitted_actions": [
+        "observe_metadata",
+        "user_controlled_backup"
+      ],
+      "forbidden_actions": [
+        "delete",
+        "move",
+        "truncate",
+        "vacuum_without_user_request"
+      ]
+    },
+    {
+      "id": "HH-1",
+      "surface": "hermes",
+      "path_token": "%LOCALAPPDATA%\\hermes\\state.db",
+      "kind": "large_state",
+      "evidence": "state.db = 4,518,653,952 bytes（约 4.2 GiB），占最大单项",
+      "bytes": 4518653952,
+      "count": 1,
+      "risk": "medium",
+      "recommended_action": "由用户 Hermes 设置（sessions.auto_prune）决定，本项目只 OBSERVE，不覆盖",
+      "retention_note": "config-ownership.json 规定该字段为 OBSERVE",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "REJECT_USER_DATA",
+      "disposition_reason": "This is live USER STATE (a session/history or state database), not redundant project output. Audit F14 is a blocker: including it in a list titled cleanup candidates invites a reinstall-time deletion that would destroy unrecoverable data. The already-recorded recommended_action was and remains non-destructive (official vendor prune path; never delete an active database; config change only, OBSERVE tier) - the defect is that this was expressed only in prose inside a deletion-flavoured list, so it is now stated as data. Decision: REJECTED for deletion. No automatic cleanup setting is changed by this record.",
+      "deletion_rejected": true,
+      "permitted_actions": [
+        "observe_metadata",
+        "user_controlled_backup"
+      ],
+      "forbidden_actions": [
+        "delete",
+        "move",
+        "truncate",
+        "vacuum_without_user_request"
+      ]
+    },
+    {
+      "id": "HH-2",
+      "surface": "hermes",
+      "path_token": "%LOCALAPPDATA%\\hermes\\skills\\.curator_backups + .curator_ledger.jsonl + .archive + .hub",
+      "kind": "curator_artifacts",
+      "evidence": "技能策展备份/账本/归档：.curator_backups(5)、.curator_ledger.jsonl(1,632,973B)、.archive(71)、.hub(7)",
+      "bytes": 1632973,
+      "count": 4,
+      "risk": "low",
+      "recommended_action": "归档 .archive/.curator_backups 旧条目；账本保留（审计用）",
+      "retention_note": "账本是被审计证据，不建议删除",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    },
+    {
+      "id": "HH-3",
+      "surface": "hermes",
+      "path_token": "%LOCALAPPDATA%\\hermes\\backups",
+      "kind": "backup",
+      "evidence": "Hermes 自动备份目录（存在，未展开计数）",
+      "bytes": null,
+      "count": null,
+      "risk": "low",
+      "recommended_action": "保留最近 N 份，其余归档",
+      "retention_note": "备份是可逆性保障，先列清单再处理",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    },
+    {
+      "id": "DD-1",
+      "surface": "dsh",
+      "path_token": "%DSH_ROOT%\\.dsh-backup-20260918 (+ .dsh-backup-20260920-data)",
+      "kind": "backup",
+      "evidence": "两套历史备份（26 / 14 子项），覆盖 09-18、09-20 迁移期",
+      "bytes": null,
+      "count": 40,
+      "risk": "medium",
+      "recommended_action": "本轮部署已验证成功后归档到项目外置归档",
+      "retention_note": "部署回退保障；确认新 2.0.13 稳定后再归档",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    },
+    {
+      "id": "DD-2",
+      "surface": "dsh",
+      "path_token": "%DSH_ROOT%\\.research-20260918 + .migration",
+      "kind": "historical",
+      "evidence": "研究快照(3) 与迁移脚本/日志(4，含 junctions.dsh.json、upgrade-2.0.11-to-2.0.13.log)",
+      "bytes": null,
+      "count": 7,
+      "risk": "low",
+      "recommended_action": "保留 .migration 日志（审计链），.research-* 可归档",
+      "retention_note": ".migration/verify.py 仍是可复用的验证器",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    },
+    {
+      "id": "DD-3",
+      "surface": "dsh",
+      "path_token": "%DSH_ROOT%\\pnpm-store",
+      "kind": "cache",
+      "evidence": "pnpm store 目录（1 子项，疑似空/未用）",
+      "bytes": null,
+      "count": 1,
+      "risk": "low",
+      "recommended_action": "确认无活动安装后删除（可再生）",
+      "retention_note": "如 DSH 用 pnpm 安装依赖则保留",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    },
+    {
+      "id": "RR-1",
+      "surface": "repo",
+      "path_token": "config/skills-inventory.json",
+      "kind": "stale_record",
+      "evidence": "记录 14 项中 6 项 sha256 与 live 不符（observer-delivery / project-data-boundary / safe-project-execution / self-improvement / verification-hardening / windows-development）",
+      "bytes": null,
+      "count": 6,
+      "risk": "low",
+      "recommended_action": "重新生成该清点表（非删除）",
+      "retention_note": "它是登记的陈旧副本，权威为 live 文件 + skill-provenance.yaml",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    },
+    {
+      "id": "RR-2",
+      "surface": "repo",
+      "path_token": "config/plugin-inventory.json",
+      "kind": "incomplete_record",
+      "evidence": "chrome-profiles 记 commit=null，live 实际 revision=5b9c3257b464c0f926d4355149a8aed9c8f307b4（pinned=false）",
+      "bytes": null,
+      "count": 1,
+      "risk": "low",
+      "recommended_action": "补录 revision/source 到清点表（非删除）",
+      "retention_note": "上游 anpicasso/hermes-plugin-chrome-profiles",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    },
+    {
+      "id": "RR-3",
+      "surface": "repo",
+      "path_token": "config/skill-provenance.yaml → model-switch",
+      "kind": "drift",
+      "evidence": "model-switch: source_sha256=37aed9558bc1… ≠ live_sha256=0a02c1fc8b65…（其余 12 项一致）",
+      "bytes": null,
+      "count": 1,
+      "risk": "low",
+      "recommended_action": "对齐 source/live（确认哪侧为准后再单向同步）",
+      "retention_note": "scripts/sync_hermes_workflow_assets.py 是唯一部署通道",
+      "authorization_required": true,
+      "executed": false,
+      "disposition": "CANDIDATE_NOT_AUTHORIZED"
+    }
+  ],
+  "corrections": [
+    {
+      "claim": "Hermes 技能目录 st_size=0 表示空/垃圾",
+      "correction": "Windows 下目录 st_size 恒为 0（假象）。补测 child_count 后：26 个技能目录全部非空，无空目录垃圾。",
+      "evidence": "asset-inventory.json: clients.hermes.skills.children[].child_count"
+    },
+    {
+      "claim": "plugin-inventory.json 列出的 3 个启用插件未全部出现在 live plugins 目录",
+      "correction": "security-guidance / web-ddgs 为 bundled（随 Hermes 发行版），不在用户 plugins 目录；live 用户插件目录只有 chrome-profiles。",
+      "evidence": "inventory-verification.json: plugin_inventory_check / hermes_plugin_install_metadata"
+    }
+  ],
+  "resolved_during_audit": [
+    {
+      "id": "SPILL-1",
+      "surface": "repo",
+      "path_token": "%WORKLAB_ROOT%/apps/.project-local/runs/frontend-baseline.json",
+      "kind": "boundary_spill",
+      "found_by": "仓库质量门禁 gate=governance → test_nf11_manifests_present_and_apps_clean（unexpected_apps=['.project-local']）",
+      "evidence": "apps/ 下出现 git 忽略的 .project-local 目录，内含早期失败基线（206 B，内容为 typecheck/vitest 均 [WinError 2] 系统找不到指定的文件）",
+      "root_cause": "本轮更早的基线脚本以相对路径 .project-local/runs/ 写入，而当时工作目录为 apps/，导致产物散落到 apps/.project-local（违反项目数据边界声明）",
+      "action_taken": "已把该文件复制保存到 %WORKLAB_ROOT%/.project-local/runs/frontend-baseline.failed-attempt-20260930.json（sha256 前缀 f06a97b6002608de），再删除 apps/.project-local 整个目录树",
+      "state": "RESOLVED_AND_VERIFIED",
+      "verification": "apps/ 目录现存 observer + token-monitor 两项；门禁重跑后 governance 模块应恢复干净",
+      "authorization_required": false,
+      "authorization_note": "修复的是本轮自己在仓库内造成的外溢（git 忽略区、可逆、已保留副本），非用户既有数据，故直接修复并登记"
+    }
+  ],
+  "behavior_declarations": {
+    "evidence_tier": "DECLARED",
+    "tier_definition": "AG-06i (2026-10-01), audit F15/F16. These entries are DECLARED, not OBSERVED or VERIFIED: they record what the generating procedure was instructed to do, not independently reproduced proof that it did it. The bundle's own verification section can only re-hash the files (integrity), which says nothing about whether any particular root was or was not accessed or written. Concretely, each claim below is BLIND to the following, and must not be cited as if it were proof of them: (1) it cannot show a root was never read, (2) it cannot show a root was never written, (3) it cannot show nothing was cleaned up. A trusted audit log from the performing process would be required for that; in its absence the honest tier stays DECLARED. Do NOT re-access a protected volume merely to try to demonstrate that it was not accessed - that would itself be the access it claims did not happen.",
+    "executed": {
+      "value": false,
+      "tier": "DECLARED",
+      "can_establish": [
+        "the candidate list is data only"
+      ],
+      "cannot_establish": [
+        "that no deletion/move/modification occurred during the audit",
+        "that the listed paths still exist in the state described"
+      ]
+    },
+    "policy_field_note": "The existing policy string 'No deletion/move/modification performed' is a BEHAVIOURAL assertion of the same DECLARED tier; it is retained verbatim and is not upgraded by this addition."
+  },
+  "regenerate_procedure_retained": false,
+  "reconciliation_2026_10_01": {
+    "performed": "AG-06j (audit F13/F14)",
+    "method": "listed filenames only in %USERPROFILE%\\.codex; no file content was read",
+    "observed": {
+      "CC-1_pattern_matches_today": 15,
+      "CC-3_pattern_matches_today": 11,
+      "matching_both": 3,
+      "both_examples": [
+        "..codex-global-state.json.bak.tmp-<id>",
+        "..codex-global-state.json.bak.tmp-<id>",
+        "..codex-global-state.json.bak.tmp-<id>"
+      ]
+    },
+    "recorded_counts_kept": true,
+    "note": "The 2026-09-30 counts (CC-1=14, CC-3=11) are the historical observation and are NOT rewritten; today's counts differ because these are live filesystem globs over user state. The overlap of 3 is the substantive finding and matches audit F13. A wildcard cannot be reviewed, so each candidate carries an explicit disposition and the CC-1 > CC-3 precedence as data; a per-path operation table would still be required before any action, and every candidate keeps authorization_required=true with executed=false.",
+    "not_done": "No deletion, move, modification or glob expansion to paths was performed; nothing outside the repository was written, and no private file content was read."
+  }
+}

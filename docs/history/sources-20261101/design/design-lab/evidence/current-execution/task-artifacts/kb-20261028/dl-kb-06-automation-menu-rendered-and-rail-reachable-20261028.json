@@ -1,0 +1,41 @@
+{
+  "id": "dl-kb-06-automation-menu-rendered-and-rail-reachable-20261028",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-28T12:45:21Z",
+  "subject_sha": "af3ae3e69cbdc622e4334f01b6c3de1757c51c0d",
+  "owner_instruction": "前端也同步上去自动化的菜单导航等",
+  "delivered": "secondary rail entry #/automation under 设置与诊断, rendering GET /api/automation-connectors. The three board-pinned daily entries and NAV_DAILY_VIEWS are unchanged; shell.ts:9955 derives B10_NAV from ROUTE_VIEWS and shell.ts:9985 hides non-daily items while folded, so the new entry needs no second list to exist in.",
+  "measured_render": {
+    "tool": "real Chromium against the real loopback service, committed bundle, 1440x900",
+    "rows_painted": 11,
+    "kpis": [
+      "11 已登记连接器",
+      "0 本项目已探测",
+      "0 已启用",
+      "0 原生工具调用"
+    ],
+    "windows_row_wording": "owner 明确不启用 · 包内证据：未握手 · 权利 OUT_OF_SCOPE_THIS_ROUND",
+    "consoleErrors": 0,
+    "docScrollWidth_vs_clientWidth": "1440 == 1440 (no horizontal overflow)",
+    "rail_total_buttons": 25,
+    "rail_reaches_new_entry": true,
+    "screenshot": ".project-local/task-runtime/automation-shot/automation-1440.png",
+    "looked_at_the_image": true
+  },
+  "defects_this_slice_fixed": [
+    "the earlier BACKEND_ONLY exemption for this route became false the moment the page called it; the aggregate convicted it (STALE_BACKEND_ONLY ... the frontend now calls it; the exemption is no longer true) and the row was removed -- the gate checks both directions, so a stale exemption is as red as a missing one",
+    "same_named_project_adapters now excludes adapter-delivery-*: after registering the eleven rows, every connector would otherwise have joined to its own row and the field would have become true by construction"
+  ],
+  "gates_run_on_these_bytes": {
+    "verify_workbench_route_calls": "PASS calls=143 routes=89 matched=79 backend_only=10",
+    "verify_documented_counts": "PASS claims=21 route_views=25 cli=24 adapters=41 routes=89",
+    "verify_adapter_registry": "PASS adapters=41",
+    "node_suites": "unit / appshell / shape-notice-coverage all green; the coverage gate lists renderAutomationConnectors@3096 -> answer, so the new seam read is bound to a shape notice",
+    "tsc_and_build": "tsc --noEmit exit 0; vite build 630.14 kB",
+    "aggregate_before_the_exemption_fix": "VERIFY_DESIGN_LAB=FAIL total=77 failed=1 (STALE_BACKEND_ONLY) -- recorded rather than smoothed over"
+  },
+  "not_claimed": "No host was launched, no connector probed, no tool called. The screen offers no connect button on purpose. CI has not yet read this head; until it does the status of this slice is locally-verified only. The folded-rail geometry and the nav cue are measured by the browser gates, not by the screenshot.",
+  "boundaries_unchanged": "windows connector NOT ACTIVATED; brand templates unadjudicated; SKILL.md bodies inert; three daily entries untouched; E 盘不动; 34 frozen rows untouched; 手机仍是排除项"
+}

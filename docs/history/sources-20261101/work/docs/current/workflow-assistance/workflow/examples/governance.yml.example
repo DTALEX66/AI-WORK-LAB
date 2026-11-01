@@ -1,0 +1,39 @@
+# NON-ACTIVE REFERENCE — not a live GitHub workflow.
+#
+# This file is an example/reusable source of the module-level governance gate.
+# WORK-LAB has exactly ONE active CI authority: the repository-root
+# `.github/workflows/work-lab-gate.yml` (see .project/governance/config-authority-index.json,
+# authority "workflow_root_gate"; this file is "nested_governance_workflow",
+# status SUPERSEDED_REFERENCE, WLG-080).
+# It does not run in the monorepo and must not be treated as a second CI gate.
+#
+name: workflow-governance
+
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check --no-input --require-hashes -r packages/client-neutral-core/requirements.lock
+      - run: python services/orchestration/run_quality_gate.py verify
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check --no-input --require-hashes -r packages/client-neutral-core/requirements.lock
+      - run: python services/orchestration/run_quality_gate.py verify

@@ -1,0 +1,15 @@
+schema_version: work-lab/path-risk/v1
+# Path resolution must reject traversal, other drives, UNC, junction/reparse points.
+reject:
+  - ".."  # parent traversal
+  - other-drive  # any non-project drive
+  - unc-path
+  - junction-or-reparse-point
+  - other-project  # any directory not owned by this project
+project_local_root: .project-local
+project_run_root: .project-local/runs
+resolution_order:
+  - explicit-argument
+  - manifest-relative-path
+  - environment-variable
+  - current-git-root

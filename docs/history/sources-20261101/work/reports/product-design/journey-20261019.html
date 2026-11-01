@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>WORK-LAB Observer 紧凑 HUD — User Journey Map</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    body { padding: 32px; background: #FAFAF7; color: #1F2937; }
+    .header { margin-bottom: 24px; }
+    .title { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: #6B7280; }
+    .persona-card { display: inline-flex; align-items: center; padding: 12px 20px; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin: 16px 0 16px; }
+    .persona-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #EC4899); margin-right: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+    .persona-info { font-size: 13px; }
+    .persona-info b { display: block; font-size: 15px; color: #111827; }
+    .persona-info span { color: #6B7280; }
+    .jtbd { font-style: italic; padding: 12px 16px; background: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 4px; margin-bottom: 20px; font-size: 14px; }
+    .evidence { padding: 10px 14px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; color: #1E40AF; font-size: 12px; margin-bottom: 24px; }
+    .journey-grid { display: grid; grid-template-columns: 120px repeat(6, 1fr); gap: 1px; background: #E5E7EB; border-radius: 12px; overflow: hidden; }
+    .row-label, .stage-cell { background: white; padding: 14px 12px; font-size: 12px; }
+    .row-label { background: #F3F4F6; font-weight: 600; color: #4B5563; display: flex; align-items: center; }
+    .stage-header { background: #1F2937; color: white; padding: 16px 12px; font-size: 13px; font-weight: 600; text-align: center; }
+    .stage-header .emoji { font-size: 24px; display: block; margin-bottom: 4px; }
+    .stage-cell ul { list-style: none; }
+    .stage-cell li { padding: 4px 0; line-height: 1.4; }
+    .stage-cell li:before { content: "·"; color: #9CA3AF; margin-right: 6px; }
+    .thought { font-style: italic; color: #374151; }
+    .emotion-cell { font-size: 28px; text-align: center; padding: 16px; }
+    .pain-indicator { height: 8px; margin-top: 8px; display: flex; gap: 2px; }
+    .pain-indicator span { flex: 1; height: 100%; background: #E5E7EB; border-radius: 1px; }
+    .pain-indicator span.active { background: currentColor; }
+    .key-moment-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-top: 6px; }
+    .key-moment-badge.truth { background: #EFF6FF; color: #2563EB; }
+    .key-moment-badge.dropout { background: #FEE2E2; color: #DC2626; }
+    .key-moment-badge.delight { background: #D1FAE5; color: #059669; }
+    .key-moment-badge.recovery { background: #FEF3C7; color: #D97706; }
+    .opportunity { background: #ECFDF5; padding: 6px 8px; border-radius: 4px; font-size: 11px; color: #047857; margin: 3px 0; }
+    .quote { font-style: italic; color: #4B5563; padding: 6px 8px; background: #F9FAFB; border-left: 3px solid #D1D5DB; font-size: 11px; margin: 3px 0; }
+    .no-quote { color: #9CA3AF; font-size: 11px; line-height: 1.4; }
+    .curve-section { margin-top: 32px; padding: 24px; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .curve-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+    .curve-svg { width: 100%; height: 150px; }
+    .axis-label { font-size: 11px; fill: #6B7280; }
+    .footer { margin-top: 24px; text-align: center; color: #9CA3AF; font-size: 11px; }
+    .toolbar { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; }
+    .toolbar button { padding: 8px 16px; background: #1F2937; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .toolbar button:hover { background: #374151; }
+    @media print { body { padding: 16px; } .journey-grid { page-break-inside: avoid; } .toolbar { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">打印 / PDF</button>
+  </div>
+
+  <div class="header">
+    <div class="title">WORK-LAB Observer 紧凑 HUD — User Journey Map</div>
+    <div class="subtitle">生成时间: 2026-10-19 · 数据源: DESIGN.md / SCREEN_SPEC.md / 六态几何实测（synthesized，非访谈）</div>
+  </div>
+
+  <div class="persona-card">
+    <div class="persona-avatar">运</div>
+    <div class="persona-info">
+      <b>单人运维者（owner-operator）</b>
+      <span>自管 Agent 队列的仓库所有者；同时是操作者、审计者与唯一读者</span>
+    </div>
+  </div>
+
+  <div class="jtbd">当我扫一眼桌面上常驻的浮窗时，我想在 3 秒内判断"这个用量数字可不可信、是谁在用"，以便决定是否切到完整视图调查——而不是被一个看起来精确的假数字误导。</div>
+
+  <div class="evidence">⚠ 本旅程是<strong>合成假设</strong>：由设计契约（DESIGN.md / SCREEN_SPEC.md）与本轮六态实测推导，<strong>未做真实用户研究</strong>。所有"用户心声/痛点"是待验证假设，不代表已观察到的用户声音。</div>
+
+  <div class="journey-grid">
+    <!-- header -->
+    <div class="row-label"></div>
+    <div class="stage-header"><span class="emoji">🖥️</span>1 · 启动在场</div>
+    <div class="stage-header"><span class="emoji">👀</span>2 · 瞥一眼总量</div>
+    <div class="stage-header"><span class="emoji">🕒</span>3 · 判断新鲜度</div>
+    <div class="stage-header"><span class="emoji">🔍</span>4 · 定位来源</div>
+    <div class="stage-header"><span class="emoji">🗂️</span>5 · 切完整视图调查</div>
+    <div class="stage-header"><span class="emoji">↩️</span>6 · 回到工作</div>
+
+    <!-- user goal -->
+    <div class="row-label">用户目标</div>
+    <div class="stage-cell">确认浮窗在、且接的是真数据源</div>
+    <div class="stage-cell">知道本次快照用了多少 token</div>
+    <div class="stage-cell">判断这个数字是否还新鲜、能否引用</div>
+    <div class="stage-cell">找出是谁（哪个平台 / 项目）占了大部分</div>
+    <div class="stage-cell">看到明细、覆盖口径与来源证据</div>
+    <div class="stage-cell">不被打断地回到手头工作</div>
+
+    <!-- actions -->
+    <div class="row-label">用户行动</div>
+    <div class="stage-cell"><ul><li>唤起常驻浮窗</li><li>扫一眼 notch 与状态点</li></ul></div>
+    <div class="stage-cell"><ul><li>读 hero 大数字</li><li>读项目数与质量口径</li></ul></div>
+    <div class="stage-cell"><ul><li>读状态胶囊</li><li>对照 rev 与 footer 时间</li><li>发现"采样已过期"</li></ul></div>
+    <div class="stage-cell"><ul><li>扫 3 张来源卡的环</li><li>读"其他 7 个来源"聚合卡</li></ul></div>
+    <div class="stage-cell"><ul><li>点顶栏"完整"</li><li>用 Ctrl K 或逐栏查找</li><li>核对项目行与来源</li></ul></div>
+    <div class="stage-cell"><ul><li>不再操作，继续原任务</li></ul></div>
+
+    <!-- touchpoints -->
+    <div class="row-label">触点</div>
+    <div class="stage-cell"><ul><li>Tauri 无边框浮窗 440×680</li><li>顶部 notch</li></ul></div>
+    <div class="stage-cell"><ul><li>hero（41.8px 总量）</li><li>facts 行（项目 / 覆盖 / rev）</li></ul></div>
+    <div class="stage-cell"><ul><li>状态胶囊（LIVE / 过期 / UNVERIFIED / OFFLINE）</li><li>footer 时间戳</li></ul></div>
+    <div class="stage-cell"><ul><li>3 张来源卡（环 + 份额 + 总量）</li><li>聚合卡（虚线）</li><li>份额口径注</li></ul></div>
+    <div class="stage-cell"><ul><li>顶栏布局切换</li><li>完整视图各 lane</li><li>命令面板</li></ul></div>
+    <div class="stage-cell"><ul><li>无（刻意零动作收尾）</li></ul></div>
+
+    <!-- thoughts -->
+    <div class="row-label">用户心声</div>
+    <div class="stage-cell"><ul><li class="thought">"它在不在？接的是真源吗？"</li></ul></div>
+    <div class="stage-cell"><ul><li class="thought">"今天用了多少？"</li><li class="thought">"这个数是不是估算？"</li></ul></div>
+    <div class="stage-cell"><ul><li class="thought">"这是新的，还是十分钟前的？"</li><li class="thought">"我能不能拿它下结论？"</li></ul></div>
+    <div class="stage-cell"><ul><li class="thought">"9 个项目里谁最费？"</li><li class="thought">"这个'其他 7 个'到底是什么？"</li></ul></div>
+    <div class="stage-cell"><ul><li class="thought">"明细在哪一栏？"</li><li class="thought">"覆盖 3/4 指的是什么？"</li></ul></div>
+    <div class="stage-cell"><ul><li class="thought">"看完就走，别让我点确认。"</li></ul></div>
+
+    <!-- emotion -->
+    <div class="row-label">情绪</div>
+    <div class="stage-cell emotion-cell">
+      🙂
+      <div class="pain-indicator" style="color:#34D399;"><span class="active"></span><span class="active"></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="stage-cell emotion-cell">
+      🙂
+      <div class="pain-indicator" style="color:#34D399;"><span class="active"></span><span class="active"></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="stage-cell emotion-cell">
+      😐
+      <div class="pain-indicator" style="color:#F59E0B;"><span class="active"></span><span class="active"></span><span class="active"></span><span></span><span></span></div>
+      <span class="key-moment-badge truth">关键时刻</span>
+    </div>
+    <div class="stage-cell emotion-cell">
+      😕
+      <div class="pain-indicator" style="color:#F97316;"><span class="active"></span><span class="active"></span><span class="active"></span><span class="active"></span><span></span></div>
+      <span class="key-moment-badge dropout">流失风险</span>
+    </div>
+    <div class="stage-cell emotion-cell">
+      🙂
+      <div class="pain-indicator" style="color:#34D399;"><span class="active"></span><span class="active"></span><span></span><span></span><span></span></div>
+      <span class="key-moment-badge recovery">体验回升</span>
+    </div>
+    <div class="stage-cell emotion-cell">
+      😊
+      <div class="pain-indicator" style="color:#10B981;"><span class="active"></span><span></span><span></span><span></span><span></span></div>
+      <span class="key-moment-badge delight">满意峰值</span>
+    </div>
+
+    <!-- pain points -->
+    <div class="row-label">痛点</div>
+    <div class="stage-cell"><ul><li>真实 Tauri 窗口的启动/键盘读数尚未复测（研究缺口，不是已观察痛点）</li></ul></div>
+    <div class="stage-cell"><ul><li>大数字之外，质量口径只有一行小字</li></ul></div>
+    <div class="stage-cell"><ul><li>修复前：过期采样仍可能被读成 plain LIVE</li><li>UNVERIFIED 与 LIVE 的区别需要学习</li></ul></div>
+    <div class="stage-cell"><ul><li>9 个来源放不进 3 张卡，7 个被折叠</li><li>折叠后的个体只能去完整视图找</li></ul></div>
+    <div class="stage-cell"><ul><li>完整视图密度高，首屏找不到对应项目行</li><li>"覆盖"没有名词，含义靠猜</li></ul></div>
+    <div class="stage-cell"><ul><li>若收尾出现确认步骤，会打断返回工作</li></ul></div>
+
+    <!-- opportunities -->
+    <div class="row-label">设计机会</div>
+    <div class="stage-cell"><div class="opportunity">💡 把"数据源未接入"做成明确空态，而不是空白面板</div></div>
+    <div class="stage-cell"><div class="opportunity">💡 总量下方固定一行"精确值 + 质量"，不随状态消失</div></div>
+    <div class="stage-cell"><div class="opportunity">💡 状态文案即真值：`LIVE · 采样已过期` 已经落地；下一步给状态胶囊加 title/aria 解释</div></div>
+    <div class="stage-cell"><div class="opportunity">💡 聚合卡保留 `≥` 与"明细见完整"指路；可评估来源卡 → 完整视图对应行的深链</div></div>
+    <div class="stage-cell"><div class="opportunity">💡 "覆盖 3/4"补 title/aria 说明（不改可见字符串，避免破坏真值契约测试）</div></div>
+    <div class="stage-cell"><div class="opportunity">💡 保持零动作收尾：HUD 不要求确认、不弹通知</div></div>
+
+    <!-- quotes -->
+    <div class="row-label">用户原话</div>
+    <div class="stage-cell"><div class="no-quote">未做用户研究，<br>不编造原话</div></div>
+    <div class="stage-cell"><div class="no-quote">未做用户研究</div></div>
+    <div class="stage-cell"><div class="no-quote">未做用户研究</div></div>
+    <div class="stage-cell"><div class="no-quote">未做用户研究</div></div>
+    <div class="stage-cell"><div class="no-quote">未做用户研究</div></div>
+    <div class="stage-cell"><div class="no-quote">未做用户研究</div></div>
+  </div>
+
+  <div class="curve-section">
+    <div class="curve-title">📈 情感曲线（Pain Level over Journey）</div>
+    <svg class="curve-svg" viewBox="0 0 1200 120" preserveAspectRatio="none" role="img" aria-label="情感曲线：2,2,3,4,2,1；第 3 阶段为关键时刻，第 4 阶段为流失风险">
+      <line x1="0" y1="35" x2="1200" y2="35" stroke="#E5E7EB" stroke-dasharray="3" />
+      <line x1="0" y1="60" x2="1200" y2="60" stroke="#E5E7EB" stroke-dasharray="3" />
+      <line x1="0" y1="85" x2="1200" y2="85" stroke="#E5E7EB" stroke-dasharray="3" />
+      <polyline points="0,35 240,35 480,60 720,85 960,35 1200,10" fill="none" stroke="#6366F1" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="0" cy="35" r="6" fill="#34D399" stroke="white" stroke-width="2" />
+      <circle cx="240" cy="35" r="6" fill="#34D399" stroke="white" stroke-width="2" />
+      <circle cx="480" cy="60" r="6" fill="#F59E0B" stroke="white" stroke-width="2" />
+      <circle cx="720" cy="85" r="6" fill="#F97316" stroke="white" stroke-width="2" />
+      <circle cx="960" cy="35" r="6" fill="#34D399" stroke="white" stroke-width="2" />
+      <circle cx="1200" cy="10" r="6" fill="#10B981" stroke="white" stroke-width="2" />
+      <text x="14" y="112" class="axis-label">启动</text>
+      <text x="254" y="112" class="axis-label">瞥一眼</text>
+      <text x="474" y="112" class="axis-label">新鲜度</text>
+      <text x="714" y="112" class="axis-label">定位来源</text>
+      <text x="954" y="112" class="axis-label">完整视图</text>
+      <text x="1160" y="112" class="axis-label">回到工作</text>
+    </svg>
+  </div>
+
+  <div class="footer">
+    Generated by SparkSkillsHub Journey Skill · Persona: 单人运维者 · 6 stages · 4 key moments · evidence: synthesized (no interviews)
+  </div>
+</body>
+</html>

@@ -1,0 +1,242 @@
+{
+  "meta": {
+    "id": "security",
+    "name": "异常安防监控",
+    "subtitle": "MINIGAME · ANOMALY SECURITY SIM"
+  },
+  "monitor": {
+    "initial": "监控画面稳定：A 区传感器运行正常。摄像头信号良好。",
+    "actions": {
+      "openDoor": "监控：{floor} 区门禁已解锁。门禁指示灯正常。",
+      "closeDoor": "监控：{floor} 区门禁已锁定。安全回路闭合。",
+      "moveUp": "监控：无人机正在前往 {floor} 区。红外扫描中。",
+      "moveDown": "监控：无人机返回 {floor} 区基站。电池更换中。",
+      "emergencyStop": "监控：全区域安防急停。所有门禁强制锁定。",
+      "restartSystem": "监控：安防系统重启中。摄像头画面逐区恢复。"
+    }
+  },
+  "actionLabels": {
+    "openDoor": "解锁门禁", "closeDoor": "锁定门禁", "moveUp": "前往巡逻",
+    "moveDown": "返回回防", "emergencyStop": "全区域急停",
+    "restartSystem": "系统重启", "inspectLog": "查看安防日志",
+    "unlockHiddenLog": "解码加密记录"
+  },
+  "doorLabels": { "open": "已解锁", "closed": "已锁定" },
+  "directionLabels": { "up": "巡逻中", "down": "回防中", "idle": "待命" },
+  "statusLabels": {
+    "panelTitle": "安防状态",
+    "floor": "区域",
+    "door": "门禁",
+    "direction": "巡逻",
+    "passengers": "人员",
+    "power": "电力",
+    "stability": "安保等级",
+    "anomalyLevel": "威胁等级",
+    "reviveCount": "支援",
+    "adHintsCount": "加密解码",
+    "hiddenLogsCount": "待解码"
+  },
+  "canvasLabels": {
+    "countdown": "值守倒计时",
+    "monitorPanel": "安防监控",
+    "actionPanel": "安防操作",
+    "logPanel": "安防日志",
+    "forceAnomaly": "触发安防异常",
+    "failureTitle": "安防系统崩溃",
+    "failureEyebrow": "SECURITY FAILURE",
+    "monitorSignalStable": "SIGNAL: SECURE",
+    "monitorSignalUnstable": "SIGNAL: BREACHED",
+    "monitorSignalCorrupted": "SIGNAL: COMPROMISED",
+    "monitorThreat": "THREAT: {level}",
+    "failureMetricStability": "安保",
+    "failureMetricAnomaly": "威胁",
+    "failureMetricRemaining": "剩余"
+  },
+  "actionFailMessages": {
+    "openDoor_moving": "移动中，禁止解锁门禁。",
+    "moveUp_doorNotClosed": "门禁未锁定，禁止无人机出发。",
+    "moveDown_doorNotClosed": "门禁未锁定，禁止无人机出发。",
+    "unknownAction": "未知安防操作：{actionId}",
+    "gameOver": "安防系统已崩溃。必须呼叫支援或重新部署。",
+    "systemBusy": "当前安防操作尚未完成，请等待系统稳定。"
+  },
+  "actionFeedback": {
+    "openDoor": "门禁已解锁。", "closeDoor": "门禁已锁定。",
+    "moveUp": "无人机正在升空。", "moveDown": "无人机正在返航。",
+    "emergencyStop": "全区域安防急停已执行。",
+    "emergencyStop_fail": "急停按钮失效。",
+    "restartSystem": "安防系统重启完成。",
+    "inspectLog": "已查看安防日志。",
+    "unlockHiddenLog_noLocked": "没有待解码的加密记录。",
+    "unlockHiddenLog_limit": "本局已解码 {count} 条记录，达到上限。"
+  },
+  "actionLogMessages": {
+    "openDoor": "{floor} 区门禁已解锁。",
+    "closeDoor": "{floor} 区门禁已锁定。",
+    "moveUp": "无人机升空，前往 {floor} 区。",
+    "moveDown": "无人机返航至 {floor} 区基站。",
+    "emergencyStop": "全区域安防急停：移动停止，安防等级下降。",
+    "emergencyStop_fail": "急停按钮无响应。威胁等级上升。",
+    "restartSystem": "安防系统重启完成：威胁等级下降，但消耗 {cost} 点电力。",
+    "inspectLog": "操作员查看安防日志：最近 30 秒存在未授权访问请求。",
+    "inspectLog_hiddenRecords": "发现 {count} 条待解码加密记录。可解码完整内容。",
+    "unlockHiddenLog_ok": "解码完成。加密记录已解锁。"
+  },
+  "anomalies": [
+    {
+      "id": "phantom_floor", "title": "不存在的区域", "severity": 2,
+      "monitor": "监控：无人机在 Z-13 区悬停。建筑图纸中不存在该区域。",
+      "adHint": "遇到未知区域时，不要解锁门禁，先执行系统重启。",
+      "effects": { "floor": 13, "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "camera_delay", "title": "摄像头信号延迟", "severity": 1,
+      "monitor": "监控：摄像头 #07 画面延迟 3 秒。传感器时间戳不同步。",
+      "adHint": "画面延迟时优先查看日志，不要连续调度无人机。",
+      "effects": { "anomalyLevel": 1, "stability": -6 }
+    },
+    {
+      "id": "zero_passenger_shadow", "title": "无人区域检测到热源", "severity": 2,
+      "monitor": "监控：A 区红外传感器检测到热源信号，但人员计数器显示为 0。",
+      "adHint": "无人区热源异常时保持门禁锁定，先急停再查日志。",
+      "effects": { "passengers": 0, "anomalyLevel": 2, "stability": -12 }
+    },
+    {
+      "id": "log_echo", "title": "日志重复报警", "severity": 1,
+      "monitor": "监控：安防日志持续输出「不要解锁 B 区」。",
+      "adHint": "日志重复通常是轻度异常，系统重启可降低威胁等级。",
+      "effects": { "anomalyLevel": 1, "stability": -5 }
+    },
+    {
+      "id": "auto_button", "title": "门禁自动开启", "severity": 2,
+      "monitor": "监控：C 区与 D 区门禁在没有指令的情况下自动解锁。",
+      "adHint": "门禁自动开启时不要跟随解锁，先锁定并执行急停。",
+      "effects": { "anomalyLevel": 2, "power": -8 }
+    },
+    {
+      "id": "stop_failure", "title": "急停按钮失效", "severity": 3,
+      "monitor": "监控：全区域急停按钮指示灯熄灭，安全回路拒绝确认。",
+      "adHint": "急停失效时不要反复点击，优先系统重启。",
+      "effects": { "anomalyLevel": 3, "stability": -15 }
+    },
+    {
+      "id": "negative_floor", "title": "区域编号显示异常", "severity": 2,
+      "monitor": "监控：无人机定位显示在 -1 区。GPS 坐标未在建筑数据库中找到。",
+      "adHint": "未知编号区域不可进入，立即重启定位系统。",
+      "effects": { "floor": -1, "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "power_drain", "title": "电力异常消耗", "severity": 2,
+      "monitor": "监控：备用发电机自动启动，但电网负载仍在上升。",
+      "adHint": "电力异常时减少无人机调度，优先锁定所有门禁并重启。",
+      "effects": { "anomalyLevel": 2, "power": -22 }
+    },
+    {
+      "id": "door_refuse", "title": "门禁拒绝锁定", "severity": 2,
+      "monitor": "监控：锁定指令已发送，门禁在锁定前自动弹开。电磁锁故障。",
+      "adHint": "门禁拒绝锁定时不要连续操作，先急停再重启系统。",
+      "effects": { "door": "open", "anomalyLevel": 2, "stability": -10 }
+    },
+    {
+      "id": "weight_mismatch", "title": "传感器数据矛盾", "severity": 1,
+      "monitor": "监控：红外传感器显示区域内无人，但声纹传感器捕获到呼吸声。",
+      "adHint": "传感器矛盾时优先查看日志，可能存在未登记的人员。",
+      "effects": { "passengers": 0, "anomalyLevel": 1, "stability": -7 }
+    },
+    {
+      "id": "floor_jump", "title": "无人机定位跳变", "severity": 2,
+      "monitor": "监控：无人机从 D 区直接移动到 H 区。定位信号丢失 4 帧。",
+      "adHint": "定位跳变时暂停所有无人机调度，用系统重置恢复定位。",
+      "effects": { "floor": "+4", "anomalyLevel": 2, "stability": -12, "power": -10 }
+    },
+    {
+      "id": "emergency_lights", "title": "应急照明异常启动", "severity": 3,
+      "monitor": "监控：全区域应急灯突然亮起。备用电源消耗加速。",
+      "adHint": "应急灯启动时暂停无人机调度，立即系统重启可关闭应急模式。",
+      "effects": { "anomalyLevel": 3, "stability": -14, "power": -20 }
+    }
+  ],
+  "hiddenLogs": {
+    "phantom_floor": { "title": "Z-13 区勘测记录", "content": "建筑勘测记录 #F-13：Z-13 区在竣工前被从安防地图中删除。\n原因：施工期间发生 III 级安全事故，3 名施工人员失踪。\n区域门禁控制面板已被物理封堵，但传感器仍能检测到该区域的生命信号。" },
+    "camera_delay": { "title": "摄像头维修记录", "content": "维修日志 #CAM-03：摄像头 #07 存在 3 秒信号延迟。\n技术员备注：「延迟与 Z-13 区信号干扰有关，建议不要派无人机前往该区域。」" },
+    "zero_passenger_shadow": { "title": "红外传感器校准说明", "content": "传感器技术手册（节选）：\n红外传感器在夜间多次检测到热源信号，但人员计数器持续归零。\n校准记录：传感器无故障。热源信号经比对——与任何在职员工的体温档案不匹配。" },
+    "log_echo": { "title": "日志系统诊断", "content": "诊断报告 #SEC-019：\n安防日志缓冲区检测到重复写入操作。重复内容「不要解锁 B 区」的写入时间戳早于当前值班员登录时间。\n建议：检查前一值班员的退出状态。" },
+    "auto_button": { "title": "门禁控制审计", "content": "审计追踪 #AUD-882：\n门禁自动开启信号来源追溯至 5 号服务器（已于 2022 年停用）。\n该服务器的最后一条日志：「权限移交程序未完成」。" },
+    "stop_failure": { "title": "急停系统检查记录", "content": "检查记录 #M-341：\n安全回路 #2 在定期检查中被标记为「状态：不可用」。\n签署人签名无法识别。签署时间：3 年前。没有后续维修记录。" },
+    "negative_floor": { "title": "未知坐标分析报告", "content": "GPS 定位分析报告：\n无人机在 -1 区的坐标数据与任何已知楼层结构不匹配。\n分析结论：信号可能来自建筑地下未登记结构。B3-B4 的门禁控制线仍然通电。" },
+    "power_drain": { "title": "电力负载异常报告", "content": "异常报告 #P-877：\n备用发电机在空载状态下持续运行。经查，有一条非授权线路从配电柜分接至未知设备。\n线路标签：「不要切断」。" },
+    "door_refuse": { "title": "门禁故障报告", "content": "故障报告 #D-1290：\n门禁控制模块在连续 3 次异常重置后进入保护模式。\n模块日志输出最后一条：「识别到外部干扰信号。拒绝执行 — 保护区域安全」。" },
+    "weight_mismatch": { "title": "传感器交叉校验", "content": "校验记录 #W-554：\n红外与声纹传感器读数不一致。声纹传感器在空置区域捕获到呼吸模式。\n技术员备注：请确认值班员在轮班前已清空所有区域。" },
+    "floor_jump": { "title": "无人机定位日志", "content": "定位日志 #F-213：\n无人机 GPS 定位模块在校准前后报告的坐标不一致。\n系统自动修正失败。可能原因：参考信号源来自非标设备。" },
+    "emergency_lights": { "title": "应急照明测试报告", "content": "测试报告 #E-777：\n应急照明系统在无触发信号情况下自行启动。\n供电线路检测到寄生回路。回路终端设备编号在资产清单中不存在。" }
+  },
+  "failure": {
+    "summaries": { "power": "电力耗尽", "stability": "安防等级归零", "anomalyLevel": "威胁等级失控", "passengers": "传感器数据异常", "default": "系统拒绝继续响应" },
+    "defaultHint": "先锁定所有门禁，再重启安防系统。",
+    "firstRunAdvice": "下次先核对画面和三项数据；一致放行，矛盾封锁。",
+    "adHintPrefix": "系统提示：{hint}",
+    "adReviveRollback": "呼叫支援完成：回滚 {seconds} 秒，恢复至可控状态。",
+    "adReviveMonitor": "呼叫支援完成：回滚到 {seconds} 秒前的安防状态。",
+    "snapshotFallback": "可呼叫支援恢复至 {seconds} 秒前的状态。",
+    "noSnapshotFallback": "可呼叫支援恢复至初始部署状态。"
+  },
+  "fakeEnding": {
+    "eyebrow": "\u26a0 SYSTEM ANOMALY DETECTED",
+    "title": "值班员关联异常",
+    "text": "系统检测到值班员第 {count} 次安防崩溃。\n根据《安防控制员守则》第 7 条，您已被标记为\u201c异常关联人员\u201d。\n前 {threshold} 次记录已被永久删除。\n建议您立即离开控制室并联系安保部门。",
+    "truthPlaceholder": "[???] 揭示真相。",
+    "truthContent": "这不是第一次，也不会是最后一次。\n这座建筑的安防系统从未被修复。\n每一任值班员最后都变成了「安防事件」本身。\n传感器中关于「人员」的记载——都是前任值班员的热源信号。\n你现在坐的位置，就是上一任值班员被发现的地方。"
+  },
+  "ui": {
+    "viewAd": "呼叫支援",
+    "unlockAd": "解码加密记录",
+    "restart": "重新部署",
+    "revealTruth": "揭示真相",
+    "triggerTest": "触发异常测试",
+    "decodePrefix": "[解码记录]",
+    "initialLog": "异常安防监控系统已接管。等待操作员指令。",
+    "initialFeedback": "等待下一路监控",
+    "tutorialNormal": "信息一致，点击放行",
+    "tutorialAnomaly": "发现矛盾，点击封锁",
+    "coreRule": "对得上就放行，对不上就封锁",
+    "standby": "等待下一路",
+    "wrongTutorial": "再看一眼：核对画面和数据",
+    "wrongTreatment": "处置错误，风险仍在持续。",
+    "inspectionReady": "请核对当前画面和三项数据",
+    "treatmentTutorial": "最后一步：按亮起的处置键解除风险",
+    "wrongTreatmentTutorial": "这项处置不对应当前线索，再看一次",
+    "autoResolutionCorrect": "封锁成功，系统已自动处置",
+    "autoResolutionWrong": "判断错误，系统已紧急隔离",
+    "autoResolutionTimeout": "判断超时，系统已自动隔离",
+    "anomalyEventLog": "安防异常：{title}。{hint}",
+    "startTitle": "等待接管安防系统",
+    "startCopy": "目标：值守 60 秒，观察门禁、处理安防异常、避免系统崩溃。接管后倒计时才会启动。",
+    "startChecklist": "先读安防监控和系统日志\n异常出现时按提示执行操作\n失败后可通过呼叫支援复活",
+    "startFailureRulesTitle": "失守条件",
+    "startFailureRules": "电力归零\n安保等级归零\n威胁等级失控",
+    "startButton": "接管安防值守",
+    "sidebarEntry": "侧边栏入口",
+    "pausedTitle": "值守已暂停",
+    "pausedCopy": "返回前台后继续，不计算后台时间",
+    "audioOn": "声音开",
+    "audioOff": "已静音",
+    "rewardUnavailable": "奖励暂不可用，请稍后重试",
+    "reportNormal": "判为正常",
+    "reportAnomaly": "报告异常",
+    "inspectionLabel": "巡检判定 {seconds}s",
+    "baselineInspectionTitle": "当前监控画面未见异常",
+    "anomalyInspectionTitle": "监控信号发生变化，请判断画面",
+    "anomalyResolved": "处置完成：{action} 已解除当前异常。",
+    "anomalyResolvedMonitor": "安防监控恢复稳定，等待下一轮巡检。",
+    "inspectionPrompt": "巡检判定：{title}（{seconds}秒内响应）",
+    "inspectionCorrectNormal": "判定正确：当前画面正常。",
+    "inspectionCorrectAnomaly": "判定正确：异常已上报，系统压力下降。",
+    "inspectionWrong": "判定错误：安保等级下降，威胁压力上升。",
+    "inspectionTimeout": "判定超时：未完成本次巡检。",
+    "successfulShift": "本轮结束，连续失败计数已重置。",
+    "shiftComplete": "值守完成",
+    "hiddenLogCaptured": "加密记录已捕获：{title}。使用「查看安防日志」功能解码。",
+    "unlockResult": "已解码：{title}",
+    "decodeMonitor": "解码完成：{title}。完整内容已写入安防日志。"
+  }
+}

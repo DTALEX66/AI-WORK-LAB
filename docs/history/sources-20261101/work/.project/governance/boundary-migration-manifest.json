@@ -1,0 +1,151 @@
+{
+  "schemaVersion": "work-lab/three-project-boundary-migration/v1",
+  "authority": ".project/governance/three-project-boundary.json",
+  "verifier": "scripts/ci/verify_three_project_boundary.py",
+  "crossRepoNote": "ArcheAxis-Knowledge-OS and DESIGN-LAB are reachable as DTALEX66 repos. This round performs the WORK-LAB-side split (markers + manifests + seams + fail-closed verifier). No cross-repo code move is executed here; the manifests record WHAT moves, owned by the target repos' writer, so nothing is deleted or moved from WORK-LAB.",
+  "noDeleteNoMoveInWorklab": true,
+  "moves": [
+    {
+      "id": "MOVE-001",
+      "project": "WORK-LAB",
+      "dir": "services/memory",
+      "classification": "MIGRATION_CANDIDATE_TO_ARCHEAXIS",
+      "ownerAfterSplit": "DTALEX66/ArcheAxis-Knowledge-OS",
+      "whatMoves": [
+        "retain",
+        "recall",
+        "reflect",
+        "long-term-memory-store",
+        "memory-provider",
+        "repo-import",
+        "docs-import",
+        "knowledge-record",
+        "knowledge-storage",
+        "memory-promotion"
+      ],
+      "whatStaysInWorklab": [
+        "SessionPrivacyBoundary",
+        "ContextExportBoundary",
+        "ContextCapsule",
+        "MemoryQueryContract",
+        "ArcheAxisClient",
+        "ArcheAxisHandoff",
+        "Provenance",
+        "PermissionGate",
+        "Receipt"
+      ],
+      "seam": "integrations/archeaxis/contracts/memory-query-contract.py + services/memory/BOUNDARY.md",
+      "status": "MARKED_ONLY_THIS_ROUND",
+      "executedThisRound": false,
+      "splitId": "MEMORY_BACKEND"
+    },
+    {
+      "id": "MOVE-002",
+      "project": "WORK-LAB",
+      "dir": "services/knowledge",
+      "classification": "SPLIT_GUARD_AND_SEMANTICS",
+      "ownerAfterSplit": "DTALEX66/ArcheAxis-Knowledge-OS (truth+semantics)",
+      "whatMoves": [
+        "KnowledgeCategory truth",
+        "knowledge-acceptance",
+        "verified-lesson",
+        "architecture-knowledge",
+        "promotion-decision",
+        "knowledge-classification",
+        "long-term-knowledge-status"
+      ],
+      "whatStaysInWorklab": [
+        "knowledge_export_guard: secrets/raw-chat/raw-log/shell-transcript checks, provenance-required, evidence level, source identity, export permission, payload integrity"
+      ],
+      "worklabEmits": "KnowledgeCandidate (not Knowledge Truth)",
+      "seam": "integrations/archeaxis/contracts/promotion_contract.py + services/knowledge/BOUNDARY.md",
+      "status": "MARKED_ONLY_THIS_ROUND",
+      "executedThisRound": false,
+      "splitId": "KNOWLEDGE_TRUTH"
+    },
+    {
+      "id": "MOVE-003",
+      "project": "WORK-LAB",
+      "dir": "knowledge-staging",
+      "classification": "HISTORY_ONLY_CONVERGE",
+      "ownerAfterSplit": "WORK-LAB history/staging (converged out of active ownership)",
+      "whatMoves": [
+        "knowledge-staging/* staging subtrees (archive/asset-provenance/candidates/catalog/migration/research/troubleshooting/workflow)"
+      ],
+      "seam": "knowledge-staging/BOUNDARY.md (history-only marker)",
+      "status": "MARKED_ONLY_THIS_ROUND",
+      "executedThisRound": false,
+      "splitId": "KNOWLEDGE_STAGING"
+    },
+    {
+      "id": "MOVE-004",
+      "project": "WORK-LAB",
+      "dir": "services/evolution",
+      "classification": "BOUNDARY_SPLIT",
+      "ownerAfterSplit": "WORK-LAB (workflow/runtime/config/skill mutation governance)",
+      "whatMoves": [
+        "continual-learning",
+        "knowledge-evolution",
+        "memory-consolidation",
+        "knowledge-learning",
+        "human-learning",
+        "long-term-cognitive-growth"
+      ],
+      "whatStaysInWorklab": [
+        "M1 prompt mutation, M2 skill mutation, M3 workflow mutation, M4 tool/runtime mutation, M5 governance mutation",
+        "sandbox",
+        "security-evaluation",
+        "independent-approval",
+        "rollback",
+        "trace",
+        "receipt"
+      ],
+      "seam": "services/evolution/BOUNDARY.md + mutation_policy.py governance-scope assertion",
+      "status": "MARKED_ONLY_THIS_ROUND",
+      "executedThisRound": false,
+      "splitId": "EVOLUTION"
+    },
+    {
+      "id": "MOVE-005",
+      "project": "WORK-LAB",
+      "dir": "90-archive",
+      "classification": "HISTORY_ONLY_CONVERGE",
+      "ownerAfterSplit": "WORK-LAB history (single retrieval anchor = docs/history/)",
+      "whatMoves": [
+        "90-archive/reports-history -> frozen under docs/history (single anchor)"
+      ],
+      "seam": "90-archive/BOUNDARY.md (history-only marker)",
+      "status": "EXECUTED_20260923",
+      "executedThisRound": true,
+      "splitId": "ARCHIVE_90",
+      "executed": "git mv 90-archive/reports-history/2026-09-05 -> docs/history/archive/reports-history/2026-09-05 (15 files, branch post-merge/90-archive-convergence); BOUNDARY.md marker retained as the gate seam"
+    },
+    {
+      "id": "MOVE-006",
+      "project": "WORK-LAB",
+      "dir": "config/adapter-registry.json (open-design adapter)",
+      "classification": "CLIENT_MANAGE_DOMAIN_IGNORE",
+      "ownerAfterSplit": "WORK-LAB (client manage) + DTALEX66/DESIGN-LAB (design domain)",
+      "whatMoves": [
+        "design knowledge, design prompt truth, design assets, generation strategy, quality system, Adobe domain logic -> DESIGN-LAB"
+      ],
+      "whatStaysInWorklab": [
+        "Open Design client: rules, skills, plugins, capability discovery, workflow policy, adapter, software state"
+      ],
+      "seam": "integrations/archeaxis/contracts/open_design_client_seam.py + config-ownership.json open-design adapter",
+      "status": "MARKED_ONLY_THIS_ROUND",
+      "executedThisRound": false,
+      "splitId": "DESIGN_LAB"
+    }
+  ],
+  "forbiddenNewOwners": [
+    "services/memory as a full memory system",
+    "services/knowledge as promotion-truth owner",
+    "knowledge-staging as a root active dir",
+    "90-archive as a root active dir",
+    "a second Agent runtime",
+    "a second config governance system",
+    "a second Task Ledger",
+    "a second Usage/Cost truth engine"
+  ]
+}

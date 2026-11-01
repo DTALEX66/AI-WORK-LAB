@@ -1,0 +1,45 @@
+feat(release): real API readback in the release preflight (Batch F-3)
+
+The release gate's "API readback consistency check" step did not call the GitHub API at
+all: it compared two values produced by the same run (github.sha against the attestation's
+subjectCommitSha), so on its own it could not prove artifact identity. The audit requires a
+real upload/query/download/hash whenever artifact proof is claimed, and a release counts as
+released only once asset / identity / checksum / installer / public readback all hold.
+
+design-lab/scripts/verify_release_preflight.py (new, stdlib only, every network access
+funnelled through one injectable fetch()):
+- tag -> commit SHA identity, dereferencing annotated tags through /git/tags
+- the Canonical Verify run for the exact SHA must have concluded success
+- the uploaded artifact is located through the API, its archive DOWNLOADED, and the sha256
+  of the received bytes compared with the API digest (or an explicit expectation)
+- published release assets must match the expected set; a tag with no release reports
+  RELEASE_NOT_PUBLISHED; every asset is downloaded and checked against the local
+  artifacts.sha256, and an asset nobody recorded is a finding rather than a pass
+- contract: RELEASE_PREFLIGHT=<PASS|BLOCKED|INCOMPLETE> checks=N findings=[...], exit
+  0/2/3. Fail-closed: no token, no network, or an undownloadable artifact reports
+  INCOMPLETE and never PASS
+- the token comes from GITHUB_TOKEN/GH_TOKEN only (never a CLI argument), and the redirect
+  handler drops Authorization whenever the host changes, so it cannot leak to a signed-URL
+  host
+
+release-gate.yml: appended one tag-only step (+32 lines, 0 deletions — no existing step
+touched or reordered), token from ${{ github.token }}, arguments taken from GitHub's
+trusted default env vars, and no expression interpolated into the script body.
+
+verify_design_lab.py: +7 lines of comment (no logic change) recording why the new script
+is deliberately NOT in the 49-item aggregate — it needs a tag, a token and the network and
+returns non-zero when any of those is missing, so running it inside the daily chain would
+turn an unprovable release into a red structural gate. release-gate.yml runs it as its own
+step, exactly as the existing RELEASE_VERIFIER exclusion records.
+
+Tests: design-lab/tests/test_release_preflight.py, 47 injected-fake cases that open no
+socket (including proof that a full PASS never touches urllib and that no token opens no
+connection).
+
+Evidence: 47/47 OK; a real no-token run prints RELEASE_PREFLIGHT=INCOMPLETE checks=0 and
+exits 3 (never PASS); VERIFY_DESIGN_LAB=OK total=49 failed=0; the authority gate chain
+stays green.
+
+Not proven here (stated, not hidden): the default fetch() path over the real network (no
+token or network in this environment) and the live behaviour of the tag-only step — only a
+real tag run can show those, which is owner-authorized territory.

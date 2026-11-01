@@ -1,0 +1,29 @@
+ui: AppShell 12-route IA + real-data dashboard, preflight & settings views (UI slice 2)
+
+Apps/workbench gains the B07 authoritative 12-route information architecture
+as a hash-routed AppShell sidebar, binding each view to real service readbacks
+(no invented KPIs) and honestly marking the 7 IA slots that have no backend
+route yet:
+
+- main.ts: additive mountAppShell() module (guard: document.body + window +
+  idempotent flag + login present, vm unit smoke stays safe; zero runtime
+  imports so the built bundle keeps no top-level import/export).
+  Empty hash == original workbench, so the browser E2E path is untouched.
+  Dashboard: /health + /projects + /design-systems live KPIs;
+  brand-systems: /design-systems; preflight-qa: /task-preflight fail-closed
+  readback; settings: /environment read-only diagnostics incl. the
+  DECLARED_NOT_PROBED shared_inputs table. B07 domain state machine
+  (8 stages) visualized as a contract strip, labelled "contract, not progress".
+- contracts.ts: +Health/Environment/TaskPreflight* response types, aligned
+  field-by-field with the real service returns.
+- style.css: nav/route-panel/KPI/state-machine/table styles on the B04
+  token variables; shell layout scoped behind a body .dl-shell class so the
+  unmounted (E2E) path keeps the original centered flow byte-for-byte.
+- build/main.js: rebuilt (53.87kB, no-drift gate new baseline).
+- handoff doc: slice 2 section + final verification evidence.
+
+Verification: typecheck/build/unit green; selector superset OLD=67 kept,
+NEW=96, MISSING=0; real-Chromium browser E2E re-run PASS (2.9s) after the
+CSS geometry fix; full Python suite 1584 tests OK; visual acceptance 4/4
+(192px unified left anchor, 12-route nav, no overlap/clipping, no
+legacy skin residue).

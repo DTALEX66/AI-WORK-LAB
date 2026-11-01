@@ -1,0 +1,123 @@
+{
+  "batch": "b25-20261018",
+  "date": "2026-10-18",
+  "task_ids": [],
+  "items": ["D07-batch1"],
+  "subject_sha_at_observation": "51b20483f11ecf8ebb9ce988f471f4e4f4b42499",
+  "observed_worktree": "dirty: this batch's five paths were uncommitted at observation time; every reading below was taken on those bytes, not on the committed SHA",
+  "observed_at": "2026-10-18T12:35:52+00:00",
+  "bundle": {
+    "path": "apps/workbench/build/main.js",
+    "bytes": 369512,
+    "sha256": "65b3a28b95fc0484a0d765992a9e9cc7e4dd2b996da877296e3143883385eaef",
+    "byte_identical_to_pre_batch": true,
+    "why_identical": "the split moved whole declarations between modules; Rollup emits the dependency modules first and the byte count is unchanged. 4 -> 6 modules transformed is the signal that the split took effect, not the bundle size."
+  },
+  "moved": [
+    {
+      "file": "apps/workbench/ui-primitives.ts",
+      "lines": 136,
+      "symbols": ["el", "en", "SHAPE_MISSING", "DISCONNECTED", "normaliseShape", "shapeNotice", "shapeNoticeRows", "shapeFieldMissing", "markDisconnected", "disconnectedNotice", "emptyWording", "emptyLi", "emptyTd"],
+      "re_exported_by_shell": true
+    },
+    {
+      "file": "apps/workbench/route-address.ts",
+      "lines": 143,
+      "symbols": ["projectDetailId", "projectDetailHash", "capabilityDetailId", "capabilityDetailHash", "domainDetailId", "domainDetailHash", "hashPath", "hashCondition", "capabilityHashForDomain", "declaredDomains", "domainsUnclassified"],
+      "re_exported_by_shell": true
+    }
+  ],
+  "shell_ts": {
+    "lines_before": 7756,
+    "lines_after": 7531,
+    "export_surface": "unchanged: every previously exported symbol is still importable from shell.ts (re-export), and no new name was added to it",
+    "tsconfig_include": ["ui-primitives.ts", "route-address.ts"]
+  },
+  "deliberately_not_moved": [
+    { "symbol": "apiOrEmpty", "reason": "apps/workbench/tests/shape-notice-coverage.mjs requires exactly one `function apiOrEmpty` declaration in shell.ts via the TypeScript AST and exits 1 when the definition moves" },
+    { "symbol": "FAILED_STATES / HUMAN_STATES / IN_FLIGHT_STATES", "reason": "design-lab/scripts/verify_state_vocabularies.py reads them from shell.ts by regex; a missing set is reported as 'the UI vocabulary cannot be verified'" },
+    { "symbol": "every render* function carrying el('ul', { class: 'list'", "reason": "test_workbench_css_single_definition.py asserts the exact count 52 in shell.ts; moving one carrier makes it 51" },
+    { "symbol": "literal px / colour carriers", "reason": "scripts/design_debt_baseline.py measures a fixed 7-file scope and DESIGN.md SS4 states the resulting 26/534/25 exactly" },
+    { "symbol": "renderUiStates", "reason": "calls viewLabel(), whose ROUTE_VIEWS table is extracted from shell.ts by position by apps/workbench/tests/appshell.mjs and scripts/audit_ui_desktop_reconcile_20261009.py" }
+  ],
+  "suites": [
+    {
+      "suite": "tsc --noEmit",
+      "exit_code": 0,
+      "tail": ["TYPECHECK_RC=0"]
+    },
+    {
+      "suite": "vite build",
+      "exit_code": 0,
+      "tail": ["6 modules transformed", "build/main.js  369.51 kB", "built in 1.27s"],
+      "note": "pre-batch build was 4 modules at the same byte size and reproduced the committed bundle with a clean git diff"
+    },
+    {
+      "suite": "tests/unit.mjs",
+      "exit_code": 0,
+      "ok_lines": [
+        "ok: build/main.js present (324338 bytes)",
+        "ok: build/main.js has no top-level import/export (classic-script loadable)",
+        "ok: build/main.js executes under vm without throwing",
+        "ok: labels, handler names, and /api route prefix all present"
+      ],
+      "tail": ["WORKBENCH SMOKE: all checks passed"]
+    },
+    {
+      "suite": "tests/appshell.mjs",
+      "exit_code": 0,
+      "tail": ["APPSHELL REGRESSION: all checks passed"]
+    },
+    {
+      "suite": "tests/shape-notice-coverage.mjs",
+      "exit_code": 0,
+      "tail": ["ok: 38 seam read(s), every bound value reported", "shape-notice coverage: all bindings reported"]
+    },
+    {
+      "suite": "scripts/run_structure_contracts.py",
+      "exit_code": 0,
+      "tail": ["Ran 31 tests in 2.265s", "STRUCTURE_CONTRACTS=PASS tests=31 failures=0 errors=0"]
+    },
+    {
+      "suite": "unittest: rights/delivery-evidence/artifact-preflight/token-form/deliverable-claims/jury-form/domain-pack/state-vocabularies/theme-tokens/line-endings",
+      "exit_code": 1,
+      "tail": ["Ran 92 tests in 5.492s", "FAILED (failures=1)"],
+      "only_failure": "tests.test_working_tree_line_endings: design-lab/config/contract-bindings.json carries 776 CRLF in this checkout while its HEAD blob is LF. Not caused by this batch: the path is untouched and `git status` is clean for it. CI checks out LF, so the same module is green there."
+    },
+    {
+      "suite": "unittest: test_evidence_artifact_presence + test_capability_self_description_gate",
+      "exit_code": 0,
+      "tail": ["Ran 19 tests in 50.500s", "OK"]
+    },
+    {
+      "suite": "unittest: test_workbench_served_bundle",
+      "exit_code": 0,
+      "tail": ["Ran 4 tests in 1.607s", "OK"]
+    }
+  ],
+  "gate_scripts": [
+    { "script": "design-lab/scripts/verify_state_vocabularies.py", "exit_code": 0, "tail": "STATE_VOCABULARIES=OK attempt_states=9 errors=0" },
+    { "script": "design-lab/scripts/verify_capability_self_description.py", "exit_code": 0, "tail": "CAPABILITY_SELF_DESCRIPTION=OK routes=54 resources=34 rows=5 unopen_views=1 findings=0" },
+    { "script": "design-lab/scripts/verify_artifact_preflight_contract.py", "exit_code": 0, "tail": "ARTIFACT_PREFLIGHT_CONTRACT=PASS bindings=1" },
+    { "script": "design-lab/scripts/verify_license_coverage.py", "exit_code": 0, "tail": "LICENSE_COVERAGE=OK (source headers + binary sidecars complete)" },
+    { "script": "design-lab/scripts/verify_workbench_packaging.py", "exit_code": 0, "tail": "WORKBENCH PACKAGING: all 5 checks passed" },
+    { "script": "scripts/design_debt_baseline.py", "exit_code": 0, "tail": "DESIGN_DEBT literal_colors=26 literal_px=534 shadow_declarations=25 (unchanged)" },
+    { "script": "scripts/verify_authority_gates.py --zero-spill", "exit_code": 0, "tail": "AUTHORITY_GATES=PASS gates=7 failed=none" }
+  ],
+  "contract_facts_measured": {
+    "apiOrEmpty_declarations_in_shell": 1,
+    "ul_list_literal_in_shell": 52,
+    "design_debt_triple": "26/534/25",
+    "shell_px_contribution": 29,
+    "shell_literal_colour_contribution": 1,
+    "capability_registry_block": "557..4252 (the closing anchor `^];` is PROJECT_STAGES, not the registry's own `] as const;`), rows still 5"
+  },
+  "coverage_boundary": "verify_state_vocabularies.py scans shell.ts plus the built bundle; the two new modules are covered only through the rebuilt bundle. Adding a .ts file also puts it outside scripts/design_debt_baseline.py's fixed 7-file scope, so literals placed there would never be measured. Both are recorded here rather than left implicit.",
+  "not_done": [
+    "D07 batch 2 (state components and pure data composition) -- not started, scope listed in docs/current/NEXT-AGENT-PROMPT.md §6.A",
+    "no page-level render moved: they are pinned by the 52-count and the DESIGN.md px/colour triple",
+    "dynamic import / lazy route loading -- untouched by design in this batch",
+    "CI job-level readback for this batch's SHA: pending commit + push"
+  ],
+  "meaning": "readings for D07 batch 1: a green here is local evidence on an uncommitted worktree, not a CI conclusion. Only a per-job read of the run bound to this batch's SHA may be called complete."
+}

@@ -1,0 +1,5525 @@
+{
+  "schemaVersion": "work-lab/ledger-regression-command-targets/v3",
+  "at": "2026-10-22T14:29:39Z",
+  "tool": "scripts/audit/ledger_regression_command_targets.py",
+  "scope": "every record in taskpacks/current/error-ledger.json; file operands are extracted from the `regression_test` COMMAND and matched against `git ls-files` only, so the verdict cannot move with local disk state (ERR-142). Patterns, bare words, flags and env assignments are not treated as file promises.",
+  "states": [
+    "RESOLVES",
+    "REPOINTED_20261007",
+    "PATH_GONE",
+    "NO_FILE_OPERAND_IN_COMMAND",
+    "OUT_OF_REPO_TARGET",
+    "ADJUDICATED_BY_HAND"
+  ],
+  "rules": {
+    "anchored substitution": "a stale operand is replaced only when the whole token matches, never inside a longer path (ERR-135)",
+    "no status rewrite": "status_after is never changed here; an unverifiable promise is labelled, not downgraded and not trusted",
+    "repoint basis": "only an unambiguous same-basename hit at exactly one other tracked path is re-pointed, and a re-point is claimed only when the written command then resolves",
+    "out-of-repo targets": "operands addressing a managed client's home (a drive path, ~/ or a $CODEX_HOME-style prefix) are claims about the live machine, not broken pointers into this repository"
+  },
+  "handAdjudicated": {
+    "ERR-045": {
+      "state": "OUT_OF_REPO_TARGET",
+      "reason": "the command greps `reasoning_effort` in the live Hermes Home config.yaml; no checkout contains that file, so the promise is about the managed client's state on the authoring machine. The tracked field-ownership record (config/config-ownership.json) is what a reader can verify here."
+    },
+    "ERR-047": {
+      "state": "OUT_OF_REPO_TARGET",
+      "reason": "the command counts a line in another machine's Codex Home config.toml (C:/Users/admin/...), which neither this checkout nor CI can contain; the 2026-09-30 audit copy under reports/audit-archive is a snapshot, not the subject of the promise."
+    },
+    "ERR-095": {
+      "state": "OUT_OF_REPO_TARGET",
+      "reason": "the operand is `$CODEX_HOME/AGENTS.md` — a managed client projection target, deliberately outside the repository. The overlay-block requirement is enforced here by the skill-provenance and config-ownership gates, not by reading that home in CI."
+    },
+    "ERR-094": {
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "regression_test is a prose sentence naming `MANIFEST.json` as a kind, not a path; three archived manifests carry that basename, so choosing one would invent a pointer the record never made."
+    },
+    "ERR-103": {
+      "state": "REPOINTED_20261007",
+      "reason": "two tracked files carry the basename capabilities/default.json (observer and token-monitor), so the matcher cannot choose. The record decides: its regression test is apps/observer/tests/test_desktop_component_contract.js and its symptom is the observer's caption cluster and zoom controls, so the operand is the OBSERVER's Tauri capability file. Applied to this record only, never as a global substitution."
+    }
+  },
+  "handRepointMaps": {
+    "ERR-103": {
+      "capabilities/default.json": "apps/observer/src-tauri/capabilities/default.json"
+    }
+  },
+  "counts": {
+    "RESOLVES": 170,
+    "NO_FILE_OPERAND_IN_COMMAND": 44,
+    "REPOINTED_20261007": 34,
+    "PATH_GONE": 38,
+    "OUT_OF_REPO_TARGET": 3
+  },
+  "measuredStates": {
+    "RESOLVES": 203,
+    "NO_FILE_OPERAND_IN_COMMAND": 44,
+    "PATH_GONE": 38,
+    "OUT_OF_REPO_TARGET": 3,
+    "REPOINTED_20261007": 1
+  },
+  "resolvedAfterApply": 203,
+  "records": 289,
+  "stateDigest": "18b1c45cdcd77f260b4c5df91bff963dbccbf8cf5ad52913ac4dfa476b3b200f",
+  "repointMap": {
+    ".../codex.cmd": "packages/client-neutral-core/bin/codex.cmd",
+    "./bin/codex": "packages/client-neutral-core/bin/codex",
+    ".project-local/runs/convergence-20261007-c/falsify_browser_entry.py": "scripts/audit/falsify_browser_entry.py",
+    ".project-local/runs/convergence-20261007-e/release_browser_state.py": "scripts/maintenance/release_browser_state.py",
+    "10-workflow/workflow-assistance/scripts/workflow/skill_plugin_scan.py": "packages/client-neutral-core/scripts/skill_plugin_scan.py",
+    "10-workflow/workflow-assistance/tests/test_project_terminal_guard.py": "tests/workflow-assistance/test_project_terminal_guard.py",
+    "bin/codex": "packages/client-neutral-core/bin/codex",
+    "bin/hermes-project-data.py": "packages/client-neutral-core/bin/hermes-project-data.py",
+    "external-libraries-index.json": ".project/governance/external-libraries-index.json",
+    "frontend/src/lib/projectionTruthContract.test.ts": "apps/observer/frontend/src/lib/projectionTruthContract.test.ts",
+    "generate_current_state.py": "scripts/ci/generate_current_state.py",
+    "renderTruthContract.test.tsx": "apps/observer/frontend/src/views/renderTruthContract.test.tsx",
+    "reseal_wui_evidence.py": "scripts/audit/reseal_wui_evidence.py",
+    "run_all_tests.js": "apps/observer/tests/run_all_tests.js",
+    "run_quality_gate.py": "services/orchestration/run_quality_gate.py",
+    "scripts/verify_usage_rollup.py": "apps/observer/scripts/verify_usage_rollup.py",
+    "scripts/workflow/canary_runner.py": "services/orchestration/canary_runner.py",
+    "scripts/workflow/verify_core_schemas.py": "packages/client-neutral-core/scripts/verify_core_schemas.py",
+    "scripts/workflow/verify_gate_runtime_convergence.py": "packages/client-neutral-core/scripts/verify_gate_runtime_convergence.py",
+    "scripts/workflow/verify_portable_install.py": "packages/client-neutral-core/scripts/verify_portable_install.py",
+    "sidecar.py": "services/orchestration/sidecar.py",
+    "skill-provenance.yaml": "config/skill-provenance.yaml",
+    "src/components/ui/overlays.test.tsx": "apps/observer/frontend/src/components/ui/overlays.test.tsx",
+    "test_current_state.py": "tests/ci/test_current_state.py",
+    "test_durable_worker.py": "tests/workflow-assistance/test_durable_worker.py",
+    "test_production_surface_static_contract.js": "apps/observer/tests/test_production_surface_static_contract.js",
+    "test_source_ledger_v4.py": "tests/ci/test_source_ledger_v4.py",
+    "test_workflow_governance.py": "tests/workflow-assistance/test_workflow_governance.py",
+    "tests/run_all_tests.js": "apps/observer/tests/run_all_tests.js",
+    "tests/test_action_plan_sync.py": "tests/workflow-assistance/test_action_plan_sync.py",
+    "tests/test_adapter_conformance.py": "tests/workflow-assistance/test_adapter_conformance.py",
+    "tests/test_canonical_store_v2.py": "tests/workflow-assistance/test_canonical_store_v2.py",
+    "tests/test_client_neutral_manifest.py": "tests/workflow-assistance/test_client_neutral_manifest.py",
+    "tests/test_codex_global_asset_sync.py": "tests/workflow-assistance/test_codex_global_asset_sync.py",
+    "tests/test_collectors.py": "tests/workflow-assistance/test_collectors.py",
+    "tests/test_config_coordinator.py": "tests/workflow-assistance/test_config_coordinator.py",
+    "tests/test_config_ownership.py": "tests/workflow-assistance/test_config_ownership.py",
+    "tests/test_growth_watcher_collector.py": "tests/workflow-assistance/test_growth_watcher_collector.py",
+    "tests/test_observer_runtime.py": "apps/observer/tests/test_observer_runtime.py",
+    "tests/test_observer_store.py": "apps/observer/tests/test_observer_store.py",
+    "tests/test_product_project.py": "tests/workflow-assistance/test_product_project.py",
+    "tests/test_production_surface_static_contract.js": "apps/observer/tests/test_production_surface_static_contract.js",
+    "tests/test_quality_gate.py": "tests/workflow-assistance/test_quality_gate.py",
+    "tests/test_real_adapters.py": "tests/workflow-assistance/test_real_adapters.py",
+    "tests/test_sidecar.py": "tests/workflow-assistance/test_sidecar.py",
+    "tests/test_switch_model.py": "tests/workflow-assistance/test_switch_model.py",
+    "tests/test_usage_rollup.py": "apps/observer/tests/test_usage_rollup.py",
+    "tests/test_user_profile_export.py": "tests/workflow-assistance/test_user_profile_export.py",
+    "types.ts": "apps/observer/frontend/src/types.ts",
+    "verify_source_ledger_v4.py": "scripts/ci/verify_source_ledger_v4.py",
+    "viewRegistry.ts": "apps/observer/frontend/src/lib/viewRegistry.ts"
+  },
+  "ambiguous": [
+    {
+      "errorId": "ERR-094",
+      "operand": "MANIFEST.json",
+      "candidates": [
+        "docs/history/owner-inputs/20261009/final-readable/MANIFEST.json",
+        "docs/history/owner-inputs/20261009/ui-readable/MANIFEST.json",
+        "docs/history/owner-inputs/record-20261010/ui-v2-readable/WORK-LAB_UI_深化_v2/MANIFEST.json",
+        "docs/history/owner-inputs/record-20261011/cloud-audit-readable/MANIFEST.json",
+        "reports/audit-evidence/assets-20260930/MANIFEST.json"
+      ]
+    }
+  ],
+  "gone": [
+    {
+      "errorId": "ERR-004",
+      "operand": "scripts/run-tests.cjs",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-005",
+      "operand": "scripts/verify_open_design_assistance.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-006",
+      "operand": "30-products/minigame",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-027",
+      "operand": "tests/test_observer_dashboard.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-030",
+      "operand": "tests/test_observer_canonical.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-033",
+      "operand": "tests/test_observer_dashboard.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-044",
+      "operand": "../../10-workflow/workflow-assistance/scripts/workflow",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-044",
+      "operand": "tests/test_observer_dashboard_render.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-048",
+      "operand": "10-workflow/workflow-assistance/codex-assets/skills",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-053",
+      "operand": "tests/test_render_v3.js",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-068",
+      "operand": "Task/Git/source-quality",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-089",
+      "operand": "P0-02/P0-03",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-089",
+      "operand": "p0/docs-taskcard-authority",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-093",
+      "operand": "apps/",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-093",
+      "operand": "apps/",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-095",
+      "operand": "BEGIN/END",
+      "statusAfter": "FAIL"
+    },
+    {
+      "errorId": "ERR-099",
+      "operand": "shot3.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-099",
+      "operand": "capture-provenance.json",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-101",
+      "operand": "apps/observer/scripts/u19_webview_e2e.py:",
+      "statusAfter": "FAIL"
+    },
+    {
+      "errorId": "ERR-102",
+      "operand": "apps/observer/frontend/dist",
+      "statusAfter": "FAIL"
+    },
+    {
+      "errorId": "ERR-104",
+      "operand": ".project-local/runs/p0c-oracle-20261006/probe_oracle.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-104",
+      "operand": "http://tauri.localhost",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-105",
+      "operand": "9/9):",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-107",
+      "operand": "/json/version",
+      "statusAfter": "FAIL"
+    },
+    {
+      "errorId": "ERR-108",
+      "operand": "apps/observer/tests/test_artifact_freshness.pytest_a_matching_receipt_does_not_outrank_a_stale_bundle",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-108",
+      "operand": "ROOT/OBS",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-108",
+      "operand": "9/9",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-113",
+      "operand": "COMPLETE/TRUNCATED",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-114",
+      "operand": "scan_digest_refs.py",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-115",
+      "operand": "verify_no_stale_paths.py",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-116",
+      "operand": "work-lab/repo-slimming/v1",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-118",
+      "operand": "root/asset/fallback",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-118",
+      "operand": "2/2",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-119",
+      "operand": ".project-local/runs/convergence-20261007-c/falsify_u03_ports.py):",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-120",
+      "operand": "8/8",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-120",
+      "operand": ".project-local/runs/convergence-20261007-c/falsify_render_ports.py",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-120",
+      "operand": "0/0",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-121",
+      "operand": "viewport/320px",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-121",
+      "operand": "15/15",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-121",
+      "operand": "falsify_transport_ports.py",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-121",
+      "operand": "falsify_step3_node.py",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-124",
+      "operand": "3/3",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-125",
+      "operand": "5/5",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-125",
+      "operand": ".project-local/runs/convergence-20261007-d/falsify_source_registry_fix.py):",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-126",
+      "operand": "org/repo",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-126",
+      "operand": "NOT_FOUND/AMBIGUOUS",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-126",
+      "operand": "10/10",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-126",
+      "operand": ".project-local/runs/convergence-20261007-d/falsify_candidate_decisions.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-127",
+      "operand": ".project-local/runs/convergence-20261007-d/falsify_model_claims.py",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-127",
+      "operand": "14/14",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-127",
+      "operand": "0/14",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-130",
+      "operand": "4/4",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-130",
+      "operand": ".project-local/runs/convergence-20261007-f/falsify_regression_gate.py):",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-135",
+      "operand": ".json",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-138",
+      "operand": "/chat/completions",
+      "statusAfter": "PARTIAL"
+    },
+    {
+      "errorId": "ERR-237",
+      "operand": ".project-local/runs/wui-20261009/legibility-both-backend.log",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-250",
+      "operand": ".project-local/runs/wui-20261010/readback_hermes_overlay.py",
+      "statusAfter": "BLOCKED"
+    },
+    {
+      "errorId": "ERR-276",
+      "operand": "nightly.yml",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-277",
+      "operand": "%LOCALAPPDATA%/hermes/hermes-agent",
+      "statusAfter": "PASS"
+    },
+    {
+      "errorId": "ERR-277",
+      "operand": "install-stamp.json",
+      "statusAfter": "PASS"
+    }
+  ],
+  "external": [
+    {
+      "errorId": "ERR-045",
+      "operand": "C:/Users/ALEX/AppData/Local/hermes/config.yaml"
+    },
+    {
+      "errorId": "ERR-047",
+      "operand": "C:\\Users\\admin\\.codex\\config.toml"
+    },
+    {
+      "errorId": "ERR-095",
+      "operand": "CODEX_HOME/AGENTS.md"
+    }
+  ],
+  "unlabelled": [],
+  "apply": false,
+  "rows": [
+    {
+      "errorId": "ERR-001",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python tests/ci/test_root_governance_contracts.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_root_governance_contracts.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_root_governance_contracts.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-002",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -p 'test_*.py'",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-003",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python packages/client-neutral-core/scripts/verify_core_schemas.py",
+      "operands": [
+        {
+          "operand": "packages/client-neutral-core/scripts/verify_core_schemas.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/scripts/verify_core_schemas.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-004",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "node scripts/run-tests.cjs",
+      "operands": [
+        {
+          "operand": "scripts/run-tests.cjs",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-005",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python scripts/verify_open_design_assistance.py",
+      "operands": [
+        {
+          "operand": "scripts/verify_open_design_assistance.py",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-006",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "git status --short -- 30-products/minigame && git diff --check",
+      "operands": [
+        {
+          "operand": "30-products/minigame",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-007",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python scripts/ci/verify_error_ledger.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_error_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_error_ledger.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-008",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -p 'tests/workflow-assistance/test_workflow_governance.py'",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_workflow_governance.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_workflow_governance.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-009",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python tests/workflow-assistance/test_adapter_conformance.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_adapter_conformance.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_adapter_conformance.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-010",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -p 'test_*.py'",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-011",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -p 'test_*.py'",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-012",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python scripts/ci/verify_error_ledger.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_error_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_error_ledger.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-013",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python scripts/ci/verify_module_dependencies.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_module_dependencies.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_module_dependencies.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-014",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python scripts/ci/verify_contract_catalog.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_contract_catalog.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_contract_catalog.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-015",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -p 'test*.py'",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-016",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python scripts/ci/verify_error_ledger.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_error_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_error_ledger.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-017",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python tests/ci/test_aggregate_gate.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_aggregate_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_aggregate_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-018",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "tests/ci/test_current_state.py + scripts/ci/generate_current_state.py --check-current",
+      "operands": [
+        {
+          "operand": "tests/ci/test_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_current_state.py"
+          ]
+        },
+        {
+          "operand": "scripts/ci/generate_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/generate_current_state.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-019",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "CI exact-SHA run on PR head",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-020",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "CI exact-SHA run on PR head",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-021",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "tests/workflow-assistance/test_growth_watcher_collector.py (4 tests)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_growth_watcher_collector.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_growth_watcher_collector.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-022",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "tests/ci/test_stage3_baseline.py + tests/ci/test_current_state.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_stage3_baseline.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_stage3_baseline.py"
+          ]
+        },
+        {
+          "operand": "tests/ci/test_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_current_state.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-023",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "tests/workflow-assistance/test_collectors.py + tests/workflow-assistance/test_durable_worker.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_collectors.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_collectors.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_durable_worker.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_durable_worker.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-024",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/ci/test_current_state.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_current_state.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-025",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/workflow-assistance/test_config_ownership.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_config_ownership.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_config_ownership.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-026",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/workflow-assistance/test_sidecar.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_sidecar.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_sidecar.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-027",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python apps/observer/tests/test_observer_store.py && python tests/test_observer_dashboard.py",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_observer_store.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_observer_store.py"
+          ]
+        },
+        {
+          "operand": "tests/test_observer_dashboard.py",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-028",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/workflow-assistance/test_real_adapters.py && python tests/workflow-assistance/test_adapter_conformance.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_real_adapters.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_real_adapters.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_adapter_conformance.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_adapter_conformance.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-029",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/workflow-assistance/test_quality_gate.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_quality_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_quality_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-030",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/test_observer_canonical.py && node apps/observer/tests/run_all_tests.js",
+      "operands": [
+        {
+          "operand": "tests/test_observer_canonical.py",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "apps/observer/tests/run_all_tests.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/run_all_tests.js"
+          ]
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-031",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/workflow-assistance/test_switch_model.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_switch_model.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_switch_model.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-032",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/workflow-assistance/test_client_neutral_manifest.py and python packages/client-neutral-core/scripts/verify_portable_install.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_client_neutral_manifest.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_client_neutral_manifest.py"
+          ]
+        },
+        {
+          "operand": "packages/client-neutral-core/scripts/verify_portable_install.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/scripts/verify_portable_install.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-033",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/workflow-assistance/test_sidecar.py and python tests/test_observer_dashboard.py and node apps/observer/tests/run_all_tests.js",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_sidecar.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_sidecar.py"
+          ]
+        },
+        {
+          "operand": "tests/test_observer_dashboard.py",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "apps/observer/tests/run_all_tests.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/run_all_tests.js"
+          ]
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-034",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python packages/client-neutral-core/scripts/verify_gate_runtime_convergence.py",
+      "operands": [
+        {
+          "operand": "packages/client-neutral-core/scripts/verify_gate_runtime_convergence.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/scripts/verify_gate_runtime_convergence.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-035",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python tests/workflow-assistance/test_user_profile_export.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_user_profile_export.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_user_profile_export.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-036",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python apps/observer/tests/test_usage_rollup.py and python apps/observer/scripts/verify_usage_rollup.py and python apps/observer/tests/test_observer_runtime.py",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_usage_rollup.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_usage_rollup.py"
+          ]
+        },
+        {
+          "operand": "apps/observer/scripts/verify_usage_rollup.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/scripts/verify_usage_rollup.py"
+          ]
+        },
+        {
+          "operand": "apps/observer/tests/test_observer_runtime.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_observer_runtime.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-037",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.test_active_projects",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-038",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.test_observer_dashboard_render",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-039",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.test_observer_dashboard_render",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-040",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "cargo test 2>&1 | tail -6",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-041",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "cargo test 2>&1 | tail -6",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-042",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python scripts/ci/generate_current_state.py --check-current --root .",
+      "operands": [
+        {
+          "operand": "scripts/ci/generate_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/generate_current_state.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-043",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "bash -n packages/client-neutral-core/bin/codex && packages/client-neutral-core/bin/codex --version && packages/client-neutral-core/bin/codex exec --ephemeral 'Reply exactly: WRAPPER_FIX_SMOKE'",
+      "operands": [
+        {
+          "operand": "packages/client-neutral-core/bin/codex",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/bin/codex"
+          ]
+        },
+        {
+          "operand": "packages/client-neutral-core/bin/codex",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/bin/codex"
+          ]
+        },
+        {
+          "operand": "packages/client-neutral-core/bin/codex",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/bin/codex"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-044",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONPATH='src;scripts;../../10-workflow/workflow-assistance/scripts/workflow' python tests/test_observer_dashboard_render.py",
+      "operands": [
+        {
+          "operand": "../../10-workflow/workflow-assistance/scripts/workflow",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "tests/test_observer_dashboard_render.py",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-045",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "grep -n reasoning_effort C:/Users/ALEX/AppData/Local/hermes/config.yaml",
+      "operands": [
+        {
+          "operand": "C:/Users/ALEX/AppData/Local/hermes/config.yaml",
+          "category": "EXTERNAL",
+          "candidates": []
+        }
+      ],
+      "state": "OUT_OF_REPO_TARGET",
+      "reason": "the command greps `reasoning_effort` in the live Hermes Home config.yaml; no checkout contains that file, so the promise is about the managed client's state on the authoring machine. The tracked field-ownership record (config/config-ownership.json) is what a reader can verify here."
+    },
+    {
+      "errorId": "ERR-046",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "powershell -Command \"& 'packages/client-neutral-core/bin/codex.cmd' --version\"",
+      "operands": [
+        {
+          "operand": "packages/client-neutral-core/bin/codex.cmd",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/bin/codex.cmd"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-047",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "grep -c 'network_access = true' C:\\Users\\admin\\.codex\\config.toml",
+      "operands": [
+        {
+          "operand": "C:\\Users\\admin\\.codex\\config.toml",
+          "category": "EXTERNAL",
+          "candidates": []
+        }
+      ],
+      "state": "OUT_OF_REPO_TARGET",
+      "reason": "the command counts a line in another machine's Codex Home config.toml (C:/Users/admin/...), which neither this checkout nor CI can contain; the 2026-09-30 audit copy under reports/audit-archive is a snapshot, not the subject of the promise."
+    },
+    {
+      "errorId": "ERR-048",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python packages/client-neutral-core/scripts/skill_plugin_scan.py 10-workflow/workflow-assistance/codex-assets/skills",
+      "operands": [
+        {
+          "operand": "packages/client-neutral-core/scripts/skill_plugin_scan.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/scripts/skill_plugin_scan.py"
+          ]
+        },
+        {
+          "operand": "10-workflow/workflow-assistance/codex-assets/skills",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-049",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python tests/workflow-assistance/test_config_coordinator.py && PYTHONDONTWRITEBYTECODE=1 python tests/workflow-assistance/test_config_ownership.py && PYTHONDONTWRITEBYTECODE=",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_config_coordinator.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_config_coordinator.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_config_ownership.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_config_ownership.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_action_plan_sync.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_action_plan_sync.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_codex_global_asset_sync.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_codex_global_asset_sync.py"
+          ]
+        },
+        {
+          "operand": "tests/ci/test_supply_chain.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_supply_chain.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-050",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python tests/workflow-assistance/test_project_terminal_guard.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_project_terminal_guard.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_project_terminal_guard.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-051",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 python tests/workflow-assistance/test_project_terminal_guard.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_project_terminal_guard.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_project_terminal_guard.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-052",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts/workflow python services/orchestration/canary_runner.py && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts/workflow python tests/workflow-assistance/test_prod",
+      "operands": [
+        {
+          "operand": "services/orchestration/canary_runner.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "services/orchestration/canary_runner.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_product_project.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_product_project.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-053",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "node tests/test_render_v3.js",
+      "operands": [
+        {
+          "operand": "tests/test_render_v3.js",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-054",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts/workflow python tests/workflow-assistance/test_canonical_store_v2.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_canonical_store_v2.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_canonical_store_v2.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-055",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_project_terminal_guard.test_permits_quoted_inner_path_with_spaces",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-056",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_project_terminal_guard.test_blocks_sibling_prefix_path_when_project_name_contains_space",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-057",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_supply_chain_tools",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-058",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_source_ledger.py + tests/ci/test_source_ledger_v4.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_source_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_source_ledger.py"
+          ]
+        },
+        {
+          "operand": "tests/ci/test_source_ledger_v4.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_source_ledger_v4.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-059",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_sidecar_v3_snapshot.CompositionRootTests",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-060",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_observer_store.test_rejects_noncanonical_or_missing_path",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-061",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_read_only_surface: initial snapshot failures schedule a fresh GET",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-062",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_read_only_surface: replacement EventSource closes without resetting exponential backoff",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-063",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_sse_connection_state_counts_concurrent_clients",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-064",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_sidecar_startup_does_not_invent_heartbeat_or_writer_freshness; test_sse_connection_state_counts_concurrent_clients",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-065",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_embedded_worker_lifecycle_writes_health_and_stops_cleanly; test_supervisor_loop_recovers_after_unhandled_tick_failure_and_stops",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-066",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_worker_persists_collector_health_for_success_and_failure; test_fresh_writer_and_complete_collector_health_can_reach_live",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-067",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_build_v3_snapshot_flat_and_null; test_fresh_writer_and_complete_collector_health_can_reach_live",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-068",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_usage_polling_is_idempotent_and_preserves_identical_lines; repeated Task/Git/source-quality assertions",
+      "operands": [
+        {
+          "operand": "Task/Git/source-quality",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-069",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_workspace_evidence_loads_plan_governance_and_history_as_typed_sources; error ledger verifier",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-070",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "last-good becomes visibly OFFLINE when the EventSource transport fails; production WebView2 OFFLINE to LIVE to OFFLINE to LIVE smoke",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-071",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "error ledger verifier plus stale-claim scan for hard-coded latest-delivery wording",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-072",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_windows_pid_requires_still_active_exit_code; test_dead_pid_rejected",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-073",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "retired dashboard helper fails closed without a network request",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-074",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_usage_jsonl_prepend_does_not_recount_existing_samples; test_usage_polling_is_idempotent_and_preserves_identical_lines",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-075",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_partial_health_rows_cannot_claim_complete_coverage; test_live_requires_current_worker_and_complete_expected_coverage; test_blocked_worker_shutdown_retains_writer_lock_and_open_store; test_blocked",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-076",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "apps/observer/tests/run_all_tests.js awaits test_read_only_surface.run and asyncTest awaits non-GET plus invalid-snapshot controls",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/run_all_tests.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/run_all_tests.js"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-077",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "snapshot fetch rejects legacy and partial LIVE success payloads; v3 display mode cannot override the backend transport verdict; LIVE v3 requires exact coverage timestamps and loopback events URL; SSE ",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-078",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_critical_ci_path_selects_supply_chain_security_gate; test_selected_supply_chain_security_job_is_required; test_root_workflow_uses_real_needs_results; test_supply_chain_security_is_selected_and_ag",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-079",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_invalid_cursor_resync_advances_client_to_current_revision; test_future_cursor_resync_advances_client_to_current_revision",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-080",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "snapshot fetch is explicitly cache-bypassed; state rejects an out-of-order lower-revision projection; heartbeat avoids snapshot GET and refresh bursts are coalesced; SSE failure fences an older GET an",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-081",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_stale_historical_collector_success_cannot_reach_live; test_dead_watcher_cannot_reach_live_with_historical_revision; test_watcher_publish_failure_rolls_back_watermark_and_retries",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-082",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "test_plan_without_exact_commit_identity_fails_closed; test_nonempty_change_set_cannot_select_zero_gates; test_non_sha256_plan_digest_algorithm_fails_closed; test_required_integration_runs_aggregate_ne",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-083",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "repo-root direct execution of both focused Python files",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-084",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "python -m pytest tests/workflow-assistance/test_workflow_enhancements.py tests/ci/test_current_state.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_workflow_enhancements.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_workflow_enhancements.py"
+          ]
+        },
+        {
+          "operand": "tests/ci/test_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_current_state.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-085",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": true,
+      "command": "git ls-files | grep -E 'setup\\.(sh|ps1)' (expect empty); python -m pytest tests/workflow-assistance/test_workflow_governance.py -q",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_workflow_governance.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_workflow_governance.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-086",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "每主任务完成节点后检查：是否有未经汇报的自主延伸 commit",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-087",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "WScript.Shell three-field .lnk readback + Test-Path per target; live main-window title must not be 'Set up'; D:.dsh mtime must advance after launch",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-088",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "At any new logon: DSH_HOME present in the Explorer block, Test-Path C:\\Users\\ALEX\\.dsh False, and D:.dsh mtime advances on desktop launch",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-089",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "After merge: main contains the P0-02/P0-03 diff; origin has no p0/docs-taskcard-authority; PR state=MERGED with the merge commit",
+      "operands": [
+        {
+          "operand": "P0-02/P0-03",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "p0/docs-taskcard-authority",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-090",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "Check only GH_TOKEN presence by scope; in a fresh process run gh api user --jq .login and read repository permissions for WORK-LAB, ArcheAxis-Knowledge-OS, and DESIGN-LAB without displaying any creden",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-091",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "PR head SHA and base must be current; required checks must succeed on the new candidate; after merge, PR state is merged, main equals the returned merge SHA, and main-run checks finish successfully.",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-092",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "python packages/client-neutral-core/scripts/verify_adapter_registry.py --registry config/adapter-registry.json --schema packages/contracts/schemas/workflow/adapter-registry.schema.json --root . plus p",
+      "operands": [
+        {
+          "operand": "packages/client-neutral-core/scripts/verify_adapter_registry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/scripts/verify_adapter_registry.py"
+          ]
+        },
+        {
+          "operand": "config/adapter-registry.json",
+          "category": "RESOLVES",
+          "candidates": [
+            "config/adapter-registry.json"
+          ]
+        },
+        {
+          "operand": "packages/contracts/schemas/workflow/adapter-registry.schema.json",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/contracts/schemas/workflow/adapter-registry.schema.json"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_adapter_registry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_adapter_registry.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_core_schemas.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_core_schemas.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_policy_projection.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_policy_projection.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-093",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "Dependency convergence must report unexpected_apps == [] and apps/ top level must contain only the registered app surfaces; any new ignored directory under apps/ fails the gate.",
+      "operands": [
+        {
+          "operand": "apps/",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "apps/",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-094",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "For every published evidence file, the sha256 of the bytes returned by the raw URL must equal the digest recorded in MANIFEST.json, and the recorded byte count must equal the downloaded length.",
+      "operands": [
+        {
+          "operand": "MANIFEST.json",
+          "category": "AMBIGUOUS",
+          "candidates": [
+            "docs/history/owner-inputs/20261009/final-readable/MANIFEST.json",
+            "docs/history/owner-inputs/20261009/ui-readable/MANIFEST.json",
+            "docs/history/owner-inputs/record-20261010/ui-v2-readable/WORK-LAB_UI_深化_v2/MANIFEST.json",
+            "docs/history/owner-inputs/record-20261011/cloud-audit-readable/MANIFEST.json",
+            "reports/audit-evidence/assets-20260930/MANIFEST.json"
+          ]
+        }
+      ],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "regression_test is a prose sentence naming `MANIFEST.json` as a kind, not a path; three archived manifests carry that basename, so choosing one would invent a pointer the record never made."
+    },
+    {
+      "errorId": "ERR-095",
+      "statusAfter": "FAIL",
+      "hasFixedCommit": false,
+      "command": "After any codex global projection, CODEX_HOME/AGENTS.md must contain the managed BEGIN/END overlay block markers and the declared skills/workflow-assistance-* directories must exist; a registry maturi",
+      "operands": [
+        {
+          "operand": "CODEX_HOME/AGENTS.md",
+          "category": "EXTERNAL",
+          "candidates": []
+        },
+        {
+          "operand": "BEGIN/END",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "OUT_OF_REPO_TARGET",
+      "reason": "the operand is `$CODEX_HOME/AGENTS.md` — a managed client projection target, deliberately outside the repository. The overlay-block requirement is enforced here by the skill-provenance and config-ownership gates, not by reading that home in CI."
+    },
+    {
+      "errorId": "ERR-096",
+      "statusAfter": "FAIL",
+      "hasFixedCommit": false,
+      "command": "For every managed skill, the sha256 of the live Hermes file must equal the repository source sha256, and config/skill-provenance.yaml entries must be regenerated in the same change that deploys them.",
+      "operands": [
+        {
+          "operand": "config/skill-provenance.yaml",
+          "category": "RESOLVES",
+          "candidates": [
+            "config/skill-provenance.yaml"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-097",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "A registry entry may not claim READBACK_VERIFIED unless a matching deployment_observation with status VERIFIED exists; maturity and deployment state must be readable separately.",
+      "operands": [],
+      "state": "NO_FILE_OPERAND_IN_COMMAND",
+      "reason": "the command names no file operand to check"
+    },
+    {
+      "errorId": "ERR-098",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "A Win32 wrapper must declare argtypes AND restype for every handle-returning call, and value parameters must be passed as values; a probe may not report a toolchain as absent unless every declared loc",
+      "operands": [
+        {
+          "operand": ".project/governance/external-libraries-index.json",
+          "category": "RESOLVES",
+          "candidates": [
+            ".project/governance/external-libraries-index.json"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-099",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "shot3.py exits non-zero on STALE_OR_MISSING_BINARY, INSTRUMENT_INVALID or a blank capture, and writes capture-provenance.json with the artifact sha256 it launched; a layout conclusion may only be reco",
+      "operands": [
+        {
+          "operand": "shot3.py",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "capture-provenance.json",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-100",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "python scripts/ci/failfast_group.py --group observer-web-contracts and --group observer-python-skeleton, with node and python on PATH, must both report FAILFAST_GROUP_PASS before a delivery push; exac",
+      "operands": [
+        {
+          "operand": "scripts/ci/failfast_group.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/failfast_group.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-101",
+      "statusAfter": "FAIL",
+      "hasFixedCommit": false,
+      "command": "python scripts/ci/failfast_group.py --group observer-python-skeleton plus the GDI stage of python apps/observer/scripts/u19_webview_e2e.py: every window entry must satisfy captureSize <= sizeAsRead. R",
+      "operands": [
+        {
+          "operand": "scripts/ci/failfast_group.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/failfast_group.py"
+          ]
+        },
+        {
+          "operand": "apps/observer/scripts/u19_webview_e2e.py:",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-102",
+      "statusAfter": "FAIL",
+      "hasFixedCommit": false,
+      "command": "chrome --headless=new --dump-dom against apps/observer/frontend/dist must keep returning the sidebar and brand markup, and --screenshot must keep returning non-black pixel statistics; any later claim ",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/dist",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-103",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "node apps/observer/tests/test_desktop_component_contract.js derives the native calls from frontend/src and fails if any call has no ACL identifier, or if a needed identifier is missing from apps/obser",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_desktop_component_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_desktop_component_contract.js"
+          ]
+        },
+        {
+          "operand": "frontend/src",
+          "category": "DIR_NOT_FILE",
+          "candidates": []
+        },
+        {
+          "operand": "apps/observer/src-tauri/capabilities/default.json",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/src-tauri/capabilities/default.json"
+          ]
+        }
+      ],
+      "state": "REPOINTED_20261007",
+      "reason": "two tracked files carry the basename capabilities/default.json (observer and token-monitor), so the matcher cannot choose. The record decides: its regression test is apps/observer/tests/test_desktop_component_contract.js and its symptom is the observer's caption cluster and zoom controls, so the operand is the OBSERVER's Tauri capability file. Applied to this record only, never as a global substitution."
+    },
+    {
+      "errorId": "ERR-104",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python .project-local/runs/p0c-oracle-20261006/probe_oracle.py must keep observing snapshot and events requests from the release binary with Origin http://tauri.localhost, with headless Chrome on the ",
+      "operands": [
+        {
+          "operand": ".project-local/runs/p0c-oracle-20261006/probe_oracle.py",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "http://tauri.localhost",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-105",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/tests/test_artifact_freshness.py (registered in the observer-python-skeleton group, now 9/9): touch-without-edit must not raise the floor, a back-dated real edit and an untracked additio",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_artifact_freshness.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_artifact_freshness.py"
+          ]
+        },
+        {
+          "operand": "9/9):",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "apps/observer/frontend/src/App.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/App.tsx"
+          ]
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-106",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "node apps/observer/tests/test_desktop_component_contract.js asserts all four clearance values are declared in px and at least 10, naming the rule that fails. Falsified by zeroing padding-top (6 passed",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_desktop_component_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_desktop_component_contract.js"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-107",
+      "statusAfter": "FAIL",
+      "hasFixedCommit": false,
+      "command": "An instrument claim must name the observation that supports it. Any future CDP work in this repository has to treat 'connect succeeded' as no evidence and require a parsed /json/version body containin",
+      "operands": [
+        {
+          "operand": "/json/version",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-108",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/tests/test_artifact_freshness.pytest_a_matching_receipt_does_not_outrank_a_stale_bundle monkeypatches ROOT/OBS plus CARGO_TARGET_DIR onto a temp repo, writes a matching receipt, then edi",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_artifact_freshness.pytest_a_matching_receipt_does_not_outrank_a_stale_bundle",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "ROOT/OBS",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "9/9",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-109",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "python tests/ci/test_failfast_group.py is a step of the CI integration job and now runs locally before every push of a manifest change; the full set of 25 CI-invoked governance and integration steps w",
+      "operands": [
+        {
+          "operand": "tests/ci/test_failfast_group.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_failfast_group.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-110",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/tests/test_artifact_freshness.py test_a_back_dated_frontend_edit_is_still_seen_by_the_receipt: with the receipt present the gate must refuse, and the same tree with the receipt moved asi",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_artifact_freshness.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_artifact_freshness.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-111",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "scripts/ci/verify_future_candidate_registry.py row-coverage invariant, falsified with four injections in a scratch copy: drop the only claimant of 16.18, strip one candidate's blueprint_row, point one",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_future_candidate_registry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_future_candidate_registry.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-112",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "vitest cases grew to 83 across 13 files including apps/observer/frontend/src/components/ui/overlays.test.tsx (6 new); the desktop component contract grew to 10 cases, now pinning the b10-then-shell im",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/components/ui/overlays.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/components/ui/overlays.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-113",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "Digest completion is self-falsifying: the script aborts unless the computed sha256 starts with the 16-hex prefix the 2026-09-29 migration round recorded, so a substituted file cannot be certified. The",
+      "operands": [
+        {
+          "operand": "COMPLETE/TRUNCATED",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-114",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "Both scanners fail loudly instead of returning a clean-looking empty result: scan_digest_refs.py exits 3 when the walk reports any error or inspects fewer than 1,000 files, because two earlier attempt",
+      "operands": [
+        {
+          "operand": "scan_digest_refs.py",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-115",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "verify_no_stale_paths.py walks the tracked tree (skipping .git and .project-local), inspects 4,327 candidate files and exits nonzero if the walk errored or covered too little, so a silent zero-file sc",
+      "operands": [
+        {
+          "operand": "verify_no_stale_paths.py",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "taskpacks/history",
+          "category": "DIR_NOT_FILE",
+          "candidates": []
+        },
+        {
+          "operand": "reports/audit-archive",
+          "category": "DIR_NOT_FILE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-116",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "Content of the survivor is reported rather than assumed: schema work-lab/repo-slimming/v1 with spill_bytes=0, spill_count=0 and an empty spills list, i.e. these runs recorded no spill. The six lost fi",
+      "operands": [
+        {
+          "operand": "work-lab/repo-slimming/v1",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-117",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "The counts are derived at run time: the lane figure is a regex count over apps/observer/frontend/src/lib/viewRegistry.ts entries plus the one documented synthetic lane, and the script exits 2 if any c",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/lib/viewRegistry.ts",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/lib/viewRegistry.ts"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-118",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "Both security-relevant assertions were falsified by mutation: removing the `relative_to` escape guard turns the escape case red, and disabling the static branch turns the root/asset/fallback cases red",
+      "operands": [
+        {
+          "operand": "root/asset/fallback",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "services/orchestration/sidecar.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "services/orchestration/sidecar.py"
+          ]
+        },
+        {
+          "operand": "scripts/audit/falsify_browser_entry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/audit/falsify_browser_entry.py"
+          ]
+        },
+        {
+          "operand": "2/2",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-119",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "apps/observer/frontend/src/lib/projectionTruthContract.test.ts (8 titled cases) + apps/observer/tests/test_production_surface_static_contract.js cases 'the typed front model declares the v3 core keys,",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/lib/projectionTruthContract.test.ts",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/lib/projectionTruthContract.test.ts"
+          ]
+        },
+        {
+          "operand": "apps/observer/tests/test_production_surface_static_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_production_surface_static_contract.js"
+          ]
+        },
+        {
+          "operand": ".project-local/runs/convergence-20261007-c/falsify_u03_ports.py):",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "apps/observer/frontend/src/types.ts",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/types.ts"
+          ]
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-120",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "apps/observer/frontend/src/views/renderTruthContract.test.tsx (8 mounted cases). Falsified 8/8 by mutating the production components (.project-local/runs/convergence-20261007-c/falsify_render_ports.py",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/views/renderTruthContract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/views/renderTruthContract.test.tsx"
+          ]
+        },
+        {
+          "operand": "8/8",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": ".project-local/runs/convergence-20261007-c/falsify_render_ports.py",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "0/0",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-121",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "apps/observer/frontend/src/lib/transportTruthContract.test.ts (11 mounted-hook cases with a controllable EventSource stand-in) plus two new file-level cases in apps/observer/tests/test_production_surf",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/lib/transportTruthContract.test.ts",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/lib/transportTruthContract.test.ts"
+          ]
+        },
+        {
+          "operand": "apps/observer/tests/test_production_surface_static_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_production_surface_static_contract.js"
+          ]
+        },
+        {
+          "operand": "viewport/320px",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "15/15",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "falsify_transport_ports.py",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "falsify_step3_node.py",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-122",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "python tests/workflow-assistance/test_sidecar_ui_browser_entry.py — 8 tests OK on three consecutive standalone runs with PYTHONDONTWRITEBYTECODE=1, no PYTHONPATH exported.",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_sidecar_ui_browser_entry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_sidecar_ui_browser_entry.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-123",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/tests/test_production_surface_static_contract.js — 'the shell keeps a single app track below the rail breakpoint' (22 cases green). Falsified twice: restoring the unconditional two-track",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_production_surface_static_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_production_surface_static_contract.js"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-124",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "apps/observer/frontend/src/views/renderTruthContract.test.tsx case 'the alert chip has three states: with no data source it reads UNKNOWN, not a green \"no alerts\"' and apps/observer/tests/test_product",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/views/renderTruthContract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/views/renderTruthContract.test.tsx"
+          ]
+        },
+        {
+          "operand": "apps/observer/tests/test_production_surface_static_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_production_surface_static_contract.js"
+          ]
+        },
+        {
+          "operand": "3/3",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-125",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_recovered_source_registry.py, 8 cases. Falsified 5/5 (.project-local/runs/convergence-20261007-d/falsify_source_registry_fix.py): flipping the SVG working tree CRLF->LF ",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_recovered_source_registry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_recovered_source_registry.py"
+          ]
+        },
+        {
+          "operand": "5/5",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": ".project-local/runs/convergence-20261007-d/falsify_source_registry_fix.py):",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-126",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "scripts/ci/verify_future_candidate_registry.py now hard-fails on: a decision missing or disagreeing with the status word, a RESOLVED row without an org/repo and the licence the readback returned, a NO",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_future_candidate_registry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_future_candidate_registry.py"
+          ]
+        },
+        {
+          "operand": "org/repo",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "NOT_FOUND/AMBIGUOUS",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "/",
+          "category": "DIR_NOT_FILE",
+          "candidates": []
+        },
+        {
+          "operand": "/",
+          "category": "DIR_NOT_FILE",
+          "candidates": []
+        },
+        {
+          "operand": "10/10",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": ".project-local/runs/convergence-20261007-d/falsify_candidate_decisions.py",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-127",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "Tracked regression: tests/workflow-assistance/nf22_registry_and_acp_honesty_gates.py now carries thirteen named cases for AG-05g (a digest claim with no verification basis, a recomputed digest contrad",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/nf22_registry_and_acp_honesty_gates.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/nf22_registry_and_acp_honesty_gates.py"
+          ]
+        },
+        {
+          "operand": "services/orchestration/run_quality_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "services/orchestration/run_quality_gate.py"
+          ]
+        },
+        {
+          "operand": ".project-local/runs/convergence-20261007-d/falsify_model_claims.py",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "14/14",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "0/14",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-128",
+      "statusAfter": "PASS",
+      "hasFixedCommit": false,
+      "command": "python scripts/ci/verify_source_ledger.py --root . (SOURCE_LEDGER_PASS entries=17 local_readback=0 blocked=2) plus scripts/ci/verify_source_ledger_v4.py and tests/ci/test_source_ledger.py, all execute",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_source_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_source_ledger.py"
+          ]
+        },
+        {
+          "operand": "scripts/ci/verify_source_ledger_v4.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_source_ledger_v4.py"
+          ]
+        },
+        {
+          "operand": "tests/ci/test_source_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_source_ledger.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-129",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "The release tool returns exit 1 if any cited path disappears, and the post-check found 37 absences of which 9 were trailing-punctuation artifacts of my own regex and 0 lay under a deleted directory, s",
+      "operands": [
+        {
+          "operand": "scripts/maintenance/release_browser_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/maintenance/release_browser_state.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-130",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_error_ledger_regression_commands.py, 7 cases including two synthetic negative controls that never touch the real file (an unresolvable command must be flagged; a `cd`-re",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_error_ledger_regression_commands.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_error_ledger_regression_commands.py"
+          ]
+        },
+        {
+          "operand": "4/4",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": ".project-local/runs/convergence-20261007-f/falsify_regression_gate.py):",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-131",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_workflow_locale_discipline_gate.py — 8 tests, incl. the shipped `json.load(open(f))` shape and the `.read_text()` method shape injected as negative controls, plus accept",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_workflow_locale_discipline_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_workflow_locale_discipline_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-132",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_project_local_citation_audit.py — 8 tests: queued paths must all be adjudicated, the re-pointed evidence root must exist on disk, and four classifier controls proving an",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_project_local_citation_audit.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_project_local_citation_audit.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-133",
+      "statusAfter": "UNVERIFIED",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_project_local_citation_audit.py — the agreement test is unconditional; the presence test carries skipUnless(IMPORT_ROOT.is_dir()) with a reason that says why",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_project_local_citation_audit.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_project_local_citation_audit.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-134",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_source_ledger_licence_evidence.py — now 13 tests, 10 negative controls, incl. a hash disagreeing with the audit, a value without a hash, a truncated hash, and file evide",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_source_ledger_licence_evidence.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_source_ledger_licence_evidence.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-135",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_live_doc_command_targets.py — 9 tests: unresolved must be empty, every MAP target must exist while every MAP source must still be absent, every ALLOWED path must still b",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_live_doc_command_targets.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_live_doc_command_targets.py"
+          ]
+        },
+        {
+          "operand": ".json",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-136",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_current_state.py plus the CI step's own `scripts/ci/generate_current_state.py --check-current`, both run locally here; scripts/ci/reproduce_ci_commands.py is the pre-push gate that would",
+      "operands": [
+        {
+          "operand": "tests/ci/test_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_current_state.py"
+          ]
+        },
+        {
+          "operand": "scripts/ci/generate_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/generate_current_state.py"
+          ]
+        },
+        {
+          "operand": "scripts/ci/reproduce_ci_commands.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/reproduce_ci_commands.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-137",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "packages/client-neutral-core/scripts/security/check_skill_provenance.py --manifest config/skill-provenance.yaml is a required CI step in the governance batch; the held-back file is re-discovered by sc",
+      "operands": [
+        {
+          "operand": "packages/client-neutral-core/scripts/security/check_skill_provenance.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/scripts/security/check_skill_provenance.py"
+          ]
+        },
+        {
+          "operand": "config/skill-provenance.yaml",
+          "category": "RESOLVES",
+          "candidates": [
+            "config/skill-provenance.yaml"
+          ]
+        },
+        {
+          "operand": "scripts/audit/live_doc_command_targets.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/audit/live_doc_command_targets.py"
+          ]
+        },
+        {
+          "operand": "packages/client-neutral-core/bin/hermes-project-data.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "packages/client-neutral-core/bin/hermes-project-data.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-138",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "tests/workflow-assistance/test_ag16_handback_evidence.py — 11 tests. It refuses any claim of execution or a named executor, any AUTHORIZED verdict without grantSource=fixture, any model-origin AUTHORI",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ag16_handback_evidence.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ag16_handback_evidence.py"
+          ]
+        },
+        {
+          "operand": "/chat/completions",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-139",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_recover_shared_root_original.py::UpstreamScannerGapTests::test_list_of_strings_is_invisible_but_keyed_lines_are_not",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_recover_shared_root_original.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_recover_shared_root_original.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-140",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_temp_fixture_stays_inside_the_boundary.py::TempFixtureBoundaryTests::test_the_file_that_leaked_is_now_clean",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_temp_fixture_stays_inside_the_boundary.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_temp_fixture_stays_inside_the_boundary.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-142",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_project_local_citation_audit.py::CitationAuditGate::test_a_runtime_root_path_is_never_treated_as_checkout_verifiable",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_project_local_citation_audit.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_project_local_citation_audit.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-143",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ledger_regression_command_targets.py::LedgerLabelTests::test_a_repoint_claim_requires_a_note_and_fully_resolving_operands",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ledger_regression_command_targets.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ledger_regression_command_targets.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-144",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_project_local_citation_audit.py::CitationAuditGate::test_regenerating_the_record_is_idempotent_apart_from_the_timestamp",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_project_local_citation_audit.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_project_local_citation_audit.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-145",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_topbar_geometry_gate.py::VerdictTests::test_a_clean_desktop_measurement_passes_and_names_every_check",
+      "operands": [
+        {
+          "operand": "tests/ci/test_topbar_geometry_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_topbar_geometry_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-146",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_topbar_geometry_gate.py::InstrumentTests::test_a_tree_without_the_built_bundle_refuses_instead_of_passing",
+      "operands": [
+        {
+          "operand": "tests/ci/test_topbar_geometry_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_topbar_geometry_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-147",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_topbar_geometry_gate.py::InstrumentTests::test_the_page_session_url_carries_the_port_that_was_asked_for",
+      "operands": [
+        {
+          "operand": "tests/ci/test_topbar_geometry_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_topbar_geometry_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-148",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_recover_shared_root_original.py::ArchiveMemberRecoveryTests::test_an_inbound_owner_material_root_needs_its_own_opt_in",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_recover_shared_root_original.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_recover_shared_root_original.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-149",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_in_boundary_residue_sweep.py::SweepBehaviourTests::test_one_unique_file_blocks_the_whole_directory_from_deletion",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_in_boundary_residue_sweep.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_in_boundary_residue_sweep.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-150",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_superseded_path_instructions.py::SupersededPathInstructionGate::test_dated_records_are_out_of_scope_and_that_is_load_bearing",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_superseded_path_instructions.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_superseded_path_instructions.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-151",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_tool_inventory_coverage.py::ToolInventoryCoverageGate::test_the_shipped_inventory_describes_the_tree",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_tool_inventory_coverage.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_tool_inventory_coverage.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-152",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_stamp_record_verification.py::RefusalsRunAgainstAFixtureLedger::test_an_unresolvable_head_is_refused",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_stamp_record_verification.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_stamp_record_verification.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-153",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_tool_inventory_coverage.py::ToolInventoryCoverageGate::test_the_shipped_inventory_describes_the_tree",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_tool_inventory_coverage.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_tool_inventory_coverage.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-154",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_recovered_source_registry.py::RecoveredSourceRegistryTests::test_location_claims_agree_with_the_row_status",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_recovered_source_registry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_recovered_source_registry.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-155",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_tool_inventory_coverage.py::ToolInventoryCoverageGate::test_the_warning_only_names_still_untracked_instruments",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_tool_inventory_coverage.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_tool_inventory_coverage.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-156",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/frontend/src/components/ui/tooltip.contract.test.tsx",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/components/ui/tooltip.contract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/components/ui/tooltip.contract.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-157",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/tests/test_production_surface_static_contract.js",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_production_surface_static_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_production_surface_static_contract.js"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-158",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_adapter_version_readback.py::AdapterVersionReadbackGate::test_hermes_version_comes_from_a_source_that_needs_no_launch",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_adapter_version_readback.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_adapter_version_readback.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-159",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_executor_live_probe.py::RecordTests::test_the_pinned_registry_is_the_one_the_commit_carries",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_executor_live_probe.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_executor_live_probe.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-160",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_adapter_registry.py::AdapterRegistryTests::test_registry_is_fail_closed_and_traceable",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_adapter_registry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_adapter_registry.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-161",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "scripts/ci/reproduce_ci_commands.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/reproduce_ci_commands.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/reproduce_ci_commands.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-162",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_toolchain_declarations.py::ToolchainDeclarationGate::test_the_file_declares_every_lockfile_that_exists_in_the_repository",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_toolchain_declarations.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_toolchain_declarations.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-163",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_evidence_range_reader.py::RefusalTests::test_an_out_of_boundary_handle_is_named_not_followed",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_evidence_range_reader.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_evidence_range_reader.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-164",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_core_schemas.py::CoreSchemaTests::test_core_schema_set_has_neutral_metadata_and_required_contracts",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_core_schemas.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_core_schemas.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-165",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_topbar_geometry_gate.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_topbar_geometry_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_topbar_geometry_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-166",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_evidence_range_reader.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_evidence_range_reader.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_evidence_range_reader.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-167",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-168",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_snapshot_task_records.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_snapshot_task_records.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_snapshot_task_records.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-169",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "scripts/ci/generate_current_state.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/generate_current_state.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/generate_current_state.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-170",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/tests/test_production_surface_static_contract.js",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_production_surface_static_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_production_surface_static_contract.js"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-171",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "scripts/audit/outside_root_spill_sweep.py",
+      "operands": [
+        {
+          "operand": "scripts/audit/outside_root_spill_sweep.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/audit/outside_root_spill_sweep.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-172",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-173",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_governance_gate.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_governance_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_governance_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-174",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-175",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-176",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_no_home_credential_document_is_tracked.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_no_home_credential_document_is_tracked.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_no_home_credential_document_is_tracked.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-177",
+      "statusAfter": "FAIL",
+      "hasFixedCommit": false,
+      "command": "tests/ci/test_no_home_credential_document_is_tracked.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_no_home_credential_document_is_tracked.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_no_home_credential_document_is_tracked.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-178",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-179",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_project_local_citation_audit.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_project_local_citation_audit.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_project_local_citation_audit.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-180",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-181",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ledger_unbound_triage.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ledger_unbound_triage.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ledger_unbound_triage.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-182",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_contract_ssot_helper_boundary.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_contract_ssot_helper_boundary.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_contract_ssot_helper_boundary.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-183",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-184",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-185",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_tool_inventory_coverage.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_tool_inventory_coverage.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_tool_inventory_coverage.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-186",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_project_terminal_guard.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_project_terminal_guard.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_project_terminal_guard.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-187",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_control_service.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_control_service.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_control_service.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-188",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_ledger_commit_field_shape.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_ledger_commit_field_shape.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_ledger_commit_field_shape.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-189",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_readme_history_links_are_labelled.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_readme_history_links_are_labelled.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_readme_history_links_are_labelled.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-190",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_config_compiler_conforms_to_its_contract.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_config_compiler_conforms_to_its_contract.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_config_compiler_conforms_to_its_contract.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-191",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_root_governance_runner_refuses_silent_modules.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_root_governance_runner_refuses_silent_modules.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_root_governance_runner_refuses_silent_modules.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-192",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_authority_index_paths_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_authority_index_paths_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_authority_index_paths_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-193",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_config_compiler_conforms_to_its_contract.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_config_compiler_conforms_to_its_contract.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_config_compiler_conforms_to_its_contract.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-194",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_authority_index_paths_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_authority_index_paths_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_authority_index_paths_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-195",
+      "statusAfter": "FAIL",
+      "hasFixedCommit": false,
+      "command": "tests/ci/test_authority_index_paths_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_authority_index_paths_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_authority_index_paths_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-196",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_register_table_shape_is_uniform.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_register_table_shape_is_uniform.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_register_table_shape_is_uniform.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-197",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_authority_index_paths_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_authority_index_paths_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_authority_index_paths_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-198",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_register_pins_name_checkable_commits.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_register_pins_name_checkable_commits.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_register_pins_name_checkable_commits.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-199",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-200",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-201",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_authority_index_paths_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_authority_index_paths_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_authority_index_paths_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-202",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_ci_invoked_verifiers_have_a_local_route.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_ci_invoked_verifiers_have_a_local_route.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_ci_invoked_verifiers_have_a_local_route.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-203",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_sidecar_sees_inplace_task_update.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-204",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_ci_invoked_verifiers_have_a_local_route.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_ci_invoked_verifiers_have_a_local_route.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_ci_invoked_verifiers_have_a_local_route.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-205",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_sidecar_v3_snapshot.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_sidecar_v3_snapshot.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_sidecar_v3_snapshot.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-206",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "scripts/ci/verify_register_table_shape.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_register_table_shape.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_register_table_shape.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-207",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_ignore_probe_shape_is_file_shaped.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_ignore_probe_shape_is_file_shaped.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_ignore_probe_shape_is_file_shaped.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-208",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_authority_index_paths_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_authority_index_paths_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_authority_index_paths_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-209",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_authority_index_paths_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_authority_index_paths_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_authority_index_paths_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-210",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_temp_fixture_residue_is_bounded.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_temp_fixture_residue_is_bounded.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_temp_fixture_residue_is_bounded.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-211",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_gate_runner_declares_pipe_encoding.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_gate_runner_declares_pipe_encoding.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_gate_runner_declares_pipe_encoding.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-212",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_register_ci_claims_agree_with_ledger.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_register_ci_claims_agree_with_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_register_ci_claims_agree_with_ledger.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-213",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_gate_compile_covers_all_tracked_python.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_gate_compile_covers_all_tracked_python.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_gate_compile_covers_all_tracked_python.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-214",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_quick_entry.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_quick_entry.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_quick_entry.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-215",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_fixture_root_names_are_readable_by_the_reader.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_fixture_root_names_are_readable_by_the_reader.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_fixture_root_names_are_readable_by_the_reader.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-216",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ledger_regression_command_targets.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ledger_regression_command_targets.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ledger_regression_command_targets.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-217",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/frontend/src/themeSwitch.contract.test.tsx",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/themeSwitch.contract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/themeSwitch.contract.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-218",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_text_legibility_gate.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_text_legibility_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_text_legibility_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-219",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_topbar_geometry_gate.py::WindowFloorTests::test_the_floor_the_gate_measures_is_the_floor_the_window_config_declares",
+      "operands": [
+        {
+          "operand": "tests/ci/test_topbar_geometry_gate.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_topbar_geometry_gate.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-220",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_push_permit.py::DecideTests::test_a_green_receipt_for_another_head_does_not_permit_this_one",
+      "operands": [
+        {
+          "operand": "tests/ci/test_push_permit.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_push_permit.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-221",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_ci_outage_is_not_a_code_red.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_ci_outage_is_not_a_code_red.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_ci_outage_is_not_a_code_red.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-222",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_shipped_projections_are_current.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_shipped_projections_are_current.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_shipped_projections_are_current.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-223",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_push_permit.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_push_permit.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_push_permit.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-224",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/frontend/src/homeIa.contract.test.tsx (WUI-04 block) and apps/observer/frontend/src/lib/projectIdentity.test.ts",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/homeIa.contract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/homeIa.contract.test.tsx"
+          ]
+        },
+        {
+          "operand": "apps/observer/frontend/src/lib/projectIdentity.test.ts",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/lib/projectIdentity.test.ts"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-225",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_capability_card_fields_cover_the_producer.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_capability_card_fields_cover_the_producer.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_capability_card_fields_cover_the_producer.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-226",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/frontend/src/theme/paletteMirror.contract.test.ts",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/theme/paletteMirror.contract.test.ts",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/theme/paletteMirror.contract.test.ts"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-227",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/frontend/src/laneStateMatrix.sweep.test.tsx",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/laneStateMatrix.sweep.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/laneStateMatrix.sweep.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-228",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/frontend/src/skins/rowAlignment.contract.test.ts",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/skins/rowAlignment.contract.test.ts",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/skins/rowAlignment.contract.test.ts"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-229",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-230",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py::test_producer_output_validates_minimal_and_full",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-231",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/tests/test_production_surface_static_contract.js ('no v3 snapshot literal is embedded in the production source')",
+      "operands": [
+        {
+          "operand": "apps/observer/tests/test_production_surface_static_contract.js",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/tests/test_production_surface_static_contract.js"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-232",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_push_permit.py (30 cases, including the narrow-run-cannot-claim-full case and the refusal-detail case)",
+      "operands": [
+        {
+          "operand": "tests/ci/test_push_permit.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_push_permit.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-233",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_gate_runner_declares_pipe_encoding.py (test_the_runner_survives_a_non_unicode_console)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_gate_runner_declares_pipe_encoding.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_gate_runner_declares_pipe_encoding.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-234",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_evidence_seal_binds_receipts_to_the_measured_bundle.py (10 cases: the digest must move when a dynamically imported chunk moves, a receipt naming a different build must b",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_evidence_seal_binds_receipts_to_the_measured_bundle.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_evidence_seal_binds_receipts_to_the_measured_bundle.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-235",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "apps/observer/frontend/src/auxiliaryEntries.contract.test.tsx (6 cases: nav invariants empty, the auxiliary section holds exactly the two existing registry lanes and invents no third projection, the r",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/auxiliaryEntries.contract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/auxiliaryEntries.contract.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-236",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py (8 cases: two generations of the projection must emit identical bytes and the committed file must equal them; the he",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-237",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "The instrument itself emits the checks and scripts/audit/reseal_wui_evidence.py re-runs them; the static run now prints 'backend=static NOT_ENFORCED -- pills={}' and the live run prints the pill censu",
+      "operands": [
+        {
+          "operand": "scripts/audit/reseal_wui_evidence.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/audit/reseal_wui_evidence.py"
+          ]
+        },
+        {
+          "operand": ".project-local/runs/wui-20261009/legibility-both-backend.log",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-238",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py (test_the_context_pack_moves_only_its_generation_stamp_between_renders). The stability of the corrected case is itse",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-239",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py (5 cases) plus the predicate control inside it, which fails if the matcher stops seeing any of the three citation shapes",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-240",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_root_document_dispositions.py (14 cases) plus tests/workflow-assistance/test_default_load_doc_citations_resolve.py (6 cases)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_root_document_dispositions.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_root_document_dispositions.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_default_load_doc_citations_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_default_load_doc_citations_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-241",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ledger_regression_command_targets.py ReasonPreservationTests.test_the_rule_is_applied_at_the_call_site_not_only_in_the_helper",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ledger_regression_command_targets.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ledger_regression_command_targets.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-242",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_default_load_doc_citations_resolve.py (8 cases)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_default_load_doc_citations_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_default_load_doc_citations_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-243",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_worker_runtime_roots_stay_inside_the_project.py (6 cases) plus tests/workflow-assistance/test_durable_worker.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_worker_runtime_roots_stay_inside_the_project.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_worker_runtime_roots_stay_inside_the_project.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_durable_worker.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_durable_worker.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-244",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_canary_synthetic_secret_never_reaches_the_store.py (4 cases) plus tests/workflow-assistance/nf01_rule_semantics_artifact_flow.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_canary_synthetic_secret_never_reaches_the_store.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_canary_synthetic_secret_never_reaches_the_store.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/nf01_rule_semantics_artifact_flow.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/nf01_rule_semantics_artifact_flow.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-245",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_fixture_root_names_are_readable_by_the_reader.py (10 cases) plus tests/workflow-assistance/test_token_monitor.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_fixture_root_names_are_readable_by_the_reader.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_fixture_root_names_are_readable_by_the_reader.py"
+          ]
+        },
+        {
+          "operand": "tests/workflow-assistance/test_token_monitor.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_token_monitor.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-246",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ledger_unbound_triage.py (8 cases)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ledger_unbound_triage.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ledger_unbound_triage.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-247",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py (7 cases)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-248",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py (test_both_csvs_keep_the_packs_own_shape, with the planted-column control)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-249",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_hooks_answer_within_a_bound_without_waking_a_model.py (10 cases)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_hooks_answer_within_a_bound_without_waking_a_model.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_hooks_answer_within_a_bound_without_waking_a_model.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-250",
+      "statusAfter": "BLOCKED",
+      "hasFixedCommit": false,
+      "command": ".project-local/runs/wui-20261010/readback_hermes_overlay.py (receipt targetsTotal == the rows measured)",
+      "operands": [
+        {
+          "operand": ".project-local/runs/wui-20261010/readback_hermes_overlay.py",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-251",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_canonical_store_disk_is_bounded.py (10 cases)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_canonical_store_disk_is_bounded.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_canonical_store_disk_is_bounded.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-252",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py (8 cases)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-253",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py (DerivedProjectionDriftTests)",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_agent_default_material_is_regenerated_and_current.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-254",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_generated_contract_types_project_the_schema.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_generated_contract_types_project_the_schema.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_generated_contract_types_project_the_schema.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-255",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_snapshot_v3_schema_is_the_single_shape_authority.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-256",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ingest_refusals_are_counted_not_silent.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ingest_refusals_are_counted_not_silent.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ingest_refusals_are_counted_not_silent.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-257",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_sidecar_sse_reconnect_replays_the_gap.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_sidecar_sse_reconnect_replays_the_gap.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_sidecar_sse_reconnect_replays_the_gap.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-258",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-259",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_collector_delivery_reaches_the_snapshot.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_collector_delivery_reaches_the_snapshot.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_collector_delivery_reaches_the_snapshot.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-260",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_root_document_dispositions.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_root_document_dispositions.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_root_document_dispositions.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-261",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_current_state_projection_is_fresh.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_current_state_projection_is_fresh.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_current_state_projection_is_fresh.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-262",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_ui_v2_csv_citations_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-263",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_gate_runtime_convergence_checks_execute.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_gate_runtime_convergence_checks_execute.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_gate_runtime_convergence_checks_execute.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-264",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_authority_index_paths_resolve.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_authority_index_paths_resolve.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_authority_index_paths_resolve.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-265",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_register_table_shape_is_uniform.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_register_table_shape_is_uniform.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_register_table_shape_is_uniform.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-266",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_frozen_surfaces_are_intact.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_frozen_surfaces_are_intact.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_frozen_surfaces_are_intact.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-267",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_entry_baseline_projection.py::AnsiCodecPortabilityTests",
+      "operands": [
+        {
+          "operand": "tests/ci/test_entry_baseline_projection.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_entry_baseline_projection.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-268",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py::ProjectGitAttributionTests",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-269",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py::ProjectCiAttributionTests",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-270",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py::UsagePrecisionTests",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_snapshot_project_git_ci_and_usage_precision.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-271",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "apps/observer/frontend/src/workflowEditorPersist.contract.test.tsx",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/workflowEditorPersist.contract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/workflowEditorPersist.contract.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-272",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "apps/observer/frontend/src/topbarTransportTruth.contract.test.tsx",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/topbarTransportTruth.contract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/topbarTransportTruth.contract.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-273",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "apps/observer/frontend/src/components/graph/workflowCanvas.geometry.test.tsx",
+      "operands": [
+        {
+          "operand": "apps/observer/frontend/src/components/graph/workflowCanvas.geometry.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/components/graph/workflowCanvas.geometry.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-274",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "tests/workflow-assistance/test_isolated_trial_snapshot_surface.py; apps/observer/frontend/src/isolatedTrial.contract.test.tsx",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_isolated_trial_snapshot_surface.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_isolated_trial_snapshot_surface.py"
+          ]
+        },
+        {
+          "operand": "apps/observer/frontend/src/isolatedTrial.contract.test.tsx",
+          "category": "RESOLVES",
+          "candidates": [
+            "apps/observer/frontend/src/isolatedTrial.contract.test.tsx"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-275",
+      "statusAfter": "PARTIAL",
+      "hasFixedCommit": false,
+      "command": "tests/workflow-assistance/test_material_catalog_uses_repository_bytes.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_material_catalog_uses_repository_bytes.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_material_catalog_uses_repository_bytes.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-276",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "scripts/ci/verify_error_ledger.py must read back ERR-276; the live state it records: user-scope DSH_HOME absent; C:\\Users\\ALEX\\.dsh\\sessions holding 15 session.v4.jsonl.zstd and advancing; D:\\All proj",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_error_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_error_ledger.py"
+          ]
+        },
+        {
+          "operand": "nightly.yml",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-277",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "scripts/ci/verify_error_ledger.py must read back ERR-277; and a live readback must still show: %LOCALAPPDATA%/hermes/hermes-agent exists as a git checkout with a commit, hermes --version resolving fro",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_error_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_error_ledger.py"
+          ]
+        },
+        {
+          "operand": "%LOCALAPPDATA%/hermes/hermes-agent",
+          "category": "GONE",
+          "candidates": []
+        },
+        {
+          "operand": "install-stamp.json",
+          "category": "GONE",
+          "candidates": []
+        }
+      ],
+      "state": "PATH_GONE",
+      "reason": "no tracked file carries this basename"
+    },
+    {
+      "errorId": "ERR-278",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_adapter_version_readback.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_adapter_version_readback.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_adapter_version_readback.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-279",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "scripts/ci/verify_error_ledger.py",
+      "operands": [
+        {
+          "operand": "scripts/ci/verify_error_ledger.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "scripts/ci/verify_error_ledger.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-280",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_source_pointers_are_current.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_source_pointers_are_current.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_source_pointers_are_current.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-281",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_root_governance_runner_refuses_silent_modules.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_root_governance_runner_refuses_silent_modules.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_root_governance_runner_refuses_silent_modules.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-282",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_sidecar_documented_launch.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_sidecar_documented_launch.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_sidecar_documented_launch.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-283",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_observer_launcher_chain_is_runnable.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_observer_launcher_chain_is_runnable.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_observer_launcher_chain_is_runnable.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-284",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_evidence_range_reader.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_evidence_range_reader.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_evidence_range_reader.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-285",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_handle_latency_attribution.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_handle_latency_attribution.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_handle_latency_attribution.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-286",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_cdp_harness_waits_for_mount.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_cdp_harness_waits_for_mount.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_cdp_harness_waits_for_mount.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-287",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_cdp_harness_waits_for_mount.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_cdp_harness_waits_for_mount.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_cdp_harness_waits_for_mount.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-288",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_cdp_harness_waits_for_mount.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_cdp_harness_waits_for_mount.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_cdp_harness_waits_for_mount.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-289",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/ci/test_cdp_harness_waits_for_mount.py",
+      "operands": [
+        {
+          "operand": "tests/ci/test_cdp_harness_waits_for_mount.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/ci/test_cdp_harness_waits_for_mount.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    },
+    {
+      "errorId": "ERR-290",
+      "statusAfter": "PASS",
+      "hasFixedCommit": true,
+      "command": "tests/workflow-assistance/test_canonical_store_v2.py",
+      "operands": [
+        {
+          "operand": "tests/workflow-assistance/test_canonical_store_v2.py",
+          "category": "RESOLVES",
+          "candidates": [
+            "tests/workflow-assistance/test_canonical_store_v2.py"
+          ]
+        }
+      ],
+      "state": "RESOLVES",
+      "reason": "every operand resolves against git ls-files"
+    }
+  ],
+  "notClaimed": [
+    "a PATH_GONE label is not evidence the fix was wrong — only that this repository no longer holds the file the promise names",
+    "re-pointing changes a path string, not what the original command tested",
+    "commands with no file operand are not verified here at all; they are counted and named so the count stays visible",
+    "OUT_OF_REPO_TARGET claims are re-checkable only on the machine holding the live client home, which is why they are labelled instead of counted as resolved",
+    "no record's status_after was changed by this tool"
+  ],
+  "whyItMatters": "the ledger carries 253 PASS records; a promise whose file no longer exists cannot be re-run, so each record now says which of the six states it is in"
+}

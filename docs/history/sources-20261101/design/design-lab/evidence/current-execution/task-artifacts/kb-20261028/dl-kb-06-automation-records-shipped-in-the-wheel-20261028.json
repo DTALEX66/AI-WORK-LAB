@@ -1,0 +1,96 @@
+{
+  "id": "dl-kb-06-automation-records-shipped-in-the-wheel-20261028",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-28T15:38:49Z",
+  "subject_sha": "aa65fc70f32fe46020601e652a37d73b3a18e9ed",
+  "owner_instruction": "/GOAL 持续推进 不要再问了 (next-round entry item ①)",
+  "correction_this_cut_makes": "the previous round recorded `registry_state=MISSING` in an installed wheel as an acceptable degradation. Measured, the installed projection returned `connectors=0 project_adapters=0` -- an empty connector table on the page whose only purpose is to say what is registered. That is a false statement about the repository, not a mild one, so the judgement is withdrawn.",
+  "change": {
+    "reader": "src/design_lab/automation_connectors.py now resolves both records through runtime/state_resources.repo_resource(): packaged copy first, this checkout only when this module really is the checkout copy; the planted `root=` argument stays for the absence-state cases",
+    "wheel_force_include": [
+      "integrations/adapter-registry.json -> design_lab/resources/repo/integrations/adapter-registry.json",
+      "docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json -> design_lab/resources/repo/docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json"
+    ],
+    "sdist_root_added": "docs/history/record-archive-2026-10-28-design-automation",
+    "new_assertion": "test_the_automation_projection_answers_from_the_records_it_ships in test_standalone_chain_http.py -- content, not status, because the route answers 200 in both the shipped and the not-shipped case"
+  },
+  "readings_measured_at_write_time": [
+    {
+      "id": "source_layout",
+      "meaning": "the projection answers from the checkout as it always did",
+      "command": "python.exe -m unittest design-lab.tests.test_standalone_chain_http.StandaloneChainTests.test_the_automation_projection_answers_from_the_records_it_ships",
+      "exit_code": 0,
+      "headline": [
+        "AUTOMATION_READBACK layout=source registry=READ pack=READ connectors=11 adapters=41",
+        "OK"
+      ],
+      "expected": "pass",
+      "verdict_matches_expectation": true
+    },
+    {
+      "id": "installed_pre_fix_wheel",
+      "meaning": "the wheel built from the pre-fix tree must trip the new assertion -- this is the control that proves the assertion can fail for the defect it exists to catch",
+      "command": "python.exe -m unittest design-lab.tests.test_standalone_chain_http.StandaloneChainTests.test_the_automation_projection_answers_from_the_records_it_ships",
+      "exit_code": 1,
+      "headline": [
+        "AssertionError: 'MISSING' != 'READ'",
+        "FAILED (failures=1)"
+      ],
+      "expected": "fail",
+      "verdict_matches_expectation": true
+    },
+    {
+      "id": "installed_post_fix_wheel",
+      "meaning": "the wheel built with the two force-include lines serves 11 connectors",
+      "command": "python.exe -m unittest design-lab.tests.test_standalone_chain_http.StandaloneChainTests.test_the_automation_projection_answers_from_the_records_it_ships",
+      "exit_code": 0,
+      "headline": [
+        "AUTOMATION_READBACK layout=installed registry=READ pack=READ connectors=11 adapters=41",
+        "OK"
+      ],
+      "expected": "pass",
+      "verdict_matches_expectation": true
+    },
+    {
+      "id": "root_read_detector_control",
+      "meaning": "the strengthened walk still sees all four named pre-fix spellings, two of them this module authored",
+      "command": "python.exe design-lab/scripts/audit_repo_root_reads.py --control",
+      "exit_code": 0,
+      "headline": [
+        "CONTROL=OK every pre-fix reader was found"
+      ],
+      "expected": "pass",
+      "verdict_matches_expectation": true
+    },
+    {
+      "id": "sdist_round_trip",
+      "meaning": "the published source distribution can rebuild a wheel that contains the records",
+      "command": "python.exe design-lab/scripts/verify_sdist_packaging.py --build",
+      "exit_code": 0,
+      "headline": [
+        "SDIST_PACKAGING=OK wheel_sources=73 covered=73 missing=0 sdist_roots=18 mode=build"
+      ],
+      "expected": "pass",
+      "verdict_matches_expectation": true
+    }
+  ],
+  "wheel_bytes": {
+    "before": 1254358,
+    "after": 1272996,
+    "delta": 18638
+  },
+  "detector_hardening": {
+    "why": "audit_repo_root_reads.py documented \"a root parked in a variable first is not followed\" as a blind spot, and that is exactly how this module hid; a guard that cannot see the spelling of the defect is not a guard",
+    "now_follows": [
+      "a root name bound anywhere in the module, transitively and through `x = a or ROOT`",
+      "module-level `NAME = str` / `Path(str)` constants used in the join",
+      "shippedness judged on the path's own spelling, not only `design-lab/`"
+    ],
+    "positive_control": "four named (file, path) pairs, two of them this module's own pre-fix bytes read out of git at aa65fc70",
+    "pre_existing_finding_it_surfaced": "live report went paths=1 -> paths=2 and the new row is adapters/illustrator_com.py -> integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx: same category as the Photoshop bridge, bytes already force-included under design_lab/resources/adobe/. It was always true; the old walk could not see it. Adjudicated by naming it in the exemption with that reason, not by deleting the assertion."
+  },
+  "not_claimed": "No release, no published artefact: the wheel is built and measured, not distributed. No host was launched, no connector probed, no tool called -- the assertion pins probed_by_design_lab=0, enabled=0 and native_tool_calls_executed=0 as part of passing. The clean-checkout CI matrix has not read these bytes yet; it is the next verdict, named by its own SHA.",
+  "boundaries_unchanged": "windows connector NOT ACTIVATED; brand templates unadjudicated; pack SKILL.md bodies inert; E 盘不动; old 34 rows FROZEN_DEFERRED; mobile excluded; release and installed-artefact distribution still frozen outside this packaging contract change"
+}

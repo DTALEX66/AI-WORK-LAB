@@ -1,0 +1,46 @@
+{
+  "_note": "原计划子代理 A（仓库核心审计）因 429 免费档限流失败（508s）。主线程接管完成，以下为 main SHA 6a16c40b7a48f72757a0327ec07462d23449bb11 代码级审计结论。",
+  "summary": "DESIGN-LAB 当前 = PRODUCT_VERTICAL_SLICE_E2（Design Layer 纵切完整可运行，但无真实 host/发布）。历史 H1–H9 全部 FIXED（代码级实锤），H10 effective-evidence 门已落地。当前最大阻塞不在软件控制，而在：(a) Browser E2E 在 clean CI 上实为 SKIP（无 Chromium → 不算 E2）；(b) Design System manifests 的 wheel 安装态未实证（H6）；(c) 无真实 Adobe/MiniMax host E3；(d) 无 release/tag（E5 前置未达）。P0 = 无真实产品 P0（历史 P0 全清），转 P1 成熟化任务。",
+  "hypotheses": {
+    "H1": "FIXED —— P0-01 单选择 invariant：应用层 de-select（design_layer.py:596-602，P0-01 注释）+ DB 级 last-line 部分唯一索引 ux_design_direction_one_chosen_per_brief（design-lab-state-design-layer-v2.sql:19-22，chosen=1 AND superseded_by IS NULL）。修复 commit 76cf9b9 + 229037d。回归：test_design_layer_http.py + v2 迁移 pre-check（重复 chosen 失败关闭并列出 offending briefs）。",
+    "H2": "FIXED —— P0-02：get_design_layer 中 chosen_direction 只反映真实 chosen，无 fallback 到最近创建；无 chosen → null（design_layer.py:771-775，P0-02 注释）。commit 229037d。",
+    "H3": "FIXED —— P0-03：bind_design_system 前验证目标 direction 存在且 chosen，否则 409 DIRECTION_NOT_CHOSEN（design_layer.py:640-646，P0-03 注释）。commit 229037d。",
+    "H4": "FIXED —— P0-04：constraints 统一存 JSON 编码字符串（_text+max_len=2000→_json_field），readback json.loads 还原，非 {\"constraints\":text} 对象（design_layer.py:271-283 注释 P0-04）。commit 229037d。",
+    "H5": "FIXED —— P0-05：_verify_references 对每个 reference_asset_id 做 shape+存在性+项目归属三重校验，malformed/unknown/cross-project 全部 fail closed（400 INVALID / 404 NOT_FOUND / 409 MISMATCH），写连接前 dedup（design_layer.py:246-299）。commit 229037d。",
+    "H9": "FIXED —— F-2a 真实 revision：design-layer-v3.sql 加 append-only design_layer_event（DDL trigger 禁 UPDATE/DELETE），revise_brief/revise_direction = INSERT 新行 version+1 + 仅移动父行 superseded_by + 同事务事件；lineage_* 从事件边解析版本链（design_layer.py:403-555, 708-755）。commit 8b2f49f (PR#129)。回归 test_design_layer_revision.py。",
+    "H10": "FIXED —— effective_evidence.py（P1-B/DL-EVD-002/003）：recorded level 与 current tree 分离；requiresRequalification 或 subjectSha≠currentSha 时降到 structural floor（E1，若结构未证则 E0）；仅 effective level 可与 minimumRequiredEvidence 比较（effective_evidence.py:28-61,82-90）。回归 test_release_gate_effective.py + test_effective_evidence.py。",
+    "H7": "FIXED —— 实测纠正：CI canonical-verify 已含专用 job 'Workbench browser E2E (exact-SHA controlled-runtime, no-skip)'，run 35546749035(=main 6a16c40, push) 该 job conclusion=success/completed；且 design-lab/scripts/verify_browser_e2e_ran.py 强制 no-skip 策略：测试 skip 即 exit 1 使 CI job 变红（'The no-skip policy requires the toolchain to be present and the test to run'）。故 H7（GitHub Browser E2E 实际 skip）在当前 main 已消除。残留 P1：该 no-skip job 为 green 但 NOT 列入 branch protection 7 项 required_status_checks（child-C 实测 strict=true 的 contexts 缺它 + 缺 DeepSeek authority gate chain）→ 可在 PR 上绕过 red 合并，属 governance 洞而非 skip。"
+  },
+  "top10_p0p1": [
+    "[P0-无] 历史 H1–H5 P0 全部 FIXED（229037d/76cf9b9/8b2f49f），当前无真实产品 P0。",
+    "[P1] H7 已由 no-skip job 消除（run 35546749035 'Workbench browser E2E no-skip'=success + verify_browser_e2e_ran.py skip→red）；残留 = 该 job 未在 branch protection required_status_checks（7 项）内 → P1 governance 补 gate，非重新实现 E2E。",
+    "[P1] H6 Design System manifests wheel 安装态未实证：catalog() 读 design_lab/resources/ 打包路径（design_layer.py:629 注释 'packaged into the wheel under design_lab/resources/'），需 isolated venv 安装后离开 repo CWD 验证 import+catalog+design layer（子代理 C 负责实证）。",
+    "[P1] 无真实 Adobe/MiniMax host E3：控制能力矩阵(P1-CONTROL-SPIKE 82556dc)是 DECLARED 路由，requiresRequalification 门阻止旧 E3 直接满足 release floor，真实 host 运行仍 owner-gated 未做。",
+    "[P1] 无 release/tag（0 release，0 tag）→ E5 前置（release preflight F-3 已合但 tag 未打）。",
+    "[P2] reports/current rebind 后进入 self-referential STALE 稳态（gitObservation 祖先关系），非缺陷；branch 35 条未清理（MERGED 候选 + HISTORICAL 待 owner 批）。"
+  ],
+  "findings_table": [
+    "Design Layer | src/design_lab/design_layer.py | E2 纵切(项目→Brief→Direction→Choice→Bind→Readback) + F-2a revision | design_layer.py 全文 + test_design_layer_*.py | VERIFIED(CODE+TEST, no host) | 无真实 host E3 | P1",
+    "SQLite/State | design-lab/schemas/state/*.sql (9) + store.py | 版本化 guarded migration v1..v3, partial unique index, append-only event trigger | v2.sql:19 / v3.sql:23 | VERIFIED | 安装态未证 | P1",
+    "Authority | AUTHORITY.md + authority-index.json + AGENTS.md | 版本化 Authority R2 + 一致性 verifier | verify_top_level_authority.py | VERIFIED | stale drift 需每次 live | P2",
+    "Evidence | effective_evidence.py + verify_release_gate.py | recorded/effective 分离, floor 比较 | effective_evidence.py:28 | VERIFIED | 需真实 host 再资格 | P1",
+    "Workbench | apps/workbench/** | 产品壳(非纯 debug)，Design Layer 表单+readback | main.ts + build | 子代理B | - | P1",
+    "Browser E2E | design-lab/tests browser test | honest skip, 无 CI Chromium | canonical-verify.yml | SKIP_NOT_PASS | 需 CI 装浏览器真跑 | P1",
+    "Packaging | pyproject.toml + resources/ | wheel 资源通路, catalog 读 resources/ | 子代理C | 未实证 | 需 isolated venv smoke | P1"
+  ],
+  "evidence_refs": [
+    "76cf9b9 P0-D active-binding + P0-A+ DB single-choice invariant",
+    "229037d P0-01/02/03 correctness + Reference integration",
+    "8b2f49f PR#129 feat/f2a-revision (F-2a revision model)",
+    "82556dc P1-CONTROL-SPIKE 控制能力路由契约矩阵 + P1-RECOVERY 幂等重放回归",
+    "design-lab/schemas/state/design-lab-state-design-layer-v2.sql:19-22",
+    "design-lab/schemas/state/design-lab-state-design-layer-v3.sql:23-48",
+    "src/design_lab/design_layer.py:596-621 (choose), 640-646 (bind P0-03), 771-775 (P0-02), 246-299 (P0-05), 403-555 (F-2a)",
+    "design-lab/scripts/effective_evidence.py:28-61 (H10)",
+    "回归: test_design_layer_http.py / test_design_layer_revision.py / test_design_layer_idempotency_recovery.py / test_release_gate_effective.py / test_effective_evidence.py"
+  ],
+  "blocked": [
+    "子代理 C 尚未返回：H6 wheel 安装态实证 / H7 CI browser job 逐 job 结论 / branch protection 403 状态 / 35 分支语义 —— 需等 C 结果或主线程补做",
+    "子代理 B 尚未返回：Workbench 产品 UI vs shell 详细 panel 清单 / committed build 同步 / Design System 前端资源通路"
+  ]
+}

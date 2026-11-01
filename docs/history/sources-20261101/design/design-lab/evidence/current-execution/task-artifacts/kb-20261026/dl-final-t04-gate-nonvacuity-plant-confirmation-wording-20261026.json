@@ -1,0 +1,23 @@
+{
+  "id": "dl-final-t04-gate-nonvacuity-plant-confirmation-wording-20261026",
+  "task_id": "DL-FINAL-T04",
+  "axis": "unit",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T17:03:21Z",
+  "subject_sha": "3b0659f8f6aebf4cbf727e71825d27fa051faf16",
+  "audit_finding": "owner order 2026-10-26: adversarial audit of this round. The claim under test is section 5.79's -- that the browser gate was made stricter, not looser, when the copy-confirmation read was moved behind a wait for the state it asserts.",
+  "reproduced_before_fix": "the plant, on the repaired bytes: apps/workbench/shell.ts:6236 confirmation wording `已复制为新的方案 ` replaced by `复制完成 `, `npx vite build` (619.42 kB, exit 0), then the same gate: `Ran 2 tests in 31.842s FAILED (failures=1)` with the finding line `E2E_ASSISTANT_PLAN_DUPLICATE: status=\"...保存会新建一条方案...\" answer={\"revision\":1,\"id\":\"aplan-ddb0c767dd584880b33399ed0fb9364d\"} writes=5/5 confirmationRendered=false` -- so a genuinely missing conviction is still convicted, and the 25 s budget is real (31.842 s against 10.741 s on restored bytes)",
+  "changed": [
+    "no repository bytes were changed by this proof: the plant was applied to a working copy and undone from pre-plant copies, verified by sha256 (apps/workbench/shell.ts a3febac098b26d97baa23d55d83b9328c83a595f721443753eb7f4f8de4decbf, apps/workbench/build/main.js 5cd4cc19598aa24c9218e49f10f88326eef1d7d3a9527aeddae7fc0014011334 -- the latter equal to the bundleSha256 CI printed in its own E2E_NAV_ACTIVE_VISIBLE line), after which `git status --porcelain` showed no tracked modification"
+  ],
+  "measured": {
+    "gate_after_restore": "Ran 2 tests in 10.741s OK",
+    "gate_under_plant": "Ran 2 tests in 31.842s FAILED (failures=1)",
+    "plant_conviction_fields": "confirmationRendered=false, service answer revision=1 with a fresh aplan id, writes=5/5",
+    "pointer_reaudit": "sections 5.73-5.74: 6 path:line pointers, 0 unresolved, 0 beyond EOF, every one read down to its bytes; 36 section references in the接续提示词 all resolve to real headings",
+    "test_count_attribution": "3415 - 3412 = 3 added `def test_`: 53cdc7eb=2, 7b9a4f37=1",
+    "closing_surface": "currentExecution.evidence 319 rows before this one, 22 dated 20261026, all artifact_path in the git index, 0 hash disagreements; chain publishes evidence_receipts; register gate RECORD_REGISTER_GATE=PASS checks=5 problems=0 read back unpiped",
+    "head": "3b0659f8f6aebf4cbf727e71825d27fa051faf16"
+  },
+  "not_claimed": "this proves the gate's reading discipline, not the product's E3 or E4 story: no real host and no named human acceptance happened; and the local browser-e2e-summary.json carries no `assistant` field, so the four-states slice is evidenced by CI's own run, not by this artefact. The pipeline-masking self-correction in section 5.80 (commit c46ef4b6 asserted a gate result while `| tail -1` had swallowed the exit code) is recorded there, not glossed."
+}

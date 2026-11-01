@@ -1,0 +1,21 @@
+{
+  "id": "dl-final-t04-ledger-artefact-must-be-tracked-20261026",
+  "task_id": "DL-FINAL-T04",
+  "axis": "unit",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T14:38:00Z",
+  "subject_sha": "53cdc7eb5e8391b2796dff1bf1378e452f80dd32",
+  "audit_finding": "self-caused during this round: CI run 40338742258 at 4dc59349 failed because the section 5.75 ledger row named a receipt that was never committed",
+  "reproduced_before_fix": "the CI clone itself: CURRENT_EXECUTION=FAIL and the evidence-projection route answered 500 EVIDENCE_LEDGER_REJECTED on a missing [Errno 2]; every local run passed because the file was on disk",
+  "changed": [
+    "design-lab/tests/test_evidence_artifact_presence.py: every currentExecution artefact that is not under .project-local must be in the git index (presence on disk is not delivery), plus a plant that convicts an unindexed path and a second assertion that keeps the gitignored exemption from turning into red on a clean checkout",
+    ".project-local/task-runtime/records-575/close_575.py: stage new files (`??`) as well as modified ones, and re-check index membership before pushing"
+  ],
+  "measured": {
+    "rows_scanned": 316,
+    "rows_outside_index": 0,
+    "presence_module": "Ran 7 tests in 5.662s OK",
+    "head": "53cdc7eb5e8391b2796dff1bf1378e452f80dd32"
+  },
+  "not_claimed": "the receipt content and the verdict it quotes were not in question -- only their delivery; the CI green this round needs has to be read at the head that carries this fix, not at 4dc59349"
+}

@@ -1,0 +1,927 @@
+/* 2026-10-18 · compact-HUD phenotype (Agent HUD reference, WORK-LAB data).
+ *
+ * The 440×680 floating panel gets the reference's visual DNA: top notch and
+ * glow, dark glass, per-source rings, a glyph whose eyes follow the pointer,
+ * large tabular totals, a session sparkline. It defines NEW `.hud-*` classes
+ * only, so the pinned b10 skin stays verbatim; colours, radii and durations
+ * come from the same tokens as the rest of the shell, which keeps light theme
+ * and the 12px text floor intact. Nothing here selects data: the component
+ * paints only what the v3 projection already reported.
+ */
+.hud-phenotype {
+  --hud-accent-1: var(--primary);
+  --hud-accent-2: var(--secondary);
+  --hud-accent-3: color-mix(in srgb, var(--primary) 52%, var(--secondary));
+  --hud-accent-4: var(--warning);
+  --hud-accent-5: var(--success);
+  --hud-eye-x: 0px;
+  --hud-eye-y: 0px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A ring is a non-text graphic, and the contract asks those for 3:1 against
+ * their surface. The pinned cyan (--secondary, #20CDE1) measures 1.93:1 on the
+ * light surface and 1.68:1 on surface2, so light theme binds the second and
+ * third rings to the ink-safe cyan the shell already exposes. The share text
+ * repeats each arc, but the graphic itself should not need that excuse. */
+html.light .hud-phenotype {
+  --hud-accent-2: rgb(var(--secondary-ink-rgb));
+  --hud-accent-3: color-mix(in srgb, var(--primary-text) 52%, rgb(var(--secondary-ink-rgb)));
+}
+/* The session trend ends on the same cyan the rings use, so it gets the same
+ * light-theme ink variant (1.93:1 -> 7.33:1). */
+html.light .hud-spark-svg #hud-spark-stroke stop:last-child {
+  stop-color: rgb(var(--secondary-ink-rgb));
+}
+
+.hud-notch {
+  align-self: center;
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 14px;
+  margin-bottom: -12px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+  background: color-mix(in srgb, var(--surface2) 92%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .3);
+}
+.hud-notch-dot {
+  width: 6px; height: 6px; flex: none; border-radius: 50%;
+  background: var(--muted); color: var(--muted);
+  box-shadow: 0 0 10px currentColor;
+}
+.hud-phenotype[data-state="live"] .hud-notch-dot { background: var(--success); color: var(--success); animation: hudDotPulse 2.4s ease-in-out infinite; }
+.hud-phenotype[data-state="offline"] .hud-notch-dot { background: var(--error); color: var(--error); }
+.hud-phenotype[data-state="waiting"] .hud-notch-dot { background: var(--warning); color: var(--warning); }
+/* Waiting work is a second, orthogonal signal: an otherwise-LIVE HUD turns
+ * amber while a person is still needed. It never overrides OFFLINE, because a
+ * retained snapshot's wait cannot be verified after the read path stops. */
+.hud-phenotype[data-attention="true"][data-state="live"] .hud-notch-dot {
+  background: var(--warning);
+  color: var(--warning);
+}
+.hud-phenotype[data-attention="true"] .hud-top-glow {
+  background: linear-gradient(90deg, transparent, var(--warning), var(--error), transparent);
+}
+.hud-notch-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 26%, var(--surface2));
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.hud-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 560px;
+  padding: 12px 16px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 62%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--surface) 88%, white 2%),
+      color-mix(in srgb, var(--surface) 96%, black 2%));
+  box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+
+/* The glow lives on an unmasked sibling, never on the panel: a mask applies
+ * after a filter and would clip its own halo. */
+.hud-top-glow {
+  position: absolute;
+  top: -1px; left: 8%; right: 8%;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), transparent);
+  opacity: .92;
+}
+.hud-top-glow::after {
+  content: "";
+  position: absolute;
+  left: 18%; right: 18%; top: 0;
+  height: 34px;
+  pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 30%, transparent), transparent);
+  filter: blur(14px);
+  opacity: .55;
+}
+
+/* The reference's segmented control: a dark trough with one raised pill. */
+.hud-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.hud-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface2) 66%, transparent);
+}
+.hud-tab {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.hud-tab:hover { color: var(--text); }
+.hud-tab[aria-selected="true"] {
+  background: color-mix(in srgb, var(--surface) 92%, white 4%);
+  color: var(--text);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .28), inset 0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent);
+}
+.hud-tab:focus-visible,
+.hud-agent:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.hud-tab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.hud-tab[data-tone="waiting"] .hud-tab-count {
+  background: color-mix(in srgb, var(--warning) 26%, transparent);
+}
+.hud-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--border) 80%, transparent) transparent;
+}
+.hud-body::-webkit-scrollbar { width: 6px; }
+.hud-body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+}
+/* WebView2 paints overlay scrollbars, so a clipped scroll body needs a visible
+ * fold affordance. The fade is driven by the component's own measurement
+ * (scrollHeight vs clientHeight) and clears when the reader reaches the end. */
+.hud-body[data-edge="more"] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent 100%);
+}
+/* An author `display:flex` beats the UA sheet's [hidden] rule; the inactive
+ * tabpanel must really leave layout and the a11y tree. */
+.hud-view[hidden] { display: none; }
+.hud-view { display: flex; flex-direction: column; }
+
+.hud-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.hud-total-block { min-width: 0; }
+.hud-label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .12em;
+}
+.hud-total {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: clamp(30px, 9.5vw, 44px);
+  line-height: .98;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+.hud-total.is-unknown {
+  color: var(--muted);
+  font-size: clamp(24px, 7.5vw, 32px);
+  letter-spacing: 0;
+}
+.hud-total-meta {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  max-width: 46%;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface2) 72%, transparent);
+  white-space: nowrap;
+}
+.hud-status-dot {
+  width: 7px; height: 7px; flex: none; border-radius: 50%;
+  background: var(--muted); color: var(--muted);
+  box-shadow: 0 0 10px currentColor;
+}
+.hud-status[data-state="live"] .hud-status-dot { background: var(--success); color: var(--success); }
+.hud-status[data-state="offline"] .hud-status-dot { background: var(--error); color: var(--error); }
+.hud-status[data-state="waiting"] .hud-status-dot { background: var(--warning); color: var(--warning); }
+.hud-status-text {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--text);
+}
+
+/* Facts wrap instead of truncating: a clipped "覆盖 UNK…" reads as the prefix
+ * of a real value, which is the guess this surface refuses to make. */
+.hud-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.hud-fact {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface2) 62%, transparent);
+}
+.hud-fact-label { display: block; color: var(--muted); font-size: 12px; }
+.hud-fact-value {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.hud-fact-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-agents-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+.hud-agents-title { color: var(--text); font-size: 13px; font-weight: 600; }
+.hud-agents-note { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+.hud-agents {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+.hud-agent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface2) 58%, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+.hud-agent:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent, var(--primary)) 46%, var(--border));
+}
+.hud-agent[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--accent, var(--primary)) 72%, var(--border));
+  background: color-mix(in srgb, var(--accent, var(--primary)) 12%, var(--surface2));
+}
+/* The summary card is not one platform; a dashed edge keeps it from reading as
+ * a fourth source of its own. */
+.hud-agent[data-aggregate="true"] {
+  border-style: dashed;
+}
+.hud-ring { position: relative; display: block; width: 64px; height: 64px; }
+.hud-ring svg { display: block; width: 100%; height: 100%; }
+.hud-ring-track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--border) 55%, transparent);
+  stroke-width: 5;
+}
+.hud-ring-arc {
+  fill: none;
+  stroke: var(--accent, var(--primary));
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dasharray .4s ease;
+}
+/* A zero-length dash with a round cap still paints a dot. An undefined share
+ * (no reported token in the group, or a zero denominator) must paint nothing,
+ * or the ring claims a sliver that the data does not support. */
+.hud-ring-arc[data-empty="true"] {
+  stroke-linecap: butt;
+}
+.hud-bot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.hud-bot::before {
+  content: "";
+  width: 26px; height: 22px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent, var(--primary)) 48%, transparent);
+  background: color-mix(in srgb, var(--accent, var(--primary)) 20%, var(--surface2));
+  box-shadow: 0 0 18px -6px var(--accent, var(--primary));
+}
+.hud-eye {
+  position: absolute;
+  top: calc(50% - 5px);
+  width: 4px; height: 5px;
+  border-radius: 999px;
+  background: var(--text);
+  transform: translate(var(--hud-eye-x), var(--hud-eye-y));
+  transition: transform .08s linear;
+}
+.hud-eye-l { left: calc(50% - 8px); }
+.hud-eye-r { left: calc(50% + 4px); }
+.hud-share {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hud-agent-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hud-agent-total {
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+/* The reference's stacked bar, fed only by a complete input/output/total
+ * triple. A partial triple leaves the track empty: an unknown part cannot be
+ * given the width of a zero. */
+.hud-agent-bar {
+  display: flex;
+  width: 100%;
+  height: 4px;
+  margin-top: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 44%, transparent);
+}
+.hud-agent-bar[data-known="false"] { opacity: .45; }
+.hud-agent-bar i { display: block; height: 100%; }
+.hud-agent-bar i[data-part="input"] { background: var(--accent, var(--primary)); }
+.hud-agent-bar i[data-part="output"] {
+  background: color-mix(in srgb, var(--accent, var(--primary)) 52%, transparent);
+}
+.hud-agent-bar i[data-part="rest"] {
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+
+.hud-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.hud-note-fold { margin-top: 2px; }
+
+/* At 440px the command field and the action row cannot share one line: the
+ * field shrank under a forced-nowrap probe, the probe therefore reported no
+ * overflow, and the four buttons wrapped to a second row (measured 111px tall
+ * bar for a 78px contract). Compact shows the command affordance as its icon
+ * alone. The label and the shortcut chip stay in the DOM - the smoke test and
+ * screen readers still name them - and the title keeps Ctrl K discoverable. */
+.app-compact .topbar .search {
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  height: 38px;
+  padding: 0;
+  justify-content: center;
+}
+.app-compact .topbar .search .truncate,
+.app-compact .topbar .search kbd { display: none; }
+/* The 44px icon plus the drag handle (min 8px) and the four action buttons
+ * (176px) total 270px; three 10px gaps pushed that past the 296px the 440px
+ * window leaves after the 130px caption reserve, so the buttons still wrapped.
+ * Six-pixel gaps fit with 8px to spare and keep every hit target at full size. */
+.app-compact .topbar { column-gap: 6px; }
+
+.hud-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px dashed color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface2) 40%, transparent);
+}
+.hud-empty-ring {
+  width: 40px; height: 40px; flex: none;
+  display: grid; place-items: center;
+  border: 5px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 50%;
+}
+.hud-empty-ring i {
+  width: 18px; height: 14px; border-radius: 6px;
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+}
+.hud-empty-copy { min-width: 0; }
+.hud-empty-copy strong { display: block; color: var(--text); font-size: 13px; font-weight: 600; }
+.hud-empty-copy small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+.hud-spark-block {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+}
+.hud-spark-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.hud-spark { height: 38px; margin-top: 4px; }
+.hud-spark-svg { display: block; width: 100%; height: 100%; }
+.hud-spark-meta { margin-top: 2px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hud-spark-empty { margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+/* --- fused Agent-HUD view blocks ------------------------------------------------ */
+.hud-detail {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface2) 46%, transparent);
+}
+.hud-detail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.hud-detail-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+.hud-detail-sub {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.hud-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+.hud-detail-grid > div { min-width: 0; }
+.hud-detail-grid span { display: block; color: var(--muted); font-size: 12px; }
+.hud-detail-grid b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.hud-detail-projects {
+  margin: 6px 0 0;
+  padding: 6px 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hud-detail-projects li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 12px;
+}
+.hud-detail-projects li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hud-detail-projects li b { flex: none; font-variant-numeric: tabular-nums; }
+.hud-detail-note {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.hud-recent {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface2) 40%, transparent);
+}
+.hud-recent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hud-recent-head span:last-child { color: var(--muted); font-weight: 400; }
+.hud-recent-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 6px;
+}
+.hud-recent-cell {
+  min-width: 0;
+  padding: 0 8px;
+  border-left: 1px solid color-mix(in srgb, var(--border) 44%, transparent);
+}
+.hud-recent-cell:first-child { padding-left: 0; border-left: 0; }
+.hud-recent-cell:last-child { padding-right: 0; }
+.hud-recent-cell > span { display: block; color: var(--muted); font-size: 12px; }
+.hud-recent-cell > b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hud-recent-cell > b.is-unknown { color: var(--muted); font-weight: 600; }
+.hud-recent-cell > small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hud-heat {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px dashed color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(135deg,
+      transparent 0 6px,
+      color-mix(in srgb, var(--border) 16%, transparent) 6px 7px),
+    color-mix(in srgb, var(--surface2) 30%, transparent);
+}
+.hud-heat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hud-heat-head span:last-child { color: var(--muted); font-weight: 400; }
+.hud-heat-empty {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.hud-view-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.hud-view-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.hud-view-title strong { color: var(--text); font-size: 14px; font-weight: 700; }
+.hud-view-title span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hud-counts { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.hud-counts span {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hud-counts span[data-tone="waiting"] { color: var(--warning); }
+.hud-counts span[data-tone="active"] { color: var(--success); }
+.hud-counts span[data-tone="failed"] { color: var(--error); }
+.hud-empty-line {
+  padding: 10px;
+  border: 1px dashed color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.hud-session-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hud-session {
+  display: flex;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface2) 42%, transparent);
+}
+.hud-session-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--muted);
+  box-shadow: 0 0 8px currentColor;
+}
+.hud-session[data-state="WAITING_APPROVAL"] .hud-session-dot,
+.hud-session[data-state="WAITING_USER"] .hud-session-dot { background: var(--warning); color: var(--warning); }
+.hud-session[data-state="RUNNING"] .hud-session-dot,
+.hud-session[data-state="STARTING"] .hud-session-dot { background: var(--success); color: var(--success); }
+.hud-session[data-state="FAILED"] .hud-session-dot { background: var(--error); color: var(--error); }
+.hud-session-main { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.hud-session-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.hud-session-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+.hud-session-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.hud-readonly-pill {
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hud-approval-list { display: flex; flex-direction: column; gap: 6px; }
+.hud-approval {
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--warning) 42%, var(--border));
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--warning) 8%, transparent),
+      transparent 70%),
+    color-mix(in srgb, var(--surface2) 46%, transparent);
+}
+.hud-approval[data-kind="question"] {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--primary) 8%, transparent),
+      transparent 70%),
+    color-mix(in srgb, var(--surface2) 46%, transparent);
+}
+.hud-approval header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hud-approval-agent {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.hud-approval-kind {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 22%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hud-approval[data-kind="question"] .hud-approval-kind {
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.hud-approval-project {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+}
+.hud-approval-meta {
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.hud-readonly-line {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 46%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+}
+.hud-plan {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+.hud-plan-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hud-plan-head span:last-child { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.hud-plan-list {
+  margin: 5px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.hud-plan-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+.hud-plan-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.hud-plan-state {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.hud-approval-boundary { margin-top: 8px; }
+
+.hud-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+}
+.hud-footer-source { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-footer-time { flex: none; font-variant-numeric: tabular-nums; }
+
+@keyframes hudDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-phenotype[data-state="live"] .hud-notch-dot { animation: none; }
+  .hud-agent { transition: none; }
+  .hud-agent:hover { transform: none; }
+  .hud-ring-arc { transition: none; }
+  .hud-eye { transition: none; }
+}

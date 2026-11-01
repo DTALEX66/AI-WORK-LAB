@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MINIGAME Skin Schema",
+  "description": "Schema for MINIGAME anomaly-system skin JSON files. Every skin must provide meta, UI labels, action feedback, 12 anomalies, and 12 hidden logs.",
+  "type": "object",
+  "required": ["meta", "actionLabels", "doorLabels", "directionLabels", "statusLabels", "canvasLabels", "actionFailMessages", "actionFeedback", "actionLogMessages", "anomalies", "hiddenLogs"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["id", "name", "subtitle"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "subtitle": { "type": "string" }
+      }
+    },
+    "monitor": {
+      "type": "object",
+      "required": ["initial", "actions"],
+      "properties": {
+        "initial": { "type": "string" },
+        "actions": {
+          "type": "object",
+          "required": ["openDoor", "closeDoor", "moveUp", "moveDown", "emergencyStop", "restartSystem"],
+          "properties": {
+            "openDoor": { "type": "string" },
+            "closeDoor": { "type": "string" },
+            "moveUp": { "type": "string" },
+            "moveDown": { "type": "string" },
+            "emergencyStop": { "type": "string" },
+            "restartSystem": { "type": "string" }
+          }
+        }
+      }
+    },
+    "actionLabels": {
+      "type": "object",
+      "required": ["openDoor", "closeDoor", "moveUp", "moveDown", "emergencyStop", "restartSystem", "inspectLog", "unlockHiddenLog"],
+      "additionalProperties": { "type": "string" }
+    },
+    "doorLabels": {
+      "type": "object",
+      "required": ["open", "closed"],
+      "additionalProperties": { "type": "string" }
+    },
+    "directionLabels": {
+      "type": "object",
+      "required": ["up", "down", "idle"],
+      "additionalProperties": { "type": "string" }
+    },
+    "statusLabels": {
+      "type": "object",
+      "required": ["panelTitle", "floor", "door", "direction", "passengers", "power", "stability", "anomalyLevel", "reviveCount", "adHintsCount", "hiddenLogsCount"],
+      "additionalProperties": { "type": "string" }
+    },
+    "canvasLabels": {
+      "type": "object",
+      "required": ["countdown", "monitorPanel", "actionPanel", "logPanel", "forceAnomaly", "failureTitle", "failureEyebrow", "monitorSignalStable", "monitorSignalUnstable", "monitorSignalCorrupted", "monitorThreat", "failureMetricStability", "failureMetricAnomaly", "failureMetricRemaining"],
+      "additionalProperties": { "type": "string" }
+    },
+    "actionFailMessages": {
+      "type": "object",
+      "required": ["openDoor_moving", "moveUp_doorNotClosed", "moveDown_doorNotClosed", "unknownAction", "gameOver"],
+      "additionalProperties": { "type": "string" }
+    },
+    "actionFeedback": {
+      "type": "object",
+      "required": ["openDoor", "closeDoor", "moveUp", "moveDown", "emergencyStop", "emergencyStop_fail", "restartSystem", "inspectLog", "unlockHiddenLog_noLocked", "unlockHiddenLog_limit"],
+      "additionalProperties": { "type": "string" }
+    },
+    "actionLogMessages": {
+      "type": "object",
+      "required": ["openDoor", "closeDoor", "moveUp", "moveDown", "emergencyStop", "emergencyStop_fail", "restartSystem", "inspectLog", "inspectLog_hiddenRecords", "unlockHiddenLog_ok"],
+      "additionalProperties": { "type": "string" }
+    },
+    "ui": { "type": "object" },
+    "failure": { "type": "object" },
+    "fakeEnding": { "type": "object" },
+    "anomalies": {
+      "type": "array",
+      "minItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "severity", "monitor", "adHint", "effects"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "severity": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "monitor": { "type": "string" },
+          "adHint": { "type": "string" },
+          "effects": {
+            "type": "object",
+            "required": ["anomalyLevel"],
+            "properties": {
+              "anomalyLevel": { "type": "integer" },
+              "stability": { "type": "integer" },
+              "power": { "type": "integer" },
+              "passengers": { "type": "integer" },
+              "floor": { "type": ["integer", "string"] },
+              "door": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "hiddenLogs": {
+      "type": "object",
+      "minProperties": 12,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["title", "content"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "content": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "visual-quality-refinement",
+  "title": "Visual Quality Refinement",
+  "version": "0.2.1",
+  "publishedAt": "2026-08-04T00:00:00Z",
+  "description": "Diagnose and raise visual quality, taste, realism and craft through a bounded evidence-based refinement loop.",
+  "author": {
+    "name": "DTALEX66 OPEN-DESIGN-Assistance"
+  },
+  "license": "MIT",
+  "tags": [
+    "scenario",
+    "visual-quality",
+    "art-direction"
+  ],
+  "compat": {
+    "agentSkills": [
+      {
+        "path": "./SKILL.md"
+      }
+    ]
+  },
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "scenario",
+    "useCase": {
+      "query": {
+        "en": "Diagnose and raise visual quality, taste, realism and craft through a bounded evidence-based refinement loop.",
+        "zh-CN": "Diagnose and raise visual quality, taste, realism and craft through a bounded evidence-based refinement loop."
+      }
+    },
+    "inputs": [
+      {
+        "name": "artifact",
+        "type": "file",
+        "required": true
+      },
+      {
+        "name": "discipline",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "target_score",
+        "type": "number",
+        "required": false
+      },
+      {
+        "name": "preserve",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "capabilities": [
+      "prompt:inject",
+      "pipeline:*",
+      "media:image",
+      "fs:write"
+    ],
+    "pipeline": {
+      "stages": [
+        {
+          "id": "baseline",
+          "atoms": [
+            "visual-taste-jury",
+            "anti-ai-slop-diagnostician"
+          ]
+        },
+        {
+          "id": "structure",
+          "atoms": [
+            "typography-composition-director"
+          ]
+        },
+        {
+          "id": "surface-reality",
+          "atoms": [
+            "color-material-light-director"
+          ]
+        },
+        {
+          "id": "refine",
+          "atoms": [
+            "visual-polish-loop",
+            "media-image",
+            "file-write",
+            "live-artifact"
+          ],
+          "repeat": true,
+          "until": "critique.score>=8.5 && blockers==0 || iterations>=4",
+          "onFailure": "retry"
+        },
+        {
+          "id": "final-jury",
+          "atoms": [
+            "visual-taste-jury",
+            "critique-theater"
+          ]
+        },
+        {
+          "id": "handoff",
+          "atoms": [
+            "delivery-packager"
+          ]
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        }
+      ],
+      "craft": [
+        "art-direction",
+        "typography",
+        "composition",
+        "color",
+        "material-light",
+        "master-method",
+        "anti-ai-slop"
+      ],
+      "atoms": [
+        "master-method-researcher",
+        "style-lineage-mapper",
+        "art-direction-synthesizer",
+        "typography-composition-director",
+        "color-material-light-director",
+        "visual-taste-jury",
+        "anti-ai-slop-diagnostician",
+        "visual-polish-loop"
+      ]
+    },
+    "genui": {
+      "surfaces": [
+        {
+          "id": "preserve-confirm",
+          "kind": "form",
+          "persist": "project",
+          "trigger": {
+            "stageId": "baseline",
+            "atom": "visual-taste-jury"
+          },
+          "prompt": "Confirm what must be preserved before refinement.",
+          "onTimeout": "default"
+        },
+        {
+          "id": "final-approval",
+          "kind": "confirmation",
+          "persist": "project",
+          "trigger": {
+            "stageId": "final-jury",
+            "atom": "visual-taste-jury"
+          },
+          "prompt": "Approve the final visual direction after A/B comparison.",
+          "onTimeout": "abort"
+        }
+      ]
+    }
+  }
+}

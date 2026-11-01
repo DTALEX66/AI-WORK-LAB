@@ -1,0 +1,200 @@
+# Compatibility contract for WORK-LAB's typed workflow controls and coverage.
+# Human-facing universal prose is owned by the external AGENT_CORE.md mother;
+# config/universal-agent/source.json records the reviewed deployment snapshot.
+# The Codex/Hermes renderers no longer regenerate global prose from this YAML.
+# WORK-LAB-specific authority/task/data controls below apply to their declared
+# managed scope, not automatically to every external project. Existing machine
+# contracts and permission fields are preserved by this rule-only deployment.
+
+schema_version: workflow/global-agent-policy/v1
+policy_id: WORK-LAB-GLOBAL-AGENT-POLICY
+revision: 2
+created: "2026-09-18"
+supersedes: "ad-hoc per-software copied prompt blocks (codex global-guidance R4/R5; no global policy SSOT)"
+
+ownership:
+  layer: USER_OVERLAY
+  mode: MANAGE
+  single_source: true
+  is_authority: false
+  note: >
+    Typed compatibility contract under existing config ownership. Universal
+    prose comes from the external mother snapshot, not this YAML. Native
+    readback is required for machine-control deployment claims.
+
+# ---------------------------------------------------------------------------
+# defaults + communication
+# ---------------------------------------------------------------------------
+communication:
+  default_language: zh
+  proceed_on_obvious_default: true
+  avoid_low_value_clarification: true
+  ask_only_when_scope_risk_or_side_effect_changes: true
+
+execution:
+  proportionate_to_scale_and_risk: true
+  finish_to_closure: true
+  keep_concise_plan_for_multistep: true
+  one_actively_owned_item: true
+  preserve_dirty_work: true
+
+authority_discovery:
+  resolve_current_main_first: true
+  read_top_authority_before_history: true
+  historical_records_non_normative: true
+  precedence:
+    - latest_explicit_user_decision
+    - work_lab_authority_md
+    - project_authority_index
+    - current_taskpack_and_open_register
+    - agents_md_and_scoped_machine_authorities
+    - current_exact_sha_code_and_readback
+    - historical_records
+
+authorization:
+  valid_within_task: true
+  grants_do_not_outlive_their_task: true
+  low_value_confirmation_avoided: true
+  task_grant_respects_platform_hard_limits: true
+  explicit_side_effects_require_explicit_authorization: true
+  # Privilege ladder — a permission granted to a weaker step does NOT imply the
+  # stronger step. These are enforced invariants, not soft guidance.
+  privilege_ladder:
+    - read_does_not_imply_write
+    - write_does_not_imply_commit
+    - commit_does_not_imply_push
+    - push_does_not_imply_merge
+
+task_grant:
+  granular_permissions_required: true
+  read_only_default: true
+  side_effects_default: deny
+  cannot_override_platform_hard_limits: true
+
+workspace_boundary:
+  default_scope: current_git_project_and_authorized_dirs_only
+  keep_task_data_in_project: true
+  never_spill_to_user_home_or_other_projects: true
+  project_local_runtime_root: .project-local
+  external_output_requires_exact_auth: true
+
+protected_storage:
+  # The user-declared protected data drives. On this machine BOTH E: and F:
+  # are protected (standing user rule). Every protected drive is default-deny:
+  # no enumeration, probe, or bypass before an explicit exact-path +
+  # exact-operation authorization in the current request.
+  protected_drives: [E, F]
+  drive_default: deny
+  authorization_granularity: exact_path_and_operation
+  forbid_before_authorization:
+    - enumerate
+    - dry_run_probe
+    - script_bypass
+    - subprocess_bypass
+    - wildcard_or_glob
+    - relative_path_traversal
+    - reparse_or_junction_traversal
+
+credentials:
+  plaintext_forbidden: true
+  never_print_or_commit: true
+  session_access_default: forbidden
+  session_access_ladder:
+    - metadata
+    - summary
+    - raw_body
+  raw_body_min_needed_only: true
+  project_rules_cannot_weaken_credential_boundary: true
+
+session_privacy:
+  default: forbidden
+  minimum_necessary_access: true
+  redacted_summary_preferred: true
+  permission_denial_is_a_correct_boundary_signal: true
+  never_elevate_to_bypass_a_denied_private_path: true
+
+network:
+  public_read_scoped_to_current_sandbox_or_tool: true
+  authenticated_write_requires_auth: true
+  upload_requires_auth: true
+  paid_model_call_requires_auth: true
+  paid_service_requires_auth: true
+
+git_safety:
+  preserve_dirty_work: true
+  stage_owned_changes_only: true
+  no_default_git_add_all: true
+  no_default_reset_or_clean: true
+  no_force_push_default: true
+  do_not_rewrite_history_default: true
+
+dependency_policy:
+  prefer_project_interpreter_and_locked_deps: true
+  lockfile_regeneration_is_destructive: true
+  save_exact_diff_before_regenerating: true
+  no_unsolicited_new_dependencies: true
+
+evidence_semantics:
+  # Hard invariants. The schema enforces these as false/false; any renderer or
+  # projection that flips one of them fails closed.
+  unknown_is_zero: false
+  unknown_is_success: false
+  simulated_is_real: false
+  local_test_is_ci: false
+  build_is_runtime: false
+  merge_is_installed: false
+  plan_equals_write: false
+  apply_equals_verified: false
+  real_evidence_requires_readback: true
+  missing_is_unknown_never_fabricated: true
+  evidence_levels:
+    - NO_EVIDENCE
+    - SIMULATED
+    - SYNTHETIC
+    - INTEGRATED
+    - REAL
+
+verification:
+  report_layers_independently: true
+  structural_check_separate_from_runtime: true
+  failed_or_skipped_required_check_is_not_pass: true
+  honest_status_vocabulary:
+    - PASS
+    - PARTIAL
+    - BLOCKED
+    - NOT_EXECUTED
+    - UNVERIFIED
+  independent_readback_required_for_verified: true
+
+parallelism:
+  independent_reads: parallel
+  isolated_writers: parallel
+  overlapping_writes: serial
+  one_writer_owns_a_checkout: true
+
+skills:
+  scan_before_executing: false
+  load_matching_skill_before_manual_attempt: false
+  complex_techniques_are_on_demand_skills_not_global_policy: true
+  skill_is_guidance_not_authorization: true
+
+model_neutrality:
+  preserve_user_provider: true
+  preserve_user_model: true
+  preserve_user_reasoning: true
+  preserve_user_auth: true
+  no_hardcoded_model_id_default: true
+  no_global_cost_or_rate_clamp_default: true
+  user_model_is_user_owned_not_worklab_managed: true
+
+tool_truth:
+  use_real_command_output: true
+  never_fabricate_or_invent_state: true
+  do_not_invent_files_apis_or_commands: true
+  keep_working_until_verified_or_exact_blocker: true
+
+historical_record_policy:
+  frozen_and_non_normative: true
+  current_authority_first: true
+  never_bulk_search_history_by_default: true
+  history_retrievable_from_frozen_commit: true

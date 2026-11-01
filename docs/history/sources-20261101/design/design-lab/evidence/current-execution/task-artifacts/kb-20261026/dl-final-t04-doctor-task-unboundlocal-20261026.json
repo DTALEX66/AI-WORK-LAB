@@ -1,0 +1,36 @@
+{
+  "id": "dl-final-t04-doctor-task-unboundlocal-20261026",
+  "task_id": "DL-FINAL-T04",
+  "axis": "unit",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T11:26:00Z",
+  "subject_sha": "d2dbeefcce3d93c60be19ade4df5fffbd3fd9106",
+  "audit_finding": "owner audit 2026-10-26, finding 4 of 7 (P2): doctor --task crashes deterministically because a local import shadows the module-level name",
+  "reproduced_before_fix": "UnboundLocalError: cannot access local variable 'resolve_paths' where it is not associated with a value (doctor.py:161) on BOTH a malformed and a well-formed task id",
+  "changed": [
+    "src/design_lab/runtime/doctor.py: PathPolicyError joined the module-level import; the function-local `from .paths import PathPolicyError, resolve_paths` is gone, so --task no longer reads a name the --paths branch binds later",
+    "design-lab/tests/test_doctor.py: three cases for the agreed formats (refusal names the expected shape and exits 2; success returns the preflight contract envelope; --paths unchanged)",
+    "design-lab/tests/test_local_import_shadowing.py (new): the defect CLASS across every tracked python file, with nested-function and parameter exclusions and a plant that proves it convicts"
+  ],
+  "measured": {
+    "pre_fix_findings": [
+      [
+        161,
+        "main",
+        "resolve_paths",
+        186
+      ]
+    ],
+    "post_fix_findings": [],
+    "repo_wide_findings_today": 0,
+    "tests": [
+      "test_doctor.py: Ran 5 tests in 0.206s OK",
+      "test_local_import_shadowing.py: Ran 4 tests in 1.216s OK"
+    ],
+    "aggregate": "VERIFY_DESIGN_LAB=OK total=77 failed=0",
+    "projection_freshness": "Ran 25 tests in 215.971s OK",
+    "subject_sha_note": "HEAD is the commit carrying the fix"
+  },
+  "why_it_was_invisible": "no test module ever invoked the --task branch; the suite covered probe_tools() only, so a deterministic crash on a documented CLI path stayed green",
+  "not_claimed": "findings 2, 6 and 7(b) are confirmed but unfixed; findings 3 and 5 are not yet reproduced; no task state changed -- DL-FINAL-T04 remains FROZEN_DEFERRED"
+}

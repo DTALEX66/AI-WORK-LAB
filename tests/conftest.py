@@ -31,6 +31,12 @@ for entry in (str(TARGET_ROOT), str(TARGET_ROOT / "domains" / "design")):
 from backend.app import build_server  # noqa: E402
 
 WORK_SOURCE_ROOT = Path(r"D:\All projects\WORK-LAB")
+#: F07's rule is "a project bound to a directory that really exists is live" -- the rule is about
+#: existence, not about which repository happens to sit on this machine. `work_project` therefore
+#: registers an in-checkout directory: the assertion stays exactly as strong, and a clone without
+#: the two read-only source repositories stops failing for a reason unrelated to the behaviour
+#: under test (measured: 12 of the 15 nodes that broke when the source paths were redirected).
+LIVE_WORK_ROOT = TARGET_ROOT / "tests" / "fixtures" / "live-work-root"
 
 _DEFAULT = object()
 
@@ -117,9 +123,9 @@ def server(tmp_path: Path):
 
 @pytest.fixture()
 def work_project(server):
-    """A registered work project whose root is the real WORK-LAB checkout (read-only probe)."""
+    """A registered work project bound to a directory that really exists in this checkout."""
     status, project = server.client.post("/api/v1/projects", {
-        "name": "WORK-LAB", "source": "work", "root_path": str(WORK_SOURCE_ROOT)})
+        "name": "work-live-root", "source": "work", "root_path": str(LIVE_WORK_ROOT)})
     assert status == 201, project
     return project
 

@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "work-lab/toolchain-declarations/v1",
+  "generated": "2026-10-07",
+  "purpose": "U02's unclaimed half: the project's package managers, pins and runtime root were never stated anywhere a gate could check. This file states them, and tests/workflow-assistance/test_toolchain_declarations.py asserts every claim against the tree, the workflow YAML and the boundary file, so a claim cannot rot into a memory.",
+  "authority": {
+    "runtimeRoot": ".project/governance/project-data-boundary.json",
+    "note": "The boundary file remains the single authority for the roots; this file only names them, it does not restate their values except where checked from that source."
+  },
+  "managers": [
+    {
+      "id": "python-workflow",
+      "ecosystem": "python",
+      "lockfile": "packages/client-neutral-core/requirements.lock",
+      "install": "python -m pip install --disable-pip-version-check --no-input --require-hashes -r packages/client-neutral-core/requirements.lock",
+      "ciPin": {
+        "source": ".github/workflows/work-lab-gate.yml",
+        "provisioned_by": "actions/setup-python",
+        "version": "3.11"
+      },
+      "declaredInManifest": "packages/client-neutral-core/workflow-manifest.yaml#requirements.python",
+      "manifestValue": ">=3.11",
+      "consistency": "The manifest states a floor and the workflow states an exact pin; both are recorded rather than merged, because collapsing them would invent a constraint the manifest does not carry."
+    },
+    {
+      "id": "node-observer-frontend",
+      "ecosystem": "node",
+      "lockfile": "apps/observer/frontend/package-lock.json",
+      "install": "npm ci",
+      "ciPin": {
+        "source": ".github/workflows/work-lab-gate.yml",
+        "provisioned_by": "runner-image",
+        "version": null
+      },
+      "knownGap": "No actions/setup-node step exists, so the Node version is whatever windows-latest ships. Measured on this machine only for local runs: v22.11.0 at C:/Users/ALEX/AppData/Local/OpenHuman/node-runtime. Recorded as UNKNOWN for CI rather than guessed from the local number.",
+      "tests": "npm run test (vitest) inside the observer-frontend-test group (W02 split it out of observer-frontend-typecheck, which now runs tsc only)"
+    },
+    {
+      "id": "node-token-monitor",
+      "ecosystem": "node",
+      "lockfile": "apps/token-monitor/package-lock.json",
+      "install": "npm ci",
+      "ciPin": {
+        "source": ".github/workflows/work-lab-gate.yml",
+        "provisioned_by": "runner-image",
+        "version": null
+      }
+    },
+    {
+      "id": "rust-observer",
+      "ecosystem": "cargo",
+      "lockfile": "apps/observer/src-tauri/Cargo.lock",
+      "install": "cargo build --release --locked",
+      "ciPin": {
+        "source": ".github/workflows/work-lab-gate.yml",
+        "provisioned_by": "windows-latest image",
+        "version": null
+      }
+    },
+    {
+      "id": "rust-token-monitor",
+      "ecosystem": "cargo",
+      "lockfile": "apps/token-monitor/src-tauri/Cargo.lock",
+      "install": "cargo test --locked",
+      "ciPin": {
+        "source": ".github/workflows/work-lab-gate.yml",
+        "provisioned_by": "windows-latest image",
+        "version": null
+      }
+    }
+  ],
+  "divergences": [
+    {
+      "id": "manifest-package-name",
+      "claim": "packages/client-neutral-core/workflow-manifest.yaml#package.name is 'Workflow-assistance' while the module root is packages/client-neutral-core and AGENTS.md records the legacy 10-workflow/workflow-assistance path as untracked.",
+      "decision": "Left as-is. The manifest field is a package identity read by compatibility checks, not a path; renaming it would break consumers to fix a naming impression. The authoritative path statement is .project/governance/module-ownership.json, checked by its own gate.",
+      "status": "ACCEPTED_WITH_REASON"
+    },
+    {
+      "id": "node-version-unpinned",
+      "claim": "Two npm ecosystems build in CI with no version pin anywhere.",
+      "decision": "Recorded as a measured gap, not closed by inventing a pin: adding a setup-node version is a build-baseline change for the owner, and the profile/manifest schemas are strict, so the pin belongs in the workflow when it is decided.",
+      "status": "OPEN_RECORDED"
+    }
+  ]
+}

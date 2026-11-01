@@ -1,0 +1,147 @@
+{
+  "schemaVersion": "work-lab/three-project-boundary/v1",
+  "title": "WORK-LAB V2 three-project ownership boundary (control plane vs knowledge vs design)",
+  "precedenceNote": "User's 2026-09-22 convergence instruction is the top directive; this file is the machine-readable expression of it. It never overrides WORK-LAB-AUTHORITY.md or the project authority index — it records the boundary split they authorize.",
+  "projects": {
+    "WORK-LAB": "Control plane: who / when / with what permission / through what software / how to execute / how to verify / how to recover. Cross-project, cross-software, cross-runtime execution + governance.",
+    "ArcheAxis-Knowledge-OS": "Knowledge: long-term memory, learning, distillation, knowledge truth, classification, promotion, storage, recall.",
+    "DESIGN-LAB": "Design domain: design agents, design software execution, design assets, generation strategy, quality system, Adobe domain logic."
+  },
+  "worklab_owned": [
+    "config/global-agent-policy.yaml",
+    "services/policy/policy_projection.py",
+    "config/config-ownership.json",
+    "config/adapter-registry.json",
+    "services/orchestration",
+    "services/execution-federation",
+    "services/session-federation",
+    "services/task-governance",
+    "services/receipts",
+    "services/security",
+    "services/radar",
+    "services/cleanup",
+    "apps/observer",
+    "apps/token-monitor",
+    "integrations/executors",
+    "integrations/archeaxis/contracts",
+    "integrations/archeaxis/client"
+  ],
+  "boundary_splits": [
+    {
+      "id": "MEMORY_BACKEND",
+      "worklabDir": "services/memory",
+      "classification": "MIGRATION_CANDIDATE_TO_ARCHEAXIS",
+      "keepInWorklab": [
+        "SessionPrivacyBoundary",
+        "ContextExportBoundary",
+        "ContextCapsule",
+        "MemoryQueryContract",
+        "ArcheAxisClient",
+        "ArcheAxisHandoff",
+        "Provenance",
+        "PermissionGate",
+        "Receipt"
+      ],
+      "moveToArcheAxis": [
+        "retain",
+        "recall",
+        "reflect",
+        "long-term-memory-store",
+        "memory-provider",
+        "repo-import",
+        "docs-import",
+        "knowledge-record",
+        "knowledge-storage",
+        "memory-promotion"
+      ],
+      "callerAudit": {
+        "productionRefs": 0,
+        "testRefs": "tests/workflow-assistance/test_memory_provider.py loads via importlib.spec_from_file_location (path-based, not import)"
+      },
+      "seam": "services/memory/__init__ boundary marker + integration seam (memory-query-contract); no new callers allowed",
+      "gate": "verify_three_project_boundary"
+    },
+    {
+      "id": "KNOWLEDGE_TRUTH",
+      "worklabDir": "services/knowledge",
+      "classification": "SPLIT_GUARD_AND_SEMANTICS",
+      "keepInWorklab": [
+        "knowledge_export_guard: secrets/raw-chat/raw-log/shell-transcript checks, provenance-required, evidence level, source identity, export permission, payload integrity"
+      ],
+      "moveToArcheAxis": [
+        "KnowledgeCategory",
+        "knowledge-acceptance",
+        "verified-lesson",
+        "architecture-knowledge",
+        "promotion-decision",
+        "knowledge-classification",
+        "long-term-knowledge-status"
+      ],
+      "worklabEmits": "KnowledgeCandidate (not Knowledge Truth)",
+      "seam": "services/knowledge/promotion_gate.py split into knowledge_export_guard (kept) + KnowledgeCandidate contract (emitted to ArcheAxis)",
+      "gate": "verify_three_project_boundary"
+    },
+    {
+      "id": "KNOWLEDGE_STAGING",
+      "worklabDir": "knowledge-staging",
+      "classification": "HISTORY_ONLY_CONVERGE",
+      "action": "root-level knowledge-staging/ is a misleading long-lived ownership dir -> converge out of root",
+      "gate": "verify_three_project_boundary"
+    },
+    {
+      "id": "EVOLUTION",
+      "worklabDir": "services/evolution",
+      "classification": "BOUNDARY_SPLIT",
+      "keepInWorklab": [
+        "M1 prompt mutation, M2 skill mutation, M3 workflow mutation, M4 tool/runtime mutation, M5 governance mutation",
+        "sandbox",
+        "security-evaluation",
+        "independent-approval",
+        "rollback",
+        "trace",
+        "receipt"
+      ],
+      "moveToArcheAxis": [
+        "continual-learning",
+        "knowledge-evolution",
+        "memory-consolidation",
+        "knowledge-learning",
+        "human-learning",
+        "long-term-cognitive-growth"
+      ],
+      "semantics": "WORK-LAB Evolution = workflow/runtime/config/skill improvement governance; ArcheAxis Evolution = knowledge/memory/learning evolution",
+      "seam": "services/evolution boundary marker + mutation_policy governance scope assertion",
+      "gate": "verify_three_project_boundary"
+    },
+    {
+      "id": "ARCHIVE_90",
+      "worklabDir": "90-archive",
+      "classification": "HISTORY_ONLY_CONVERGE",
+      "action": "root-level 90-archive/ is a second history system -> converge to docs/history (single history retrieval anchor)",
+      "gate": "verify_three_project_boundary",
+      "status": "CONVERGED_20260923",
+      "note": "reports-history frozen under docs/history/archive/reports-history/2026-09-05 (MOVE-005 executed, user-authorized); root 90-archive/ retains only the BOUNDARY.md gate marker (verifier SPLIT_DIRS seam), no active content"
+    },
+    {
+      "id": "DESIGN_LAB",
+      "worklabDir": "config/adapter-registry.json (open-design adapter)",
+      "classification": "CLIENT_MANAGE_DOMAIN_IGNORE",
+      "worklabManages": "Open Design client: rules, skills, plugins, capability discovery, workflow policy, adapter, software state (MANAGE, apply_supported=false)",
+      "worklabIgnores": "design knowledge, design prompt truth, design assets, design generation strategy, design quality system, Adobe domain logic (all owned by DESIGN-LAB, IGNORE)",
+      "seam": "Open Design client != DESIGN-LAB project (two distinct identities); design capability is not collected or managed in WORK-LAB",
+      "gate": "verify_three_project_boundary"
+    }
+  ],
+  "forbiddenNewOwners": [
+    "services/memory as a full memory system",
+    "services/knowledge as promotion-truth owner",
+    "knowledge-staging as a root active dir",
+    "90-archive as a root active dir",
+    "a second Agent runtime",
+    "a second config governance system",
+    "a second Task Ledger",
+    "a second Usage/Cost truth engine"
+  ],
+  "verifier": "scripts/ci/verify_three_project_boundary.py",
+  "gate": "three-project-boundary"
+}

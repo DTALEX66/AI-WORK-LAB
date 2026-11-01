@@ -1,0 +1,51 @@
+{
+  "id": "dl-final-t05-sdist-wheel-roundtrip-20261026",
+  "task_id": "DL-FINAL-T05",
+  "axis": "delivery",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T11:13:00Z",
+  "subject_sha": "a7bd9a47266954b92a9be8218d917205ba4d8d1a",
+  "audit_intake": "owner audit 2026-10-26 at version 7671ec70, finding 1 of 7 (P1); findings 2, 6 and 7 were confirmed against the bytes this round and are NOT fixed by this row; findings 3, 4 and 5 are unverified",
+  "claim_confirmed": "the published sdist could not rebuild the wheel it ships; reproduced with the audit's own error line",
+  "scale_beyond_the_audit": {
+    "wheel_force_include_sources": 71,
+    "covered_by_old_sdist": 17,
+    "absent_from_old_sdist": 54
+  },
+  "changed": [
+    "pyproject.toml: [tool.hatch.build.targets.sdist] only-include replaced by directory roots covering every force-include source, keeping the 2026-09-21 rule that apps/workbench contributes only the three served files; design-lab/tests is included because the acceptance chain lives there",
+    "design-lab/scripts/verify_sdist_packaging.py (new) + registered in the aggregate: re-derives the coverage relation from pyproject, names three distinct failure shapes, and a --build mode that performs the real sdist -> extract -> wheel round trip",
+    "design-lab/tests/test_sdist_packaging.py (new): 9 cases, four of them planted faults",
+    ".github/workflows/canonical-verify.yml: the wheel-install job now builds the sdist, unpacks it, rebuilds the wheel FROM it, installs that wheel, and asserts both wheels are byte-identical before the existing launch/GET/POST steps run",
+    "design-lab/scripts/verify_design_lab.py: the refusal message no longer hard-codes \"the 76 steps below\"; it reads the live count"
+  ],
+  "measured": {
+    "sdist_archive_bytes": 3980242,
+    "wheel_from_sdist": {
+      "bytes": 1244991,
+      "members": 413,
+      "content_fingerprint": "34e9969dd470d1e06741133cb58963d22d215aea0984088974988ade5d1f41b2",
+      "container_sha256": "c2382b4239e17c4135e4c79b4c0733a478f1109c3bfed7fe149af82fe4e75bc7"
+    },
+    "wheel_from_repo": {
+      "bytes": 1242808,
+      "members": 413,
+      "content_fingerprint": "34e9969dd470d1e06741133cb58963d22d215aea0984088974988ade5d1f41b2",
+      "container_sha256": "a9c86329fca0212b3bd759ab847d70df8cfa7dcb73ca4442961338fe45040ccb"
+    },
+    "same_members_and_bytes": true,
+    "container_bytes_equal": false,
+    "fingerprint_why": "the two container byte streams differ because the two builds compressed the same members differently; the invariant that matters is the member set and each member's bytes",
+    "gate_static": "SDIST_PACKAGING=OK wheel_sources=71 covered=71 missing=0 sdist_roots=17 mode=static",
+    "gate_build": "SDIST_PACKAGING=OK wheel_sources=71 covered=71 missing=0 sdist_roots=17 mode=build",
+    "tests": "Ran 9 tests in 0.092s OK",
+    "installed_layout_reruns_local": {
+      "test_workbench_launch": "Ran 3 tests in 1.935s OK",
+      "test_standalone_chain_http": "Ran 6 tests in 5.926s OK | GET_SWEEP layout=installed routes=50 reads=54 answered=49 verdicts=5 unmeasured=2",
+      "test_installed_write_surface": "Ran 6 tests in 4.888s OK | POST_SWEEP layout=installed rows=40 walked=39 written=39 read_backs=48 refused=0 excluded=1"
+    },
+    "installed_layout_means": "the three modules CI uses to prove the installed package (launch, GET chain, POST sweep) were run in separate processes against a venv built from the sdist-derived wheel; each refused unless it printed its layout marker, so a pass that never exercised the packaged layout cannot be recorded here"
+  },
+  "instrument_mistake_this_round": "running the three installed-layout modules in ONE python -m unittest invocation produced 12 reds: test_workbench_launch puts the checkout src on sys.path, so the installed-layout guard in the other two correctly refused. CI runs them as separate steps; run them apart and the same bytes are green. A call-shape artefact must never be reported as twelve fixed defects.",
+  "boundaries": "no state changed anywhere in currentExecution; DL-FINAL-T05 remains FROZEN_DEFERRED -- this audit authorises fixing the defect, not re-dispatching the task; the owner's 3294/54 local counts are not folded into a pass claim"
+}

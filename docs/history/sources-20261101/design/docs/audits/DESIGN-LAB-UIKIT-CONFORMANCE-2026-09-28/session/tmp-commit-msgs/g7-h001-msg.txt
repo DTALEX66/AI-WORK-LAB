@@ -1,0 +1,45 @@
+G-7/H001: main-branch CI artifact proof gate (real API download readback)
+
+对应 FINAL TaskPack section H / H001："main run #182 artifacts=0.
+如要求 artifact proof，必须真实 upload -> GitHub API query -> identity
+-> download/readback -> hash -> run/SHA binding."
+
+既有：release-gate.yml（tag-only，E5，owner-gated）已驱动
+verify_release_preflight.py 做完整真实回读链——但只覆盖 tag 发布，
+不覆盖 main 分支日常 run。本 PR 补 main 分支侧。
+
+交付（REUSE-FIRST：compose 既有 release_preflight 网络基元，不重造轮子）：
+- design-lab/scripts/verify_ci_artifact_proof.py（新增，纯 stdlib）
+  * sibling-load verify_release_preflight，复用其单一可注入
+    fetch/FetchResponse/FetchUnavailable/api_digest/run_artifacts_url，
+    继承跨 host 丢 token 的重定向策略
+  * 四段证：run/SHA identity → /actions/runs/{id}/artifacts 查询
+    → 下载 → sha256 重算比对 API 记录 digest
+  * 三态 fail-closed：PASS(0) / BLOCKED(2，矛盾：run 不存在、SHA 不符、
+    无下载 URL、digest 不符) / INCOMPLETE(3，无 token、API 不可达、
+    上传未索引)——未索引绝不假 PASS
+  * 索引延迟（upload 后数秒 H001 常态）：一次定拍 re-query（默认
+    20s，可注入 sleep 测试），BLOCKED 结果不 re-query（终态）
+  * 落盘 run/SHA 绑定 proof record（.project-local 运行目录，gitignored）
+- .github/workflows/canonical-verify.yml：新增非 required job
+  ci-artifact-proof（additive，needs: license-secret-gate +
+  workbench-browser-e2e，if: always()，GITHUB_TOKEN 经 env: 注入，
+  run 体纯静态无事件插值）。晋级 required check 属 H003/owner 步骤，
+  不在本次范围。
+- design-lab/scripts/verify_design_lab.py：记录 H001 排除日聚合链的
+  决策注释（与 F-3 verify_release_preflight 同款先例：需 token+网络，
+  INCOMPLETE 非零不能进每日结构门）。
+- design-lab/tests/test_ci_artifact_proof.py（16 项 hermetic，注入 fake
+  fetch/sleep，零 socket）：PASS 路径（3 checks、proof 落盘、下载持久）、
+  BLOCKED（SHA 不符跳过 artifact 段 / run 404 / digest 不符 / 无下载
+  URL）、INCOMPLETE（无 token / API 不可达 / 列表 404 / 下载不可用 /
+  未索引无 retry）、定拍 re-query 恢复、main() 默认 env 读 + 无 token
+  零网络 fail-closed。
+
+诚实边界（不静默扩大）：第 4 段比对两个 API 产出的事实（下载字节
+digest vs GitHub 自记 digest），是 download round-trip / availability
+proof；独立的 artifacts.sha256 asset-set + checksum 绑定仍属 release
+层。H001 证的是 main 的 upload→readback 腿，不重造 release 腿。
+
+验证：python -m unittest design-lab.tests.test_ci_artifact_proof = 16/16 OK；
+默认无 token 路径实跑 = CI_ARTIFACT_PROOF=INCOMPLETE checks=0（exit 3）。

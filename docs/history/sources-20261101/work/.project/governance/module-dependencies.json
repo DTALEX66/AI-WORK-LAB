@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "work-lab-module-dependencies/v1",
+  "dependencyTypes": ["governance", "runtime", "build", "handoff", "observed-by", "fixture", "archive-of"],
+  "modules": {
+    "workflow-assistance": {
+      "path": "packages/client-neutral-core",
+      "dependencies": [],
+      "observedBy": ["work-lab-observer"]
+    },
+    "work-lab-observer": {
+      "path": "apps/observer",
+      "dependencies": [
+        {"module": "workflow-assistance", "types": ["governance"]}
+      ],
+      "observedBy": []
+    }
+  },
+  "runtimeEdges": [
+    {
+      "from": "work-lab-observer",
+      "to": "workflow-assistance",
+      "coupling": "runtime-import",
+      "basis": "the Observer reads the Workflow-owned projection through the producer's own modules instead of a copy of them: src/observer_store.py imports canonical_store.CanonicalStore with readonly=True against the canonical SQLite path it refuses to relocate, and the native-shell harnesses put packages/client-neutral-core/scripts on sys.path (u19_webview_e2e, u19_chromium_readback, test_observer_store) or load its bounded boundary helper project_temp.py by path (window_state_readback) rather than re-implementing the rule. Read-side only: no observer file writes Workflow-owned state over these names, and re-implementing the boundary locally was the recorded failure (ERR-163).",
+      "authority": "AGENTS.md 'Workflow Assistance execution contract' (observer is a strict read-only projection that may read Workflow-owned projections) with .project/governance/module-ownership.json crossModuleWrites=explicit-cross-task-only; every site below is re-measured by scripts/ci/verify_module_dependencies.py on every run, so this entry cannot outlive the import it approves.",
+      "sites": [
+        {
+          "file": "apps/observer/src/observer_store.py",
+          "line": 29,
+          "form": "from-import",
+          "symbols": ["canonical_store -> CanonicalStore"]
+        },
+        {
+          "file": "apps/observer/tests/test_observer_store.py",
+          "line": 11,
+          "form": "sys.path",
+          "symbols": ["packages/client-neutral-core/scripts"]
+        },
+        {
+          "file": "apps/observer/tests/test_observer_store.py",
+          "line": 15,
+          "form": "from-import",
+          "symbols": ["canonical_store -> CanonicalStore"]
+        },
+        {
+          "file": "apps/observer/scripts/u19_webview_e2e.py",
+          "line": 49,
+          "form": "sys.path",
+          "symbols": ["packages/client-neutral-core/scripts"]
+        },
+        {
+          "file": "apps/observer/scripts/u19_chromium_readback.py",
+          "line": 22,
+          "form": "sys.path",
+          "symbols": ["packages/client-neutral-core/scripts"]
+        },
+        {
+          "file": "apps/observer/scripts/window_state_readback.py",
+          "line": 248,
+          "form": "importlib-by-path",
+          "symbols": ["packages/client-neutral-core/scripts/project_temp.py"]
+        }
+      ]
+    }
+  ],
+  "policy": {
+    "crossModuleRuntimeCoupling": "forbidden-unless-explicitly-approved",
+    "buildAndHandoffAreNotRuntimeDependencies": true,
+    "observedByIsReadOnly": true,
+    "runtimeEdgesAreReconciledAgainstRealImports": true
+  }
+}

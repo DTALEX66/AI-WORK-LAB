@@ -1,0 +1,32 @@
+chore: DESIGN-LAB 漂移/分支审计收口（投影 rebind + 46 远端分支清零 + closure 文档）
+
+仓库级防漂移审计（精确基线 main=d9e2d46），三项：
+
+1. 消除投影漂移（本提交核心交付）：
+   - #139 把 main 推过 8 个 tracked 投影的记录点，generate_current_reports.py
+     --check 报 DRIFT（PROJECT_STATUS/TASK_PROGRESS/CLOUD_BASELINE/
+     ADAPTER_EVIDENCE_RECONCILIATION/KNOWLEDGE_INVENTORY/DOMAIN_PACK_READINESS/
+     RELEASE_READINESS + current-report-index）。
+   - 处置：generate_current_reports.py（不带 --check）rebind ->
+     CURRENT_REPORTS=PASS mode=generate。rebind 产物随本提交入库（= 该 rebind，
+     非 docs-only）。稳态说明：commit 后 --check 报 STALE 属 self-referential
+     预期（HEAD 已前进过记录点），非产品失败，不追 PASS、不手改 index。
+
+2. 46 远端分支审计 + 清零（owner 已授权"分支审计合并"）：
+   - blob 级三层判定（merge-base 祖先 / path-diff adds / log --find-object），
+     结果 24 纯残留 + 22 目录迁移挪位 + 0 真独有；无 open PR 悬挂。
+   - git ls-remote 真值 35 -> 仅 main（34 本轮删 + 先前 PR squash 时 GitHub 已
+     自动删的 head）。删除前每轮 GENUINE-unique guard=0。
+   - 回滚 manifest（各 tip SHA）存 .project-local/archive/hermes-legacy/
+     branch-deletion-manifest-20260922.json（gitignored）。
+
+3. closure 文档（tracked，供云端 GPT 审计）：
+   docs/handoffs/DESIGN-LAB-DRIFT-BRANCH-AUDIT-2026-09-22.md
+   - 防漂移门链实时全绿（verify_top_level_authority 10/10 +
+     verify_authority_gates --zero-spill 7/7 + main 7 required checks 含
+     Top-level Authority gate）。
+   - 记忆漂移纠正：model-radar.json 实为 design-lab/readiness/model-radar.json
+     （17 处引用），非缺失；paths.json 4 外置库根全指 D:，0 C:/E: 漂移。
+
+证据等级 E1/E2（门链 live PASS、投影 rebind、blob 分支审计、外溢 digest、
+远端分支 ls-remote 35->1）。未触及 E3 宿主 / E4 人工陪审 / E5 真实 tag 发布。

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "duplicate_passenger",
+    "initialFlags": [],
+    "steps": [
+      {
+        "id": "first_visit",
+        "roundType": "identity",
+        "contentId": "normal_shift_02",
+        "trigger": "first_duplicate_candidate",
+        "onWrongFlags": [
+          "trusted_duplicate"
+        ]
+      },
+      {
+        "id": "repeated_motion",
+        "roundType": "investigation",
+        "contentId": "person_duplicate_face",
+        "trigger": "trusted_duplicate_or_next_shift",
+        "onWrongFlags": [
+          "motion_ignored"
+        ]
+      },
+      {
+        "id": "simultaneous_presence",
+        "roundType": "highRisk",
+        "contentId": "space_simultaneous_cameras",
+        "trigger": "second_duplicate_seen",
+        "onWrongFlags": [
+          "chain_compromised"
+        ]
+      }
+    ],
+    "consequences": [
+      {
+        "flag": "chain_compromised",
+        "contaminationDelta": 18,
+        "nextShiftModifier": "duplicate_feed"
+      }
+    ]
+  },
+  {
+    "id": "nonexistent_floor",
+    "initialFlags": [],
+    "steps": [
+      {
+        "id": "floor_flash",
+        "roundType": "quick",
+        "contentId": "device_floor_sensor",
+        "trigger": "floor_display_flash",
+        "onWrongFlags": [
+          "floor_flash_ignored"
+        ]
+      },
+      {
+        "id": "passenger_request",
+        "roundType": "identity",
+        "contentId": "person_unknown_identity",
+        "trigger": "floor_flash_ignored_or_next_shift",
+        "onWrongFlags": [
+          "invalid_request_allowed"
+        ]
+      },
+      {
+        "id": "impossible_space",
+        "roundType": "highRisk",
+        "contentId": "space_floor_13",
+        "trigger": "invalid_request_allowed_or_escalation",
+        "onWrongFlags": [
+          "floor_chain_compromised"
+        ]
+      }
+    ],
+    "consequences": [
+      {
+        "flag": "floor_chain_compromised",
+        "contaminationDelta": 22,
+        "nextShiftModifier": "floor_13_bleed"
+      }
+    ]
+  },
+  {
+    "id": "camera_replacement",
+    "initialFlags": [],
+    "steps": [
+      {
+        "id": "cam07_delay",
+        "roundType": "investigation",
+        "contentId": "time_delay_overrun",
+        "trigger": "cam07_delay",
+        "onWrongFlags": [
+          "delay_accepted"
+        ]
+      },
+      {
+        "id": "time_stops",
+        "roundType": "investigation",
+        "contentId": "time_clock_stall",
+        "trigger": "delay_accepted_or_next_shift",
+        "onWrongFlags": [
+          "clock_stop_ignored"
+        ]
+      },
+      {
+        "id": "feed_replaced",
+        "roundType": "highRisk",
+        "contentId": "device_camera_substitution",
+        "trigger": "clock_stop_ignored_or_escalation",
+        "onWrongFlags": [
+          "camera_chain_compromised"
+        ]
+      }
+    ],
+    "consequences": [
+      {
+        "flag": "camera_chain_compromised",
+        "contaminationDelta": 20,
+        "nextShiftModifier": "unreliable_cam07"
+      }
+    ]
+  }
+]

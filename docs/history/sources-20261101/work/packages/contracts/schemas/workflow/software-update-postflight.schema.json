@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-assistance.invalid/schemas/software-update-postflight.schema.json",
+  "title": "Software Update Postflight contract",
+  "description": "P0-07 / §42. The fail-closed POSTFLIGHT gate that MUST pass after any software WRITE: 更新后必须重新验证真实安装位置. It re-reads the real BEFORE/AFTER install facts and proves the update did not silently relocate, shrink, or re-seed a C-drive default root (DSH 2026-09-20 recurrence scenarios: launcher .lnk reset to LOCALAPPDATA, official resources\\app code tree emptied 45k->0, frozen DSH_HOME[HKCU] making the process fall back to C:\\Users\\ALEX\\.dsh). Checks are fail-closed: any violation -> overall FAIL; missing/unknown facts -> UNVERIFIED, which keeps overall at PENDING and never fabricates a PASS.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "software_id",
+    "target_version",
+    "before",
+    "after",
+    "checks",
+    "location_readback_passed",
+    "overall",
+    "reasons"
+  ],
+  "properties": {
+    "schema_version": {"const": "workflow/software-update-postflight/v1"},
+    "software_id": {"type": "string", "minLength": 1},
+    "target_version": {"type": "string", "minLength": 1},
+    "before": {
+      "type": "object",
+      "description": "Structured BEFORE snapshot facts (install_root, version, launcher_targets, data_root, ...). Open object: adapters supply the discovery-layer facts; the gate consumes a closed subset."
+    },
+    "after": {
+      "type": "object",
+      "description": "Structured AFTER snapshot facts (install_root, version, launcher_targets, data_root, c_drive_residue, code_tree_files, asar_residue, uninstaller, runtime_health)."
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "status", "expected", "observed"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "version_readback",
+              "body_integrity",
+              "launcher_pinning",
+              "data_root_pinning",
+              "c_residue",
+              "runtime_health",
+              "location_readback"
+            ]
+          },
+          "status": {"type": "string", "enum": ["PASS", "FAIL", "UNVERIFIED"]},
+          "expected": {},
+          "observed": {}
+        }
+      }
+    },
+    "location_readback_passed": {
+      "type": "boolean",
+      "description": "True only when before.install_root == after.install_root with both roots present (a plain update must NOT move the install root; §18/§42). Computed by reusing software_installation_identity.location_readback — no second engine (§22)."
+    },
+    "overall": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "PENDING"]
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "POSTFLIGHT_ALL_CHECKS_PASS",
+          "VERSION_READBACK_FAIL",
+          "BODY_INTEGRITY_FAIL",
+          "LAUNCHER_PINNING_FAIL",
+          "DATA_ROOT_PINNING_FAIL",
+          "C_RESIDUE_DETECTED",
+          "LOCATION_READBACK_FAIL",
+          "RUNTIME_HEALTH_UNVERIFIED",
+          "RUNTIME_HEALTH_FAIL",
+          "POSTFLIGHT_INCOMPLETE"
+        ]
+      }
+    }
+  }
+}

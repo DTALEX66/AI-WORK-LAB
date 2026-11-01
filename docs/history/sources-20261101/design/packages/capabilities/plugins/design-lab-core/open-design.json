@@ -1,0 +1,142 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "design-lab-core",
+  "title": "DESIGN-LAB Core",
+  "version": "0.1.0",
+  "description": "DESIGN-LAB 核心插件：Brief、Direction、Design IR、Human Gate、Jury、Rights、Preflight、Delivery Receipt",
+  "license": "MIT",
+  "entry": "SKILL.md",
+  "tags": [
+    "design-workflow",
+    "human-gate",
+    "quality-assurance",
+    "production",
+    "brief",
+    "direction"
+  ],
+  "od": {
+    "kind": "skill",
+    "categories": [
+      "design-workflow",
+      "human-gate",
+      "quality-assurance",
+      "production"
+    ],
+    "capabilities": [
+      "prompt:inject",
+      "artifact:design-brief",
+      "design-system:reference"
+    ],
+    "suggestedInputs": [
+      "brief",
+      "direction",
+      "domain"
+    ],
+    "taskKind": "new-generation",
+    "useCase": {
+      "query": {
+        "en": "Create a design brief for {{domain}} with {{direction}} direction.",
+        "zh-CN": "创建 {{domain}} 领域的设计需求，方向为 {{direction}}。"
+      }
+    },
+    "context": {
+      "skills": [
+        {
+          "ref": "design-lab-core"
+        }
+      ],
+      "atoms": [
+        "direction-picker",
+        "critique-theater",
+        "build-test"
+      ],
+      "assets": [],
+      "schemas": [
+        "design-lab/schemas/design-brief.schema.json",
+        "design-lab/schemas/design-ir-v2.schema.json"
+      ],
+      "productFamilies": [
+        "visual-quality",
+        "domain-scenarios",
+        "runtime-integration",
+        "release-evidence"
+      ],
+      "productionProfiles": [
+        "digital-ui"
+      ]
+    },
+    "inputs": [
+      {
+        "name": "brief",
+        "label": "Brief",
+        "type": "text",
+        "placeholder": "Describe the design brief"
+      },
+      {
+        "name": "direction",
+        "label": "Direction",
+        "type": "text",
+        "placeholder": "Design direction"
+      },
+      {
+        "name": "domain",
+        "label": "Domain",
+        "type": "select",
+        "options": ["brand-identity", "ui-ux", "ecommerce", "print", "motion-3d"],
+        "default": "brand-identity"
+      }
+    ],
+    "mode": "compat-plugin",
+    "v3": {
+      "productFamilies": [
+        "creative-toolchain",
+        "professional-visual-domains",
+        "release-evidence",
+        "visual-quality"
+      ],
+      "productionProfiles": [
+        "digital-ui"
+      ],
+      "outputContracts": [
+        "design brief",
+        "design direction",
+        "human gate approval",
+        "delivery receipt"
+      ],
+      "evidence": {
+        "level": "E2",
+        "state": "PASS",
+        "claim": "V1 plugin manifest upgraded for V3 compatibility and verified in isolated staging; live Open Design runtime registration remains E3-pending.",
+        "verifiedBy": [
+          "integrations/hosts/open-design/verifier/verify_open_design_host_adapter.py",
+          "design-lab/scripts/verify_product_manifest_v3.py"
+        ]
+      },
+      "runtime": {
+        "status": "pending-e3",
+        "requires": [
+          "Open Design runtime registration",
+          "runtime ID/version read-back",
+          "minimal task execution",
+          "artifact and provenance read-back"
+        ]
+      }
+    }
+  },
+  "author": {
+    "name": "DTALEX66 DESIGN-LAB"
+  },
+  "publishedAt": "2026-08-26T00:00:00Z",
+  "compat": {
+    "agentSkills": [
+      {
+        "path": "./SKILL.md"
+      }
+    ],
+    "preservesV1Plugin": true,
+    "upgradeTrack": "v3-compatibility",
+    "runtimeRegistration": "pending-open-design-e3"
+  },
+  "hostAdapter": "open-design"
+}

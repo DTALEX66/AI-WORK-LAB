@@ -1,0 +1,76 @@
+{
+  "id": "kb-06-field-refusal-adjacency-graded-on-its-referent-20261026",
+  "task_id": "DL-KB-06",
+  "axis": "browser",
+  "outcome": "PASS",
+  "observed_at": "2026-10-25T18:08:00Z",
+  "subject_sha": "c176ad6081ce55c4b0134c19cff42ec2db8ebc9a",
+  "changed": [
+    "apps/workbench/shell.ts: showFieldRefusal()/clearFieldRefusal() -- the alert names its field through data-for and is moved next to that field; the node returns to its default slot when the refusal is cleared, so the untouched form keeps its measured layout",
+    "apps/workbench/shell.ts: five field-named validations (objective, author, output type, steps, shot rows) and the workspace read failure now go through that one door",
+    "design-lab/tests/e2e/audit_workbench_contrast.mjs: the adjacency loop resolves the referent from `data-for` instead of the host's first control; unowned messages are counted separately (errorUnowned) and never merged into the enforced number; walkFieldRefusals() provokes the form's own validations one by one and the run fails on a far refusal or on fewer than three cases",
+    "design-lab/tests/test_workbench_contrast_gate.py: FieldRefusalsLandOnTheFieldTheyName (4 cases, three of them planted rows) + adjacency_offenders() shared with them"
+  ],
+  "instrument_defect": "the loop measured every message against the first control inside its host, so a form-level alert at the foot of a twenty-field form reported the distance to the textarea at its head (dy=1199px) and the pack rule was never actually graded",
+  "measured": {
+    "before": {
+      "spec_errors": 8,
+      "spec_errorAdjacent": 8,
+      "worst_dy_px": [],
+      "examples": [],
+      "artefact": "workbench-contrast-gate-stitch-light.json"
+    },
+    "after": {
+      "spec_errors": 8,
+      "spec_errorAdjacent": 8,
+      "spec_errorNamed": 8,
+      "spec_errorUnowned": 0,
+      "cases": [
+        {
+          "key": "1440:assistant#case1",
+          "field": "as-objective",
+          "dy": 24,
+          "besideRow": true,
+          "text": "请先写下要完成的设计目标：保存的是一条方案记录，不是一次运行。"
+        },
+        {
+          "key": "1440:assistant#case2",
+          "field": "as-author",
+          "dy": 24,
+          "besideRow": false,
+          "text": "记录人不能为空：方案要写明是谁写的。"
+        },
+        {
+          "key": "1440:assistant#case3",
+          "field": "as-output-type",
+          "dy": 24,
+          "besideRow": false,
+          "text": "输出类型未读回，暂时无法保存；这个选择来自服务，页面不手抄一份词表。"
+        }
+      ],
+      "artefact": "workbench-contrast-gate.json"
+    },
+    "gate": "Ran 4 tests in 77.915s OK",
+    "gate_ran_against_sha": "c176ad6081ce55c4b0134c19cff42ec2db8ebc9a"
+  },
+  "still_absent_and_printed": [
+    "1440:knowledge+refusal: #knowledge-create-submit/#knowledge-outcome is not on this state, so this refusal family was not provoked here",
+    "1920:knowledge+refusal: #knowledge-create-submit/#knowledge-outcome is not on this state, so this refusal family was not provoked here"
+  ],
+  "population_instability": {
+    "this_run": {
+      "errors": 8,
+      "named": 8,
+      "unowned": 0
+    },
+    "predecessor_run_on_disk": {
+      "errors": 8,
+      "named": 8,
+      "unowned": 0
+    }
+  },
+  "population_instability_note": "the counted population of p.error nodes differs between two consecutive runs because the later panel states may or may not still hold a visible refusal; the enforced assertions are the equality and the three individually provoked cases, not the count",
+  "beside_row_is_a_reading_not_a_predicate": "the alert follows the shared .as-row for the two fields that live in one row, so besideRow is false for them by design; distance is the rule",
+  "debt_found_while_checking_this_change": "line pointers quoted in the dossier are stale by up to 4063 lines (the toast node is cited at shell.ts:5794 and reads at 9857 today), many are written as bare basenames that do not resolve repo-relatively, and no pointer gate exists in scripts/; this section therefore cites symbols and measurements, not new line numbers",
+  "not_claimed": "no scrollIntoView was added; the per-field walk runs at 1440 only; the knowledge refusal family is still not provoked on the walked state and says so in the receipt"
+}

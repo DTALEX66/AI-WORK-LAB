@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "work-lab/model-capability-matrix/v1",
+  "title": "WORK-LAB model capability matrix — capability -> provider -> model -> runtime -> measured performance",
+  "precedence": "WORK-LAB-AUTHORITY.md > .project/governance/project-authority-index.json > this file.",
+  "legend": {
+    "measured": "REAL numbers produced on this machine (benchmark run recorded in benchmark-20260928.json)",
+    "declared": "capability declared by the model/registry, not yet benchmarked here",
+    "provisional": "default provider still subject to a golden test"
+  },
+  "capabilities": [
+    {"capability": "text.fast", "provider": "local.fast.default", "model": "qwen3.5-4b", "runtime": "ollama", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS", "WORK-LAB", "DESIGN-LAB"]},
+    {"capability": "classify", "provider": "local.fast.default", "model": "qwen3.5-4b", "runtime": "ollama", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "extract", "provider": "local.fast.default", "model": "qwen3.5-4b", "runtime": "ollama", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "rewrite", "provider": "local.fast.default", "model": "qwen3.5-4b", "runtime": "ollama", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "route", "provider": "local.fast.default", "model": "qwen3.5-4b", "runtime": "ollama", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS", "WORK-LAB"]},
+    {"capability": "reasoning.deep", "provider": "local.deep.default", "model": "qwen3.8-27b-ud-iq4_xs", "runtime": "llamacpp", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS", "WORK-LAB", "DESIGN-LAB"]},
+    {"capability": "long_context", "provider": "local.deep.default", "model": "qwen3.8-27b-ud-iq4_xs", "runtime": "llamacpp", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "knowledge.synthesis", "provider": "local.deep.default", "model": "qwen3.8-27b-ud-iq4_xs", "runtime": "llamacpp", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "evidence.analysis", "provider": "local.deep.default", "model": "qwen3.8-27b-ud-iq4_xs", "runtime": "llamacpp", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "multi_document", "provider": "local.deep.default", "model": "qwen3.8-27b-ud-iq4_xs", "runtime": "llamacpp", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "code.generate", "provider": "local.code.default", "model": "qwen3-coder-30b-a3b", "runtime": "ollama", "status": "declared", "used_by": ["WORK-LAB"]},
+    {"capability": "embedding.text", "provider": "local.embedding.default", "model": "qwen3-embedding-0.6b", "runtime": "ollama", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "retrieval.semantic", "provider": "local.embedding.default", "model": "qwen3-embedding-0.6b", "runtime": "ollama", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "rerank.passage", "provider": "local.reranker.default", "model": "qwen3-reranker-0.6b", "runtime": "ollama", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "ocr.image", "provider": "local.ocr.default", "model": "qwen2.5vl-7b", "runtime": "ollama", "status": "provisional", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "layout.understand", "provider": "local.ocr.default", "model": "qwen2.5vl-7b", "runtime": "ollama", "status": "provisional", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "asr.transcribe", "provider": "local.asr.default", "model": "faster-whisper-large-v3-turbo", "runtime": "faster-whisper", "status": "provisional", "used_by": ["ArcheAxis-Knowledge-OS"]},
+    {"capability": "asr.multilingual", "provider": "local.asr.cpu.sensevoice", "model": "sherpa-onnx-sense-voice", "runtime": "sherpa-onnx", "status": "declared", "used_by": ["ArcheAxis-Knowledge-OS"]}
+  ],
+  "duplicationGuard": {
+    "rule": "No capability may have two ACTIVE default providers. A second provider is allowed only as an alternate/standby, and adding a new active default requires a documented golden-test failure.",
+    "checked": [
+      {"capabilityGroup": "general-llm-fast", "activeProviders": ["local.fast.default"], "standby": ["local.fast.legacy"]},
+      {"capabilityGroup": "general-llm-deep", "activeProviders": ["local.deep.default"], "standby": []},
+      {"capabilityGroup": "embedding", "activeProviders": ["local.embedding.default"], "standby": []},
+      {"capabilityGroup": "reranker", "activeProviders": ["local.reranker.default"], "standby": []},
+      {"capabilityGroup": "ocr", "activeProviders": ["local.ocr.default"], "standby": []},
+      {"capabilityGroup": "asr", "activeProviders": ["local.asr.default"], "standby": ["local.asr.cpu.sensevoice"]}
+    ]
+  },
+  "lastVerified": "2026-09-28"
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "floor_13_forbidden",
+    "category": "floor",
+    "text": "13 层不存在，任何前往 13 层的请求必须封锁。",
+    "protocolTags": ["floor"],
+    "condition": { "field": "floor", "operator": "equals", "value": 13 },
+    "decision": "lockdown",
+    "verificationPaths": ["protocol", "cam07"]
+  },
+  {
+    "id": "maintenance_badge_required",
+    "category": "identity",
+    "text": "维修人员不计入人数，但必须佩戴黄色胸牌。",
+    "protocolTags": ["identity", "personnel"],
+    "condition": { "field": "identity", "operator": "equals", "value": "maintenance_without_yellow_badge" },
+    "decision": "lockdown",
+    "verificationPaths": ["cam01", "thermal"]
+  },
+  {
+    "id": "cam07_delay_expected",
+    "category": "device",
+    "text": "CAM-07 固定延迟两秒，延迟本身不属于异常。",
+    "protocolTags": ["device"],
+    "condition": { "field": "cameraDelayMs", "operator": "lte", "value": 2000 },
+    "decision": "release",
+    "verificationPaths": ["cam01", "replay"]
+  },
+  {
+    "id": "cleaner_after_midnight",
+    "category": "time",
+    "text": "零点后清洁人员只能前往偶数楼层。",
+    "protocolTags": ["time", "personnel"],
+    "condition": { "field": "cleanerOddFloorAfterMidnight", "operator": "truthy" },
+    "decision": "lockdown",
+    "verificationPaths": ["protocol", "cam01"]
+  },
+  {
+    "id": "empty_car_weight_tolerance",
+    "category": "personnel",
+    "text": "空轿厢允许一次载重计数延迟，但第二次必须封锁。",
+    "protocolTags": ["personnel", "device"],
+    "condition": { "field": "emptyWeightDelayCount", "operator": "gte", "value": 2 },
+    "decision": "lockdown",
+    "verificationPaths": ["cam01", "replay"]
+  },
+  {
+    "id": "door_cycle_maintenance",
+    "category": "device",
+    "text": "维护灯亮起时允许一次门状态循环。",
+    "protocolTags": ["device"],
+    "condition": { "field": "maintenanceDoorCycles", "operator": "lte", "value": 1 },
+    "decision": "release",
+    "verificationPaths": ["cam01", "cam03"]
+  }
+]

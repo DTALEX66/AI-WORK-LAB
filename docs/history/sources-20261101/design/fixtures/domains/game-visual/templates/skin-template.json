@@ -1,0 +1,167 @@
+{
+  "meta": {
+    "id": "skin-template",
+    "name": "皮肤名称占位",
+    "subtitle": "MINIGAME · ANOMALY SYSTEM SIM"
+  },
+  "monitor": {
+    "initial": "监控画面稳定：目标场景等待接管。",
+    "actions": {
+      "openDoor": "监控：通道已开启。注意画面边缘。",
+      "closeDoor": "监控：通道已封闭。信号恢复。",
+      "moveUp": "监控：系统执行上行/前进指令。",
+      "moveDown": "监控：系统执行下行/返回指令。",
+      "emergencyStop": "监控：急停触发。画面短暂冻结。",
+      "restartSystem": "监控：系统重启。部分日志被清空。"
+    }
+  },
+  "actionLabels": {
+    "openDoor": "开启通道",
+    "closeDoor": "封闭通道",
+    "moveUp": "上行指令",
+    "moveDown": "下行指令",
+    "emergencyStop": "急停",
+    "restartSystem": "系统重启",
+    "inspectLog": "查看日志",
+    "unlockHiddenLog": "解码记录"
+  },
+  "doorLabels": {
+    "open": "开启",
+    "closed": "关闭"
+  },
+  "directionLabels": {
+    "up": "上行",
+    "down": "下行",
+    "idle": "待机"
+  },
+  "statusLabels": {
+    "panelTitle": "系统状态",
+    "floor": "位置",
+    "door": "通道",
+    "direction": "指令",
+    "passengers": "目标",
+    "power": "电源",
+    "stability": "稳定度",
+    "anomalyLevel": "异常等级",
+    "reviveCount": "广告复活",
+    "adHintsCount": "记录解码",
+    "hiddenLogsCount": "待解码"
+  },
+  "canvasLabels": {
+    "countdown": "值守倒计时",
+    "monitorPanel": "监控画面",
+    "actionPanel": "操作面板",
+    "logPanel": "系统日志",
+    "forceAnomaly": "触发异常测试",
+    "failureTitle": "系统崩溃",
+    "failureEyebrow": "SYSTEM FAILURE",
+    "monitorSignalStable": "SIGNAL: STABLE",
+    "monitorSignalUnstable": "SIGNAL: UNSTABLE",
+    "monitorSignalCorrupted": "SIGNAL: CORRUPTED",
+    "monitorThreat": "THREAT: {level}",
+    "failureMetricStability": "稳定度",
+    "failureMetricAnomaly": "异常",
+    "failureMetricRemaining": "剩余"
+  },
+  "actionFailMessages": {
+    "openDoor_moving": "系统移动中，禁止开启通道。",
+    "moveUp_doorNotClosed": "通道未关闭，禁止上行。",
+    "moveDown_doorNotClosed": "通道未关闭，禁止下行。",
+    "unknownAction": "未知操作：{actionId}",
+    "gameOver": "系统已崩溃，必须复活或重新开始。"
+  },
+  "actionFeedback": {
+    "openDoor": "通道已开启。",
+    "closeDoor": "通道已关闭。",
+    "moveUp": "上行指令已执行。",
+    "moveDown": "下行指令已执行。",
+    "emergencyStop": "急停已执行。",
+    "emergencyStop_fail": "急停按钮失效。",
+    "restartSystem": "系统重启完成。",
+    "inspectLog": "已查看系统日志。",
+    "unlockHiddenLog_noLocked": "没有待解码的加密记录。",
+    "unlockHiddenLog_limit": "本局已解码 {count} 条记录，达到上限。"
+  },
+  "actionLogMessages": {
+    "openDoor": "通道已在 {floor} 号位置开启。",
+    "closeDoor": "通道已关闭。",
+    "moveUp": "系统上行，当前位置 {floor}。",
+    "moveDown": "系统下行，当前位置 {floor}。",
+    "emergencyStop": "执行急停：移动已停止，稳定度下降。",
+    "emergencyStop_fail": "急停按钮无响应。异常等级上升。",
+    "restartSystem": "系统重启完成：异常等级下降，但消耗 {cost} 点电源。",
+    "inspectLog": "操作员查看系统日志：最近 30 秒存在未授权信号。",
+    "inspectLog_hiddenRecords": "发现 {count} 条待解码加密记录。可观看模拟广告解锁完整内容。",
+    "unlockHiddenLog_ok": "模拟广告播放完成。加密记录已解码。"
+  },
+  "anomalies": [
+    { "id": "signal_delay", "title": "监控延迟", "severity": 1, "monitor": "监控：画面延迟 3 秒。操作记录与画面不同步。", "adHint": "监控延迟时先查看日志，不要连续操作。", "effects": { "anomalyLevel": 1, "stability": -6 } },
+    { "id": "ghost_position", "title": "不存在的位置", "severity": 2, "monitor": "监控：系统停在未登记位置。地图中不存在该节点。", "adHint": "出现未登记位置时优先重启系统。", "effects": { "floor": 13, "anomalyLevel": 2, "stability": -10 } },
+    { "id": "empty_target", "title": "目标计数归零", "severity": 2, "monitor": "监控：画面中仍有目标，但计数器显示 0。", "adHint": "计数异常时保持通道关闭并检查日志。", "effects": { "passengers": 0, "anomalyLevel": 2, "stability": -12 } },
+    { "id": "log_echo", "title": "日志回声", "severity": 1, "monitor": "监控：系统日志开始重复输出相同警告。", "adHint": "日志回声通常是轻度异常，可先系统重启。", "effects": { "anomalyLevel": 1, "stability": -5 } },
+    { "id": "auto_request", "title": "指令自动亮起", "severity": 2, "monitor": "监控：没有输入，多个指令灯自动亮起。", "adHint": "自动请求时不要跟随移动，先急停。", "effects": { "anomalyLevel": 2, "power": -8 } },
+    { "id": "stop_failure", "title": "急停失效", "severity": 3, "monitor": "监控：急停指示灯熄灭，控制台拒绝确认安全回路。", "adHint": "急停失效时不要反复点击，优先系统重启。", "effects": { "anomalyLevel": 3, "stability": -15 } },
+    { "id": "negative_position", "title": "位置显示为负数", "severity": 2, "monitor": "监控：位置显示 -1。画面出现不应存在的区域。", "adHint": "负数位置不是正常节点，立即重启系统。", "effects": { "floor": -1, "anomalyLevel": 2, "stability": -10 } },
+    { "id": "power_drain", "title": "电源异常下降", "severity": 2, "monitor": "监控：备用电源接管后电量仍在下降。", "adHint": "电源异常下降时减少移动，优先重启。", "effects": { "anomalyLevel": 2, "power": -22 } },
+    { "id": "door_refuse", "title": "通道拒绝关闭", "severity": 2, "monitor": "监控：关闭指令已发送，通道在闭合前自动弹开。", "adHint": "通道拒绝关闭时不要连按关闭，先急停再重启。", "effects": { "door": "open", "anomalyLevel": 2, "stability": -10 } },
+    { "id": "weight_mismatch", "title": "载荷数据异常", "severity": 1, "monitor": "监控：载荷读数为 0，但画面显示目标存在。", "adHint": "载荷异常时优先查日志，目标数可能被重置。", "effects": { "passengers": 0, "anomalyLevel": 1, "stability": -7 } },
+    { "id": "position_jump", "title": "位置编号跳跃", "severity": 2, "monitor": "监控：系统从 5 号位置直接跳到 9 号位置。", "adHint": "位置跳跃时减少移动，用系统重启恢复显示。", "effects": { "floor": "+4", "anomalyLevel": 2, "stability": -12, "power": -10 } },
+    { "id": "emergency_lights", "title": "应急灯异常启动", "severity": 3, "monitor": "监控：应急灯无触发信号自行启动。备用电源消耗加速。", "adHint": "应急灯启动时避免移动，立即重启系统。", "effects": { "anomalyLevel": 3, "stability": -14, "power": -20 } }
+  ],
+  "hiddenLogs": {
+    "signal_delay": { "title": "监控校准记录", "content": "校准记录：监控链路延迟与未登记信号源有关。建议不要在延迟期间连续操作。" },
+    "ghost_position": { "title": "未登记位置档案", "content": "内部档案：该位置曾在早期图纸中出现，后被删除，但控制系统仍能接收该节点信号。" },
+    "empty_target": { "title": "计数器异常说明", "content": "传感器手册：目标计数可能在异常热源附近归零。请以监控画面和日志交叉确认。" },
+    "log_echo": { "title": "日志回声诊断", "content": "诊断报告：重复日志的时间戳早于当前值守开始时间。" },
+    "auto_request": { "title": "自动指令审计", "content": "审计追踪：自动请求来自已停用的控制端口。" },
+    "stop_failure": { "title": "急停维护记录", "content": "维护记录：急停回路曾被标记为不可用，缺少后续维修签名。" },
+    "negative_position": { "title": "隐藏区域勘测", "content": "勘测报告：公开地图之外仍存在供电线路。" },
+    "power_drain": { "title": "备用电源异常报告", "content": "报告：备用电源存在非授权分接线路，线路标签写着不要切断。" },
+    "door_refuse": { "title": "门控保护日志", "content": "门控模块识别到外部干扰信号，拒绝执行关闭。" },
+    "weight_mismatch": { "title": "载荷校验记录", "content": "校验记录：载荷与画面目标不一致，传感器无硬件故障。" },
+    "position_jump": { "title": "定位模块日志", "content": "定位模块缺失关键帧，参考信号源无法匹配已登记设备。" },
+    "emergency_lights": { "title": "应急照明测试报告", "content": "测试报告：应急灯在无触发信号时启动，终端设备编号未知。" }
+  },
+  "failure": {
+    "summaries": {
+      "power": "电源耗尽",
+      "stability": "稳定度归零",
+      "anomalyLevel": "异常等级失控",
+      "passengers": "目标记录出现负数",
+      "default": "系统拒绝继续响应"
+    },
+    "defaultHint": "先关闭通道，再重启系统，避免连续移动。",
+    "firstRunAdvice": "下次先核对画面和三项数据；一致放行，矛盾封锁。",
+    "adHintPrefix": "广告提示：{hint}",
+    "adReviveRollback": "广告复活完成：回滚 {seconds} 秒，恢复至可控状态。",
+    "adReviveMonitor": "广告复活完成：回滚到 {seconds} 秒前的系统状态。",
+    "snapshotFallback": "可观看广告复活，回滚到 {seconds} 秒前的系统状态。",
+    "noSnapshotFallback": "可观看广告复活，回滚到初始系统状态。"
+  },
+  "fakeEnding": {
+    "eyebrow": "⚠ SYSTEM ANOMALY DETECTED",
+    "title": "操作员关联异常",
+    "text": "系统检测到操作员第 {count} 次系统崩溃。\n根据异常值守协议，您已被标记为异常关联人员。\n前 {threshold} 次记录已被永久删除。",
+    "truthPlaceholder": "[???] 观看广告揭示真相。",
+    "truthContent": "这套系统从未真正修复。每一任值守员最终都会变成下一条异常记录。"
+  },
+  "ui": {
+    "viewAd": "观看广告复活",
+    "unlockAd": "解码加密记录",
+    "restart": "重新开始",
+    "revealTruth": "观看广告揭示真相",
+    "triggerTest": "触发异常测试",
+    "decodePrefix": "[解码记录]",
+    "initialLog": "控制台已接管。等待操作员指令。",
+    "anomalyEventLog": "异常事件：{title}。{hint}",
+    "startTitle": "等待接管异常控制台",
+    "startCopy": "目标：值守 60 秒，观察监控、处理异常、避免系统崩溃。接管后倒计时才会启动。",
+    "startChecklist": "先读监控画面和系统日志\n异常出现时按提示执行操作\n失败后可通过模拟广告复活",
+    "startFailureRulesTitle": "失败条件",
+    "startFailureRules": "电源归零\n稳定度归零\n异常等级失控",
+    "startButton": "开始接管",
+    "successfulShift": "本轮值守结束。系统仍未解释全部异常。",
+    "shiftComplete": "值守完成。连续失败计数已重置。",
+    "hiddenLogCaptured": "加密记录已捕获：{title}。"
+  }
+}

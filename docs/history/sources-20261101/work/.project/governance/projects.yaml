@@ -1,0 +1,71 @@
+schema_version: work-lab/projects/v1
+# COMPATIBILITY-ONLY PROJECTION — NOT a machine authority.
+# Machine authority for the module model is .project/governance/projects.json
+# (two canonical modules: workflow-assistance -> packages/client-neutral-core,
+# work-lab-observer -> apps/observer). This YAML is frozen for tooling
+# compatibility and must not be read as a second module model.
+# See GOAL P0-04: projects.json vs projects.yaml de-duplication.
+workspace_id: work-lab
+repository: DTALEX66/WORK-LAB
+single_writer: true
+root_resolution:
+  - explicit-argument
+  - manifest-relative-path
+  - environment-variable
+  - current-git-root
+modules:
+  # Frozen pre-V2 module expansion (8 entries incl. ghost apps/control-surface
+  # which does not exist on disk). Superseded by projects.json (2 canonical
+  # modules). Control surface is a deferred P1 roadmap item, not a module yet.
+  - id: authority
+    path: services/authority
+    role: single-writer/lease/checkpoint authority
+    owner: DTALEX66
+    depends_on: []
+  - id: orchestration
+    path: services/orchestration
+    role: workflow orchestration and state machine
+    owner: DTALEX66
+    depends_on: [authority]
+  - id: policy
+    path: services/policy
+    role: permissions/budget/risk/human-approval policy
+    owner: DTALEX66
+    depends_on: [authority]
+  - id: receipts
+    path: services/receipts
+    role: CloudEvent/OTel/in-toto receipts
+    owner: DTALEX66
+    depends_on: [orchestration]
+  - id: contracts
+    path: packages/contracts
+    role: stable schema contracts
+    owner: DTALEX66
+    depends_on: []
+  - id: client-neutral-core
+    path: packages/client-neutral-core
+    role: neutral core logic (no executor import)
+    owner: DTALEX66
+    depends_on: [contracts]
+  - id: observer
+    path: apps/observer
+    role: strictly read-only observation projection
+    owner: DTALEX66
+    depends_on: [contracts]
+  - id: control-surface
+    path: apps/control-surface
+    role: writable governance control surface (DEFERRED P1 — not yet on disk; see Future Candidate Registry)
+    owner: DTALEX66
+    depends_on: [authority, policy]
+forbidden_roots:
+  # Machine truth: .project/governance/project-data-boundary.json forbids BOTH
+  # E: and F: (forbiddenExternalRoots). This frozen list carried E: only and is
+  # superseded by the boundary JSON.
+  - "E:\\"
+generated_data:
+  project_local_root: .project-local
+  run_root: .project-local/runs
+  artifacts: .project-local/artifacts
+  cache: .project-local/cache  # frozen legacy path; live truth = .project-local/runs/cache (boundary JSON cacheRoot)
+  tracked: false
+external_mutation_default: false

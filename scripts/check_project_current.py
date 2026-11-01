@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import re
@@ -29,7 +30,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ENTRY = "PROJECT_CURRENT.md"
-REQUIRED_ENTRIES = ("PROJECT_CURRENT.md", "README.md", "AGENTS.md")
+#: the promoted October-current authorities, listed at the repository root by owner rule
+AUTHORITY_INDEX = "AUTHORITY-INDEX.md"
+REQUIRED_ENTRIES = ("PROJECT_CURRENT.md", "README.md", "AGENTS.md", AUTHORITY_INDEX)
+#: documents whose path-shaped tokens are claims about *this* repository. The promoted index
+#: is deliberately excluded: its third column names paths inside the source repositories, and
+#: its destinations are already verified byte by byte in check_authority_index().
+CITING_ENTRIES = ("PROJECT_CURRENT.md", "README.md", "AGENTS.md")
 FIGURES_START = "<!-- entry-figures:start -->"
 FIGURES_END = "<!-- entry-figures:end -->"
 #: root directories a citation may start with; anything else is prose, not a path claim
@@ -44,11 +51,22 @@ NEGATION = ("不", "未", "历史", "旧", "取代", "已替代", "排除", "不
 AUTHORITY_MARK = "唯一顶层入口"
 BLOCKING_QUEUE = "L10#0"
 ARCHIVE_REGISTER = "migration/archive-object-reconciliation-20261101.csv"
+ARCHIVE_AREA = "docs/history/sources-20261101/MANIFEST.json"
 
 
 def rows(rel: str) -> list[dict]:
     raw = (ROOT / rel).read_bytes().decode("utf-8-sig")
     return list(csv.DictReader(io.StringIO(raw, newline="")))
+
+
+def archive_summary() -> dict:
+    """The history-area manifest as written by the copy run -- counts are read, never retyped."""
+    document = json.loads((ROOT / ARCHIVE_AREA).read_text(encoding="utf-8"))
+    actions = document["actions"]
+    return dict(rows_total=document["rows_total"],
+                actions={key: int(actions.get(key, 0)) for key in
+                         ("COPIED", "DUPLICATED", "LINKED_IN_REPO", "LINKED_ARCHIVE",
+                          "EXCLUDED_BY_OWNER_RULE", "FAILED")})
 
 
 def derive_figures() -> dict:
@@ -67,6 +85,7 @@ def derive_figures() -> dict:
     accepted = Counter(row["结论"] for row in acceptance)
     verified = Counter(row["状态"] for row in families)
     archive = rows(ARCHIVE_REGISTER)
+    ARCHIVE_SUMMARY = archive_summary()
     disposition = Counter(row["disposition"] for row in archive)
     hints = {row["source_hint"] for row in archive if row["source_hint"]}
     return {
@@ -92,6 +111,13 @@ def derive_figures() -> dict:
         "capability_partial": verified["PARTIAL"],
         "route_endpoints": len(routes),
         "unsettled_files": len(unsettled["rows"]),
+        "authority_index_entries": len(_authority_rows()),
+        "archive_manifest_rows": ARCHIVE_SUMMARY["rows_total"],
+        "archived_objects_copied": ARCHIVE_SUMMARY["actions"]["COPIED"],
+        "archived_objects_duplicated": ARCHIVE_SUMMARY["actions"]["DUPLICATED"],
+        "archived_linked_in_repo": ARCHIVE_SUMMARY["actions"]["LINKED_IN_REPO"],
+        "archived_linked_in_archive": ARCHIVE_SUMMARY["actions"]["LINKED_ARCHIVE"],
+        "archived_excluded_cache_and_build": ARCHIVE_SUMMARY["actions"]["EXCLUDED_BY_OWNER_RULE"],
         "blocker_items": len(blockers["items"]),
     }
 
@@ -182,7 +208,7 @@ def check_entries(entry_path: Path) -> tuple[list, list]:
                 if phrase in line and not any(mark in line for mark in NEGATION):
                     findings.append("STALE_IDENTITY_WORDING %s:%d %s" % (name, line_no, phrase))
 
-    for name in REQUIRED_ENTRIES:
+    for name in CITING_ENTRIES:
         path = ROOT / name
         if not path.is_file():
             continue
@@ -223,6 +249,47 @@ def check_figures(entry_path: Path) -> list:
     return findings
 
 
+def _authority_rows() -> list[list[str]]:
+    """The promoted-authority table as cell lists, header and separator excluded."""
+    path = ROOT / AUTHORITY_INDEX
+    if not path.is_file():
+        return []
+    lines = [line for line in path.read_text(encoding="utf-8").splitlines()
+             if line.startswith("|") and line.count("|") >= 9]
+    body = [line for line in lines[1:] if not set(line.replace("|", "").strip()) <= {"-", " "}]
+    return [[cell.strip() for cell in line.strip().strip("|").split("|")] for line in body]
+
+
+def check_authority_index() -> list:
+    """Re-hash every promoted file and compare it with the digest the top-level index records.
+
+    The index is the thing a new agent reads to decide which October authority snapshot applies.
+    A table whose SHA-256 column has rotted is worse than no table, because it looks like evidence.
+    """
+    if not (ROOT / AUTHORITY_INDEX).is_file():
+        return ["AUTHORITY_INDEX_MISSING"]
+    rows = _authority_rows()
+    if not rows:
+        return ["AUTHORITY_INDEX_HAS_NO_ROWS"]
+    findings = []
+    for cells in rows:
+        location = cells[1].strip("`")
+        recorded = cells[4].strip("`")
+        target = ROOT / location
+        if not target.is_file():
+            findings.append("PROMOTED_FILE_MISSING " + location)
+            continue
+        digest = hashlib.sha256(target.read_bytes()).hexdigest()
+        if digest != recorded:
+            findings.append("PROMOTED_DIGEST_STALE %s 记录=%s… 现算=%s…" %
+                            (location, recorded[:12], digest[:12]))
+        declared = int(cells[5].replace(",", ""))
+        if declared != target.stat().st_size:
+            findings.append("PROMOTED_BYTES_STALE %s 记录=%d 现算=%d" %
+                            (location, declared, target.stat().st_size))
+    return findings
+
+
 def figures_block() -> str:
     derived = derive_figures()
     return "\n".join("%s = %d" % (key, derived[key]) for key in sorted(derived))
@@ -249,6 +316,7 @@ def main(argv=None) -> int:
     try:
         findings, machine_only = check_entries(args.entry)
         findings += check_figures(args.entry)
+        findings += check_authority_index()
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(json.dumps({"verdict": "REFUSED", "error": "%s: %s" % (type(exc).__name__, exc),
                           "root": str(ROOT)}, ensure_ascii=False))

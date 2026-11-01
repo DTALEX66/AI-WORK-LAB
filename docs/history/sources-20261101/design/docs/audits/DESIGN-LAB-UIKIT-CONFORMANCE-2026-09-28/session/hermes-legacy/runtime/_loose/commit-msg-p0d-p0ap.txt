@@ -1,0 +1,21 @@
+fix(design-layer): P0-D active-binding follows chosen direction + P0-A+ DB single-choice invariant
+
+P0-D: get_design_layer().active_binding now derives from the CURRENTLY CHOSEN
+direction (latest revision among its own bindings) instead of the project's
+last binding. Switching the human choice A->B leaves B unbound, so
+active_binding correctly goes null instead of pointing at A's binding.
+Regression: test_switching_choice_nulls_stray_binding.
+
+P0-A+: new additive design-layer-v2 migration installs a partial UNIQUE index
+ux_design_direction_one_chosen_per_brief (WHERE chosen=1 AND
+superseded_by IS NULL) as the database-level last-line invariant that one
+brief holds at most one active chosen direction. The migration precheck
+(_design_layer_v2_precheck) fails closed, listing offending briefs, instead of
+auto-picking a winner with MAX(direction_id). GUARDED_MIGRATIONS gains an
+optional 4th-element precheck hook; 3-tuples are padded with None.
+Regressions: test_single_choice_partial_unique_index_exists and
+test_v2_precheck_fails_closed_on_duplicate_choices.
+
+No second store, no second writer: v2 extends the single local state database
+through the existing guarded-connection migration chain. 18/18 design-layer
+contract tests green.

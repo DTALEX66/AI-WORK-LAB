@@ -1,0 +1,37 @@
+docs(audit): fix the archive's asset sidecars and non-ASCII filenames
+
+The archive's first push failed the required Python gate on verify_asset_governance.py.
+Three real defects, all fixed here:
+
+1. Binary sidecars must be asset-sidecar/v1 JSON (DL-AST-001), not free-text SPDX.
+   The 17 B04 design sheets now carry proper JSON: schemaVersion, file, sha256,
+   license, author, the three boolean rights flags, and -- because there is no
+   registered sourceId -- an approved exception with approvedBy + expiresAt.
+   Rights recorded: redistributable=true, commercialUse=true, modelInputAllowed=false
+   (no model-training right asserted for these sheets). approvedBy is the project owner
+   on the basis of the instruction to archive this round's material into the project;
+   00-INDEX.md flags this as an owner assertion to confirm, not a verified signature.
+
+2. Two filenames were non-ASCII in the source archives. `git ls-files` quotes such
+   paths, and verify_asset_governance.py then fails with "cannot stat tracked file"
+   (seen on CI, reproduced locally). Renamed to ASCII; the original->archived mapping
+   is recorded in 00-INDEX.md section 7:
+     DESIGN-LAB_L4_16张组件系统总览.jpg -> DESIGN-LAB_L4_B04-16-components-overview.jpg
+     打开页面_Windows.bat              -> open-page_Windows.bat
+
+3. The renames had to be STAGED before the gate could see them: verify_asset_governance.py
+   reads `git ls-files`, which lists the index, so unstaged renames kept the old paths.
+
+Why CI caught this and the local run did not: only four gates had been run locally
+before the first push. The full unified verify was not run. Now run locally, all green:
+  verify_design_lab.py     VERIFY_DESIGN_LAB=OK total=56 failed=0
+  verify_asset_governance  ASSET_GOVERNANCE=OK
+  verify_license_coverage  LICENSE_COVERAGE=OK
+  verify_identity_gate     IDENTITY_GATE=OK total=0
+  verify_top_level_authority  TOP_AUTHORITY_GATE=PASS checks=10 failed=none
+  verify_authority_gates   AUTHORITY_GATES=PASS gates=7 failed=none
+  verify_path_refs         PATH_REF_GATE=PASS checks=10 failed=[]
+  verify_context_integrity VERIFY_CONTEXT_INTEGRITY=PASS
+
+Pack-size note: ASSET_GOVERNANCE reports pack_mib=212.7 against warn_mib=220, so the
+repo is now within 8 MiB of the asset-pack warning threshold.

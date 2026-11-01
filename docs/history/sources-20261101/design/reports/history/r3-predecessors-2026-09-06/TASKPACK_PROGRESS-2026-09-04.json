@@ -1,0 +1,226 @@
+{
+  "schemaVersion": "design-lab/taskpack-progress/v1",
+  "taskpack": "DL-TP-20260904-STANDALONE-FIRST",
+  "updatedAt": "2026-09-05T00:00:00Z",
+  "revisionNote": "PR115 audit (2026-09-05) re-baselined every status to verifiable evidence; supersedes the 2026-09-04 ledger. Status vocabulary: DONE_VERIFIED / PARTIAL / SCHEMA_DRAFT / CODE_SKELETON / REGISTER_ONLY / BLOCKED_RUNTIME. A DONE_VERIFIED entry cites the test/command that proves it.",
+  "wave0": [
+    {
+      "id": "DL-TP-R0-001",
+      "title": "冻结唯一前向基线",
+      "status": "DONE_VERIFIED",
+      "evidence": "reports/history-baseline.json (2aca27f) + .project/manifest.yaml frozen; docs/taskpacks current pointer updated"
+    },
+    {
+      "id": "DL-TP-R0-002",
+      "title": "修复 manifest 引用门",
+      "status": "DONE_VERIFIED",
+      "evidence": "PR115-F07: verify_product_manifest_v3.py scans capabilityFamilies[].paths[] (not the old .capabilities shape); 493 checks OK; ProductManifestTests 4 green incl. missing/traversal/historical negatives"
+    },
+    {
+      "id": "DL-TP-R0-003",
+      "title": "统一 .project-local",
+      "status": "PARTIAL",
+      "evidence": "R0-003 original commit only moved part of the surface. PR115-F06 adds central resolver runtime_roots.py and migrates reconstruction mainline (contracts/intake/render/evidence/state) + fixtures; verification run in progress"
+    },
+    {
+      "id": "DL-TP-R0-004",
+      "title": "重建证据原子回滚",
+      "status": "DONE_VERIFIED",
+      "evidence": "PR115-F05: seal_bundle/check_sealed live in reconstruction.evidence; _promote verifies before-swap and after-promote seals; _after_backup seam; test_reconstruction_evidence.py 37 tests OK (incl. seal-mismatch restore + no-residue)"
+    },
+    {
+      "id": "DL-TP-R0-005",
+      "title": "测试隔离",
+      "status": "DONE_VERIFIED",
+      "evidence": "run_test_isolation.py: forward/reverse/random(seed 20260905) 三序各 580 tests 全绿; 污染敏感模块 20 次(24/轮)全绿; 工作树干净; 详见 reports/current/R0-005-TEST-ISOLATION-2026-09-05.md"
+    },
+    {
+      "id": "DL-TP-R0-006",
+      "title": "项目级 Rights Decision",
+      "status": "DONE_VERIFIED",
+      "evidence": "docs/governance/RIGHTS_DECISION-2026-09-04.md (PERSONAL_RESEARCH_NONCOMMERCIAL; H3 BLOCKED_BY_LICENSE; E-drive protected)"
+    },
+    {
+      "id": "DL-TP-R0-007",
+      "title": "修正 Adapter Registry 事实",
+      "status": "DONE_VERIFIED",
+      "evidence": "integrations/adapter-registry.json (30 adapters, 11 corrected to supported=false); PR115-F01 makes BLOCKED_BY_LICENSE schema-legal; test_oda4_0206_adapters 10 green"
+    },
+    {
+      "id": "DL-TP-R0-008",
+      "title": "Standalone-first ADR",
+      "status": "DONE_VERIFIED",
+      "evidence": "docs/decisions/ADR-001-standalone-design-runtime.md; AGENTS.md/README synced in PR115-F09"
+    }
+  ],
+  "wave1": [
+    {
+      "id": "DL-TP-R1-001",
+      "title": "Python 项目与锁文件",
+      "status": "DONE_VERIFIED",
+      "evidence": "pyproject.toml deps (jsonschema/Pillow/numpy/scikit-image/defusedxml) + uv.lock (20 pkgs); PR115-F04: uv sync --locked verified"
+    },
+    {
+      "id": "DL-TP-R1-002",
+      "title": "SSOT 与生成报告",
+      "status": "PARTIAL",
+      "evidence": "generate_current_reports.py runs (CURRENT_REPORTS PASS 8) but per-report path/claim verification remains manual; marked PARTIAL not DONE"
+    },
+    {
+      "id": "DL-TP-R1-003",
+      "title": "CI 触发与门禁",
+      "status": "PARTIAL",
+      "evidence": "PR115-F08 added src/** to push+pull_request triggers; gate install switched to uv.lock. Real green CI run on the PR is still the pending proof"
+    },
+    {
+      "id": "DL-TP-R1-004",
+      "title": "仓库治理",
+      "status": "DONE_VERIFIED",
+      "evidence": "SECURITY.md / CONTRIBUTING.md / RELEASE.md / CODEOWNERS present and scanned by release-gate"
+    },
+    {
+      "id": "DL-TP-R1-005",
+      "title": "版本语义",
+      "status": "DONE_VERIFIED",
+      "evidence": ".project/manifest.yaml schema_version/product_version 0.1.0-alpha.0 + release_status NOT_RELEASED"
+    },
+    {
+      "id": "DL-TP-R1-006",
+      "title": "多 Agent 工作区协议",
+      "status": "DONE_VERIFIED",
+      "evidence": "docs/governance/AGENT_WORKSPACE_PROTOCOL.md (present; content is documentation)"
+    },
+    {
+      "id": "DL-TP-R1-007",
+      "title": "依赖更新策略",
+      "status": "DONE_VERIFIED",
+      "evidence": "docs/governance/DEPENDENCY_LIFECYCLE.md (present; content is documentation)"
+    },
+    {
+      "id": "DL-TP-R1-008",
+      "title": "MiniGame fixture 冻结",
+      "status": "DONE_VERIFIED",
+      "evidence": "AGENTS.md boundary + fixtures/domains/game-visual committed; node gate rebuilds and asserts no drift"
+    }
+  ],
+  "wave2": [
+    {
+      "id": "DL-TP-R2-001",
+      "title": "核心 Schema",
+      "status": "DONE_VERIFIED",
+      "evidence": "31 schemas under design-lab/schemas/contracts/; PR115-F02/F03: all local $refs resolve (contract integrity test), job-spec/job-attempt/capability-evidence/asset-ref/rights-decision/delivery-receipt tightened with enums + binding fields"
+    },
+    {
+      "id": "DL-TP-R2-002",
+      "title": "src/design_lab 与单一 CLI",
+      "status": "PARTIAL",
+      "evidence": "src/design_lab committed (adapters/spi.py + runtime/{state_store,profile_resolver,operation_coordinator,doctor}.py); no single CLI entry yet"
+    },
+    {
+      "id": "DL-TP-R2-003",
+      "title": "Review Console",
+      "status": "BLOCKED_RUNTIME",
+      "evidence": "web UI build needs multi-round work"
+    },
+    {
+      "id": "DL-TP-R2-004",
+      "title": "Adapter SPI",
+      "status": "DONE_VERIFIED",
+      "evidence": "src/design_lab/adapters/spi.py (5 types + lifecycle); test_adapter_spi green"
+    },
+    {
+      "id": "DL-TP-R2-005",
+      "title": "Design Control MCP",
+      "status": "SCHEMA_DRAFT",
+      "evidence": "design-control-mcp.schema.json committed; no MCP runtime/host wiring"
+    },
+    {
+      "id": "DL-TP-R2-006",
+      "title": "本地五对象合同",
+      "status": "SCHEMA_DRAFT",
+      "evidence": "capability-ref/knowledge-candidate/run-receipt schemas committed"
+    },
+    {
+      "id": "DL-TP-R2-007",
+      "title": "Local Design Runtime",
+      "status": "REGISTER_ONLY",
+      "evidence": "orchestrator/queue/lease engine not implemented"
+    },
+    {
+      "id": "DL-TP-R2-008",
+      "title": "Windows Control Provider",
+      "status": "BLOCKED_RUNTIME",
+      "evidence": "needs real host (Illustrator uninstalled)"
+    },
+    {
+      "id": "DL-TP-R2-009",
+      "title": "Integration Definition",
+      "status": "SCHEMA_DRAFT",
+      "evidence": "integration-def/capability-def/permission/probe/ttl schemas committed"
+    },
+    {
+      "id": "DL-TP-R2-010",
+      "title": "AssetRef/Trait/OTIO",
+      "status": "SCHEMA_DRAFT",
+      "evidence": "asset-ref.schema.json tightened in PR115-F03 with rights/runtime binding"
+    },
+    {
+      "id": "DL-TP-R2-011",
+      "title": "NativeTransaction",
+      "status": "REGISTER_ONLY",
+      "evidence": "needs real host matrix"
+    },
+    {
+      "id": "DL-TP-R2-012",
+      "title": "Lease fencing",
+      "status": "REGISTER_ONLY",
+      "evidence": "runtime engine"
+    },
+    {
+      "id": "DL-TP-R2-013",
+      "title": "SQLite LocalStateStore",
+      "status": "DONE_VERIFIED",
+      "evidence": "design-lab/schemas/state/design-lab-state-v1.sql (8 tables) + src/design_lab/runtime/state_store.py + test_state_store (2) green"
+    },
+    {
+      "id": "DL-TP-R2-014",
+      "title": "current capability evidence index",
+      "status": "DONE_VERIFIED",
+      "evidence": "design-lab/scripts/generate_capability_evidence_index.py writes config/capability-evidence-current.json (50 capabilities, current_E3=0); v4 verifier green"
+    },
+    {
+      "id": "DL-TP-R2-015",
+      "title": "ProfileResolver",
+      "status": "DONE_VERIFIED",
+      "evidence": "src/design_lab/runtime/profile_resolver.py + 5 golden tests (test_profile_resolver) green"
+    },
+    {
+      "id": "DL-TP-R2-016",
+      "title": "portable workspace doctor",
+      "status": "DONE_VERIFIED",
+      "evidence": "src/design_lab/runtime/doctor.py + test_doctor (2) green (probe only; no auto-install)"
+    },
+    {
+      "id": "DL-TP-R2-018",
+      "title": "Operation/Attempt 协调",
+      "status": "DONE_VERIFIED",
+      "evidence": "src/design_lab/runtime/operation_coordinator.py + test_operation_coordinator (4) green (no A2/A3 auto-retry)"
+    },
+    {
+      "id": "DL-TP-R2-020/021",
+      "title": "session / audit trace 字段",
+      "status": "SCHEMA_DRAFT",
+      "evidence": "host-session/document-session + audit-event schema fields committed"
+    }
+  ],
+  "waves34": {
+    "status": "REGISTER_ONLY",
+    "note": "Registered in taskpack only; not executed this cycle."
+  },
+  "summary": {
+    "wave0": "6 DONE_VERIFIED + R0-003/R0-005 PARTIAL (PR115 F06/F05 verified after full suite)",
+    "wave1": "6 DONE_VERIFIED + R1-002/R1-003 PARTIAL",
+    "wave2": "contract/code DONE_VERIFIED subset: R2-001/004/013/014/015/016/018; drafts: R2-005/006/009/010/020-021; runtime REGISTER_ONLY/BLOCKED_RUNTIME",
+    "waves34": "REGISTER_ONLY"
+  }
+}

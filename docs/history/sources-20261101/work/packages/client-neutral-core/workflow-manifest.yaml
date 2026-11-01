@@ -1,0 +1,148 @@
+schema_version: 1
+package:
+  name: Workflow-assistance
+  distribution: git
+  portable_source: true
+product:
+  architecture: client-neutral
+  positioning: workflow control, governance, task execution, delivery, and observability layer
+  non_goals:
+    - agent
+    - chat
+    - model_gateway
+  entrypoint: replaceable_client_adapters
+  first_class_adapters:
+    - hermes
+    - codex
+    - cc-switch
+    - github
+    - openhuman
+    - open-design
+
+capabilities:
+  - portable_config
+  - managed_config_ownership
+  - model_provider_neutral_overlay
+  - durable_session_retention
+  - project_data_boundary
+  - terminal_pre_tool_hook
+  - context_pack
+  - local_quality_gate
+  - isolated_portable_install_verification
+  - manifest_compatibility_preflight
+  - hermes_runtime_layout_and_upgrade_safety
+  - codex_global_guidance_overlay
+  - codex_native_user_skills
+  - codex_command_policy_rules
+  - codex_field_level_config_preservation
+  - openhuman_scan_verification
+  - open_design_read_only_observe
+requirements:
+  python: '>=3.11'
+  pyyaml: required
+  core_runtime: no Hermes installation required
+  optional_adapters:
+    hermes: capability-discovery
+compatibility:
+  official_schema: capability-discovery
+  official_config_root: capability-discovery
+  required_runtime_features:
+    - portable_manifest
+    - project_data_boundary
+    - client_neutral_adapter_contract
+  adapter_runtime_features:
+    hermes:
+      - platform_toolsets.cli
+      - sessions.auto_prune=false
+      - memory.enabled
+      - hermes_config_check
+    codex:
+      - user_AGENTS_overlay
+      - user_skills_discovery
+      - command_rules
+      - workspace_write_sandbox
+      - on_request_approval
+adapters:
+  interface:
+    - detect
+    - capabilities
+    - plan
+    - apply
+    - invoke
+    - observe
+    - rollback
+  apply_policy: approval_required_action_plan
+  entries:
+    - id: hermes
+      support: deep
+      detection: optional_cli_and_config_check
+      writes: approval_required
+    - id: codex
+      support: deep
+      detection: optional_cli_version_check
+      writes: approval_required
+    - id: cc-switch
+      support: deep
+      detection: optional_local_router_check
+      writes: unavailable
+    - id: github
+      support: deep
+      detection: optional_gh_read_only_check
+      writes: approval_required
+
+    - id: openhuman
+      support: experimental
+      detection: optional_local_app_check
+      writes: unavailable
+
+    - id: open-design
+      support: experimental
+      detection: optional_remote_repo_check
+      writes: unavailable
+
+    - id: cursor
+      support: manifest-only
+      detection: manifest_only
+      writes: unavailable
+    - id: claude-code
+      support: manifest-only
+      detection: manifest_only
+      writes: unavailable
+    - id: workbuddy
+      support: manifest-only
+      detection: manifest_only
+      writes: unavailable
+contracts:
+  schema_directory: packages/contracts/schemas/workflow
+  schemas:
+    - client-adapter.schema.json
+    - adapter-registry.schema.json
+    - domain-pack.schema.json
+    - action-plan.schema.json
+    - run-event.schema.json
+    - evidence-envelope.schema.json
+    - error.schema.json
+    - task-card.schema.json
+    - task-ledger.schema.json
+    - observer-event.schema.json
+    - rule-asset.schema.json
+    - skill-package.schema.json
+    - growth-candidate.schema.json
+    - project-profile.schema.json
+    - gate-registry.schema.json
+    - gate-plan.schema.json
+    - blocker.schema.json
+    - ci-observation.schema.json
+    - evidence-manifest.schema.json
+  instance_controls:
+    positive: schemas/workflow/examples/valid-action-plan.json
+    negative: schemas/workflow/examples/invalid-action-plan.json
+security:
+  secrets_portable: false
+  credential_copying: forbidden
+  live_provider_route: preserved
+delivery:
+  remote_ref: origin/main
+  required_workflows:
+    - work-lab-gate
+  exact_sha_ci: true

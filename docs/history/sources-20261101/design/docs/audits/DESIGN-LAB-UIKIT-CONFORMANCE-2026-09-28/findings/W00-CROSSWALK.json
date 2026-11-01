@@ -1,0 +1,816 @@
+{
+  "provenance": "DERIVED from 02_EXECUTION_TASKS.md; NOT authoritative; needs owner ratification (AGENTS.md).",
+  "notation_finding": "pack writes 'R5-NNN'; ledger writes 'DL-R5-NNN' (same entity).",
+  "parser_findings": [
+    "§2 multi-W cells (|DL-UI-09 / DL-UI-10|W02/W03/W14|)",
+    "§1 Chinese joiners (011或012, R5-006及...)",
+    "§2 groups split across whitespace chunks (DL-WL-01 / 02 / 03)",
+    "W16 EN-DASH ranges (R5-008/016–022/024–027)"
+  ],
+  "counts": {
+    "w_blocks": 18,
+    "dl_ids": 41,
+    "r5_referenced": 28,
+    "r5_mapped": 28,
+    "mainline": 17,
+    "extension_only": 11
+  },
+  "caveat": "'mapped' is NOT 'scheduled': W16/W17 are P2 and conditional on W15.",
+  "w_blocks_meta": {
+    "W00": {
+      "title": "继承当前实现并生成差异映射",
+      "priority": "P0",
+      "maps_raw": "DL-00/01；R5-001/002/003/007/028。",
+      "depends_raw": "无。",
+      "path_lines": []
+    },
+    "W01": {
+      "title": "视觉资产与Token基线",
+      "priority": "P0",
+      "maps_raw": "DL-UI-04/09/10；R5-010/028；GOLDEN-001。",
+      "depends_raw": "W00。",
+      "path_lines": [
+        "apps/workbench/style.css、packages/design-system及现有Token来源；新增位置经现有目录规范确认。"
+      ]
+    },
+    "W02": {
+      "title": "组件体系生产兼容验证与裁决",
+      "priority": "P0",
+      "maps_raw": "DL-UI-09/10；R5-010/028。",
+      "depends_raw": "W00/W01。",
+      "path_lines": []
+    },
+    "W03": {
+      "title": "项目中心与壳统一",
+      "priority": "P0，首个用户可见交付",
+      "maps_raw": "DL-UI-01/09/10、DL-BE-01/03；R5-010。",
+      "depends_raw": "W02。",
+      "path_lines": [
+        "shell.ts/main.ts/workbench.ts/index.html/design.ts及现有HTTP层。"
+      ]
+    },
+    "W04": {
+      "title": "参考与资产管理",
+      "priority": "P0",
+      "maps_raw": "DL-UI-02、DL-BE-05；R5-005/013。",
+      "depends_raw": "W03。",
+      "path_lines": []
+    },
+    "W05": {
+      "title": "Direction与可修正对象计划",
+      "priority": "P0",
+      "maps_raw": "DL-UI-03、DL-BE-01/04；R5-013。",
+      "depends_raw": "W04；AI辅助可等待W12，手工流程不等待。",
+      "path_lines": []
+    },
+    "W06": {
+      "title": "DesignSystem/Token编辑与读回",
+      "priority": "P0",
+      "maps_raw": "DL-UI-04、DL-BE-01；R5-010/013及现有设计链映射。",
+      "depends_raw": "W05。",
+      "path_lines": []
+    },
+    "W07": {
+      "title": "生产任务与一个真实宿主",
+      "priority": "P0",
+      "maps_raw": "DL-UI-05、DL-BE-02/03；R5-004/005/009/010/011或012。",
+      "depends_raw": "W06；沿用R5依赖检查。",
+      "path_lines": [
+        "native_*、task_*、integrations/hosts/adobe与Python creative层，禁止第二runtime。"
+      ]
+    },
+    "W08": {
+      "title": "Review / Quality / Human Jury",
+      "priority": "P0",
+      "maps_raw": "DL-UI-06、DL-BE-06；R5-014。",
+      "depends_raw": "W07。",
+      "path_lines": []
+    },
+    "W09": {
+      "title": "真实生产预检",
+      "priority": "P0",
+      "maps_raw": "DL-UI-07、DL-BE-05/06；R5-014/023。",
+      "depends_raw": "W08。",
+      "path_lines": []
+    },
+    "W10": {
+      "title": "可编辑Handoff与恢复",
+      "priority": "P0",
+      "maps_raw": "DL-UI-08、DL-BE-07；R5-005/014/015。",
+      "depends_raw": "W09。",
+      "path_lines": []
+    },
+    "W11": {
+      "title": "WORK-LAB边界契约",
+      "priority": "P1，可与W03起交错推进",
+      "maps_raw": "DL-WL-01至06；R5-021/023下现有联邦范围确认，不擅自修改冻结定义。",
+      "depends_raw": "W00；不成为单机UI和手工生产阻塞。",
+      "path_lines": []
+    },
+    "W12": {
+      "title": "共享FAST/DEEP消费与故障",
+      "priority": "P1",
+      "maps_raw": "DL-AI-01/02/03/05、DL-BE-04；R5-006及已有provider模块映射。",
+      "depends_raw": "W11契约可用；本地数据编辑不依赖本项。",
+      "path_lines": []
+    },
+    "W13": {
+      "title": "研究与领域能力产品化",
+      "priority": "P1",
+      "maps_raw": "产品六能力域、DL-UI-02/03/06、R5-013/014/023。",
+      "depends_raw": "W04/W08；按真实需求，不阻塞首个交付。",
+      "path_lines": []
+    },
+    "W14": {
+      "title": "Windows交互、性能与安装态",
+      "priority": "P0横切",
+      "maps_raw": "DL-UI-09/10、DL-BE-03；R5-009/010/015/028。",
+      "depends_raw": "W03开始持续，W10前完成关键路径。",
+      "path_lines": []
+    },
+    "W15": {
+      "title": "两条黄金流程与证据复审",
+      "priority": "P0收口",
+      "maps_raw": "DL-GJ-01至10；R5-003/014/015。",
+      "depends_raw": "W10/W14；联邦部分另依赖W11/W12。",
+      "path_lines": []
+    },
+    "W16": {
+      "title": "按需扩展专业工具与媒介",
+      "priority": "P2",
+      "maps_raw": "DL-AI-04、R5-008/016–022/024–027。",
+      "depends_raw": "W15的单机黄金流程通过；各项仍遵循原R5依赖。",
+      "path_lines": []
+    },
+    "W17": {
+      "title": "可选知识桥接与清理",
+      "priority": "P2/条件性",
+      "maps_raw": "DL-GJ-11、R5-021/023。",
+      "depends_raw": "W15；ArcheAxis桥接需明确需求。",
+      "path_lines": []
+    }
+  },
+  "w_to_r5": {
+    "W00": [
+      "DL-R5-001",
+      "DL-R5-002",
+      "DL-R5-003",
+      "DL-R5-007",
+      "DL-R5-028"
+    ],
+    "W01": [
+      "DL-R5-010",
+      "DL-R5-028"
+    ],
+    "W02": [
+      "DL-R5-010",
+      "DL-R5-028"
+    ],
+    "W03": [
+      "DL-R5-010"
+    ],
+    "W04": [
+      "DL-R5-005",
+      "DL-R5-013"
+    ],
+    "W05": [
+      "DL-R5-013"
+    ],
+    "W06": [
+      "DL-R5-010",
+      "DL-R5-013"
+    ],
+    "W07": [
+      "DL-R5-004",
+      "DL-R5-005",
+      "DL-R5-009",
+      "DL-R5-010",
+      "DL-R5-011",
+      "DL-R5-012"
+    ],
+    "W08": [
+      "DL-R5-014"
+    ],
+    "W09": [
+      "DL-R5-014",
+      "DL-R5-023"
+    ],
+    "W10": [
+      "DL-R5-005",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "W11": [
+      "DL-R5-021"
+    ],
+    "W12": [
+      "DL-R5-006"
+    ],
+    "W13": [
+      "DL-R5-013",
+      "DL-R5-014",
+      "DL-R5-023"
+    ],
+    "W14": [
+      "DL-R5-009",
+      "DL-R5-010",
+      "DL-R5-015",
+      "DL-R5-028"
+    ],
+    "W15": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "W16": [
+      "DL-R5-008",
+      "DL-R5-016",
+      "DL-R5-017",
+      "DL-R5-018",
+      "DL-R5-019",
+      "DL-R5-020",
+      "DL-R5-021",
+      "DL-R5-022",
+      "DL-R5-024",
+      "DL-R5-025",
+      "DL-R5-026",
+      "DL-R5-027"
+    ],
+    "W17": [
+      "DL-R5-021",
+      "DL-R5-023"
+    ]
+  },
+  "w_to_dl": {
+    "W00": [
+      "DL-00",
+      "DL-001"
+    ],
+    "W01": [
+      "DL-UI-009",
+      "DL-UI-010",
+      "DL-UI-04"
+    ],
+    "W02": [
+      "DL-UI-010",
+      "DL-UI-09"
+    ],
+    "W03": [
+      "DL-BE-003",
+      "DL-BE-01",
+      "DL-UI-009",
+      "DL-UI-01",
+      "DL-UI-010"
+    ],
+    "W04": [
+      "DL-BE-05",
+      "DL-UI-02"
+    ],
+    "W05": [
+      "DL-BE-004",
+      "DL-BE-01",
+      "DL-UI-03"
+    ],
+    "W06": [
+      "DL-BE-01",
+      "DL-UI-04"
+    ],
+    "W07": [
+      "DL-BE-003",
+      "DL-BE-02",
+      "DL-UI-05"
+    ],
+    "W08": [
+      "DL-BE-06",
+      "DL-UI-06"
+    ],
+    "W09": [
+      "DL-BE-006",
+      "DL-BE-05",
+      "DL-UI-07"
+    ],
+    "W10": [
+      "DL-BE-07",
+      "DL-UI-08"
+    ],
+    "W11": [
+      "DL-WL-006",
+      "DL-WL-01"
+    ],
+    "W12": [
+      "DL-AI-002",
+      "DL-AI-003",
+      "DL-AI-005",
+      "DL-AI-01",
+      "DL-BE-04"
+    ],
+    "W13": [
+      "DL-UI-003",
+      "DL-UI-006",
+      "DL-UI-02"
+    ],
+    "W14": [
+      "DL-BE-03",
+      "DL-UI-010",
+      "DL-UI-09"
+    ],
+    "W15": [
+      "DL-GJ-01",
+      "DL-GJ-010"
+    ],
+    "W16": [
+      "DL-AI-04"
+    ],
+    "W17": [
+      "DL-GJ-11"
+    ]
+  },
+  "dl_to_w": {
+    "DL-00": [
+      "W00"
+    ],
+    "DL-01": [
+      "W00"
+    ],
+    "DL-WL-01": [
+      "W11"
+    ],
+    "DL-WL-002": [
+      "W11"
+    ],
+    "DL-WL-003": [
+      "W11"
+    ],
+    "DL-WL-004": [
+      "W11"
+    ],
+    "DL-WL-005": [
+      "W11"
+    ],
+    "DL-WL-006": [
+      "W11"
+    ],
+    "DL-AI-01": [
+      "W12"
+    ],
+    "DL-AI-002": [
+      "W12"
+    ],
+    "DL-AI-003": [
+      "W12"
+    ],
+    "DL-AI-005": [
+      "W12"
+    ],
+    "DL-AI-04": [
+      "W16"
+    ],
+    "DL-UI-01": [
+      "W03"
+    ],
+    "DL-UI-02": [
+      "W04"
+    ],
+    "DL-UI-03": [
+      "W05"
+    ],
+    "DL-UI-04": [
+      "W01",
+      "W06"
+    ],
+    "DL-UI-05": [
+      "W07"
+    ],
+    "DL-UI-06": [
+      "W08"
+    ],
+    "DL-UI-07": [
+      "W09"
+    ],
+    "DL-UI-08": [
+      "W10"
+    ],
+    "DL-UI-09": [
+      "W02",
+      "W03",
+      "W14"
+    ],
+    "DL-UI-10": [
+      "W02",
+      "W03",
+      "W14"
+    ],
+    "DL-BE-01": [
+      "W03",
+      "W05",
+      "W06"
+    ],
+    "DL-BE-02": [
+      "W07"
+    ],
+    "DL-BE-03": [
+      "W03",
+      "W07",
+      "W14"
+    ],
+    "DL-BE-04": [
+      "W12"
+    ],
+    "DL-BE-05": [
+      "W04",
+      "W09"
+    ],
+    "DL-BE-06": [
+      "W08",
+      "W09"
+    ],
+    "DL-BE-07": [
+      "W10"
+    ],
+    "DL-GJ-01": [
+      "W15"
+    ],
+    "DL-GJ-002": [
+      "W15"
+    ],
+    "DL-GJ-003": [
+      "W15"
+    ],
+    "DL-GJ-004": [
+      "W15"
+    ],
+    "DL-GJ-005": [
+      "W15"
+    ],
+    "DL-GJ-006": [
+      "W15"
+    ],
+    "DL-GJ-007": [
+      "W15"
+    ],
+    "DL-GJ-008": [
+      "W15"
+    ],
+    "DL-GJ-009": [
+      "W15"
+    ],
+    "DL-GJ-010": [
+      "W15"
+    ],
+    "DL-GJ-11": [
+      "W17"
+    ]
+  },
+  "dl_to_r5": {
+    "DL-00": [
+      "DL-R5-001",
+      "DL-R5-002",
+      "DL-R5-003",
+      "DL-R5-007",
+      "DL-R5-028"
+    ],
+    "DL-01": [
+      "DL-R5-001",
+      "DL-R5-002",
+      "DL-R5-003",
+      "DL-R5-007",
+      "DL-R5-028"
+    ],
+    "DL-WL-01": [
+      "DL-R5-021"
+    ],
+    "DL-WL-002": [
+      "DL-R5-021"
+    ],
+    "DL-WL-003": [
+      "DL-R5-021"
+    ],
+    "DL-WL-004": [
+      "DL-R5-021"
+    ],
+    "DL-WL-005": [
+      "DL-R5-021"
+    ],
+    "DL-WL-006": [
+      "DL-R5-021"
+    ],
+    "DL-AI-01": [
+      "DL-R5-006"
+    ],
+    "DL-AI-002": [
+      "DL-R5-006"
+    ],
+    "DL-AI-003": [
+      "DL-R5-006"
+    ],
+    "DL-AI-005": [
+      "DL-R5-006"
+    ],
+    "DL-AI-04": [
+      "DL-R5-008",
+      "DL-R5-016",
+      "DL-R5-017",
+      "DL-R5-018",
+      "DL-R5-019",
+      "DL-R5-020",
+      "DL-R5-021",
+      "DL-R5-022",
+      "DL-R5-024",
+      "DL-R5-025",
+      "DL-R5-026",
+      "DL-R5-027"
+    ],
+    "DL-UI-01": [
+      "DL-R5-010"
+    ],
+    "DL-UI-02": [
+      "DL-R5-005",
+      "DL-R5-013"
+    ],
+    "DL-UI-03": [
+      "DL-R5-013"
+    ],
+    "DL-UI-04": [
+      "DL-R5-010",
+      "DL-R5-013",
+      "DL-R5-028"
+    ],
+    "DL-UI-05": [
+      "DL-R5-004",
+      "DL-R5-005",
+      "DL-R5-009",
+      "DL-R5-010",
+      "DL-R5-011",
+      "DL-R5-012"
+    ],
+    "DL-UI-06": [
+      "DL-R5-014"
+    ],
+    "DL-UI-07": [
+      "DL-R5-014",
+      "DL-R5-023"
+    ],
+    "DL-UI-08": [
+      "DL-R5-005",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-UI-09": [
+      "DL-R5-009",
+      "DL-R5-010",
+      "DL-R5-015",
+      "DL-R5-028"
+    ],
+    "DL-UI-10": [
+      "DL-R5-009",
+      "DL-R5-010",
+      "DL-R5-015",
+      "DL-R5-028"
+    ],
+    "DL-BE-01": [
+      "DL-R5-010",
+      "DL-R5-013"
+    ],
+    "DL-BE-02": [
+      "DL-R5-004",
+      "DL-R5-005",
+      "DL-R5-009",
+      "DL-R5-010",
+      "DL-R5-011",
+      "DL-R5-012"
+    ],
+    "DL-BE-03": [
+      "DL-R5-004",
+      "DL-R5-005",
+      "DL-R5-009",
+      "DL-R5-010",
+      "DL-R5-011",
+      "DL-R5-012",
+      "DL-R5-015",
+      "DL-R5-028"
+    ],
+    "DL-BE-04": [
+      "DL-R5-006"
+    ],
+    "DL-BE-05": [
+      "DL-R5-005",
+      "DL-R5-013",
+      "DL-R5-014",
+      "DL-R5-023"
+    ],
+    "DL-BE-06": [
+      "DL-R5-014",
+      "DL-R5-023"
+    ],
+    "DL-BE-07": [
+      "DL-R5-005",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-01": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-002": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-003": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-004": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-005": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-006": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-007": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-008": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-009": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-010": [
+      "DL-R5-003",
+      "DL-R5-014",
+      "DL-R5-015"
+    ],
+    "DL-GJ-11": [
+      "DL-R5-021",
+      "DL-R5-023"
+    ]
+  },
+  "r5_to_w": {
+    "DL-R5-001": [
+      "W00"
+    ],
+    "DL-R5-002": [
+      "W00"
+    ],
+    "DL-R5-003": [
+      "W00",
+      "W15"
+    ],
+    "DL-R5-007": [
+      "W00"
+    ],
+    "DL-R5-028": [
+      "W00",
+      "W01",
+      "W02",
+      "W14"
+    ],
+    "DL-R5-010": [
+      "W01",
+      "W02",
+      "W03",
+      "W06",
+      "W07",
+      "W14"
+    ],
+    "DL-R5-005": [
+      "W04",
+      "W07",
+      "W10"
+    ],
+    "DL-R5-013": [
+      "W04",
+      "W05",
+      "W06",
+      "W13"
+    ],
+    "DL-R5-004": [
+      "W07"
+    ],
+    "DL-R5-009": [
+      "W07",
+      "W14"
+    ],
+    "DL-R5-011": [
+      "W07"
+    ],
+    "DL-R5-012": [
+      "W07"
+    ],
+    "DL-R5-014": [
+      "W08",
+      "W09",
+      "W10",
+      "W13",
+      "W15"
+    ],
+    "DL-R5-023": [
+      "W09",
+      "W13",
+      "W17"
+    ],
+    "DL-R5-015": [
+      "W10",
+      "W14",
+      "W15"
+    ],
+    "DL-R5-021": [
+      "W11",
+      "W16",
+      "W17"
+    ],
+    "DL-R5-006": [
+      "W12"
+    ],
+    "DL-R5-008": [
+      "W16"
+    ],
+    "DL-R5-016": [
+      "W16"
+    ],
+    "DL-R5-017": [
+      "W16"
+    ],
+    "DL-R5-018": [
+      "W16"
+    ],
+    "DL-R5-019": [
+      "W16"
+    ],
+    "DL-R5-020": [
+      "W16"
+    ],
+    "DL-R5-022": [
+      "W16"
+    ],
+    "DL-R5-024": [
+      "W16"
+    ],
+    "DL-R5-025": [
+      "W16"
+    ],
+    "DL-R5-026": [
+      "W16"
+    ],
+    "DL-R5-027": [
+      "W16"
+    ]
+  },
+  "mainline_r5": [
+    "DL-R5-001",
+    "DL-R5-002",
+    "DL-R5-003",
+    "DL-R5-004",
+    "DL-R5-005",
+    "DL-R5-006",
+    "DL-R5-007",
+    "DL-R5-009",
+    "DL-R5-010",
+    "DL-R5-011",
+    "DL-R5-012",
+    "DL-R5-013",
+    "DL-R5-014",
+    "DL-R5-015",
+    "DL-R5-021",
+    "DL-R5-023",
+    "DL-R5-028"
+  ],
+  "extension_only_r5": [
+    "DL-R5-008",
+    "DL-R5-016",
+    "DL-R5-017",
+    "DL-R5-018",
+    "DL-R5-019",
+    "DL-R5-020",
+    "DL-R5-022",
+    "DL-R5-024",
+    "DL-R5-025",
+    "DL-R5-026",
+    "DL-R5-027"
+  ],
+  "pack_r5_not_in_ledger": [],
+  "ledger_r5_unmapped": [],
+  "wave_a": [
+    "W00",
+    "W01",
+    "W02",
+    "W03"
+  ]
+}

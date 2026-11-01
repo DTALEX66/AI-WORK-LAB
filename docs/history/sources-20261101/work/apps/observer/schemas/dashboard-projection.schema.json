@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://work-lab/observer/dashboard-projection.schema.json",
+  "title": "WORK-LAB Observer Dashboard Projection",
+  "description": "Read-only Observer dashboard projection. Schema v2 output of project_authority_dashboard / project_read_only_dashboard. Never carries prompt/response bodies, credentials, tokens, or private session content.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "mode",
+    "generatedAt",
+    "freshness",
+    "summary",
+    "projects",
+    "usage",
+    "ci",
+    "governance",
+    "quality"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "work-lab/observer-projection/v2"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["LIVE", "SNAPSHOT", "FIXTURE", "STALE", "OFFLINE", "UNKNOWN"]
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window": {
+      "type": "object",
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "freshness": {
+      "type": "object",
+      "properties": {
+        "state": { "type": "string" },
+        "ageSeconds": { "type": ["integer", "null"] },
+        "lastGoodAt": { "type": ["string", "null"] }
+      },
+      "required": ["state"],
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "registeredProjects": { "type": "integer" },
+        "activeProjects": { "type": "integer" },
+        "tasks": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        }
+      },
+      "required": ["registeredProjects", "activeProjects"],
+      "additionalProperties": true
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "projectId": { "type": "string" },
+          "displayName": { "type": "string" },
+          "repository": { "type": "string" },
+          "agentPlatform": { "type": "string" },
+          "task": {},
+          "state": { "type": "string" },
+          "stage": {},
+          "durationSeconds": { "type": ["integer", "null"] },
+          "blockerSummary": {},
+          "branch": { "type": "string" },
+          "headSha": {},
+          "ciState": {},
+          "lastEventAt": {},
+          "quality": {
+            "type": "object",
+            "properties": {
+              "evidenceCompleteness": { "type": "string" },
+              "dataQuality": { "type": "string" },
+              "freshness": { "type": "string" },
+              "sourceRef": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": ["projectId", "state"],
+        "additionalProperties": true
+      }
+    },
+    "primaryBlocker": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "inputTokens": { "type": ["integer", "null"] },
+        "outputTokens": { "type": ["integer", "null"] },
+        "reasoningTokens": { "type": ["integer", "null"] },
+        "cacheReadTokens": { "type": ["integer", "null"] },
+        "cacheWriteTokens": { "type": ["integer", "null"] },
+        "cost": {
+          "type": "object",
+          "properties": {
+            "amount": { "type": ["number", "null"] },
+            "currency": { "type": ["string", "null"] },
+            "status": { "type": "string" },
+            "billingType": { "type": "string" },
+            "sourceRef": {},
+            "effectiveAt": {}
+          },
+          "additionalProperties": true
+        },
+        "subscriptionUsage": { "type": ["string", "null"] },
+        "series": { "type": "array" },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "evidenceCompleteness": { "type": "string" },
+            "dataQuality": { "type": "string" },
+            "freshness": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "ci": {
+      "type": "object",
+      "properties": {
+        "exactShaBound": { "type": "integer" },
+        "exactShaRequired": { "type": "integer" },
+        "queuedNoJob": { "type": "integer" },
+        "running": { "type": "integer" },
+        "passed": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "unknown": { "type": "integer" },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "evidenceCompleteness": { "type": "string" },
+            "dataQuality": { "type": "string" },
+            "freshness": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "governance": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "object",
+          "properties": {
+            "current": { "type": ["integer", "null"] },
+            "drift": { "type": ["integer", "null"] },
+            "quarantined": { "type": ["integer", "null"] },
+            "conflicts": { "type": ["integer", "null"] },
+            "stale": { "type": ["integer", "null"] }
+          },
+          "additionalProperties": true
+        },
+        "skills": { "type": "object" },
+        "adapters": { "type": "object" },
+        "memoryContext": {
+          "type": "object",
+          "properties": {
+            "current": { "type": ["integer", "null"] },
+            "drift": { "type": ["integer", "null"] },
+            "quarantined": { "type": ["integer", "null"] },
+            "conflicts": { "type": ["integer", "null"] },
+            "stale": { "type": ["integer", "null"] }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "sourceCoverage": {
+          "type": "object",
+          "properties": {
+            "numerator": { "type": "integer" },
+            "denominator": { "type": "integer" },
+            "scope": { "type": "string" }
+          },
+          "required": ["numerator", "denominator", "scope"],
+          "additionalProperties": true
+        },
+        "evidenceCompleteness": { "type": "string" },
+        "freshness": { "type": "string" },
+        "unknown": { "type": "integer" },
+        "malformed": { "type": "integer" },
+        "dropped": { "type": "integer" },
+        "duplicate": { "type": "integer" },
+        "projectionLagMs": {},
+        "lastGoodAt": {}
+      },
+      "required": ["sourceCoverage", "evidenceCompleteness"],
+      "additionalProperties": true
+    },
+    "sourceRefs": { "type": "array" },
+    "mutationSurface": {
+      "type": "object",
+      "properties": {
+        "externalMutation": { "type": "boolean" },
+        "ledgerMutation": { "type": "boolean" },
+        "approvalMutation": { "type": "boolean" },
+        "gitControl": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

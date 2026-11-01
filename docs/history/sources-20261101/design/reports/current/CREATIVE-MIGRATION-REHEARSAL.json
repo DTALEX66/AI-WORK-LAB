@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "design-lab/creative-migration-rehearsal/v1",
+  "task_key": "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-F010",
+  "rehearsed_at": "2026-09-13T16:39:05+00:00",
+  "migration": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+  "status_before": "MIGRATION_CANDIDATE_PENDING_AUDIT",
+  "status_after": "REHEARSED_PASS_PENDING_ACCEPTANCE",
+  "accepted_as_production": false,
+  "acceptance_note": "a passing rehearsal permits the production label; it does not grant it. That is an owner/Codex acceptance act.",
+  "database": "a copy under .project-local/task-runtime/; the live state database was never opened",
+  "steps": [
+    {
+      "step": "legacy_database_built",
+      "ok": true,
+      "detail": "pre-migration columns=['version_id', 'asset_id', 'version_no', 'content_sha256', 'state', 'created_at'] migrations=['assets-v2', 'attempt-v2']"
+    },
+    {
+      "step": "backup",
+      "ok": true,
+      "detail": "backup written (196608 bytes); this file is the rollback source"
+    },
+    {
+      "step": "migration",
+      "ok": true,
+      "detail": "runtime_migration records creative-v1"
+    },
+    {
+      "step": "migration_backup",
+      "ok": true,
+      "detail": "the store took its own pre-migration backup: ['legacy.db.pre-creative-v1-e920a13c1a3b4c659a750b44ab326a82.bak']"
+    },
+    {
+      "step": "legacy_readback",
+      "ok": true,
+      "detail": "legacy row intact and V2 defaults applied: ('v-legacy', 'poster', 1, 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'ACTIVE', 'main', 1, None)"
+    },
+    {
+      "step": "artifact_readback",
+      "ok": true,
+      "detail": "artifact rows unchanged by the migration"
+    },
+    {
+      "step": "new_write",
+      "ok": true,
+      "detail": "creative writer created generation 2 on branch main"
+    },
+    {
+      "step": "rejection_write",
+      "ok": true,
+      "detail": "rejection recorded without rewriting the version row"
+    },
+    {
+      "step": "restart",
+      "ok": true,
+      "detail": "reconnect does not migrate again"
+    },
+    {
+      "step": "restart_readback",
+      "ok": true,
+      "detail": "both versions survive the restart"
+    },
+    {
+      "step": "rerun_migration",
+      "ok": true,
+      "detail": "a second connect neither migrates nor backs up again"
+    },
+    {
+      "step": "job_requirement_decision_writes",
+      "ok": true,
+      "detail": "a creative job, a requirement and a decision were written through the ledgers"
+    },
+    {
+      "step": "triggers",
+      "ok": true,
+      "detail": "missing=[]; append-only enforced=True"
+    },
+    {
+      "step": "rollback",
+      "ok": true,
+      "detail": "restoring the backup returns the original 6-column schema and 1 row"
+    },
+    {
+      "step": "rollback_then_migrate",
+      "ok": true,
+      "detail": "the same backup migrates forward again cleanly"
+    }
+  ],
+  "passed": true,
+  "projection": true,
+  "subjectSha": "042ac635ae7a6042db366f7fb19508fc5db7bc65",
+  "fresh": false,
+  "generatedBy": "scripts/deepseek_migration_rehearsal.py"
+}

@@ -1,0 +1,401 @@
+{
+  "schemaVersion": "design-lab/contract-graph/v1",
+  "task_key": "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-F000",
+  "generated_at": "2026-10-24T20:16:41+00:00",
+  "subject_sha": "c79e6aa756a8fe6134bb0cd8b6ab747790e79559",
+  "chain": "Schema -> Python model -> DB -> producer -> consumer -> receipt -> projection",
+  "concepts": {
+    "Job": {
+      "schema": [
+        "design-lab/schemas/creative-job.schema.json"
+      ],
+      "models": [
+        "src/design_lab/creative/creative_job.py"
+      ],
+      "tables": [
+        "creative_job",
+        "creative_job_deliverable",
+        "job"
+      ],
+      "producers": [
+        "src/design_lab/creative/creative_job.py"
+      ],
+      "consumers": [
+        "design-lab/tests/test_creative_job.py",
+        "design-lab/tests/test_creative_lineage.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/tests/test_creative_job.py",
+        "design-lab/tests/test_creative_lineage.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": true,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true,
+      "notes": "no production module imports creative_job; Job is read through the state DB, and the in-tree readers are the bound tests"
+    },
+    "Attempt": {
+      "schema": [],
+      "models": [
+        "src/design_lab/runtime/job_store.py"
+      ],
+      "tables": [
+        "attempt_state",
+        "attempt_event",
+        "attempt_resolution"
+      ],
+      "producers": [
+        "src/design_lab/runtime/job_store.py"
+      ],
+      "consumers": [
+        "design-lab/tests/test_job_store.py",
+        "scripts/verify_recovery_safety.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/tests/test_job_store.py",
+        "scripts/verify_recovery_safety.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": false,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true
+    },
+    "Operation": {
+      "schema": [],
+      "models": [
+        "src/design_lab/creative/lineage.py"
+      ],
+      "tables": [
+        "operation_intent",
+        "operation_state",
+        "operation_lineage"
+      ],
+      "producers": [
+        "src/design_lab/creative/lineage.py"
+      ],
+      "consumers": [
+        "design-lab/tests/test_creative_lineage.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/tests/test_creative_lineage.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": false,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true
+    },
+    "Asset": {
+      "schema": [
+        "design-lab/schemas/asset-manifest.schema.json"
+      ],
+      "models": [
+        "src/design_lab/runtime/asset_store.py"
+      ],
+      "tables": [
+        "asset"
+      ],
+      "producers": [
+        "src/design_lab/runtime/asset_store.py"
+      ],
+      "consumers": [
+        "design-lab/tests/test_asset_store.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/tests/test_asset_store.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": true,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true
+    },
+    "AssetVersion": {
+      "schema": [
+        "design-lab/schemas/artifact.schema.json"
+      ],
+      "models": [
+        "src/design_lab/creative/asset_versions.py"
+      ],
+      "tables": [
+        "asset_version",
+        "artifact",
+        "asset_publication"
+      ],
+      "producers": [
+        "src/design_lab/runtime/asset_store.py",
+        "src/design_lab/creative/asset_versions.py"
+      ],
+      "consumers": [
+        "src/design_lab/creative/version_guard.py",
+        "src/design_lab/interop/delivery_receipt.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "src/design_lab/creative/version_guard.py",
+        "src/design_lab/interop/delivery_receipt.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": true,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true
+    },
+    "Requirement": {
+      "schema": [],
+      "models": [
+        "src/design_lab/creative/requirement_ledger.py"
+      ],
+      "tables": [
+        "requirement_event"
+      ],
+      "producers": [
+        "src/design_lab/creative/requirement_ledger.py"
+      ],
+      "consumers": [
+        "design-lab/tests/test_creative_ledgers.py",
+        "scripts/deepseek_migration_rehearsal.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/tests/test_creative_ledgers.py",
+        "scripts/deepseek_migration_rehearsal.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": false,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true,
+      "notes": "decision_ledger.py reads requirements through the state DB; the in-tree readers that reference the module are the bound test and the rehearsal script"
+    },
+    "Decision": {
+      "schema": [],
+      "models": [
+        "src/design_lab/creative/decision_ledger.py"
+      ],
+      "tables": [
+        "decision_event"
+      ],
+      "producers": [
+        "src/design_lab/creative/decision_ledger.py"
+      ],
+      "consumers": [
+        "design-lab/tests/test_creative_ledgers.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/tests/test_creative_ledgers.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": false,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true,
+      "notes": "requirement_ledger.py does not import decision_ledger; the two are joined through the state DB, so the verified reader is the bound test"
+    },
+    "Rights": {
+      "schema": [
+        "design-lab/schemas/provider-capability.schema.json"
+      ],
+      "models": [
+        "src/design_lab/creative/generative/model_assets.py",
+        "src/design_lab/readiness/model_radar.py"
+      ],
+      "tables": [],
+      "producers": [
+        "design-lab/config/provider-capabilities.json",
+        "vendor/sources.lock.json"
+      ],
+      "consumers": [
+        "design-lab/scripts/verify_provider_spi.py",
+        "design-lab/tests/test_creative_generative.py"
+      ],
+      "projections": [
+        "reports/current/THIRD-PARTY-SOURCE-AUDIT.json"
+      ],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/scripts/verify_provider_spi.py",
+        "design-lab/tests/test_creative_generative.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": true,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true,
+      "notes": "model_assets.py and model_radar.py were declared as their own consumers; a producer is not a consumer of itself, so the verified readers of the capability declaration are the SPI gate and the generative bound test"
+    },
+    "Evidence": {
+      "schema": [
+        "design-lab/schemas/evidence-record.schema.json"
+      ],
+      "models": [
+        "src/design_lab/governance/reporting.py"
+      ],
+      "tables": [
+        "audit_event"
+      ],
+      "producers": [
+        "design-lab/scripts/update_evidence_binding.py",
+        "scripts/generate_ssot_projections.py"
+      ],
+      "consumers": [
+        "design-lab/scripts/verify_capability_evidence_v4.py"
+      ],
+      "projections": [
+        "reports/current/EVIDENCE_INDEX.json"
+      ],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/scripts/verify_capability_evidence_v4.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": true,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true
+    },
+    "QA": {
+      "schema": [
+        "design-lab/schemas/assurance-qa-layer.schema.json",
+        "design-lab/schemas/assurance-jury-record-v2.schema.json"
+      ],
+      "models": [
+        "src/design_lab/assurance/qa_plane.py",
+        "src/design_lab/assurance/human_jury.py"
+      ],
+      "tables": [],
+      "producers": [
+        "src/design_lab/assurance/qa_plane.py"
+      ],
+      "consumers": [
+        "design-lab/tests/test_assurance_qa_plane.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/tests/test_assurance_qa_plane.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": true,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true,
+      "notes": "the production consumer of the QA plane is a real host run, which is Codex work; no in-tree production consumer exists and none is invented here"
+    },
+    "Delivery": {
+      "schema": [
+        "design-lab/schemas/interop-delivery-receipt-v2.schema.json",
+        "design-lab/schemas/interop-c2pa-manifest.schema.json"
+      ],
+      "models": [
+        "src/design_lab/interop/delivery_receipt.py",
+        "src/design_lab/interop/provenance.py"
+      ],
+      "tables": [],
+      "producers": [
+        "src/design_lab/interop/delivery_receipt.py"
+      ],
+      "consumers": [
+        "design-lab/tests/test_interop_provenance.py",
+        "design-lab/tests/test_creative_ledgers.py"
+      ],
+      "projections": [],
+      "missing_paths": [],
+      "tables_not_declared_in_state_sql": [],
+      "consumer_edges_verified": [
+        "design-lab/tests/test_interop_provenance.py",
+        "design-lab/tests/test_creative_ledgers.py"
+      ],
+      "consumer_edges_unverified": [],
+      "has_schema": true,
+      "has_model": true,
+      "has_writer": true,
+      "complete": true,
+      "notes": "verify_release_evidence.py was declared as consumer but does not read the DeliveryReceipt contract; the verified readers are the bound tests"
+    }
+  },
+  "declared_tables": {
+    "project": "design-lab/schemas/state/design-lab-state-assets-v1.sql",
+    "asset": "design-lab/schemas/state/design-lab-state-assets-v1.sql",
+    "asset_version": "design-lab/schemas/state/design-lab-state-assets-v1.sql",
+    "artifact": "design-lab/schemas/state/design-lab-state-assets-v1.sql",
+    "asset_dependency": "design-lab/schemas/state/design-lab-state-assets-v1.sql",
+    "asset_writer_lock": "design-lab/schemas/state/design-lab-state-assets-v1.sql",
+    "asset_publication": "design-lab/schemas/state/design-lab-state-assets-v2.sql",
+    "assistance_plan": "design-lab/schemas/state/design-lab-state-assistance-plan-v1.sql",
+    "assistance_plan_revision": "design-lab/schemas/state/design-lab-state-assistance-plan-v1.sql",
+    "assistance_plan_choice": "design-lab/schemas/state/design-lab-state-assistance-plan-v1.sql",
+    "attempt_state": "design-lab/schemas/state/design-lab-state-attempt-v2.sql",
+    "operation_state": "design-lab/schemas/state/design-lab-state-attempt-v2.sql",
+    "attempt_resolution": "design-lab/schemas/state/design-lab-state-attempt-v2.sql",
+    "attempt_event": "design-lab/schemas/state/design-lab-state-attempt-v2.sql",
+    "creative_job": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "creative_job_deliverable": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "operation_lineage": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "lineage_input": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "lineage_output": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "version_rejection": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "requirement_event": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "decision_event": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "worklab_session_link": "design-lab/schemas/state/design-lab-state-creative-v1.sql",
+    "design_brief": "design-lab/schemas/state/design-lab-state-design-layer-v1.sql",
+    "design_direction": "design-lab/schemas/state/design-lab-state-design-layer-v1.sql",
+    "design_system_binding": "design-lab/schemas/state/design-lab-state-design-layer-v1.sql",
+    "design_layer_event": "design-lab/schemas/state/design-lab-state-design-layer-v3.sql",
+    "design_system_token": "design-lab/schemas/state/design-lab-state-design-layer-v4.sql",
+    "jury_record": "design-lab/schemas/state/design-lab-state-jury-v1.sql",
+    "knowledge_judgement": "design-lab/schemas/state/design-lab-state-knowledge-judgement-v1.sql",
+    "knowledge_entry": "design-lab/schemas/state/design-lab-state-knowledge-library-v1.sql",
+    "knowledge_entry_revision": "design-lab/schemas/state/design-lab-state-knowledge-library-v1.sql",
+    "knowledge_index_state": "design-lab/schemas/state/design-lab-state-knowledge-library-v1.sql",
+    "knowledge_candidate": "design-lab/schemas/state/design-lab-state-knowledge-v1.sql",
+    "knowledge_revocation": "design-lab/schemas/state/design-lab-state-knowledge-v1.sql",
+    "model_selection": "design-lab/schemas/state/design-lab-state-model-selection-v1.sql",
+    "plan_feedback": "design-lab/schemas/state/design-lab-state-plan-feedback-v1.sql",
+    "prompt_result": "design-lab/schemas/state/design-lab-state-prompt-results-v1.sql",
+    "prompt_result_review": "design-lab/schemas/state/design-lab-state-prompt-results-v1.sql",
+    "quality_record": "design-lab/schemas/state/design-lab-state-quality-v1.sql",
+    "research_finding": "design-lab/schemas/state/design-lab-state-research-v1.sql",
+    "rights_decision": "design-lab/schemas/state/design-lab-state-rights-v1.sql",
+    "target_profile_draft": "design-lab/schemas/state/design-lab-state-target-profile-v1.sql",
+    "operation_intent": "design-lab/schemas/state/design-lab-state-v1.sql",
+    "job": "design-lab/schemas/state/design-lab-state-v1.sql",
+    "job_attempt": "design-lab/schemas/state/design-lab-state-v1.sql",
+    "operation_receipt": "design-lab/schemas/state/design-lab-state-v1.sql",
+    "lease": "design-lab/schemas/state/design-lab-state-v1.sql",
+    "audit_event": "design-lab/schemas/state/design-lab-state-v1.sql",
+    "outbox": "design-lab/schemas/state/design-lab-state-v1.sql",
+    "approval": "design-lab/schemas/state/design-lab-state-v1.sql"
+  },
+  "breaks": [],
+  "counts": {
+    "concepts": 11,
+    "complete": 11,
+    "breaks": 0
+  },
+  "verdict": "NO_BROKEN_LINK"
+}

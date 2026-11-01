@@ -1,0 +1,160 @@
+name: wlr-060-production-gates
+
+on:
+  # W01 (2026-10-14): same reasoning as work-lab-gate.yml -- a branch push and its PR run are one change, so
+  # the push trigger is limited to main and branches are covered by the pull_request run.
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/**'
+      - 'packages/**'
+      - 'apps/**'
+      - 'integrations/**'
+      - 'apps/observer/**'
+      - '.project/governance/**'
+  pull_request:
+    paths:
+      - 'services/**'
+      - 'packages/**'
+      - 'apps/**'
+      - 'integrations/**'
+      - 'apps/observer/**'
+      - '.project/governance/**'
+
+permissions:
+  contents: read
+
+# W01 (2026-10-14): same reasoning as work-lab-gate.yml -- this workflow also answers both `push` and
+# `pull_request`, so the same source commit starts it twice for one change. Group by source branch, keep
+# main serialised rather than cancelled.
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{
+      github.event.pull_request.head.repo.full_name || github.repository }}-${{
+      github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  schema-fixtures:
+    name: schema-fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate all JSON schemas
+        run: python -c "import json,glob; [json.load(open(f, encoding='utf-8')) for f in sorted(glob.glob('packages/contracts/schemas/**/*.json', recursive=True))]; print('ALL SCHEMAS VALID')"
+
+  observer-readonly:
+    name: observer-readonly
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify observer is read-only
+        run: "python scripts/ci/verify_observer_readonly.py"
+
+  capsule-verify:
+    name: capsule-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify capsule CLI behavior (export/verify/redact + negative controls)
+        env:
+          CAPSULE_TMP: ${{ runner.temp }}/capsule-cli
+        run: |
+          mkdir -p "$CAPSULE_TMP"
+          echo 'sample handoff content with api_key=SYNTHETIC_NOT_REAL' > "$CAPSULE_TMP/source.txt"
+          # positive: export -> verify -> redact round-trip on a synthetic fixture
+          python packages/client-neutral-core/scripts/capsule.py export \
+            --client hermes --input "$CAPSULE_TMP/source.txt" --output "$CAPSULE_TMP/capsule.json"
+          python packages/client-neutral-core/scripts/capsule.py verify --capsule "$CAPSULE_TMP/capsule.json"
+          python packages/client-neutral-core/scripts/capsule.py redact \
+            --capsule "$CAPSULE_TMP/capsule.json" --output "$CAPSULE_TMP/redacted.json"
+          # negative control 1: corrupted body hash must fail closed
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path(pathlib.os.environ["CAPSULE_TMP"]) / "capsule.json"
+          cap = json.loads(p.read_text(encoding="utf-8"))
+          cap["content"]["body"] += "tampered"
+          (pathlib.Path(pathlib.os.environ["CAPSULE_TMP"]) / "bad-hash.json").write_text(json.dumps(cap))
+          PY
+          if python packages/client-neutral-core/scripts/capsule.py verify --capsule "$CAPSULE_TMP/bad-hash.json"; then
+            echo "NEGATIVE CONTROL FAILED: tampered capsule must not verify"; exit 1
+          fi
+          # negative control 2: wrong schema_version must fail closed
+          python - <<'PY'
+          import json, pathlib, os
+          cap = json.loads((pathlib.Path(os.environ["CAPSULE_TMP"]) / "capsule.json").read_text(encoding="utf-8"))
+          cap["schema_version"] = "work-lab/context-capsule/v999"
+          (pathlib.Path(os.environ["CAPSULE_TMP"]) / "bad-version.json").write_text(json.dumps(cap))
+          PY
+          if python packages/client-neutral-core/scripts/capsule.py verify --capsule "$CAPSULE_TMP/bad-version.json"; then
+            echo "NEGATIVE CONTROL FAILED: wrong schema_version must not verify"; exit 1
+          fi
+          echo "CAPSULE_CLI_BEHAVIOR_PASS"
+
+  config-compiler:
+    name: config-compiler
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify config compiler behavior (create/plan/approve gates + fail-closed apply)
+        env:
+          CC_TMP: ${{ runner.temp }}/config-compiler
+        run: |
+          set -e
+          python -c 'import py_compile; py_compile.compile("services/policy/config_compiler.py", doraise=True); print("SYNTAX OK")'
+          mkdir -p "$CC_TMP"
+          # positive chain up to approval: create -> plan -> approve
+          python services/policy/config_compiler.py create \
+            --client hermes --type set-field --target display.language \
+            --value '"zh"' --output "$CC_TMP/intent.json"
+          python services/policy/config_compiler.py plan --intent "$CC_TMP/intent.json"
+          python services/policy/config_compiler.py approve --intent "$CC_TMP/intent.json"
+          # NF-04 fail-closed: apply without an adapter must exit 3 and must
+          # NOT report an applied status (the old stub fabricated success)
+          set +e
+          python services/policy/config_compiler.py apply --intent "$CC_TMP/intent.json"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 3 ]; then
+            echo "CONFIG_COMPILER_GATE FAIL: apply must fail closed with exit 3 (no adapter), got $rc"; exit 1
+          fi
+          if grep -q '"status": "applied"' "$CC_TMP/intent.json"; then
+            echo "CONFIG_COMPILER_GATE FAIL: intent file must not contain fabricated applied status"; exit 1
+          fi
+          # stable idempotency key: same (software_id, diff) must derive the same key twice
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "services/policy")
+          from config_control_plane import ConfigControlPlane
+          ccp = ConfigControlPlane()
+          k1 = ccp.transaction("hermes", {"changeCount": 1}, approved=False)["idempotencyKey"]
+          k2 = ccp.transaction("hermes", {"changeCount": 1}, approved=False)["idempotencyKey"]
+          assert k1 == k2, f"idempotency key must be stable across replays: {k1} != {k2}"
+          k3 = ccp.transaction("hermes", {"changeCount": 2}, approved=False)["idempotencyKey"]
+          assert k1 != k3, "different diffs must derive different keys"
+          print("IDEMPOTENCY_KEY_STABLE")
+          PY
+          echo "CONFIG_COMPILER_BEHAVIOR_PASS"
+
+  wlr060-aggregate:
+    name: wlr060-aggregate
+    if: always()
+    needs:
+      - schema-fixtures
+      - observer-readonly
+      - capsule-verify
+      - config-compiler
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all WLR-060 gates
+        run: |
+          test "${{ needs.schema-fixtures.result }}" = "success"
+          test "${{ needs.observer-readonly.result }}" = "success"
+          test "${{ needs.capsule-verify.result }}" = "success"
+          test "${{ needs.config-compiler.result }}" = "success"
+          echo "ALL WLR-060 GATES PASS"

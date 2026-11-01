@@ -1,0 +1,554 @@
+{
+  "schemaVersion": "work-lab/model-registry/v1",
+  "title": "WORK-LAB local model registry — physical model assets and their capability declarations",
+  "purpose": "Single machine-readable truth for which local model weights exist, what they are, where they physically live, and which capability each one serves. Business code must reference a logical provider id from provider-registry.json, never a file path, a quant name or an absolute Windows path.",
+  "precedence": "WORK-LAB-AUTHORITY.md > .project/governance/project-authority-index.json > this file. This file records the model control plane; it does not grant execution authority.",
+  "sharedPhysicalRoot": "D:\\All projects\\Model library",
+  "sharedPhysicalRootPolicy": {
+    "singleCopy": true,
+    "weightsNeverInGit": true,
+    "noAbsolutePathsInBusinessSource": true,
+    "projectsMustNotDownloadDuplicates": true,
+    "runtimeCacheLocation": ".project-local/ (WORK-LAB ignored runtime area), never inside the shared model root"
+  },
+  "physicalLayout": {
+    "managedByWorklab": [
+      "ollama/",
+      "whisper/",
+      "plain-gguf/",
+      "sherpa-onnx/"
+    ],
+    "readOnlyReference": [
+      "ComfyUI/"
+    ],
+    "note": "ComfyUI/ is DESIGN-LAB/Open Design visual-chain weight territory; WORK-LAB performs read-only inventory only."
+  },
+  "models": [
+    {
+      "id": "qwen3.5-4b",
+      "display_name": "Qwen3.5-4B (FAST)",
+      "family": "Qwen3.5",
+      "revision": "master@unsloth/Qwen3.5-4B-GGUF",
+      "quantization": "Q4_K_M",
+      "file": {
+        "name": "Qwen3.5-4B-Q4_K_M.gguf",
+        "relative_path": "plain-gguf/qwen3.5-4b/Qwen3.5-4B-Q4_K_M.gguf",
+        "bytes": 2740937888
+      },
+      "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+      "license": "apache-2.0",
+      "runtime": "lmstudio (:1234)",
+      "capabilities": [
+        "text.fast",
+        "classify",
+        "extract",
+        "rewrite",
+        "route",
+        "summarize.short"
+      ],
+      "context_window": 32768,
+      "gpu_offload": "full",
+      "estimated_vram": "2.55-3.2 GB",
+      "estimated_ram": "2.55-3.2 GB",
+      "supported_projects": [
+        "ArcheAxis-Knowledge-OS",
+        "WORK-LAB",
+        "DESIGN-LAB"
+      ],
+      "owner": "WORK-LAB",
+      "role": "FAST — high-frequency, low-latency first-pass model for every pipeline",
+      "health": "DOWNLOADED_HASH_VERIFIED",
+      "benchmark": null,
+      "last_verified": "2026-09-29",
+      "source": {
+        "primary": "https://modelscope.cn/models/unsloth/Qwen3.5-4B-GGUF",
+        "upstream_origin": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF",
+        "registry_alternate": "registry.ollama.ai/library/qwen3.5:4b-q4_K_M (measured 136 KB/s, abandoned for the domestic mirror)",
+        "domesticMirrorPreferred": true,
+        "downloaded_at": "2026-09-28",
+        "mirror_throughput_observed": "28-29 MB/s"
+      },
+      "status": "active"
+    },
+    {
+      "id": "qwen3.8-27b-ud-iq4_xs",
+      "display_name": "Qwen3.8-27B UD-IQ4_XS (DEEP)",
+      "family": "Qwen3.8",
+      "revision": "master@unsloth/Qwen3.8-27B-GGUF",
+      "quantization": "UD-IQ4_XS (Unsloth Dynamic)",
+      "file": {
+        "name": "Qwen3.8-27B-UD-IQ4_XS.gguf",
+        "relative_path": "plain-gguf/qwen3.8-27b/Qwen3.8-27B-UD-IQ4_XS.gguf",
+        "bytes": 14252845984
+      },
+      "sha256": "40fac4050e940397dbf13087afd50f4734a11805bf9d65ef8ddd7483470e6199",
+      "license": "apache-2.0",
+      "runtime": "lmstudio (:1234); llama.cpp retained as an optional explicit-offload path",
+      "capabilities": [
+        "reasoning.deep",
+        "long_context",
+        "knowledge.synthesis",
+        "evidence.analysis",
+        "multi_document"
+      ],
+      "context_window": 32768,
+      "gpu_offload": "partial",
+      "estimated_vram": "5.0-6.5 GB (of 8 GiB)",
+      "estimated_ram": "8-10 GB (weights remainder + KV cache)",
+      "supported_projects": [
+        "ArcheAxis-Knowledge-OS",
+        "WORK-LAB",
+        "DESIGN-LAB"
+      ],
+      "owner": "WORK-LAB",
+      "role": "DEEP — local reasoning core for complex knowledge work, shared by all three projects on demand",
+      "health": "VERIFIED_SERVING",
+      "benchmark": {
+        "cold_start_seconds_to_health": 21.6,
+        "warm_restart_seconds_to_health": 9.5,
+        "prompt_tok_per_s": 20.1,
+        "gen_tok_per_s": 2.52,
+        "offload_recommendation": "-ngl 32 -c 16384 -t 14 (GPU free) / -ngl 8 (GPU busy)",
+        "thinking_mode": "must set chat_template_kwargs {enable_thinking:false}; otherwise the token budget is consumed by reasoning and the visible answer is empty",
+        "sample_answer_zh": "1. 降低存储成本与硬件压力… 2. 简化版本管理与一致性… 3. 提升部署与更新效率…",
+        "bandwidth_bound": "13.27 GB at ~38 GB/s DDR4-3600 caps a dense 27B near 2.7 tok/s; the measured 2.52 is ~93% of that ceiling"
+      },
+      "last_verified": "2026-09-29",
+      "serving_note": "With the desktop's GPU footprint released (VRAM used 6.8 -> 2.0 GiB) offload finally pays: ngl 0 -> 32 lifted generation 1.32 -> 2.52 tok/s (+91%) and prompt 14.54 -> 20.10 (+38%), then went flat from ngl 16 to 32 because only about a third of the model fits in 8 GiB. The dense 27B is memory-bandwidth bound on DDR4-3600, so it is usable for batch/long-form work but slow for interactive chat. For interactive 30B-class work the already-installed qwen3-coder:30b-a3b MoE measured 7.81 tok/s (3.9x faster) — recorded as a data point, not a substitution, since the brief fixes DEEP = Qwen3.8-27B UD-IQ4_XS.",
+      "source": {
+        "primary": "https://modelscope.cn/models/unsloth/Qwen3.8-27B-GGUF",
+        "upstream_origin": "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF",
+        "domesticMirrorPreferred": true
+      },
+      "status": "active"
+    },
+    {
+      "id": "qwen3-embedding-0.6b",
+      "display_name": "Qwen3-Embedding-0.6B",
+      "family": "Qwen3-Embedding",
+      "revision": "latest@registry.ollama.ai/library/qwen3-embedding",
+      "quantization": "Q8_0 (Ollama default)",
+      "file": {
+        "logical_ref": "local.embedding.default",
+        "physical_path": "D:\\All projects\\Model library\\Qwen\\Qwen3-Embedding-0.6B-GGUF\\Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "provenance": "registry.ollama.ai/library/qwen3-embedding:0.6b (blob moved 2026-09-29)"
+      },
+      "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+      "license": "apache-2.0",
+      "runtime": "lmstudio (:1234)",
+      "capabilities": [
+        "embedding.text",
+        "retrieval.semantic",
+        "similarity"
+      ],
+      "context_window": 32768,
+      "gpu_offload": "full",
+      "estimated_vram": "0.6-1.0 GB",
+      "estimated_ram": "0.6-1.0 GB",
+      "supported_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "owner": "WORK-LAB (runtime/registry); embedding DATA and knowledge semantics belong to ArcheAxis",
+      "role": "EMBEDDING — RAG/retrieval basis of the ArcheAxis knowledge pipeline",
+      "health": "VERIFIED_OK 2026-09-29 — live LM Studio /v1/embeddings returned 1024-dim vectors; cross-lingual synonym 0.834039 vs unrelated 0.339623 (separation 0.494417)",
+      "benchmark": {
+        "dimensions": 1024,
+        "sim_cat_zh_vs_cat_en": 0.834039,
+        "sim_cat_zh_vs_plane_zh": 0.339623,
+        "separation": 0.494417,
+        "verdict": "discriminative"
+      },
+      "last_verified": "2026-09-29",
+      "ownership_note": "Weights+runtime = WORK-LAB. Embedding vectors, indexes and their semantics = ArcheAxis-Knowledge-OS. Never conflate.",
+      "status": "active",
+      "dimensions": 1024,
+      "migration_note": "Moved out of the Ollama blob store into <publisher>/<repo> by same-volume move after sha256 verification; the old blob path no longer exists. It is now indexed by LM Studio."
+    },
+    {
+      "id": "qwen3-reranker-0.6b",
+      "display_name": "Qwen3-Reranker-0.6B",
+      "family": "Qwen3-Reranker",
+      "revision": "latest@registry.ollama.ai/library/qwen3-reranker",
+      "quantization": "Q8_0 (GGUF file_type 18)",
+      "file": {
+        "logical_ref": "local.reranker.default",
+        "physical_path": "D:\\All projects\\Model library\\Qwen\\Qwen3-Reranker-0.6B-GGUF\\Qwen3-Reranker-0.6B-Q8_0.gguf",
+        "provenance": "registry.ollama.ai/library/qwen3-reranker:latest (blob moved 2026-09-29)"
+      },
+      "sha256": "eae89db7f8d56fcead26125f6e3ddabf6ad1702d9d4c23d3d69a7059c4c4d64d",
+      "license": "apache-2.0",
+      "runtime": "lmstudio (:1234), BINARY VERDICT ONLY",
+      "capabilities": [
+        "rerank.passage",
+        "retrieval.precision"
+      ],
+      "context_window": 40960,
+      "gpu_offload": "full",
+      "estimated_vram": "0.5-0.8 GB",
+      "estimated_ram": "0.5-0.8 GB",
+      "supported_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "owner": "WORK-LAB (runtime/registry)",
+      "role": "RERANK — cuts low-relevance chunks before the DEEP model, reducing context tokens, latency and local load",
+      "health": "VERIFIED_WORKING 2026-09-29 — correct yes/no verdict on every case (zh, en, and a hard three-way Chinese case that separated a true fact from a distractor sharing the same subject)",
+      "benchmark": {
+        "fidelity": "BINARY_VERDICT_ONLY",
+        "channel": "the model's own embedded tokenizer.chat_template.rerank via /v1/completions",
+        "cases": "zh relevant=yes/irrelevant=No; en relevant=Yes/irrelevant=No; zh three-way: true fact=Yes, same-subject distractor=yes, context-only=no",
+        "verdict": "correct but not orderable — LM Studio exposes no score"
+      },
+      "last_verified": "2026-09-29",
+      "runtime_note": "CORRECTED 2026-09-29. The previous note said llama.cpp served this so the weight existed once; that runtime is no longer running, and LM Studio 0.4.25 has NO rerank endpoint (/v1/rerank, /api/v0/rerank and GET /v1/rerank all error) and NEVER returns logprobs (\"logprobs\": null even for an ordinary loaded LLM). Only a hard yes/no verdict is obtainable, so two accepted candidates cannot be ordered.",
+      "status": "active",
+      "superseded_measurement": {
+        "score_spread": 0.9996,
+        "scores": [
+          1.0,
+          0.7362,
+          0.6036,
+          0.0006,
+          0.0004
+        ],
+        "measured_on": "llama.cpp b11221 /v1/rerank --rerank --pooling rank",
+        "status": "NOT REPRODUCIBLE ON LM STUDIO — kept only as the llama.cpp reference record"
+      }
+    },
+    {
+      "id": "qwen2.5-vl-7b-instruct",
+      "display_name": "Qwen2.5-VL-7B-Instruct (OCR / document vision)",
+      "family": "Qwen2.5-VL",
+      "revision": "Q4_K_M + mmproj Q8_0 @ ggml-org/Qwen2.5-VL-7B-Instruct-GGUF",
+      "quantization": "Q4_K_M (main) + Q8_0 (vision projector)",
+      "file": {
+        "logical_ref": "local.ocr.default",
+        "physical_path": "D:\\All projects\\Model library\\ggml-org\\Qwen2.5-VL-7B-Instruct-GGUF\\Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf",
+        "companion_mmproj": "D:\\All projects\\Model library\\ggml-org\\Qwen2.5-VL-7B-Instruct-GGUF\\mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
+        "bytes": 4683072032,
+        "mmproj_bytes": 853119712,
+        "provenance": "downloaded 2026-09-29 from the llama.cpp project's own repository"
+      },
+      "sha256": "9258bf05b12686d097ff3b6b18d968ab393649780aa2b3cd67fec43d50554392",
+      "license": "apache-2.0",
+      "runtime": "lmstudio (:1234), type=vlm, projector auto-paired",
+      "capabilities": [
+        "ocr.image",
+        "vision.describe",
+        "layout.understand"
+      ],
+      "context_window": 128000,
+      "gpu_offload": "full",
+      "estimated_vram": "5.5-6.5 GB (4.36 GB weights + 0.80 GB projector)",
+      "estimated_ram": "5.6-6.5 GB",
+      "supported_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "owner": "WORK-LAB (runtime/registry)",
+      "role": "OCR — current default candidate for the ArcheAxis document/image ingestion pipeline; a heavier visual OCR is only added if Chinese/English/mixed-layout/scanned/table tests fail",
+      "health": "VERIFIED_WORKING 2026-09-29 — 8/8 lines transcribed exactly, twice, 5.3 s per run on a 1240x520 Chinese+English fixture; LM Studio reports the model as type=vlm",
+      "benchmark": {
+        "fixture": "page-zh-en.png (sha256 a52a57af07510cd5157297626b017757212f7e6bfebb79f8b122b2aa205bcd31)",
+        "runs": 2,
+        "seconds_per_run": 5.3,
+        "prompt_tokens": 892,
+        "completion_tokens": 70,
+        "exact_lines": 8,
+        "total_lines": 8,
+        "exact_rate": 1.0,
+        "verdict": "REAL_OCR_WORKING",
+        "comparison": "the earlier Ollama qwen2.5vl:7b managed 6/6 in 61.7 s and had no projector at all"
+      },
+      "last_verified": "2026-09-29",
+      "status": "active",
+      "selection_note": "brief section 7 forbids deploying PaddleOCR-VL/PP-OCRv6 in parallel without proven need; the golden test passed, so nothing heavier was added",
+      "vision_defect": "The GGUF was parsed directly: arch=qwen25vl but hasVision=false — there is no clip.* key and no mmproj file anywhere in the shared library, and the Ollama manifest carries a single image.model layer. The blob is therefore a text-only 7B and cannot do OCR under any runtime.",
+      "replacement": {
+        "repo": "ggml-org/Qwen2.5-VL-7B-Instruct-GGUF",
+        "files": [
+          "Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf",
+          "mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf"
+        ],
+        "why": "the llama.cpp project's own repository ships a matched vision projector"
+      },
+      "mmproj_sha256": "2ddb555391bae966e412deab9e07b58afa18bcc06930ba0f1c78a3695ab9e506",
+      "source": {
+        "primary": "https://hf-mirror.com/ggml-org/Qwen2.5-VL-7B-Instruct-GGUF",
+        "upstream_origin": "https://huggingface.co/ggml-org/Qwen2.5-VL-7B-Instruct-GGUF",
+        "domesticMirrorPreferred": true,
+        "usedForeignRoute": false,
+        "downloaded_at": "2026-09-29",
+        "mirror_throughput_observed": "single 0.766 MiB/s; 8 parallel ranged connections up to 13.4 MiB/s"
+      },
+      "previous_entry": {
+        "id": "qwen2.5vl-7b",
+        "status": "SUPERSEDED",
+        "reason": "The Ollama blob contains no vision projector (hasVision=false, no clip.* keys, single image.model layer, no mmproj anywhere in the library), so it cannot do OCR under any runtime. Its weights remain in place and were NOT deleted."
+      }
+    },
+    {
+      "id": "faster-whisper-large-v3-turbo",
+      "display_name": "faster-whisper large-v3-turbo (ASR)",
+      "family": "Whisper",
+      "revision": "large-v3-turbo (CTranslate2)",
+      "quantization": "float16 CT2",
+      "file": {
+        "relative_path": "whisper/faster-whisper-large-v3-turbo",
+        "bytes": 1618000000
+      },
+      "sha256": "e76620f83d5f5b69 (model.bin, 1.507 GB)",
+      "license": "MIT",
+      "runtime": "faster-whisper (CTranslate2)",
+      "capabilities": [
+        "asr.transcribe",
+        "asr.timestamps"
+      ],
+      "context_window": "30s windows, long-form streaming",
+      "gpu_offload": "supported",
+      "estimated_vram": "1.5-2.5 GB",
+      "estimated_ram": "1.5-2.5 GB",
+      "supported_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "owner": "WORK-LAB (runtime/registry)",
+      "role": "ASR — primary transcription provider candidate for audio/video ingestion",
+      "health": "VERIFIED_WORKING",
+      "benchmark": {
+        "model_load_s": 4.2,
+        "transcribe_s": 6.7,
+        "audio_s": 4.49,
+        "real_time_factor": 1.5,
+        "transcript_zh": "本地模型治理由工作实验室统一负责。",
+        "expected_phrase_present": true,
+        "verdict": "real Chinese audio transcribed exactly (CPU int8, no GPU needed); the default ASR provider"
+      },
+      "last_verified": "2026-09-28",
+      "status": "active"
+    },
+    {
+      "id": "sherpa-onnx-sense-voice",
+      "display_name": "sherpa-onnx SenseVoice (zh/en/ja/ko/yue)",
+      "family": "SenseVoice",
+      "revision": "2024-07-17",
+      "quantization": "int8 + fp32 variants",
+      "file": {
+        "relative_path": "sherpa-onnx/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
+      },
+      "sha256": "c71f0ce00bec95b0 (model.int8.onnx, 0.223 GB)",
+      "license": "apache-2.0",
+      "runtime": "sherpa-onnx",
+      "capabilities": [
+        "asr.transcribe",
+        "asr.multilingual"
+      ],
+      "gpu_offload": "cpu-preferred",
+      "estimated_vram": "0 GB",
+      "estimated_ram": "0.5-1.0 GB",
+      "supported_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "owner": "WORK-LAB (runtime/registry)",
+      "role": "ASR alternate — CPU-friendly multilingual transcriber; kept as the low-footprint / offline option",
+      "health": "PRESENT",
+      "benchmark": null,
+      "last_verified": null,
+      "status": "standby"
+    },
+    {
+      "id": "sherpa-onnx-streaming-zipformer-zh-14m",
+      "display_name": "sherpa-onnx streaming zipformer zh 14M",
+      "family": "Zipformer",
+      "revision": "2023-02-23",
+      "quantization": "int8 + fp32 variants",
+      "file": {
+        "relative_path": "sherpa-onnx/sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23"
+      },
+      "sha256": "84c6a8f372686faa (encoder fp32, 0.038 GB)",
+      "license": "apache-2.0",
+      "runtime": "sherpa-onnx",
+      "capabilities": [
+        "asr.streaming.zh"
+      ],
+      "gpu_offload": "cpu-only",
+      "estimated_vram": "0 GB",
+      "estimated_ram": "0.1-0.2 GB",
+      "supported_projects": [
+        "ArcheAxis-Knowledge-OS"
+      ],
+      "owner": "WORK-LAB (runtime/registry)",
+      "role": "Streaming Chinese ASR micro-model (14M) for realtime/low-resource capture",
+      "health": "PRESENT",
+      "benchmark": null,
+      "last_verified": null,
+      "status": "standby"
+    },
+    {
+      "id": "qwen3-8b",
+      "display_name": "Qwen3-8B (previous FAST, now standby)",
+      "family": "Qwen3",
+      "revision": "8b@registry.ollama.ai/library/qwen3",
+      "quantization": "Q4_K_M (Ollama default)",
+      "file": {
+        "logical_ref": "ollama://qwen3:8b",
+        "physical_dir": "D:\\All projects\\Model library\\ollama",
+        "blob_digest": "sha256:a3de86cd1c13"
+      },
+      "sha256": "sha256:a3de86cd1c13 (manifest-confirmed, ollama-managed)",
+      "license": "apache-2.0",
+      "runtime": "none (was ollama)",
+      "capabilities": [
+        "text.fast",
+        "reasoning.short",
+        "general.chat"
+      ],
+      "context_window": 32768,
+      "gpu_offload": "full",
+      "estimated_vram": "4.9-6.0 GB",
+      "estimated_ram": "4.9-6.0 GB",
+      "supported_projects": [
+        "WORK-LAB"
+      ],
+      "owner": "WORK-LAB",
+      "role": "Standby/fallback general model for WORK-LAB itself. Superseded as the pipeline FAST model by qwen3.5-4b (smaller, faster, same role).",
+      "health": "VERIFIED_OK (2026-08-16)",
+      "benchmark": null,
+      "last_verified": "2026-09-29",
+      "status": "RETIRED_PENDING_DECISION",
+      "not_deleted_reason": "brief forbids deleting an existing model without confirmed duplication + a rollback plan; it still covers WORK-LAB-side general use",
+      "retirement_note": "Ollama runtime removed; weight retained in place, NOT served, NOT deleted. It is outside the WL-MODEL-02 target of exactly two general LLMs and is reported as a candidate for removal, not removed."
+    },
+    {
+      "id": "qwen3-coder-30b-a3b",
+      "display_name": "Qwen3-Coder-30B-A3B (code specialist)",
+      "family": "Qwen3-Coder",
+      "revision": "30b-a3b-q4_K_M@registry.ollama.ai/library/qwen3-coder",
+      "quantization": "Q4_K_M",
+      "file": {
+        "logical_ref": "ollama://qwen3-coder:30b-a3b-q4_K_M",
+        "physical_dir": "D:\\All projects\\Model library\\ollama",
+        "blob_digest": "sha256:1194192cf2a1"
+      },
+      "sha256": "sha256:1194192cf2a1 (manifest-confirmed, ollama-managed)",
+      "license": "apache-2.0",
+      "runtime": "none (was ollama)",
+      "capabilities": [
+        "code.generate",
+        "code.review.readonly",
+        "code.explain"
+      ],
+      "context_window": 32768,
+      "gpu_offload": "partial",
+      "estimated_vram": "5-6 GB",
+      "estimated_ram": "12-17 GB",
+      "supported_projects": [
+        "WORK-LAB"
+      ],
+      "owner": "WORK-LAB",
+      "role": "Code specialist (narrower than DEEP general reasoning). Not the general DEEP model; kept for code tasks only.",
+      "health": "VERIFIED_OK (2026-08-16)",
+      "benchmark": null,
+      "last_verified": "2026-09-29",
+      "status": "RETIRED_PENDING_DECISION",
+      "retirement_note": "Ollama runtime removed; weight retained in place, NOT served, NOT deleted. It is outside the WL-MODEL-02 target of exactly two general LLMs and is reported as a candidate for removal, not removed."
+    }
+  ],
+  "designLabOwnedModels": {
+    "note": "Read-only reference. WORK-LAB does not manage these; recorded so the disk-usage report is complete and so nobody re-downloads them.",
+    "area": "ComfyUI/",
+    "weights": [
+      {
+        "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "bytes": 20970379616,
+        "sha256": "e889202c41dafb67b10d67b97f0d8541508036a6090af23425a5c2615d03c47a",
+        "role": "video DiT"
+      },
+      {
+        "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "bytes": 15688287776,
+        "sha256": "35a88d51044231fe",
+        "role": "text encoder"
+      },
+      {
+        "name": "sd_xl_base_1.0.safetensors",
+        "bytes": 6938078334,
+        "sha256": "31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b",
+        "role": "image diffusion (not in the 2026-08-16 README)"
+      },
+      {
+        "name": "clip_g.safetensors",
+        "bytes": 2778702264,
+        "sha256": "3a6032f63d37ae02bbc74ccd6a27440578cd71701f96532229d0154f55a8d3ff",
+        "role": "text encoder"
+      },
+      {
+        "name": "clip_l.safetensors",
+        "bytes": 492265168,
+        "sha256": "5c3d6454dd2d23414b56aa1b5858a72487a656937847b6fea8d0606d7a42cdb6",
+        "role": "text encoder"
+      },
+      {
+        "name": "minimax_h3_video_vae_fp16.safetensors",
+        "bytes": 5207000000,
+        "sha256": "7c1f131492e7edda",
+        "role": "video VAE"
+      },
+      {
+        "name": "minimax_h3_audio_vae_fp32.safetensors",
+        "bytes": 605000000,
+        "sha256": "8e505d95dd1561d4",
+        "role": "audio VAE"
+      },
+      {
+        "name": "sdxl_vae.safetensors",
+        "bytes": 335000000,
+        "sha256": "1598f3d24932bcfe",
+        "role": "image VAE (not in the 2026-08-16 README)"
+      }
+    ]
+  },
+  "candidateOrphans": [
+    {
+      "path": "runtimes-tmp/reranker-dl.gguf",
+      "bytes": 494879360,
+      "sha256": "a18ae2a5f553fe02",
+      "reason": "reranker GGUF download leftover; qwen3-reranker is already served by Ollama",
+      "action": "REGISTERED_NOT_DELETED — deletion requires user confirmation (brief forbids removing existing models without confirmed duplication + rollback)",
+      "recoverable_gb": 0.46
+    },
+    {
+      "path": "ollama/blobs/sha256-81fb60c7…-partial (+16 zero-length part files)",
+      "bytes": 3389971840,
+      "reason": "abandoned `ollama pull qwen3.5:4b-q4_K_M`: the Ollama CDN measured 136 KB/s and stalled at 3.157 GB, so the mirror route was used instead. These are partial-download fragments, NOT a model — no Ollama model of qwen3.5 exists and /api/tags confirms only the five original models.",
+      "action": "REGISTERED_NOT_DELETED — pure partial-download residue, safe to reclaim once the user confirms",
+      "recoverable_gb": 3.157
+    }
+  ],
+  "finalStructureTarget": {
+    "generalLlm": [
+      "qwen3.5-4b (FAST)",
+      "qwen3.8-27b-ud-iq4_xs (DEEP)"
+    ],
+    "retrieval": [
+      "qwen3-embedding-0.6b",
+      "qwen3-reranker-0.6b"
+    ],
+    "ingestion": [
+      "qwen2.5vl-7b (OCR candidate)",
+      "faster-whisper-large-v3-turbo (ASR candidate)"
+    ],
+    "forbiddenGrowth": [
+      "mid-size general LLM",
+      "second embedding",
+      "second reranker",
+      "multiple same-capability OCR",
+      "multiple same-capability ASR"
+    ],
+    "standbyNotDeleted": [
+      "qwen3:8b",
+      "qwen3-coder:30b-a3b-q4_K_M",
+      "sherpa-onnx-sense-voice",
+      "sherpa-onnx-streaming-zipformer-zh-14m"
+    ]
+  },
+  "lastVerified": "2026-09-29",
+  "verifier": "PENDING (see model-governance closeout)"
+}

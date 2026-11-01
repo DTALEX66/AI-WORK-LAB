@@ -1,0 +1,28 @@
+workbench(style): de-couple the route-host heading from pre-B10 legacy CSS
+
+The placeholder headings rendered straight into `#route-view` (`el('h2', {}, view)`
+for an unopened/unconnected view) carry no class, so their vertical margins were
+supplied by the pre-B10 unscoped `h2{margin:0 0 14px}` rule -- not by any B10
+declaration. That is the same hidden-coupling class as the three earlier fixes
+(1240px body cap, ghost-button hover, 13px paragraphs); all four existed because the
+legacy element rules still reach into `.app`.
+
+Found by deleting every unscoped element-only rule through CSSOM and diffing all
+computed longhands of every `.app` element on all 12 routes (328 elements). Deleting
+them reverted those two `h2` margins to the UA default 19.92px, i.e. 8 in-`.app`
+property bindings came from legacy CSS.
+
+Fix: declare the margin where the app already declares the heading's font-size
+(`.route-view h2`). The frozen values are exactly the previously computed ones, so
+this removes the dependency WITHOUT changing what the browser paints -- a
+de-coupling, not a redesign. The font-size divergence itself (this host renders 24px
+while B10's own page heading is `.page-head h2{font-size:32px;margin:0 0 6px}`) is a
+W01 typography item tied to pending owner rulings X-1/X-2 and is deliberately NOT
+"fixed" here.
+
+Evidence: `.project-local/task-artifacts/designlab-followup-taskpack-20260928/W02-LEAK-SWEEP.txt`
+-- before: 8 in-`.app` bindings; after: 0. The sweep carries an end-to-end positive
+control (an injected element-only leak must be reported) and reports the residual
+1923 bindings that live OUTSIDE `.app`: the login/connect screen, `#workspace` and
+`nav.app-nav` are the legacy app, which is precisely why the legacy element rules
+cannot simply be scoped away. Local gates: workbench smoke + appshell regression pass.

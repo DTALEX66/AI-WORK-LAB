@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "design-lab/authority-gates/v1",
+  "task_key": "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-H010",
+  "generated_at": "2026-09-28T14:26:46+00:00",
+  "subject_sha": "4c9f18493e909283a5448763f704b3f838531d0a",
+  "branch": "main",
+  "worktree_clean": false,
+  "platform": "win32",
+  "gates": [
+    {
+      "gate": "authority-ledger",
+      "command": "scripts/deepseek_authority_ledger.py verify",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary_line": "LEDGER=PASS tasks=58 taskpack_sha256_ok=true",
+      "stdout_tail": [
+        "LEDGER=PASS tasks=58 taskpack_sha256_ok=true"
+      ],
+      "stderr_tail": []
+    },
+    {
+      "gate": "authority-chain",
+      "command": "scripts/deepseek_authority_chain.py --check",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary_line": "AUTHORITY_CHAIN=PASS (classification matches for 42 entries; mutable ledger digest recorded at generation was sha256:fb78049b23bb… and is not a stability claim)",
+      "stdout_tail": [
+        "AUTHORITY_CHAIN=PASS (classification matches for 42 entries; mutable ledger digest recorded at generation was sha256:fb78049b23bb… and is not a stability claim)"
+      ],
+      "stderr_tail": []
+    },
+    {
+      "gate": "source-lock",
+      "command": "scripts/verify_source_lock.py --check",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary_line": "SOURCE_LOCK=PASS entries=46 url=39/46 revision=0/46 digest=40/46 license=46/46 debt=40 failures=0",
+      "stdout_tail": [
+        "SOURCE_LOCK=PASS entries=46 url=39/46 revision=0/46 digest=40/46 license=46/46 debt=40 failures=0"
+      ],
+      "stderr_tail": []
+    },
+    {
+      "gate": "contract-graph",
+      "command": "scripts/verify_contract_graph.py --check",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary_line": "CONTRACT_GRAPH=PASS (full document matches; generated_at/subject_sha are generation-time)",
+      "stdout_tail": [
+        "CONTRACT_GRAPH=PASS (full document matches; generated_at/subject_sha are generation-time)"
+      ],
+      "stderr_tail": []
+    },
+    {
+      "gate": "language-boundary",
+      "command": "scripts/verify_language_boundary.py",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary_line": "LANGUAGE_BOUNDARY=PASS files=2029 forbidden=0 fixture_scoped=1 conditional=0 python_roots=1 node_manifests=3 lockfiles=3(python=2,node=1) vocab_copies=13 disagreeing=0",
+      "stdout_tail": [
+        "LANGUAGE_BOUNDARY=PASS files=2029 forbidden=0 fixture_scoped=1 conditional=0 python_roots=1 node_manifests=3 lockfiles=3(python=2,node=1) vocab_copies=13 disagreeing=0",
+        "  note: Java scoped to a fixture or inert blob: fixtures/domains/game-visual/android-webview/app/src/main/java/com/dtalex/minigame/MainActivity.java",
+        "  note: python package outside the declared layout (unused): design-lab\\core"
+      ],
+      "stderr_tail": []
+    },
+    {
+      "gate": "test-gate",
+      "command": "scripts/deepseek_test_gate_report.py --check",
+      "exit_code": 0,
+      "result": "PASS",
+      "summary_line": "TEST_GATE=PASS (executed scope, order independence and repetition match)",
+      "stdout_tail": [
+        "TEST_GATE=PASS (executed scope, order independence and repetition match)"
+      ],
+      "stderr_tail": []
+    },
+    {
+      "gate": "zero-spill-pair",
+      "result": "NO_SPILL",
+      "denied_roots": [
+        ".codex",
+        ".dsh",
+        ".hermes",
+        ".openhuman"
+      ],
+      "before_counts": {
+        ".codex": 0,
+        ".dsh": 0,
+        ".hermes": 3,
+        ".openhuman": 0
+      },
+      "after_counts": {
+        ".codex": 0,
+        ".dsh": 0,
+        ".hermes": 3,
+        ".openhuman": 0
+      },
+      "spill": [],
+      "note": "the chain may write to the repository and .project-local; a write into a denied in-repo agent-state root fails the run"
+    }
+  ],
+  "full_suite_1392": {
+    "state": "DEFERRED",
+    "scope": "the same three orders over the entire discovered suite (pattern test_*.py)",
+    "measured_reason": "one pass of the full pattern costs roughly 25 minutes or more against 7.6 seconds for the critical set, so three orders plus repetition is 75+ minutes of continuous load, and that exact load coincided with the host kernel bugcheck 0x4E (PFN_LIST_CORRUPT) at 2026-09-14T01:14:34 that this run is still diagnosing with the owner",
+    "not_a_claim": "this is a load decision; it is not evidence that the full-suite orders pass"
+  },
+  "failed": [],
+  "verdict": "PASS",
+  "meaning": "PASS covers the bound authority chain on this subject and platform; the 1392 full-suite orders remain in their own deferred state and a Linux CI pass never substitutes a Windows host result"
+}

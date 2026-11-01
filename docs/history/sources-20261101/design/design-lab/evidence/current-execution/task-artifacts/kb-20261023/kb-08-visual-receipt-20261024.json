@@ -1,0 +1,111 @@
+{
+  "kind": "design-lab/visual-review/v1",
+  "taskIds": ["DL-KB-08"],
+  "reviewedAt": "2026-10-24T00:55:00Z",
+  "subject": {
+    "commit": "2d9372fbc00ed53f5a00593a3e3ad5386d132a43",
+    "bundle": "apps/workbench/build/main.js",
+    "bundleSha256": "ffabee75e137b2eda948935470ae1f748ebc373486fa7b6ebced6282cc8668ef",
+    "bundleBytes": 524933
+  },
+  "method": "a real loopback service (synthetic root and token, no owner data) driven by a one-off Playwright probe; every string below was read from the rendered DOM or from the screenshot the probe wrote, not reconstructed from source",
+  "browser": {"engine": "chromium", "version": "149.0.7827.55", "headless": true},
+  "screenshots": [
+    {
+      "file": "detail@1440-saved.png",
+      "viewport": "1440x900",
+      "fullPage": true,
+      "bytes": 378639,
+      "sha256": "ecd1eb3b41c69bfe8dc85b600b9f2ffb094d8d22854d78cd00d17a8eda314e01",
+      "shows": [
+        "新建表单：需求、工作区、参考附件、输出类型、记录人，工具与模型选择不存在",
+        "表单状态行：已保存 r1。这条方案还没有创意，四态里「方案已提供」会保持为否。",
+        "详情四态：已保存 / 尚未提供创意 / 尚无用户选用 / 外部未验证",
+        "剧本与分镜：尚未提供创意，因此还没有可读的脚本与分镜。",
+        "工具交换材料：本方案没有登记外部步骤。服务不派发也不核验这些步骤；编号是登记值，不是执行证据。",
+        "折叠段：参考与依据（当前 0 条参考：已分析 0 / 仅登记链接 0）、适用工具、待补充内容 (0)、修订历史 (1)、服务声明没有说的话",
+        "动作：补充创意（唯一 primary）+ 复制文本 + 下载材料"
+      ]
+    },
+    {
+      "file": "detail@1440-chosen.png",
+      "viewport": "1440x900",
+      "fullPage": true,
+      "bytes": 455730,
+      "sha256": "aeec9fd305b960905ec66917af573a0b7b860089c5bd676e89e0aa9a99ec7fdf",
+      "shows": [
+        "详情四态：已保存 / 方案已提供 / 用户选用 · r2 / 外部未验证",
+        "具名选用行：选用人 示例审阅人 · 2026-10-24T00:50:08Z",
+        "修订历史 (2)：r1 为旧版本、r2 为最新",
+        "剧本与分镜含「没有单独的分镜表」这句服务自述",
+        "动作：修订方案（唯一 primary）+ 复制文本 + 下载材料"
+      ]
+    },
+    {
+      "file": "detail@1280-chosen.png",
+      "viewport": "1280x800",
+      "fullPage": true,
+      "bytes": 437580,
+      "sha256": "e1d1d66844e572723a95ce1c32fa2b207d804f5eae69091523907642acae0b71",
+      "shows": ["与 1440 相同的四态与具名选用行，窄一档时不换页、不截断状态字"]
+    },
+    {
+      "file": "list@1280.png",
+      "viewport": "1280x800",
+      "fullPage": true,
+      "bytes": 214538,
+      "sha256": "42fbd079a9db1569eab45d5e0d2a87d88f4176850ff3d445263a5321653a8c9f",
+      "shows": [
+        "最近的方案：共 1 条（最近 20 条）",
+        "列表行：为秋季新品写一条可读的分镜目标，给标题留白 / 分镜与脚本 · 示例作者 · 2026-10-24T00:50:07Z / r2 徽章 / 方案已提供 / 用户选用 r2",
+        "新建表单在返回后是空的，没有把上一条方案的内容预填成新方案"
+      ]
+    }
+  ],
+  "screenshotLocation": ".project-local/task-artifacts/visual-review-20261024/ (gitignored); each sha256 above is of the file the probe wrote at the commit named in subject",
+  "rendered": {
+    "chipsAfterSave": {
+      "saved": "已保存",
+      "provided": "尚未提供创意",
+      "chosen": "尚无用户选用",
+      "external": "外部未验证"
+    },
+    "primaryAfterSave": "补充创意",
+    "chipsAfterChoose": {
+      "saved": "已保存",
+      "provided": "方案已提供",
+      "chosen": "用户选用 · r2",
+      "external": "外部未验证"
+    },
+    "choiceLine": "选用人 示例审阅人 · 2026-10-24T00:50:08Z",
+    "listRow": "为秋季新品写一条可读的分镜目标，给标题留白 / 分镜与脚本 · 示例作者 · 2026-10-24T00:50:07Z / r2 / 方案已提供 / 用户选用 r2",
+    "footnote": "四态由服务读回：已保存、方案已提供、用户选用、外部未验证。「已保存」不等于「已生成」；「外部未验证」不是警告，是服务不派发也不核验外部步骤。"
+  },
+  "acceptance": {
+    "initialSurfaceOnly": "E2E read the rendered form: 3 selects (工作区 / 参考附件 / 输出类型), 0 control ids matching tool|model, 6 output types served by the service and including STORYBOARD",
+    "fourStatesSeparate": "the four chips carry dataset.state read from the service; after save they read true/false/false/false, after the named choice true/true/true/false; a full reload rebuilds the same values",
+    "copyVersusAdoption": "复制文本 worked before any adoption and put no write and no choose on the wire; the clipboard text carried 外部未验证 and 不是运行结果",
+    "missingInputNoDeadEnd": "an empty 需求 is refused locally with 请先写下…, focus returns to as-objective, no assistance-plan write leaves; 补充创意 opens the prefilled form, saving appends r2 and flips 方案已提供",
+    "onePrimaryAction": "each state rendered exactly one .primary-btn: as-supply after save, as-choose after the creative arrived, as-revise after the choice",
+    "noChatCanvasConsole": "0 canvas elements and 0 role=log elements on the route; the plan is one readable document with collapsed sections, not chat bubbles, a node canvas or a multi-agent console"
+  },
+  "receipts": [
+    {"name": "kb-08-browser-e2e-20261024.json", "sha256": "5ee79369c9e4709310e9a3d9e98eb5cd380d13962d4e2d32757dab32353badde"},
+    {"name": "kb-08-browser-capture-manifest-20261024.json", "sha256": "dee9c2d807978329ad3ca92eff0676e868371516be284ead25c6df39fee50112"},
+    {"name": "kb-08-browser-overflow-20261024.json", "sha256": "7be8ba7e241557130d8e13d2520232ef02763f51aed332eb55916b6c63b118ac"},
+    {"name": "kb-08-browser-contrast-20261024.json", "sha256": "55d15354b79080ec7ecf5e5fa04af0c172fb2bdb0a943f8d6b0892ca13995bd3"},
+    {"name": "kb-08-browser-ui-audit-20261024.json", "sha256": "ede42be0bbf7bba76a2d1edb9b09d9b5d14ac4035ffc4036b14f65a4c488b7a7"},
+    {"name": "design-review-assistant-20261024/a11y.json", "sha256": "8548edcc8a113ccc5b5934bde10e7d90f7983e0db89497c554e9b40208bc8819"},
+    {"name": "design-review-assistant-20261024/design-debt.json", "sha256": "eb6112c3267db8efc657967686d4ead02c81ffdd6a41f248187f87560ef6b97d"}
+  ],
+  "observations": [
+    "1440x900 和 1280x800 下，唯一主操作「整理方案」落在首屏折叠线以下（1440 截到「更多设置」，1280 截到「输出类型／记录人」）；1920x1080 整表和主按钮都在首屏内。这是初始态的高度问题，不是门禁失败，也不违反本轮验收（每状态仍只有一个主操作、无死路），记入版式轮次。",
+    "外置设计审查插件在本次提交后重跑：axe 覆盖 27 屏（含 #/assistant），0 findings；design debt 仍是 10 个文件 713 条，与新增界面前相同——本屏没有新增字面 px、硬编码颜色或自定义阴影。"
+  ],
+  "limits": [
+    "语料是探针合成的 1 条方案（示例作者／示例审阅人），不是 owner 的真实条目。",
+    "服务不派发也不核验外部步骤，所以「外部未验证」是恒为否的读数，不是一次失败的验证尝试。",
+    "这是 E1/E2 证据：实现 + 真浏览器读回 + 视觉复核，不是真实宿主 E3，也不是具名真人 E4 验收。",
+    "手机端不在本项目范围（owner 2026-10-19：只做桌面端）；1280 是桌面窗口的下限读数，不是移动端交付。"
+  ]
+}

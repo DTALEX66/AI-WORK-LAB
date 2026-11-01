@@ -1,0 +1,180 @@
+{
+  "schemaVersion": "design-lab/deepseek-final-repository-audit/v1",
+  "task_key": "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-K030",
+  "audited_at": "2026-10-18T09:48:21+00:00",
+  "subject_sha": "15b3b6838af52cf7376b2d78fa5dc4389c709d8a",
+  "measured": {
+    "files_before_after": {
+      "before": {
+        "revision": "56319635bbcf112ac88d097317262c101ffdfe4d",
+        "files": 1832,
+        "bytes": 31610590,
+        "mib": 30.15
+      },
+      "after": {
+        "files": 3777,
+        "bytes": 72655663,
+        "mib": 69.29
+      },
+      "source": "git ls-tree -r -l 56319635bbcf112ac88d097317262c101ffdfe4d vs git ls-files",
+      "like_for_like": true,
+      "revision_before": "56319635bbcf112ac88d097317262c101ffdfe4d",
+      "revision_after": "15b3b6838af52cf7376b2d78fa5dc4389c709d8a",
+      "delta_files": 1945,
+      "delta_mib": 39.14
+    },
+    "git_pack_before_after": {
+      "after_pack_mib": 241.2,
+      "before_pack_mib": null,
+      "like_for_like": false,
+      "reason": "the object store is cumulative and its earlier state is not recoverable from this clone after the fact; only the current pack size is measured, and no reduction is claimed"
+    },
+    "runtime_data_before_after": {
+      "measured_now": {
+        ".project-local": {
+          "files": 97818,
+          "bytes": 6891467104,
+          "mib": 6572.22
+        },
+        ".hermes": {
+          "files": 1,
+          "bytes": 13638,
+          "mib": 0.01
+        }
+      },
+      "recorded_earlier": {
+        "UNTRACKED-RUNTIME.json": {
+          "at": "2026-09-13T16:26:39+00:00",
+          "total_mib": 4448.46,
+          "roots": [
+            ".hermes",
+            ".project-local",
+            ".pytest_cache",
+            ".venv"
+          ]
+        },
+        "POST-CLEANUP-AUDIT.json": {
+          "at": "2026-09-13T17:06:31+00:00",
+          "roots": {
+            ".project-local": {
+              "files": 65832,
+              "bytes": 4719582316,
+              "mib": 4500.94
+            },
+            ".hermes": {
+              "files": 1,
+              "bytes": 13638,
+              "mib": 0.01
+            }
+          }
+        }
+      },
+      "like_for_like": false,
+      "reason": "the recorded readings disagree with each other about the root set and the earliest of them post-dates the deletion it is used as a 'before' for; see POST-CLEANUP-AUDIT.json#before_after for the computation"
+    },
+    "bytes_reclaimed": {
+      "temp_cache_deleted_bytes": 332173158,
+      "temp_cache_deleted_mib": 316.79,
+      "entries": 167,
+      "source": ".project-local/quarantine/deepseek-round1/RUNTIME-CLEANUP-MANIFEST.json"
+    },
+    "third_party_copies_removed": {
+      "tracked_full_copies_now": 3,
+      "in_ignored_cache": 0,
+      "lock_references": 6,
+      "verdict": "NO_FULL_THIRD_PARTY_SOURCE_TREES_TRACKED"
+    },
+    "spill_migrated": {
+      "objects": 109,
+      "bytes": 265077183,
+      "manifest": ".project-local/archive/hermes-legacy/MIGRATION-MANIFEST.json",
+      "verified_digests": 109,
+      "restore": "python scripts/deepseek_hermes_migration.py --restore",
+      "meaning": "relocated inside the same volume, so moved rather than reclaimed"
+    },
+    "spill_deleted": {
+      "empty_legacy_directories_removed": 0,
+      "bytes": 0,
+      "refused": [
+        ".hermes/skill-call-index.json"
+      ],
+      "note": "the legacy runtime namespace held only empty directories and one refused agent-native file; nothing with content was deleted"
+    },
+    "remaining_exceptions": [
+      {
+        "area": "third-party lock",
+        "exception": "7 of 46 sources.lock entries carry no canonical URL and 0 carry a pinned revision; the lock records what is absorbed, not where to fetch it",
+        "state": "REPORTED_NOT_FIXED",
+        "owner": "Codex or owner"
+      },
+      {
+        "area": "runtime volume",
+        "exception": ".project-local holds evidence-bearing run directories left in place at OWNER_DELETE_APPROVAL_REQUIRED; reclaiming them needs owner approval",
+        "state": "OWNER_DELETE_APPROVAL_REQUIRED",
+        "owner": "DTALEX66"
+      },
+      {
+        "area": "python tooling",
+        "exception": "ruff is declared in pyproject but is not installed, so lint is not enforced by any gate; pytest is not installed and the suite runs under unittest. The dependency lock itself is present: uv.lock and requirements.txt are both tracked",
+        "state": "REPORTED_NOT_FIXED",
+        "owner": "owner decision"
+      },
+      {
+        "area": "node tooling",
+        "exception": "no product Node package exists: the only manifest belongs to the game-visual fixture, and there is no lockfile",
+        "state": "BY_DESIGN",
+        "owner": "n/a"
+      },
+      {
+        "area": "tracked backups",
+        "exception": "design-lab/config/capability-index-v1-backup.json (445 KB) was tracked until 2026-10-18; removed under the owner's cleanup instruction, and the ssot list that named it as part of the capability index no longer does",
+        "state": "RESOLVED_2026_10_18",
+        "owner": "owner decision (2026-10-18 cleanup)"
+      },
+      {
+        "area": "legacy package",
+        "exception": "design-lab/core is an unused legacy package outside the declared layout",
+        "state": "REPORTED_NOT_FIXED",
+        "owner": "owner decision"
+      },
+      {
+        "area": "empty directory",
+        "exception": "services/ is an empty tracked-adjacent directory (EMPTY_DIR deviation in the directory audit)",
+        "state": "REPORTED_NOT_FIXED",
+        "owner": "owner decision"
+      },
+      {
+        "area": "live database",
+        "exception": ".project-local/state/ does not exist, so a claim that 'the live database is unmodified' is not verifiable as stated; the proxy used is that no *.db under .project-local changed",
+        "state": "NOT_VERIFIABLE_AS_STATED",
+        "owner": "n/a"
+      },
+      {
+        "area": "agent-native artifact",
+        "exception": ".hermes/skill-call-index.json is not provably DESIGN-LAB-owned and is left untouched (DO_NOT_TOUCH)",
+        "state": "REFUSED_BY_POLICY",
+        "owner": "n/a"
+      },
+      {
+        "area": "measurement",
+        "exception": "no like-for-like before/after exists for the runtime roots or the git pack, so the only reduction claimed is the digest-backed reclaimed byte count",
+        "state": "WITHDRAWN_CLAIM",
+        "owner": "n/a"
+      },
+      {
+        "area": "text encoding in subprocess calls",
+        "exception": "119 tracked call sites pass text=True to subprocess without an explicit encoding, so child output is decoded with the machine locale codec (cp936 on this host). Two are fixed because they broke the verification chain itself: verify_design_lab.py now decodes UTF-8 and tells its children to emit UTF-8, making the chain locale-independent, and verify_review_surface.py, whose child prints Chinese section headings. The remaining 117 are reported rather than rewritten: sweeping them without running the full test suite would be an unverified mass edit",
+        "state": "PARTIALLY_FIXED_AND_REPORTED",
+        "owner": "Codex or owner"
+      },
+      {
+        "area": "test gate scope",
+        "exception": "H010 executed all four required runs over a declared critical set of 16 stateful and contract-holding modules (220 tests per order in the 2026-09-14 run: forward, reverse, randomized seed 42, and 20x repetition = 4400 tests, all zero failures). Dated 2026-10-09: the gate record now carries the 2026-10-06 runs, which measure 225 tests per order with a 2x repetition = 450; the 220 above was typed, never re-derived from a run. The same three orders over the entire discovered suite (1392 tests) are DEFERRED, not passed: one pass costs roughly 25 minutes against 7.6 seconds for the critical set, and that exact load coincided with the host kernel bugcheck 0x4E that this run is still diagnosing",
+        "state": "DEFERRED_DECLARED",
+        "owner": "Codex or owner"
+      }
+    ]
+  },
+  "supply_chain_verdict": "PASS",
+  "verdict": "PASS"
+}

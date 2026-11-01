@@ -1,0 +1,12 @@
+# zizmor configuration (GitHub Actions security scanner)
+#
+# ignore rules must carry a justification; re-audit whenever the workflow
+# changes artifact/checkout behavior.
+ignore:
+  - audit: artipacked
+    # WORK-LAB's single workflow (work-lab-gate.yml) only uses
+    # actions/checkout — it never uploads or downloads GitHub Actions
+    # artifacts, so the artipacked "credential persistence through
+    # artifacts" heuristic is a conservative false positive against the
+    # checkout step. If artifact steps are ever added, remove this ignore
+    # and address the finding.

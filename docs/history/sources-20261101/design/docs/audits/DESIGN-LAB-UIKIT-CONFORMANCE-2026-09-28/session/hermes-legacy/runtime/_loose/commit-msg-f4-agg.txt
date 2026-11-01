@@ -1,0 +1,17 @@
+chore(gate): fold the host-E3 verifier into the daily canonical chain (49 → 50)
+
+verify_design_lab.py's SCRIPTS now runs verify_host_e3_evidence.py as a step.
+Clean-checkout default is HOST_E3=NO_RECORD / exit 0 (the convention directory
+.project-local/task-artifacts/host-e3/ is absent), so the chain stays green;
+it turns red exactly when a fabricated E3 record is committed (schema
+contract, approver, boundTreeSha ancestry, artifact sha256) — see the
+verified negative control above.
+
+Unlike RELEASE_VERIFIER and verify_release_preflight.py, this gate needs no
+tag, token, or network, so it belongs in the daily chain. Evidence that
+nothing constrains the total to 49: the literal "total=49" appears only in
+historical docs/ records, and no test asserts the count.
+
+Local run after the change: VERIFY_DESIGN_LAB=OK total=50 failed=0, and the
+negative control .project-local/task-artifacts/f4-host-e3/fake-e3-no-host.json
+still fails with HOST_E3=INVALID / exit 1.

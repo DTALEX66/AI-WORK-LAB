@@ -1,0 +1,86 @@
+evidence-roots: align reporting.py allowlist with AUTHORITY section 7
+
+Owner intent (2026-09-27): "加入，全部开始" -- add `apps` to the evidence-root
+allowlist, then complete the audit/fix/deliver cycle.
+
+WHY
+
+src/design_lab/governance/reporting.py:_safe gates every path an evidence
+receipt or projection input may cite. Its `allowed` set held 8 of the 13
+repository roots AUTHORITY.md section 7 declares ("仓库责任"). Consequences:
+
+  * `apps` was missing, so NO evidence receipt could cite apps/workbench/** --
+    the front end AUTHORITY section 3 declares first-class ("DESIGN-LAB 有前端：
+    apps/workbench/"). The R5 ledger literally could not record a single
+    front-end fact. That is a governance gap, not a safety property.
+  * An audit of the set against section 7 found `research` and `vendor` missing
+    too -- the identical defect class. Leaving only `apps` fixed would have
+    re-created the gap for section 7's own declared roots.
+
+This was found by the project survey and recorded as finding F-6. The previous
+PR (174) deliberately did NOT relax the policy unilaterally; it recorded the gap
+and left the decision to the owner. This PR carries the authorization.
+
+WHAT
+
+  * `allowed` is now exactly section 7's declared roots (12 entries) plus
+    `.project-local`, which is admitted by the existing separate branch limited
+    to `task-artifacts/` -- so effective coverage is all 13 roots.
+  * Added `apps`, `research`, `vendor`. No other widening.
+  * Recorded owner intent / reason / superseded set / impact inline, following
+    the same precedent used for the AUTHORITY byte-pin re-pin.
+
+SECURITY: the guard is deliberately NOT widened
+
+  * `denied` ({.git, .hermes, .openhuman, auth.json, credentials.json,
+    tokens.json, id_rsa}) plus the `.env*` prefix rule still applies to EVERY
+    path component. Verified explicitly: `.env`, `apps/workbench/.env` and
+    `apps/auth.json` all remain DENY after the change.
+  * Audited the newly-citable roots before allowing them: apps/ (source, tests,
+    build/main.js only), research/ (2 files), vendor/ (1 file), services/
+    (0 files) contain no credential-named path.
+
+UNBLOCKED: two receipts could finally be bound
+
+The R5 ledger goes from 10 to 8 receipts referenced across 10 of 112 axes:
+
+  * r5-workbench-strict-ts-build-truth-20260927   -> DL-R5-028 implementation+unit
+  * r5-workbench-native-task-ui-tests-20260927    -> DL-R5-010 implementation+unit
+
+Both are `local_test` / `outcome=PARTIAL` at exact SHA 634071f3c8ffa87e08fa1386f49c185ff6fa36d8.
+Contract constraints honoured (src/design_lab/governance/r5_contract.py):
+frozen definition/title/depends_on/predecessor_task_ids/required_axes untouched;
+:100-101 forbids PASS/IMPLEMENTED_LOCAL while reassessment != REVIEWED, so every
+axis state stays PARTIAL. These receipts record what was verified, never that a
+task is complete.
+
+ALSO IN THIS PR
+
+  * docs/handoffs/DESIGN-LAB-PROJECT-SURVEY-TRUTH-RESYNC-2026-09-27.md
+    Tracked handover + summary, carrying the HISTORICAL_EXECUTION_RECORD /
+    NON_AUTHORITATIVE banner. Includes the HERMES task-surface census conclusion
+    (no cron job, no kanban task, no project-local-run for DESIGN-LAB), the
+    audit findings, the open items, and the environment gotchas the next session
+    will otherwise rediscover.
+  * Regenerated projections + authority chain, which drift together with the
+    ledger.
+
+AUDIT FINDINGS NOT ACTED ON (recorded, owner decides)
+
+  * services/ exists at the top level but is NOT declared in AUTHORITY section 7
+    and currently holds 0 files. Not added to the allowlist -- it is not a
+    section-7 root. Either declare it in section 7 or drop the empty directory.
+  * LICENSES/ likewise exists but is undeclared in section 7.
+  * The R5 ledger still has no "done" semantics (all PLANNED_DELTA + PARTIAL);
+    a formal evidence reassessment is owner-led work, deliberately not
+    pre-empted here.
+
+Local verification on this tree:
+  run_python_tests.py                    Ran 1755 tests, OK (skipped=37)
+  verify_top_level_authority.py          TOP_AUTHORITY_GATE=PASS checks=10
+  verify_authority_gates.py --zero-spill AUTHORITY_GATES=PASS gates=7
+  generate_current_reports.py --check    CURRENT_REPORTS=PASS
+  verify_project_drift.py                PROJECT_DRIFT=PASS findings=0
+  verify_path_refs.py                    PATH_REF_GATE=PASS checks=10
+  update_evidence_binding.py --check     HISTORICAL_VALID (not rebound, per DL-EVD-002)
+  workbench tsc/build/unit/appshell      all green, no build/ drift

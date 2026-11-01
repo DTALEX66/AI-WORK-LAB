@@ -1,0 +1,46 @@
+{
+  "schema_version": "workflow/project-profile-registry/v1",
+  "profiles": [
+    {
+      "schema_version": "workflow/project-profile/v1",
+      "project": {"id": "work-lab", "root_policy": "explicit_git_root", "windows_native_first": true},
+      "configuration": {"precedence": ["global_defaults", "project_profile", "local_runtime", "environment", "cli"]},
+      "modules": {
+        "workflow-assistance": {"roots": ["packages/client-neutral-core"], "active": true},
+        "work-lab-observer": {"roots": ["apps/observer"], "depends_on": ["workflow-assistance"], "observation_only": true, "active": true}
+      },
+      "risk_zones": {"security": [".github", ".project/governance"], "runtime": [".project-local/runs"], "release": [".github/workflows"]},
+      "gates": {"verify": {"command": "python services/orchestration/run_quality_gate.py verify", "tiers": ["TARGETED", "STAGE", "RC", "RELEASE"], "platform": "windows-native"}},
+      "ci": {"stable_aggregate_check": "aggregate", "stable_aggregate_job": "aggregate", "workflow_file": ".github/workflows/work-lab-gate.yml", "workflow_name": "work-lab-gate", "exact_sha_required_for": ["main", "release"], "outage_blocks": ["release"]}
+    },
+    {
+      "schema_version": "workflow/project-profile/v1",
+      "project": {"id": "fixture-external", "root_policy": "discover_git_root", "windows_native_first": true},
+      "configuration": {"precedence": ["global_defaults", "project_profile", "local_runtime", "environment", "cli"]},
+      "modules": {"external": {"roots": ["."], "active": true}},
+      "risk_zones": {"security": [".github"], "runtime": [".project-local/runs"]},
+      "gates": {"standalone": {"command": "python -m unittest discover", "tiers": ["TARGETED", "STAGE"], "platform": "windows-native"}},
+      "ci": {"stable_aggregate_check": "standalone", "exact_sha_required_for": ["release"], "outage_blocks": ["release"]}
+    },
+    {
+      "schema_version": "workflow/project-profile/v1",
+      "project": {"id": "archeaxis-knowledge-os", "root_policy": "explicit_git_root", "windows_native_first": true},
+      "configuration": {"precedence": ["global_defaults", "project_profile", "local_runtime", "environment", "cli"]},
+      "modules": {
+        "archeaxis-core": {"roots": [".worklab"], "active": true, "observation_only": true}
+      },
+      "risk_zones": {"security": [".github"], "runtime": [".worklab/.hermes-task-runtime"]},
+      "gates": {},
+      "ci": {
+        "stable_aggregate_check": "a0-gates",
+        "stable_aggregate_job": "a0-gates",
+        "workflow_file": ".github/workflows/ci.yml",
+        "workflow_name": "CI",
+        "release_workflow": "Release",
+        "observation_privacy_policy": "read-only GitHub state observation; no auth/session/memory body, no project config mirror, no cross-repo writes",
+        "exact_sha_required_for": ["release"],
+        "outage_blocks": ["release"]
+      }
+    }
+  ]
+}

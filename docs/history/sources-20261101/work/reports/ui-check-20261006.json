@@ -1,0 +1,106 @@
+{
+  "skill": "check",
+  "generated_at": "2026-10-06T10:20:00+08:00",
+  "project_name": "WORK-LAB Observer",
+  "target": "apps/observer/frontend/src (App.tsx shell, components/layout/{Sidebar,TopStatusBar}.tsx, components/ui/{drawer,command-palette,toast,states}.tsx, views/* 22 lanes, skins/b10.css + skins/l10b-shell.css + index.css)",
+  "mode": "A (automatic code review); no spark chain context found, project authority UI_DECISIONS.md D-01..D-16 used as the consistency baseline",
+  "read_only": true,
+  "findings": [
+    {
+      "category": "responsive",
+      "severity": "blocker",
+      "description": "At <=840px the shell hides .top-actions, so theme switch, full/compact switch, workspace drawer and notifications become unreachable; the mobile nav panel exposes only lane list + close, and the only alternate path (Ctrl/Cmd+K) requires a physical keyboard.",
+      "suggestion": "Reuse onCycleTheme/onCycleLayout/onOpenDrawer in the mobile-nav-panel footer, or keep an icon-only .top-actions at <=840px; add a breakpoint contract test asserting the four actions stay reachable on narrow viewports.",
+      "location": "apps/observer/frontend/src/skins/b10.css:519; components/layout/TopStatusBar.tsx:125; components/layout/Sidebar.tsx:160-171"
+    },
+    {
+      "category": "flow-continuity",
+      "severity": "blocker",
+      "description": "An unknown ?view= id calls setView() inside the render body and returns null, producing a 'cannot update a component while rendering' warning, one blank content frame, and no user-visible explanation that the deep link was invalid.",
+      "suggestion": "Normalise the view id in readInitialView()/useEffect (render stays read-only) and render UnknownState stating 'unknown lane, returned to Overview'.",
+      "location": "apps/observer/frontend/src/App.tsx:211-212"
+    },
+    {
+      "category": "components",
+      "severity": "major",
+      "description": "Two CSS authorities compete: the verbatim unlayered B10 skin (533 lines) beats Tailwind @layer, so the shell layer must re-assert breakpoints and use !important (.sidebar-slot display:none!important, .sr-only 8 !important rules). The 840/841px threshold is duplicated across two files, so a change on either side silently desynchronises.",
+      "suggestion": "Collapse visibility/breakpoint rules into one shell source (single breakpoint constant, one display rule), move sr-only back to layered utilities, and long-term tokenize the skin into @layer skins to retire !important (same root cause D-16 recorded for light theme).",
+      "location": "apps/observer/frontend/src/skins/l10b-shell.css:12-34,63-73; skins/b10.css:519"
+    },
+    {
+      "category": "edge-states",
+      "severity": "major",
+      "description": "No loading state exists anywhere: grep for 'loading|加载' returns 0 hits across the six main view files. On the first frame before the snapshot arrives (snap==null && !error) the whole page renders UNKNOWN, so 'fetching' is indistinguishable from 'genuinely no data'. states.tsx ships state components with no caller.",
+      "suggestion": "Render a one-shot skeleton (or LoadingState) for the first frame and separate LOADING / STALE / OFFLINE / UNKNOWN in both the UI and the a11y announcements (App.tsx:178-186 currently announces only the last three).",
+      "location": "apps/observer/frontend/src/views/OverviewView.tsx, CompactHUD.tsx, SoftwareView.tsx, ObserverView.tsx, Views.tsx, WorkView.tsx"
+    },
+    {
+      "category": "accessibility",
+      "severity": "major",
+      "description": "Drawer and CommandPalette declare role=dialog + aria-modal=true but implement no focus containment and no focus restore; only modal.tsx saves previouslyFocused. Keyboard users can Tab into background content that aria-modal claims to hide.",
+      "suggestion": "Extract a shared useFocusTrap(active, ref) (Tab cycle + Esc + restore focus) reused by drawer, command-palette and modal; add an RTL test asserting the Nth Tab wraps to the first focusable element.",
+      "location": "apps/observer/frontend/src/components/ui/drawer.tsx:47-48; components/ui/command-palette.tsx:104-105; components/ui/modal.tsx:39"
+    },
+    {
+      "category": "feedback",
+      "severity": "major",
+      "description": "All toast variants share role=status and auto-dismiss after 1800ms, including error toasts, and hover does not pause the timer, so errors vanish before they can be read or acted on (WCAG 2.2.1 timing).",
+      "suggestion": "Use role=alert and no auto-dismiss (or >=10s with hover/focus pause) for variant==='error'; keep 1800ms for info/success.",
+      "location": "apps/observer/frontend/src/App.tsx:73; components/ui/toast.tsx:48,79"
+    },
+    {
+      "category": "brief-consistency",
+      "severity": "major",
+      "description": "UI_DECISIONS D-02 locks a 72px collapsed rail width, but no collapse implementation exists (grep collaps|72px|fold = 0 hits in Sidebar and both skins; the only match is the unrelated table min-width:720px). Narrow screens instead hide the rail entirely and offer a drawer.",
+      "suggestion": "Either implement the collapsed rail (72px icon state) or mark that D-02 sentence as not-implemented/abandoned, so a later session does not re-open completed work - the same failure class as the stale HANDOFF-UI-L10B line that misled three sessions.",
+      "location": "UI_DECISIONS.md D-02; apps/observer/frontend/src/components/layout/Sidebar.tsx"
+    },
+    {
+      "category": "ia",
+      "severity": "major",
+      "description": "Three lanes have two rendering paths: monitoring/trust/settings are registered in VIEW_REGISTRY with components AND hardcoded in App.tsx branches that win first. The registry is the U04 single source of truth, so 'add a lane by editing only the registry' stops being true.",
+      "suggestion": "Delete the three App branches and resolve every lane through VIEW_REGISTRY.find(...); add a test asserting a lane component can only come from the registry.",
+      "location": "apps/observer/frontend/src/lib/viewRegistry.ts:75,77,81; App.tsx:199-204"
+    },
+    {
+      "category": "ia",
+      "severity": "major",
+      "description": "Lane-count authority has drifted: Sidebar.tsx:54 and the registry describe 22 lanes in 7 groups, while OPEN-TASK-REGISTER P1-01 and the 2026-10-06 audit conclusion still say '16 reachable lanes / 15 lane -> 7 nav'. A session reading the stale figure will misjudge a healthy tree as a regression (it biased this review's own input).",
+      "suggestion": "Derive the lane count from the viewRegistry test instead of hand-writing numbers, and append a dated correction to the register row rather than rewriting the historical text.",
+      "location": "apps/observer/frontend/src/components/layout/Sidebar.tsx:54; taskpacks/current/OPEN-TASK-REGISTER.md P1-01; D:/All projects/Record/01_审计结论.md"
+    },
+    {
+      "category": "visual-hierarchy",
+      "severity": "minor",
+      "description": "The palette's Overview entry hardcodes label '总览' next to the OVERVIEW_ID registry label, giving the same entry two label sources.",
+      "suggestion": "Take the label from the registry/OVERVIEW metadata.",
+      "location": "apps/observer/frontend/src/App.tsx:102"
+    },
+    {
+      "category": "responsive",
+      "severity": "minor",
+      "description": "'320px-safe' for the compact HUD is only a code comment: CompactHUD does not use .kpi-grid (the rule that collapses to one column at <=840px) and no 320-375px viewport test exists.",
+      "suggestion": "Add a 320px viewport contract test so the claim becomes verifiable.",
+      "location": "apps/observer/frontend/src/App.tsx:260; views/CompactHUD.tsx"
+    },
+    {
+      "category": "copy",
+      "severity": "minor",
+      "description": "State vocabulary mixes languages inside one panel: '数据源未接入（UNKNOWN）' beside 'Read-only', 'Local State', 'Rendering', 'Motion Effects'.",
+      "suggestion": "Fix a glossary (投影/数据源/只读) and route tags through it.",
+      "location": "apps/observer/frontend/src/App.tsx:236-253"
+    }
+  ],
+  "summary": {
+    "blocker": 2,
+    "major": 7,
+    "minor": 3,
+    "pass": 0
+  },
+  "not_covered": [
+    "real pixel/viewport render verification (the MSVC app.exe WebView2 E2E is running under a separate P0 task)",
+    "full WCAG 2.1 AA audit (accessibility findings here are a sample; use the Access skill)",
+    "Token Monitor convergence with Observer"
+  ],
+  "output_location_note": "Written under reports/ (the project's authorized evidence surface per AGENTS.md) instead of spark-output/, because WORK-LAB governs file placement and has no spark chain consumers."
+}

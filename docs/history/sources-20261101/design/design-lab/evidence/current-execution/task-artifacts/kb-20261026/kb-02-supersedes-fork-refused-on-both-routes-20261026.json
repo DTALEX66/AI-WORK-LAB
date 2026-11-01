@@ -1,0 +1,28 @@
+{
+  "id": "kb-02-supersedes-fork-refused-on-both-routes-20261026",
+  "task_id": "DL-KB-02",
+  "axis": "unit",
+  "audit_finding": "owner audit 2026-10-26, finding 2 of 7 (P2): a knowledge entry can acquire a second successor through the import route while create refuses it, and the detail read shows one of the two",
+  "reproduced_before_fix": "Ran 5 tests in 0.579s on the pre-fix commit 71aff01b (5 failures, the two-writer race returning [\"wrote\",\"wrote\"])",
+  "changed": [
+    "src/design_lab/knowledge_library.py: one shared _supersedes_guard used by create() and import_entry(), asked inside BEGIN IMMEDIATE so the read-then-write check cannot be raced; the lost racer gets the same 409 instead of a bare IntegrityError; the read-side scan is ordered so a legacy fork reports the same successor every read",
+    "design-lab/schemas/state/design-lab-state-knowledge-library-v1.sql: knowledge_entry_one_successor trigger refuses a second successor in the database, fires only on new rows so a library that already holds a fork stays openable",
+    "design-lab/tests/test_knowledge_library.py (new class SupersessionForkIsRefused): both route orders, refusal names the existing successor, restart read-back of one row and one revision set, a raw INSERT past the application layer, and two concurrent writers"
+  ],
+  "not_claimed": "a fork that already exists in somebody's library is not repaired or deleted -- it is made deterministic to read, and the schema refuses only new ones; no task state changed",
+  "measured": {
+    "node": [
+      "WORKBENCH SMOKE: all checks passed",
+      "APPSHELL REGRESSION: all checks passed"
+    ],
+    "python": [
+      "test_knowledge_library.py: Ran 26 tests in 5.483s OK",
+      "test_report_path_display.py: Ran 6 tests in 0.009s OK",
+      "test_local_import_shadowing.py: Ran 4 tests in 2.344s OK"
+    ],
+    "head": "022c5a9bd989bc4f1b57af7936167cb8656bf009"
+  },
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T12:49:00Z",
+  "subject_sha": "022c5a9bd989bc4f1b57af7936167cb8656bf009"
+}

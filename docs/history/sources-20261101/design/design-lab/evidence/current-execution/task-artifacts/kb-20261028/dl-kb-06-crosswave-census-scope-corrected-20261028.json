@@ -1,0 +1,84 @@
+{
+  "id": "dl-kb-06-crosswave-census-scope-corrected-20261028",
+  "task_id": "DL-KB-06",
+  "axis": "verification",
+  "record_kind": "correction",
+  "outcome": "PASS",
+  "outcome_wording": "PASS = the correction is measured and shipped; what it corrects is the census published earlier the same evening in dl-kb-06-record-archive-crosswave-pointer-layer-20261028, whose counts described a six-wave population.",
+  "observed_at": "2026-10-28T22:20:44Z",
+  "subject_sha": "622c157cdcce7b9ebe4ac30b8cf63e85b09af9c1",
+  "supersedes_receipt": "dl-kb-06-record-archive-crosswave-pointer-layer-20261028",
+  "defect": "The register that exists to convict a census which stops seeing a subtree had itself scoped its population by a hand-written tuple of six manifests, all under docs/history. Two tracked waves live in docs/taskpacks and were never opened: docs/taskpacks/20261019-direction/SOURCE-MANIFEST.json and docs/taskpacks/20261023-ui-kb/SOURCE-MANIFEST.json. The script docstring even asserted that a test convicts an undeclared manifest -- no such guard existed.",
+  "how_found": "A routine audit question after the CI close-out: is \"six manifests\" the whole family or the family I remembered? Enumerating the tracked population answered it in one command: eight ARCHIVE-MANIFEST/SOURCE-MANIFEST files are tracked, not six. The probe used for that check was itself initially wrong (it read only a top-level `members` key and reported 152 digests against the register's 340), which is the same defect class one level down and is why the shipped guard enumerates from git rather than from any hand-kept list.",
+  "counts_before_at_f9689fa7": {
+    "manifests": 6,
+    "declaredMemberRows": 391,
+    "distinctDigests": 340,
+    "crossWaveDigests": 48,
+    "crossWaveWithBytesInClone": 34,
+    "crossWaveWithoutBytesInClone": 14,
+    "trackedFilesScanned": 643
+  },
+  "counts_after_at_622c157c": {
+    "manifests": 8,
+    "declaredMemberRows": 566,
+    "distinctDigests": 510,
+    "crossWaveDigests": 49,
+    "crossWaveWithBytesInClone": 35,
+    "crossWaveWithoutBytesInClone": 14,
+    "trackedFilesScanned": 1625
+  },
+  "delta": {
+    "manifests": 2,
+    "declaredMemberRows": 175,
+    "distinctDigests": 170,
+    "crossWaveDigests": 1,
+    "crossWaveWithBytesInClone": 1,
+    "crossWaveWithoutBytesInClone": 0,
+    "trackedFilesScanned": 982
+  },
+  "newly_found_cross_wave_claim": {
+    "sha256": "614b4a7c15bfb6497823aa5d2f818a651b96b84d5bfbe2394ecee55143e893da",
+    "bytes": 59898,
+    "canonicalPaths": [
+      "docs/taskpacks/20261023-ui-kb/source/DESIGN-LAB_今日完整需求与可行性方案_20261023.html"
+    ],
+    "claimedBy": [
+      {
+        "manifest": "docs/history/record-archive-2026-10-23/ARCHIVE-MANIFEST.json",
+        "pointsAt": "docs/taskpacks/20261023-ui-kb/source/DESIGN-LAB_今日完整需求与可行性方案_20261023.html",
+        "insidePackage": null
+      },
+      {
+        "manifest": "docs/taskpacks/20261023-ui-kb/SOURCE-MANIFEST.json",
+        "pointsAt": "docs/taskpacks/20261023-ui-kb/source/DESIGN-LAB_今日完整需求与可行性方案_20261023.html",
+        "insidePackage": "DESIGN-LAB_完整方案_20261023/DESIGN-LAB_今日完整需求与可行性方案_20261023.html"
+      }
+    ],
+    "why_it_matters": "This is the digest-level evidence for the sentence in AGENTS.md that the standalone HTML and the same-named member inside the ZIP are byte-identical and only one copy is kept. Before this cut the claim lived only as prose; a reader could not check it without hashing by hand, and the census that could have checked it did not open the file."
+  },
+  "no_claim_lost": true,
+  "fix": "discover_manifests() enumerates the tracked population with `git ls-files -z -- docs` and manifest_enumeration_problems() refuses in both directions (MANIFEST_NOT_CENSUSED / MANIFEST_DECLARED_BUT_ABSENT) before the drift comparison; members_of() learned the third shape (top-level `members`); PATH_KEYS gained landingPath and name so a wave that points at its tracked copy under a different key still registers a pointer; the floors moved to the new readings (1200/450/40 against a measured 1625/510/49) with the superseded numbers named in the comment.",
+  "tests": "13 -> 16 in design-lab/tests/test_record_archive_crosswave.py: three-shape reader with a landingPath assertion, an undeclared-wave plant, a stale-declaration plant, and a positive control asserting the declared tuple equals the git enumeration and that docs/taskpacks appears among the roots.",
+  "frozen_bytes_untouched_proof": "git show --name-only 622c157c -> 4 paths, 0 under docs/history/",
+  "local_readings": "Ran 16 tests OK; CROSSWAVE=OK manifests=8 distinct=510 crossWave=49 inClone=35 outsideClone=14 tracked=1625; STRUCTURE_CONTRACTS=PASS tests=31; PATH_REF_GATE=PASS checks=10; DOCUMENTED_COUNTS=PASS claims=21; RECORD_REGISTER_GATE=PASS checks=5; VERIFY_DESIGN_LAB=OK total=77 failed=0.",
+  "carried_blobs_at_subject": {
+    "design-lab/scripts/verify_record_archive_crosswave.py": {
+      "sha256": "80bcd64e841d80f5542ddaa24b51e9bdc085df22691133eb6fadf6b0108ae7a5",
+      "bytes": 17921
+    },
+    "design-lab/config/record-archive-crosswave.json": {
+      "sha256": "7be3aa6b1bd9539c97be403c177eae5e66b16e8c85a1785e79ab1938c1cdf0e2",
+      "bytes": 56829
+    },
+    "design-lab/tests/test_record_archive_crosswave.py": {
+      "sha256": "a440462417b4f6f007eea062e40eebc12a9dbfc1f1b6d23d3b924dac600960f5",
+      "bytes": 11162
+    },
+    "docs/RECORD-ARCHIVE-INDEX.md": {
+      "sha256": "01dbaa71a413dc47032a660b607308e36e877a9d33a7157b486f60a66a3e9dbb",
+      "bytes": 84012
+    }
+  },
+  "ci_read": "The PR run carrying this cut is read back separately once it completes; the run at the previous head cannot speak for it because the register and the verifier changed."
+}

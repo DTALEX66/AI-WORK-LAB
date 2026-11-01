@@ -1,0 +1,67 @@
+{
+  "id": "dl-kb-06-record-archive-crosswave-pointer-layer-20261028",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-28T20:32:17Z",
+  "subject_sha": "32ac0bd5b6fed722a47a9779ec2ade1aa0a20455",
+  "owner_instruction": "owner 目标 ②：LAYER 2 仓库内历史归档合并，冻结原件原字节、只换指针与取代关系，并连带重绑登记件/权威链/现行投影。",
+  "premise_split_made_before_writing_code": "这一条有两个面，只有一个是可执行的。(a) docs/audits 的逐字节去重：现数 842 个受跟踪文件 / 8,141,995 字节里，重复只有 179 份 / 545,455 字节，且这 179 份没有任何一份被仓内文本点名，73/77 组还是同一个冻结导入包内部的形状——所以\"合并\"在那里既无指针可换，也只能靠删原件省 0.52 MiB，那是 owner 的裁定不是工程缺口，已在 432cda58 记为待裁。(b) docs/history 六波归档清单之间的指针与取代关系：这一半不需要动任何原件就能写清楚，本次交付的是 (b)。",
+  "delivered": {
+    "script": "design-lab/scripts/verify_record_archive_crosswave.py：读 6 份归档清单的成员行，按 sha256 分组，找出被两个及以上波次同时声称的材料，逐条记录每一波自己指向的位置和 clone 内的规范副本。摘要一律取自 git cat-file blob HEAD:<path>，不取工作树字节。",
+    "register": "design-lab/config/record-archive-crosswave.json：登记件本体，--check 复算 / --write 重写，人口地板先于比对生效（地板失守时 --write 直接拒绝，不写出半个登记件）。",
+    "tests": "design-lab/tests/test_record_archive_crosswave.py：13 条。含把登记件里每一条 canonicalPaths 重新哈希回它被记的那个摘要——这是登记件唯一真正的价值：摘要必须指向字节。",
+    "index": "docs/RECORD-ARCHIVE-INDEX.md：新增一节，写在生成节之前。"
+  },
+  "counts_read_from_the_register": {
+    "manifests": 6,
+    "declaredMemberRows": 391,
+    "distinctDigests": 340,
+    "crossWaveDigests": 48,
+    "crossWaveWithBytesInClone": 34,
+    "crossWaveWithoutBytesInClone": 14,
+    "trackedFilesScanned": 643
+  },
+  "wave_declared_members": {
+    "record-archive-2026-10-09": 111,
+    "record-archive-2026-10-23": 2,
+    "record-archive-2026-10-27-stitch-boards": 2,
+    "record-archive-2026-10-28-design-automation": 9,
+    "taskpacks": 97
+  },
+  "frozen_bytes_untouched_proof": "git show --name-only 32ac0bd5 共 4 个路径，落在 docs/history/ 下的 0 个；该前缀由 design-lab/config/task-document-states.json 的 prefixRule 逐字节冻结（依据 docs/current/HISTORY-FREEZE-RULES.md），本提交一个冻结原件都没打开。",
+  "falsification": {
+    "how": "静态证伪 = 同模块内的 6 个植入方向；每条都要求检查真的变红，而不是把断言反过来写。",
+    "planted": [
+      "丢掉登记件 -> 读者必须失败而不是空集通过 (test_a_missing_register_is_a_failure_not_a_pass)",
+      "只认一种清单形状 -> 另一形状的成员被静默漏掉必须被 convictions (test_a_reader_that_only_knows_one_shape_is_convicted)",
+      "成员行不带摘要 -> 不能算作一条声称 (test_a_member_row_without_a_digest_is_not_counted_as_a_claim)",
+      "登记件与输入不再相符 -> 必须点名是哪个字段 (test_a_register_that_no_longer_matches_its_inputs_reports_the_field)",
+      "34+14 != 48 的分裂 -> 加法不闭合必须被拒 (test_a_split_that_does_not_add_up_is_convicted)",
+      "把包记成 owner 盘上的绝对路径 -> 必须 convictions (test_the_package_is_recorded_by_name_not_by_the_owner_absolute_path)",
+      "普查\"看不见东西\"时人口地板必须开火 (test_the_population_floors_fire_on_a_census_that_stopped_seeing)",
+      "地板正在开火时 --write 必须拒绝落盘 (test_write_refuses_while_a_population_guard_is_firing)"
+    ],
+    "local_readings": "Ran 13 tests OK；CROSSWAVE=OK 与上面的 counts 同一行读数。"
+  },
+  "what_this_does_not_claim": "这不是\"历史归档已合并\"：文件一个都没搬、没改名、没删。它是一份可复算的关系登记，把\"哪几波声称同一批材料、规范副本在哪、哪一半不在 clone 里\"从散布在六份清单里的隐含事实变成一处能被哈希复核的读数。14 个不在 clone 里的摘要按 AGENTS.md 属于大对象留存，登记件写的是\"迁移时必须按摘要补齐\"，不是\"不存在\"也不是\"通过\"。不改变 currentExecution 旧 34 项的 FROZEN_DEFERRED，不构成 release、E3、E4 或真宿主证据；本次没有启动任何外部宿主，没有触碰 E 盘，手机端仍是排除项。",
+  "carried_blobs_at_subject": {
+    "design-lab/scripts/verify_record_archive_crosswave.py": {
+      "sha256": "2205b9e85975657630e8ee19b9f4d08c8df5755897a56b0cb51be59d382e90a6",
+      "bytes": 13989
+    },
+    "design-lab/config/record-archive-crosswave.json": {
+      "sha256": "a524977f9ac1b8c5d42739fde3168da5e9c275491589d2333adab843cc555d5c",
+      "bytes": 55221
+    },
+    "design-lab/tests/test_record_archive_crosswave.py": {
+      "sha256": "c333a38bdce8919d1b467efe1b54ea0f4e0496dc0f3c0e81b6dc4324239566ea",
+      "bytes": 8537
+    },
+    "docs/RECORD-ARCHIVE-INDEX.md": {
+      "sha256": "6ad486dfc6e0bf2c6dcbe92b9234a8ee4053d6acc7418b2e1141b69b04f002c7",
+      "bytes": 82717
+    }
+  },
+  "ci_read": "承载本提交的 PR run 逐字读数写在另一份回执里：dl-final-t04-pr-run-read-at-32ac0bd5-20261028.json。"
+}

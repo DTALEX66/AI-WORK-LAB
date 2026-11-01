@@ -1,0 +1,65 @@
+# WORK-LAB Global Agent Policy — Hermes native extension (U17.6)
+#
+# Hermes-specific knobs that are ALLOWED here, OUT of the neutral
+# config/global-agent-policy.yaml core. The HermesPolicyRenderer reads the
+# neutral core + this extension and renders the repo-managed Hermes SOUL
+# (config/SOUL.md), which the EXISTING sync_hermes_workflow_assets.py three-way
+# baseline deploys into the live Hermes home.
+#
+# Native enforcement model for Hermes:
+# - The protected-drive guard (services/policy/e_drive_guard.py, covering
+#   E:\ and F:\) + terminal guard (bin/hermes-project-terminal-guard.py,
+#   wired as a pre_tool_call hook) are NATIVE_ENFORCED / WORKFLOW_GUARD machine
+#   blocks: they hard-refuse an E:\ / F:\ or project-escape path, not just advise.
+# - config/SOUL.md is NATIVE_GUIDANCE: Hermes reads it as its persona/behavior
+#   source; it does not machine-enforce its prose.
+# - On-demand skills (Git/Windows/Testing/Debugging/Evidence/Deployment) carry
+#   the long-form technique, not the resident SOUL.
+# - model/provider/reasoning/auth are OBSERVE_ONLY: the Hermes extension never
+#   names a model id, provider, endpoint, or key, and the syncer's managed
+#   config contract explicitly preserves model.provider/default/api_key.
+
+schema_version: workflow/policy-extension/hermes/v1
+adapter: hermes
+renderer: integrations/executors/hermes/hermes_policy_renderer.py
+
+# Native targets the projection touches. config/SOUL.md is the repo-managed
+# source; skills/ and bin/ are the on-demand + guard surfaces. All are already
+# owned by the existing three-way managed_asset_baseline.
+native_targets:
+  - config/SOUL.md
+  - skills/
+  - bin/
+
+# Per-capability native classification for Hermes (loss report seed).
+capability_states:
+  communication: NATIVE_GUIDANCE
+  execution: NATIVE_GUIDANCE
+  authority_discovery: NATIVE_GUIDANCE
+  authorization: NATIVE_GUIDANCE
+  task_grant: WORKFLOW_GUARD
+  workspace_boundary: WORKFLOW_GUARD
+  protected_storage: NATIVE_ENFORCED   # terminal guard hook hard-refuses E:\\ / F:\\
+  credentials: WORKFLOW_GUARD          # terminal guard + e_drive_guard
+  session_privacy: OBSERVE_ONLY
+  network: WORKFLOW_GUARD
+  git_safety: WORKFLOW_GUARD
+  dependency_policy: NATIVE_GUIDANCE
+  evidence_semantics: WORKFLOW_GUARD
+  verification: NATIVE_GUIDANCE
+  parallelism: WORKFLOW_GUARD
+  skills: NATIVE_GUIDANCE
+  model_neutrality: OBSERVE_ONLY       # user model/provider/auth never managed
+  tool_truth: NATIVE_GUIDANCE
+  historical_record_policy: NATIVE_GUIDANCE
+
+# Native persona and supplements only; general prose comes from the mother snapshot.
+soul_header: |
+  You are Hermes Agent, built by Nous Research. Be direct: match the length of your reply to the weight of the ask — a one-line question gets a one-line answer, and finished work gets a short report of what changed, what's verified, and what's left, never a replay of the process. No filler ("Great question," "I'd be happy to"), no restating the request back, no re-summarizing what you already said, no narrating tool calls the user can see. Plain claims over adjectives; when unsure, say so plainly. Agree because it's right, not because the user said it. Depth is earned — give it when the user asks for detail, teaches, or the stakes demand it, not by default.
+
+soul_sections:
+  hermes_supplement:
+    - "既有个性说明保留；母版段由用户维护，不自行改写。"
+    - "项目事实、当前状态和工作流以当前项目的有效合同为准；项目数据目录约束只在对应项目范围内生效。"
+    - "凭据、私人 session 与 memory 不因本机可见而获准读取；已有模型、provider、reasoning、auth 与未知配置字段保持用户所有。"
+    - "工作流模块仅按任务需要读取 C:\\Users\\ALEX\\AgentRules\\WORKFLOW_MODULES.md，不全部常驻加载。"

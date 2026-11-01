@@ -1,0 +1,58 @@
+{
+  "id": "kb-06-enhanced-motion-layer-opt-in-20261025",
+  "task_id": "DL-KB-06",
+  "axis": "implementation",
+  "outcome": "PASS",
+  "observed_at": "2026-10-25T15:42:00Z",
+  "owner_directive_verbatim": "界面去找动效交互 STITCH 更多是静态页面 一比一复刻完成后 找牛逼的组件库 加入更多动画动效粒子等UI组件库 (2026-10-25)",
+  "shipped": {
+    "source": "apps/workbench/motion.ts (new), wired from apps/workbench/main.ts, inlined by Vite into the single build/main.js, so no new served path and no CSP change",
+    "primitives": [
+      "magnetic <=3px",
+      "tilt <=4deg",
+      "slideReveal transform-only",
+      "countUp landing on the value the page already published"
+    ],
+    "wiring": "one delegated pointermove + one pointerleave on the document; per-element listeners would detach when the shell re-renders a route view",
+    "default": "static; activated only by ?motion=enhanced, and prefers-reduced-motion wins over the URL"
+  },
+  "verified_rendered": {
+    "static_face": {
+      "ambient_animationName": "none",
+      "ambient_iterationCount": "1",
+      "html_data_motion": null,
+      "button_transitionProperty": "transform",
+      "button_transitionDuration": "0.18s"
+    },
+    "enhanced_face": {
+      "ambient_animationName": "floatGlow",
+      "ambient_iterationCount": "infinite",
+      "html_data_motion": "enhanced"
+    },
+    "pointer_probe": {
+      "host": "设计辅助 nav control",
+      "rest_transform": "none",
+      "static_hover_transform": "matrix(1,0,0,1,2.99,0) = the pre-existing CSS translateX(3px) hover rule",
+      "enhanced_hover_transform": "matrix(1,0,0,1,0.96,0.82) = the delegated magnetic writer",
+      "ink_on_hover": "rgb(245,247,252) unchanged in both faces",
+      "control_hosts_on_assistant": 34,
+      "tilt_hosts_on_assistant": 10
+    },
+    "screenshots": ".project-local/task-runtime/motion-probe/shots/{static,enhanced}.png (gitignored evidence root)"
+  },
+  "bytes": {
+    "bundle_before": 610364,
+    "bundle_after": 615430,
+    "delta_raw": 5066,
+    "gzip_level9_before": 160246,
+    "gzip_level9_after": 161916,
+    "delta_gzip_level9": 1670
+  },
+  "research_received": {
+    "library_survey": "GSAP 3.13 27.2KB gzip but GreenSock License (not MIT, needs a rights record); canvas-confetti ISC 4.3KB; @tsparticles/slim MIT 30.5KB; motion 12.x MIT 42.1KB full; pixi.js 226KB and lottie-web 76.8KB rejected on size/maintenance; react-bits and magicui are React+Tailwind so their structure is copied, not installed.",
+    "decision_taken": "no dependency added in this commit: the owner already ruled 「吸收融入不了的 可以参考它的结构架构源代码等进行复制啊」, and adding 30KB+ gzip to a bundle that is over the pack number on its own axis is a content cut somewhere else. Particles are NOT shipped by this row."
+  },
+  "open_risk_recorded": "the enhanced ambient float moves a blurred glow behind translucent card fills (color-mix(surface2 74%)), which is the same \"a frame painted by no rule\" family as section 5.55. It is opt-in so the default face is clean, but no contrast measurement of the ENHANCED face has been taken; that is owed before this can be called E2-verified motion.",
+  "gate": "test_workbench_contrast_gate.py::EnhancedMotionLayerStaysComposited (6 tests incl. a planted colour write and a planted live loop); apps/workbench tsc --noEmit clean; node unit/appshell/shape-notice suites green on the rebuilt bundle.",
+  "not_claimed": "no human visual jury, no model inference, no host E3, no release; particle layer unselected and unimplemented."
+}

@@ -1,0 +1,15 @@
+G-5/B5 (WIP, not pushed): evidence card append-only 约定 — schema 层
+
+对应 CROSSWALK B5（R13：Evidence 被后续覆盖，"同一 JSON 被重新写成 PASS"）。
+本 commit 仅保留 schema 层改动（evidence_id + supersedes 两个 optional 属性），
+verifier / genesis 盖章 / 测试未做——按用户指示 G-5 停止处理，工作保留在
+feat/evidence-append-only-b5 分支，不推 PR。
+
+- design-lab/schemas/visual-quality/evidence-card.schema.json：
+  * evidence_id（optional，sha256 格式）：卡片实质字段的 content-bound 指纹，
+    就地改写 → 重算不符 → gate 必须 FAIL；
+  * supersedes（optional）：append-only 修订指针，指向同 card_id 前一条记录
+    的 evidence_id；同 card_id 记录形成单一线性链（一 genesis、无 fork、
+    无环、无悬挂）。
+  两个字段均为 optional，不改 required 集合、不 bump schema_version（v1 封闭
+  schema 的 additive 小改）。

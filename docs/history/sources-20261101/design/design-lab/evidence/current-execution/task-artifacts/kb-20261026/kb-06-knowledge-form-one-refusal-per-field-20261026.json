@@ -1,0 +1,41 @@
+{
+  "id": "kb-06-knowledge-form-one-refusal-per-field-20261026",
+  "task_id": "DL-KB-06",
+  "axis": "browser",
+  "audit_finding": "owner audit 2026-10-26, finding 5 of 7 (P2): the knowledge form merges several field problems into one message, and the green tests only constrain the named subset while forcing unnamed messages to persist",
+  "reproduced_before_fix": "the old sentence 「标题、一句话用途和正文都必须填写」 named three boxes in one line and sat at the foot of the panel; the two source boxes of the import route were merged the same way",
+  "changed": [
+    "apps/workbench/shell.ts: fieldRefusals() returns one problem per field, painted as a p.error inside that field's own .field-row (the form container .two-col is a two-column grid, so \"after the row\" would land in the next column), linked by data-for and aria-describedby, with focus moved to the first offender and one summary line in the status region so only one live region announces",
+    "design-lab/tests/e2e/audit_workbench_contrast.mjs: walkKnowledgeFieldRefusals() grades the family on the painted document -- referent exists, inside its own row, repeats that field's label word, within 24px -- and the population floor went 3 -> 6 so losing the knowledge family can no longer read as \"enough cases\"",
+    "design-lab/tests/test_workbench_contrast_gate.py: the errors > errorNamed clause was REMOVED because it demanded that compound unnamed messages keep existing; the guard is now that the named subset cannot shrink, plus plants that convict insideRow=False and labelNamed=False",
+    "apps/workbench/tests/appshell.mjs: the shim gained parentNode/nextSibling/insertBefore/remove/closest/getAttribute and an id accessor, and focus() now records its target -- without them a per-field refusal was only provable as \"a node appeared\""
+  ],
+  "measured": {
+    "contrast_errors": 28,
+    "contrast_named": 24,
+    "contrast_named_adjacent": 24,
+    "knowledge_cases": 4,
+    "assistant_cases": 3,
+    "knowledge_dy": [
+      18,
+      18,
+      18,
+      18
+    ],
+    "adjacency_bad": 0,
+    "node": [
+      "WORKBENCH SMOKE: all checks passed",
+      "APPSHELL REGRESSION: all checks passed"
+    ],
+    "python": [
+      "test_knowledge_library.py: Ran 26 tests in 5.483s OK",
+      "test_report_path_display.py: Ran 6 tests in 0.009s OK",
+      "test_local_import_shadowing.py: Ran 4 tests in 2.344s OK"
+    ],
+    "head": "022c5a9bd989bc4f1b57af7936167cb8656bf009"
+  },
+  "not_claimed": "no human judgement about whether the message reads well; the wording is deliberately not pinned by any test, so a later copy edit cannot fail the gate for the wrong reason",
+  "outcome": "PASS",
+  "observed_at": "2026-10-26T12:49:00Z",
+  "subject_sha": "022c5a9bd989bc4f1b57af7936167cb8656bf009"
+}

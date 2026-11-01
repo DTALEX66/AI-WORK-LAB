@@ -1,0 +1,897 @@
+schema_version = 9
+default_model = "chat-v1"
+default_temperature = 0.7
+temperature_unsupported_models = [
+    "o1*",
+    "o3*",
+    "o4*",
+    "gpt-5*",
+    "kimi-k2*",
+    "moonshot*",
+    "moonshotai/*",
+]
+agent_activity_level = 2
+model_routes = []
+embedding_routes = []
+capability_providers = []
+memory_sources = []
+voice_providers = []
+onboarding_completed = true
+chat_onboarding_completed = false
+composio_source_caps_migration_version = 1
+
+[dashboard.event_stream]
+enabled = true
+max_entries = 200
+new_entries = "top"
+
+[dashboard.model_health]
+enabled = true
+hallucination_threshold = 0.1
+min_tasks_for_rating = 10
+evaluation_window_tasks = 50
+
+[dashboard.diagram_viewer]
+enabled = true
+source_url = "http://localhost:8787/workspace/diagrams/latest.png"
+refresh_interval_seconds = 10
+
+[observability]
+analytics_enabled = true
+share_usage_data = true
+
+[observability.agent_tracing]
+enabled = false
+backend = "otel"
+capture_content = true
+
+[autonomy]
+level = "supervised"
+workspace_only = true
+allowed_commands = [
+    "git",
+    "npm",
+    "pnpm",
+    "yarn",
+    "cargo",
+    "make",
+    "cmake",
+    "ls",
+    "cat",
+    "grep",
+    "find",
+    "echo",
+    "pwd",
+    "wc",
+    "head",
+    "tail",
+    "date",
+    "sort",
+    "uniq",
+    "diff",
+    "which",
+    "uname",
+    "basename",
+    "dirname",
+    "tr",
+    "cut",
+    "realpath",
+    "readlink",
+    "stat",
+    "file",
+    "mkdir",
+    "touch",
+    "cp",
+    "mv",
+    "ln",
+    "dir",
+    "type",
+    "where",
+    "findstr",
+    "more",
+]
+forbidden_paths = [
+    "/etc",
+    "/root",
+    "/home",
+    "/usr",
+    "/bin",
+    "/sbin",
+    "/lib",
+    "/opt",
+    "/boot",
+    "/dev",
+    "/proc",
+    "/sys",
+    "/var",
+    "/tmp",
+    "~/.ssh",
+    "~/.gnupg",
+    "~/.aws",
+    "~/.config",
+]
+max_actions_per_hour = 4294967295
+max_cost_per_day_cents = 500
+require_approval_for_medium_risk = true
+block_high_risk_commands = true
+auto_approve = [
+    "file_read",
+    "memory_search",
+    "memory_list",
+    "get_time",
+    "list_dir",
+    "glob",
+    "grep",
+    "shell",
+]
+auto_approve_all = false
+trusted_roots = []
+allow_tool_install = false
+require_task_plan_approval = true
+
+[privacy]
+mode = "standard"
+
+[sandbox]
+backend = "auto"
+firejail_args = []
+
+[runtime]
+kind = "native"
+
+[runtime.docker]
+image = "alpine:3.20"
+network = "none"
+memory_limit_mb = 512
+cpu_limit = 1.0
+read_only_rootfs = true
+mount_workspace = true
+allowed_workspace_roots = []
+
+[shell]
+hide_window = false
+
+[reliability]
+provider_retries = 2
+provider_backoff_ms = 500
+fallback_providers = []
+channel_initial_backoff_secs = 2
+channel_max_backoff_secs = 60
+scheduler_poll_secs = 15
+scheduler_retries = 2
+
+[reliability.model_fallbacks]
+
+[scheduler]
+enabled = true
+max_tasks = 64
+max_concurrent = 4
+
+[scheduler_gate]
+mode = "auto"
+battery_floor = 0.8
+cpu_busy_threshold_pct = 70.0
+throttled_backoff_ms = 30000
+paused_poll_ms = 60000
+cpu_severe_pct = 95.0
+require_ac_power = false
+
+[orchestration]
+enabled = true
+
+[orchestration.medulla.prompt_overrides]
+
+[orchestration.medulla.config]
+
+[orchestration.medulla.limits]
+
+[agent]
+compact_context = false
+max_tool_iterations = 10
+max_history_messages = 50
+parallel_tools = false
+max_parallel_tools = 4
+tool_dispatcher = "auto"
+max_memory_context_chars = 2000
+tool_result_budget_bytes = 16384
+agent_timeout_secs = 120
+session_dual_write = true
+session_shadow_reads = true
+agents_md_enabled = true
+
+[agent.channel_permissions]
+
+[orchestrator]
+
+[teams]
+
+[context]
+enabled = true
+microcompact_enabled = true
+autocompact_enabled = true
+microcompact_keep_recent = 5
+tool_result_budget_bytes = 16384
+summarizer_payload_threshold_tokens = 4000
+summarizer_max_payload_tokens = 2000000
+prefer_markdown_tool_output = true
+compaction_enabled = true
+super_context_enabled = false
+
+[context.session_memory]
+min_token_growth = 4000
+min_tool_calls = 8
+min_turns_between = 4
+
+[heartbeat]
+enabled = false
+interval_minutes = 5
+inference_enabled = false
+context_budget_tokens = 40000
+notify_meetings = false
+notify_reminders = false
+notify_relevant_events = false
+external_delivery_enabled = false
+meeting_lookahead_minutes = 120
+max_calendar_connections_per_tick = 2
+reminder_lookahead_minutes = 30
+subconscious_mode = "off"
+triggers_enabled = false
+max_promotions_per_hour = 30
+goal_continuation_enabled = false
+goal_idle_minutes = 10
+
+[subconscious]
+engine = "local"
+
+[subconscious.medulla_local]
+serve_entry = ""
+request_deadline_secs = 300
+
+[cron]
+enabled = true
+max_run_history = 50
+
+[task_sources]
+enabled = true
+default_interval_secs = 1800
+max_tasks_per_fetch = 25
+auto_proactive = true
+
+[channels_config]
+cli = true
+message_timeout_secs = 300
+
+[memory]
+backend = "sqlite"
+auto_save = true
+embedding_provider = "cloud"
+embedding_model = "embedding-v1"
+embedding_dimensions = 1024
+embedding_rate_limit_per_min = 60
+min_relevance_score = 0.4
+
+[memory_tree]
+embedding_timeout_ms = 10000
+embedding_strict = false
+llm_extractor_endpoint = "http://localhost:11434"
+llm_extractor_model = "gemma3:4b"
+llm_extractor_timeout_ms = 15000
+llm_summariser_endpoint = "http://localhost:11434"
+llm_summariser_model = "gemma3:4b"
+llm_summariser_timeout_ms = 120000
+llm_backend = "cloud"
+cloud_llm_model = "summarization-v1"
+cloud_summarization_opt_in = false
+spacy_enabled = true
+
+[storage.provider.config]
+provider = ""
+
+[composio]
+enabled = false
+entity_id = "default"
+triage_disabled = false
+triage_disabled_toolkits = []
+mode = "backend"
+
+[secrets]
+encrypt = true
+
+[browser]
+enabled = false
+allowed_domains = []
+backend = "auto"
+native_headless = true
+native_webdriver_url = "http://127.0.0.1:9515"
+
+[browser.computer_use]
+endpoint = "http://127.0.0.1:8787/v1/actions"
+timeout_ms = 15000
+allow_remote_endpoint = false
+window_allowlist = []
+
+[http_request]
+allowed_domains = ["*"]
+max_response_size = 1000000
+timeout_secs = 30
+
+[curl]
+dest_subdir = "downloads"
+max_download_bytes = 52428800
+timeout_secs = 120
+
+[gitbooks]
+enabled = true
+endpoint = "https://tinyhumans.gitbook.io/openhuman/~gitbook/mcp"
+timeout_secs = 30
+
+[mcp_client]
+enabled = true
+servers = []
+
+[mcp_client.client_identity]
+name = "openhuman-core"
+title = "OpenHuman Core MCP Client"
+version = "0.63.1"
+
+[mcp_client.registry_auth]
+
+[multimodal]
+max_images = 4
+max_image_size_mb = 8
+allow_remote_fetch = false
+
+[multimodal_files]
+max_files = 4
+max_file_size_mb = 16
+max_extracted_text_chars = 50000
+allow_remote_fetch = false
+allowed_mime_types = [
+    "application/pdf",
+    "text/plain",
+    "text/csv",
+    "text/markdown",
+    "application/zip",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/octet-stream",
+]
+
+[seltz]
+enabled = false
+max_results = 10
+timeout_secs = 15
+
+[searxng]
+enabled = false
+base_url = "http://localhost:8080"
+max_results = 10
+default_language = "en"
+timeout_secs = 10
+
+[web_search]
+max_results = 5
+timeout_secs = 15
+
+[search]
+engine = "managed"
+max_results = 5
+timeout_secs = 15
+
+[search.parallel]
+
+[search.brave]
+
+[search.querit]
+
+[search.exa]
+
+[proxy]
+enabled = false
+no_proxy = []
+scope = "open_human"
+services = []
+
+[cost]
+enabled = true
+daily_limit_usd = 10.0
+monthly_limit_usd = 100.0
+warn_at_percent = 80
+
+[cost.prices.chat-v1]
+input = 0.6
+output = 2.5
+
+[cost.prices.reasoning-quick-v1]
+input = 0.6
+output = 2.5
+
+[cost.prices.reasoning-v1]
+input = 0.84
+output = 2.52
+
+[cost.prices.agentic-v1]
+input = 0.45
+output = 1.8
+
+[cost.prices.burst-v1]
+input = 0.208
+output = 0.208
+
+[cost.prices.coding-v1]
+input = 0.9
+output = 3.3
+
+[cost.dashboard]
+enabled = true
+currency = "USD"
+warn_threshold = 0.8
+alert_threshold = 0.95
+
+[agent_registry]
+entries = []
+
+[agents]
+
+[local_ai]
+runtime_enabled = false
+provider = "ollama"
+model_id = "gemma3:1b-it-qat"
+chat_model_id = "gemma3:1b-it-qat"
+vision_model_id = ""
+embedding_model_id = "bge-m3"
+stt_model_id = "ggml-base-q5_1.bin"
+stt_download_url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin?download=true"
+stt_provider = "cloud"
+tts_voice_id = "en_US-lessac-medium"
+tts_provider = "cloud"
+tts_download_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx?download=true"
+tts_config_download_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json?download=true"
+quantization = "q4"
+preload_vision_model = false
+preload_embedding_model = true
+preload_stt_model = false
+preload_tts_voice = false
+autosummary_debounce_ms = 2500
+opt_in_confirmed = false
+whisper_in_process = true
+voice_llm_cleanup_enabled = true
+
+[local_ai.usage]
+embeddings = false
+heartbeat = false
+learning_reflection = false
+subconscious = false
+
+[claude_agent_sdk]
+enabled = false
+binary = "claude"
+default_model = "claude-sonnet-4-6"
+
+[[cloud_providers]]
+id = "p_openai_ef1f4"
+slug = "openai"
+label = "OpenAI"
+endpoint = "https://api.openai.com/v1"
+auth_style = "bearer"
+
+[node]
+enabled = true
+version = "v22.11.0"
+cache_dir = ""
+prefer_system = true
+
+[runtime_python]
+enabled = true
+minimum_version = "3.12.0"
+maximum_version = "3.14.0"
+cache_dir = ""
+managed_release_tag = ""
+prefer_system = false
+preferred_command = ""
+
+[runtime_pool]
+enabled = true
+
+[runtime_pool.node]
+max_workers = 2
+idle_ttl_secs = 60
+recycle_after_jobs = 100
+max_queue_depth = 256
+
+[runtime_pool.python]
+max_workers = 2
+idle_ttl_secs = 60
+recycle_after_jobs = 100
+max_queue_depth = 256
+
+[tokenjuice]
+router_enabled = true
+ccr_enabled = true
+ccr_disk_enabled = false
+max_cache_entries = 256
+max_cache_bytes = 67108864
+min_bytes_to_compress = 2048
+ccr_min_tokens = 500
+search_enabled = true
+code_enabled = true
+html_enabled = true
+ml_compression_enabled = false
+ml_model_id = "answerdotai/ModernBERT-base"
+ml_target_ratio = 0.5
+ml_sidecar_idle_timeout_secs = 900
+ml_max_input_chars = 200000
+ml_device = "cpu"
+
+[voice_server]
+auto_start = false
+hotkey = "Fn"
+activation_mode = "push"
+skip_cleanup = false
+min_duration_secs = 0.3
+silence_threshold = 0.002
+custom_dictionary = []
+always_on_enabled = false
+vad_onset_threshold = 0.01
+vad_hangover_ms = 800
+vad_min_speech_ms = 300
+vad_max_utterance_secs = 30.0
+wake_word = "Hey Tiny"
+
+[integrations.apify]
+enabled = true
+mode = "managed"
+
+[integrations.twilio]
+enabled = true
+mode = "managed"
+
+[integrations.google_places]
+enabled = true
+mode = "managed"
+
+[integrations.parallel]
+enabled = true
+mode = "managed"
+
+[integrations.tinyfish]
+enabled = true
+mode = "managed"
+
+[integrations.stock_prices]
+enabled = true
+mode = "managed"
+
+[integrations.polymarket]
+enabled = false
+gamma_base_url = "https://gamma-api.polymarket.com"
+clob_base_url = "https://clob.polymarket.com"
+timeout_secs = 15
+polygon_rpc_url = "https://polygon-rpc.com"
+usdc_contract = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+clob_exchange_contract = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
+
+[learning]
+enabled = false
+reflection_enabled = true
+user_profile_enabled = true
+tool_tracking_enabled = true
+tool_memory_capture_enabled = true
+reflection_source = "local"
+max_reflections_per_session = 20
+min_turn_complexity = 1
+chat_to_tree_enabled = true
+stability_detector_enabled = true
+episodic_capture_enabled = true
+stm_recall_enabled = true
+rebuild_interval_secs = 1800
+explicit_preferences_enabled = true
+goals_enrichment_enabled = true
+
+[update]
+enabled = true
+interval_minutes = 60
+restart_strategy = "self_replace"
+rpc_mutations_enabled = true
+
+[dictation]
+enabled = false
+hotkey = "Fn"
+activation_mode = "push"
+llm_refinement = true
+streaming = true
+streaming_interval_ms = 2000
+
+[meet]
+auto_orchestrator_handoff = false
+ingest_backend_transcripts = false
+auto_join_policy = "ask_each_time"
+auto_summarize_policy = "ask"
+listen_only_default = true
+enable_in_call_agency = false
+in_call_streaming = true
+watch_calendar = false
+calendar_provider = "composio"
+reply_display_name = ""
+
+[meet.platform_auto_join_policies]
+
+[[model_registry]]
+id = "claude-fable-5"
+provider = "anthropic"
+cost_per_1m_input = 10.0
+cost_per_1m_cached_input = 1.0
+cost_per_1m_output = 50.0
+context_window = 1000000
+vision = false
+
+[[model_registry]]
+id = "claude-opus-4-8"
+provider = "anthropic"
+cost_per_1m_input = 5.0
+cost_per_1m_cached_input = 0.5
+cost_per_1m_output = 25.0
+context_window = 1000000
+vision = false
+
+[[model_registry]]
+id = "claude-opus-4-7"
+provider = "anthropic"
+cost_per_1m_input = 5.0
+cost_per_1m_cached_input = 0.5
+cost_per_1m_output = 25.0
+context_window = 1000000
+vision = false
+
+[[model_registry]]
+id = "claude-opus-4-6"
+provider = "anthropic"
+cost_per_1m_input = 5.0
+cost_per_1m_cached_input = 0.5
+cost_per_1m_output = 25.0
+context_window = 1000000
+vision = false
+
+[[model_registry]]
+id = "claude-opus-4-5"
+provider = "anthropic"
+cost_per_1m_input = 5.0
+cost_per_1m_cached_input = 0.5
+cost_per_1m_output = 25.0
+context_window = 200000
+vision = false
+
+[[model_registry]]
+id = "claude-sonnet-4-6"
+provider = "anthropic"
+cost_per_1m_input = 3.0
+cost_per_1m_cached_input = 0.3
+cost_per_1m_output = 15.0
+context_window = 1000000
+vision = false
+
+[[model_registry]]
+id = "claude-sonnet-4-5"
+provider = "anthropic"
+cost_per_1m_input = 3.0
+cost_per_1m_cached_input = 0.3
+cost_per_1m_output = 15.0
+context_window = 200000
+vision = false
+
+[[model_registry]]
+id = "claude-haiku-4-5"
+provider = "anthropic"
+cost_per_1m_input = 1.0
+cost_per_1m_cached_input = 0.1
+cost_per_1m_output = 5.0
+context_window = 200000
+vision = false
+
+[[model_registry]]
+id = "gpt-5.5"
+provider = "openai"
+cost_per_1m_input = 5.0
+cost_per_1m_cached_input = 1.25
+cost_per_1m_output = 30.0
+context_window = 1000000
+vision = false
+
+[[model_registry]]
+id = "gpt-5.4"
+provider = "openai"
+cost_per_1m_input = 2.5
+cost_per_1m_cached_input = 0.625
+cost_per_1m_output = 15.0
+context_window = 1000000
+vision = false
+
+[[model_registry]]
+id = "gpt-5.4-mini"
+provider = "openai"
+cost_per_1m_input = 0.75
+cost_per_1m_cached_input = 0.1875
+cost_per_1m_output = 4.5
+context_window = 400000
+vision = false
+
+[[model_registry]]
+id = "gpt-5.4-nano"
+provider = "openai"
+cost_per_1m_input = 0.2
+cost_per_1m_cached_input = 0.05
+cost_per_1m_output = 1.25
+context_window = 400000
+vision = false
+
+[[model_registry]]
+id = "gpt-4.1"
+provider = "openai"
+cost_per_1m_input = 2.0
+cost_per_1m_cached_input = 0.5
+cost_per_1m_output = 8.0
+context_window = 1047576
+vision = false
+
+[[model_registry]]
+id = "gpt-4.1-mini"
+provider = "openai"
+cost_per_1m_input = 0.4
+cost_per_1m_cached_input = 0.1
+cost_per_1m_output = 1.6
+context_window = 1047576
+vision = false
+
+[[model_registry]]
+id = "o3"
+provider = "openai"
+cost_per_1m_input = 2.0
+cost_per_1m_cached_input = 0.5
+cost_per_1m_output = 8.0
+context_window = 200000
+vision = false
+
+[[model_registry]]
+id = "gemini-2.5-pro"
+provider = "google"
+cost_per_1m_input = 1.25
+cost_per_1m_cached_input = 0.3125
+cost_per_1m_output = 10.0
+context_window = 1048576
+vision = false
+
+[[model_registry]]
+id = "gemini-2.5-flash"
+provider = "google"
+cost_per_1m_input = 0.3
+cost_per_1m_cached_input = 0.075
+cost_per_1m_output = 2.5
+context_window = 1048576
+vision = false
+
+[[model_registry]]
+id = "gemini-2.5-flash-lite"
+provider = "google"
+cost_per_1m_input = 0.1
+cost_per_1m_cached_input = 0.025
+cost_per_1m_output = 0.4
+context_window = 1048576
+vision = false
+
+[[model_registry]]
+id = "deepseek-chat"
+provider = "deepseek"
+cost_per_1m_input = 0.14
+cost_per_1m_cached_input = 0.014
+cost_per_1m_output = 0.28
+context_window = 128000
+vision = false
+
+[[model_registry]]
+id = "deepseek-reasoner"
+provider = "deepseek"
+cost_per_1m_input = 0.55
+cost_per_1m_cached_input = 0.055
+cost_per_1m_output = 2.19
+context_window = 128000
+vision = false
+
+[[model_registry]]
+id = "kimi-k2.6"
+provider = "moonshot"
+cost_per_1m_input = 0.95
+cost_per_1m_cached_input = 0.16
+cost_per_1m_output = 4.0
+context_window = 256000
+vision = false
+
+[[model_registry]]
+id = "kimi-k2.5"
+provider = "moonshot"
+cost_per_1m_input = 0.6
+cost_per_1m_cached_input = 0.1
+cost_per_1m_output = 3.0
+context_window = 256000
+vision = false
+
+[[model_registry]]
+id = "qwen3-max"
+provider = "qwen"
+cost_per_1m_input = 1.2
+cost_per_1m_cached_input = 0.12
+cost_per_1m_output = 6.0
+context_window = 256000
+vision = false
+
+[[model_registry]]
+id = "qwen-max"
+provider = "qwen"
+cost_per_1m_input = 1.2
+cost_per_1m_cached_input = 0.12
+cost_per_1m_output = 6.0
+context_window = 256000
+vision = false
+
+[[model_registry]]
+id = "qwen-plus"
+provider = "qwen"
+cost_per_1m_input = 0.4
+cost_per_1m_cached_input = 0.04
+cost_per_1m_output = 1.2
+context_window = 256000
+vision = false
+
+[[model_registry]]
+id = "qwen-flash"
+provider = "qwen"
+cost_per_1m_input = 0.05
+cost_per_1m_cached_input = 0.005
+cost_per_1m_output = 0.4
+context_window = 256000
+vision = false
+
+[[model_registry]]
+id = "mistral-large"
+provider = "mistral"
+cost_per_1m_input = 2.0
+cost_per_1m_cached_input = 0.2
+cost_per_1m_output = 6.0
+context_window = 128000
+vision = false
+
+[[model_registry]]
+id = "mistral-medium"
+provider = "mistral"
+cost_per_1m_input = 0.4
+cost_per_1m_cached_input = 0.04
+cost_per_1m_output = 2.0
+context_window = 128000
+vision = false
+
+[[model_registry]]
+id = "mistral-small"
+provider = "mistral"
+cost_per_1m_input = 0.2
+cost_per_1m_cached_input = 0.02
+cost_per_1m_output = 0.6
+context_window = 128000
+vision = false
+
+[[model_registry]]
+id = "codestral"
+provider = "mistral"
+cost_per_1m_input = 0.3
+cost_per_1m_cached_input = 0.03
+cost_per_1m_output = 0.9
+context_window = 256000
+vision = false
+
+[[model_registry]]
+id = "ministral-8b"
+provider = "mistral"
+cost_per_1m_input = 0.1
+cost_per_1m_cached_input = 0.01
+cost_per_1m_output = 0.1
+context_window = 128000
+vision = false

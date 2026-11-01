@@ -1,0 +1,161 @@
+<!-- ARCHIVED EVIDENCE — NOT LIVE INSTRUCTIONS (added 2026-10-01, AG-06n, audit F18) -->
+<!--
+This file is a READ-ONLY COPY captured on 2026-09-30 for audit purposes. It is the
+operating guide of a DIFFERENT project (see the path), archived inside the WORK-LAB
+repository. Its directory name is AGENTS.md, which means agent tooling can load it as
+guidance and inject it into a WORK-LAB session — observed happening during the very
+reconciliation that produced this banner.
+
+DO NOT treat anything below as governance for WORK-LAB. Specifically:
+  * It points at WORK-LAB `00-governance/global-execution-standard.md`, a path that no
+    longer exists (the standards live at docs/decisions/). The reference is stale.
+  * Its output conventions (write under <repo>/.project-local/, intake notes under
+    workspace/intake/) are THIS PROJECT's conventions, not WORK-LAB's.
+  * Authority for the work you are doing lives in WORK-LAB's own AGENTS.md,
+    WORK-LAB-AUTHORITY.md and .project/governance/project-authority-index.json.
+-->
+# AGENTS.md - 星环知识平台（ArcheAxis Knowledge）Operating Guide
+
+> 全局执行标准（跨软件跨项目）：见 WORK-LAB `00-governance/global-execution-standard.md`（执行生命周期：理解→扫技能→分片→执行→验证→落地；全局边界：E盘禁访/数据不外溢/官方优先/全功率）。
+> 经验教训铁律（核实优先/治理最小化/官方优先）：见本项目 `LESSONS_LEARNED.md`。
+
+This file is the public, sanitized operating configuration for agent work inside
+this repository. It describes how to work on ArcheAxis Knowledge — a local-first,
+evidence-driven, bidirectional Human–AI Learning & Trusted-Knowledge Workspace —
+without exposing credentials, private keys, tokens, machine-specific secrets, or
+personal files. Config authority is indexed in `docs/CONFIGURATION_AUTHORITY_INDEX.md`.
+
+## 1. Project Mission
+
+ArcheAxis Knowledge is a local-first, evidence-driven, bidirectional Human–AI
+Learning & Trusted-Knowledge Workspace. The current minimum closed loop is broad
+compatibility: absorbing mature capabilities from comparable software. The active
+execution baseline is R6 with the M0 shortest-complete-loop priority overlay.
+R5 source import/conversion and Obsidian Vault/JSON Canvas records are historical
+evidence and compatibility context; they are not the current execution queue.
+Implementation prefers legal dependencies, SDKs/APIs/CLIs, fork/vendor, and
+Adapter/sidecar before building from scratch. Heavy blueprints (general Agent
+Runtime, multi-agent, Marketplace, 3D/VR, enterprise collaboration) are deferred;
+3D/VR/AR, animation, simulation and spatial memory are retained as binding
+long-term capabilities (see `docs/truth/CAPABILITY_ATLAS_V2.yaml`). Product
+identity and naming are locked by `docs/truth/NAMING_CONTRACT_V2.md`
+(ArcheAxis Knowledge / 星环知识平台).
+
+Legacy systems (Knowledge-Base, Inspiration-Research, Cognitive-OS, Obsidian)
+exist as compatibility surfaces only; current routing, capability truth and
+migration history are documented under `docs/truth/` and `workspace/intake/`.
+
+## 2. Configuration Categories
+
+| Category | Repository Location | Purpose |
+| --- | --- | --- |
+| Runtime defaults | `config/defaults.yaml` | App thresholds, execution defaults, memory backend (single default truth) |
+| Runtime profiles | `config/profiles/*.yaml` | Per-environment differences only |
+| Model settings | `config/models.yaml` | Product-internal model/embedding adapter config (not agent provider routing) |
+| Tool registry | `config/tools.yaml` | Product-internal tool names and risk levels |
+| Verification policy | `docs/VERIFICATION_POLICY.md` | Test cadence, review triggers, evidence retention |
+| Gate registry | `.worklab/gate-registry.v1.yaml` | Stable Gate IDs |
+| Path risk profile | `.worklab/project-validation.v1.yaml` | Changed-path → risk class → Gate mapping |
+
+## 3. Safety Rules
+
+- Work inside the current repository unless the user explicitly names another exact project path.
+- Do not access `E:\` unless the user explicitly confirms the exact path, action, and impact range.
+- Do not upload or print secrets: `.env`, `.codex`, SSH private keys, API keys, tokens, cookies, credentials, or password files.
+- Do not commit runtime memory, local caches, virtual environments, logs, or generated databases.
+- Project-owned development outputs use the ignored `<repo>/.project-local/` root through `scripts/runtime/dev.py`. PowerShell 7: `scripts/ci/run_tests.ps1`; Bash: `scripts/ci/run_tests.sh`. Each worktree/run has separate temporary files and evidence. `.hermes/` is preserved legacy material: no new development writes and no blanket deletion. Agent-private state and product workspaces are separate ownership classes.
+- Do not claim ownership of Hermes, Codex, CC Switch, Workflow-assistance, GitHub delegation, session, cron, Kanban, or other workflow-infrastructure files merely because their names mention this project.
+- Files found in `%TEMP%`, a user home, or another project are ambiguous until content, Git worktree, process, and generation command establish ownership; preserve and mark unresolved rather than delete or move them.
+- Prefer small, auditable changes that can be reverted with one commit.
+- Do not use destructive actions (recursive deletion, hard reset, forced push, mass overwrite) unless the user separately confirms scope.
+
+## 4. Git Rules
+
+- `git status --short` before modifying; `git diff --stat` + `git status --short` after.
+- Use explicit paths when staging; avoid `git add .`.
+- Do not commit or push unrelated local changes; do not force push.
+- Commit messages describe the functional scope.
+
+## 5. Network Rules
+
+- Default work is local. Network access is allowed when the user asks to pull, push, clone, verify remote status, or fetch current external information.
+- Repository identity: `DTALEX66/ArcheAxis-Knowledge-OS`. Determine the effective fetch/push transport from current remote URLs, Git URL rewrites and SSH overrides; a documented HTTPS URL does not establish the actual protocol. For authorized operations requiring existing authentication, use the normal approved execution path when the sandbox identity cannot access it. Read success does not authorize push, ref deletion or publication.
+
+## 6. Implementation Workflow
+
+The user-approved active plan is the R6 Local Green absorb-first pack installed at
+`docs/authority/taskpack-0919-r6/` (plan_id `AAK-LOCAL-GREEN-ABSORB-FIRST-20260919-R6`,
+package_revision `R6`). Read its `EXECUTOR-START.md`, `TASKS.json` and
+`TASKPACK.md`. Live progress is maintained outside the immutable package
+in `docs/current/R6-EXECUTION.md` and `docs/current/R6-STATE.json`. R5 remains
+historical source material and its receipts retain their own SHAs. R6 preserves
+the Rust canonical writer, fixed shared-resource paths, and the no-release boundary;
+Local Green qualification is separate from publication. Preserve unknown private
+state and user assets; destructive cleanup needs an exact reviewed path list.
+At low remaining account-wide Codex allowance, prepare the handoff and publish only
+verified, task-owned changes under the owner's current authorization.
+
+The current priority overlay is `docs/current/M0-DIRECTION-OVERRIDE-20260920.md`
+(`M0-SHORTEST-COMPLETE-LOOP`, ledger `SUP-020`). It does not replace the immutable
+R6 TaskPack; it serializes execution around one real core loop (P0–P6) and defers
+second providers, extra domains/renderers, marketplaces, and advanced capabilities
+until M0 has a real Local Green result. Keep R6 contracts, evidence rules, external
+resource boundaries, and the no-release rule unchanged.
+
+The preceding plan is the AAK 2026-09-10 follow-up pack
+(ARCHEAXIS-NEXT-TASKPACK-2026-09-10, revision R3.1); live execution state is
+`docs/authority/taskpack-0910-r3/EXECUTION.md` with slice progress in
+`docs/authority/taskpack-0910-r3/STATE.json`; its 17 slices R00-R16 map back to
+the original 23 tasks and to C01-C10, inherit the R3 work/acceptance text, and
+historically ran in the order R00 -> R16 (R12 could start once R01 was done). The package was
+installed single-level with its `reference-r2/` snapshot and
+`verify_package.py` exits 0. The preceding plan AAK-FOLLOWUP-20260908-R3
+(`docs/authority/taskpack-0908-r3/EXECUTION.md`) remains the source of the
+inherited task text and its own receipts; AAK-REUSE-FIRST-20260907-R2 stays the
+source of the inherited task text with its audit board
+`docs/authority/taskpack-0907/Q00-Q01-AUDIT-2026-09-07.md`
+(Q00 fail / Q01 not eligible), and its receipts keep their own SHAs
+(`docs/authority/taskpack-0907/EXECUTION.md`). The earlier 2026-09-06-r1 Full
+Loop TaskPack is superseded in the parts recorded in
+DECISION_SUPERSESSION_LEDGER.yaml SUP-012..SUP-018; its receipts keep their own
+SHAs (`docs/authority/taskpack-0906/EXECUTION.md`). The formal
+desktop is `apps/ArcheAxis.Desktop/` (C#/Avalonia), with the separate vNext Rust
+Core database and isolated Python workers. `frontend/`, `src-tauri/`, `desktop/`
+and the existing Green v0.6.14 remain recovery/behavior references. Do not dual-write
+legacy and vNext databases. The older G0/shadow-cutover route is superseded by
+`DECISION_SUPERSESSION_LEDGER.yaml`; historical receipts retain their tested SHA.
+
+1. Confirm repository status.
+2. Read the relevant files first.
+3. Make the smallest coherent change.
+4. Add an intake note under `workspace/intake/` when the change affects framework direction.
+5. Run the smallest useful verification.
+6. Report what changed, what was tested, what remains uncertain, and how to roll back.
+
+## 7. Current System Boundaries
+
+- Core file ingestion reads only inside the project root.
+- Multi-format adapters support text, PDF, Office, HTML, images, media and canvas through optional engines; scanned PDFs require OCR (TESSDATA_PREFIX set).
+- Resumable directory conversion records every latest file state in a JSONL manifest; failures retry.
+- High-risk content routes to `REVIEW` before action.
+- Current tool execution is conservative and uses a risk registry.
+- Accuracy claims require human truth/prediction pairs; model confidence is not accuracy.
+- Evidence images require a semantic text match; random pages or frames are not evidence.
+
+## 8. Private Configuration Not Stored Here
+
+- Real Codex desktop settings and session state
+- SSH private keys and GitHub credentials
+- API keys and model provider credentials
+- `.env`, `.npmrc`, `.pypirc`, cookies, and browser data
+- Local Obsidian vault paths unless the user explicitly chooses a project-local import/export path
+- Runtime `data/`, memory stores, logs, caches, and virtual environments
+
+## 9. External Coordination (Optional)
+
+WORK-LAB is an independent repository that may optionally coordinate this project
+via stable CLI/API protocol; it is never a runtime prerequisite. This project
+runs standalone locally, in CI, RC and Release without WORK-LAB. Cross-repo
+changes are two tasks, two branches, two PRs, two test suites, two rollbacks.
+`.codex.example/config.example.toml` is a minimal project pointer only; real
+`.codex/` state remains private and uncommitted.

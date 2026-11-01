@@ -1,0 +1,40 @@
+G-3/B3: 封死的 per-artifact QualityRecord schema + 校验器 + CI gate
+
+对应 CROSSWALK B3（R15）：Quality 三层（deterministic / automated_judge /
+human_jury）需要一个物理不互相覆盖的 record schema + 校验器，且自动化 judge
+不得产生假 model 分数、不得触碰门禁。
+
+CROSSWALK 是自认 NON-authoritative、"未读到仓内权威链" 的文档——它把 B3
+标成 gap 时漏看了仓内已有的权威实现：`design-lab/src/design_lab/assurance/`
+早已拥有冻结的三层 *policy*（qa_plane.py 的 DETERMINISTIC/MODEL_ASSISTED/
+HUMAN 平面 + 证据上限 + check_policy 漂移守卫；human_jury.py 的冻结
+APPROVE/REJECT + agent 不得签署；两个 schema + 400+ 行测试）。B3 真正缺的
+是 *record 层*——把三个平面的 payload 封进一条 per-artifact QualityRecord、
+字段物理分离、可校验（#143 判定 QualityScore 无数据源、未上 UI，正卡在这）。
+
+因此本 PR 是 **compose 既有 assurance 包，不另起平行结构**（避免治理禁止的
+重复结构漂移）：
+
+- src/design_lab/assurance/quality_record.py：QualityRecord = 三个物理分离
+  字段 quality.{deterministic, automated_judge, human_jury} + 只读派生
+  final_gate。复用 qa_plane.validate_finding / human_jury.assert_not_agent
+  _signed，不重新发明每层 payload。
+  * 确定性层：HARD_BLOCK 一律 BLOCKED；
+  * automated_judge：纯 advisory，永不填人字段、永不到达门禁（summary 视图
+    里甚至没有 blocking key，比"空列表"更强）；
+  * human_jury：APPROVE→PASS / REJECT→BLOCKED；无判决→NEEDS_HUMAN_VERDICT；
+    PASS 在结构上无签名判决不可达。
+  * 校验器 validate_quality_record：三层 payload + 签名 + gate 一致性，fail-closed。
+- design-lab/schemas/assurance-quality-record.schema.json：封闭 JSON schema
+  （每字段 additionalProperties:false），CI 结构门对 record 直接校验。
+- design-lab/scripts/verify_quality_record.py：纯结构门（跑 4 个可达 gate
+  态 + 4 类对抗 record 必须被拒），登记进 verify_design_lab.py 的 SCRIPTS
+  链 → python-gate 每日 CI 执行。
+- design-lab/tests/test_assurance_quality_record.py：17 项 hermetic 单测
+  （round-trip / 字段物理不覆盖 / 假 model 分数进不了 gate / agent 签署被拒
+  / 无签名 PASS 不可达）。
+- src/design_lab/assurance/__init__.py：把新模块登记进包边界文档。
+
+全回归：106 tests OK（assurance quality/jury/qa-plane + G-1 secret-history +
+G-2 sbom-lockfiles）。纯 stdlib + jsonschema（仓内既有 schema 验证依赖，
+verify_evidence_cards 已同链在用）。

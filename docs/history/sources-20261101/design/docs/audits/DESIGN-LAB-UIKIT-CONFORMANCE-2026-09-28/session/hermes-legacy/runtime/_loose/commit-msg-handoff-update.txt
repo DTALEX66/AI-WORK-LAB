@@ -1,0 +1,23 @@
+docs(handoff): record the PR #126 delivery readback and the two CI defects found
+
+§6 now states the delivered state instead of a plan: PR #126 merged
+(2d9c958eba0ffcbb29575339c73eb693a06c48c2, mergedAt 2026-09-20T13:50:21Z) with CI
+9/9 green on the exact head 01321e8038b835e206573c163e5b9afaded1e213 — including the
+Python gate (full suite, fresh clone, 7m38s) and the browser E2E job.
+
+§8 records what the upload actually caught, with the raw CI log lines:
+
+1. A fabricated action pin. `actions/upload-artifact@65c4c4a1ddee5b7f698f8297e8f3f4f7e4b8c1a2`
+   does not exist (the real v4.6.0 SHA is 65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08), so
+   GitHub failed the whole job at "Set up job" — the browser E2E job died in 2s while
+   every other gate stayed green. release-gate.yml carried the same pin. Both now use
+   the API-verified v4.6.2 SHA and every pin in .github/workflows was re-checked.
+2. A contract-graph drift that was a real consequence of P1-C: the provenance envelope
+   added to reports/current/** no longer matched the generation-time field set, and
+   LANGUAGE-BOUNDARY-SCAN.json was a stale 2026-09-18 scan owned by a generator that does
+   not emit that envelope. Fixed by re-recording each gate-owned report with its own
+   generator plus a reports rebind, not by hand-editing.
+
+Also notes the re-record discipline for the next session and that the local full-suite run
+is optional (and that its background child can be terminated with exit 1073807364, which is
+a process kill, not a test failure).

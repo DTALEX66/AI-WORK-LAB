@@ -1,0 +1,15 @@
+chore(reports): rebind the bound reports on the capability-evidence-index change
+
+design-lab/config/capability-evidence-index.json is a bound input of the report
+digest, so the P1-B index edit made reports/current/PROJECT_STATUS.json and
+design-lab/config/current-report-index.json byte-stale (reported by the task as
+CURRENT_REPORTS=DRIFT). Regenerated with scripts/generate_current_reports.py in
+generate mode — no hand edits — and the other bound outputs followed:
+
+  CURRENT_REPORTS=PASS mode=generate
+  CURRENT_REPORTS=PASS mode=check scope=bound-input-integrity
+
+reports/current/LANGUAGE-BOUNDARY-SCAN.json was re-recorded by its own generator
+(scripts/verify_language_boundary.py) during the same authority chain run, so it
+reflects the current scan instead of a hand edit. The chain stays green:
+AUTHORITY_GATES=PASS gates=7 failed=none.

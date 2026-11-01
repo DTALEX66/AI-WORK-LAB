@@ -1,0 +1,43 @@
+feat(evidence): separate recorded from effective capability evidence (P1-B)
+
+A recorded evidence level is a historical observation bound to the tree that
+produced it; it must never satisfy the floor of the current tree. Until now the
+capability ladder carried a single number, so `creative-toolchain` (recorded E3,
+`requiresRequalification=true`, lastVerifiedTree 70dfc35c) read as E3 even though
+that runtime evidence was produced on another tree.
+
+New module design-lab/scripts/effective_evidence.py (pure stdlib, deterministic,
+no clock/network): LEVEL E0-E5, effective_evidence(record, current_sha,
+structural_pass) -> E1 when a requalification marker or a foreign subjectSha is
+present (E0 when even the structural layer is unproven), else the recorded level;
+structural_pass_from_recorded; meets_floor (fail-closed on unknown levels);
+load_index/requalified.
+
+verify_capability_evidence_v4.py now prints one informational line per requalified
+capability and errors only when a capability's recorded level meets its floor while
+the effective level does not and no requalification marker explains the gap. Real
+output on the current tree:
+
+  EFFECTIVE_EVIDENCE visual-quality recorded=E1 effective=E1 requiresRequalification=true
+  EFFECTIVE_EVIDENCE creative-toolchain recorded=E3 effective=E1 requiresRequalification=true
+  EFFECTIVE_EVIDENCE style-master-method recorded=E1 effective=E1 requiresRequalification=true
+  CAPABILITY_EVIDENCE_V4=PASS records=8
+
+verify_release_evidence.py rejects an E2-E5 release claim for a requalified
+capability after the existing contract/git/CI checks (no release claim in the tree
+is affected today, so the gate stays green); its no-arg usage branch is unchanged.
+
+The index records the pair for humans (effectiveEvidence/effectiveNote on
+creative-toolchain) and, per the P1-B spec, the strict capability-status schema
+whitelists those two properties. Note the effective level that gates anything is
+computed by effective_evidence.py — no verifier reads the recorded field.
+
+Tests: design-lab/tests/test_effective_evidence.py, 27 cases (clean keeps recorded,
+requalification and foreign-SHA downgrades, requalification winning over a matching
+SHA, meets_floor boundaries and fail-closed, index helpers, the exact release
+failure text, and an end-to-end rejection of an E3 claim for creative-toolchain).
+
+Evidence: verify_capability_evidence_v4 PASS records=8; new tests Ran 27 OK;
+VERIFY_DESIGN_LAB=OK total=49 failed=0; AUTHORITY_GATES=PASS gates=7 failed=none
+(contract-graph did not drift on the index/schema edit); test_contract_schema_integrity
+8 OK; verify_release_gate findings unchanged (pre-existing P1 residuals only).

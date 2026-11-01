@@ -1,0 +1,220 @@
+<!doctype html><meta charset="utf-8"><title>三项目云端审计</title><style>body{max-width:1050px;margin:40px auto;padding:20px;font:16px/1.65 system-ui}pre{white-space:pre-wrap}a{color:#1758aa}</style><pre>三项目独立云端审计 / 2026-10-11
+
+结论：不能给出三项目整体生产验收通过。前端与大量局部合同测试通过，但实际浏览器重试造成 DESIGN-LAB 重复任务/素材；WORK 指定 UI 分支断网仍显示 LIVE；AAOS 存在恢复与隐私告知边界问题。未作任何修复、提交、推送、合并。所有运行写入限 /tmp/tri-audit，原始 /workspace 仓库保持干净。未调用付费模型、未外发私人材料、未读取秘密、未启动 Adobe 或模型、未下载 LFS 大载荷。
+
+版本与证据口径
+完整 SHA/tree/工作区状态见 evidence/versions.json；以下短 SHA 仅为全文简称，所有问题继承此映射。
+AAOS main 6c5fcc3affc012109ced6d2e96fca2ddada4153b；实测 codex/Audit d6c2bbeef722f82a02a3f18e1b4296ad5e37c58b，领先 main 60 提交。
+WORK main cd4daa83e107afab8438c0e85f63a10e75314d5a；指定 ui-commercial-polish-20261007 71b1ae86bc2f9b1a756d5367bb149a7263604c9f（领先178）；另发现当前登记使用 task-decomposition/atlas-gap-archive-20261001 50dab56058765f1b61f11e45e1ca0cb2111b4a8f（领先470），分别测试，不混为一个版本。
+DESIGN main fc03a3033e900a8066d863a223636cc68804c4fa；实测 qoder/designlab-backup-consistency-20261007 835fa88001198e9ef7d405360f4541fbb7b899fa，领先215。
+均通过正常已有读取权限取得；先读 AGENTS 与当前权威任务登记，未假设 main 就是开发版本。
+
+CI 读回（不是本次触发）
+AAOS main run38069112257 failure；当前 d6c2bbe exact SHA 查询无 run。历史 run38124304699 success 属于 3bc85fc3cb3e3ef6727a2c029f3f7d29f4d175e1，不能转移为当前 SHA 已验收。
+WORK main run36591469478 success；UI71 run37567373288 failure；50dab run38125141168/38125138425 gate failure（workflow structural contracts），对应 wlr060 run38125141147/38125138416 success。
+DESIGN main run37602613560 success；835 run38126320592 failure（Python unified verify）；该 run 的 browser E2E、TypeScript、wheel install 等局部门通过，并不证明所有 wheel 路由可用。
+原始读回见 ci-readback.json。GitHub URL 格式 https://github.com/DTALEX66/&lt;仓库名&gt;/actions/runs/&lt;run编号&gt;。
+
+覆盖矩阵 / 可执行范围与真实阻碍
+1 AAOS d6：npm build 成功；121 Vitest 文件/1126 tests 通过。选定 Python 原始87pass/16fail/1skip中16fail为缺 bs4；补足依赖后 cloud27全部通过，合计选定唯一103pass/1skip；额外安全11pass。自编2个组件测试证明缺陷存在，不是业务通过。真实 Chromium 仅渲染构建前端及无 Core 错误态，Rust cargo 不存在，未运行 Core/Windows安装或真实模型链。
+2 WORK71：build成功，20 Vitest文件/123tests通过；运行真实 observer sidecar（no-worker）并浏览主要页面/编辑器。WORK50：build成功，57文件/672tests通过；选定Python87pass+2subtests；历史问题回归45pass/2fail；federation17pass（组件fixture）。未启动执行端。冻结ZIP仅见5个LFS pointer，未读取真实载荷，不能验收归档内容。
+3 DESIGN835：真实 Python HTTP 服务+仓库已提交前端bundle运行；195个选定唯一Python测试通过/5skip/21subtests（原194pass/1fail的失败是测试预期临时目录未建，创建隔离目录重跑1pass）；federation6pass，组件fixture。node前两组通过，第三脚本缺TS依赖。pnpm frozen依赖因镜像获取失败，未完成重建，不能宣称本次源码构建通过。统一verify失败：证据投影/内容审计确有问题，skimage缺失导致的重建链失败属于环境限制。
+4 新建DESIGN wheel794235字节，sha256 beb70ab35586604df2bffe0d06da6495624e3eabfdf30599ff9a36527040325c；安装至隔离目录，从仓库外调用真实HTTP，检出遗漏资源。无源码fallback。
+5 已测错误/恢复：断网、回执丢失、重复点击、失效搜索、主题刷新、浏览器返回、空项目、60条能力列表、窄屏及键盘命令面板；不是全入口穷举。所有资产与项目均合成。
+6 权限/外发：选定已有token/权限/安全合同测试；AAOS正文搜索通过注入本地收集器确认参数，零真实搜索外发。没有对公网做攻击扫描。三仓库组件联邦测试不等于真实三服务互联。
+7 未测：Windows安装/卸载/升级与用户备份恢复；GPU、专用本地转换模型、真实对话学习与云检索交叉验证；真实用户正式入库选择；Adobe宿主打开/保存/关闭重开；真实冻结ZIP字节/完整归档和索引灾难恢复；长期并发、全量权限渗透、真实服务重启和长期性能。
+
+证据等级：R=真实浏览器+真实服务/安装包；C=真实组件或浏览器受控故障/合成响应；S=静态源码或合同测试。C不能冒充真实AI或Windows验收。P1高：阻断关键流程、重复持久化或明显状态/隐私风险；P2中：恢复、发现性、质量与可复现性缺陷。以下均列出具体证据范围。
+
+确认问题清单（含受控复现的明确边界）
+
+A01 P2 | AAOS d6 | C+S
+文件/页面：frontend/src/spaces/CanonicalLibrarySpace.tsx:338-353；crates/archeaxis-domain/src/document.rs:225,274
+复现：来源内容建立版本化草稿，桥接调用抛出回执丢失；再次点击建立。
+实际及影响：两次请求均无 create_request_id；Core源码无ID时生成随机文档ID，有重复持久化风险。未实际启动Rust证明双落盘。原始新笔记路径已有ID，勿混淆。
+预期：同一用户意图重试沿用请求ID并读回结果。
+证据（evidence目录）：aaos-audit-recovery.log；probes/AuditRecovery.test.tsx
+修复方向：为来源建立流程持有稳定ID直到确认成功。
+
+A02 P2 | AAOS d6 | C
+文件/页面：frontend/src/spaces/CanonicalKnowledgeSpace.tsx:51-52,69
+复现：输入审阅备注→审阅失败→按提示重新读取候选。
+实际及影响：错误提示称保留备注，但重新读取执行setNote空字符串，草稿丢失。
+预期：失败恢复保留未提交备注或明确确认丢弃。
+证据（evidence目录）：aaos-audit-recovery.log；probes/AuditRecovery.test.tsx
+修复方向：区分刷新对象与重置本地输入。
+
+A03 P1（隐私告知） | AAOS d6 | C+S
+文件/页面：services/python-workers/machine/document_check.py:107-118,402,423；CheckPanel
+复现：用合成正文调用检索函数，以本地收集器替代网络。
+实际及影响：DuckDuckGo q包含正文前1000字符。UI有申请/明确执行，不是基础保存自动外发；但正文接收方和范围需要更明确告知/授权审查。未外发真实或合成正文。
+预期：执行前显式展示接收方、字段/长度和可编辑检索词；基础保存独立。
+证据（evidence目录）：aaos-query-egress.json
+修复方向：默认提炼/用户确认搜索词，按提供方施加外发策略；勿把通用云授权等同任意正文外发。
+
+A04 P2（兼容服务） | AAOS d6 | R
+文件/页面：app/federation/service.py:145-157
+复现：临时SQLite依次alice+A/key、alice+B/key、bob+C/key。
+实际及影响：后二者都返回duplicate及A原收据；未绑定内容摘要与提交者。仅legacy Python，不是当前Rust漏洞结论。
+预期：同key异内容/主体应冲突或权限隔离。
+证据（evidence目录）：aaos-legacy-federation.json
+修复方向：把主体和摘要纳入幂等校验。
+
+W01 P1 | WORK UI71 | C+真实断网
+文件/页面：apps/observer/frontend/src/components/layout/TopStatusBar.tsx；views/Views.tsx:362；lib/api.ts reportReadFailure
+复现：先注入一次LIVE快照，再真实浏览器offline 6.5秒，观察monitoring和compact。
+实际及影响：快照过期，页头仍绿LIVE/FRESH，而页内last-good STALE、compact OFFLINE互相矛盾，用户误认为正在观测。
+预期：网络健康优先，保留旧数据但全局统一STALE/OFFLINE。
+证据（evidence目录）：work-ui-stale-live.json/png；work-ui-stale-compact.json/png
+修复方向：将传输状态和快照采样时间统一派生到所有状态徽标。
+
+W02 P2 | WORK UI71 | R
+文件/页面：apps/observer/frontend/src/components/graph/workflow-canvas.tsx:156,165-168,211,228,276
+复现：拖端点连线；点击端点；默认缩放拖背景；缩小后平移再点适应画布。
+实际及影响：边数4不变，点击抛No active pointer；背景overlay令默认平移失效；适应只重置zoom不重置pan(-80,-50)。
+预期：鼠标操作完成连线与平移；适应重新居中。
+证据（evidence目录）：work-browser.json；work-ui-editor.png；work-ui-fit.json/png
+修复方向：使用pointerdown/move/up一致生命周期；正确命中背景；同时计算zoom和pan。
+
+W03 P2 | WORK50 | S/执行测试
+文件/页面：tests/ci/test_entry_baseline_projection.py:195
+复现：Linux运行LnkParserTests::test_ansi_target_wd_and_args。
+实际及影响：unknown encoding mbcs，跨平台门失败；不能据此断言Windows解析失败。
+预期：fixture可跨平台构造，或明确平台skip且有Windows门。
+证据（evidence目录）：work-history-recheck.log；work-mbcs-isolated.log
+修复方向：使用显式代码页/bytes fixture，保留Windows真实测试。
+
+W04 P2 | WORK50 | S/执行测试
+文件/页面：scripts/audit/tool_inventory_readback.py；TOOL_INVENTORY_2026-10-07.json
+复现：运行test_the_shipped_tool_inventory_is_the_current_measurement。
+实际及影响：tools[15].citedBy：shipped4，fresh5；生成清单过期。
+预期：受控生成物与当前测量一致。
+证据（evidence目录）：work-history-recheck.log
+修复方向：通过正式生成流程刷新并校验提交依据。
+
+D01 P1 | DESIGN835 | R
+文件/页面：apps/workbench/shell.ts:7217-7226
+复现：选择Photoshop方案；代理首个POST使真实服务202落盘后丢弃响应；点击重试。
+实际及影响：重试uuid变化，服务再次202，两个不同native job；错误提示反称同key安全。未启动任何宿主。
+预期：重试保持同一key，读回原任务。
+证据（evidence目录）：design-plan-retry-photoshop.json；design-plan-retry.png；probes/design_plan_retry_ps.py
+修复方向：在用户意图生命周期保存key；未知结果先查询/重放。
+
+D02 P1 | DESIGN835 | R+S
+文件/页面：shell.ts:7059,7077；packages/capabilities/reconstruction/adobe_lowering.py:118
+复现：默认Illustrator生成对象计划→提交。
+实际及影响：生成locked=true，lowering拒绝locked，HTTP400 INVALID_REQUEST；默认关键路径不能排队。
+预期：默认生成的计划满足所选宿主合同。
+证据（evidence目录）：design-plan-retry.json；probes/design_plan_retry.py
+修复方向：统一默认值与lowering合同并做跨层真实路由测试。
+
+D03 P1 | DESIGN835 | R
+文件/页面：shell.ts:4730（素材批量导入）
+复现：上传合成PNG；真实POST201完成后丢弃响应；按失败项重试。
+实际及影响：前端声称失败项未写入服务端，实际已保存；新key重试产生新的素材ID/attempt。
+预期：明确结果未知，重试幂等且可读回。
+证据（evidence目录）：design-batch.json/png；probes/design_batch_probe.py
+修复方向：持有每项稳定key，不把通信失败推断为服务端未写入。
+
+D04 P2 | DESIGN835 | R
+文件/页面：shell.ts方案提交结果/参考素材读回
+复现：成功提交Photoshop计划；查看已导入素材。
+实际及影响：真实202任务藏在nested task，UI按顶层task_id/job_id/state读而显示未给出任务号/未读回；素材显示vundefined。
+预期：按实际合同显示任务ID/状态；未知版本用明确文案。
+证据（evidence目录）：design-plan-retry-photoshop.json；design-intake.png；design-navigation.json
+修复方向：采用共享响应类型及真实路由到UI合同测试。
+
+D05 P2 | DESIGN835 | C/R
+文件/页面：shell.ts:5918,5987，全局搜索
+复现：造9个合成项目，搜索第9个；查看设计系统资源组。
+实际及影响：只对前8 DOM项过滤，第9项永远不可发现；后端4个设计系统，UI读取d.systems后显示0。
+预期：搜索完整候选集合，使用真实响应字段。
+证据（evidence目录）：design-search.json/png；probes/design_search_probe.py
+修复方向：过滤后再分页，按合同解析列表。
+
+D06 P2 | DESIGN835 | C
+文件/页面：全局搜索objectsLoaded设置处
+复现：首次capabilities请求中断，关闭重开搜索。
+实际及影响：objectsLoaded已提前true，失败后不重试，剩余组一直尚未读取。
+预期：可见错误和重试路径。
+证据（evidence目录）：design-search.json（failedRequests=1）
+修复方向：成功后标记loaded，错误重置并单独呈现。
+
+D07 P2 | DESIGN835 | C
+文件/页面：shell.ts:2465，可调用能力/产物分类筛选
+复现：合成两条qualified true/false记录，分别切可调用及三类产物tab。
+实际及影响：false也进入可调用（!==null）；不同产物tab都含method/template。当前实际60条资格全null，此为受控数据触发的潜在真实逻辑缺陷。
+预期：只纳入qualified===true；按选中轴值过滤。
+证据（evidence目录）：design-facets.json/png
+修复方向：严格资格布尔判断并匹配具体轴值。
+
+D08 P2 | DESIGN835 | C
+文件/页面：领域详情→按该领域查看能力
+复现：合成audio/brand两条候选，audio详情匹配1条，点击查看能力。
+实际及影响：进入#/capabilities后两条全显示，领域上下文丢失。实际60条domains为空另属分类未完成，不能冒充已验收域能力。
+预期：携带领域筛选条件，维持与详情匹配一致。
+证据（evidence目录）：design-domain.json；design-domain-unfiltered.png
+修复方向：路由query/state保留domain并显示筛选状态。
+
+D09 P1 | DESIGN835 | R（独立wheel）
+文件/页面：pyproject.toml打包资源；assurance/research_store.py:73,196；rights_ledger.py:75,178
+复现：构建wheel并在仓库外安装；建项目201；GET/POST research与rights。
+实际及影响：GET500 RESEARCH_CONTRACT_UNREADABLE/RIGHTS_CONTRACT_UNREADABLE，POST500 INTERNAL，schema未打包。
+预期：已宣称安装版路由可读取自身合同并接受合法输入。
+证据（evidence目录）：design-wheel-api.json；probes/wheel_probe.py
+修复方向：随包包含schemas，资源定位用包资源API，增加安装后路由测试。
+
+D10 P2 | DESIGN835 | R（独立wheel）
+文件/页面：src/design_lab/domain_packs.py:45；pyproject.toml
+复现：同一wheel访问/api/domains。
+实际及影响：HTTP200但rootState MISSING/checker UNAVAILABLE/packs0，源树域包与校验器不随包。
+预期：清晰的安装能力边界；如应支持则打包域资源。
+证据（evidence目录）：design-wheel-api.json；design-wheel-domains.log
+修复方向：明确运行时资产清单并在安装测试验证可发现性。
+
+D11 P1 | DESIGN835 | R/合同
+文件/页面：verify_route_payload_contracts.py；/api/evidence-projection
+复现：干净clone执行路由合同检查或读证据投影。
+实际及影响：HTTP500，缺被忽略的.project-local/task-artifacts/ui-first-20261009/u06/implementation.json；不能从已提交源码重建证据页。
+预期：缺本机收据返回明确未知/未执行状态，或提供可复现正式收据来源。
+证据（evidence目录）：design-route-audit.log；design-verify.log
+修复方向：不要把本机ignored文件当无条件运行依赖。
+
+D12 P2 | DESIGN835 | S/执行审计
+文件/页面：内容审计/verify_projection_freshness
+复现：执行当前content审计。
+实际及影响：2项finding：存储verdict与重算不同；37个忽略cache vendor目录缺失。仅证明干净checkout不可复现，不证明用户本地归档已丢失。
+预期：机器特定证据与可重建索引明确分离。
+证据（evidence目录）：design-content-audit.log；design-verify.log
+修复方向：重建/补全来源索引合同，对缺失载荷明确标注证据等级。
+
+D13 P2 | DESIGN835 | R
+文件/页面：shell.ts:6097,6177；src/design_lab/http_service.py:179
+复现：点击配色主题；查看背景/属性；刷新自动生成的?palette=ui2026 URL。
+实际及影响：点击仅改URL，readThemeChoice优先旧HTML属性，背景不变；刷新HTTP401 UNAUTHORIZED，因为服务路由比较完整含query路径。浅色实现存在但正常路径不可达。
+预期：主题立即生效、URL可刷新，不把非敏感query当未知受保护路由。
+证据（evidence目录）：design-theme.json；design-theme-click-noop.png；design-theme-reload-401.png
+修复方向：主题切换显式传新值；服务端解析url path/query后路由。
+
+需求漂移与真实/占位能力边界
+AAOS：基础保存、暂存、正式入库应继续独立；本次选定测试并未发现必须等云模型才保存的结论，亦未完成真实模型蒸馏/纠错/复测/Owner验收。正文检索为明确执行动作后的外发路径，不应描述成自动上传所有文档。模型评价不能代替用户正式入库。
+WORK：最新50分支的观察/配置/治理定位比71控制台UI更接近最新边界。71界面仍有密集控制台表意，但不能把旧UI措辞当作最新分支全部功能漂移证据。外部执行端未运行；不主张删隐藏的长期能力或索引。
+DESIGN：真实页面明确区分排队与宿主制作、最终媒体未接线、多模态导入禁用、教学导入未接线及权利人审。此类诚实禁用不是死链漏洞；但全品类和教学目标尚未验收。索引中60条记录七轴很多未填，属于能力分类与证据缺口，不是60条可调用能力。搜索/领域筛选缺陷降低现有资产的发现性。
+疑似项：AAOS无请求ID导致Core双落盘为静态推断+组件确认，未声称实际Rust重复；AAOS云授权是否足以覆盖1000字符搜索需产品权限意图复核。其他具体逻辑问题有上述范围内复现。无依据断言用户本地档案损坏或已发生隐私泄露。
+
+实际浏览器与主观视觉评价
+Chromium151真实截图；AAOS为前端shell，WORK真实no-worker侧车，DESIGN真实Python服务+已提交bundle。大屏1440×900、1280×820；900×600窗口；DESIGN另390px窄屏。测得相应截图无横向整页溢出，不等于所有屏宽/组件均响应式通过。
+AAOS blueprint/light/cosmic的层次与主题区分较明显；WORK71控制台密集、趋势/信号区空白较大，50首页更收敛；DESIGN品牌配色一致但表格和说明密度高，动作入口与长解释争抢注意。此段为主观设计评价，非客观缺陷或专业用户验收。
+实际命令面板Ctrl+K打开、Escape关闭；WORK键盘首导航有outline；DESIGN领域详情浏览器返回回到领域列表。未完成所有焦点顺序、读屏及取消路径检查。
+观察到WORK/DESIGN常态环境装饰动画（约12秒周期）；reduce-motion下采样没有活动动画。visual-matrix的sampleMs含固定等待与截图耗时，不能作为响应性能基准，更不能凭此说丝滑。没有帧率/真实GPU/长时间内存基准。
+截图重要纠正：design-ui-dark.png与design-ui-light.png实际是401错误页，排除视觉主题验收；design-ui2026-dark-confirmed.png文件名不能当证据，它仍是旧色板。design-light-diagnostic.png通过诊断路由转发HTML才显示浅色，只证明实现存在，不证明产品切换可用。以design-theme.json与D13为准。不得将这些截图描述成正常浅色路径通过。
+导航扫描design-navigation.json中的猜测hash可能回退默认页，不计作真实导航入口覆盖；明确点击的领域详情与返回独立记录。
+
+复现运行说明
+环境Python3.12.14/Node24.19.0/Linux；安装依赖仅临时venv/node_modules，无模型权重。npm通过官方registry覆盖原镜像、--ignore-scripts；未改锁文件。DESIGN pnpm镜像失败保留日志。WORK sidecar必须配置PYTHONPATH=packages/client-neutral-core/scripts；直接从此检出启动缺该路径会ModuleNotFoundError canonical_store。
+自动化脚本见evidence/probes，其中旧端口37675/33691/44537/39701需替换为重新启动的隔离服务端口。浏览器故障探针会写合成项目/素材/队列，只可用临时项目运行。AAOS AuditRecovery.test.tsx置于frontend/src/__tests__后按仓库Vitest运行，桥接为受控替身。它验证缺陷条件，不等于真实AI验收。
+标准构建/测试：AAOS frontend、WORK apps/observer/frontend分别 npm run build 与 npm exec vitest run；Python按日志中的具体用例选择。所有原始成功/失败日志保留，未筛掉环境失败以制造全绿。
+
+交给本地Windows Codex的必要补测
+在各确切SHA独立安装/工作区：安装→启动→保存→关闭→重启恢复→升级/回滚；保留用户现有数据与分支。AAOS真实本地转换、日常对话学习、云检索授权与冲突标注、人选正式入库、模型失联仍保存；WORK外部明确授权执行端和实际LFS归档哈希；DESIGN修正幂等后真实Adobe宿主保存/关闭/重开、rights/research安装版、域索引恢复、完整交付归档与教学输出。对真实用户数据需另外最小权限授权。本报告不授权自动修复或任何提交/发布。
+</pre><h2>证据索引</h2><ul><li><a href="evidence/aaos-audit-recovery.log">aaos-audit-recovery.log</a></li><li><a href="evidence/aaos-blueprint.png">aaos-blueprint.png</a></li><li><a href="evidence/aaos-browser-no-core.png">aaos-browser-no-core.png</a></li><li><a href="evidence/aaos-build.log">aaos-build.log</a></li><li><a href="evidence/aaos-clone.log">aaos-clone.log</a></li><li><a href="evidence/aaos-cloud-contract-retest.log">aaos-cloud-contract-retest.log</a></li><li><a href="evidence/aaos-cloud-final.log">aaos-cloud-final.log</a></li><li><a href="evidence/aaos-cosmic.png">aaos-cosmic.png</a></li><li><a href="evidence/aaos-historical-ci.json">aaos-historical-ci.json</a></li><li><a href="evidence/aaos-legacy-federation.json">aaos-legacy-federation.json</a></li><li><a href="evidence/aaos-light.png">aaos-light.png</a></li><li><a href="evidence/aaos-npm-official.log">aaos-npm-official.log</a></li><li><a href="evidence/aaos-npm.log">aaos-npm.log</a></li><li><a href="evidence/aaos-palette.png">aaos-palette.png</a></li><li><a href="evidence/aaos-python.log">aaos-python.log</a></li><li><a href="evidence/aaos-query-egress.json">aaos-query-egress.json</a></li><li><a href="evidence/aaos-security-extra.log">aaos-security-extra.log</a></li><li><a href="evidence/aaos-server.log">aaos-server.log</a></li><li><a href="evidence/aaos-vitest.log">aaos-vitest.log</a></li><li><a href="evidence/bs4-install.log">bs4-install.log</a></li><li><a href="evidence/ci-readback.json">ci-readback.json</a></li><li><a href="evidence/design-batch-lost-response.png">design-batch-lost-response.png</a></li><li><a href="evidence/design-batch.json">design-batch.json</a></li><li><a href="evidence/design-brand.png">design-brand.png</a></li><li><a href="evidence/design-browser.json">design-browser.json</a></li><li><a href="evidence/design-clone.log">design-clone.log</a></li><li><a href="evidence/design-content-audit.log">design-content-audit.log</a></li><li><a href="evidence/design-created.png">design-created.png</a></li><li><a href="evidence/design-domain-unfiltered.png">design-domain-unfiltered.png</a></li><li><a href="evidence/design-domain.json">design-domain.json</a></li><li><a href="evidence/design-facet-fixture.png">design-facet-fixture.png</a></li><li><a href="evidence/design-facets.json">design-facets.json</a></li><li><a href="evidence/design-federation.log">design-federation.log</a></li><li><a href="evidence/design-initial.png">design-initial.png</a></li><li><a href="evidence/design-intake.png">design-intake.png</a></li><li><a href="evidence/design-light-diagnostic.png">design-light-diagnostic.png</a></li><li><a href="evidence/design-narrow.png">design-narrow.png</a></li><li><a href="evidence/design-navigation.json">design-navigation.json</a></li><li><a href="evidence/design-node.log">design-node.log</a></li><li><a href="evidence/design-npm.log">design-npm.log</a></li><li><a href="evidence/design-palette.png">design-palette.png</a></li><li><a href="evidence/design-plan-initial.png">design-plan-initial.png</a></li><li><a href="evidence/design-plan-retry-photoshop.json">design-plan-retry-photoshop.json</a></li><li><a href="evidence/design-plan-retry.json">design-plan-retry.json</a></li><li><a href="evidence/design-plan-retry.png">design-plan-retry.png</a></li><li><a href="evidence/design-pnpm.log">design-pnpm.log</a></li><li><a href="evidence/design-python.log">design-python.log</a></li><li><a href="evidence/design-risk-pre.json">design-risk-pre.json</a></li><li><a href="evidence/design-route-audit.log">design-route-audit.log</a></li><li><a href="evidence/design-search-ninth.png">design-search-ninth.png</a></li><li><a href="evidence/design-search.json">design-search.json</a></li><li><a href="evidence/design-server.log">design-server.log</a></li><li><a href="evidence/design-test-env-retest.log">design-test-env-retest.log</a></li><li><a href="evidence/design-theme-click-noop.png">design-theme-click-noop.png</a></li><li><a href="evidence/design-theme-reload-401.png">design-theme-reload-401.png</a></li><li><a href="evidence/design-theme.json">design-theme.json</a></li><li><a href="evidence/design-ui-dark.png">design-ui-dark.png</a></li><li><a href="evidence/design-ui-light.png">design-ui-light.png</a></li><li><a href="evidence/design-ui2026-dark-confirmed.png">design-ui2026-dark-confirmed.png</a></li><li><a href="evidence/design-verify.log">design-verify.log</a></li><li><a href="evidence/design-wheel-api.json">design-wheel-api.json</a></li><li><a href="evidence/design-wheel-build.log">design-wheel-build.log</a></li><li><a href="evidence/design-wheel-domains.log">design-wheel-domains.log</a></li><li><a href="evidence/design-wheel-install.log">design-wheel-install.log</a></li><li><a href="evidence/design-wheel-server.log">design-wheel-server.log</a></li><li><a href="evidence/python-extra.log">python-extra.log</a></li><li><a href="evidence/python-install.log">python-install.log</a></li><li><a href="evidence/scope-initial.txt">scope-initial.txt</a></li><li><a href="evidence/synthetic-batch.png">synthetic-batch.png</a></li><li><a href="evidence/synthetic.png">synthetic.png</a></li><li><a href="evidence/versions.json">versions.json</a></li><li><a href="evidence/visual-matrix-run.log">visual-matrix-run.log</a></li><li><a href="evidence/visual-matrix.json">visual-matrix.json</a></li><li><a href="evidence/work-active-home.png">work-active-home.png</a></li><li><a href="evidence/work-browser.json">work-browser.json</a></li><li><a href="evidence/work-build.log">work-build.log</a></li><li><a href="evidence/work-clone.log">work-clone.log</a></li><li><a href="evidence/work-compact-probe.log">work-compact-probe.log</a></li><li><a href="evidence/work-dark.png">work-dark.png</a></li><li><a href="evidence/work-federation.log">work-federation.log</a></li><li><a href="evidence/work-floor.png">work-floor.png</a></li><li><a href="evidence/work-history-recheck.log">work-history-recheck.log</a></li><li><a href="evidence/work-light.png">work-light.png</a></li><li><a href="evidence/work-mbcs-isolated.log">work-mbcs-isolated.log</a></li><li><a href="evidence/work-npm-official.log">work-npm-official.log</a></li><li><a href="evidence/work-npm.log">work-npm.log</a></li><li><a href="evidence/work-palette.png">work-palette.png</a></li><li><a href="evidence/work-python.log">work-python.log</a></li><li><a href="evidence/work-server.log">work-server.log</a></li><li><a href="evidence/work-ui-build.log">work-ui-build.log</a></li><li><a href="evidence/work-ui-editor.png">work-ui-editor.png</a></li><li><a href="evidence/work-ui-fit.json">work-ui-fit.json</a></li><li><a href="evidence/work-ui-fit.png">work-ui-fit.png</a></li><li><a href="evidence/work-ui-floor.png">work-ui-floor.png</a></li><li><a href="evidence/work-ui-monitoring.png">work-ui-monitoring.png</a></li><li><a href="evidence/work-ui-npm-official.log">work-ui-npm-official.log</a></li><li><a href="evidence/work-ui-npm.log">work-ui-npm.log</a></li><li><a href="evidence/work-ui-server.log">work-ui-server.log</a></li><li><a href="evidence/work-ui-stale-compact.json">work-ui-stale-compact.json</a></li><li><a href="evidence/work-ui-stale-compact.png">work-ui-stale-compact.png</a></li><li><a href="evidence/work-ui-stale-live.json">work-ui-stale-live.json</a></li><li><a href="evidence/work-ui-stale-live.png">work-ui-stale-live.png</a></li><li><a href="evidence/work-ui-vitest.log">work-ui-vitest.log</a></li><li><a href="evidence/work-vitest.log">work-vitest.log</a></li></ul>

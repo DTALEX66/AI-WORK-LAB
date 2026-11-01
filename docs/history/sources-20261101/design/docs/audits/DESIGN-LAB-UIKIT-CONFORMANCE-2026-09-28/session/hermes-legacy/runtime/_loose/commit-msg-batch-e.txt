@@ -1,0 +1,31 @@
+fix(governance): Batch E convergence — drift sync, reports rebind, §15 close-out
+
+P1-E `.project/governance/authority-index.json`: cleared the two
+`currentButDrifted` entries that no longer exist — AGENTS.md already mandates the
+Authority first-read (verifier check `agents-authority-first` PASS) and the
+LANGUAGE-POLICY DECLARED_NOT_ENFORCED wording was already corrected.
+
+P1-F `docs/architecture/LANGUAGE-POLICY.md`: §4 "measured state" now states the
+pnpm workspace reality (root package.json + pnpm-workspace.yaml + pnpm-lock.yaml
++ strict-TS apps/workbench + committed Vite build) instead of the stale
+"Product Node build: none / root package.json absent" description. No language
+migration is reopened.
+
+P1-C `reports/current/**` + `reports/README.md`: 44 projections now carry the
+explicit provenance keys (projection/subjectSha/fresh/generatedBy); the 9
+generator-owned outputs and `design-lab/config/current-report-index.json` were
+regenerated on the current inputs. `scripts/generate_current_reports.py --check`
+returns PASS (mode=check scope=bound-input-integrity). The 7 byte-locked outputs
+keep their own fresh/subjectSha semantics and are deliberately not hand-edited.
+
+P1-D `AUTHORITY.md` §15: every P0 item that has landed on main is marked
+CLOSED_WITH_REGRESSION_GUARD with its exact evidence — including the gh readback
+of the 7 main required checks, which already include the Authority consistency
+gate and the Workbench strict-TS gate — so a TaskPack cannot re-dispatch
+finished work. P1 residuals stay OPEN and precise.
+
+R2 byte-pin re-pinned per AUTHORITY §17 (owner intent = 全部授权; reason,
+superseded value and impact recorded beside the table).
+
+Guards: verify_top_level_authority.py -> TOP_AUTHORITY_GATE=PASS checks=10;
+verify_design_lab.py -> VERIFY_DESIGN_LAB=OK total=49 failed=0.

@@ -1,0 +1,130 @@
+# design.qa.yaml — run configuration for the external `design-review` plugin's
+# deterministic auditors (audit-design-debt.mjs, audit-a11y.mjs).
+#
+# It exists so an outside tool's numbers are reproducible from committed bytes:
+# the file is the plugin's own native entry point (`design.qa.yaml` at the project
+# root, next to DESIGN.md), and `scripts/run_design_review_plugin.py` starts the
+# real loopback service on exactly the `baseUrl` port below and refuses to run if
+# that port is occupied or if apps/workbench/build differs from HEAD.
+#
+# Scope note that changes how to read the a11y numbers: the plugin only navigates
+# (goto + waitForSelector), so it measures the authenticated-but-EMPTY workspace —
+# no project is created first. The in-repo gates bootstrap a real project, so they
+# measure populated views. Same product, different UI state, and the reports say so.
+project:
+  name: DESIGN-LAB
+  # Bound by scripts/run_design_review_plugin.py; must equal the port it opens.
+  baseUrl: "http://127.0.0.1:8931"
+  outputDir: ".project-local/runs/design-review/.design-qa"
+
+design:
+  designMd: DESIGN.md
+
+code:
+  # The Workbench is native TypeScript + one hand-written stylesheet, and its
+  # whole surface is these files. `build/` is generated and excluded because debt
+  # in a bundle is a consequence, not a decision anyone can edit.
+  include:
+    - "apps/workbench/*.ts"
+    - "apps/workbench/*.css"
+    - "apps/workbench/*.html"
+    - "packages/*/src/**/*.{ts,css,html}"
+  exclude:
+    - "node_modules/**"
+    - "apps/workbench/node_modules/**"
+    - "apps/workbench/build/**"
+
+# Deliberately empty: disabling an axe rule before ever seeing it fail would hide
+# the finding this run exists to produce.
+a11y:
+  disabledRules: []
+  includeSelectors: []
+  excludeSelectors: []
+
+debt:
+  maxHardCodedColors: 0
+  maxArbitraryTailwindValues: 5
+  maxInlineStyles: 0
+  allowedColorValues:
+    - "#000"
+    - "#fff"
+    - "transparent"
+
+# The same hash routes the in-repo overflow gate sweeps (audit_workbench_overflow.mjs
+# ROUTES), so the two scans answer about the same pages. The list grew from 12 to 18 on
+# 2026-10-09 because DL-UI-U01..U05 added #/capabilities, #/states, #/components,
+# #/intake, #/analysis and #/plan; a screen that is not listed here is never opened by
+# this scanner, and "the plugin found nothing" would then be a statement about the list.
+# 2026-10-24: the list had fallen four routes behind ROUTE_VIEWS (22). #/prompts,
+# #/records and #/models were added earlier without being scanned, and #/knowledge was
+# then the newest screen (DL-KB-03). All four were listed, and #/assistant followed the
+# same day (DL-KB-08), so the list then tracked ROUTE_VIEWS (23) exactly. DL-KB-10 added
+# #/target-profiles on 2026-10-24, so the list is kept tracking ROUTE_VIEWS (24) — a route
+# that is not listed is never opened by this scanner, and "the plugin found nothing" would
+# then be a statement about the list rather than about the page.
+# The four 390x844 screens are the nav/KPI narrow-window states that have been contested.
+# Mobile is an EXCLUSION (owner 2026-10-19: "只做桌面端"), not a pending task: these probes
+# measure the desktop app at a narrow window and are not a mobile deliverable.
+screens:
+  - name: workbench
+    app: { url: "/workbench", waitUntil: "networkidle", waitForSelector: "#workspace" }
+  - name: dashboard
+    app: { url: "/workbench#/dashboard", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: projects
+    app: { url: "/workbench#/projects", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: research
+    app: { url: "/workbench#/research", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: brand-systems
+    app: { url: "/workbench#/brand-systems", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: domains
+    app: { url: "/workbench#/domains", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: tools
+    app: { url: "/workbench#/tools", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: preflight
+    app: { url: "/workbench#/preflight", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: deliverables
+    app: { url: "/workbench#/deliverables", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: evidence
+    app: { url: "/workbench#/evidence", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: collaboration
+    app: { url: "/workbench#/collaboration", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: settings
+    app: { url: "/workbench#/settings", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: capabilities
+    app: { url: "/workbench#/capabilities", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: prompts
+    app: { url: "/workbench#/prompts", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: knowledge
+    app: { url: "/workbench#/knowledge", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: records
+    app: { url: "/workbench#/records", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: models
+    app: { url: "/workbench#/models", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: intake
+    app: { url: "/workbench#/intake", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: analysis
+    app: { url: "/workbench#/analysis", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: plan
+    app: { url: "/workbench#/plan", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: states
+    app: { url: "/workbench#/states", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: components
+    app: { url: "/workbench#/components", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: assistant
+    app: { url: "/workbench#/assistant", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  # DL-KB-10 (2026-10-24): 目标组合选择面板。默认态「暂不指定」下两栏对照与路线空态都要被打开，
+  # 否则"插件没发现问题"说的只是这份清单，不是那一屏。
+  - name: target-profiles
+    app: { url: "/workbench#/target-profiles", waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: dashboard-390
+    app: { url: "/workbench#/dashboard", viewport: { width: 390, height: 844 },
+           waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: projects-390
+    app: { url: "/workbench#/projects", viewport: { width: 390, height: 844 },
+           waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: evidence-390
+    app: { url: "/workbench#/evidence", viewport: { width: 390, height: 844 },
+           waitUntil: "networkidle", waitForSelector: "#route-view" }
+  - name: settings-390
+    app: { url: "/workbench#/settings", viewport: { width: 390, height: 844 },
+           waitUntil: "networkidle", waitForSelector: "#route-view" }

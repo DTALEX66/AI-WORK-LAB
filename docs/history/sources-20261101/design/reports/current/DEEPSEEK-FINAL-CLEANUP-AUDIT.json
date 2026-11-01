@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "design-lab/deepseek-final-cleanup-audit/v1",
+  "task_key": "DL-TP-20260914-DEEPSEEK-AUTHORITY-R1::DLDS-K010",
+  "audited_at": "2026-10-18T09:48:10+00:00",
+  "subject_sha": "15b3b6838af52cf7376b2d78fa5dc4389c709d8a",
+  "conditions": [
+    {
+      "condition": "no stale active paths",
+      "ok": true,
+      "evidence": "reports/current/DEEPSEEK-LEGACY-PATH-SCAN.json",
+      "measured": {
+        "hits": 1015,
+        "active_use": 0,
+        "blocked": [],
+        "classes": {
+          "MIGRATED": 27,
+          "HISTORICAL_ONLY": 988,
+          "POLICY_RECORD": 0,
+          "DELETE": 0,
+          "BLOCKED": 0
+        }
+      }
+    },
+    {
+      "condition": "no unauthorized third-party source",
+      "ok": true,
+      "evidence": "reports/current/THIRD-PARTY-SOURCE-AUDIT.json, reports/current/SUPPLY-CHAIN-REPORT.json",
+      "measured": {
+        "entries": 46,
+        "tracked_full_copies": 3,
+        "in_ignored_cache": 0,
+        "verdict": "NO_FULL_THIRD_PARTY_SOURCE_TREES_TRACKED"
+      }
+    },
+    {
+      "condition": "no model weights in Git",
+      "ok": true,
+      "evidence": "reports/current/SUPPLY-CHAIN-REPORT.json#G040_binary_inventory",
+      "measured": {
+        "verdict": "NO_MODEL_WEIGHTS_TRACKED",
+        "counts": null
+      }
+    },
+    {
+      "condition": "no runtime in Git",
+      "ok": true,
+      "evidence": "reports/current/SUPPLY-CHAIN-REPORT.json#G040_generated_artifacts, git ls-files",
+      "measured": {
+        "generated_offenders": 0,
+        "tracked_runtime_files": 0
+      }
+    },
+    {
+      "condition": "no active .hermes writes",
+      "ok": true,
+      "evidence": "reports/current/SPILL-CENSUS.json, .project-local/archive/hermes-legacy/MIGRATION-MANIFEST.json, git ls-files .hermes, directory mtimes",
+      "measured": {
+        "tracked": [],
+        "entries": [
+          {
+            "path": ".hermes/skill-call-index.json",
+            "kind": "content",
+            "mtime": "2026-08-23T16:02:11+00:00"
+          },
+          {
+            "path": ".hermes/task-artifacts",
+            "kind": "empty_directory",
+            "mtime": "2026-09-13T16:30:29+00:00"
+          },
+          {
+            "path": ".hermes/task-runtime",
+            "kind": "empty_directory",
+            "mtime": "2026-09-22T15:47:53+00:00"
+          }
+        ],
+        "content_other_than_refused": [],
+        "refused": [
+          ".hermes/skill-call-index.json"
+        ],
+        "empty_directory_note": "empty legacy directories remain because the migration removed their contents; their mtimes sit at the migration instant, so they are leftovers of that removal and not new writes"
+      }
+    },
+    {
+      "condition": "no duplicate SSOT",
+      "ok": true,
+      "evidence": "reports/current/CONTRACT-GRAPH.json, reports/current/DEEPSEEK-REGISTRY-SSOT.json",
+      "measured": {
+        "duplicate_table_declarations": [],
+        "registry_families": 10,
+        "families_without_a_single_source": [],
+        "single_task_status_source": "design-lab/config/task-ledger-r3.json",
+        "single_authority_ledger_writer": "scripts/deepseek_authority_ledger.py"
+      }
+    },
+    {
+      "condition": "no unknown spill",
+      "ok": true,
+      "evidence": "reports/current/SPILL-CENSUS.json, .project-local/quarantine/deepseek-round1/RUNTIME-CLEANUP-MANIFEST.json",
+      "measured": {
+        "census_verdict": "CENSUS_COMPLETE",
+        "legacy_objects_censused": 1,
+        "unproven_objects": 1,
+        "deleted_entries_with_manifest": 167
+      }
+    }
+  ],
+  "counts": {
+    "conditions": 7,
+    "ok": 7,
+    "failed": []
+  },
+  "verdict": "PASS"
+}

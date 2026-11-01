@@ -1,0 +1,84 @@
+{
+  "axis": "visual_review",
+  "commits_landed": [
+    {
+      "sha": "b2eb6b69",
+      "what": "四处前后端闭环缺陷 + DL-KB-13 缺的两项测量"
+    },
+    {
+      "sha": "a5346658",
+      "what": "MAX_QUERY 落地成真界限 + 合同承诺却无人测的三条拒绝码"
+    },
+    {
+      "sha": "703d90db",
+      "what": "删除 25 个无人读的自定义属性 + 把普查闸的人口扩到全部声明"
+    },
+    {
+      "sha": "b8ac53dc",
+      "what": "无界列表路由登记面：新增第十条即红，绑好却不摘牌也即红"
+    }
+  ],
+  "criterion_used": "按职责判有用没用，不按有没有引用：去掉它，项目能证明的或能对外的承诺会不会变少。变少=有用（哪怕零引用）；既不证明也不承诺且已有别的主人=才谈得上删。",
+  "evidence_grade": "E2 controlled-runtime：真实 Chromium、真实回环服务、本 exact SHA 字节；不是 E3 宿主运行，也不是 E4 人审。",
+  "falsifiers": [
+    "把 _get_project 改回 if project is not None（无 else）后重跑新测试：RemoteDisconnected 复现，证明确有这条缺陷；恢复后绿（本次实测）。",
+    "普查闸初版复用 declarations()（正则只匹配 --uif-*）→ 对任何其它名字恒返回空 = 假断言；植一个 --space-dead-99 当场暴露，改为自带全量正则。",
+    "新登记的 40 字理由规则逮到了它自己的作者：_list_research 原写\"no bound and no measurement yet\"（31 字）被判填充。",
+    "删除 --info 会让它作为唯一读者的身份消失，--color-info 随之成孤儿——所以清扫迭代到不动点（第 2、3 遍均 0 删除）而非跑一遍。"
+  ],
+  "id": "kb-13-loop-closure-and-css-token-register-20261025",
+  "instrument_errors_found_in_my_own_work": [
+    "第一遍清扫把\"文档/证据里提到名字\"当消费者，只删了 14 个；把作用域收紧到代码才见 25 个。",
+    "404 测试连错两次 id 形状（64 位十六进制与 p- 前缀都不匹配 ([0-9a-f]{32})），差点把\"兄弟模块用词不一致\"当成结论——真因是路由根本没命中。",
+    "我在登记注册表时锚点行没重出，等于把 test_workbench_motion_gate 从元组里删掉；靠 diff 只显示\"+1 条、0 删除\"才发现并修回（AST 复核元组=8 项、前 7 项俱在）。"
+  ],
+  "landed": {
+    "GET /api/projects/<32hex> 未知 id": "改前实测 http.client.RemoteDisconnected（连接无响应关闭，与\"服务挂了\"同形）→ 现 404 PROJECT_NOT_FOUND，与 7 个兄弟模块同词；并分别钉住两种 404（畸形 id 由路由模式拒、合法但不存在由 handler 拒）",
+    "KNOWLEDGE_OFFSET_INVALID / KNOWLEDGE_LIMIT_INVALID": "合同行承诺了、全仓零测试；三条拒绝码各按触发值类钉住",
+    "MAX_QUERY=200": "声明了却没有任何代码读它——现真拒绝（KNOWLEDGE_QUERY_TOO_LONG），且恰好 200 字符合法（界不是墙）",
+    "drain_body": "注释承诺\"任何失败都忽略\"却没有 try；读超时在 except 处理器内再抛出，正是这个 helper 要防的 10053",
+    "test:unit": "原先直跑已提交 bundle，改 shell.ts 后本地\"绿\"测的是改前字节；现脚本内先 build（pnpm 在此不跑 pre/post 钩子，所以不能写成 pretest:unit）",
+    "test_workbench_preflight_handoff_e2e": "存在、本地 2.0s 通过，却没进 no-skip 注册表、workflow 也不点它 → CI 从没执行过这把浏览器尺。登记前先把它 Windows 专属的 chromium glob 换成其余七把尺共用的跨平台发现函数",
+    "verify_fresh_clone": "刚问完 shutil.which 并在同一行打印结果，下一句就无条件写 \"uv is absent\""
+  },
+  "logArtifacts": {
+    "kb-13-browser-no-skip-after-registration-20261025.log": {
+      "bytes": 379,
+      "path": "design-lab/evidence/current-execution/task-artifacts/kb-20261025/kb-13-browser-no-skip-after-registration-20261025.log",
+      "sha256": "16acb06cdefec97bcac0c040f15bad6fa54813e1234b45bd999cbe54669f0077"
+    },
+    "kb-13-contrast-gate-after-css-sweep-20261025.log": {
+      "bytes": 15162,
+      "path": "design-lab/evidence/current-execution/task-artifacts/kb-20261025/kb-13-contrast-gate-after-css-sweep-20261025.log",
+      "sha256": "b36270cab19c7841ef8cecc68048ac9cd6dbc118ce311b3f6a31774d86bd476e"
+    }
+  },
+  "measured_at_head": "b8ac53dc30c65ab47aefd8b4bcec992d0f27a753",
+  "measurements": {
+    "attachmentCost": "200 张 47,160 B 附件时 list 服务端 199.59 ms；其中 path+stat 59.0%、两次图像解码 30.5%、read 5.8%、hash 仅 2.4%",
+    "listRoutes": "18 条带列表的 GET 路由，9 条有界 / 9 条无界（登记面逐条带理由）",
+    "searchP95": "KNOWLEDGE_SEARCH_P95_MS=34.7 budget=300 entries=1000 samples=30",
+    "thumbnailStrategy": "首屏拉 0 像素、0 字节；预览是 1 个惰性 <img>、点两次取两次；无服务端缩放变体（image_assets.py 无 thumbnail/resize/scale 符号）",
+    "why_pagination_is_not_the_attachment_fix": "成本来自每行重校验而不是行数；width/height/media_type 没有落库，真正的修法是写入时物化——那是带迁移/precheck/合同行的 state-schema 改动。用切片冒充修复只会看着像进步，毫秒数一毫秒没少"
+  },
+  "migrated_or_archived": {
+    "保留但零引用（删了就丢承诺）": "model_radar.resolve()/radar_report() 是 fail-closed 承诺的承担者，零生产消费者只说明\"没有加载模型的 runtime\"（模型部署冻结）；workflow_provider/remote_provider/audio_provider/comfy_*/reconstruction 包是对外版本化公共合同面；vendor/ 39 件 manifest 与 docs/history/** 按 AGENTS.md 是惰性资料；8 个未被 UI 读的 --uif-* 由 SPEC_PROVENANCE 承担包值出处职责",
+    "删除（25 个 CSS 自定义属性）": "--blur --bp-desktop --bp-tablet --bp-mobile --density-{default,compact,comfortable} --error --info --font-{body,display,h1,h2,h3} --motion-emphasis --radius-{sm,xl} --space-{1,2,3,6,8,12,16} --color-info；27 行声明、593 字节、style.css 121964→121371。判据：无任何 var() 读它，且产品源码、闸门、测试、schema、包内都无按名断言；残余出现处只有它来源的 B07 参考语料与一份记录\"它们没被用\"的债清单",
+    "普查闸迁人口（不是删 token 而是补机制）": "既有 CONSUMPTION 检查的人口只是包点名的 --uif-* 字段，所以整族死声明在它视野外；新规则枚举全部声明属性，例外由既有 SPEC_PROVENANCE 决定——不手抄 allowlist，那等于给同一事实再配一个主人",
+    "本轮明确不动（该迁移但需单独一刀）": "五份手写 CSS 花括号扫描器：功能重复，但每份的豁免清单与断言面不同，合并必须逐个证明输出集不丢，不是改名就能并"
+  },
+  "observed_at": "2026-10-25T10:38:00Z",
+  "outcome": "PASS",
+  "subject": "src/design_lab/http_service.py + src/design_lab/knowledge_library.py + apps/workbench/style.css + apps/workbench/package.json + design-lab/tests/{test_design_layer_http,test_knowledge_library,test_workbench_theme_tokens,test_workbench_preflight_handoff_e2e,test_workbench_weight}.py + design-lab/scripts/{verify_design_lab,verify_browser_e2e_ran}.py + scripts/{measure_workbench_weight,verify_fresh_clone}.py",
+  "task_id": "DL-KB-13",
+  "verification": {
+    "aggregate_before_this_receipt": "VERIFY_DESIGN_LAB=OK total=76 failed=0（清扫后与登记后各跑一次）",
+    "contrast_after_css_sweep": "CT_SUMMARY checked=16258 belowAA=0 pseudoLayers=12216 coveredForeign=0 obscured=4 unparsable=0 collapsedOpened=6250 controlMisses=0 strict=1 mathChecks=4 mathBad=0 colourChecks=4 colourBad=0",
+    "no_skip_registry_after_registration": [
+      "BROWSER_E2E ran=17 skipped=0 failed=0",
+      "BROWSER_E2E: PASS (ran, no-skip, no-skip policy satisfied)"
+    ],
+    "stale_row_after_css_sweep": "STALEROW 1920:target-profiles+combination-after-change moved=tp-software->ElevenLabs profile=flux2--api--image-generation=>elevenlabs--web-app--music text=按新目标重新校验 disabled=0 color=rgb(255, 255, 255) transition-property=transform, border-color, box-shadow bg=rgba(0, 0, 0, 0) + linear-gradient(135deg, rgb(29, 79",
+    "unit_suites_this_round": "44 OK (theme tokens/stitch palette/css-single-definition/design debt) + 110 OK (contract bindings/route payload/knowledge http/knowledge library) + 21 OK (knowledge library) + 19 OK (weight) + 21 OK (design layer http) + 9 OK (gate reachability); self-sufficiency modules=259 violations=0"
+  }
+}

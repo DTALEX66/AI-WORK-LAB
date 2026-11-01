@@ -1,0 +1,40 @@
+docs(audit): archive the UI-kit conformance round in-repo
+
+Archives the whole round under docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/
+(223 files, ~2.7 MB) plus a round handover, so the work no longer lives only in the
+gitignored .project-local tree.
+
+Contents
+- pack/       owner-supplied pack documents, verbatim, + EXTRACTION-MANIFEST
+- findings/   W00/W01/W02/W03/W14 deliverables, incl. W02-LEGACY-COUPLING
+- evidence/   raw harness outputs (W02-LEAK-SWEEP.txt and the *-VERIFY/*-PROBE JSON)
+- harness/    the runnable audit tooling that produced evidence/
+- session/    session lineage: commit/PR drafts, superseded revisions (traceability only)
+- ui-originals/ extracted B04/B07/B10 reference originals, incl. the 17 B04 design
+              sheets, which now live in-repo so conformance work no longer depends on
+              the external D:\All projects\UI套件 archives
+
+Result recorded: deleting every unscoped element-only legacy rule through the CSSOM and
+diffing all computed longhands of every .app element over all 12 routes + the default
+and login screens (328 elements) leaves 0 legacy-supplied bindings inside .app (was 8,
+fixed in #183) while 1923 remain OUTSIDE .app -- the login/connect screen, #workspace
+and nav.app-nav are the legacy app. That is why the legacy element rules cannot be
+blanket-scoped away; an earlier plan to do so would have broken those screens.
+
+Placement and gate compliance
+- docs/audits/, deliberately NOT docs/taskpacks/: docs/taskpacks/** is scanned by the
+  authority-chain and context-integrity gates, so an archive there risks being
+  misclassified as a historical taskpack or read as an authority claim.
+- Archived .py/.mjs/.js carry SPDX-License-Identifier (License & secret hygiene gate);
+  the 17 binary sheets carry .license sidecars for the same gate.
+- All text files are valid UTF-8: the identity gate reads every tracked text file and
+  fails CLOSED on an unreadable one. The first sweep output was written UTF-16LE by a
+  PowerShell redirect and was caught by that gate; evidence is now written as explicit
+  UTF-8.
+
+Locally verified before committing: verify_license_coverage.py OK,
+verify_identity_gate.py OK (0), verify_top_level_authority.py PASS (10/10),
+verify_context_integrity.py PASS.
+
+No capability-axis promotion is claimed: this is a docs/evidence archive, and
+host_live (1/28) / delivery (0/28) still require real host hardware.

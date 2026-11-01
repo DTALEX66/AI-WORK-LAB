@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "work-lab-project-data-boundary/v1",
+  "platformNeutral": true,
+  "runtimeRoot": ".project-local/runs",
+  "taskArtifactsRoot": ".project-local/artifacts",
+  "logsRoot": ".project-local/runs/logs",
+  "cacheRoot": ".project-local/runs/cache",
+  "canonicalEvidenceRoot": ".project-local/artifacts",
+  "responsibilities": {
+    "runtimeRoot": "temporary task state, caches, logs and reproducible local runtime artifacts",
+    "taskArtifactsRoot": "sanitized task evidence and machine-readable assessment records",
+    "canonicalEvidenceRoot": "stable ignored evidence packages intended for project handoff",
+    "legacyWorkLabRoot": "input-only historical reference; not a write target"
+  },
+  "legacyAliases": [
+    ".work-lab",
+    ".work-lab/evidence"
+  ],
+  "secondaryRuntimeRoots": [
+    {
+      "path": ".hermes/task-runtime",
+      "status": "TRACKED",
+      "role": "hook-escape runtime landing: pycache/uv/node-compile caches that the hermes-project-data wrapper routes outside .project-local",
+      "kind": "regenerable-cache",
+      "note": "not a canonical write target; declared here so boundary declaration matches reality. Slimmable on demand; never a task artifact."
+    },
+    {
+      "path": ".hermes/task-artifacts",
+      "status": "TRACKED",
+      "role": "hook-escape task artifacts (3 files observed, <1MB); prefer .project-local/artifacts for new evidence",
+      "kind": "evidence"
+    }
+  ],
+  "forbiddenExternalRoots": [
+    "E:/",
+    "E:\\",
+    "F:/",
+    "F:\\"
+  ],
+  "spillGovernance": {
+    "rule": "Every project artifact stays inside the project Git root; any write outside it is a spill and must be traceable, locatable, cleanable and migratable.",
+    "protectedDataVolume": {
+      "roots": [
+        "E:/",
+        "E:\\",
+        "F:/",
+        "F:\\"
+      ],
+      "policy": "forbidden without explicit per-path, per-operation user authorization",
+      "accessDefault": "deny"
+    },
+    "trace": "every spill records source, timestamp, and exact target path",
+    "locate": "the exact spilled path is machine-resolvable for cleanup or migration",
+    "clean": "spilled artifacts are removable or revertible without touching project source",
+    "migrate": "spilled artifacts are relocatable back inside the project boundary",
+    "ledger": {
+      "path": ".project-local/artifacts/spill-ledger.jsonl",
+      "schema": "work-lab/spill-ledger/v1",
+      "requiredFields": [
+        "at",
+        "actor",
+        "action",
+        "outOfRoot",
+        "target",
+        "source",
+        "trace",
+        "locate",
+        "clean",
+        "migrate"
+      ],
+      "rule": "One JSONL line per write performed by this project. outOfRoot=false lines record in-root artifact moves and cleanup manifests, so a cleanup is reconstructible from the ledger alone; outOfRoot=true lines additionally require target to be an absolute path outside the Git root plus a reversibility statement. A spill with no ledger line is an unrecorded side effect, not a spill.",
+      "note": "The ledger lives under .project-local because it contains machine-local absolute paths; the DECLARATION is tracked so CI can enforce that a spill must be written down, without shipping this machine's paths."
+    }
+  },
+  "artifactFlowSemantics": {
+    "ref": "packages/client-neutral-core/scripts/artifact_flow_policy.py",
+    "added": "2026-09-16 NF-01-SYNC",
+    "note": "Clarifies the broad 'inside project Git root / no prompt-response bodies' phrasing. Business artifacts the user selected may flow to authorized material spaces; private session libs / telemetry bodies / credentials NEVER auto-mirror.",
+    "allowedKinds": [
+      "user_published_audit",
+      "user_published_task",
+      "immutable_task_package_ref",
+      "receipt_ref"
+    ],
+    "forbiddenKinds": [
+      "private_session",
+      "conversation_log",
+      "telemetry_body",
+      "credential",
+      "account_key",
+      "browser_data"
+    ],
+    "unknownFailClosed": true,
+    "nestedSecretsIsolated": true,
+    "projectPrefScoping": "project/task-scoped preferences do not leak to other projects; global is a separate explicit authorization"
+  },
+  "readOnlyInboundRoots": [
+    {
+      "id": "owner-material-record",
+      "path": "D:/All projects/Record",
+      "mode": "READ_ONLY",
+      "neverWrite": true,
+      "declaredBy": "owner handover 2026-10-06/07 plus the 2026-10-07 full-scope authorization",
+      "rule": "Inbound owner material, not a project directory: read only, never written, never deleted, never copied wholesale. ~15 GB of multi-project material, so reads go through the central directory and a size filter rather than a recursive walk. Recovery INTO the repository requires the explicit opt-in flag, an artifact-flow ALLOW decision, a secret scan, and a stated digest pin when the source is an archive member.",
+      "forbiddenOperations": [
+        "write",
+        "delete",
+        "move",
+        "chmod",
+        "bulk-copy"
+      ],
+      "allowedOperations": [
+        "stat",
+        "read",
+        "enumerate-archive-members",
+        "extract-one-member-to-staging"
+      ]
+    }
+  ]
+}

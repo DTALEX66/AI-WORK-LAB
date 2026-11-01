@@ -1,0 +1,26 @@
+  // Turn each row's status / writability into an explicit pill so the 4-state
+  // contract is visible (a writable root is marked; every shared input stays
+  // read-only DECLARED_NOT_PROBED — the UI never implies it can write there).
+  const writablePill = (writable: boolean): HTMLElement =>
+    el('span', { class: 'pill ' + (writable ? 'pill-pass' : 'pill-info') }, writable ? '可写' : '只读');
+  const roots = el('table', { class: 'resource-table' },
+    el('thead', {}, el('tr', {}, el('th', {}, '根'), el('th', {}, '路径'), el('th', {}, '可写'))),
+    el('tbody', {}, ...Object.entries(env.roots).map(([name, root]) => el('tr', {},
+      el('td', {}, name), el('td', {}, root.path), el('td', {}, writablePill(root.writable))))));
+  const shared = el('table', { class: 'resource-table' },
+    el('thead', {}, el('tr', {}, el('th', {}, '外置库索引'), el('th', {}, '状态'), el('th', {}, '路径'))),
+    el('tbody', {}, ...Object.entries(env.shared_inputs).map(([name, input]) => el('tr', {},
+      el('td', {}, name),
+      el('td', {}, el('span', { class: 'pill pill-info' }, input.status)),
+      el('td', {}, input.path)))));
+  target.replaceChildren(
+    el('h2', {}, '系统设置'),
+    el('table', { class: 'resource-table' },
+      el('tbody', {}, ...rows.map(([label, value]) => el('tr', {},
+        el('th', { scope: 'row' }, label), el('td', {}, value)))),
+    el('p', { class: 'eyebrow' }, '项目根（可写）'),
+    roots,
+    el('p', { class: 'eyebrow' }, '外置输入（只读 · DECLARED_NOT_PROBED）'),
+    shared,
+    el('p', { class: 'view-hint' }, '设置页只读回服务端诊断；本服务不修改任何配置。'));
+}

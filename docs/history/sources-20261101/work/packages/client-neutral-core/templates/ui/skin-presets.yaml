@@ -1,0 +1,126 @@
+schema_version: 1
+name: workflow-assistance-ui-skin-presets
+purpose: "Portable visual tokens for the global Hermes Agent + CC Switch + Codex workflow."
+runtime_dependency: none
+default_applied: false
+sources:
+  - repository: catppuccin/catppuccin
+    url: https://github.com/catppuccin/catppuccin
+    absorbed: palette tokens and semantic color roles
+    license: MIT
+  - repository: catppuccin/windows-terminal
+    url: https://github.com/catppuccin/windows-terminal
+    absorbed: Windows Terminal color scheme shape
+    license: MIT
+  - repository: shadcn-ui/ui
+    url: https://github.com/shadcn-ui/ui
+    absorbed: copy-paste component vocabulary and command/settings patterns
+    license: MIT
+  - repository: assistant-ui/assistant-ui
+    url: https://github.com/assistant-ui/assistant-ui
+    absorbed: assistant thread, composer and tool-call timeline patterns
+    license: MIT
+boundaries:
+  no_default_install: true
+  no_runtime_assets: true
+  no_provider_or_model_change: true
+  no_terminal_settings_write: true
+  no_vscode_settings_write: true
+  no_hermes_live_config_write: true
+  no_open_webui_nextchat_vercel_chatbot_runtime: true
+surfaces:
+  hermes_cli_tui:
+    config_keys:
+      - display.skin
+      - display.interface
+      - display.busy_input_mode
+    activation_evidence:
+      - /skin status or config readback
+      - /reset or new session when startup-loaded config changes
+  windows_terminal:
+    template: templates/windows-terminal/catppuccin-mocha.json
+    apply_manually: true
+  dashboard_or_desktop:
+    patterns: templates/ui/agent-chat-ui-patterns.md
+    apply_manually: true
+presets:
+  catppuccin-mocha:
+    recommended: true
+    tone: "dark, calm, long-session friendly"
+    colors:
+      base: "#1e1e2e"
+      mantle: "#181825"
+      crust: "#11111b"
+      text: "#cdd6f4"
+      subtext1: "#bac2de"
+      surface0: "#313244"
+      surface1: "#45475a"
+      overlay0: "#6c7086"
+      blue: "#89b4fa"
+      mauve: "#cba6f7"
+      green: "#a6e3a1"
+      yellow: "#f9e2af"
+      red: "#f38ba8"
+      peach: "#fab387"
+      teal: "#94e2d5"
+    semantic:
+      background: "{colors.base}"
+      panel: "{colors.mantle}"
+      border: "{colors.surface1}"
+      text: "{colors.text}"
+      muted: "{colors.subtext1}"
+      accent: "{colors.mauve}"
+      command: "{colors.blue}"
+      success: "{colors.green}"
+      warning: "{colors.yellow}"
+      danger: "{colors.red}"
+      blocked: "{colors.peach}"
+      network: "{colors.teal}"
+  catppuccin-frappe:
+    recommended: false
+    tone: "soft medium-dark, brighter daytime variant"
+    colors:
+      base: "#303446"
+      mantle: "#292c3c"
+      crust: "#232634"
+      text: "#c6d0f5"
+      surface1: "#51576d"
+      blue: "#8caaee"
+      mauve: "#ca9ee6"
+      green: "#a6d189"
+      yellow: "#e5c890"
+      red: "#e78284"
+  nord-quiet:
+    recommended: false
+    tone: "low-stimulus arctic dark"
+    colors:
+      base: "#2e3440"
+      mantle: "#3b4252"
+      text: "#d8dee9"
+      muted: "#a3be8c"
+      accent: "#88c0d0"
+      warning: "#ebcb8b"
+      danger: "#bf616a"
+  dracula-dark:
+    recommended: false
+    tone: "high-contrast classic dark"
+    colors:
+      base: "#282a36"
+      mantle: "#21222c"
+      text: "#f8f8f2"
+      muted: "#6272a4"
+      accent: "#bd93f9"
+      success: "#50fa7b"
+      warning: "#f1fa8c"
+      danger: "#ff5555"
+ui_status_roles:
+  repo: "project root, branch, HEAD, dirty status"
+  live: "Hermes Home sync state and live config evidence"
+  session: "current session loaded or needs /reset"
+  provider: "provider/model and CC Switch proxy state"
+  codex: "binary source, sandbox mode, worktree ownership"
+  gateway: "process running vs messaging platform configured"
+  durable_tasks: "cron, sleep-mode, background process and artifact path"
+  tool_calls: "pending, running, succeeded, failed, blocked"
+  verification: "command, exit code, artifact, CI SHA"
+  secrets: "redacted; never display .env/auth/header/raw trace material"

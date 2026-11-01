@@ -1,0 +1,134 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "master-method-visual-upgrade",
+  "title": "Master Method Visual Upgrade",
+  "version": "0.2.1",
+  "description": "Research any named master or studio, verify evidence, translate methods and upgrade an existing artifact without imitation.",
+  "author": {
+    "name": "DTALEX66 DESIGN-LAB"
+  },
+  "license": "MIT",
+  "tags": [
+    "scenario",
+    "visual-quality",
+    "art-direction"
+  ],
+  "compat": {
+    "agentSkills": [
+      {
+        "path": "./SKILL.md"
+      }
+    ]
+  },
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "scenario",
+    "scenario": "master-method-visual-upgrade",
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        }
+      ],
+      "atoms": [
+        "visual-reference-dna-analyzer",
+        "master-evidence-auditor",
+        "style-vector-builder",
+        "micro-detail-finisher",
+        "photorealism-artifact-auditor",
+        "cross-format-coherence-critic",
+        "master-method-researcher",
+        "style-lineage-mapper",
+        "art-direction-synthesizer",
+        "typography-composition-director",
+        "color-material-light-director",
+        "visual-taste-jury",
+        "anti-ai-slop-diagnostician",
+        "visual-polish-loop"
+      ],
+      "assets": [
+        "../../research/style-lineages/STYLE_ANALYSIS_CARDS.json",
+        "../../research/master-studies/MASTER_REGISTRY.json",
+        "../../research/master-studies/ANCHOR_METHOD_CARDS.json"
+      ]
+    },
+    "pipeline": {
+      "stages": [
+        {
+          "id": "research",
+          "atoms": [
+            "research-search",
+            "master-method-researcher",
+            "master-evidence-auditor"
+          ],
+          "onFailure": "abort"
+        },
+        {
+          "id": "diagnosis",
+          "atoms": [
+            "visual-taste-jury",
+            "anti-ai-slop-diagnostician",
+            "photorealism-artifact-auditor"
+          ]
+        },
+        {
+          "id": "translation",
+          "atoms": [
+            "style-lineage-mapper",
+            "style-vector-builder",
+            "art-direction-synthesizer"
+          ]
+        },
+        {
+          "id": "refinement",
+          "atoms": [
+            "typography-composition-director",
+            "color-material-light-director",
+            "visual-polish-loop",
+            "micro-detail-finisher"
+          ],
+          "repeat": true,
+          "until": "critique.score>=8.5 || iterations>=4"
+        },
+        {
+          "id": "final",
+          "atoms": [
+            "cross-format-coherence-critic",
+            "delivery-packager"
+          ]
+        }
+      ]
+    },
+    "inputs": [
+      {
+        "name": "artifact",
+        "type": "file",
+        "required": true
+      },
+      {
+        "name": "brief",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "master_or_studio",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "formats",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "capabilities": [
+      "prompt:inject",
+      "pipeline:*",
+      "media:image",
+      "fs:write"
+    ]
+  },
+  "hostAdapter": "open-design"
+}

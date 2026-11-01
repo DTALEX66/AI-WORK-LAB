@@ -1,0 +1,28 @@
+{
+  "id": "kb-06-brand-guard-vector-truth-20261026",
+  "task_id": "DL-KB-06",
+  "axis": "unit",
+  "outcome": "PASS",
+  "observed_at": "2026-10-25T16:22:00Z",
+  "corrects": "section 5.59 cited run 40191207017 at head bdaf4883 as the closed CI account; that SHA predates the logo commit, so the logo round had no exact-SHA CI evidence when the section was written",
+  "ci_observed_at_54931d74": {
+    "pull_request_run": 40199570526,
+    "python_gate": "shard 3/3 outcomes={'ERROR': 1, 'FAIL': 3, 'PASS': 1118, 'SKIP': 3} ids=test_workbench_brand_asset.BrandAssetSyncTests.test_a_missing_asset_is_a_failure_not_a_pass, .test_a_swapped_payload_is_caught, InlineMechanismTests.test_the_service_still_serves_the_stylesheet_that_carriesit, MarkShapeTests.test_the_provenance_records_a_source_digest_and_the_shipped_canvas",
+    "browser_e2e": "OV_BRAND_BROKEN 1440/1280/1536/1920: the mark decoded as no-data-uri, not 144x144"
+  },
+  "root_cause": "the asset migrated from a 144x144 PNG cut-out to the owner SVG while three guards still read bitmap truth: design-lab/tests/test_workbench_brand_asset.py, the brand probe in design-lab/tests/e2e/audit_workbench_overflow.mjs and design-lab/tests/test_workbench_overflow_gate.py:315. One rule was written twice across two realms, so one stale migration produced two failing jobs. The module is not part of the 76-gate rollup, which is why VERIFY_DESIGN_LAB=OK never exercised it.",
+  "assertions_after": "data uri loads + is <svg + exactly 2 <path>; each encoding carries exactly one brand ink (paper #EEF2F5 default, ink #17212B) and the two encodings are byte-identical apart from that fill; viewBox equals the tracked file; the wordmark beside the figure is the text DESIGN-LAB; figure aria-hidden=true and empty; box 22x22 (a collapsed rail legitimately reports 0 and is skipped)",
+  "instrument_defects_fixed": [
+    "render_brand_asset.py resolved its asset path inline, so the test that patched a module constant to a missing file was not testing a missing file (it exited 0). MARK_PATH is now injectable and _check swaps all three paths the checker reads.",
+    "test_a_stale_digest_claim_is_caught fed the checker the retired PNG: it exited 1 for a reason other than its name.",
+    "the module imported numpy and PIL for a predicate that no longer decodes pixels; removed, so its dependency surface fits the node-adjacent job again (section 5.57 read in reverse)."
+  ],
+  "measured": {
+    "brand_module_before": "15 tests, 4 FAIL",
+    "brand_module_after": "16 tests OK",
+    "overflow_gate": "4 tests OK, 389.7s, widths 1440/1280/1536/1920, decode={'loads': True, 'svg': True, 'paths': 2, 'fills': ['#EEF2F5']}",
+    "aggregate": "VERIFY_DESIGN_LAB=OK total=76 failed=0",
+    "expected_tests_is_derived": "run_python_tests_all.py:126 computes it from the discovered id set, so +1 test needs no count re-pin"
+  },
+  "not_claimed": "the 3352 union and the 17-module browser list from the 54931d74 run cover bytes BEFORE this fix; the exact-SHA matrix for 14959a3d is read after pushing and is reported as it reads, not inferred from local green."
+}

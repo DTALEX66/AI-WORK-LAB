@@ -1,0 +1,38 @@
+{
+  "schema_version": "design-lab/failure-registry/v1",
+  "cases": [
+    {
+      "id": "failure-runtime-deploy-001",
+      "category": "runtime-deployment",
+      "severity": "P1",
+      "title": "后台脚本 timeout 误杀长驻服务",
+      "provenance": "LESSONS L-001 (2026-08-14)",
+      "fixture": ".hermes/task-runtime/start_comfyui.py (fixed Popen variant)",
+      "trigger": "subprocess.run(cmd, timeout=120) 启动长驻服务，等待 >120s → TimeoutExpired kill 进程树",
+      "expected_guard": "启动脚本必须 Popen 常驻（无 timeout）；验证启动后 >timeout 周期仍存活",
+      "status": "guarded"
+    },
+    {
+      "id": "failure-governance-002",
+      "category": "governance",
+      "severity": "P1",
+      "title": "JSON 整体重排破坏非标准缩进",
+      "provenance": "LESSONS L-006 (2026-08-14)",
+      "fixture": "SOURCE_REGISTRY.json 6-space-indent entries",
+      "trigger": "json.dumps(indent=N) 重写含非标准缩进的 JSON → 全量 diff (4009 lines)",
+      "expected_guard": "JSON 编辑必须最小 diff（git diff --stat 只增目标行）",
+      "status": "guarded"
+    },
+    {
+      "id": "failure-download-003",
+      "category": "runtime-deployment",
+      "severity": "P0",
+      "title": "大文件下载损坏未校验",
+      "provenance": "LESSONS L-002 (2026-08-14)",
+      "fixture": "external binary (no local fixture; method documented)",
+      "trigger": "下载中断/截断且未做 Content-Length 校验 → 归档无法打开",
+      "expected_guard": "下载必须 Content-Length 精确匹配 + 归档完整性测试",
+      "status": "guarded"
+    }
+  ]
+}

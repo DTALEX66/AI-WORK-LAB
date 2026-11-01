@@ -1,0 +1,15 @@
+ci(workflows): replace the fabricated upload-artifact pin with a resolvable one
+
+`actions/upload-artifact@65c4c4a1ddee5b7f698f8297e8f3f4f7e4b8c1a2` does not exist:
+GitHub fails the whole job at "Set up job" ("Unable to resolve action ...") before
+any step runs. That is why the browser-E2E job added by P0-08/P0-G went red in 2s
+while every other gate stayed green, and `release-gate.yml` carried the same pin
+(pre-existing, same class of defect).
+
+Real SHA resolved via the API (not guessed): actions/upload-artifact v4.6.2 =
+ea165f8d65b6e75b540449e92b4886f43607fa02.
+
+All pins in .github/workflows were re-verified after the fix: checkout@11bd7190
+(v4.2.2) and setup-node@49933ea5 (v4.4.0) are proven resolvable by green required
+checks; setup-python@a26af69b (v5.6.0) resolves via the API; upload-artifact now
+resolves too.

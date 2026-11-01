@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-lab.local/schemas/knowledge-record.schema.json",
+  "title": "Temporary DESIGN-LAB Knowledge Record",
+  "type": "object",
+  "required": ["knowledgeId", "title", "domain", "sourceRecordId", "authorityStatus", "reviewStatus", "rightsStatus", "contentHash", "compiledTargets", "targetAuthority", "migrationStatus", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "knowledgeId": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "domain": {"type": "string", "minLength": 1},
+    "sourceRecordId": {"type": "string", "minLength": 1},
+    "authorityStatus": {"const": "temporary-design-lab"},
+    "reviewStatus": {"enum": ["registered", "extracted", "normalized", "candidate", "reviewed", "compiled", "rejected", "quarantined"]},
+    "rightsStatus": {"enum": ["unknown", "reference-only", "reviewed", "quarantined"]},
+    "contentHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "compiledTargets": {"type": "array", "items": {"enum": ["DomainPack", "MethodCard", "Rubric", "PreflightRule", "DesignToken", "PromptPattern", "ToolConstraint", "BenchmarkCase"]}},
+    "targetAuthority": {"const": "ArcheAxis-Knowledge-OS"},
+    "migrationStatus": {"const": "deferred"},
+    "version": {"type": "string", "minLength": 1}
+  }
+}

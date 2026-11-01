@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/design-brief.json",
+  "title": "Commercial Design Brief",
+  "type": "object",
+  "required": [
+    "project_id",
+    "discipline",
+    "objective",
+    "audience",
+    "deliverables",
+    "constraints"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "discipline": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "brand",
+          "graphic",
+          "uiux",
+          "art-direction",
+          "spatial",
+          "packaging",
+          "editorial",
+          "motion",
+          "3d",
+          "data-visualization"
+        ]
+      }
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 10
+    },
+    "audience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "segment",
+          "need"
+        ],
+        "properties": {
+          "segment": {
+            "type": "string"
+          },
+          "need": {
+            "type": "string"
+          },
+          "decision_role": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "deliverables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "format",
+          "size"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "format": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "size": {
+            "type": "string"
+          },
+          "editable_required": {
+            "type": "boolean"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "brand_assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "role",
+          "license_status"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "license_status": {
+            "enum": [
+              "owned",
+              "licensed",
+              "public-domain",
+              "unknown",
+              "restricted"
+            ]
+          },
+          "must_preserve": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "purpose",
+          "permission"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "permission": {
+            "enum": [
+              "owned",
+              "authorized",
+              "public-reference",
+              "unknown"
+            ]
+          },
+          "avoid_copying": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "required": [
+        "must_keep",
+        "must_avoid"
+      ],
+      "properties": {
+        "must_keep": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "must_avoid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "budget": {
+          "type": "string"
+        },
+        "deadline": {
+          "type": "string"
+        },
+        "jurisdiction": {
+          "type": "string"
+        }
+      }
+    },
+    "success_metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "metric",
+          "method"
+        ],
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "threshold": {}
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

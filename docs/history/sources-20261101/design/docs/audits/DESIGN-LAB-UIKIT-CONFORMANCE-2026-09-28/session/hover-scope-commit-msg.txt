@@ -1,0 +1,41 @@
+workbench(style): scope the legacy button:hover so B10 buttons stop turning blue
+
+A REAL 1:1 DEVIATION, MEASURED IN CHROMIUM
+
+The legacy rule `button:hover{background:var(--accent-hover);box-shadow:var(--glow)}`
+predates the B10 shell and was never scoped. B10's `.ghost-btn:hover` deliberately
+changes only transform / border-color / box-shadow and never re-declares
+`background`, so the legacy rule won the background: every ghost button turned
+solid accent blue on hover instead of keeping B10's tint.
+
+Measured before the fix (real Chromium, topbar 通知 and dashboard 导出周报):
+  rest  background: color(srgb 0.0667 0.0941 0.1647 / 0.62)   (B10 tint)
+  hover background: rgb(37, 88, 219)                          (legacy #2558DB)
+
+That affects the topbar 通知 / 工作区 buttons and every ghost action button in
+the routed B10 shell -- i.e. the surface the 1:1 replica is judged on.
+
+ROOT CAUSE, NOT A PATCH
+
+Same root cause as the header/main/footer leak fixed earlier: a pre-B10 rule on
+an element selector reaching into `.app`. The rule is now scoped to the legacy
+regions -- `body > header`, `body > main`, `body > footer` and the flat
+`.app-nav` -- so nothing inside `.app` inherits it. No B10 declaration was
+changed and no new class was invented.
+
+VERIFIED IN REAL CHROMIUM
+
+Before -> after, `.ghost-btn` (topbar 通知 and dashboard 导出周报):
+  hover background: rgb(37,88,219)  ->  color(srgb 0.0667 0.0941 0.1647 / 0.62)
+  hover transform : matrix(1,0,0,1,0,-1) unchanged (interaction feedback intact)
+  hover box-shadow: B10's `rgba(0,0,0,.15) 0 8px 28px` unchanged
+
+Regression checks, all PASS:
+  * the LEGACY page (`/workbench`, no dev bypass, login gate) STILL gets
+    rgb(37,88,219) + the glow on hover -- legacy behaviour is byte-identical
+  * the B10 ghost button no longer gets the accent colour
+  * the B10 ghost button keeps a tinted (not transparent) hover background
+
+Local gates: tsc --noEmit, vite build, tests/unit.mjs, tests/appshell.mjs all
+green; no apps/workbench/build drift (the bundle does not depend on CSS). CSS
+brace balance checked (281/281).

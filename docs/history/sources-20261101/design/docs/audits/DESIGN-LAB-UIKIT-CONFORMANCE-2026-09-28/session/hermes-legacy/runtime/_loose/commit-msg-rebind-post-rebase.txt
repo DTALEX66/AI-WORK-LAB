@@ -1,0 +1,15 @@
+chore(reports): rebind the git observation after the rebase rewrote the branch
+
+scripts/generate_current_reports.py --check reported DRIFT for
+design-lab/config/current-report-index.json after this branch was rebased onto main.
+The check re-generates from the gitObservation stored in the index and requires that
+observation to still be an ancestor of HEAD (src/design_lab/governance/reporting.py
+416-425); the rebase rewrote the commit the previous rebind had recorded, so the
+observation dropped out of history. That is a legitimate rebase consequence, not a
+content problem — the bound input digests still matched.
+
+Regenerated in generate mode on the new HEAD and committed as a new commit rather
+than an amend, so the freshly recorded observation stays in this branch's history:
+
+  CURRENT_REPORTS=PASS mode=generate
+  CURRENT_REPORTS=PASS mode=check scope=bound-input-integrity current-git-and-cloud=NOT_VERIFIED

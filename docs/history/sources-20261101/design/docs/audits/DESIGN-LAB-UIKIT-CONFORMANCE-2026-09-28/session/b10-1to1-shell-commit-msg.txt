@@ -1,0 +1,36 @@
+workbench: B10 1:1 shell — real .app/.main/.content DOM + B10 overlays
+
+Root cause of the routed view rendering as an empty dark pane: the B10 shell was
+bolted on as a position:fixed;z-index:65 overlay (.b10-app-grid.routed) that
+painted over the z-index:20 route panel, while the topbar was a body-level
+sibling hidden by ".b10-app-grid.routed ~ header{display:none}". B10's
+main.main / section.content were never generated at all, so no view could ever
+render inside the B10 layout.
+
+- shell: build the authoritative B10 tree —
+  .app > .ambient + .grid-bg + aside.sidebar + main.main >
+  header.topbar + section.content#content, with #route-view as the view slot.
+  Delete .b10-app-grid and .route-panel; a single sync() driven from show() now
+  owns chrome visibility instead of a second, racing hashchange listener.
+- overlays: use the B10 classes (.overlay#modal > .modal > h3 + .body +
+  .actions, .drawer#drawer, .palette#palette > .item, .toast#toast). The dl-*
+  classes they replaced had no CSS rule at all.
+- views: add a dev/offline readback seam (apiOrEmpty) so every B10 page renders
+  its real structure with HONEST EMPTY payloads plus a visible "本地浏览模式"
+  notice — no invented numbers; a held token still goes to the live API and a
+  live failure still throws.
+- kpiCard: the declared parameter order (label, value) was inverted against all
+  13 call sites (value, label), so B10's 35px primary number rendered the LABEL
+  and the value became the small caption (also disabling the count-up, which
+  only fires on a numeric <strong>).
+- css: scope the legacy header/main/footer rules with "body >" so the 1240px
+  main cap and the 192px gutter can no longer leak into .main/.topbar; drop the
+  now-dead .resource-table, .route-panel and .b10-app-grid rules.
+
+Verified in real Chromium against the B10 reference in the same browser: the
+B10-class gap per view is dashboard 0 / brand-systems 0 / preflight 0 /
+settings 0 (union 33 -> 5). The remainder is `editProject`, a JS-only hook with
+no rule among B10's 79 CSS classes, and the collaboration slot, which is
+honestly VIEW_NOT_OPEN (this single-user service has no collaboration route).
+typecheck + build + tests/unit.mjs + tests/appshell.mjs all green;
+apps/workbench/build/main.js rebuilt (workbench-gate no-drift + full-tree-clean).

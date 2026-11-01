@@ -1,0 +1,64 @@
+{
+  "schema_version": "workflow/upstream-baselines/v1",
+  "generated_at": "2026-08-26",
+  "generated_by": "WLR-110",
+  "purpose": "Locked upstream tool versions for WORK-LAB 72-hour fast track. Install + smoke-test within 72h window (08-26~08-28).",
+  "historical_note": {
+    "status": "HISTORICAL_ONLY",
+    "recorded_at": "2026-10-24",
+    "recorded_by": "CL-11 (taskpacks/current/OPEN-TASK-REGISTER.md)",
+    "statement": "Frozen 2026-08 planning record that was never executed. It is not a deployment plan, not a current capability baseline, and no runtime code reads it. The original fields below are kept unchanged as historical evidence.",
+    "evidence": {
+      "install_window": "2026-08-26 to 2026-08-28 (expired)",
+      "install_state": "All three entries remained PENDING_INSTALL / status=not-installed; none of them was installed or smoke-tested.",
+      "consumers": "git grep at 2026-10-24 finds no code reference: only this file, docs/history/archive/workflow-assistance/WLR-120-cross-project-closure.md, reports/audit-evidence/assets-20260930/asset-inventory.json, and record/register prose.",
+      "name_still_present": "Dagu survives only as the unimported collector script apps/observer/src/collectors/dagu_collector.py (no importer found) and one legacy docstring mention; it is not installed here and is not this product's execution engine."
+    },
+    "current_role": "The desktop product is apps/observer (read-only projection) over the canonical store and sidecar; external managed software executes the actual work. Installing any upstream listed above requires a new explicit user decision."
+  },
+  "window": {
+    "start": "2026-08-26",
+    "end": "2026-08-28",
+    "tma1_evidence_due": "2026-08-28"
+  },
+  "baselines": {
+    "mission-control": {
+      "display_name": "Mission Control",
+      "role": "WORK-LAB UI (task board, approval flow, receipt viewer)",
+      "source": "TBD — candidate: custom web dashboard or upstream project",
+      "version": "PENDING_INSTALL",
+      "install_method": "TBD",
+      "smoke_test": "open UI → view task → approve → receipt generated",
+      "status": "not-installed"
+    },
+    "dagu": {
+      "display_name": "Dagu",
+      "role": "WORK-LAB execution engine (workflow runtime)",
+      "source": "https://github.com/dagu-dev/dagu",
+      "version": "PENDING_INSTALL",
+      "install_method": "go install or binary release",
+      "smoke_test": "run one DAG → observe status → verify receipt",
+      "status": "not-installed"
+    },
+    "token-telemetry": {
+      "display_name": "TokenTelemetry",
+      "role": "WORK-LAB observability (token/cost/latency tracking)",
+      "source": "TBD — candidate: Hermes built-in or standalone",
+      "version": "PENDING_INSTALL",
+      "install_method": "TBD",
+      "smoke_test": "emit one telemetry event → observe in dashboard",
+      "status": "not-installed"
+    }
+  },
+  "tma1_criteria": {
+    "description": "TMA1 (Technical Milestone Acceptance 1) — one task + one approval + one failure restart",
+    "must_pass": [
+      "Dagu executes a single work unit",
+      "Mission Control shows the task in the board",
+      "Approval flow works end-to-end",
+      "Failure triggers restart",
+      "Receipt is generated with in-toto structure",
+      "TokenTelemetry captures token/cost data"
+    ]
+  }
+}

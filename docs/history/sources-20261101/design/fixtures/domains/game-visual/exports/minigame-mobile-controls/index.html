@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>异常电梯控制台 · 移动游玩布局</title>
+  <style>
+    :root {
+      --bg: oklch(12% 0.025 245);
+      --surface: oklch(17% 0.03 245);
+      --surface-2: oklch(21% 0.034 245);
+      --glass: rgba(18, 28, 43, 0.72);
+      --fg: oklch(94% 0.012 235);
+      --muted: oklch(70% 0.025 235);
+      --border: rgba(255, 255, 255, 0.12);
+      --accent: oklch(72% 0.17 155);
+      --warn: oklch(76% 0.16 78);
+      --danger: oklch(66% 0.22 25);
+      --info: oklch(70% 0.15 230);
+      --shadow: rgba(0, 0, 0, 0.34);
+      --glow: color-mix(in oklch, var(--accent), transparent 76%);
+      --font-display: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --cctv-clear: url("assets/cctv-elevator-corridor-clear.png");
+      --cctv-warp: url("assets/cctv-elevator-corridor-warp.png");
+      --cctv-figure: url("assets/cctv-elevator-corridor-figure.png");
+      --cctv-feed: var(--cctv-clear);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 72% 7%, rgba(96, 255, 188, 0.12), transparent 25%),
+        radial-gradient(circle at 18% 88%, rgba(80, 160, 255, 0.10), transparent 28%),
+        linear-gradient(180deg, oklch(14% 0.035 245), var(--bg));
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.5;
+      letter-spacing: 0;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.72), transparent 78%);
+      opacity: 0.42;
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3 {
+      font-family: var(--font-display);
+      letter-spacing: -0.02em;
+      line-height: 1.08;
+    }
+
+    .game-shell {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: max(12px, env(safe-area-inset-top)) 12px calc(12px + var(--safe-bottom));
+      gap: 10px;
+    }
+
+    .top-hud {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 54px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), transparent 56%),
+        var(--glass);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 44px var(--shadow), inset 0 1px 0 rgba(255,255,255,0.09);
+    }
+
+    .mission {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .kicker,
+    .stat-label,
+    .small-label,
+    .action-hint {
+      font-size: 11px;
+      font-weight: 680;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .mission h1 {
+      font-size: clamp(18px, 5vw, 28px);
+      font-weight: 680;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .round-state {
+      display: inline-grid;
+      justify-items: end;
+      gap: 3px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .time {
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+    }
+
+    .play-area {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .monitor-card {
+      position: relative;
+      min-height: 0;
+      border: 1px solid color-mix(in oklch, var(--accent), transparent 78%);
+      border-radius: 20px;
+      overflow: hidden;
+      background: oklch(8% 0.025 245);
+      box-shadow:
+        0 24px 60px var(--shadow),
+        0 0 0 1px rgba(255,255,255,0.03),
+        0 0 42px color-mix(in oklch, var(--accent), transparent 90%);
+    }
+
+    .monitor-feed {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.18), transparent 18% 82%, rgba(0,0,0,0.24)),
+        radial-gradient(circle at 58% 42%, rgba(96, 255, 188, 0.13), transparent 18%),
+        var(--cctv-feed) center / cover no-repeat,
+        linear-gradient(135deg, rgba(112, 140, 170, 0.18), rgba(10, 16, 28, 0.88)),
+        var(--bg);
+      background-size: 100% 6px, auto, auto, cover, auto, auto;
+      filter: contrast(1.12) saturate(0.78) brightness(0.86);
+    }
+
+    .monitor-feed::before {
+      content: "";
+      position: absolute;
+      inset: 12% 12% 18%;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      background:
+        linear-gradient(90deg, transparent 0 12%, rgba(255,255,255,0.10) 12% 13%, transparent 13% 88%, rgba(255,255,255,0.10) 88% 89%, transparent 89%),
+        linear-gradient(180deg, rgba(255,255,255,0.12), transparent 18% 82%, rgba(255,255,255,0.10)),
+        rgba(0, 0, 0, 0.04);
+      box-shadow: inset 0 0 46px rgba(0, 0, 0, 0.42);
+    }
+
+    .monitor-feed::after {
+      content: "";
+      position: absolute;
+      left: 18%;
+      right: 18%;
+      top: 47%;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 46px 0 rgba(255, 255, 255, 0.10), 0 -46px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .heat-dot {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--warn);
+      box-shadow:
+        0 0 0 10px color-mix(in oklch, var(--warn), transparent 88%),
+        0 0 34px color-mix(in oklch, var(--warn), transparent 42%),
+        0 0 80px color-mix(in oklch, var(--warn), transparent 76%);
+      left: 58%;
+      top: 45%;
+      transform: translate(-50%, -50%);
+      opacity: 0.8;
+    }
+
+    .target-reticle {
+      position: absolute;
+      width: 86px;
+      height: 86px;
+      left: 58%;
+      top: 45%;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 50%;
+      box-shadow: 0 0 24px rgba(255,255,255,0.12);
+      animation: reticlePulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes reticlePulse {
+      0%, 100% { opacity: 0.66; scale: 1; }
+      50% { opacity: 0.95; scale: 1.045; }
+    }
+
+    .target-reticle::before,
+    .target-reticle::after {
+      content: "";
+      position: absolute;
+      background: rgba(255, 255, 255, 0.38);
+    }
+
+    .target-reticle::before {
+      left: 50%;
+      top: -12px;
+      width: 1px;
+      height: 110px;
+    }
+
+    .target-reticle::after {
+      top: 50%;
+      left: -12px;
+      width: 110px;
+      height: 1px;
+    }
+
+    .monitor-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-content: space-between;
+      padding: 14px;
+      pointer-events: none;
+    }
+
+    .feed-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.74);
+    }
+
+    .feed-top span {
+      padding: 5px 8px;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 999px;
+      background: rgba(0,0,0,0.28);
+      backdrop-filter: blur(8px);
+    }
+
+    .feed-top .rec {
+      color: color-mix(in oklch, var(--danger), white 24%);
+      border-color: color-mix(in oklch, var(--danger), transparent 60%);
+      box-shadow: 0 0 18px color-mix(in oklch, var(--danger), transparent 82%);
+    }
+
+    .anomaly-card {
+      max-width: min(420px, 100%);
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), transparent 62%),
+        rgba(7, 12, 20, 0.78);
+      backdrop-filter: blur(12px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 42px rgba(0,0,0,0.22);
+      display: grid;
+      gap: 4px;
+    }
+
+    .anomaly-card strong {
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .anomaly-card span {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .mini-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.06), transparent 62%),
+        rgba(21, 28, 42, 0.84);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      display: grid;
+      gap: 5px;
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 17px;
+      font-variant-numeric: tabular-nums;
+      color: var(--fg);
+    }
+
+    .control-dock {
+      position: sticky;
+      bottom: calc(8px + var(--safe-bottom));
+      z-index: 12;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid color-mix(in oklch, var(--accent), transparent 80%);
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.10), transparent 58%),
+        rgba(21, 28, 42, 0.90);
+      box-shadow: 0 18px 44px var(--shadow), inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: blur(16px);
+    }
+
+    .action-btn {
+      min-height: 64px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.11), transparent 60%),
+        var(--surface-2);
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 8px 18px rgba(0,0,0,0.16);
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    }
+
+    .action-btn:hover {
+      border-color: color-mix(in oklch, var(--accent), white 4%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 12px 28px rgba(0,0,0,0.22);
+    }
+
+    .action-btn:focus-visible {
+      outline: 2px solid color-mix(in oklch, var(--accent), white 8%);
+      outline-offset: 3px;
+    }
+
+    .action-btn:active { transform: translateY(2px) scale(0.99); }
+    .action-btn strong { font-size: 16px; font-weight: 680; letter-spacing: -0.01em; }
+    .action-btn span { font-size: 11px; color: var(--muted); }
+
+    .action-btn.primary {
+      border-color: color-mix(in oklch, var(--accent), white 16%);
+      background: color-mix(in oklch, var(--accent), var(--surface) 72%);
+      color: oklch(10% 0.028 155);
+    }
+
+    .action-btn.danger {
+      border-color: color-mix(in oklch, var(--danger), white 10%);
+      background: color-mix(in oklch, var(--danger), var(--surface) 72%);
+    }
+
+    .action-btn[data-recommended="true"] {
+      border-color: color-mix(in oklch, var(--warn), white 12%);
+      box-shadow:
+        0 0 0 2px color-mix(in oklch, var(--warn), transparent 78%),
+        0 12px 32px color-mix(in oklch, var(--warn), transparent 82%);
+    }
+
+    #more-actions[data-recommended="true"]::after {
+      content: "";
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--warn);
+      box-shadow: 0 0 14px color-mix(in oklch, var(--warn), transparent 34%);
+    }
+
+    .side-panel {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.07), transparent 55%),
+        rgba(21, 28, 42, 0.86);
+      box-shadow: 0 18px 44px var(--shadow), inset 0 1px 0 rgba(255,255,255,0.07);
+      overflow: hidden;
+    }
+
+    .panel-section {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      gap: 10px;
+    }
+
+    .panel-section:last-child { border-bottom: 0; }
+
+    .directive-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .directive-card {
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      background: rgba(7, 12, 20, 0.38);
+      display: grid;
+      gap: 3px;
+    }
+
+    .directive-card strong {
+      font-size: 13px;
+      letter-spacing: -0.01em;
+    }
+
+    .directive-card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .meter {
+      display: grid;
+      gap: 5px;
+    }
+
+    .meter-line {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.10);
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      width: var(--value, 50%);
+      border-radius: inherit;
+      background: var(--fill, var(--info));
+      box-shadow: 0 0 16px color-mix(in oklch, var(--fill, var(--info)), transparent 70%);
+    }
+
+    .log-list {
+      display: grid;
+      gap: 8px;
+      max-height: 180px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .log-line {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.42);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+      z-index: 20;
+    }
+
+    .action-sheet {
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: calc(10px + var(--safe-bottom));
+      z-index: 21;
+      transform: translateY(calc(100% + 18px));
+      transition: transform 180ms ease;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), transparent 58%),
+        oklch(16% 0.03 245);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 2px 4px;
+    }
+
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .sheet-grid .action-btn {
+      min-height: 58px;
+    }
+
+    #close-sheet {
+      min-height: 42px;
+      padding: 0 14px;
+    }
+
+    .sheet-open .sheet-backdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sheet-open .action-sheet {
+      transform: translateY(0);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(104px + var(--safe-bottom));
+      transform: translate(-50%, 16px);
+      opacity: 0;
+      z-index: 30;
+      pointer-events: none;
+      max-width: calc(100vw - 32px);
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(7, 12, 20, 0.88);
+      color: var(--fg);
+      font-size: 13px;
+      transition: opacity 160ms ease, transform 160ms ease;
+      white-space: nowrap;
+    }
+
+    .toast.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (min-width: 860px) {
+      body { overflow: hidden; }
+      .game-shell {
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) 340px;
+        padding: 18px;
+      }
+
+      .top-hud {
+        grid-column: 1 / -1;
+        min-height: 68px;
+      }
+
+      .play-area {
+        grid-template-rows: minmax(0, 1fr) auto;
+      }
+
+      .side-panel {
+        min-height: 0;
+        display: grid;
+        align-content: start;
+      }
+
+      .monitor-card {
+        min-height: 0;
+      }
+
+      .control-dock {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .action-sheet {
+        left: auto;
+        width: 340px;
+        right: 18px;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .game-shell {
+        padding-left: 8px;
+        padding-right: 8px;
+        gap: 8px;
+      }
+
+      .top-hud {
+        min-height: 50px;
+        padding: 8px 10px;
+        border-radius: 14px;
+      }
+
+      .mission h1 { font-size: 18px; }
+      .time { font-size: 21px; }
+      .monitor-overlay { padding: 10px; }
+      .anomaly-card { padding: 10px; }
+      .mini-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+      .stat { min-height: 48px; padding: 7px 5px; border-radius: 13px; }
+      .stat-label { font-size: 10px; }
+      .stat-value { font-size: 14px; }
+      .control-dock { border-radius: 18px; padding: 8px; gap: 7px; }
+      .action-btn { min-height: 58px; border-radius: 14px; }
+      .action-btn strong { font-size: 15px; }
+      .action-btn span { display: none; }
+    }
+
+    @media (max-height: 680px) and (max-width: 860px) {
+      .mini-stats { display: none; }
+      .anomaly-card span { display: none; }
+      .control-dock { padding: 7px; }
+      .action-btn { min-height: 54px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-shell" data-od-id="game-shell">
+    <header class="top-hud" data-od-id="top-hud">
+      <div class="mission" data-od-id="mission-title">
+        <span class="kicker">夜班值守 · 找异常</span>
+        <h1>异常电梯控制台</h1>
+      </div>
+      <div class="round-state" data-od-id="round-state">
+        <span class="time" id="timer">02:17</span>
+        <span>第 13 层 · 值守中</span>
+      </div>
+    </header>
+
+    <main class="play-area" data-od-id="play-area">
+      <section class="monitor-card" data-od-id="cctv-monitor" aria-label="CCTV 主画面">
+        <div class="monitor-feed" data-od-id="monitor-feed">
+          <div class="heat-dot" id="heat-dot" aria-hidden="true"></div>
+          <div class="target-reticle" aria-hidden="true"></div>
+        </div>
+        <div class="monitor-overlay">
+          <div class="feed-top">
+            <span data-od-id="camera-label">CAM-13 · 轿厢内</span>
+            <span class="rec" id="rec-label" data-od-id="recording-label">REC 02:17:03</span>
+            <span id="signal-label" data-od-id="signal-label">信号 82%</span>
+          </div>
+          <div class="anomaly-card" data-od-id="active-anomaly-card">
+            <span class="action-hint">当前判断</span>
+            <strong id="anomaly-title">门缝热源异常</strong>
+            <span id="anomaly-copy">先关门，再上行。不要急着开门。</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="mini-stats" data-od-id="mobile-mini-stats" aria-label="关键状态">
+        <article class="stat" data-od-id="stat-door">
+          <span class="stat-label">门</span>
+          <strong class="stat-value" id="door-state">半开</strong>
+        </article>
+        <article class="stat" data-od-id="stat-power">
+          <span class="stat-label">电力</span>
+          <strong class="stat-value" id="power-state">74%</strong>
+        </article>
+        <article class="stat" data-od-id="stat-stability">
+          <span class="stat-label">稳定</span>
+          <strong class="stat-value" id="stability-state">61%</strong>
+        </article>
+        <article class="stat" data-od-id="stat-threat">
+          <span class="stat-label">异常</span>
+          <strong class="stat-value" id="threat-state">2</strong>
+        </article>
+      </section>
+
+      <nav class="control-dock" aria-label="主要操作" data-od-id="primary-control-dock">
+        <button class="action-btn primary" type="button" data-action="closeDoor" data-od-id="action-close-door">
+          <strong>关门</strong>
+          <span>最高频</span>
+        </button>
+        <button class="action-btn" type="button" data-action="moveUp" data-od-id="action-move-up">
+          <strong>上行</strong>
+          <span>移动</span>
+        </button>
+        <button class="action-btn danger" type="button" data-action="emergencyStop" data-od-id="action-emergency-stop">
+          <strong>急停</strong>
+          <span>止损</span>
+        </button>
+        <button class="action-btn" type="button" id="more-actions" data-od-id="action-more">
+          <strong>更多</strong>
+          <span>低频</span>
+        </button>
+      </nav>
+    </main>
+
+    <aside class="side-panel" data-od-id="desktop-side-panel" aria-label="桌面状态面板">
+      <section class="panel-section" data-od-id="meters-panel">
+        <div>
+          <span class="small-label">系统压力</span>
+          <h2>值守仪表</h2>
+        </div>
+        <div class="meter">
+          <span class="small-label">电力</span>
+          <div class="meter-line"><div class="meter-fill" id="power-meter" style="--value: 74%; --fill: var(--info);"></div></div>
+        </div>
+        <div class="meter">
+          <span class="small-label">稳定度</span>
+          <div class="meter-line"><div class="meter-fill" id="stability-meter" style="--value: 61%; --fill: var(--warn);"></div></div>
+        </div>
+        <div class="meter">
+          <span class="small-label">异常等级</span>
+          <div class="meter-line"><div class="meter-fill" id="threat-meter" style="--value: 40%; --fill: var(--danger);"></div></div>
+        </div>
+      </section>
+      <section class="panel-section" data-od-id="desktop-log-panel">
+        <div>
+          <span class="small-label">系统日志</span>
+          <h2>最近反馈</h2>
+        </div>
+        <div class="log-list" id="desktop-log-list">
+          <div class="log-line">02:17:03 监控检测到门缝热源。</div>
+          <div class="log-line">02:16:48 13 层信号短暂延迟。</div>
+          <div class="log-line">02:16:22 电梯门闭合失败一次。</div>
+        </div>
+      </section>
+      <section class="panel-section" data-od-id="desktop-guidance-panel">
+        <span class="small-label">布局原则</span>
+        <div class="directive-grid">
+          <div class="directive-card">
+            <strong>先看 CCTV，再按推荐键</strong>
+            <span>黄色高亮代表当前异常的建议动作。</span>
+          </div>
+          <div class="directive-card">
+            <strong>低频动作收进更多</strong>
+            <span>手机主控只保留关门、上行、急停。</span>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="sheet-backdrop" id="sheet-backdrop" data-od-id="sheet-backdrop"></div>
+  <section class="action-sheet" id="action-sheet" aria-label="更多操作" data-od-id="action-sheet">
+    <div class="sheet-head">
+      <div>
+        <span class="small-label">低频操作</span>
+        <h2>需要时再打开</h2>
+      </div>
+      <button class="action-btn" type="button" id="close-sheet" data-od-id="close-sheet">收起</button>
+    </div>
+    <div class="sheet-grid">
+      <button class="action-btn" type="button" data-action="openDoor" data-od-id="sheet-open-door"><strong>开门</strong><span>确认安全后</span></button>
+      <button class="action-btn" type="button" data-action="moveDown" data-od-id="sheet-move-down"><strong>下行</strong><span>返回楼层</span></button>
+      <button class="action-btn" type="button" data-action="restart" data-od-id="sheet-restart"><strong>重启</strong><span>降异常</span></button>
+      <button class="action-btn" type="button" data-action="inspectLog" data-od-id="sheet-inspect-log"><strong>查日志</strong><span>找线索</span></button>
+      <button class="action-btn" type="button" data-action="scan" data-od-id="sheet-scan"><strong>扫描</strong><span>确认异常</span></button>
+      <button class="action-btn" type="button" data-action="unlock" data-od-id="sheet-unlock"><strong>档案</strong><span>解锁记录</span></button>
+    </div>
+  </section>
+  <div class="toast" id="toast" role="status" aria-live="polite">已执行</div>
+
+  <script>
+    const state = {
+      floor: 13,
+      door: "半开",
+      power: 74,
+      stability: 61,
+      threat: 2,
+      signal: 82,
+      timer: 137,
+      anomalyIndex: 0,
+      logs: [
+        "02:17:03 监控检测到门缝热源。",
+        "02:16:48 13 层信号短暂延迟。",
+        "02:16:22 电梯门闭合失败一次。"
+      ]
+    };
+
+    const anomalies = [
+      { title: "门缝热源异常", copy: "先关门，再上行。不要急着开门。", dot: [58, 45], recommend: "closeDoor", feed: "var(--cctv-warp)" },
+      { title: "13 层信号重影", copy: "先查日志，确认信号延迟来源。", dot: [46, 38], recommend: "inspectLog", feed: "var(--cctv-clear)" },
+      { title: "轿厢轻微下坠", copy: "急停可止损，但会消耗稳定度。", dot: [54, 56], recommend: "emergencyStop", feed: "var(--cctv-figure)" }
+    ];
+
+    const els = {
+      timer: document.getElementById("timer"),
+      door: document.getElementById("door-state"),
+      power: document.getElementById("power-state"),
+      stability: document.getElementById("stability-state"),
+      threat: document.getElementById("threat-state"),
+      signal: document.getElementById("signal-label"),
+      rec: document.getElementById("rec-label"),
+      powerMeter: document.getElementById("power-meter"),
+      stabilityMeter: document.getElementById("stability-meter"),
+      threatMeter: document.getElementById("threat-meter"),
+      anomalyTitle: document.getElementById("anomaly-title"),
+      anomalyCopy: document.getElementById("anomaly-copy"),
+      monitorFeed: document.querySelector(".monitor-feed"),
+      heatDot: document.getElementById("heat-dot"),
+      logList: document.getElementById("desktop-log-list"),
+      toast: document.getElementById("toast")
+    };
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function formatTime(seconds) {
+      const min = Math.floor(seconds / 60);
+      const sec = seconds % 60;
+      return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    }
+
+    function addLog(message) {
+      const stamp = formatTime(state.timer);
+      state.logs.unshift(`${stamp} ${message}`);
+      state.logs = state.logs.slice(0, 5);
+    }
+
+    function showToast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("is-visible");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => els.toast.classList.remove("is-visible"), 1300);
+    }
+
+    function paint() {
+      const anomaly = anomalies[state.anomalyIndex];
+      els.timer.textContent = formatTime(state.timer);
+      els.rec.textContent = `REC ${formatTime(state.timer + 6)}`;
+      els.door.textContent = state.door;
+      els.power.textContent = `${state.power}%`;
+      els.stability.textContent = `${state.stability}%`;
+      els.threat.textContent = String(state.threat);
+      els.signal.textContent = `信号 ${state.signal}%`;
+      els.powerMeter.style.setProperty("--value", `${state.power}%`);
+      els.stabilityMeter.style.setProperty("--value", `${state.stability}%`);
+      els.threatMeter.style.setProperty("--value", `${state.threat * 20}%`);
+      els.anomalyTitle.textContent = anomaly.title;
+      els.anomalyCopy.textContent = anomaly.copy;
+      els.monitorFeed.style.setProperty("--cctv-feed", anomaly.feed);
+      els.heatDot.style.left = `${anomaly.dot[0]}%`;
+      els.heatDot.style.top = `${anomaly.dot[1]}%`;
+      els.logList.innerHTML = state.logs.map((line) => `<div class="log-line">${line}</div>`).join("");
+      document.querySelectorAll(".action-btn[data-action], #more-actions").forEach((button) => {
+        button.dataset.recommended = "false";
+      });
+      const recommendedButton = document.querySelector(`[data-action="${anomaly.recommend}"]`);
+      if (recommendedButton) recommendedButton.dataset.recommended = "true";
+      const recommendedInSheet = recommendedButton?.closest("#action-sheet");
+      document.getElementById("more-actions").dataset.recommended = String(Boolean(recommendedInSheet));
+    }
+
+    function perform(action) {
+      const actions = {
+        closeDoor() {
+          state.door = "关闭";
+          state.stability = clamp(state.stability + 8, 0, 100);
+          addLog("电梯门闭合，热源读数下降。");
+          showToast("门已关闭");
+        },
+        openDoor() {
+          state.door = "开启";
+          state.threat = clamp(state.threat + 1, 0, 5);
+          addLog("电梯门开启，异常等级上升。");
+          showToast("门已开启，注意热源");
+        },
+        moveUp() {
+          if (state.door !== "关闭") {
+            state.stability = clamp(state.stability - 8, 0, 100);
+            addLog("门未关闭，上行被系统拒绝。");
+            showToast("先关门");
+            paint();
+            return;
+          }
+          state.floor += 1;
+          state.power = clamp(state.power - 5, 0, 100);
+          addLog(`电梯上行至 ${state.floor} 层。`);
+          showToast("上行执行");
+        },
+        moveDown() {
+          state.floor -= 1;
+          state.power = clamp(state.power - 4, 0, 100);
+          addLog(`电梯下行至 ${state.floor} 层。`);
+          showToast("下行执行");
+        },
+        emergencyStop() {
+          state.stability = clamp(state.stability - 10, 0, 100);
+          state.threat = clamp(state.threat - 1, 0, 5);
+          addLog("急停触发，异常扩散被压住。");
+          showToast("急停已触发");
+        },
+        restart() {
+          state.power = clamp(state.power - 8, 0, 100);
+          state.signal = clamp(state.signal + 10, 0, 100);
+          state.threat = clamp(state.threat - 1, 0, 5);
+          addLog("系统重启完成，信号恢复。");
+          showToast("系统已重启");
+        },
+        inspectLog() {
+          addLog("日志提示：13 层摄像头延迟 3 秒。");
+          showToast("日志已标记");
+        },
+        scan() {
+          state.anomalyIndex = (state.anomalyIndex + 1) % anomalies.length;
+          state.signal = clamp(state.signal - 6, 0, 100);
+          addLog("扫描完成，监控目标更新。");
+          showToast("已切换监控目标");
+        },
+        unlock() {
+          addLog("隐藏档案已记录：门缝热源不是乘客。");
+          showToast("档案已记录");
+        }
+      };
+      actions[action]?.();
+      paint();
+    }
+
+    document.querySelectorAll("[data-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        perform(button.dataset.action);
+        document.body.classList.remove("sheet-open");
+      });
+    });
+
+    document.getElementById("more-actions").addEventListener("click", () => {
+      document.body.classList.add("sheet-open");
+    });
+
+    document.getElementById("close-sheet").addEventListener("click", () => {
+      document.body.classList.remove("sheet-open");
+    });
+
+    document.getElementById("sheet-backdrop").addEventListener("click", () => {
+      document.body.classList.remove("sheet-open");
+    });
+
+    window.setInterval(() => {
+      state.timer = Math.max(0, state.timer - 1);
+      if (state.timer % 11 === 0) {
+        state.stability = clamp(state.stability - 1, 0, 100);
+      }
+      paint();
+    }, 1000);
+
+    paint();
+  </script>
+</body>
+</html>

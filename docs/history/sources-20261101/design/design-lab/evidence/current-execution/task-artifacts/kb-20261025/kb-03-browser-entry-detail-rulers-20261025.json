@@ -1,0 +1,71 @@
+{
+  "before": {
+    "contrastRouteRuns": 50,
+    "contrastTextRuns": 14002,
+    "note": "read from the eighth- and ninth-round receipts on the same two rulers; the delta is exactly the panels that were previously unmeasured, so a count that grew is the proof the sweep reaches further, not a threshold that moved.",
+    "overflowRouteRuns": 112
+  },
+  "boundary": "E2 controlled-runtime on synthetic data in a loopback session. It measures painted contrast and geometry of the entry detail; it does not claim a model ran, and the seeded entry is discarded with the temp state root.",
+  "contrastAfter": {
+    "belowAA": 0,
+    "controlMisses": 0,
+    "routeRuns": 52,
+    "textRunsChecked": 14278,
+    "unparsableColours": 0
+  },
+  "contrastDetailRows": {
+    "1440:knowledge+entry-detail": {
+      "belowAA": 0,
+      "checked": 134
+    },
+    "1920:knowledge+entry-detail": {
+      "belowAA": 0,
+      "checked": 134
+    }
+  },
+  "defectFound": {
+    "controlLog": "design-lab/evidence/current-execution/task-artifacts/kb-20261025/kb-03-contrast-prefix-control.log",
+    "controlRun": "The same ruler, same bundle, same seed, run against the stylesheet as it was before the fix: it exits 1 with these 2 lines (both the design-lab/dark and the ui2026/light pass go red). Against the committed stylesheet it exits 0 with belowAA=0. So the pass is caused by the token change, not by the sweep having been widened and then left unasserted.",
+    "controlScope": "the file keeps one theme's run (the gate writes its log once per run); the other theme failed the same way in the same unittest run, which is why that run reports two failures",
+    "element": "the row title a person clicked into the detail, still under the pointer, wearing .kb-open:hover{color:var(--accent)}",
+    "fix": "the three hover ink rules (.kb-open:hover, .as-plan-open:hover, .capability-chip-x:hover) now use --secondary, the scheme-aware accent this project already uses for small coloured text (the ui2026/light override re-points it rather than shipping unreadable labels). --accent itself is untouched: the owner has not ruled on the brand token, and a gate finding is not a licence to change it.",
+    "measuredByThisGateOnFirstRun": [
+      "LOWCONTRAST 1440:knowledge+entry-detail 4.08:1 need>=4.5:1 16px bold opacity=1 fg=rgb(49, 108, 255) :: strong :: 镜头拆解三步法（合成）",
+      "LOWCONTRAST 1920:knowledge+entry-detail 4.08:1 need>=4.5:1 16px bold opacity=1 fg=rgb(49, 108, 255) :: strong :: 镜头拆解三步法（合成）"
+    ],
+    "whyItWasReal": "--accent is #316CFF, which measures 4.08:1 on that surface. AA needs 4.5:1 for 16px bold, so the hovered title was below the bar in both themes; the list screen never showed it because the list rows are only hovered one at a time and no ruler had clicked into a detail before."
+  },
+  "kind": "entry-detail-rulers-widened",
+  "observedAt": "2026-10-25T00:17:46Z",
+  "overflowAfter": {
+    "clipped": 0,
+    "docOverflowX": 0,
+    "panelStates": [
+      "1280:capabilities+global-search",
+      "1280:evidence+projection-read",
+      "1280:knowledge+entry-detail",
+      "1440:capabilities+global-search",
+      "1440:evidence+projection-read",
+      "1440:knowledge+entry-detail",
+      "1536:capabilities+global-search",
+      "1536:evidence+projection-read",
+      "1536:knowledge+entry-detail",
+      "1920:capabilities+global-search",
+      "1920:evidence+projection-read",
+      "1920:knowledge+entry-detail"
+    ],
+    "routeRuns": 116,
+    "stray": 0,
+    "tiny": 0
+  },
+  "overflowDetailRows": {
+    "1280:knowledge+entry-detail": "read",
+    "1440:knowledge+entry-detail": "read",
+    "1536:knowledge+entry-detail": "read",
+    "1920:knowledge+entry-detail": "read"
+  },
+  "subjectCommit": "a7c438913d598283fec8a7446d72bb5915be5496",
+  "taskId": "DL-KB-03",
+  "teeth": "test_workbench_contrast_gate now requires both panel names at every width and that the seeded entry is recorded as synthetic; test_workbench_overflow_gate requires the entry detail row at every width and that each panel state settled on read or refused. Removing the click step therefore turns the gate red instead of quietly shrinking it.",
+  "whatChanged": "Both static rulers used to enumerate #/knowledge and stop at the list. They now seed one synthetic entry through the same service the page reads, click it open, wait until the copy control and the judgement form are painted, and measure the detail as its own named state -- the same way the plan detail was already measured. The panel is what the previous two rounds could not claim coverage of."
+}

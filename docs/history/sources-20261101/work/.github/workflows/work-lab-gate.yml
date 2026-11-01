@@ -1,0 +1,765 @@
+name: work-lab-gate
+
+on:
+  # W01 (2026-10-14, refined after measuring PR #164): the duplicate is removed at its SOURCE rather than
+  # cancelled. A branch push and its PR run are the SAME change and GitHub cannot see that (different
+  # `github.ref`s), so the branch push used to start a second full set of heavy jobs. Cancelling it instead
+  # is not equivalent: the cancelled run's jobs keep their check names on the same commit, so PR #164 showed
+  # `integration`/`observer` red while the surviving run was healthy -- the dedupe worked and the report lied.
+  # Push therefore triggers the heavy jobs on main only; branches get their evidence from the pull_request
+  # run, over the same tree. `workflow_dispatch` stays as the manual entry point.
+  # Deviation, stated rather than hidden: a developer push to a branch with NO pull request now gets no run
+  # until the PR exists. That is the price of removing the duplicate without touching the plan/aggregate
+  # contract in the same batch, and it is recorded as remaining work.
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# W01 (2026-10-14): one source commit must not be paid for twice. A branch push and its PR run carry
+# different `github.ref`s (`refs/heads/x` vs `refs/pull/N/merge`) but the same SOURCE branch, which is why
+# GitHub's default per-ref grouping cannot see the duplicate: measured 16m39s on the push run and 15m30s on
+# the PR run for the same tree. Grouping by the source branch is what makes the pair collide.
+# With push restricted to main this group only ever holds same-ref runs (a branch and its PR share a group,
+# so a superseded PR update is dropped; main queues instead of cancelling). `cancel-in-progress` stays false
+# on main on purpose: a cancelled run's aggregate never reports, and main is where the strict aggregate is
+# the merge evidence. Different PRs and different branches never share a group.
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{
+      github.event.pull_request.head.repo.full_name || github.repository }}-${{
+      github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# W01 refinement (2026-10-14, measured on PR #164): cancelling the duplicate run is not free. The cancelled
+# run's jobs keep their check names attached to the same commit, so a PR showed `integration`/`observer`
+# cancelled-and-red while the surviving run was still healthy -- the dedupe worked and the report lied.
+# The duplicate is now removed at its SOURCE instead of cancelled: a branch push runs the light plan only,
+# and the heavy jobs run for pull requests or for main. Main still gates itself; a branch without a PR
+# still gets the plan; and nothing is cancelled across event types, so no red is manufactured.
+
+jobs:
+  plan:
+    name: gate-plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      required_gates: ${{ steps.plan.outputs.required_gates }}
+      plan_digest: ${{ steps.plan.outputs.plan_digest }}
+      plan_json: ${{ steps.plan.outputs.plan_json }}
+      run_workflow: ${{ steps.plan.outputs.run_workflow }}
+      run_observer: ${{ steps.plan.outputs.run_observer }}
+      run_token_monitor: ${{ steps.plan.outputs.run_token_monitor }}
+      run_supply_chain_security: ${{ steps.plan.outputs.run_supply_chain_security }}
+      run_integration: ${{ steps.plan.outputs.run_integration }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install gate-plan dependencies
+        run: python -m pip install --disable-pip-version-check --no-input --require-hashes -r packages/client-neutral-core/requirements.lock
+      - name: Discover changed paths
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p .project-local/runs/ci
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git diff --name-only "$PR_BASE_SHA" "$HEAD_SHA" > .project-local/runs/ci/changed-paths.txt
+          elif [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            # No usable `before`: a first push to a branch, or a workflow_dispatch run, where the field is
+            # absent entirely. Both mean "judge the whole tree" rather than "diff against empty", which would
+            # abort the step and take the plan (and every downstream job) with it.
+            git ls-files > .project-local/runs/ci/changed-paths.txt
+          else
+            git diff --name-only "$BEFORE_SHA" "$HEAD_SHA" > .project-local/runs/ci/changed-paths.txt
+          fi
+      - name: Compute canonical gate plan
+        id: plan
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python scripts/ci/emit_gate_plan.py \
+            --root . \
+            --profile .project/governance/work-lab.project-profile.yaml \
+            --repository "${{ github.repository }}" \
+            --commit "$HEAD_SHA" \
+            --changed-path-file .project-local/runs/ci/changed-paths.txt \
+            --github-output "$GITHUB_OUTPUT"
+      # W10: the plan only ever lived in $GITHUB_OUTPUT, so it vanished with the run. Written to disk here so
+      # the summary artifact can carry it; `if: always()` because a plan that was computed is worth keeping
+      # even when a later step fails.
+      - name: Publish the plan for the run summary
+        if: always()
+        env:
+          PLAN_JSON: ${{ steps.plan.outputs.plan_json }}
+        run: |
+          mkdir -p .project-local/runs/ci
+          printf '%s' "$PLAN_JSON" > .project-local/runs/ci/plan.json
+          echo "PLAN_PUBLISHED bytes=$(wc -c < .project-local/runs/ci/plan.json)"
+
+  workflow:
+    name: workflow-assistance
+    needs: plan
+    if: needs.plan.outputs.run_workflow == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # The consolidation archive that proves the 2026-10-19 deletions is LFS-routed by policy. Without
+          # its bytes the gate reads a 135-byte pointer, so the job that runs the root suite must fetch large
+          # files; the refusal is now named in the test, but a named red that could have run is still a red.
+          lfs: true
+      - name: Install workflow validator dependencies
+        run: python -m pip install --disable-pip-version-check --no-input --require-hashes -r packages/client-neutral-core/requirements.lock
+      - name: Fast projection and contract-shape preflight
+        id: preflight
+        run: |
+          # W03 (2026-10-14): measured on PR #163 -- a stale tool inventory was only reported AFTER the
+          # 2712-test governance batch had run (2m11s in, 251 modules), so the real defect (a projection
+          # measured before its inputs were staged) arrived dressed as "governance failed". These three
+          # checks read the same git blobs and the same contract catalog and cost a fraction of that, so the
+          # same class of error now fails in seconds with its own name. This ADDS an early signal; the
+          # governance batch still runs the same checks later, unweakened.
+          python scripts/ci/verify_contract_catalog.py
+          python scripts/ci/verify_contract_ssot.py
+          python scripts/ci/verify_gate_ci_job_mapping.py
+          python scripts/ci/verify_adapter_support_levels.py
+          python scripts/ci/verify_live_doc_paths_resolve.py
+          python tests/workflow-assistance/test_tool_inventory_coverage.py
+      - name: Run workflow structural and contract gates
+        id: contract-gates
+        run: |
+          # portable-install-runtime requires an explicitly provisioned Hermes binary;
+          # it remains a separate runtime/readback gate, not a fabricated CI success.
+          python services/orchestration/run_quality_gate.py governance
+          python services/orchestration/run_quality_gate.py compile
+          python services/orchestration/run_quality_gate.py runtime-convergence
+          python services/orchestration/run_quality_gate.py skill-provenance
+          python services/orchestration/run_quality_gate.py security
+          python services/orchestration/run_quality_gate.py context-pack
+          python services/orchestration/run_quality_gate.py client-neutral-manifest
+          python services/orchestration/run_quality_gate.py core-schemas
+          # ERR-261/263/264 recorded the same blind spot three times: this stage runs the root tests/ci
+          # governance suite (44 modules -- the register's table shape and commit pins, the authority-index
+          # reference checks, the tool inventory) and no workflow invoked it, so a red there was invisible on
+          # push while every CI check stayed green. The chain above stops at its first failure, which is why
+          # a stage list has to be named in full rather than assumed covered.
+          python services/orchestration/run_quality_gate.py root-governance-suite
+          python tests/workflow-assistance/test_platform_identity.py
+          python tests/workflow-assistance/test_instance_reconciler.py
+          python tests/workflow-assistance/test_config_ownership.py
+          python tests/workflow-assistance/test_telemetry_ledger.py
+          python tests/workflow-assistance/test_sidecar.py
+          python tests/workflow-assistance/test_config_coordinator.py
+          python tests/workflow-assistance/test_sidecar_lock.py
+          python tests/workflow-assistance/test_project_profile.py
+          python tests/workflow-assistance/test_observer_projection_adapter.py
+          # WL-P0 session federation: integrity gate (10 wiring checks) + unit tests
+          python services/session-federation/gate.py
+          python tests/workflow-assistance/test_session_federation.py
+          # WL-170/180/190 task governance: protocol + completion authority + permission gate
+          python tests/workflow-assistance/test_task_governance.py
+          # WL-200/210/220/230/240 execution federation: ACP adapter base + 5 executor adapters + registry
+          python tests/workflow-assistance/test_execution_federation.py
+          # WL-250/BEADS_POC task-graph coverage assessment
+          python tests/workflow-assistance/test_beads_poc.py
+          # WL-190/200/210 memory plane: 9-op provider contract + bakeoff + session/memory/knowledge boundary
+          python tests/workflow-assistance/test_memory_provider.py
+          # WL-300/310/320 security plane: extension registry + 7-stage skillspector gate + snyk 2nd opinion
+          python tests/workflow-assistance/test_security.py
+          # WL-330/340/350/360 evolution plane: penguin provider + ch29 independent gate + M1-M5 policy + exo sandbox
+          python tests/workflow-assistance/test_evolution.py
+          # WL-370/380/390 intelligence plane: radar core + ch33 12-axis scoring + auto POC routing
+          python tests/workflow-assistance/test_radar.py
+          # WL-400/410/420/430 cleanup plane: repo-slimming audit + spill governance + ch40 archive + G01-G14 final audit
+          python tests/workflow-assistance/test_cleanup.py
+          # WL-P1-290 knowledge promotion gate: ch 37 ArcheAxis allow/forbid whitelist
+          python tests/workflow-assistance/test_knowledge.py
+          # WL-P1-100 CASR architecture study: ch 14 reference-only capability mapping
+          python tests/workflow-assistance/test_casr_study.py
+          python scripts/ci/generate_current_state.py --check-current
+          python tests/ci/test_stage3_baseline.py
+          python services/orchestration/run_quality_gate.py adapter-registry
+          python services/orchestration/run_quality_gate.py capability-matrix
+          python services/orchestration/run_quality_gate.py policy-coverage
+          python services/orchestration/run_quality_gate.py adapter-conformance
+          python services/orchestration/run_quality_gate.py acp-conformance
+          python services/orchestration/run_quality_gate.py otel-mapping
+          python services/orchestration/run_quality_gate.py usage-ingestion
+          python services/orchestration/run_quality_gate.py memory-contamination
+          python services/orchestration/run_quality_gate.py task-ledger-replay
+          python services/orchestration/run_quality_gate.py portable-install
+          python services/orchestration/run_quality_gate.py provider-inventory
+          python services/orchestration/run_quality_gate.py mcp-audit
+          python services/orchestration/run_quality_gate.py shell
+          python services/orchestration/run_quality_gate.py powershell
+          # CL-14 (2026-10-25): the canonical local `verify` run performs 50 stages, and this job invoked 23 of
+          # them by name. The other 27 were neither invoked nor declared anywhere, so nothing could distinguish
+          # "CI does not require this" from "CI requires it under another name" -- and an unstated absence is a
+          # coverage claim. Each line below was run on this branch first: all 27 exited 0, together in 44 s, and
+          # their own reports carry counts rather than silence (`MODEL_REGISTRY_INTEGRITY_PASS providers=9
+          # models=10`, `OBSERVER_READONLY_PASS sources_scanned=90`, `EVIDENCE_TIER_PASS bundles=7`,
+          # `THREE_PROJECT_BOUNDARY_PASS splits=6 markers=5 seams=3`, `ACP_HONESTY_PASS operations=40`). Every
+          # verifier they drive resolves its paths inside the repository, so a runner with no sibling projects
+          # and no external volumes still judges them; the two stages that cannot be judged here are declared
+          # under `ci.stage_coverage` in the profile instead of being left unmentioned.
+          # ERR-261/263/264 recorded this blind spot three times for one stage (`root-governance-suite`); the
+          # count of stages that had it was 27.
+          python services/orchestration/run_quality_gate.py model-registry-integrity
+          python services/orchestration/run_quality_gate.py registry-closure-report
+          python services/orchestration/run_quality_gate.py acp-adapter-honesty
+          python services/orchestration/run_quality_gate.py evidence-tiering
+          python services/orchestration/run_quality_gate.py plugin-inventory-honesty
+          python services/orchestration/run_quality_gate.py observer-readonly-boundary
+          python services/orchestration/run_quality_gate.py blueprint-projection
+          python services/orchestration/run_quality_gate.py context-control-plane
+          python services/orchestration/run_quality_gate.py external-libraries-index
+          python services/orchestration/run_quality_gate.py protected-drives-consistency
+          python services/orchestration/run_quality_gate.py three-project-boundary
+          python services/orchestration/run_quality_gate.py github-delivery
+          python services/orchestration/run_quality_gate.py project-identity-contract
+          python services/orchestration/run_quality_gate.py agent-adapter-readonly-contract
+          python services/orchestration/run_quality_gate.py execution-state-machine
+          python services/orchestration/run_quality_gate.py collector-noninterference
+          python services/orchestration/run_quality_gate.py canonical-single-writer
+          python services/orchestration/run_quality_gate.py observer-no-business-write
+          python services/orchestration/run_quality_gate.py snapshot-schema-v3
+          python services/orchestration/run_quality_gate.py sse-browser-reconnect
+          python services/orchestration/run_quality_gate.py field-quality-no-fabrication
+          python services/orchestration/run_quality_gate.py privacy-redaction
+          python services/orchestration/run_quality_gate.py windows-project-resolution
+          python services/orchestration/run_quality_gate.py tauri-readonly-shell
+          python services/orchestration/run_quality_gate.py work-lab-os-canary
+      # W10: a small redacted summary + the per-stage record, uploaded even when the gates above failed.
+      # An auditor reads this file first; the log stays the place you go when the summary is not enough.
+      - name: Assemble the run summary
+        if: always()
+        env:
+          # W10: the plan is computed in another job, on another runner, so its file cannot reach this
+          # one; hand it over explicitly instead of letting the summary report a plan that only looks missing.
+          # (Same reasoning as the line below it; kept short on purpose.)
+          PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
+        run: |
+          python scripts/ci/ci_run_summary.py --job workflow-assistance \
+            --step "preflight=${{ steps.preflight.outcome }}" \
+            --step "contract-gates=${{ steps['contract-gates'].outcome }}"
+      - name: Upload the run summary
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.4.3
+        with:
+          name: ci-summary-workflow-assistance
+          path: |
+            .project-local/runs/ci/ci-summary-*.json
+            .project-local/runs/ci/gate-stages.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  token-monitor:
+    name: token-monitor
+    needs: plan
+    if: needs.plan.outputs.run_token_monitor == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/token-monitor
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install locked frontend dependencies
+        run: npm ci
+      - name: Build frontend
+        run: npm run build
+      - name: Test locked Rust desktop crate
+        working-directory: apps/token-monitor/src-tauri
+        run: cargo test --locked
+      - name: Check locked Rust desktop crate
+        working-directory: apps/token-monitor/src-tauri
+        run: cargo check --locked
+
+
+  observer:
+    name: observer
+    needs: plan
+    if: needs.plan.outputs.run_observer == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 40
+    # P0-01: no job-level relative PYTHONPATH. The multi-command Python groups
+    # route through scripts/ci/failfast_group.py, whose manifest expansion pins
+    # an absolute PYTHONPATH derived from each group's working_dir — a step-
+    # relative value here would re-introduce the environment drift that
+    # masked the 2026-09-25 fake-green. U19/cargo steps self-bootstrap.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # P0-01 CI Truth Repair: the observer job previously ran 8 Python test
+      # commands in a default-PowerShell multi-line step WITHOUT installing the
+      # locked dependencies, so jsonschema import errors were raised but masked
+      # by the last command's exit code (fake-green at 4d059c7). Install the
+      # canonical lock (dependency truth) and route every required group through
+      # the fail-fast runner so a failed required command can never be masked by
+      # a later success (failure propagation).
+      - name: Pin Python (locked dependency truth)
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Install locked Python dependencies
+        working-directory: .
+        run: python -m pip install --disable-pip-version-check --no-input --require-hashes -r packages/client-neutral-core/requirements.lock
+      - name: Verify Observer read-only skeleton (fail-fast group)
+        working-directory: .
+        run: python scripts/ci/failfast_group.py --group observer-python-skeleton
+      - name: Verify Observer Web and desktop contracts
+        # P0-01: route through the fail-fast group runner (uniform mechanism).
+        working-directory: .
+        run: python scripts/ci/failfast_group.py --group observer-web-contracts
+      # W02 (2026-10-14): the four commands used to share one step, so the job reported their sum (measured
+      # 2026-10-14: observer 16m02s with the build unnamed inside it). One step each makes the durations the
+      # diagnosis instead of a total, and the fail-fast runner still owns the failure semantics.
+      - name: Install observer frontend dependencies
+        id: fe-install
+        working-directory: .
+        run: python scripts/ci/failfast_group.py --group observer-frontend-install
+      - name: Typecheck observer frontend (tsc, production chain)
+        id: fe-typecheck
+        working-directory: .
+        run: python scripts/ci/failfast_group.py --group observer-frontend-typecheck
+      - name: Build observer frontend (vite)
+        id: fe-build
+        working-directory: .
+        run: python scripts/ci/failfast_group.py --group observer-frontend-build
+      - name: Test observer frontend (vitest)
+        id: fe-test
+        working-directory: .
+        run: python scripts/ci/failfast_group.py --group observer-frontend-test
+      # W02: the Rust dependency sources and the crate's target directory are the two things this job pays
+      # for on every run. The registry/git key follows Cargo.lock (a dependency change must miss); the
+      # target key additionally carries the commit, so a source change can never be served a whole stale
+      # build as if it were this one -- restore-keys still warm the dependency objects. A cache hit is not
+      # reported as a performance result anywhere: the timings come from the steps above.
+      - name: Cache Rust dependency sources (observer)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-observer-cargo-registry-${{ hashFiles('apps/observer/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-observer-cargo-registry-
+      - name: Cache Rust build output (observer)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: apps/observer/src-tauri/target
+          key: ${{ runner.os }}-observer-cargo-target-${{ hashFiles('apps/observer/src-tauri/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-observer-cargo-target-${{ hashFiles('apps/observer/src-tauri/Cargo.lock') }}-
+      # U08: the observer desktop crate is a real Tauri 2 crate (src-tauri).
+      # Mirror the token-monitor job (windows-latest): test + check the locked
+      # Rust desktop crate. Tauri is Windows-native-first and on Windows uses
+      # WebView2 (no system GTK/webkit2gtk needed); --locked keeps the dep tree exact.
+      - name: Test locked observer Rust desktop crate
+        # P0-01: default-PowerShell multi-line masked failures; route through fail-fast group.
+        working-directory: .
+        run: python scripts/ci/failfast_group.py --group observer-desktop-crate
+      # U19 — WINDOWS_TAURI_E2E: real native-shell readback. CI windows-latest
+      # has the complete MSVC toolchain (the local GNU chain lacks a link.exe,
+      # so only CI can build a runnable exe) + the WebView2 runtime. Build the
+      # real binary, then drive the full chain: real sidecar v3 backend ->
+      # real app.exe -> WebView2 CDP readback (non-about:blank). The harness
+      # is fail-closed: any stage it cannot prove is reported FAIL, never a
+      # fabricated PASS. Evidence lands in .project-local/runs/.
+      - name: Build the real Tauri desktop binary (MSVC, for U19 E2E)
+        working-directory: apps/observer/src-tauri
+        run: cargo build --release --locked
+      # The desktop binary this job proves out never left the runner, so the only native entry anyone could
+      # look at on a dev machine was a superseded build: a local GNU `cargo tauri build` fails in
+      # `tauri-winres` because `windres` receives this repository's path unquoted ("D:\All projects\…" splits
+      # into `projects\WORK-LAB…`), and the local chain has no MSVC linker either -- which is what the
+      # comment above already records as the reason CI builds it at all. Uploading the same bytes the U19
+      # gate drove makes "run the native shell and look at it" possible without asking anyone to install a
+      # toolchain, and `if-no-files-found: error` means a build that silently produced nothing is a red job
+      # rather than a missing download.
+      - name: Upload the native release binary (the exe U19 drove, for local inspection)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.4.3
+        with:
+          name: observer-native-app-exe
+          path: apps/observer/src-tauri/target/release/app.exe
+          if-no-files-found: error
+          retention-days: 14
+      - name: Record the artifact input receipt
+        # ERR-105: the receipt must be written by the build side, immediately
+        # after the compiler, so it attests to a build that was observed. The
+        # gate only reads it. Without it the gate falls back to content
+        # evidence and says so in its own report.
+        # Defect 3 (2026-10-26): the same bytes are now also archived under
+        # `.project-local/artifacts/native-evidence/` with the commit and the exe
+        # digest in the FILE NAME, because `src-tauri/target/` is a cache this
+        # workflow restores and never uploads -- a receipt only there is evidence
+        # for as long as the runner's cache lives.
+        working-directory: .
+        run: python apps/observer/scripts/write_artifact_receipt.py
+      # W04: does this environment have a desktop at all? Runs BEFORE the readback and never gates it
+      # directly -- the readback refuses on its own if the layers did not resolve. What this adds is the
+      # ability to tell "the product did not render" apart from "there was nothing to render on", which is
+      # the distinction the SKIPPED_HEADLESS incident destroyed.
+      # `continue-on-error` stays for the probe's OWN exit code (measured on run 40215515839: the runner
+      # reports session=FAIL because SESSIONNAME is null, which is an environment fact, not a product one).
+      # What changed on 2026-10-26 is that the probe's CONTENT is now load-bearing: U19 reads this exact
+      # artifact (`.project-local/runs/ci/desktop_capability.json`) and only grants a skip when `display`
+      # and `draw` are not both PASS. The verdict reaching the decision is the fix; the flag above only
+      # stops one corroborating layer from reddening the job twice.
+      - name: Desktop capability probe (layered, product-independent)
+        if: always()
+        working-directory: .
+        run: python scripts/audit/desktop_capability_probe.py --json-out .project-local/runs/ci/desktop_capability.json
+        continue-on-error: true
+      - name: U19 real-WebView E2E readback (WINDOWS_TAURI_E2E)
+        # REPORTED, NOT REQUIRED (owner's decision 2026-10-26, after this step went red on the facts):
+        # the probe now measures a third required layer, `visible_desktop`, because `display` and `draw`
+        # both PASS on windows-latest while every window the real app owns reads back visible=false and the
+        # WebView2 never exposes a CDP page target (run 40326061662: pid 6828, windows=4, GDI proof FAIL).
+        # A hosted runner with no desktop that shows windows cannot produce a native render proof at all, so
+        # its verdict is published and read, and does not gate the pull request. The skip is still granted
+        # only by a measured denial -- never by GITHUB_ACTIONS -- and an unproven surface on a host whose
+        # layers all resolve stays FAIL.
+        working-directory: apps/observer
+        run: python scripts/u19_webview_e2e.py
+        continue-on-error: true
+      # The native window readback (WINDOW_STATE_READBACK) is the only instrument that measures the REAL
+      # Tauri window against `tauri.conf.json`; until 2026-10-26 no job executed it, so the geometry claim
+      # CI reports came from a Chrome `--window-size` emulation. It needs the exe the job just built, so it
+      # runs here, and it is NOT forgiven: the register's rule is that a skipped or missing required check
+      # is a failure, and the probe's own convention is NOT_RUN -> exit 3 = red. `if: always()` because the
+      # two native readbacks must each report their own verdict even when the other went red -- the U19 red
+      # is precisely the fact this step measures, and a run that lost both numbers tells the reader less.
+      - name: Window state readback (native Tauri window vs declared geometry)
+        # REPORTED, NOT REQUIRED, same reason as U19: measuring the real window needs a desktop that shows
+        # windows, and `visible_desktop` is the layer that says whether this host has one. The step runs on
+        # every job and writes its JSON either way; CI never claims native window geometry from a host that
+        # cannot provide it, and the register names the local interactive run as the source of that proof.
+        if: always()
+        working-directory: .
+        run: python apps/observer/scripts/window_state_readback.py --json-out .project-local/runs/ci/window_state_readback.json
+        continue-on-error: true
+      # G3: required now that the instrument has produced a real GEOMETRY_GATE_PASS readback (ERR-146 states
+      # the condition). It measures the bundle this job just built, at each window's declared shape: the main
+      # shell at 1280x820 and the floating panel at 440x780. A refusal exits 3 and names why, which is a red
+      # on purpose — the gate cannot report green without a measurement.
+      - name: Desktop geometry gate (CDP measurement of the built shell)
+        working-directory: .
+        run: python scripts/audit/topbar_geometry_via_cdp.py --json-out .project-local/runs/ci/geometry_gate.json
+      # CL-12: the narrow strip's shape checks lived in `.project-local/runs/cl10/hud_narrow_probe.py`,
+      # the evidence area. They caught a CJK label shattered one character per line at 150px and a hover
+      # state that pushed the pinned footer to y=874 inside a 480px window, went green again after each
+      # fix -- and nothing re-ran them, so the next commit could re-break either shape silently. This is
+      # the tracked successor, and this step is the reason it exists: an instrument no job executes is a
+      # description of a gate, not a gate (the same G3 finding, pointing the other way).
+      # Cost is measured, not guessed: six surfaces, one browser per surface, 19 s wall on the development
+      # host (receipt `.project-local/runs/cl14/hud-strip-gate-60.json`, 60 checks). The harvest
+      # runs against a declared fixture snapshot -- the strip's geometry depends on how many tool rows the
+      # snapshot carries, and a gate bound to today's live ledger reds when the data changes and greens
+      # when the layout breaks; the receipt names the data shape it measured. Each surface waits for its
+      # own data condition first, because the HUD frame mounts before the snapshot arrives and a harvest
+      # taken in between would measure a strip with no rows to hover (found on the first run of this
+      # gate, which is why the wait is a check rather than a sleep).
+      # Geometry only: the 12px type floor and the AA ratio for these same three shell surfaces are judged
+      # by the legibility sweep below with `--shell-surfaces`. This step used to assert the floor as well,
+      # and one standard read by two gates means two thresholds to drift.
+      # Exit 3 is NOT_RUN (no dist, no browser, no measurement) and is left to fail the job on purpose.
+      - name: HUD narrow-strip geometry gate (CDP, 150x480 strip + 440x680 panel + daily entry)
+        working-directory: .
+        run: python scripts/audit/hud_strip_geometry_via_cdp.py --json-out .project-local/runs/ci/hud_strip_gate.json
+      # LEG-2: the legibility sweep's arithmetic has been pinned in CI by tests/ci/test_text_legibility_gate.py
+      # (69 cases as of the live-api guard added in the 2026-10-28 round) since it was written, but the step that drives a real browser over the built bundle was never
+      # run by any job -- so the numeric clauses DESIGN.md and SCREEN_SPEC.md state (12px floor, 4.5:1 / 3:1 AA,
+      # both themes) were measured only on the author's machine, and a runner-side regression would have stayed
+      # invisible. Cost is measured, not guessed: `--all-views --live-backend --sizes 1280` at both themes took
+      # 70 s wall on 2026-10-21 on the development host (31 lanes, 566/566 scroll stops, bundle
+      # assets/index-C1tK2WFi.js sha256 8e793275…), and the receipt stamps the bytes it loaded.
+      # `--shell-surfaces` (added 2026-10-25) extends the SAME standard to the three shell surfaces the
+      # narrow-strip gate declares -- the 150x480 HUD strip, the 440x680 panel and the 1280x820 daily entry.
+      # Until then this sweep read only `view=full`/`view=overview`, so the surfaces the owner actually looks
+      # at every day had no tracked judgement: no 12px floor and no AA ratio judged by anything but an
+      # untracked readback in the evidence area. Cost measured 2026-10-25 on the development
+      # host: this exact command -- `--all-views --live-backend --sizes 1280 --shell-surfaces` -- runs 1 m37 s
+      # and prints `LEGIBILITY_GATE_PASS`; each shell row is two launches per theme, keeping the
+      # settled-pair rule. Their density floor is per surface (12, the value one rail lane already uses),
+      # because the strip paints 16 readable text nodes and a shell-wide floor of 30 would convict a 150px
+      # window for being narrow -- and a floor that low still refuses an empty render, which is tested.
+      # Exit 3 is NOT_RUN (no browser, no dist, an unsettled sample) and is left to fail the job on purpose:
+      # an unmeasured standard is not a passing one.
+      - name: Text legibility sweep (CDP, both themes, every rail lane, the shell surfaces)
+        working-directory: .
+        run: python scripts/audit/text_legibility_via_cdp.py --all-views --live-backend --sizes 1280 --shell-surfaces --json-out .project-local/runs/ci/legibility_sweep.json
+      # CL-14 (2026-10-25): four instruments were tracked, self-refusing (exit 3 `*_NOT_RUN` with the reason
+      # named) and green on the author's machine, and no job executed any of them -- the same defect G3 and
+      # CL-12 named, pointed at the tools this repo had already written. Each was re-run against the bundle
+      # this branch builds before being made required, and each printed its own PASS line, which is the
+      # condition G3 states for turning an instrument into a gate. Receipts read on 2026-10-25 in
+      # `.project-local/runs/cl15/cdp-wire/`: `DISPLAY_SCALING_GATE_PASS`, `SSE_REVISION_GATE_PASS`,
+      # `HANDLE_LATENCY_PASS`, `CONTROL_SHELL_IDENTITY_PASS screens=3/3 rows=1 receipts=1`.
+      # Runner-independent, which is why it can be required here at all: the LAYOUT half is a CDP device-metrics
+      # override (a maximised window at 150% hands the page a 1706px CSS viewport), and the PHYSICAL half is
+      # arithmetic on the sizes the shell declares in `tauri.conf.json` against the 2560x1440 surface the
+      # taskpack names -- not against whatever display the runner happens to have. Each scale asserts its own
+      # `window.devicePixelRatio`, so a sweep whose four runs all report dpr 1 fails instead of measuring one
+      # DPI four times.
+      - name: Display scaling gate (CDP, declared windows at 100/125/150/200% scaling)
+        working-directory: .
+        run: python scripts/audit/display_scaling_via_cdp.py --json-out .project-local/runs/ci/display_scaling_gate.json
+      # The revision a stream carries is the product promise behind every "this is current" sentence in the
+      # shell, and reconnect-cursor semantics are the half a Python test cannot reach: only a page that is
+      # reloaded keeps its scroll, focus and selection.
+      - name: SSE revision + reconnect state gate (CDP, three revisions over one stream)
+        working-directory: .
+        run: python scripts/audit/sse_revision_via_cdp.py --json-out .project-local/runs/ci/sse_revision_gate.json
+      # Report-only by design and labelled as such by the instrument itself (`HANDLE_LATENCY_BUDGET_NOT_SET`):
+      # 172 rows measured 244-246 ms from navigation to visible, twice, and no tracked document states a
+      # latency budget, so inventing a `--fail-over-ms` number would have made the gate pass by asserting a
+      # promise the owner never made. What is required here is the measurement and its refusal to be skipped;
+      # the budget value is an owner ask, registered as such.
+      - name: Handle-block latency measurement (CDP, list-to-visible timing for the built bundle)
+        working-directory: .
+        run: python scripts/audit/handle_block_visibility_via_cdp.py --json-out .project-local/runs/ci/handle_latency_measure.json
+      # The Control shell, not the Observer: this job is the only one with a browser, and the instrument's
+      # write lands in a store the harness creates under `.project-local/runs` and re-reads -- it never opens
+      # the live ledger or the Telemetry Ledger, so the Observer's read-only boundary is untouched. It proves
+      # the behavioural half of WUI-10 (a lost refresh re-QUERIES the same operation and never re-writes).
+      - name: Control shell identity readback (CDP, restore / fresh / absent over one real write)
+        working-directory: .
+        run: python scripts/audit/control_shell_identity_via_cdp.py --json-out .project-local/runs/ci/control_shell_identity.json
+      # CL-16 step 1: `--motion-pressed` and `--pressed-scale` were declared with no consumer, so retuning or
+      # deleting one could not fail anything. This step reads the COMPUTED transform while Chrome itself holds
+      # `:active` on the node (CSS.forcePseudoState) -- a synthetic `dispatchEvent` does not light a pseudo-class,
+      # which is why the same instrument cannot be satisfied by the hover assertions elsewhere in this job.
+      # Required, not report-only: with the pressed rules removed from the source and the bundle rebuilt, the
+      # step exits 1 on six named checks (evidence `.project-local/artifacts/cl16-pressed-motion/mutation.txt`).
+      - name: Pressed-state motion gate (CDP, computed transform and duration under a forced :active)
+        working-directory: .
+        run: python scripts/audit/pressed_state_motion_via_cdp.py --json-out .project-local/runs/ci/pressed_motion_gate.json
+      # CL-16 step 2, overlay side. `scripts/audit/overlay_motion_via_cdp.py` has been in the tree since PR #226
+      # and executed by nothing: a judgement that no job runs is the gate's instruction manual, not a gate --
+      # the same hole CL-14 found from the other direction (27 stages neither called nor declared). Wiring it
+      # here is what makes the enter/exit assertions real: it opens the drawer with a dispatched mouse click,
+      # samples every frame of the enter, closes it through its own input path, and samples the exit, under both
+      # pinned motion preferences. Required, not report-only: both overlays measured already at their end state
+      # before `apps/observer/frontend/src/lib/useEnterTransition.ts` existed, which is the shape
+      # `tests/ci/test_overlay_motion_gate.py::test_an_overlay_that_appears_at_its_end_state_fails_the_enter_clause`
+      # keeps failing on purpose, alongside the exit and reduced-branch plants in the same file.
+      - name: Overlay enter/exit motion gate (CDP, real click, frame series on both sides of drawer and toast)
+        working-directory: .
+        run: python scripts/audit/overlay_motion_via_cdp.py --json-out .project-local/runs/ci/overlay_motion_gate.json
+      # CL-16 step 2, third clause: the reduced-motion promise read off the painted page instead of out of the
+      # stylesheet text. The guard this replaces was one vitest file that asserted the characters
+      # `transition: none !important` appear in `apps/observer/frontend/src/skins/l10b-shell.css` -- true while
+      # the browser could still be answering a different question. This step censuses every node and both
+      # pseudo-elements of five surfaces under a pinned preference and convicts any transition or animation that
+      # survives `reduce`. Required, not report-only: with that media block's selector renamed to a preference no
+      # page can match, and the bundle rebuilt, the step exits 1 naming
+      # `reduced_motion_floor_holds[professional]` with the 9 nodes that kept moving (evidence
+      # `.project-local/runs/reduced-motion-gate/planted.json` and `plant-out.txt` on the development machine).
+      - name: Reduced-motion floor gate (CDP, computed style censused per surface in both branches)
+        working-directory: .
+        run: python scripts/audit/reduced_motion_floor_via_cdp.py --json-out .project-local/runs/ci/reduced_motion_floor.json
+      # Defect 3 (2026-10-26): an archived verdict that cannot name its commit can be read as current at
+      # any head. This step is the refusal: every file under
+      # `.project-local/artifacts/native-evidence/` must follow `kind.g<commit12>.x<exe16>.inputs.json`,
+      # its name and payload must agree, and at least one artifact must describe `github.sha` -- the very
+      # commit this job checked out. A receipt from an older build exits 1 here instead of being uploaded
+      # as this run's native acceptance evidence.
+      - name: Verify the archived native evidence names this commit
+        working-directory: .
+        run: python apps/observer/scripts/write_artifact_receipt.py --verify-against "${{ github.sha }}"
+      # W10: the four frontend stages exist because W02 split one combined step; the artifact is what makes
+      # that split readable after the run, without opening the log.
+      - name: Assemble the run summary
+        if: always()
+        env:
+          # W10: the plan is computed in another job, on another runner, so its file cannot reach this
+          # one; hand it over explicitly instead of letting the summary report a plan that only looks missing.
+          # (Same reasoning as the line below it; kept short on purpose.)
+          PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
+        # `shell: bash` is not decoration: this job's default shell on windows-latest is NOT bash, and bash's
+        # backslash line continuation is a PARSER ERROR there (measured on PR #169: "Missing expression after
+        # unary operator '--'"), which turned a working geometry gate into a red job for a reason that had
+        # nothing to do with the product. The shell is named here so the next editor cannot re-introduce it.
+        shell: bash
+        run: |
+          python scripts/ci/ci_run_summary.py --job observer \
+            --step "frontend-install=${{ steps['fe-install'].outcome }}" \
+            --step "frontend-typecheck=${{ steps['fe-typecheck'].outcome }}" \
+            --step "frontend-build=${{ steps['fe-build'].outcome }}" \
+            --step "frontend-test=${{ steps['fe-test'].outcome }}"
+      - name: Upload the run summary
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.4.3
+        with:
+          name: ci-summary-observer
+          path: |
+            .project-local/runs/ci/ci-summary-*.json
+            .project-local/runs/ci/gate-stages.json
+            .project-local/runs/ci/geometry_gate.json
+            .project-local/runs/ci/desktop_capability.json
+            .project-local/runs/ci/display_scaling_gate.json
+            .project-local/runs/ci/sse_revision_gate.json
+            .project-local/runs/ci/handle_latency_measure.json
+            .project-local/runs/ci/control_shell_identity.json
+            .project-local/runs/ci/window_state_readback.json
+            .project-local/runs/u19_webview_readback.json
+            .project-local/runs/u19_native_surface_unverified.json
+            .project-local/artifacts/native-evidence/*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  supply-chain-security:
+    name: supply-chain-security
+    needs: plan
+    if: needs.plan.outputs.run_supply_chain_security == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # WLOSS-200: unified supply-chain baseline — actionlint (GHA syntax),
+      # zizmor (GHA security), Trivy (vuln/SBOM/secret/license/misconfig).
+      # One primary scanner + focused supplements; no overlapping tool stack.
+      - name: actionlint (GitHub Actions syntax)
+        uses: rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca # v1.7.12
+      - name: zizmor (GitHub Actions security)
+        run: pipx run zizmor==1.29.0 . --min-severity high
+      - name: Trivy fs scan (vuln/secret/license/misconfig)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: v0.73.0
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,license,misconfig
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+          skip-dirs: .git,.hermes,node_modules,src-tauri/target,packages/client-neutral-core/.hermes
+          format: table
+      - name: Verify supply-chain tool wiring
+        run: python scripts/ci/verify_supply_chain_tools.py
+
+  integration:
+    name: integration
+    needs: plan
+    if: needs.plan.outputs.run_integration == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Run root governance tests
+        run: |
+          python tests/ci/test_governance_gate.py
+          python tests/ci/test_aggregate_gate.py
+      - name: Run fail-fast group runner negative controls (P0-01 CI Truth Repair)
+        run: python tests/ci/test_failfast_group.py
+      - name: Verify contract catalog references
+        run: python scripts/ci/verify_contract_catalog.py
+      - name: Generate contract TS projection (U16 SSOT)
+        run: python scripts/ci/generate_contract_types.py
+      - name: Verify cross-language contract SSOT (U16)
+        run: python scripts/ci/verify_contract_ssot.py
+      - name: Verify usage convergence — one canonical usage/cost contract (U09)
+        run: python scripts/ci/verify_usage_convergence.py
+      - name: Verify typed module dependencies
+        run: python scripts/ci/verify_module_dependencies.py
+      - name: Verify project data boundary
+        run: python scripts/ci/verify_project_data_boundary.py
+      - name: Verify authority-reference integrity (A03)
+        run: python scripts/ci/verify_project_authority_reference.py
+      - name: Verify blueprint coverage matrix and its projection
+        # The matrix under .project/governance is the single mutable source; the
+        # docs/future projection must match it, AG and U rows are re-extracted
+        # from the live files so no row can be dropped or invented, anchors must
+        # resolve, and no artifact may carry its own digest.
+        run: python scripts/ci/verify_blueprint_coverage.py
+      - name: Verify the future-candidate pool has row-level coverage
+        # The §16 table is landed with row keys 16.NN, so registry coverage is a
+        # name-level check instead of the count arithmetic (19 - 14 = 5) that hid
+        # six unregistered rows. A row with no candidate, or a candidate naming a
+        # row that does not exist, fails the gate.
+        run: python scripts/ci/verify_future_candidate_registry.py
+      - name: Run authority-reference negative controls
+        run: python tests/ci/test_project_authority_reference.py
+      - name: Verify supply-chain pins
+        run: python scripts/ci/verify_supply_chain.py
+      - name: Verify offline source health (NX-600)
+        run: python scripts/ci/verify_source_health.py
+      - name: Run offline source health tests (NX-600)
+        run: python tests/ci/test_source_health.py
+      - name: Verify size/performance/boundary regression (NX-710)
+        run: python scripts/ci/verify_regression_report.py
+      - name: Run size/performance/boundary regression tests (NX-710)
+        run: python tests/ci/test_regression_report.py
+      - name: Verify sanitized error ledger
+        run: python scripts/ci/verify_error_ledger.py
+      - name: Verify source ledger readback
+        run: python scripts/ci/verify_source_ledger.py --root .
+      - name: Run source ledger tests
+        run: python tests/ci/test_source_ledger.py
+      - name: Verify cross-module source index (NX-100)
+        run: python scripts/ci/verify_cross_module_source_index.py
+      - name: Run cross-module source index tests (NX-100)
+        run: python tests/ci/test_cross_module_source_index.py
+      - name: Verify source governance (NX-110)
+        run: python scripts/ci/verify_source_governance.py
+      - name: Run source governance tests (NX-110)
+        run: python tests/ci/test_source_governance.py
+      - name: Verify skill + MCP consistency (NX-210)
+        run: python scripts/ci/verify_skill_mcp_consistency.py
+      - name: Run skill + MCP consistency tests (NX-210)
+        run: python tests/ci/test_skill_mcp_consistency.py
+      - name: Verify WL inheritance matrix
+        run: python scripts/ci/verify_wl_inheritance_matrix.py
+      - name: Run current state tests
+        run: |
+          python tests/ci/test_current_state.py
+          python scripts/ci/generate_current_state.py --check-current
+      - name: Run Stage 3 frozen baseline tests
+        run: python tests/ci/test_stage3_baseline.py
+      - name: Run root governance contract tests
+        run: python tests/ci/test_root_governance_contracts.py
+
+  aggregate:
+    name: aggregate
+    if: always()
+    needs:
+      - plan
+      - workflow
+      - observer
+      - token-monitor
+      - supply-chain-security
+      - integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Aggregate actual job results
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          GATE_PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
+          EXPECTED_PLAN_DIGEST: ${{ needs.plan.outputs.plan_digest }}
+          EXPECTED_HEAD_SHA: ${{ github.sha }}
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          WORKFLOW_RESULT: ${{ needs.workflow.result }}
+          OBSERVER_RESULT: ${{ needs.observer.result }}
+          TOKEN_MONITOR_RESULT: ${{ needs.token-monitor.result }}
+          SUPPLY_CHAIN_SECURITY_RESULT: ${{ needs.supply-chain-security.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+        run: |
+          test "$PLAN_RESULT" = success
+          EXPECTED_HEAD_TREE="$(git rev-parse 'HEAD^{tree}')"
+          export EXPECTED_HEAD_TREE
+          python -c 'import json, os, subprocess, sys; payload=json.dumps({"gate_plan": json.loads(os.environ["GATE_PLAN_JSON"]), "expected_plan_digest": os.environ["EXPECTED_PLAN_DIGEST"], "expected_head_sha": os.environ["EXPECTED_HEAD_SHA"], "expected_head_tree": os.environ["EXPECTED_HEAD_TREE"], "expected_repository": os.environ["EXPECTED_REPOSITORY"], "jobs": {"workflow": os.environ["WORKFLOW_RESULT"], "observer": os.environ["OBSERVER_RESULT"], "token-monitor": os.environ["TOKEN_MONITOR_RESULT"], "supply-chain-security": os.environ["SUPPLY_CHAIN_SECURITY_RESULT"], "integration": os.environ["INTEGRATION_RESULT"]}}); result=subprocess.run([sys.executable, "scripts/ci/aggregate_gate.py"], input=payload, text=True); raise SystemExit(result.returncode)'

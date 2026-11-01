@@ -1,0 +1,30 @@
+fix(governance): P0-I align the capability E-ladder with AUTHORITY R2
+
+capability-status.json and capability-evidence-index.json still carried
+the pre-R2 evidence labels (E2=isolated-runtime / E3=live / E4=release /
+E5=commercial), which conflicted with AUTHORITY.md R2's ladder:
+
+    E2 CONTROLLED_RUNTIME
+    E3 REAL_WORKFLOW
+    E4 INDEPENDENT_ACCEPTANCE
+    E5 RELEASED/REPEATABLE
+
+The two files now agree with AUTHORITY: E2=controlled-runtime,
+E3=real-workflow, E4=independent-acceptance, E5=released-repeatable
+(label + claim + proof for each). capability-manifest.schema.json
+ALREADY used the R2-aligned status vocabulary (independent-acceptance /
+released), so the manifest side was already converged -- only the
+capability-status E-ladder lagged; this closes that divergence.
+
+Scope is the human-semantic layer only (evidenceLevels label/claim/proof
+and the index's per-level labels). The machine capabilityStates enum
+(release-verified / commercially-proven), the promotion-rules ladder,
+the hard-rules guards and all state enums are untouched -- those are the
+independent state machine the verifiers pin exactly. No verifier, test,
+workflow, schema, SSoT or host-adapter consumer hard-codes the old label
+strings, so no downstream gate changes.
+
+Green evidence:
+- verify_product_manifest_v3.py -> OK total=493 failed=0
+- verify_design_lab.py (aggregator) -> OK total=49 failed=0 (all PASS,
+  including verify_capability_evidence_v4, host-adapter 549/549)

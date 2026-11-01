@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "work-lab/released-archive/v1",
+  "decidedAt": "2026-10-06T22:15:53Z",
+  "tool": "scripts/audit/archive_extraction_completeness.py",
+  "command": "python scripts/audit/archive_extraction_completeness.py .project-local/toolchains/lambda/llama-b11221-bin-win-cuda-12.4-x64.zip --hash-archive",
+  "archive": {
+    "path": ".project-local/toolchains/lambda/llama-b11221-bin-win-cuda-12.4-x64.zip",
+    "bytes": 264519230,
+    "sha256": "95e15aa4f9cdcf27ea8705b6857567215dc20117ce75ff3701c51f23f6a267d1",
+    "identityDeclaredByFilename": "llama.cpp release b11221, Windows CUDA 12.4 x64 binary package (no upstream URL is recorded here because none was fetched this round)"
+  },
+  "extractionProof": {
+    "extractionRoot": ".project-local/toolchains/lambda",
+    "members": 52,
+    "matchedByteIdentical": 52,
+    "missingFromTree": 0,
+    "crcOrSizeDisagree": 0,
+    "treeFilesNotExplainedByArchive": 0,
+    "extractedContentBytes": 618519837,
+    "basis": "name + size + CRC-32 of every zip member against the file on disk"
+  },
+  "decision": {
+    "verdict": "RELEASED_AS_REDUNDANT_COPY",
+    "reason": "every byte the archive holds is already retained in extracted form in the same root; keeping the compressed copy buys no recovery, only 264,519,230 B",
+    "whatStays": ".project-local/toolchains/lambda — the installed optional llama.cpp runtime (runtime-registry: INSTALLED, not started). It was not modified.",
+    "howToRecover": "re-fetch the same release asset and verify it against the sha256 above; the runtime itself never depended on the archive being present",
+    "authority": "owner directive 2026-10-07: cleanup allowed with an audit list plus a recoverable retention point; no publish, no tag"
+  },
+  "rootBeforeDeletion": {
+    "files": 53,
+    "bytes": 883039067
+  },
+  "deletion": {
+    "performedAt": "2026-10-06T22:15:53Z",
+    "file": "llama-b11221-bin-win-cuda-12.4-x64.zip",
+    "otherPathsTouched": []
+  },
+  "afterDeletion": {
+    "archivePresent": false,
+    "goneObserved": true,
+    "rootAfter": {
+      "files": 52,
+      "bytes": 618519837
+    },
+    "bytesFreed": 264519230,
+    "filesRemoved": 1
+  },
+  "runtimeStillResolves": {
+    "checkedAt": "2026-10-06T22:58:07Z",
+    "tool": "readback of .project/governance/runtime-registry.json claims after the archive release",
+    "installRoot": "D:\\All projects\\WORK-LAB\\.project-local\\toolchains\\lambda",
+    "binaries": [
+      {
+        "role": "server",
+        "file": "llama-server.exe",
+        "present": true,
+        "bytes": 9216,
+        "claimedBytes": null,
+        "claimMatches": null
+      },
+      {
+        "role": "cli",
+        "file": "llama-cli.exe",
+        "present": true,
+        "bytes": 9216,
+        "claimedBytes": null,
+        "claimMatches": null
+      },
+      {
+        "role": "bench",
+        "file": "llama-bench.exe",
+        "present": true,
+        "bytes": 9216,
+        "claimedBytes": null,
+        "claimMatches": null
+      },
+      {
+        "role": "quantize",
+        "file": "llama-quantize.exe",
+        "present": true,
+        "bytes": 9216,
+        "claimedBytes": null,
+        "claimMatches": null
+      },
+      {
+        "role": "cuda_backend_dll",
+        "file": "ggml-cuda.dll",
+        "present": true,
+        "bytes": 569357824,
+        "claimedBytes": 569357824,
+        "claimMatches": true
+      }
+    ],
+    "versionCommand": "llama-server.exe --version",
+    "versionExitCode": 0,
+    "versionMeasured": "version: 0.5.0-dev (build 11221, commit 136887b66)",
+    "versionClaimed": "0.5.0-dev (build 11221, commit 136887b66)",
+    "versionClaimVerified": true,
+    "note": "The registry claims ggml-cuda.dll at 569,357,824 B; that byte count is re-measured here and equal. The four .exe entry points are 9,216 B thin launchers — the registry never claimed their size, so nothing is asserted about them beyond presence. Running --version starts no server, binds no port and reads no model."
+  }
+}

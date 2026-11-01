@@ -1,0 +1,17 @@
+ci(workbench): make browser E2E a real exact-SHA job with a no-skip policy
+
+P0-08: the probe-driven design-layer browser E2E honestly SKIPS on a clean
+checkout that lacks the toolchain, which a CI runner would have treated as a
+pass. Turn it into a controlled-runtime (E2) gate:
+
+- Register `playwright@1.63.0` as a pinned workbench devDependency (the
+  registry-stable version, recorded in the lockfile; NOT the user's local
+  alpha build or ms-playwright cache).
+- Add the `workbench-browser-e2e` job to canonical-verify.yml: setup Python +
+  Node, `pnpm install --frozen-lockfile`, `npx playwright install chromium`
+  (the lockfile-pinned browser), then run the no-skip verifier.
+- Add design-lab/scripts/verify_browser_e2e_ran.py: drives the existing
+  browser E2E shell test in-process and FAILS if the browser test is skipped
+  or errors — a skip can no longer read as green.
+
+Local run of the no-skip verifier: BROWSER_E2E ran=2 skipped=0 failed=0.

@@ -1,0 +1,85 @@
+{
+ "schema": "worklab/pr123-final-audit/v1",
+ "generated_at": "2026-09-13T14:14:28Z",
+ "pr_number": 123,
+ "pr_branch": "migration/wl-directory-convergence-r1",
+ "pr_head_sha": "c6b7e8f6468281325d26524e3762607c6fa7a4ce",
+ "base_sha": "e5231f0f605d1515ed12958267b394c9de1da20c",
+ "head_sha": "d89307228e2d8a90bffc00468de6edec74ebe604",
+ "summary": {
+  "changed_files": 1087,
+  "old_path_references_remaining": 0,
+  "runtime_boundary_migrated": false,
+  "dual_runtime_roots": true,
+  "ci_green": true
+ },
+ "findings": {
+  "directory_structure": {
+   "status": "PASS",
+   "details": "Old numbered directories (00-governance, 10-workflow, 30-observer, 40-knowledge, 50-taskpacks, 90-archive) fully removed. New structure (apps/, services/, packages/, integrations/, projections/, taskpacks/, docs/, .project/, .project-local/) in place. Zero references to old paths found in PR diff."
+  },
+  "runtime_boundary": {
+   "status": "FAIL",
+   "critical": true,
+   "details": "Runtime boundary NOT fully migrated. Three core components still use .hermes/ as runtime root:",
+   "evidence": [
+    "run_quality_gate.py:project_runtime_environment() creates .hermes/task-runtime/{tmp,cache,logs,artifacts,pip-cache,pycache} and sets HERMES_PROJECT_RUNTIME_ROOT to .hermes/task-runtime",
+    "scripts/ci/generate_current_state.py: DEFAULT_CI_EVIDENCE and DEFAULT_RUNTIME_ATTESTATION point to .hermes/task-artifacts/; runtime attestation validator enforces .hermes/task-artifacts as allowed root",
+    "packages/client-neutral-core/bin/hermes-project-data.py: prepare_layout() enforces .hermes/task-runtime as runtime_root via require_contained(); TASK_DATA_POLICY.md documents .hermes/ as the project-local directory"
+   ],
+   "impact": "Dual runtime roots exist: .hermes/task-runtime (enforced by guard) vs .project-local/runs (documented in AGENTS.md). This violates WL-P0-003 Zero-Spill Gate and WL-ARCH-001 architecture."
+  },
+  "hermes_guard": {
+   "status": "FAIL",
+   "critical": true,
+   "details": "hermes-project-data.py guard actively enforces .hermes/task-runtime as the ONLY valid runtime root, directly contradicting .project-local migration. The guard is deployed to HERMES_HOME/bin and intercepts all terminal commands.",
+   "evidence": [
+    "require_contained(project_root, hermes_root / \"task-runtime\") at line 95",
+    "TASK_DATA_POLICY.md states: 'All task-scoped state belongs under this repository\\'s `.hermes/` directory'",
+    "cleanup_runtime() only cleans .hermes/task-runtime/"
+   ]
+  },
+  "evidence_paths": {
+   "status": "FAIL",
+   "details": "CI evidence generation still targets .hermes/task-artifacts/ instead of .project-local/artifacts/",
+   "evidence": [
+    "generate_current_state.py: DEFAULT_CI_EVIDENCE = Path('.hermes/task-artifacts/current-state-ci.json')",
+    "DEFAULT_RUNTIME_ATTESTATION = Path('.hermes/task-artifacts/current-state-runtime-attestation.json')",
+    "Runtime attestation validator: 'runtime attestation output must stay under .hermes/task-artifacts'"
+   ]
+  },
+  "agients_md_vs_code": {
+   "status": "FAIL",
+   "details": "AGENTS.md documents .project-local/runs and .project-local/artifacts as the runtime boundary, but actual runtime code (run_quality_gate.py, hermes-project-data.py, generate_current_state.py) implements .hermes/task-runtime and .hermes/task-artifacts. Documentation claims migration complete; implementation has not followed."
+  },
+  "ci_paths": {
+   "status": "PARTIAL",
+   "details": "CI working-directories updated for token-monitor and observer jobs, but runtime environment variables in run_quality_gate.py still inject .hermes paths (HERMES_PROJECT_RUNTIME_ROOT, HERMES_PROJECT_ARTIFACTS, HERMES_KANBAN_HOME)."
+  },
+  "gitignore": {
+   "status": "PASS",
+   "details": ".gitignore on PR branch contains both .hermes/ and .project-local/ entries. No new .hermes runtime directories tracked."
+  },
+  "old_directory_cleanup": {
+   "status": "PASS",
+   "details": "Zero references to old numbered directories (00-governance, 10-workflow, 30-observer, 40-knowledge, 50-taskpacks, 90-archive) found in PR diff. 1087 files migrated cleanly."
+  }
+ },
+ "verdict": {
+  "mergeable": false,
+  "blockers": [
+   "Runtime boundary not migrated: .hermes/ still enforced as runtime root by guard",
+   "Dual runtime roots: .hermes/task-runtime vs .project-local/runs",
+   "Evidence paths point to .hermes/task-artifacts instead of .project-local/artifacts",
+   "Documentation (AGENTS.md) claims migration complete but implementation contradicts"
+  ],
+  "required_before_merge": [
+   "Migrate run_quality_gate.py project_runtime_environment() to .project-local/runs",
+   "Migrate generate_current_state.py evidence paths to .project-local/artifacts",
+   "Migrate hermes-project-data.py guard to enforce .project-local instead of .hermes",
+   "Update AGENTS.md to match actual implementation (or vice versa)",
+   "Sync HERMES_HOME/bin/hermes-project-data.py after guard migration",
+   "Re-run full CI on exact-SHA after migration"
+  ]
+ }
+}

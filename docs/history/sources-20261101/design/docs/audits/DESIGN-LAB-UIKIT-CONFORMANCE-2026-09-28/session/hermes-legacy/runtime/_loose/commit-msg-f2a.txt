@@ -1,0 +1,49 @@
+feat(design-layer): real revision — append-only events + immutable content (Batch F-2a)
+
+The design layer had version-ready columns and no versioning: every write path inserted
+version=1 and superseded_by stayed NULL, so a "Brief v1 -> v2" could not happen. Batch F
+in docs/research/full-maturity-audit-2026-09-19.md asks for real revisions with content
+objects kept immutable and the decision/revision history append-only — not for quietly
+turning append-only history into arbitrary mutable rows.
+
+Migration v3 (design-lab/schemas/state/design-lab-state-design-layer-v3.sql) adds
+design_layer_event: the single append-only record of design-layer history (kind CHECK
+over brief-created / brief-revised / direction-created / direction-revised /
+direction-chosen / direction-unchosen / binding-created / binding-rebound, project FK,
+payload_json, actor/actor_kind, index on (project_id, created_at)). Append-only is a DDL
+property, not a convention: BEFORE UPDATE / BEFORE DELETE triggers RAISE(ABORT) and the
+module appends with a plain INSERT, so a repeated event_id fails closed instead of
+overwriting history. It is registered in state_resources._NAMES and applied after v2 in
+the creative store's guarded migration chain, and it upgrades a POPULATED database (the
+new suite covers that path, including the pre-migration backup).
+
+design_layer.py:
+- _append_event() writes the event in the SAME transaction as the state change it
+  describes, and every write path now emits one: create_brief, create_direction,
+  choose_direction (payload records previous_chosen_direction_id, and a released sibling
+  emits direction-unchosen), bind_design_system (binding-created vs binding-rebound
+  carrying replaced_binding_id).
+- revise_brief() / revise_direction(): INSERT a new row at version = parent + 1 and move
+  ONLY superseded_by on the parent — the one column a revision may touch (commented as
+  such, and asserted byte-for-byte over the content columns incl. goals/style JSON and
+  spec_sha256). Idempotent replay returns the same new version and appends nothing; the
+  same key with different content is 409; revising an already-superseded version fails
+  closed with 409 STALE_REVISION instead of forking the chain.
+- lineage_brief() / lineage_direction(): read-only chains resolved from the event edges,
+  so any member returns root/live/versions oldest-first. get_design_layer() keeps its
+  latest-revision behaviour and the 18-case contract suite is unchanged.
+- A revised CHOSEN direction carries the human choice onto the new version (the parent
+  releases chosen/actor as materialized state; the payload records chosen_moved) while
+  the append-only design_system_binding row stays with the version it was bound to, so
+  active_binding is null until rebound — the choice is materialized state, the binding is
+  history.
+
+http_service.py: POST /api/design-briefs/{id}/revisions, POST
+/api/design-directions/{id}/revisions, GET /api/design-briefs/{id}/lineage and GET
+/api/design-directions/{id}/lineage, plus project-scoped aliases that carry the
+cross-project 404 boundary; 401/404/409/400 stay fail-closed.
+
+Tests: design-lab/tests/test_design_layer_revision.py (14 cases). Evidence: new tests
+14/14 OK; the existing design-layer contract suite 18/18 OK; VERIFY_DESIGN_LAB=OK
+total=49 failed=0. The new state SQL drifts the predecessor contract graph's
+declared_tables by design — re-recorded in the follow-up commit, never hand-edited.

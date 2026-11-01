@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "design-lab/multimodal-progress/v1",
+  "taskpack": "DL-TP-MULTIMODAL-20260905",
+  "planPath": "docs/taskpacks/DESIGN-LAB-MULTIMODAL-TASK-PLAN-2026-09-05.md",
+  "updatedAt": "2026-09-05T00:00:00Z",
+  "executionSplit": {
+    "handoff": "D:\\All projects\\DESIGN-LAB-MULTIMODAL-CODEX-HANDOFF-2026-09-05.md",
+    "deepseek": "T01,T02(只读),T05,T06(结构),T09(结构),T18",
+    "codex": "T03,T04,T07,T08,T10,T11,T12,T13,T14,T15,T16,T17,T02(深探)"
+  },
+  "tasks": [
+    {"id": "T01", "title": "当前仓库与历史对照", "owner": "DEEPSEEK", "status": "DONE",
+     "evidence": "reports/current/T01-REPO-BASELINE-2026-09-05.md; PR115 F01-F10 全部修复; 全套 python 559->本轮 574 绿; CI Python gate pass"},
+    {"id": "T02", "title": "Windows 软件与模型能力盘点(只读)", "owner": "DEEPSEEK/CODEX", "status": "PARTIAL",
+     "evidence": "reports/current/T02-MACHINE-INVENTORY-2026-09-05.md (AI 2025 29.5.1 / PS 2025 26.7 已装; RTX5060 8GB; Comfy/Blender 未装; H3 BLOCKED_BY_LICENSE); 模型缓存实测: ASR faster-whisper base/tiny READY(145MB), OCR PaddleOCR 系列 INCOMPLETE(仅refs无字节)"},
+    {"id": "T03", "title": "AI/PS 控制组件对比", "owner": "CODEX", "status": "待实机", "evidence": ""},
+    {"id": "T04", "title": "前端与 Agent 最小复用切片", "owner": "CODEX", "status": "待实机", "evidence": ""},
+    {"id": "T05", "title": "项目资产与任务服务", "owner": "DEEPSEEK", "status": "DONE(结构层)",
+     "evidence": "asset_store.py+assets DDL (资产版本/单写锁/幂等/取消不转完成, 5 tests) + job_store.py+attempt DDL (Job/Attempt 持久化/重启恢复/终态不可回退, 6 tests); 合计 test_asset_store+test_job_store 11 OK"},
+    {"id": "T06", "title": "平面拆解与对象映射", "owner": "DEEPSEEK(结构)/CODEX(宿主)", "status": "DONE(结构层)",
+     "evidence": "planar-decomposition schema + decomposition.py(可替换模块缝/锁/字体显式) + model_cache.py(fail-closed 缓存探测) ; test_planar_decomposition 10 OK + test_model_cache 5 OK"},
+    {"id": "T07", "title": "AI/PS 真实工程制作", "owner": "CODEX", "status": "待实机", "evidence": ""},
+    {"id": "T08", "title": "对比与局部修正", "owner": "CODEX", "status": "待实机", "evidence": ""},
+    {"id": "T09", "title": "统一生成入口与 ComfyUI 适配", "owner": "DEEPSEEK(结构)/CODEX(实机)", "status": "DONE(结构层)",
+     "evidence": "comfy_task.py(工作流指纹/cache-hit!=新生成/诚实终态) + TaskStateMachine(QUEUED->RUNNING->terminal/取消显式/终态不可回退) ; test_comfy_task_protocol 11 OK; ComfyUI 未装→E2E 待实机"},
+    {"id": "T10", "title": "音频首条生成闭环", "owner": "CODEX", "status": "待实机", "evidence": ""},
+    {"id": "T11", "title": "音乐生成与音轨管理", "owner": "CODEX", "status": "待实机", "evidence": ""},
+    {"id": "T12", "title": "H3 本地与视频生成", "owner": "CODEX", "status": "BLOCKED_BY_LICENSE", "evidence": ""},
+    {"id": "T13", "title": "Premiere 工程闭环", "owner": "CODEX", "status": "待实机", "evidence": ""},
+    {"id": "T14", "title": "OpenDesign/MiniMax Design 协作", "owner": "CODEX", "status": "待实机", "evidence": ""},
+    {"id": "T15", "title": "Blender 参考重建", "owner": "CODEX", "status": "待实机(Blender 未装)", "evidence": ""},
+    {"id": "T16", "title": "跨媒体依赖更新", "owner": "CODEX", "status": "REGISTER_ONLY", "evidence": ""},
+    {"id": "T17", "title": "启动/便携/交付质量", "owner": "CODEX(主体)", "status": "REGISTER_ONLY", "evidence": ""},
+    {"id": "T18", "title": "历史归档/仓库规范/渐进迁移", "owner": "DEEPSEEK", "status": "DONE",
+     "evidence": "plan 归档+AGENTS 登记+唯一台账+旧包 SUPERSEDED+schema 无效输入负例测试(planar 5 负例/attempt-state SQL CHECK)+能力矩阵新增 3 能力 E1 structural-pass; run_test_isolation.py(R0-005 三序/重复运行器)"}
+  ],
+  "summary": {
+    "deepseek_done": "T01,T05,T06(结构),T09(结构),T18",
+    "deepseek_reports": "T02(只读盘点完成;可启动性待实机)",
+    "waiting_codex": "T03,T04,T07,T08,T10,T11,T13,T14,T15,T16,T17 (+T12 blocked by license)",
+    "not_fabricated": "宿主侧一律 待实机; H3 BLOCKED_BY_LICENSE; OCR 模型未就绪(INCOMPLETE)、ASR 就绪(READY) 均已实测; Comfy/Blender 未装"
+  }
+}

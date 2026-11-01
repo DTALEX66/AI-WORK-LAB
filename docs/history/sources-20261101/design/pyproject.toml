@@ -1,0 +1,227 @@
+[project]
+name = "design-lab"
+version = "0.1.0-alpha.0"
+description = "AI-native professional design intelligence and production layer"
+requires-python = ">=3.11"
+dependencies = [
+  "jsonschema>=4.18,<5",
+  "Pillow>=11.3,<13",
+  "numpy>=2.2,<3",
+  "scikit-image>=0.25,<0.27",
+  "defusedxml>=0.7,<1",
+]
+
+[project.scripts]
+design-lab = "design_lab.cli:main"
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/design_lab"]
+exclude = ["src/design_lab/reconstruction/__init__.py"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"packages/capabilities/reconstruction/__init__.py" = "design_lab/reconstruction/__init__.py"
+"packages/capabilities/reconstruction/contracts.py" = "design_lab/reconstruction/contracts.py"
+"packages/capabilities/reconstruction/adobe_job.py" = "design_lab/reconstruction/adobe_job.py"
+"packages/capabilities/reconstruction/adobe_lowering.py" = "design_lab/reconstruction/adobe_lowering.py"
+"design-lab/schemas/reconstruction/reconstruction-ir.schema.json" = "design_lab/resources/reconstruction/reconstruction-ir.schema.json"
+"design-lab/schemas/reconstruction/reconstruction-run.schema.json" = "design_lab/resources/reconstruction/reconstruction-run.schema.json"
+"design-lab/schemas/state" = "design_lab/resources/state"
+# P1-1 (audit 2026-09-21): ship ONLY the three files the packaged service
+# actually serves (src/design_lab/workbench.py ROUTES). The whole-directory
+# force-include that replaced this line dragged the local node_modules
+# (30MB / 251 files) into local wheel builds, so a wheel built on a dev
+# machine diverged from the ~0.5MB wheel CI builds from a clean checkout.
+"apps/workbench/index.html" = "design_lab/resources/workbench/index.html"
+"apps/workbench/style.css" = "design_lab/resources/workbench/style.css"
+"apps/workbench/build/main.js" = "design_lab/resources/workbench/build/main.js"
+# The capability library reads four committed documents. Without them an
+# installed wheel resolves REPO_ROOT to whatever sits three levels above
+# site-packages and raises "capability library input missing", which the HTTP
+# layer then reports as PROJECT_STORE_UNAVAILABLE -- a wrong diagnosis that
+# points the user at their database.
+"vendor/sources.lock.json" = "design_lab/resources/capability-library/vendor/sources.lock.json"
+"vendor/sources.revisions.json" = "design_lab/resources/capability-library/vendor/sources.revisions.json"
+"design-lab/readiness/model-radar.json" = "design_lab/resources/capability-library/design-lab/readiness/model-radar.json"
+"research/candidates/CANDIDATE-TAXONOMY.json" = "design_lab/resources/capability-library/research/candidates/CANDIDATE-TAXONOMY.json"
+# E-SLICE-01 design layer: the design-system catalog manifests that a direction
+# may bind to (design_layer.catalog() resolves this packaged-first).
+"design-lab/design-systems" = "design_lab/resources/design-systems"
+# D09/D10 (batch 22): the three read paths an installed wheel could not serve.
+# `PROJECT_ROOT` is parents[3] of src/design_lab/runtime/paths.py, which is the
+# checkout in a source tree but `Lib/` once installed, so research and rights
+# answered 500 and the domain-pack projection answered rootState MISSING -- all
+# three were "the bytes are not here", not "the answer is no".
+"design-lab/schemas/research-finding.schema.json" = "design_lab/resources/repo/design-lab/schemas/research-finding.schema.json"
+"design-lab/schemas/contracts/rights-decision.schema.json" = "design_lab/resources/repo/design-lab/schemas/contracts/rights-decision.schema.json"
+"design-lab/schemas/domain-pack.schema.json" = "design_lab/resources/repo/design-lab/schemas/domain-pack.schema.json"
+"design-lab/domain-packs" = "design_lab/resources/repo/design-lab/domain-packs"
+# Backend A/D (2026-10-22): the two read-back envelopes the desk and the task pages are validated
+# against, plus the state vocabulary the task envelope copies its status words out of. All three are
+# read through repo_resource; without these lines an installed wheel answers /api/projects and the
+# task reads with a contract-file refusal instead of a verdict.
+"design-lab/schemas/project-list-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/project-list-v1.schema.json"
+"design-lab/schemas/task-readback-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/task-readback-v1.schema.json"
+"design-lab/config/state-vocabularies.json" = "design_lab/resources/repo/design-lab/config/state-vocabularies.json"
+# Backend E (2026-10-23): the rest of the contract/config reads the HTTP service can reach. Walked
+# by an AST import closure from src/design_lab/http_service.py, so this list is the reachable surface,
+# not a tidy inventory -- and the walk is what caught two of them answering a *semantic* verdict
+# (`500 INTERNAL` on the design-layer read-back, `409 NATIVE_BUNDLE_UNVERIFIED` on a delivery bundle)
+# where the real cause was a contract file that does not exist at that path inside a wheel.
+# design-lab/tests/test_packaged_contract_resources.py enumerates repo_resource call sites from disk
+# and refuses any one that stops being declared here.
+"design-lab/config/provider-capabilities.json" = "design_lab/resources/repo/design-lab/config/provider-capabilities.json"
+"design-lab/readiness" = "design_lab/resources/repo/design-lab/readiness"
+"design-lab/schemas/assurance-jury-record-v2.schema.json" = "design_lab/resources/repo/design-lab/schemas/assurance-jury-record-v2.schema.json"
+"design-lab/schemas/assurance-knowledge-candidate-v2.schema.json" = "design_lab/resources/repo/design-lab/schemas/assurance-knowledge-candidate-v2.schema.json"
+"design-lab/schemas/brief-readback.schema.json" = "design_lab/resources/repo/design-lab/schemas/brief-readback.schema.json"
+"design-lab/schemas/candidate-knowledge.schema.json" = "design_lab/resources/repo/design-lab/schemas/candidate-knowledge.schema.json"
+"design-lab/schemas/interop-c2pa-manifest.schema.json" = "design_lab/resources/repo/design-lab/schemas/interop-c2pa-manifest.schema.json"
+"design-lab/schemas/interop-delivery-receipt-v2.schema.json" = "design_lab/resources/repo/design-lab/schemas/interop-delivery-receipt-v2.schema.json"
+"design-lab/schemas/interop-dtcg-document.schema.json" = "design_lab/resources/repo/design-lab/schemas/interop-dtcg-document.schema.json"
+"design-lab/schemas/model-selection-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/model-selection-v1.schema.json"
+"design-lab/schemas/prompt-composition-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/prompt-composition-v1.schema.json"
+"design-lab/schemas/prompt-reversal-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/prompt-reversal-v1.schema.json"
+"design-lab/schemas/prompt-result-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/prompt-result-v1.schema.json"
+"design-lab/schemas/prompt-result-readback-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/prompt-result-readback-v1.schema.json"
+"design-lab/schemas/prompt-result-review-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/prompt-result-review-v1.schema.json"
+# DL-KB-02 (2026-10-23): the knowledge library's entry contract, its two readback envelopes, the
+# import answer and the two write envelopes. All six are read through repo_resource; without these
+# lines an installed wheel would open the state SQL (shipped with the schemas/state directory above)
+# and then refuse every knowledge route as KNOWLEDGE_CONTRACT_UNREADABLE -- a missing file, not a
+# verdict.
+"design-lab/schemas/knowledge-entry-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/knowledge-entry-v1.schema.json"
+"design-lab/schemas/knowledge-entry-readback-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/knowledge-entry-readback-v1.schema.json"
+"design-lab/schemas/knowledge-library-readback-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/knowledge-library-readback-v1.schema.json"
+"design-lab/schemas/knowledge-import-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/knowledge-import-v1.schema.json"
+"design-lab/schemas/knowledge-entry-write-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/knowledge-entry-write-v1.schema.json"
+"design-lab/schemas/knowledge-index-rebuild-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/knowledge-index-rebuild-v1.schema.json"
+"design-lab/schemas/readiness-host-matrix.schema.json" = "design_lab/resources/repo/design-lab/schemas/readiness-host-matrix.schema.json"
+"design-lab/schemas/readiness-model-radar.schema.json" = "design_lab/resources/repo/design-lab/schemas/readiness-model-radar.schema.json"
+# Found by walking the delivery leg inside an installed wheel, not by grepping for PROJECT_ROOT:
+# these three readers spell the repository root as `Path(__file__).parents[3]`, which a name-based
+# sweep misses. The preflight one was the worst of the group -- it answered
+# `503 PROJECT_STORE_UNAVAILABLE`, pointing the operator at their database, for a missing profile
+# directory.
+"design-lab/production/profiles" = "design_lab/resources/repo/design-lab/production/profiles"
+"design-lab/schemas/bom.schema.json" = "design_lab/resources/repo/design-lab/schemas/bom.schema.json"
+"design-lab/schemas/evidence-projection.schema.json" = "design_lab/resources/repo/design-lab/schemas/evidence-projection.schema.json"
+# The projection reuses the repo's own checker so a pack it calls VALIDATES cannot be
+# one CI would reject; shipping it keeps that guarantee in an installed wheel
+# (without it every pack would report NOT_CHECKED).
+"design-lab/scripts/verify_domain_pack_v2.py" = "design_lab/resources/repo/design-lab/scripts/verify_domain_pack_v2.py"
+# Batch I (2026-10-23): the four design-layer envelope contracts the emitter now validates every
+# answer against (`src/design_lab/design_layer.py` DESIGN_*_SCHEMA_PATH). In-service validation makes
+# these reads, not optional: an installed wheel that cannot open them would answer 500
+# DESIGN_*_CONTRACT_VIOLATION on briefs, directions, bindings, lineage reads and the roll-up -- a
+# contract file missing at a path, wearing the mask of a judgement about the design work.
+"design-lab/schemas/design-record-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/design-record-v1.schema.json"
+"design-lab/schemas/design-collection-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/design-collection-v1.schema.json"
+"design-lab/schemas/design-lineage-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/design-lineage-v1.schema.json"
+"design-lab/schemas/design-layer-rollup-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/design-layer-rollup-v1.schema.json"
+# DL-KB-07 (2026-10-24): the assistance plan's document, write, readback and list contracts, all
+# opened through repo_resource by `assistance_plan.py` on every route. Without these lines an
+# installed wheel would answer 500 ASSISTANCE_PLAN_CONTRACT_UNREADABLE -- a missing packaged file
+# reported as a verdict about the plan. The state SQL rides the `schemas/state` directory above.
+"design-lab/schemas/assistance-plan-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/assistance-plan-v1.schema.json"
+"design-lab/schemas/assistance-plan-write-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/assistance-plan-write-v1.schema.json"
+"design-lab/schemas/assistance-plan-readback-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/assistance-plan-readback-v1.schema.json"
+"design-lab/schemas/assistance-plan-list-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/assistance-plan-list-v1.schema.json"
+"design-lab/schemas/assistance-plan-output-types-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/assistance-plan-output-types-v1.schema.json"
+# DL-KB-09 (2026-10-24): the target profile's five contracts plus the seed registry itself, all
+# opened through repo_resource by `target_profile.py` on every route. An installed wheel that lost
+# any of these would answer 500 TARGET_PROFILE_CONTRACT_UNREADABLE -- a missing packaged file
+# reported as a verdict about somebody else's product. The seed config is the profile data: without
+# it the registry would answer an empty list and look like "no official basis exists".
+"design-lab/schemas/target-profile-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/target-profile-v1.schema.json"
+"design-lab/schemas/target-profile-write-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/target-profile-write-v1.schema.json"
+"design-lab/schemas/target-profile-list-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/target-profile-list-v1.schema.json"
+"design-lab/schemas/target-profile-axes-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/target-profile-axes-v1.schema.json"
+"design-lab/schemas/target-profile-validate-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/target-profile-validate-v1.schema.json"
+"design-lab/config/target-profiles.json" = "design_lab/resources/repo/design-lab/config/target-profiles.json"
+# DL-KB-16 (2026-10-24): the three plan-feedback contracts, opened through repo_resource by
+# `plan_feedback.py` on every route. Without these lines an installed wheel would answer 500
+# PLAN_FEEDBACK_CONTRACT_UNREADABLE -- a missing packaged file reported as a verdict about
+# somebody's external experience. The state SQL rides the `schemas/state` directory above.
+"design-lab/schemas/plan-feedback-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/plan-feedback-v1.schema.json"
+"design-lab/schemas/plan-feedback-write-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/plan-feedback-write-v1.schema.json"
+"design-lab/schemas/plan-feedback-list-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/plan-feedback-list-v1.schema.json"
+# DL-KB-11 (2026-10-24): the plan export contract, opened through repo_resource by `plan_export.py`
+# on every export. Without this line an installed wheel would answer 500
+# PLAN_EXPORT_CONTRACT_UNREADABLE -- a file this build forgot to ship, reported to the designer as a
+# verdict about their own plan. The assistance-plan contracts above already carry the shot rows,
+# which live inside the stored document and add no new file.
+"design-lab/schemas/plan-export-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/plan-export-v1.schema.json"
+# DL-KB-12 (2026-10-24): the single-revision read, opened through repo_resource by
+# `assistance_plan.revision()` on every call. Without this line an installed wheel would answer 500
+# ASSISTANCE_PLAN_CONTRACT_UNREADABLE -- a file this build forgot to ship, reported to the designer
+# as a problem with their own plan. The stored document it $refs is already carried by the
+# assistance-plan contract above, so this route adds one envelope file and no second document.
+"design-lab/schemas/assistance-plan-revision-v1.schema.json" = "design_lab/resources/repo/design-lab/schemas/assistance-plan-revision-v1.schema.json"
+"integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx" = "design_lab/resources/adobe/reconstruction-assemble.jsx"
+"integrations/hosts/adobe/photoshop-reconstruction/legacy-assemble.jsx" = "design_lab/resources/adobe/photoshop-native-assemble.jsx"
+# automation projection inputs (2026-10-28): `src/design_lab/automation_connectors.py` reads two
+# committed records -- the adapter registry it joins connectors against, and the delivery pack's
+# archive manifest that carries the eleven connector rows. Measured before these two lines, in a
+# wheel built from this tree and installed into a clean venv: `registry_state=MISSING
+# pack_state=MISSING connectors=0 project_adapters=0`, because the module derived the repository
+# root from its own location and three levels above an installed package is the interpreter's `Lib`.
+# An empty connector table is not a mild degradation on this page -- it reads as "nothing is
+# registered", which is a false statement about the repository, so the records ship with the
+# package instead. `design-lab/tests/test_standalone_chain_http.py` asserts the answer in the
+# installed layout too, so removing either line turns the wheel job red by name.
+"integrations/adapter-registry.json" = "design_lab/resources/repo/integrations/adapter-registry.json"
+"docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json" = "design_lab/resources/repo/docs/history/record-archive-2026-10-28-design-automation/ARCHIVE-MANIFEST.json"
+
+[tool.hatch.build.targets.sdist]
+# P1-1 (audit 2026-09-21): the sdist must not carry `apps/workbench` wholesale -- that dragged the
+# local node_modules (30MB / 251 files) into the build, so a wheel built on a dev machine diverged
+# from CI's. That constraint is kept: the three served files are listed by name.
+#
+# Owner audit 2026-10-26 (7671ec70) found the other half of the same rule was never written down:
+# the wheel force-includes 71 repo paths, and this list carried only 17 of them, so the sdist could
+# not rebuild the wheel at all. Reproduced verbatim -- `uv build --sdist` then `uv build --wheel`
+# inside the extracted tree dies at `FileNotFoundError: Forced include not found:
+# …/design-lab/domain-packs` -- which is why CI read green: it built the wheel from the checkout and
+# never from the source distribution it publishes.
+#
+# The list is therefore directory roots covering every force-include source, plus `design-lab/tests`
+# because the acceptance chain that proves the installed package (GET sweep, POST sweep, launch)
+# lives there: a source distribution whose verification cannot be run from it is not a source
+# distribution. `design-lab/scripts/verify_sdist_packaging.py` now re-derives this coverage from the
+# wheel's own map, so adding a force-include without its sdist root fails as a named path instead of
+# surfacing only on a third party's machine.
+only-include = ["src/design_lab", "design-lab/schemas", "design-lab/config", "design-lab/domain-packs", "design-lab/design-systems", "design-lab/production", "design-lab/readiness", "design-lab/scripts", "design-lab/tests", "packages/capabilities", "research/candidates", "vendor", "integrations", "docs/history/record-archive-2026-10-28-design-automation", "apps/workbench/index.html", "apps/workbench/style.css", "apps/workbench/build/main.js", "pyproject.toml"]
+exclude = ["**/__pycache__", "**/*.pyc", "**/node_modules", "**/.venv*"]
+
+[tool.pytest.ini_options]
+testpaths = ["design-lab/tests"]
+
+# DLDS-C030 / FU-06 (single Ruff fact): `[tool.ruff]` below is the AUTHORITATIVE
+# Ruff configuration (select F+E9, line-length 100, target py311). Measured state
+# as of this tree: ruff is NOT a locked/installed dependency (absent from uv.lock,
+# no `.venv` module) and NO gate executes it (canonical-verify.yml / release-gate.yml
+# have no ruff step; there is no "lint-tools runner"). So linting is CONFIGURED but
+# NOT YET ENFORCED — the single fact this note and docs/architecture/LANGUAGE-POLICY.md
+# both record (label CONFIGURED_NOT_ENFORCED), consistent with the deepseek closeout
+# report. (The inventory report's older "not configured" phrasing is corrected under
+# the report-truth work, not here.) The recorded
+# style baseline (E4/E7, ~219 findings) is reported, not silently mass-rewritten.
+# Enforcement rollout = a pinned CI ruff gate on F+E9 (a CI-batch change); it must be
+# landed and verified in CI (where uv + network are available) after confirming F+E9
+# passes clean. Until then, nothing in this repo claims a lint gate runs.
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# F = pyflakes real defects (unused imports, undefined names, dead variables);
+# E9 = runtime error class. E4/E7 style findings are tracked as a baseline in
+# .project-local/task-artifacts/audit-20260915/lint-baseline.json, not gated.
+select = ["F", "E9"]

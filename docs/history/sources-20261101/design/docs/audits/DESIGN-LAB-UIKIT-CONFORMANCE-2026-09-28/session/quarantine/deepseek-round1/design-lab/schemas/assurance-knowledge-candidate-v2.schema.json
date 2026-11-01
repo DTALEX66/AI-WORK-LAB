@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dtalex66.local/schemas/assurance-knowledge-candidate-v2.json",
+  "title": "Assurance knowledge feedback candidate v2 (DL-P1-180)",
+  "description": "Knowledge feedback candidate for the ArcheAxis export path. It is a superset of design-lab/schemas/candidate-knowledge.schema.json (V1): source_id -> source{design_lab_sha,job_id,operation_id,evidence_sha256}, knowledge_type{rule|method|reference|skill|rubric|benchmark} -> candidate_type{METHOD|JURY_CORRECTION|PRODUCTION_LESSON}, content_hash -> payload_sha256, state{quarantined|review-required|compiled} -> review.state{PENDING_HUMAN_APPROVAL|APPROVED|REJECTED}, and it adds rights, supersedes, revocation and created_at. A V1 record is a projection of a v2 candidate (see to_v1_projection in src/design_lab/assurance/knowledge_feedback.py, which validates its output against the V1 schema); the reverse direction does not exist because V1 cannot express who approved the export. The schema itself makes an APPROVED review without a named human reviewer and timestamp invalid, so no agent-signed approval can be represented at all.",
+  "type": "object",
+  "required": ["schemaVersion", "candidate_id", "candidate_type", "source", "rights", "payload", "payload_sha256", "supersedes", "revocation", "review", "created_at"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": "design-lab/assurance-knowledge-candidate/v2"},
+    "candidate_id": {"type": "string", "minLength": 1},
+    "candidate_type": {"enum": ["METHOD", "JURY_CORRECTION", "PRODUCTION_LESSON"]},
+    "source": {"$ref": "#/$defs/source"},
+    "rights": {"$ref": "#/$defs/rights"},
+    "payload": {"$ref": "#/$defs/payload"},
+    "payload_sha256": {"$ref": "#/$defs/sha256"},
+    "supersedes": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "candidate_id of the candidate this one replaces; never itself."
+    },
+    "revocation": {"$ref": "#/$defs/revocation"},
+    "review": {"$ref": "#/$defs/review"},
+    "created_at": {"$ref": "#/$defs/rfc3339"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "description": "Lowercase nonzero digest; an all-zero digest is not evidence.",
+      "pattern": "^(?!sha256:0{64}$)sha256:[0-9a-f]{64}$"
+    },
+    "rfc3339": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp with an explicit UTC offset; the module also enforces the shape with a regex.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([Zz]|[+-]\\d{2}:\\d{2})$"
+    },
+    "source": {
+      "type": "object",
+      "description": "Provenance of the feedback: which DESIGN-LAB revision, which job and operation, and the evidence digest behind it.",
+      "required": ["design_lab_sha", "job_id", "operation_id", "evidence_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "design_lab_sha": {
+          "type": "string",
+          "pattern": "^(?!0+$)[0-9a-f]{7,64}$",
+          "description": "Nonzero lowercase hexadecimal DESIGN-LAB revision (git SHA-1 or SHA-256)."
+        },
+        "job_id": {"type": "string", "minLength": 1},
+        "operation_id": {"type": "string", "minLength": 1},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "rights": {
+      "type": "object",
+      "required": ["license_id", "rights_gate_state", "contains_client_asset", "contains_third_party_asset", "redaction_note"],
+      "additionalProperties": false,
+      "properties": {
+        "license_id": {"type": "string", "minLength": 1},
+        "rights_gate_state": {"enum": ["UNCHECKED", "CHECKED", "BLOCKED"]},
+        "contains_client_asset": {"type": "boolean"},
+        "contains_third_party_asset": {"type": "boolean"},
+        "redaction_note": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Required when contains_client_asset is true: how the client material was redacted."
+        }
+      },
+      "allOf": [
+        {
+          "if": {"required": ["contains_client_asset"], "properties": {"contains_client_asset": {"const": true}}},
+          "then": {"required": ["redaction_note"], "properties": {"redaction_note": {"type": "string", "minLength": 1}}},
+          "description": "Raw client material may never travel; unredacted client assets are invalid."
+        }
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "description": "The lesson / method / correction content itself. Closed on purpose: client briefs, transcripts and asset blobs have no field here.",
+      "required": ["title", "statement", "applies_to"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {"type": "string", "minLength": 1},
+        "statement": {"type": "string", "minLength": 1},
+        "applies_to": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "steps": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "evidence_summary": {"type": ["string", "null"], "minLength": 1},
+        "tags": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "revocation": {
+      "type": "object",
+      "required": ["revocable", "entrypoint", "state", "reason", "revoked_by", "revoked_at"],
+      "additionalProperties": false,
+      "properties": {
+        "revocable": {"const": true},
+        "entrypoint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Declared revocation entrypoint a consumer can call; a candidate without one may not be exported."
+        },
+        "state": {"enum": ["ACTIVE", "REVOKED"]},
+        "reason": {"type": ["string", "null"], "minLength": 1},
+        "revoked_by": {"type": ["string", "null"], "minLength": 1},
+        "revoked_at": {"anyOf": [{"$ref": "#/$defs/rfc3339"}, {"type": "null"}]}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["state"], "properties": {"state": {"const": "REVOKED"}}},
+          "then": {
+            "required": ["reason", "revoked_by", "revoked_at"],
+            "properties": {
+              "reason": {"type": "string", "minLength": 1},
+              "revoked_by": {"type": "string", "minLength": 1},
+              "revoked_at": {"$ref": "#/$defs/rfc3339"}
+            }
+          },
+          "description": "A revocation must say who revoked it, when, and why."
+        }
+      ]
+    },
+    "review": {
+      "type": "object",
+      "required": ["state", "reviewer_id", "reviewer_kind", "reviewed_at", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "state": {"enum": ["PENDING_HUMAN_APPROVAL", "APPROVED", "REJECTED"]},
+        "reviewer_id": {"type": ["string", "null"], "minLength": 1},
+        "reviewer_kind": {
+          "enum": ["human", null],
+          "description": "Only 'human' is representable. There is no agent, model or system value, so an automated approval cannot even be written down."
+        },
+        "reviewed_at": {"anyOf": [{"$ref": "#/$defs/rfc3339"}, {"type": "null"}]},
+        "note": {"type": ["string", "null"], "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["state"], "properties": {"state": {"const": "APPROVED"}}},
+          "then": {
+            "required": ["reviewer_id", "reviewer_kind", "reviewed_at"],
+            "properties": {
+              "reviewer_id": {"type": "string", "minLength": 1},
+              "reviewer_kind": {"const": "human"},
+              "reviewed_at": {"$ref": "#/$defs/rfc3339"}
+            }
+          },
+          "description": "APPROVED is only representable with a named human reviewer and a timestamp."
+        },
+        {
+          "if": {"required": ["state"], "properties": {"state": {"const": "REJECTED"}}},
+          "then": {
+            "required": ["reviewer_id", "reviewer_kind", "reviewed_at"],
+            "properties": {
+              "reviewer_id": {"type": "string", "minLength": 1},
+              "reviewer_kind": {"const": "human"},
+              "reviewed_at": {"$ref": "#/$defs/rfc3339"}
+            }
+          },
+          "description": "A rejection is also a human decision, not an automated sweep."
+        },
+        {
+          "if": {"required": ["state"], "properties": {"state": {"const": "PENDING_HUMAN_APPROVAL"}}},
+          "then": {
+            "properties": {
+              "reviewer_id": {"const": null},
+              "reviewer_kind": {"const": null},
+              "reviewed_at": {"const": null}
+            }
+          },
+          "description": "A pending candidate carries no reviewer, so it cannot look pre-approved."
+        }
+      ]
+    },
+    "export": {
+      "title": "Knowledge candidate export (the only outbound projection)",
+      "type": "object",
+      "required": ["schemaVersion", "candidate_id", "candidate_type", "source", "license_id", "payload", "payload_sha256", "supersedes", "revocation", "review"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {"const": "design-lab/assurance-knowledge-candidate-export/v1"},
+        "candidate_id": {"type": "string", "minLength": 1},
+        "candidate_type": {"enum": ["METHOD", "JURY_CORRECTION", "PRODUCTION_LESSON"]},
+        "source": {"$ref": "#/$defs/source"},
+        "license_id": {"type": "string", "minLength": 1},
+        "payload": {"$ref": "#/$defs/payload"},
+        "payload_sha256": {"$ref": "#/$defs/sha256"},
+        "supersedes": {"type": ["string", "null"], "minLength": 1},
+        "revocation": {
+          "type": "object",
+          "required": ["revocable", "entrypoint", "state"],
+          "additionalProperties": false,
+          "properties": {
+            "revocable": {"const": true},
+            "entrypoint": {"type": "string", "minLength": 1},
+            "state": {"const": "ACTIVE"}
+          }
+        },
+        "review": {
+          "type": "object",
+          "required": ["state", "reviewer_id", "reviewer_kind", "reviewed_at"],
+          "additionalProperties": false,
+          "properties": {
+            "state": {"const": "APPROVED"},
+            "reviewer_id": {"type": "string", "minLength": 1},
+            "reviewer_kind": {"const": "human"},
+            "reviewed_at": {"$ref": "#/$defs/rfc3339"}
+          }
+        }
+      }
+    },
+    "revocation_record": {
+      "type": "object",
+      "required": ["schemaVersion", "candidate_id", "entrypoint", "reason", "revoked_by", "revoked_at", "export_blocked"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {"const": "design-lab/assurance-knowledge-candidate-revocation/v1"},
+        "candidate_id": {"type": "string", "minLength": 1},
+        "entrypoint": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "revoked_by": {"type": "string", "minLength": 1},
+        "revoked_at": {"$ref": "#/$defs/rfc3339"},
+        "export_blocked": {"const": true}
+      }
+    }
+  }
+}

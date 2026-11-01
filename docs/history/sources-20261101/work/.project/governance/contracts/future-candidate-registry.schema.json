@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "work-lab/future-candidate-registry",
+  "title": "WORK-LAB Future Candidate Registry",
+  "description": "Single machine registry of deferred/deferred-pilot candidate directions (external workspaces, context/memory engines, web-agent routes, evaluator/experiment lanes). Every entry is DEFERRED with default_enabled=false unless promotion evidence exists. This registry is a planning/persistence layer, NOT an execution authority: it grants no install, download, clone, or pilot permission. Pilot execution requires an individually authorized task card in taskpacks/current.",
+  "type": "object",
+  "required": ["schemaVersion", "governance", "candidates"],
+  "properties": {
+    "schemaVersion": { "const": "work-lab/future-candidate-registry/v1" },
+    "updatedAt": { "type": "string" },
+    "governance": {
+      "type": "object",
+      "required": ["status_default", "default_enabled", "production_authorized", "intake"],
+      "properties": {
+        "status_default": { "const": "DEFERRED" },
+        "default_enabled": { "const": false },
+        "production_authorized": { "const": false },
+        "intake": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fixed external-capability intake pipeline (GOAL 18): DISCOVER -> CLASSIFY -> NATIVE OVERLAP -> LICENSE -> VERSION -> PERMISSION -> DATA BOUNDARY -> WINDOWS SUPPORT -> INSTALL SIDE EFFECT -> PILOT -> EVIDENCE -> DECISION"
+        },
+        "decisions": {
+          "type": "array",
+          "items": { "enum": ["PROMOTE", "KEEP_CANDIDATE", "REJECT"] }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "name", "role", "source", "license", "windows_support",
+          "native_overlap", "integration_mode", "permissions", "data_boundary",
+          "status", "default_enabled", "pilot_trigger", "promotion_criteria",
+          "rejection_reason", "last_verified_at",
+          "discovery", "upstream", "license_spdx", "windows_evidence",
+          "decision", "absorption", "native_evidence", "blocker"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^FUT-\\d{3}$" },
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "source": { "type": "string" },
+          "license": { "type": "string", "description": "Verify before any pilot. NOT_VERIFIED is an honest state, not a failure." },
+          "windows_support": { "enum": ["VERIFIED", "LIKELY", "NOT_VERIFIED"] },
+          "native_overlap": { "type": "string" },
+          "integration_mode": { "type": "string" },
+          "permissions": { "type": "string" },
+          "data_boundary": { "type": "string" },
+          "status": { "enum": ["DEFERRED", "PILOT_CANDIDATE", "PILOT", "PROMOTED", "REJECTED"] },
+          "default_enabled": { "type": "boolean" },
+          "pilot_trigger": { "type": "string" },
+          "promotion_criteria": { "type": "string" },
+          "rejection_reason": { "type": ["string", "null"] },
+          "last_verified_at": { "type": "string" },
+          "task_card": { "type": ["string", "null"], "description": "Path of the individually authorized task card if one exists; null when not yet authorized." },
+          "discovery": { "enum": ["RESOLVED", "AMBIGUOUS", "NOT_FOUND"], "description": "Outcome of the DISCOVER stage. RESOLVED means one locatable upstream; AMBIGUOUS means the name matches several or none in role; NOT_FOUND means the search came back empty. It is never a synonym for unverified." },
+          "upstream": { "type": "string", "description": "org/repo of the resolved upstream; empty unless discovery is RESOLVED." },
+          "license_spdx": { "type": "string", "description": "The SPDX the readback returned, including UNKNOWN or NOASSERTION when the repository declares none. Never inferred." },
+          "windows_evidence": { "type": "string", "description": "What the Windows signal actually was (README badge, release asset, nothing) and how strong it is. Required when windows_support is VERIFIED." },
+          "decision": { "enum": ["PROMOTE", "KEEP_CANDIDATE", "REJECT"], "description": "One of governance.decisions. REJECT is a dated retirement that keeps its reversal condition in pilot_trigger, not a deletion." },
+          "decision_basis": { "type": "string", "description": "Why the row is still needed, evaluated against the native code paths in native_evidence. Required for PROMOTE and KEEP_CANDIDATE; rejected rows carry the reasoning in rejection_reason." },
+          "absorption": { "enum": ["NONE", "POC_IN_REPO", "ADAPTER_IN_FLEET", "CONSTRAINT_IN_CODE", "REQUIREMENT_ONLY"], "description": "How much of this candidate's role this repository already implements. Anything other than NONE must name existing paths in native_evidence." },
+          "native_evidence": { "type": "array", "items": { "type": "string" }, "description": "Repository-relative paths that must exist; the coverage a decision is claimed against." },
+          "blocker": { "type": "string", "description": "What stops a kept candidate from being piloted now; required for KEEP_CANDIDATE. Empty means nothing blocks it, which then demands a pilot rather than another year of deferral." }
+        }
+      }
+    }
+  }
+}
