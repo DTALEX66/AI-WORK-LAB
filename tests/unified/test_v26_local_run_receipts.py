@@ -147,3 +147,38 @@ def test_the_planted_stale_record_is_caught_by_this_same_comparison(tmp_path):
     blob = Path(reports[-1]).read_bytes()
     assert hashlib.sha256(blob).hexdigest() != planted["observed_from"]["sha256"], (
         "被种下的假摘要与真报告相同：这个反例什么都没测")
+def _suite_naming_findings(suite: dict) -> list:
+    """A receipt that counts failures without naming them costs the next reader a full rerun.
+
+    ``ed0c64df743b68cf`` recorded "2 failed" and nothing else, so locating them meant another
+    14-minute pass. The producer now runs pytest with ``-rfE`` and copies the names out of the same
+    stdout the counts are parsed from; this is the rule it is measured against.
+    """
+    findings = []
+    for count_key, names_key in (("failed", "failed_nodes"), ("errors", "error_nodes")):
+        counted = int(suite.get(count_key, 0) or 0)
+        named = suite.get(names_key)
+        if counted and not named:
+            findings.append("%d %s，但收据没记任何节点名" % (counted, count_key))
+        elif named and len(named) != counted:
+            findings.append("%s 计数=%d 而具名=%d" % (count_key, counted, len(named)))
+        for name in named or []:
+            if "::test_" not in name:
+                findings.append("记下的不是可收集的节点 id：" + name)
+    return findings
+
+
+def test_a_receipt_that_counts_failures_must_name_them():
+    """The rule fires on the plant, then is applied to the receipt this machine actually wrote."""
+    blind = {"failed": 2, "failed_nodes": [], "errors": 0, "error_nodes": []}
+    assert _suite_naming_findings(blind) == ["2 failed，但收据没记任何节点名"],         "计数说坏了 2 个、名单是空的：这条必须报，否则规则什么都没约束"
+    mismatched = {"failed": 2, "failed_nodes": ["tests/unified/test_x.py::test_one"]}
+    assert _suite_naming_findings(mismatched) == ["failed 计数=2 而具名=1"], mismatched
+    not_a_node = {"failed": 1, "failed_nodes": ["tests/unified/test_x.py"]}
+    assert any("节点 id" in finding for finding in _suite_naming_findings(not_a_node)), not_a_node
+    clean = {"failed": 0, "failed_nodes": [], "errors": 0, "error_nodes": []}
+    assert _suite_naming_findings(clean) == []
+    if RECEIPT.is_file():
+        suite = json.loads(RECEIPT.read_text(encoding="utf-8-sig"))["suite"]
+        assert _suite_naming_findings(suite) == [], (
+            "本机收据带着计数却不带名单，下一个读者只能重跑全量才知道坏了什么", suite["line"])
