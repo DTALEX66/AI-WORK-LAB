@@ -424,12 +424,47 @@ def figures_block() -> str:
     return "\n".join("%s = %d" % (key, derived[key]) for key in sorted(derived))
 
 
+def write_block(entry_path: Path) -> int:
+    """Splice the derived block into the entry, and change nothing when the numbers already agree.
+
+    The entry is hand-written prose with one generated tail. A writer that rewrote the tail on every
+    run would move tracked bytes for no reason, and tracked bytes moving is exactly what takes a
+    measurement receipt off the tree it describes -- so an unchanged derivation reports UNCHANGED
+    instead of re-emitting the file.
+    """
+    text = entry_path.read_text(encoding="utf-8")
+    if FIGURES_START not in text or FIGURES_END not in text:
+        print(json.dumps({"verdict": "REFUSED", "entry": str(entry_path),
+                          "error": "两个 figures 标记缺一个，手写文档不能整段替换"},
+                         ensure_ascii=False))
+        return 3
+    eol = "\r\n" if "\r\n" in text else "\n"
+    block = FIGURES_START + eol + figures_block().replace("\n", eol) + eol + FIGURES_END
+    head, _marker, rest = text.partition(FIGURES_START)
+    updated = head + block + rest.split(FIGURES_END, 1)[1]
+    if updated == text:
+        print(json.dumps({"verdict": "UNCHANGED", "entry": str(entry_path),
+                          "bytes": len(text.encode("utf-8"))}, ensure_ascii=False))
+        return 0
+    with open(entry_path, "w", encoding="utf-8", newline="") as handle:
+        handle.write(updated)
+    print(json.dumps({"verdict": "WRITTEN", "entry": str(entry_path),
+                      "bytes_before": len(text.encode("utf-8")),
+                      "bytes_after": len(entry_path.read_bytes()),
+                      "figure_findings_after": [f for f in check_figures(entry_path)
+                                                if f.startswith("FIGURE")]},
+                     ensure_ascii=False))
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--check", action="store_true", help="compare the entries with the registers")
     mode.add_argument("--print-block", action="store_true",
                       help="print the figures block --check expects, derived live")
+    mode.add_argument("--write-block", action="store_true",
+                      help="splice that block into the entry, leaving the file alone if it agrees")
     parser.add_argument("--entry", type=Path, default=ROOT / ENTRY,
                        help="audit this copy of the entry document instead of the tracked one "
                             "(registers stay real; this is how the falsification test drives it)")
@@ -442,6 +477,8 @@ def main(argv=None) -> int:
         print(figures_block())
         print(FIGURES_END)
         return 0
+    if args.write_block:
+        return write_block(args.entry)
     try:
         findings, machine_only = check_entries(args.entry)
         findings += check_figures(args.entry)

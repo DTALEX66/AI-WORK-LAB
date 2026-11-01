@@ -281,3 +281,40 @@ def test_the_declared_test_census_still_matches_this_checkout():
     assert rc == 0, report.get("drift") or report
     assert report["matches"] is True, report
     assert report["tests_now"] > 400, "套件读数不可能这么小：扫描范围错了"
+
+
+def test_the_figure_writer_repairs_a_stale_copy_then_changes_nothing(tmp_path):
+    """`--write-block` must be able to do its job, and must not restamp a document that is already right.
+
+    The entry's tail is generated, so the writer is the only legitimate way to move those numbers.
+    Two properties make it safe to run before a measurement instead of only after one: it repairs a
+    doctored copy (proving it is not a no-op that always reports success), and a second run on the
+    repaired file leaves the bytes alone (proving a refresh does not silently move tracked bytes and
+    take a receipt off the tree it describes).
+    """
+    copy = tmp_path / "PROJECT_CURRENT.md"
+    original = ENTRY.read_bytes()
+    stale = original.decode("utf-8").replace("suite_test_nodes = ", "suite_test_nodes_planted = ")
+    copy.write_bytes(stale.encode("utf-8"))
+    first = _report(_run("--write-block", "--entry", str(copy)))
+    assert first["verdict"] == "WRITTEN", first
+    assert b"suite_test_nodes_planted" not in copy.read_bytes(), (
+        "写回必须按现算的键名替换，被改坏的键留着就等于检查器看不见它")
+    check = _report(_run("--check", "--entry", str(copy)))
+    assert check["verdict"] == "PASS" and check["finding_count"] == 0, check["findings"]
+    after_repair = copy.read_bytes()
+    second = _report(_run("--write-block", "--entry", str(copy)))
+    assert second["verdict"] == "UNCHANGED", second
+    assert copy.read_bytes() == after_repair, "第二次写把已经正确的文件又改了一次：生成器在重戳"
+
+
+def test_the_figure_writer_refuses_a_document_missing_its_markers(tmp_path):
+    """No markers means the block is hand-written prose, and prose is not this tool's to replace."""
+    copy = tmp_path / "no-markers.md"
+    copy.write_text("# 一份没有 figures 标记的文档\n\nsuite_test_nodes = 1\n",
+                    encoding="utf-8", newline="\n")
+    report = _report(_run("--write-block", "--entry", str(copy)))
+    assert report["verdict"] == "REFUSED", report
+    assert copy.read_text(encoding="utf-8").count("suite_test_nodes") == 1, (
+        "拒绝必须一个字都不写")
+
