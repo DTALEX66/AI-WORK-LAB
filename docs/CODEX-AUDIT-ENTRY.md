@@ -1361,3 +1361,40 @@ MODIFIED 17（17 份有声明与回执、unmanaged 0）。
 以及判定理由那两处的修复。真实宿主写入与读回、模型推理、真实私有数据迁移、STITCH 前端、
 真人专业验收签字、`L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的真实宿主探测
 仍按边界记 NOT_RUN/BLOCKED/DEFERRED，不由本仓自证。
+### 15.20 文档权威引用改指小节：一次 prose 编辑不再牵动跟踪字节（I-d）
+
+`migration/source-coverage-*.csv` 的 `authority` 列写的是「这条判定抄自哪一份权威文件的哪一处」。
+对代码，`file:line` 是有意义的；对文档不是。此前有 42 行共同引用
+`docs/CODEX-AUDIT-ENTRY.md:140`，而 §15.15 已经把这条耦合记成债：往那一行以上插一段话，42 行
+同时挪到无关的文字上，而当时唯一的守卫只问「文件存在且这一行非空」，所以它不会红，只会撒谎；
+往更下方追加反而每次都逼出一轮无内容的登记刷新。
+
+**改法**：`build_source_coverage.py` 的 `_line_of()` 现在按权威文件的类型分两种形状——
+`.py` 仍写 `file:line`，markdown 写 `file#§小节号`（小节号取标题的首个编号，没有编号就用去掉
+分隔符后的标题原文，因为这一格随后还要被 `;` 与 ` → ` 切开）。锚点解析函数
+`resolve_authority_cite()` 与生成函数住在同一个模块里：产出规则和检查规则是一份实现，
+不是两处各写一遍再祈祷它们一致。`test_v14_registers.py` 里那段逐行校验因此不再自己数行号，
+改为对每一条 cite 调用它，并断言解析成功。
+
+**这条改动怎么才能失败**（新节点 `test_prose_authority_cites_point_at_a_section_and_stay_valid_when_prose_grows`）：
+在临时目录里造一份带 `## 4.` 与 `## 5.` 的文档，先断言 `docs/entry.md#§4` 解析成功，
+再往被引小节内部插 40 段、尾部插 40 段，同一个引用必须仍然解析——这正是「prose 编辑与跟踪字节脱钩」
+的可执行定义；然后逐一植入七种坏引用并要求被拒：不存在的锚点、两个标题共用同一锚点（歧义）、
+文件不存在、行号越界、形状既不是 `file:line` 也不是 `file#锚`、`AUTHORITY_NOT_FOUND` 本身、
+空字符串。写死这些反例是因为：解析器如果变成「什么都返回 True」，前一半断言照样绿。
+
+**实测**：本轮把 42 行的文档权威从行号改成小节锚，改成之后仍带行号的文档引用为
+0 份；当前跟踪登记里有 39 行用 `#小节` 形式引用这份审计入口。
+收据 `e91e3aae748355f4` 绑提交 `7807c4646b`；套件 `457 passed, 3 subtests passed in 766.51s (0:12:46)`（exit 0），逐类别 passed 457，
+与 collect-only 的 457 项一致，节点增减 1/0；验收门 REFUSED（exit 1），
+blocking ["L10#0"]，disclosed ["A00#1", "L00#2", "L20#0"]；迁移计划 identical 1109 /
+EOL_ONLY 2 / MODIFIED 17（17 份有声明与回执、unmanaged 0）；
+七台生成器的 `--check` 全部 rc=0。
+
+**还欠着的**：`J-a`——`apps/workbench` 的 `vite build` 在本机跑不起来（打包依赖 `picomatch` 缺失，
+本轮不做网络安装），所以两个读 `build/main.js` 的 JS 闸门仍校验旧字节，本轮的 `shell.ts` 改动
+只有 `tsc --noEmit` 与源文件级断言覆盖；判定理由那两处（`read_record` 落空即 `pack={}`、
+not-bound 分支把缺行说成没绑指纹）本轮未动，仍由 §15.19 点名的节点钉着并要求修复。
+真实宿主写入与读回、模型推理、真实私有数据迁移、STITCH 前端、真人专业验收签字、
+`L10#0` 的 owner 决定队列、`L00#2` 的系统级出站隔离、`L20#0` 的真实宿主探测继续按边界
+记 NOT_RUN/BLOCKED/DEFERRED。
