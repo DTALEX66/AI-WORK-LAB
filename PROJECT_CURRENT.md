@@ -103,7 +103,7 @@ unsettled_files = 237
 | workbench bundle | 无法重建（缺 `picomatch`，需网络安装，未授权），两个读 bundle 的 JS 闸门仍校验旧字节 | `docs/CODEX-AUDIT-ENTRY.md` §15.22 |
 | 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。**收据仍记 `2 failed`**：重取需要干净跟踪树，也就是需要一次提交授权 | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
 | 归档原件的唯一副本 | `1131` 个对象（约 `1.06 GB`）目前只在统一归档里有；归档自己的 `完整性校验报告.json` 仍写 `source_file_set_unchanged: true`，而它点名的 `2031` 条来源路径现在**一个都不存在**（`D:\All projects\Record` 已消失，`xiangmuguidang` 是空目录）——那句话对今天的磁盘已不成立，归档不可再被当作可清理的副本 | `migration/archive-object-reconciliation-20261101.csv`、`_归档管理\完整性校验报告.json` |
-| 删掉两个来源仓之后本仓还能不能独立跑 | 见 §五 最后一条：正在用"把来源路径改指到不存在的位置"的副本实测，不靠推断 | `.project-local/runs/independence-simulation-20261101.json` |
+| 删掉两个来源仓之后本仓还能不能独立跑 | **已实测**（受控对照，head `2477d7b`）：control 63、treatment 78，delta 恰 **15** 个节点、无反向。12 个已修（共享 fixture 不再指向宿主机目录）、1 个已修（来源根缺失时 `build_audit_state` 给具名结论而不是崩溃 + 节点改为自带对照）；剩 **2** 个按其语义就是本机前提（`test_v17` 重启、`test_v22` 指向来源仓字节），已如实归入 machine-bound 而不是删断言。另一件与本轮无关但必须知道：**全新克隆跑不了全量套件**（control 那 63 个就是它），由 `未在本机测量` 的点名机制承担 | `.project-local/runs/independence-20261101.json` |
 
 ## 三、证据分级（不拼接旧成绩）
 
@@ -136,10 +136,15 @@ unsettled_files = 237
 
 1. ~~定位并修掉 `2312963` 上那 `2` 个失败~~ 已修；~~重取全量收据并改绑登记表~~ 已做：
    收据 `578f25c5add5ffa8`（480 passed / 0 failed），登记表已改绑，`migration/audit-item-closure.csv`
-   与 `docs/AUDIT-STATE.json` 七台生成器 `--check` 全 rc=0。
+   与 `docs/AUDIT-STATE.json` 七台生成器 `--check` 全 rc=0。**这条绑定已经过期**：那张收据描述的是
+   `cc4155f` 的树，而本轮之后又有提交（截图移出、归档件导入、守卫新增）。闭环审计因此把它报成
+   `PENDING` 而不是 `PASS`——收据必须重取到当前提交才算绑上，不能拿旧收据继续声称"全量绿"。
 2. owner 对 `237` 条待裁决来源做批量判定（含 32 条阻断 `L10#0` 的）。
 3. ~~统一归档 `1212` 个对象与融合仓的逐摘要对账~~ 已建成 `1212` 行逐条登记；
-   剩一个 owner 决定：那 `1131` 个只在归档里的对象要不要按摘要迁入本仓。
+   ~~那 `1131` 个只在归档里的对象要不要按摘要迁入本仓~~ owner 已定（「确保内容全部归档到仓库」）：
+   `694` 个正文对象（`217,126,876` 字节）已逐字节进仓并复验摘要，`344` 个位图按「截图照片去掉」排除，
+   `93` 个容器包只登记摘要与成员数（最大一个 135.9 MB 超 GitHub 单文件硬限，进仓即无法推送）。
+   剩一个待定：那 93 个包的原件长期去处，以及 135.9 MB 那个要不要换存放方式。
 4. 界面与外部宿主往返仍需新的明确授权；在那之前保持 `NOT_RUN`。
 5. **删除两个来源仓之前必须先回答的三件事**（本仓不替 owner 决定，也不会在未授权时动手）：
    - 来源仓的 `.git` 历史（含 `426` 个不可达提交）与 LFS 载荷，现在的镜射位置是
