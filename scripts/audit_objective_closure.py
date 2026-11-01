@@ -83,6 +83,11 @@ def probe_source_root_absent(root: Path) -> dict:
             "stderr_tail": completed.stderr.strip()[-200:]}
 
 
+#: what may legitimately be committed after a receipt was taken: the rebind itself and the
+#: entry's regenerated figures, never code or tests -- those would need a fresh receipt
+REBIND_OK = re.compile(r"^(docs/|migration/|(PROJECT_CURRENT|README|AGENTS|AUTHORITY-INDEX)\.md$)")
+
+
 def probe_receipt_describes_this_commit(root: Path) -> dict:
     path = root / ".project-local" / "audit" / "20261031-fullclosure" / "CLOSURE-STATE.json"
     if not path.is_file():
@@ -94,13 +99,39 @@ def probe_receipt_describes_this_commit(root: Path) -> dict:
         return {"status": "FAIL", "suite_line": suite["line"],
                 "failed_nodes": suite.get("failed_nodes", "字段不存在（旧收据）"),
                 "head_of_receipt": receipt["head_commit"][:12], "head_now": head[:12]}
+    # Uncommitted tracked edits belong to no commit, so neither this receipt nor the registers can
+    # speak for them: an audit run over a dirty tree would certify bytes that were never measured.
+    dirty = [name for name in git(root, "diff", "--name-only", "HEAD", "-z").split(chr(0)) if name]
+    if dirty:
+        return {"status": "FAIL", "reason": "本机还有未提交的跟踪改动，这张收据替不了它们",
+                "uncommitted_tracked_files": sorted(dirty)[:12]}
+    # The receipt is not required to name HEAD exactly, and requiring it was the defect: rebinding
+    # the registers and rendering the measured section necessarily produce commits *after* the one
+    # that was run, so strict equality left this clause at PENDING forever. What has to hold is that
+    # HEAD descends from it and that every tracked file in between is a document or a generated
+    # register -- a code or test file inside that range was never in the suite that went green.
+    allowed, unexpected = [], []
     if receipt["head_commit"] != head:
-        return {"status": "PENDING", "reason": "收据描述的不是当前提交，重取后才算绑上",
-                "head_of_receipt": receipt["head_commit"][:12], "head_now": head[:12],
-                "suite_line": suite["line"]}
+        listing = subprocess.run(["git", "diff", "--name-only",
+                                  "%s..HEAD" % receipt["head_commit"], "-z"],
+                                 cwd=str(root), capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace").stdout
+        for rel in [x for x in listing.split(chr(0)) if x]:
+            bucket = allowed if REBIND_OK.match(rel) else unexpected
+            bucket.append(rel)
+        if unexpected:
+            return {"status": "FAIL", "reason": "收据之后动了代码或测试，那张收据不能替它们作证",
+                    "unexpected": unexpected[:12]}
+        ancestor = subprocess.run(["git", "merge-base", "--is-ancestor",
+                                   receipt["head_commit"], "HEAD"],
+                                  cwd=str(root), capture_output=True, text=True)
+        if ancestor.returncode != 0:
+            return {"status": "FAIL", "reason": "收据的提交不是 HEAD 的祖先"}
     return {"status": "PASS", "suite_line": suite["line"],
             "failed_nodes_field": suite.get("failed_nodes"),
             "tracked_bytes_moved_during_run": moved,
+            "receipt_commit": receipt["head_commit"][:12], "head": head[:12],
+            "commited_after_receipt_documents_and_registers_only": allowed,
             "candidate_files": receipt["candidate_files"],
             "digest": receipt["candidate_digest"][:16]}
 
