@@ -22,7 +22,7 @@ import json
 import re
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 
@@ -331,3 +331,197 @@ def test_rir_contract_is_one_document_in_three_places_and_refuses_what_it_must(t
             contracts._require_project_relative(bad, "node 'n' raster.path", tmp_path)
     resolved = contracts._require_project_relative("layers/a.png", "node 'n' raster.path", tmp_path)
     assert resolved.is_relative_to(tmp_path.resolve()), resolved
+
+
+#: The legal RIR sample and the raster bytes it needs, both migrated byte-for-byte.
+RIR_SAMPLE = "tests/fixtures/reconstruction/uikit-conformance-2026-09-28/input.rir.json"
+FLAT_PNG = "tests/fixtures/reconstruction/flat-64.png"
+#: what build_photoshop_job says about the shapes below -- copied from measured refusals, and
+#: asserted rather than paraphrased so a change in wording has to be a decision, not drift.
+RECT_GATE = "rounded or parameterized rect unsupported"
+REMAP_GATE = "raster remapping/alpha requires explicit preprocessed asset"
+
+
+def _nodes_of(document: dict) -> list[dict]:
+    def walk(node):
+        yield node
+        for child in node.get("children") or []:
+            yield from walk(child)
+
+    return [node for layer in document["layers"] for node in walk(layer)]
+
+
+def _sample() -> dict:
+    return json.loads((TARGET_ROOT / RIR_SAMPLE).read_text(encoding="utf-8"))
+
+
+def _stage(tmp_path: Path, raster_rel: str) -> tuple[Path, Path]:
+    """A project root with the marker the path policy insists on, and a run root inside it."""
+    project = tmp_path / "project"
+    project.mkdir(parents=True, exist_ok=True)
+    (project / "AGENTS.md").write_text("# 测试项目标记（不是交付物）\n", encoding="utf-8")
+    run_dir = project / ".project-local" / "task-runtime" / "kit-raster"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    asset = project / PurePosixPath(raster_rel)
+    asset.parent.mkdir(parents=True, exist_ok=True)
+    asset.write_bytes((TARGET_ROOT / FLAT_PNG).read_bytes())
+    return project, run_dir
+
+
+def test_a_migrated_rir_sample_passes_the_contract_with_a_raster_node():
+    """登记行 05#L23 的「本仓没有一份能过整份合同的合法 RIR 样本」被一份迁入的字节否证。
+
+    证明：
+    * 样本与栅格夹具的当前摘要逐字等于 `migration/copies.json` 为它们记下的 `sha256_target`
+      （台账记的是复制时的摘要，所以这里同时证明"逐字节迁入"与"此后没被人改过"）；
+    * 未改动的样本过本仓的 `validate_rir`：schema、非有限数、身份字段全过，并且它含
+      **恰好一个** `type=raster` 节点——这一句是让"raster 那一支被走过"成为可失败断言的关键，
+      否则合同过了九个纯矢量节点也能被说成"栅格链路验证过"；
+    * 样本的清单版本、画布与该 raster 的声明路径按现读钉住（v1、64×64、
+      `.hermes/task-runtime/.../texture-chip.png`），并且那个 PNG **在本仓并不存在**：
+      来源仓里它也只在 `.hermes` 运行时目录、从未进 Git。这条负面断言写在这里是为了防止以后
+      有人拿一个凭空造的 PNG 冒充"原件"。
+    没证明：栅格字节被任何宿主读过（没有）；这份样本是本项目产生的（它是迁入的来源仓审计工件）；
+    清单的 domain 字段有值——v1 清单没声明，读回里它是 null。
+    """
+    from design_lab.reconstruction import contracts
+    import hashlib
+    from pathlib import PurePosixPath
+
+    ledger = json.loads((TARGET_ROOT / "migration" / "copies.json").read_text(encoding="utf-8"))
+
+    def repo_relative(target: str) -> str:
+        normalized = target.replace("\\", "/")
+        root = TARGET_ROOT.as_posix().rstrip("/") + "/"
+        return normalized[len(root):] if normalized.startswith(root) else normalized
+
+    recorded = {repo_relative(record["target"]): record
+                for group in ledger["copies"] for record in (group.get("records") or [])}
+    for relative in (RIR_SAMPLE, FLAT_PNG):
+        assert relative in recorded, (relative, sorted(recorded)[:3])
+        on_disk = hashlib.sha256((TARGET_ROOT / relative).read_bytes()).hexdigest()
+        assert on_disk == recorded[relative]["sha256_target"], (
+            "迁入字节已被改动，之后每条按它下的结论都要重算", relative, on_disk,
+            recorded[relative]["sha256_target"])
+
+    document = _sample()
+    contracts.validate_rir(document, project_root=TARGET_ROOT)
+    rasters = [node for node in _nodes_of(document) if node.get("type") == "raster"]
+    assert len(rasters) == 1, ("raster 支没有被真正走到：文档里的栅格节点数不是 1",
+                               [node.get("id") for node in rasters])
+    node = rasters[0]
+    assert document["schemaVersion"] == "design-lab/reconstruction-ir/v1", document
+    assert (document["canvas"]["width"], document["canvas"]["height"]) == (64, 64), document["canvas"]
+    declared = node["raster"]["path"]
+    assert declared.startswith(".hermes/task-runtime/"), declared
+    assert not (TARGET_ROOT / PurePosixPath(declared)).exists(), (
+        "样本声明的原件 PNG 竟然在本仓存在——它从不在来源仓的 Git 里，这里出现的是谁放的？")
+
+
+def test_relative_and_absolute_project_roots_reach_the_same_raster_verdict(tmp_path):
+    """同一条合法 raster.path，根写成相对还是绝对必须给同一个答案。
+
+    这条是为一个归因错位写的：`_require_project_relative` 把 `project_root` 原样留下，
+    却拿 `resolve()` 之后的绝对路径去和它比 inclusion，于是 `Path(".")` 当根时**任何**合法路径
+    都被判"逃逸"，理由还是「reparse resolution escapes outside the project」——说的是一件没
+    发生的事（与 §15.21 修掉的「包行读不到」说成「没绑指纹」同一类）。同文件的兄弟函数
+    `plan_to_rir` 早就 `resolve()` 了，所以同一个特性里两处对"根"的归一化不一致。
+
+    证明：
+    * 三种写法（`Path(".")`、`Path(".").resolve()`、裸字符串 `"."`）在同一份未改动样本上
+      结论一致，都是过——这一条在修复之前是红的；
+    * 那句拒绝消息现在说得通：`layers/./x.png`、`layers//x.png`、`a/../b.png` 各自被
+      「parent traversal and dot segments are forbidden」具名拒掉。此前只有 `..` 被拒，
+      `.` 与空段被 PurePosixPath 归一化吃掉而静默通过，消息与实际行为不符；
+    * 逃逸那一支仍有真主人：直接给 `_path_is_within` 一个真在项目外的绝对路径，它返回 False，
+      所以那句话不是永远不成立的死代码；
+    * 反斜杠那条也照旧被具名拒掉（不是被 schema 抢先），且一个含制表符的名字**仍然通过**——
+      本节点把它当实测事实记下来，不声称策略覆盖控制字符。
+    没证明：宿主对含制表符路径的行为；`.hermes` 那类隐藏目录前缀是否应当被允许（策略今天不管）。
+    """
+    from design_lab.reconstruction import contracts
+    import os
+
+    document = _sample()
+    here = Path(os.getcwd())
+    assert here == TARGET_ROOT, ("这条要在仓库根下跑，否则相对根的语义测不到东西", str(here))
+    for root in (Path("."), Path(".").resolve(), "."):
+        contracts.validate_rir(document, project_root=root)
+
+    for sneaky in ("layers/./x.png", "layers//x.png", "a/../b.png", "../up.png"):
+        with pytest.raises(contracts.ContractError, match="dot segments are forbidden"):
+            contracts._require_project_relative(sneaky, "raster.path", TARGET_ROOT)
+    with pytest.raises(contracts.ContractError, match="backslash paths are forbidden"):
+        contracts._require_project_relative("layers" + chr(92) + "x.png", "raster.path", TARGET_ROOT)
+    tabbed = contracts._require_project_relative("layers" + chr(9) + "x.png", "raster.path",
+                                                 TARGET_ROOT)
+    assert tabbed.name.startswith("layers\t"), repr(tabbed.name)
+
+    outside = contracts._path_is_within(Path("C:/Windows/win.ini"), TARGET_ROOT.resolve())
+    assert outside is False, ("逃逸判定恒真或恒假，那句 escapes 就成了装饰", outside)
+
+
+def test_the_raster_path_reports_the_gates_a_real_document_actually_hits(tmp_path):
+    """栅格节点在合法文档里走产品自己的函数，撞上的门按各自的名字报出来。
+
+    三段都是现测的结论，不是挑了好听的那一段：
+    ① 迁入的样本原样交给 `build_photoshop_job` 得到 `rounded or parameterized rect unsupported`
+      ——它先在一个带参数 rect 上被拒，所以**不能**声称这条链撞的是 raster 门；
+    ② 把文档收成只留那个 raster 节点（仍是合法 RIR）后得到 `raster remapping/alpha requires
+      explicit preprocessed asset`——样本的 raster 带一条 sourceMappings，产品拒绝未预处理的
+      重映射，这是真实门槛而不是缺口；
+    ③ 再清掉 sourceMappings、把 crop 物成 PNG 实际尺寸、并把栅格放进 run root 之内，构建被接受，
+      产出一个 `asset-texture-chip` 资源且路径落在 run root 里——这一句就是登记原先说"未被端到端
+      演示"的那一半。
+    两份派生文档都被断言为"与迁入字节不同"，样本本身在磁盘上一个字节没动。
+    没证明：任何真实宿主执行过这个 job（没有拉起 Photoshop，也没写它的文档）；派生文档是设计成品
+    （它们是测试构造）；`validate_objects` 适用于 Photoshop 形状（不适用，本节点因此不调用它）。
+    """
+    import copy
+    from PIL import Image
+    from design_lab.reconstruction import contracts
+    from design_lab.reconstruction import adobe_job
+
+    with Image.open(TARGET_ROOT / FLAT_PNG) as image:
+        width, height = image.size
+    sample = _sample()
+    declared = [n for n in _nodes_of(sample) if n.get("type") == "raster"][0]["raster"]["path"]
+
+    def expect_refusal(document, project, run_dir, message):
+        with pytest.raises(adobe_job.AdobeJobError) as refused:
+            adobe_job.build_photoshop_job(document, run_dir, text_styles={}, project_root=project)
+        assert str(refused.value) == message, str(refused.value)
+
+    project, run_dir = _stage(tmp_path, declared)
+    expect_refusal(copy.deepcopy(sample), project, run_dir, RECT_GATE)
+
+    solo = copy.deepcopy(sample)
+    solo["layers"] = [[n for n in _nodes_of(sample) if n.get("type") == "raster"][0]]
+    solo["layers"][0]["zOrder"] = 0
+    contracts.validate_rir(solo, project_root=project)
+    expect_refusal(solo, project, run_dir, REMAP_GATE)
+
+    inside = ".project-local/task-runtime/kit-raster/layers/texture-chip.png"
+    accepted = copy.deepcopy(solo)
+    raster = accepted["layers"][0]["raster"]
+    raster.update({"path": inside, "sourceMappings": [],
+                   "crop": {"x": 0, "y": 0, "width": width, "height": height}})
+    accepted["layers"][0]["bounds"] = {"x": 0, "y": 0, "width": width, "height": height}
+    staged = project / PurePosixPath(inside)
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    staged.write_bytes((TARGET_ROOT / FLAT_PNG).read_bytes())
+    contracts.validate_rir(accepted, project_root=project)
+    job = adobe_job.build_photoshop_job(accepted, run_dir, text_styles={}, project_root=project)
+    assets = job.get("assets") or []
+    assert [asset["id"] for asset in assets] == ["asset-texture-chip"], assets
+    asset_path = Path(assets[0]["path"])
+    assert run_dir.resolve() in asset_path.resolve().parents or asset_path.resolve() == run_dir.resolve(), (
+        "资源路径不在 run root 之内，前面那句「落进 run root」是空话", str(asset_path))
+    assert asset_path.is_file() and asset_path.stat().st_size == (TARGET_ROOT / FLAT_PNG).stat().st_size
+    assert job["schemaVersion"], job
+
+    assert json.dumps(accepted, sort_keys=True) != json.dumps(sample, sort_keys=True), (
+        "派生文档与迁入样本逐字相同，那它就不是派生文档")
+    assert _sample() == json.loads((TARGET_ROOT / RIR_SAMPLE).read_text(encoding="utf-8")), (
+        "测试把迁入的样本改了")
+

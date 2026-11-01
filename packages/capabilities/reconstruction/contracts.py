@@ -82,8 +82,16 @@ def _require_project_relative(path: str, field: str, project_root=None) -> Path:
     pure = PurePosixPath(path)
     if pure.is_absolute() or (pure.parts and pure.parts[0].endswith(":")):
         raise ContractError(f"{field}: absolute paths are forbidden")
-    if any(part in {"", ".", ".."} for part in pure.parts):
+    # PurePosixPath collapses "." and "//" out of `parts`, so testing those parts cannot see the
+    # segments this message names as forbidden. Judge the string the caller actually passed.
+    if any(segment in {"", ".", ".."} for segment in path.split("/")):
         raise ContractError(f"{field}: parent traversal and dot segments are forbidden")
+    # The root is whatever the caller typed. Resolving it once is what makes the containment
+    # test compare like with like: against an unresolved "." every absolute candidate looks like
+    # it "escapes", so a caller passing a relative root was refused with a message naming a
+    # traversal that never happened -- and plan_to_rir already resolves its root, so the two
+    # checks disagreed about the same path.
+    root = root.resolve()
     try:
         resolved = root.joinpath(*pure.parts).resolve(strict=False)
     except (OSError, RuntimeError) as exc:

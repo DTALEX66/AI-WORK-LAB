@@ -146,6 +146,11 @@ V24_RESEARCH_NODES = _nodes("test_v24_capability_evidence.py",
     "test_research_material_is_data_that_no_runtime_path_imports")
 V24_RECON_NODES = _nodes("test_v24_capability_evidence.py",
     "test_rir_contract_is_one_document_in_three_places_and_refuses_what_it_must")
+#: 05#L23 -- a real migrated RIR document, walked through the raster branch end to end.
+V24_RASTER_NODES = _nodes("test_v24_capability_evidence.py",
+    "test_a_migrated_rir_sample_passes_the_contract_with_a_raster_node",
+    "test_relative_and_absolute_project_roots_reach_the_same_raster_verdict",
+    "test_the_raster_path_reports_the_gates_a_real_document_actually_hits")
 #: 05#L22 -- asset versions, byte-pinned references, the input/output split, no platform channel.
 V04_ASSET_NODES = _nodes("test_v04_design_loop.py",
     "test_design_asset_versions_are_immutable_history_and_both_revisions_read_back",
@@ -990,18 +995,37 @@ def family_claims() -> dict[str, dict]:
                                   "不是操作系统进程重启，也不主张断电语义；本行也不声称宿主真能打开产物——"
                                   "输出字节是合成的，这一面只哈希不解析，真实宿主产生输出的链路仍按人工门逐次进行。"},
         "design-reconstruction": {"location": find_definition("validate_rir", "packages/capabilities/reconstruction/contracts.py"),
-                                  "evidence": V24_RECON_NODES, "status": "PARTIAL",
+                                  "evidence": V24_RECON_NODES + ";" + V24_RASTER_NODES,
+                                  "status": "PARTIAL",
                                   "basis": "RIR 合同由 native_plan 与 plan_to_rir 真实调用（它们以 "
                                           "`design_lab.reconstruction` 的名字导入，而实现只有一份："
                                           "`contracts.__file__` 落在 packages/capabilities/reconstruction 下，"
                                           "包路径是别名不是复制）；合同的三份副本（来源仓、打包资源、对外发布）"
                                           "逐字节相同；安装态不给项目根就拒、缺必填字段按 schema 自己声明的字段名"
                                           "拒、非有限数在任何字段检查前拒，路径政策的绝对/穿越/反斜杠/URI/空串"
-                                          "各有具名拒绝，而干净的相对路径确实落在根内——由本行引用的节点钉住。"
+                                          "各有具名拒绝，而干净的相对路径确实落在根内。本行现在还有一份**真的**"
+                                          "合法文档：来源仓 20 份 git 跟踪的 RIR 样本全部过本仓的 validate_rir，"
+                                          "其中唯一带 raster 节点的那份逐字节迁入 "
+                                          "tests/fixtures/reconstruction/uikit-conformance-2026-09-28/input.rir.json"
+                                          "（摘要记在迁移台账，测试断言它此后没被改过），栅格字节用来源仓自己"
+                                          "带 .license 的 flat-64.png 夹具。链路按产品的三个函数走到底并逐段现测："
+                                          "样本原样交给 build_photoshop_job 得到 "
+                                          "「rounded or parameterized rect unsupported」（它先在一个带参数的 rect 上"
+                                          "被拒，所以本行不说「撞的是 raster 门」）；收成只含 raster 节点的派生文档"
+                                          "得到「raster remapping/alpha requires explicit preprocessed asset」；再把 "
+                                          "sourceMappings 清掉、crop 物成 PNG 实际尺寸、把栅格放进 run root 之内，"
+                                          "构建被接受并产出 asset-texture-chip——这一句就是原先说「未被端到端演示」的"
+                                          "那一半。同一轮修掉两处路径政策里的实话问题：`project_root` 传相对写法时"
+                                          "任何合法 raster.path 都被判「reparse resolution escapes outside the "
+                                          "project」（根没 resolve，绝对候选永远不比它更内），而这句理由描述的是没"
+                                          "发生的越界；`.` 与空段被 PurePosixPath 归一化吃掉而静默通过，消息却声称"
+                                          "禁止——现在按调用方真正传来的字面分段判。"
                                           + PARTIAL_MARKER
                                           + "「结构与视觉规格分开验收」需要真人判断，本仓不替人签这个字；"
-                                          "且本仓没有一份能过整份合同的合法 RIR 样本，"
-                                          "raster 节点在合法文档内走同一函数的链路未被端到端演示。"},
+                                          "样本 raster.path 声明的那张原件 PNG 从不在来源仓的 Git 里（本行用的是"
+                                          "来源仓自带的授权夹具，不谎称原件）；lowering 产出的是文档，宿主一次也"
+                                          "没被拉起；含制表符的文件名今天仍然通过策略——本行把它当实测事实记着，"
+                                          "不声称覆盖控制字符。"},
         "design-quality": {"location": find_definition("assert_not_agent_signed", "domains/design/design_lab/assurance/human_jury.py"),
                            "evidence": "tests/unified/test_v11_audit_rework.py::test_f08_agent_and_unresolved_verifiers_cannot_satisfy_professional",
                            "status": "IMPLEMENTED_VERIFIED",

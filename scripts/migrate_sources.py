@@ -184,6 +184,18 @@ FILE_COPIES = [
     (DESIGN_SOURCE_ROOT, "vendor/sources.revisions.json", "vendor/sources.revisions.json"),
     (DESIGN_SOURCE_ROOT, "research/candidates/CANDIDATE-TAXONOMY.json",
      "research/candidates/CANDIDATE-TAXONOMY.json"),
+    # The reconstruction read path validates a raster node's declared path, but this
+    # tree has no document that reaches that branch, so 'the raster node goes through
+    # the same function' was a sentence nobody could test. The source repo carries 20
+    # tracked RIR samples that this repo's own validate_rir accepts; exactly one of
+    # them declares a raster node, and its PNG is the licensed 64x64 fixture the
+    # source repo's own tests use. Copied verbatim, with provenance named in the test.
+    (DESIGN_SOURCE_ROOT, "docs/audits/DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/session/hermes-legacy/runtime/reconstruction/c5-9568-c6-bb9db20f8ff74358938e4a8be9fc404d/input.rir.json",
+     "tests/fixtures/reconstruction/uikit-conformance-2026-09-28/input.rir.json"),
+    (DESIGN_SOURCE_ROOT, "design-lab/tests/fixtures/reconstruction/flat-64.png",
+     "tests/fixtures/reconstruction/flat-64.png"),
+    (DESIGN_SOURCE_ROOT, "design-lab/tests/fixtures/reconstruction/flat-64.png.license",
+     "tests/fixtures/reconstruction/flat-64.png.license"),
 
     # The domain-pack read path declares its checker and then reports every pack as
     # NOT_CHECKED, because the checker it names is not in this tree. That is the shape
@@ -776,6 +788,9 @@ PATCHED_TARGETS = frozenset(rel for rel, _old, _new, _reason in PATCHES)
 #: these files; the attestation only distinguishes *declared* rework from *unexplained*
 #: rework, which is the thing the plan used to lump together.
 DECLARED_REWORK = {
+    "packages/capabilities/reconstruction/contracts.py": (
+        "fcf1fa721945cd80c2e159aacd3a8960ce89ad76a39e0270a2cab90376e6b0bb", 15746, 10,
+        "路径政策的两处错位：project_root 传相对写法时 root 未 resolve，绝对候选永远不比它更内，于是任何合法 raster.path 都被判「reparse resolution escapes outside the project」；PurePosixPath 又把 '.' 与空段归一化吃掉，检查放过而消息声称禁止。现在根归一化一次、按传来的字面分段判。"),
     "domains/work/workflow_core/repair_pack_projection.py": (
         "c4b614eebb8e3bbfae3f63e3f1165ab601553f671a5a201f42e124cca23b35ad", 43539, 7,
         "F01: 兄弟模块裸导入只在脚本目录恰好留在 sys.path 上时可解析，改为包内相对导入"),
