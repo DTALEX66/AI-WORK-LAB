@@ -111,6 +111,71 @@ def coverage(tmp_path_factory) -> dict:
     return _coverage(tmp_path_factory)
 
 
+_COVERAGE_MODULE = None
+
+
+def _coverage_module():
+    """The coverage builder as a module object, so one rule has one implementation."""
+    global _COVERAGE_MODULE
+    if _COVERAGE_MODULE is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "build_source_coverage_live", TARGET_ROOT / "scripts" / "build_source_coverage.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _COVERAGE_MODULE = module
+    return _COVERAGE_MODULE
+
+
+def test_prose_authority_cites_point_at_a_section_and_stay_valid_when_prose_grows(tmp_path):
+    """A citation into prose must survive somebody editing the prose; a line number cannot.
+
+    42 rows used to cite ``docs/CODEX-AUDIT-ENTRY.md:140``. Every section appended below line 140
+    left the citation "resolvable" while it silently pointed at whatever had slid into that row,
+    and every section appended ABOVE it moved all 42 at once. So the cite now names the section,
+    and this test writes a document, cites it, then grows the document inside and after that
+    section: the cite still resolves, and an anchor that no heading carries -- or that two do --
+    is refused. The planted refusals are the point: without them the resolver could be vacuous.
+    """
+    module = _coverage_module()
+    root = tmp_path / "clone"
+    docs = root / "docs"
+    docs.mkdir(parents=True)
+    original = module.REPO_ROOT
+    module.REPO_ROOT = root
+    try:
+        (docs / "entry.md").write_text(
+            "# 标题\n\n## 4. 复核步骤\n\n关键句 NOT_RUN 在这里\n\n## 5. 下一节\n\n别的\n",
+            encoding="utf-8")
+        assert module.resolve_authority_cite("docs/entry.md#§4") == (True, "section §4")
+        # paragraphs added inside and after the cited section must not move the citation
+        (docs / "entry.md").write_text(
+            "# 标题\n\n## 4. 复核步骤\n\n" + "\n".join("新增段落 %d" % i for i in range(40))
+            + "\n\n关键句 NOT_RUN 在这里\n\n## 5. 下一节\n\n"
+            + "\n".join("尾部段落 %d" % i for i in range(40)) + "\n", encoding="utf-8")
+        assert module.resolve_authority_cite("docs/entry.md#§4")[0] is True
+        # and the anchor the builder writes for a needle inside that section is the section
+        # itself: the producing rule and the checking rule are the same function
+        scanned = module.AUTHORITY_SCANNED
+        module.AUTHORITY_SCANNED = dict(scanned, entry=docs / "entry.md")
+        try:
+            assert module._line_of("entry", "关键句 NOT_RUN 在这里") == "docs/entry.md#§4"
+        finally:
+            module.AUTHORITY_SCANNED = scanned
+        bad = module.resolve_authority_cite("docs/entry.md#§9")
+        assert bad[0] is False and "no heading resolves" in bad[1], bad
+        (docs / "twin.md").write_text("## 4. a\n\nx\n\n## 4. b\n\ny\n", encoding="utf-8")
+        ambiguous = module.resolve_authority_cite("docs/twin.md#§4")
+        assert ambiguous[0] is False and "ambiguous" in ambiguous[1], ambiguous
+        assert module.resolve_authority_cite("docs/nope.md#§4")[0] is False
+        assert module.resolve_authority_cite("docs/entry.md:99999")[0] is False
+        assert module.resolve_authority_cite("docs/entry.md:1:2")[0] is False
+        assert module.resolve_authority_cite("docs/entry.md:AUTHORITY_NOT_FOUND")[0] is False
+        assert module.resolve_authority_cite("")[0] is False
+    finally:
+        module.REPO_ROOT = original
+
+
 def test_coverage_register_accounts_for_every_source_file(coverage):
     for label, repo in (("work", WORK_SOURCE), ("design", DESIGN_SOURCE)):
         document = coverage["repos"][label]
@@ -146,14 +211,8 @@ def test_coverage_register_leaves_no_row_undecided(coverage):
                 cites = [c.strip() for c in re.split(r";| → ", row.get("authority", ""))]
                 assert cites and cites != [""], row
                 for cite in cites:
-                    match = _CITATION.match(cite)
-                    assert match, (row["class"], cite)
-                    authority = TARGET_ROOT / match.group(1)
-                    assert authority.is_file(), (row["path"], cite)
-                    lines = authority.read_text(encoding="utf-8-sig").splitlines()
-                    number = int(match.group(2))
-                    assert 0 < number <= len(lines), (row["path"], cite)
-                    assert "AUTHORITY_NOT_FOUND" not in cite, row
+                    ok, why = _coverage_module().resolve_authority_cite(cite)
+                    assert ok, (row["class"], cite, why)
 
         pending = [row for row in rows if row["class"] == "OWNER_DECISION_PENDING"]
         assert frozenset(row["path"] for row in pending) == PENDING_OWNER_DECISIONS[label], (

@@ -207,8 +207,35 @@ AUTHORITY_SCANNED = {
 _LINE_CACHE: dict[str, dict[str, int]] = {}
 
 
+def _heading_anchor(lines: list[str], number: int) -> str:
+    """The markdown heading a line sits under, as a greppable anchor.
+
+    A ``file:line`` citation into prose is a claim about a document that this project edits every
+    round: one inserted paragraph moves every later number. The heading is what the citation
+    actually means ("the sentence inside §15.19"), so the anchor names the heading and the guard
+    resolves it by finding that heading and checking the cited text is inside its section.
+    """
+    for earlier in range(number - 1, -1, -1):
+        text = lines[earlier]
+        if not text.startswith("#"):
+            continue
+        title = text.lstrip("#").strip()
+        if not title:
+            continue
+        # the anchor travels inside a CSV cell that is later split on ";" and " → ", so the
+        # section number is used when the heading has one and separators are otherwise removed
+        first = title.split(".", 1)[0].rstrip(". ")
+        if title.startswith("§") or re.match(r"^\d+(\.\d+)*\.?\s", title):
+            number_token = title.split()[0].rstrip(".")
+            return number_token if number_token.startswith("§") else "§" + number_token
+        for separator in (";", "；", " → ", ","):
+            title = title.replace(separator, "-")
+        return title
+    return "DOCUMENT-PREAMBLE"
+
+
 def _line_of(kind: str, needle: str) -> str:
-    """``file:line`` for the first non-blank line of ``kind`` holding ``needle``."""
+    """A citation into an authority file: ``file:line`` for code, ``file#heading`` for prose."""
     path = AUTHORITY_SCANNED[kind]
     key = str(path)
     if key not in _LINE_CACHE:
@@ -228,11 +255,53 @@ def _line_of(kind: str, needle: str) -> str:
                 break
     if hit is None:
         return path.relative_to(REPO_ROOT).as_posix() + ":AUTHORITY_NOT_FOUND"
+    if path.suffix == ".md":
+        lines = path.read_text(encoding="utf-8-sig").splitlines()
+        return "%s#%s" % (path.relative_to(REPO_ROOT).as_posix(), _heading_anchor(lines, hit))
     return path.relative_to(REPO_ROOT).as_posix() + ":" + str(hit)
 
 
-INDEX_SKIP_PARTS = SKIP_PARTS | {".project-local", ".git", ".qoder-cn", ".cursor"}
+def resolve_authority_cite(cite: str) -> tuple[bool, str]:
+    """Does one authority citation still point at something that exists?
 
+    Two shapes: ``file:line`` (code, where the number is meaningful) and ``file#anchor`` (prose,
+    where a number would be moved by any paragraph edited above it). A prose cite resolves when
+    the anchor is the section number (or sanitised title) of exactly one heading in that file.
+    Living next to ``_line_of`` keeps the producing and checking rules one implementation.
+    """
+    cite = cite.strip()
+    if not cite:
+        return (False, "empty citation")
+    if "AUTHORITY_NOT_FOUND" in cite:
+        return (False, "the authority text this cite was built from is no longer in the file")
+    if "#" in cite:
+        rel, anchor = cite.split("#", 1)
+    else:
+        shaped = re.match(r"^(.+?):(\d+)$", cite)
+        if not shaped:
+            return (False, "citation is neither file:line nor file#anchor: " + cite)
+        rel, anchor, line_text = shaped.group(1), None, int(shaped.group(2))
+    path = REPO_ROOT / rel
+    if not path.is_file():
+        return (False, "file absent: " + rel)
+    lines = path.read_text(encoding="utf-8-sig", errors="replace").splitlines()
+    if anchor is not None:
+        anchors = [_heading_anchor(lines, number) for number, text in enumerate(lines, start=1)
+                   if text.startswith("#") and text.lstrip("#").strip()]
+        if anchor not in anchors:
+            return (False, "no heading resolves to anchor " + repr(anchor))
+        if anchors.count(anchor) > 1:
+            return (False, "anchor %r is ambiguous (%d headings)" % (anchor, anchors.count(anchor)))
+        return (True, "section %s" % anchor)
+    number = line_text
+    if not (0 < number <= len(lines)):
+        return (False, "line %d is out of range for %s" % (number, rel))
+    if not lines[number - 1].strip():
+        return (False, "line %d is blank" % number)
+    return (True, lines[number - 1].strip()[:60])
+
+
+INDEX_SKIP_PARTS = SKIP_PARTS | {".project-local", ".git", ".qoder-cn", ".cursor"}
 
 def naming_index(root: Path) -> dict[str, set[str]]:
     """module stem -> files in ``root`` that import it.
