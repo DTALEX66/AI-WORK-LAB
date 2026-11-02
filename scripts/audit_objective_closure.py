@@ -83,9 +83,13 @@ def probe_source_root_absent(root: Path) -> dict:
             "stderr_tail": completed.stderr.strip()[-200:]}
 
 
-#: what may legitimately be committed after a receipt was taken: the rebind itself and the
-#: entry's regenerated figures, never code or tests -- those would need a fresh receipt
-REBIND_OK = re.compile(r"^(docs/|migration/|(PROJECT_CURRENT|README|AGENTS|AUTHORITY-INDEX)\.md$)")
+#: what may legitimately be committed after a receipt was taken: the rebind itself, the entry's
+#: regenerated figures and the registers whose own builders are in this script's gate set. Never code
+#: or tests -- those would need a fresh receipt. `config/` is enumerated file by file on purpose: most
+#: of it is hand-edited baseline, and a blanket allow would let a registry change ride on an old run.
+REBIND_OK = re.compile(r"^(docs/|migration/"
+                       r"|config/(blocker-register|isolated-install-verdict)\.json$"
+                       r"|(PROJECT_CURRENT|README|AGENTS|AUTHORITY-INDEX)\.md$)")
 
 
 def probe_receipt_describes_this_commit(root: Path) -> dict:
