@@ -8,8 +8,8 @@
 现值比对，对不上即为红。
 
 - 最近核验：2026-11-02（本地执行，并已推送到 origin；推送事实与公开克隆的独立复跑见 docs/CODEX-AUDIT-ENTRY.md §15.27）
-- 依托提交：全量收据所测的那棵树是 `adb311e`（503 passed / 0 failed）；当前 `main` 的真实 SHA 一律用
-  `git rev-parse main` 自读，不要抄本文件任何数字
+- 依托提交：全量收据所测的那棵树是 `1b16b85`（517 passed, 1 warning, 3 subtests passed in 968.83s (0:16:08)；候选 7284 文件，摘要 `df617c7e98cf427b…`；测量期间跟踪字节移动：[]）
+  当前 `main` 的真实 SHA 一律用 `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**唯一分支与默认分支都是 `main`**——那条融合批次分支已在
   2026-11-02 按 owner「没问题就把分支合并到主线啊」退掉（退掉前核过：两指针互无独有提交，三个标签指向的
   提交全部在 `main` 历史内，恢复点即 main 尖端）；标签 `closure-20261102`、`fusion-candidate-20261102`、
@@ -176,13 +176,9 @@ unsettled_files = 237
 
 ## 五、下一步
 
-1. ~~定位并修掉 `2312963` 上那 `2` 个失败~~ 已修；~~重取全量收据并改绑登记表~~ 已做并于本轮重取：
-   收据 `1467eeaea846ac08…`（`499 passed / 0 failed / 0 errors`，绑 `94dd47c`，跟踪树开始时干净且
-   全程 `tracked_bytes_moved_during_run` 为空），`migration/audit-item-closure.csv` 的四个收据列
-   与 `docs/AUDIT-STATE.json` 一起改绑，七台生成器 `--check` 全 rc=0。判据口径也在本轮改掉：
-   原先要求收据点名 HEAD 本身，而改绑与渲染小节必然产生其后的提交，于是它永远停在 `PENDING`；
-   现在是"收据的提交是 HEAD 的祖先，且其间每个动过的跟踪文件都是文档或生成登记表，逐个点名"，
-   代码或测试出现在那个区间就是 `FAIL`——这条收紧本身有一段死代码，被新加的 6 个反例节点抓出来。
+1. ~~重取全量收据并改绑登记表~~ 本轮再做了一遍，因为收据之后又动了代码：收据现在测 `1b16b85`（`517 passed, 1 warning, 3 subtests passed in 968.83s (0:16:08)`，摘要 `df617c7e98cf427b…`），`migration/audit-item-closure.csv` 的收据列、`docs/AUDIT-STATE.json`、`migration/task-acceptance.csv`、`config/blocker-register.json` 与入口数字段一起按这张收据重发布。
+   判据口径沿用上一轮定下的那条并且仍然成立：收据不要求点名 HEAD，只要求「收据的提交是 HEAD 的祖先，且其间每个动过的跟踪文件都是文档或生成登记表，逐个点名」；代码或测试出现在那个区间就是 `FAIL`。
+   本轮同时记下两个真实缺口，不用「闭环」二字把它们盖掉：① `migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 大（work 2764 vs 2734、design 4488 vs 4476），根因指向 `copied_index()` 以绝对路径相等判「同一条去向」，换机器就不等；② `apps/workbench` 的 bundle 仍无法离线重建，两个读 bundle 的JS 闸门仍在校验旧字节。两条都在 docs/CODEX-AUDIT-ENTRY.md 有对应小节。
 2. owner 对 `237` 条待裁决来源做批量判定（含 32 条阻断 `L10#0` 的）。
 3. ~~统一归档 `1212` 个对象与融合仓的逐摘要对账~~ 已建成 `1212` 行逐条登记；
    ~~那 `1131` 个只在归档里的对象要不要按摘要迁入本仓~~ owner 已定（「确保内容全部归档到仓库」）：
