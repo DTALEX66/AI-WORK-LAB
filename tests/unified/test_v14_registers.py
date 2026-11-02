@@ -32,9 +32,11 @@ from pathlib import Path
 import pytest
 
 TARGET_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
 VENV_PYTHON = str(TARGET_ROOT / ".venv" / "Scripts" / "python.exe")
-WORK_SOURCE = TARGET_ROOT.parent / "WORK-LAB"
-DESIGN_SOURCE = TARGET_ROOT.parent / "DESIGN-LAB"
+WORK_SOURCE = source_roots.work_root()
+DESIGN_SOURCE = source_roots.design_root()
 BRIDGE_PACKAGED = (TARGET_ROOT / "domains" / "design" / "design_lab" / "resources"
                    / "adobe" / "photoshop-native-assemble.jsx")
 BRIDGE_SOURCE_OF_TRUTH = (TARGET_ROOT / "integrations" / "hosts" / "adobe"
@@ -122,6 +124,22 @@ def _ledger_index() -> dict:
     return out
 
 
+def _absent_source_note(roots: list[Path]) -> str | None:
+    """Name a read-only source root this machine does not have, or ``None`` if all are here.
+
+    Only the *root's* absence is a machine prerequisite. A root that exists still has to
+    agree byte for byte with the register, so naming the absence can never swallow the drift
+    these nodes exist to catch -- which is the difference between a skip and an excuse.
+    """
+    missing = [str(root) for root in roots if not root.is_dir()]
+    if not missing:
+        return None
+    named = {entry["name"]: entry["root"] for entry in source_roots.absent_roots()}
+    return ("the read-only source root(s) %s are not on this machine (%s); the registers "
+            "enumerate those trees, so this run cannot re-verify them here"
+            % (", ".join(missing), ", ".join(sorted(named))))
+
+
 def _coverage(tmp_path_factory) -> dict:
     out = tmp_path_factory.mktemp("coverage") / "source-coverage.json"
     completed = subprocess.run(
@@ -130,6 +148,14 @@ def _coverage(tmp_path_factory) -> dict:
          "--json-out", str(out)],
         cwd=str(TARGET_ROOT), capture_output=True, text=True, timeout=3000,
         encoding="utf-8", errors="replace")
+    if completed.returncode == 3:
+        # The builder's designed answer to a missing source tree. It is a prerequisite of this
+        # machine, not a register defect -- and the refusal is checked by name, so an rc=3 for
+        # anything else still fails here instead of being excused.
+        payload = json.loads((completed.stdout.strip().splitlines() or ["{}"])[-1])
+        assert payload.get("error") == "SOURCE_REPO_ABSENT", payload
+        pytest.skip("build_source_coverage refused with SOURCE_REPO_ABSENT: %s"
+                    % ", ".join(entry["root"] for entry in payload["absent"]))
     assert completed.returncode == 0, completed.stderr[-2000:]
     return json.loads(out.read_text(encoding="utf-8"))
 
@@ -205,6 +231,9 @@ def test_prose_authority_cites_point_at_a_section_and_stay_valid_when_prose_grow
 
 
 def test_coverage_register_accounts_for_every_source_file(coverage):
+    note = _absent_source_note([WORK_SOURCE, DESIGN_SOURCE])
+    if note:
+        pytest.skip(note)
     for label, repo in (("work", WORK_SOURCE), ("design", DESIGN_SOURCE)):
         document = coverage["repos"][label]
         listed = subprocess.check_output(
@@ -507,6 +536,9 @@ def test_duplicate_candidates_are_recomputable_and_deferrals_carry_a_reason():
     sources = json.loads((TARGET_ROOT / "migration" / "sources.json").read_text(encoding="utf-8"))
     assert sources["duplicate_candidate_groups"] == len(groups)
 
+    note = _absent_source_note([WORK_SOURCE, DESIGN_SOURCE])
+    if note:
+        pytest.skip(note)
     verified = 0
     for group in groups:
         digest = group["sha256"]
@@ -666,7 +698,19 @@ def test_offline_install_pip_command_lines_are_actually_offline():
             assert document["network_used"] is False, document["network_used"]
 
 
-def test_pre_push_guard_is_present_and_blocking():
+def _push_authorization_head(path: Path) -> str:
+    """The commit a recorded push authorization binds, or "" when the record does not name one.
+
+    Read here rather than inferred from the hook's own output: the guard's prose and the guard's
+    verdict must not be the same string, or this comparison proves nothing.
+    """
+    try:
+        return str(json.loads(path.read_bytes().decode("utf-8-sig")).get("head_commit") or "")
+    except (ValueError, OSError):
+        return ""
+
+
+def test_pre_push_guard_is_present_and_blocking(tmp_path):
     """A00「不推送不发布」has to be an assertion that can fail, not a sentence in a doc.
 
     The hook is a mistype-guard, not network isolation. The first-upload round the owner
@@ -690,13 +734,55 @@ def test_pre_push_guard_is_present_and_blocking():
 
     shell = shutil.which("sh") or shutil.which("bash")
     assert shell, "no POSIX shell available to invoke the hook locally"
+
+    # The refusal is proven in a scratch repository, not here. Invoked against this checkout the
+    # guard consults `.project-local/push-authorization-*.json`, and once the owner has authorised
+    # a push that file names a head -- so this node used to go red for the unrelated reason that
+    # HEAD had advanced onto the commit the previous round pushed. A guard that lets an authorised
+    # push through is correct, and a test that cannot say so is a test whose verdict is an accident
+    # of machine state.
+    (tmp_path / "a.txt").write_text("one tracked file so the tree is not empty\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    hooks = tmp_path / ".git" / "hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(str(hook), str(hooks / "pre-push"))
+    subprocess.run(["git", "add", "a.txt"], cwd=str(tmp_path), check=True, capture_output=True)
+    subprocess.run(["git", "-c", "user.email=t@example.invalid", "-c", "user.name=probe",
+                    "commit", "-q", "-m", "probe"], cwd=str(tmp_path), check=True,
+                   capture_output=True)
+    refused = subprocess.run([shell, str(tmp_path / ".git" / "hooks" / "pre-push"),
+                              "origin", "git@example.invalid:nowhere.git"],
+                             input="refs/heads/probe " + "0" * 40 + " refs/heads/probe "
+                                   + "1" * 40 + "\n",
+                             capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             cwd=str(tmp_path), timeout=120)
+    combined = (refused.stdout or "") + (refused.stderr or "")
+    assert refused.returncode != 0, ("the guard pushed with no authorization on disk", combined)
+    assert "BLOCKED" in combined, combined
+    assert "head_commit" in combined and "授权" in combined, (
+        "the guard refused for some reason other than the missing authorization, so the "
+        "refusal path this node is about is not the one being exercised: " + combined[-400:])
+
     probe = subprocess.run([shell, str(hook), "origin", "git@example.invalid:nowhere.git"],
                            input="refs/heads/probe " + "0" * 40 + " refs/heads/probe "
                                 + "1" * 40 + "\n",
                            capture_output=True, text=True, encoding="utf-8", errors="replace",
                            cwd=str(TARGET_ROOT), timeout=120)
-    assert probe.returncode != 0, "the guard let a push through: " + probe.stdout
-    assert "blocked" in (probe.stderr + probe.stdout).lower(), probe.stderr
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(TARGET_ROOT),
+                          capture_output=True, text=True, encoding="utf-8").stdout.strip()
+    # read the authorization records here instead of trusting the hook's own prose, so the two
+    # sides of this comparison are not the same value printed twice
+    authorised = [path.name for path in (TARGET_ROOT / ".project-local").glob(
+        "push-authorization-*.json")
+        if _push_authorization_head(path) == head]
+    if authorised:
+        assert probe.returncode == 0, (
+            "an authorization naming this head exists (%s) but the guard still refused: %s"
+            % (authorised, (probe.stdout + probe.stderr)[-400:]))
+    else:
+        assert probe.returncode != 0, (
+            "no authorization names this head and yet the guard let the push through: "
+            + probe.stdout + probe.stderr)
     # v2 of the guard refuses for a *reason the owner can satisfy*, not a blanket no: it demands a
     # recorded authorization whose head_commit equals the head being pushed, and it runs the tracked
     # public-surface checker. Both facts are pinned so the guard cannot be quietly gutted later.
@@ -779,8 +865,14 @@ def test_every_adobe_host_bridge_is_packaged_and_byte_identical():
          TARGET_ROOT / "domains/design/design_lab/resources/adobe/reconstruction-assemble.jsx",
          DESIGN_SOURCE / "integrations/hosts/adobe/illustrator/reconstruction-assemble.jsx"),
     ]
-    for label, packaged, truth in cases:
+    for label, packaged, _truth in cases:
         assert packaged.is_file(), label + " bridge is not packaged where the adapter probes"
+    note = _absent_source_note([DESIGN_SOURCE])
+    if note:
+        # Only the comparison against the source's bytes is unobservable here; the packaged
+        # half above ran, and a packaged bridge that no longer matches still fails below.
+        pytest.skip(note)
+    for label, packaged, truth in cases:
         assert packaged.read_bytes() == truth.read_bytes(), (
             label + " bridge drifted from the source repository's bytes")
 

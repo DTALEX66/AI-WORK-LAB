@@ -16,12 +16,14 @@ copy. Two things were found by checking that claim rather than assuming it:
 
 The scan reads test files only, which is itself a dependency it cannot see, so two guards
 close that gap: the shared fixture's project root must stay inside the checkout
-(``test_the_shared_fixture_project_root_stays_inside_the_checkout``), and the source-root
-spelling the scan misses must stay proven tolerant of the sources being absent by measurement
-rather than by exclusion (``test_the_unscanned_parent_source_spelling_is_measured_not_
-reclassified``). Both are about the 2026-11-01 control/treatment run recorded in
-``.project-local/runs/independence-20261101.json``; the 15-node delta is frozen in this file
-because a clone cannot read that gitignored measurement.
+(``test_the_shared_fixture_project_root_stays_inside_the_checkout``), and every root outside
+this checkout must be resolved in exactly one file
+(``test_the_three_outside_roots_have_exactly_one_spelling``). The second one replaces a
+guard that could only rest on measurement: four test files used to spell a source root as a
+sibling of the checkout, which ``PREREQ`` cannot see, so their clone-safety was argued from
+the 2026-11-01 control/treatment delta recorded in
+``.project-local/runs/independence-20261101.json`` (control 63 problem nodes / treatment 78)
+instead of from the code. With one resolver there is nothing left to argue from.
 """
 from __future__ import annotations
 
@@ -45,44 +47,43 @@ PREREQ = re.compile(r"\.venv|All projects[\\/](WORK-LAB|DESIGN-LAB)|"
                     r"[.]git[\"'\s\\/]+hooks|"
                     r"[.]project-local[\"'\s\\/]+build")
 
-#: A second spelling of "the read-only source repository next door" that ``PREREQ`` cannot
-#: see, because it is relative to the checkout instead of naming the machine.
-PARENT_SOURCE = re.compile(r"TARGET_ROOT\.parent\s*/\s*[\"'](WORK-LAB|DESIGN-LAB)[\"']")
+#: The two spellings that used to mean "the read-only source root" outside
+#: ``scripts/source_roots.py``. Either one defeats the environment switch, because a
+#: generator that builds a path itself never asks the resolver what the machine said.
+ABSOLUTE_SOURCE_ROOT = re.compile(r"All projects[\\/](WORK-LAB|DESIGN-LAB|Project Archiving)")
+SIBLING_SOURCE_ROOT = re.compile(
+    r"(?:REPO_ROOT|TARGET_ROOT|ROOT)\.parent\s*/\s*[\"'](WORK-LAB|DESIGN-LAB|Project Archiving)[\"']")
+FORBIDDEN_ROOT_SPELLINGS = (ABSOLUTE_SOURCE_ROOT, SIBLING_SOURCE_ROOT)
+#: The one file allowed to spell a root -- the resolver itself. Exempted by exact path, not
+#: by a substring rule, so a second copy of the same spelling cannot hide behind the name.
+ROOT_RESOLVER = "scripts/source_roots.py"
+#: Inert material: quoted originals and history, whose bytes the registers pin by digest and
+#: which this repository must not rewrite. ``docs/authority-202610`` is re-verified SHA-256 by
+#: ``check_authority_index``, so editing one character there is red on its own.
+INERT_PREFIXES = ("docs/history/", "docs/authority-202610/", "AI-WORK-LAB_HANDOFF",
+                  "research/", ".project-local/")
 #: ``tests/conftest.py`` assigns the project root every ``work_project`` test is bound to.
 FIXED_ROOT_ASSIGNMENT = re.compile(r"^LIVE_WORK_ROOT\s*=\s*(.+)$", re.M)
 
-#: The 15 nodes that failed when, and only when, the two source roots were redirected to
-#: paths that do not exist. Frozen here because the measurement itself lives in
-#: ``.project-local/`` (gitignored, so a clone cannot read it):
-#: ``.project-local/runs/independence-20261101.json``, head ``2477d7b``,
-#: control 63 problem nodes / treatment 78, delta exactly these 15, none running the other
-#: way. Twelve of them came from ``tests/conftest.py`` binding ``work_project`` to the
-#: host's WORK-LAB; the remaining ones are the audit-state generator and its census node.
-MEASURED_SOURCE_ABSENCE_FAILURES = (
-    "test_adapter_dispatch_is_not_allowed_this_batch",
-    "test_backend_boots_twice_and_recovers_the_orphan",
-    "test_concurrent_attempt_update_refuses_the_loser",
-    "test_design_task_definition_pointers_match_their_bytes",
-    "test_duplicate_result_refused_on_second_attempt",
-    "test_entry_work_execution_detail_attempt_is_the_stored_row",
-    "test_external_receipt_claim_is_not_declarable",
-    "test_f07_origin_chain_is_inherited_and_cannot_be_promoted",
-    "test_f07_work_project_on_real_root_stays_what_it_claims",
-    "test_f09_observer_reads_answer_and_control_gate_is_enforced",
-    "test_import_before_declared_handoff_refused",
-    "test_stale_result_refused",
-    "test_the_audit_state_check_fails_on_a_stale_census",
-    "test_work_maintenance_loop_completes_and_survives_restart",
-    "test_wrong_pack_and_wrong_project_results_refused",
-)
-#: Files that carry the unscanned parent spelling. The measurement says none of the nodes
-#: defined in them appears in the list above, i.e. they tolerate the sources being gone.
-MEASURED_TOLERANT_OF_ABSENT_SOURCES = (
-    "tests/unified/test_v07_migration.py",
-    "tests/unified/test_v14_registers.py",
-    "tests/unified/test_v16_traceability.py",
-    "tests/unified/test_v27_adapter_conformance.py",
-)
+
+def _active_python_files(root: Path) -> list[Path]:
+    """Enumerate this checkout's own Python code: ``scripts/`` and ``tests/``, nothing inert.
+
+    ``root`` is a parameter so a counter-example can point the enumeration at a planted file
+    -- a guard whose population cannot be redirected is a guard that has never been wrong.
+    """
+    found = []
+    for pattern in ("scripts/*.py", "tests/**/*.py"):
+        for path in sorted(root.glob(pattern)):
+            relative = path.relative_to(root).as_posix()
+            if relative.startswith(INERT_PREFIXES):
+                continue
+            if relative.startswith("tests/unified/test_v23"):
+                continue  # the patterns searched for are written out in this file
+            if relative == ROOT_RESOLVER:
+                continue  # the resolver is what owns the spelling; everything else must ask it
+            found.append(path)
+    return found
 
 
 def _test_files(root: Path) -> list[Path]:
@@ -100,11 +101,6 @@ def _partition(root: Path) -> tuple[list[str], list[str]]:
         text = path.read_text(encoding="utf-8", errors="replace")
         (machine_bound if PREREQ.search(text) else clone_safe).append(relative)
     return clone_safe, machine_bound
-
-
-def _test_node_names(path: Path) -> list[str]:
-    return re.findall(r"^def (test_\w+)", path.read_text(encoding="utf-8", errors="replace"),
-                      re.M)
 
 
 def _fixture_project_root(root: Path) -> Path:
@@ -203,56 +199,28 @@ def test_the_shared_fixture_project_root_stays_inside_the_checkout():
         "nothing from it" % relative)
 
 
-def test_the_unscanned_parent_source_spelling_is_measured_not_reclassified():
-    """The spelling ``PREREQ`` cannot see must stay proven tolerant, not quietly excluded.
+def test_the_three_outside_roots_have_exactly_one_spelling():
+    """Every root outside this checkout is resolved in one file, and the guard can fail.
 
-    ``PREREQ`` matches the absolute form (``All projects\\WORK-LAB``), not
-    ``TARGET_ROOT.parent / "WORK-LAB"``. Four files use the relative form. Reclassifying them
-    as machine-bound would look like a fix and would silently shrink what "a clone runs the
-    suite" covers -- which defeats the point of this file, so the evidence has to be the
-    measurement instead: none of the nodes defined in those files appears in
-    ``MEASURED_SOURCE_ABSENCE_FAILURES``, the delta of the 2026-11-01 control/treatment run
-    (``.project-local/runs/independence-20261101.json``, head ``2477d7b``, control 63 /
-    treatment 78 problem nodes, 15-node delta, nothing failing the other way).
+    The cut used to be unprovable by a single switch because the same three directories were
+    spelled two ways: an absolute literal and a sibling of the checkout. The sibling form is
+    invisible to ``PREREQ``, which is why the 2026-11-01 run had to *measure* a 15-node delta
+    instead of excluding those files -- and why the generator that should have answered
+    ``SOURCE_REPO_ABSENT`` found the real neighbour and reported register drift instead.
+    ``scripts/source_roots.py`` owns both spellings now, so this names any file that still
+    builds one by hand.
+
+    Active code only: ``docs/history`` and ``research`` hold inert originals whose bytes the
+    registers pin by SHA-256, the handoff package is quoted material, and this file is
+    excluded because the patterns it searches for are necessarily written out in it.
+    ``scripts/source_roots.py`` is exempt by exact path -- it is the file the rule is about.
     """
-    assert len(MEASURED_SOURCE_ABSENCE_FAILURES) == 15, MEASURED_SOURCE_ABSENCE_FAILURES
-    assert not PREREQ.search('SOURCES = [TARGET_ROOT.parent / "WORK-LAB"]'), (
-        "PREREQ now scans the parent spelling, so the exclusion below needs re-reading: the "
-        "clone-safe set just changed")
-
-    carrying = {}
-    for path in _test_files(TARGET_ROOT):
-        relative = path.relative_to(TARGET_ROOT).as_posix()
-        if relative.startswith("tests/unified/test_v23"):
-            continue
-        if PARENT_SOURCE.search(path.read_text(encoding="utf-8", errors="replace")):
-            carrying[relative] = _test_node_names(path)
-    assert carrying, "no file carries the parent spelling any more; retire this guard's list"
-    assert set(carrying) == set(MEASURED_TOLERANT_OF_ABSENT_SOURCES), (
-        "the files naming a source repo as a sibling of the checkout changed: %s. The frozen "
-        "measurement covered only %s, so a newly appearing file is unmeasured and a vanished "
-        "one needs its guard re-derived, not copied."
-        % (sorted(carrying), sorted(MEASURED_TOLERANT_OF_ABSENT_SOURCES)))
-
-    clone_safe, machine_bound = _partition(TARGET_ROOT)
-    for relative, names in carrying.items():
-        failed = sorted(set(names) & set(MEASURED_SOURCE_ABSENCE_FAILURES))
-        assert not failed, (
-            "%s writes the source root as a sibling of the checkout, and %s of its nodes were "
-            "measured failing when the sources are absent -- so this file is not tolerant, and "
-            "the clone-safe classification has to change on that evidence"
-            % (relative, failed))
-        if relative in machine_bound:
-            text = (TARGET_ROOT / relative).read_text(encoding="utf-8", errors="replace")
-            without = "\n".join(line for line in text.splitlines()
-                                if not PARENT_SOURCE.search(line))
-            assert PREREQ.search(without), (
-                "%s is machine-bound only because of its source-root spelling: the exclusion "
-                "rests on the assumption this node exists to falsify" % relative)
-    # and the files the measurement cleared are still counted as runnable by a clone
-    still_safe = sorted(set(carrying) & set(clone_safe))
-    assert still_safe, (
-        "every file with the parent spelling is now excluded from the clone run: what does "
-        "the clone actually cover? the measured set was %s"
-        % sorted(MEASURED_TOLERANT_OF_ABSENT_SOURCES))
-    print("parent-spelling files:", still_safe, "(clone-run, measured tolerant)")
+    offenders = {}
+    for path in _active_python_files(TARGET_ROOT):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        hits = sorted({match.group(0) for pattern in FORBIDDEN_ROOT_SPELLINGS
+                       for match in pattern.finditer(text)})
+        if hits:
+            offenders[path.relative_to(TARGET_ROOT).as_posix()] = hits
+    assert not offenders, (
+        "这些文件还在自己拼来源根，所以环境变量开关到不了它们：%s" % offenders)

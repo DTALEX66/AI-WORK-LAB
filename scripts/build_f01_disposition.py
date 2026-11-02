@@ -72,8 +72,8 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-WORK_ROOT = REPO_ROOT.parent / "WORK-LAB"
-DESIGN_ROOT = REPO_ROOT.parent / "DESIGN-LAB"
+sys.path.insert(0, str(REPO_ROOT / "scripts")); import source_roots  # noqa: E402,E702
+WORK_ROOT, DESIGN_ROOT = source_roots.work_root(), source_roots.design_root()
 MAPPING = REPO_ROOT / "migration" / "mapping.csv"
 COPIES = REPO_ROOT / "migration" / "copies.json"
 REGISTER = REPO_ROOT / ".project-local/runs/f01-migration/F01-MIGRATION-REGISTER.json"

@@ -63,6 +63,28 @@ ADMITTED_DISPOSITIONS = frozenset({
     "REGISTERED_NOT_MIGRATED", "UNCLASSIFIED_RESIDUE", "QUARANTINED_CREDENTIALS"})
 #: In-repo home of an imported archive object, used to prove a quarantine actually removed the bytes.
 ARCHIVE_OBJECT_DIR = "docs/history/archive-objects-20261101/by-sha"
+#: Owner rule 2026-11-02「做好历史文档归档就行了」: the history area is where the two source
+#: repositories and the unified archive end up, so every byte there has to be *named* by a
+#: ledger. "It sits in docs/history" is a location, not a destination -- an unclaimed file is
+#: one nobody decided anything about, and it is exactly how a second copy quietly becomes a
+#: third copy nobody can explain later.
+HISTORY_AREA = "docs/history"
+#: The four registers that can claim a history file, and the columns that hold the in-repo path.
+HISTORY_CLAIM_COLUMNS = (
+    ("docs/history/sources-20261101/MANIFEST.csv", ("target_rel",)),
+    ("docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv", ("target_rel",)),
+    ("migration/archive-object-reconciliation-20261101.csv", ("evidence",)),
+)
+HISTORY_COPIES = "migration/copies.json"
+#: A ledger does not have to be claimed by another ledger -- these are the claimants themselves,
+#: each CSV plus the JSON its own run wrote beside it. Named one by one, so a fifth file is a
+#: finding rather than another line in an exemption list that grew until it allowed everything.
+HISTORY_SELF_CLAIM = (
+    "docs/history/sources-20261101/MANIFEST.csv",
+    "docs/history/sources-20261101/MANIFEST.json",
+    "docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv",
+    "docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.json",
+)
 
 
 def rows(rel: str) -> list[dict]:
@@ -375,6 +397,84 @@ def credential_quarantine_findings(import_rows, object_dir, root=ROOT) -> list:
     return findings
 
 
+def tracked_history_files(root=ROOT) -> tuple[list, list]:
+    """Every tracked byte under the history area, enumerated from git -- not from a ledger.
+
+    Starting from the ledgers would only prove they agree with themselves. That input-set
+    blind spot has already cost this repository a row, so the population here is whatever the
+    index actually carries, and a failed enumeration is reported instead of read as "nothing
+    unclaimed".
+    """
+    completed = subprocess.run(["git", "ls-files", "-z", "--", HISTORY_AREA], cwd=str(root),
+                               capture_output=True, text=True,
+                               encoding="utf-8", errors="replace")
+    if completed.returncode != 0:
+        return [], ["HISTORY_ENUMERATION_FAILED rc=%d %s"
+                    % (completed.returncode, completed.stderr.strip()[-120:])]
+    return sorted(rel for rel in completed.stdout.split(chr(0)) if rel), []
+
+
+def history_claims(root=ROOT) -> dict:
+    """In-repo history path -> the ledger column that names it.
+
+    Reads ``target``/``evidence``/``target_rel`` values, all of which are locations inside this
+    repository. The ``source`` side of ``migration/copies.json`` is a recorded provenance
+    string and is deliberately not consulted: a deleted source repository must not be able to
+    make a register unreadable.
+    """
+    claims: dict = {}
+    for rel, columns in HISTORY_CLAIM_COLUMNS:
+        path = root / rel
+        if not path.is_file():
+            continue
+        raw = path.read_bytes().decode("utf-8-sig")
+        for row in csv.DictReader(io.StringIO(raw, newline="")):
+            for column in columns:
+                value = (row.get(column) or "").strip().replace("\\", "/")
+                if value.startswith(HISTORY_AREA + "/"):
+                    claims.setdefault(value, rel + ":" + column)
+    manifest = root / HISTORY_COPIES
+    if manifest.is_file():
+        document = json.loads(manifest.read_bytes().decode("utf-8-sig"))
+        for group in document.get("copies", []):
+            for record in group.get("records", []):
+                target = str(record.get("target", "")).replace("\\", "/")
+                if target.startswith(HISTORY_AREA + "/"):
+                    claims.setdefault(target, HISTORY_COPIES + ":target")
+    return claims
+
+
+def ledger_self_names() -> set:
+    """The only paths allowed to be unclaimed: a ledger, or the JSON its own run wrote beside it."""
+    names = {HISTORY_COPIES, Path(HISTORY_COPIES).with_suffix(".json").as_posix()}
+    for rel, _columns in HISTORY_CLAIM_COLUMNS:
+        names.add(rel)
+        names.add(Path(rel).with_suffix(".json").as_posix())
+    return names
+
+
+def unclaimed_history_findings(tracked: list, claims: dict, exempt=HISTORY_SELF_CLAIM) -> list:
+    """History bytes no ledger names, minus the claimants themselves -- and the exemption is checked.
+
+    Split out so a planted population can drive it: a guard that can only be reached with the
+    real 5,964-file history in place has never been seen to refuse anything.
+    """
+    findings = ["HISTORY_BYTES_UNCLAIMED " + rel for rel in tracked
+                if rel not in claims and rel not in exempt]
+    legitimate = ledger_self_names()
+    findings += ["HISTORY_CLAIM_EXEMPTION_NOT_A_LEDGER " + name for name in exempt
+                 if name not in legitimate]
+    return findings
+
+
+def check_history_claims() -> list:
+    """The history area's anti-drift invariant: nothing in it is unnamed by a register."""
+    tracked, findings = tracked_history_files()
+    if findings:
+        return findings
+    return unclaimed_history_findings(tracked, history_claims())
+
+
 def check_archive_coverage() -> list:
     """The anti-drift invariant: no archive object may sit in "we have not decided where it goes".
 
@@ -505,6 +605,10 @@ def main(argv=None) -> int:
         findings += check_figures(args.entry)
         findings += check_authority_index()
         findings += check_archive_coverage()
+        history_tracked, history_findings = tracked_history_files()
+        history_claims_map = history_claims() if not history_findings else {}
+        findings += history_findings or unclaimed_history_findings(
+            history_tracked, history_claims_map)
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(json.dumps({"verdict": "REFUSED", "error": "%s: %s" % (type(exc).__name__, exc),
                           "root": str(ROOT)}, ensure_ascii=False))
@@ -513,6 +617,9 @@ def main(argv=None) -> int:
                       "root": str(ROOT),
                       "findings": findings,
                       "finding_count": len(findings),
+                      "history_area": {"tracked_files": len(history_tracked),
+                                       "named_by_a_ledger": len(history_claims_map),
+                                       "self_claimed_ledgers": len(HISTORY_SELF_CLAIM)},
                       "machine_bound_citations_not_required_in_a_clone": machine_only,
                       "figures_derived": len(derive_figures())},
                      ensure_ascii=False, indent=2))

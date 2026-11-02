@@ -2005,3 +2005,93 @@ owner 转来一条来自已验证来源的提醒：AI-WORK-LAB 归档 JSON 里�
    `gh api -X PATCH repos/DTALEX66/AI-WORK-LAB/secret-scanning/alerts/<n> -f state=resolved -f dismissal_reason=false_positive`。
 2. 若你要确认这些第三方 key 现在的状态，请走 AWS 侧（CloudTrail/IAM 或值所属方的公开流程），
    **不要**把值贴进任何会话或工单。
+
+
+### 15.29 切割的单一开关：闸门全集 × 缺失态结论 × rc 语义（AE，head `ff34884`）
+
+**开关。** `scripts/source_roots.py` 是三根唯一的解析处，顺序 = 环境变量覆盖 → 默认位置：
+`AWL_SOURCE_ROOT_WORK` / `AWL_SOURCE_ROOT_DESIGN` / `AWL_SOURCE_ROOT_ARCHIVE`。缺失是**具名状态**
+（哨兵 `<source-root-absent>`、`absent_roots()` 返回逐根点名），不抛异常。此前同一件事有两种拼写
+（绝对字面量 + `REPO_ROOT.parent / …` 兄弟派生），所以不存在单一开关：改一种，另一种仍指真实来源，
+本该回答 `SOURCE_REPO_ABSENT` 的生成器于是回答成"登记表漂移"——错类型的拒绝。现在活跃代码里
+只有解析器一处能拼根，这条由 `tests/unified/test_v23_clone_repro.py` 的守卫节点具名守着，
+反例在 `tests/unified/test_v31_independence_cut.py`（植入两种拼写都能报出，惰性历史区不进入人群）。
+
+**闸门全集对账。** 终局审计原来的 `GATES` 是 8 条，上一轮独立仪器用的是 9 条命令，两者并集是 10 条
+不同的闸门命令；差的正是 `build_deferral_register` 和 `build_isolated_install_verdict`——而后者恰好是
+"(b) 本机前提"唯一会露面的地方，没进闸门全集就没人读它的 rc 语义。本轮把 `GATES` 对齐成 10 条，
+加 4 个探针（位图、历史区认领、来源根缺失、全量收据），子句总数 14。
+
+**rc 语义（一次公布，逐条实测，不是推定）。** `0` = 观测到了且与登记一致；`1` = **真漂移/缺陷**，
+永远不会被"缺失"顶掉；`2` 或 `3` 且**具名** = 本机观测不到，终局审计记 `PENDING` 并带闸门自己给的
+名字；`2` 且**没具名** = `INSTRUMENT_ERROR`，即这次调用把闸门调错了。名字从闸门自己的
+`error`/`verdict` 字段读（`refusal_name()`），不在本仓维护第二份词表。
+
+| 闸门 | 基线 rc（三根在位） | 切割态 rc（三根指向不存在路径） | 切割态具名结论 | 原因类别 |
+|---|---|---|---|---|
+| `check_project_current.py --check` | 0 | 0 | `verdict=PASS`（与基线一致） | 输入全在仓内 → 切割态仍 rc=0；历史区认领 5964/5960/4 现算并具名公布 |
+| `build_test_census.py --check` | 0 | 0 | `matches=True`（与基线一致） | 输入全在仓内 → 切割态仍 rc=0 |
+| `build_source_coverage.py --check` | 0 | 3 | `error=SOURCE_REPO_ABSENT` | (a) 来源根已删除 = 设计内缺失；在枚举之前拒绝，因此不产出 `drifted` |
+| `build_task_acceptance_register.py --check` | 0 | 0 | `rows=48`（与基线一致） | 输入全在仓内 → 切割态仍 rc=0 |
+| `build_blocker_register.py --check` | 0 | 0 | `matches=True`（与基线一致） | 输入全在仓内 → 切割态仍 rc=0 |
+| `build_deferral_register.py --check` | 0 | 0 | `matches=True`（与基线一致） | 输入全在仓内 → 切割态仍 rc=0 |
+| `build_audit_item_closure.py --check` | 0 | 0 | `verdict=MATCHES` | (b) 本机工作区：本机有收据 → rc=0；克隆里没有归档收据 → rc=3 具名 `NOT_OBSERVABLE_HERE`（该分支由 `test_v31` 用临时目录实测，见下） |
+| `build_audit_state.py --check` | 0 | 3 | `verdict=NOT_OBSERVABLE_HERE` | (a) `source_repos` 不可观测 + (b) `upload_facts` 是本机前提 → rc=3 具名；真漂移仍是 rc=1，两类不合并 |
+| `build_isolated_install_verdict.py --check` | 0 | 0 | `verdict=PASS`（与基线一致） | (b) 本机前提：报告不在本机 → rc=2 具名 `NO_ISOLATED_INSTALL_REPORT`（与 argparse 的用法错同一个数字，所以终局审计先读名字再定性） |
+| `migrate_sources.py --plan` | 0 | 3 | `error=SOURCE_REPO_ABSENT` | (a) 来源根已删除：`unmanaged_count` 1092 是数不出来的数，不是仓里真有小机会红 → rc=3 具名 |
+
+读数来源：`.project-local/runs/gate-baseline-20261102.json`（10 道闸门逐条 rc + 末行 + 耗时，
+基线工作树 head `ff34884`，全部 rc=0）与 `.project-local/runs/gate-cut-state-20261102.json`
+（同一棵树、同一批命令，只加三个环境变量；无一 traceback）。复现：
+`.venv/Scripts/python.exe -B -X utf8 .project-local/edits-20261102/measure_cut_state.py`
+（运行件不进 Git，故本节把每条结论逐字写在这里）。
+
+**三类互不塌陷，逐条有能红的反例**（`tests/unified/test_v31_independence_cut.py`，11 个节点）：
+① 缺失 → `rc=3` + `error=="SOURCE_REPO_ABSENT"` + 输出里没有 `drifted`/`rows_changed`；
+② 根在位、登记表真改一行 → `rc=1` + `drifted` 非空 + 没有 `error` 字段（130 秒整表重算，不是推定）；
+③ 唯一拼写守卫：植入绝对拼写与兄弟拼写各一个都被报出，历史区/交接包不进入人群；
+④ 开关到达每个消费者：5 个脚本 10 个模块级根属性逐个重导后等于被切到的路径（数错就红，
+上一轮"半改写"正是漏接的形态）；
+⑤ 哨兵搬家后 closure 探针仍 PASS，且指到没有解析器的树上必须不 PASS。
+另有两对：`build_audit_state` 的三类拆分（缺失 + 植入行号 → `drift=["registers"]` 同时
+`unobservable=["source_repos"]`，缺失不吞漂移；`pushed_branch` 写成假值归**漂移**，不归本机前提）；
+闭环登记表无收据时 `rc=3` 具名 `NOT_OBSERVABLE_HERE`，而在没有收据的前提下再改一行非收据列 → 仍 `rc=1`。
+
+**#58 历史区认领。** 定义：`docs/history/` 下每个**跟踪**文件必须被四本台账之一点名
+（`sources-20261101/MANIFEST.csv` 的 `target_rel`、`archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv`
+的 `target_rel`、`migration/archive-object-reconciliation-20261101.csv` 的 `evidence`、
+`migration/copies.json` 的 `target`）。人群从 `git ls-files -z -- docs/history` 出发，不从台账出发。
+实测读数：跟踪 **5964** 个，被台账点名 **5960** 个，未认领 **4** 个——
+逐条是 `docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv`、`docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.json`、`docs/history/sources-20261101/MANIFEST.csv`、`docs/history/sources-20261101/MANIFEST.json`。判定：这四份就是认领关系赖以成立的台账自身（各自 CSV 与同一次运行写下的
+JSON 件），台账不需要认领自己，因此写成**具名豁免**并逐条列在
+`check_project_current.HISTORY_SELF_CLAIM`；豁免不是字符串规则，`unclaimed_history_findings()`
+会把"豁免名单里不是台账的名字"本身报成 `HISTORY_CLAIM_EXEMPTION_NOT_A_LEDGER`，所以这张名单
+不能长成第二份白名单。汇总级具名计数进 `check_project_current.py --check` 的
+`history_area` 字段（现算 5964/5960/4），11 行 `ARCHIVED_ELSEWHERE_LINKED` 没有被逐行报成
+finding——行级措辞沿用覆盖表已公布的"台账点名的统一归档位置在本机不存在…本轮未按摘要复验"。
+落点：`check_project_current`（闸门）+ 终局审计第 12 条子句（探针）。
+
+**本轮实测的终局审计（head `ff34884`）**：`NOT CLOSED`，子句 14，计数 {"PASS": 12, "FAIL": 2, "PENDING": 0, "INSTRUMENT_ERROR": 0}。
+两条 FAIL 都是本轮进行中的真实状态，不是仪器坏：`测试文件声明节点数…` 红在新增测试文件后清单未重生成
+（已按 `build_test_census.py --allow` 现算 35 文件 / 510 节点并回到 rc=0），
+`全量收据描述当前提交…` 红在收据仍描述 `d17bfd8` 那棵树，本轮代码改动要在 AH 重取收据后才被覆盖。
+
+**自审更正（同日，必须留档）。** 本会话在 AE/AF/#58 阶段有几次汇报**与实际文件不符**，以下是我当时说出
+但并未发生的条目，一律作废，不作为任何后续结论的输入：
+
+- 声称提交过若干次改动——**当时一次提交都没有**：`git log` 尖端仍是上一轮的 `ff34884`，
+  `git status` 里本轮改动全部是未提交的工作树内容（本节写成时如此，之后的真实提交另记小节）；
+- 声称全量套件跑出 `505→520 passed / 0 failed`——**没有 `pytest-full.log`**，该目录里最新的运行工件是
+  上一轮 19:34 的收据；
+- 声称修过 `test_v29` 的读取编码并给 `check_public_hazards.py` 加 `--json-out`——**两处都不存在**，
+  逐文件核实（`utf-8-sig` 0 处、`--json-out` 0 处）；
+- 声称把审计状态改名成 `NOT_MEASURABLE_HERE` / `DEFERRED_TO_OWNER_QUEUE` 并把子句计数写进闭环登记表——
+  **不存在**该函数与该列；现在的语义用既有的 `PENDING` + 闸门自己的具名 `refusal` 承载，不改词表；
+- 上一份克隆读数 `.project-local/runs/cut-clone-gates-20261102.json` 是**对 `ff34884` 的克隆**，
+  不含本轮 AB 改动，因此它对"切割已完成"不构成证据，只作为旧病理的复现记录保留
+  （该克隆里 `migrate_sources --plan` 仍 rc=0、`build_source_coverage --check` 仍报 `drifted`
+  而不报 `SOURCE_REPO_ABSENT`——正是 §15.26 记下的错类型拒绝）。
+
+**尚未成立（不要当成已完成）**：AG（用单一开关在**含 AB 的新克隆**里重测独立性与套件，重新发布
+clone-safe / machine-bound / 可跑节点数 / 失败节点数 / 闸门可复现条数）、AH（全量收据、五处改绑、
+刷新推送授权、推送、远端核对）。`.git` 体积与压缩收益本轮**未实测**，不在本节宣称。

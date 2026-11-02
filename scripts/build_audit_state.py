@@ -32,10 +32,11 @@ REGISTERS = ("migration/task-acceptance.csv", "migration/route-surface.csv",
              # source-coverage registers whose row/path difference is now an invariant
              "migration/audit-item-closure.csv",
              "migration/source-coverage-work.csv", "migration/source-coverage-design.csv")
-SOURCES = {"work": pathlib.Path(r"D:\All projects\WORK-LAB"),
-           "design": pathlib.Path(r"D:\All projects\DESIGN-LAB")}
 sys.path.insert(0, str(ROOT / "scripts"))
 import candidate_snapshot  # noqa: E402  same 口径 as the closure clause
+import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
+
+SOURCES = {"work": source_roots.work_root(), "design": source_roots.design_root()}
 
 
 #: What ``git()`` returns when the requested cwd is not a directory on this machine. The
@@ -44,7 +45,7 @@ import candidate_snapshot  # noqa: E402  same 口径 as the closure clause
 #: the machines the audit entry invites to re-run it: a clone of a repo whose two read-only
 #: sources have been archived away. A named sentinel instead, so the record can say "this
 #: machine could not observe it" and ``--check`` can still print a verdict.
-SOURCE_ROOT_ABSENT = "<source-root-absent>"
+SOURCE_ROOT_ABSENT = source_roots.SOURCE_ROOT_ABSENT
 #: Field added to a ``source_repos`` entry that could not be observed. Like ``register_rows``'
 #: ``missing: True`` it appears only in the failure case, so a machine that does have the
 #: sources rebuilds the record byte-for-byte and ``--check`` still answers 0 there.
@@ -223,15 +224,81 @@ def _without_rotating(document: dict) -> dict:
 
 
 def _stale_sections(tracked: dict, rebuilt: dict) -> list[str]:
-    """Name the top-level sections that disagree, so a mismatch says *what* is stale.
-
-    Without this a machine that has lost the two read-only sources sees ``matches: false``
-    and cannot tell a genuinely old record from one whose source-repo digests it simply
-    cannot reproduce here. The comparison stays strict -- nothing is folded away to make the
-    verdict greener -- only its reason becomes readable.
-    """
+    """Top-level sections that disagree. Kept as the raw comparison; the taxonomy is below."""
     before, after = _without_rotating(tracked), _without_rotating(rebuilt)
     return sorted(key for key in set(before) | set(after) if before.get(key) != after.get(key))
+
+
+#: The fields of ``source_repos`` that a machine without that repository cannot produce: which
+#: root it looked at, what HEAD it read there, and the note saying it could not. A disagreement
+#: in any *other* field is drift, and an absent root must not be allowed to excuse it.
+ABSENCE_FIELDS = frozenset({"root", "head_observed", SOURCE_NOT_OBSERVED_KEY})
+#: The fields of ``upload_facts`` that describe this machine rather than the repository: the
+#: pre-push hook is not in Git, and the remote wiring a clone inherits points at wherever it was
+#: cloned from. ``pushed_branch`` and the bypass facts are deliberately absent from this list --
+#: they are claims about the project, so writing them as a false value is drift, not a missing
+#: prerequisite.
+MACHINE_LOCAL_FACTS = frozenset({"remote_name", "remote_url", "remote_ref_observed",
+                                 "default_branch", "remote_branches_observed", "prepush_hook",
+                                 "core_hooks_path"})
+
+
+def _changed_fields(before, after) -> set | None:
+    """Which keys disagree inside one section, or ``None`` if the section is a bare value."""
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return None
+    return {key for key in set(before) | set(after) if before.get(key) != after.get(key)}
+
+
+def _source_repos_is_unobservable(before, after) -> bool:
+    """Every disagreement in ``source_repos`` sits inside a root this machine could not read.
+
+    The section is keyed by repository, so the comparison is one level deeper than a section:
+    ``{"work": {...}, "design": {...}}`` disagreeing in a *field* those entries hold is drift,
+    while disagreeing only in ``root``/``head_observed``/``not_observed`` for a repository the
+    rebuilt record itself says it could not open is not.
+    """
+    before, after = before or {}, after or {}
+    if set(before) != set(after):
+        return False
+    absent = {value[SOURCE_NOT_OBSERVED_KEY].get("repository") for value in after.values()
+              if isinstance(value, dict) and value.get(SOURCE_NOT_OBSERVED_KEY)}
+    if not absent:
+        return False
+    for name in sorted(after):
+        diff = _changed_fields(before.get(name), after.get(name))
+        if not diff:
+            continue
+        if name not in absent or not diff <= ABSENCE_FIELDS:
+            return False
+    return True
+
+
+def _section_classes(tracked: dict, rebuilt: dict) -> tuple[list[str], list[str], list[str]]:
+    """Split the disagreement into drift / unobservable / machine-prerequisite.
+
+    Three different answers, and collapsing them is what makes a deletion look like a defect:
+    ``drift`` means the published record no longer agrees with a tree this run could read, and is
+    the only class that returns 1. ``unobservable`` means a read-only source root is not on this
+    machine, and ``prereq`` means the section records the hook or the remote of *this* checkout.
+    Both of the latter return 3 and name themselves, so a reviewer who clones the repository sees
+    "this machine cannot observe it" instead of a red that accuses the register.
+    """
+    before, after = _without_rotating(tracked), _without_rotating(rebuilt)
+    drift, unobservable, prereq = [], [], []
+    for key in set(before) | set(after):
+        if before.get(key) == after.get(key):
+            continue
+        if key == "source_repos":
+            (unobservable if _source_repos_is_unobservable(before.get(key), after.get(key))
+             else drift).append(key)
+        elif key == "upload_facts":
+            fields = _changed_fields(before.get(key), after.get(key))
+            (prereq if fields is not None and fields <= MACHINE_LOCAL_FACTS
+             else drift).append(key)
+        else:
+            drift.append(key)
+    return sorted(drift), sorted(unobservable), sorted(prereq)
 
 
 def _absent_source_roots(document: dict) -> list[dict]:
@@ -256,16 +323,23 @@ def main(argv: list[str]) -> int:
     text = json.dumps(document, ensure_ascii=False, indent=2) + "\n"
     if args.check:
         tracked = json.loads(OUT.read_text(encoding="utf-8")) if OUT.is_file() else {}
+        drift, unobservable, prereq = _section_classes(tracked, document)
         sections = _stale_sections(tracked, document)
-        stale = bool(sections)
+        stale = bool(drift)
         absent = _absent_source_roots(document)
         # the ancestry claim worth checking is the one already published, not the rebuilt
         # document's own HEAD (that one is true by construction)
         published = tracked.get("audited_head_sha") or document["audited_head_sha"]
         ancestry = subprocess.run(["git", "merge-base", "--is-ancestor", published, "HEAD"],
                                   cwd=str(ROOT), capture_output=True, text=True)
-        print(json.dumps(dict(matches=not stale, stale=stale,
-                              stale_sections=sections,
+        print(json.dumps(dict(matches=not sections,
+                              stale=stale,
+                              stale_sections=drift,
+                              unobservable_sections=unobservable,
+                              prereq_sections=prereq,
+                              verdict=("DRIFT" if stale else
+                                       "NOT_OBSERVABLE_HERE" if unobservable or prereq
+                                       else "MATCHES"),
                               published_audited=published[:12],
                               audited=document["audited_head_sha"][:12],
                               head_is_ancestor=ancestry.returncode == 0,
@@ -273,7 +347,9 @@ def main(argv: list[str]) -> int:
                               folded_rotating=sorted(ROTATING_FIELDS)
                               + ["upload_facts/" + key for key in ROTATING_NESTED]),
                          ensure_ascii=True))
-        return 1 if (stale or ancestry.returncode != 0) else 0
+        if stale or ancestry.returncode != 0:
+            return 1
+        return 3 if (unobservable or prereq) else 0
     OUT.write_text(text, encoding="utf-8", newline="\n")
     print(json.dumps(dict(written=str(OUT), audited_head_sha=document["audited_head_sha"],
                           candidate_files=document["audited_candidate_files"],

@@ -53,7 +53,7 @@ from pathlib import Path, PurePosixPath
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import build_f01_disposition as f01  # noqa: E402
+import build_f01_disposition as f01, source_roots  # noqa: E402
 
 WORK = f01.WORK_ROOT
 DESIGN = f01.DESIGN_ROOT
@@ -69,7 +69,7 @@ GENERATED_NAMES = {"package-lock.json", "yarn.lock", "uv.lock", "poetry.lock"}
 ARCHIVE_MANIFEST = (REPO_ROOT / "docs" / "history" / "sources-20261101" / "MANIFEST.csv")
 ARCHIVE_LEDGER_REL = ARCHIVE_MANIFEST.relative_to(REPO_ROOT).as_posix()
 #: The read-only unified archive outside this repository (INTEGRATION_POLICY §5).
-UNIFIED_ARCHIVE_ROOT = REPO_ROOT.parent / "Project Archiving"
+UNIFIED_ARCHIVE_ROOT = source_roots.archive_root()
 
 #: The four owner-rule destinations this register publishes. Closed vocabulary: the
 #: guard in tests/unified/test_v14_registers.py compares this enumeration with the row

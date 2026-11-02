@@ -70,6 +70,8 @@ from urllib.parse import quote
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
 DESIGN_PACKAGE_ROOT = REPO_ROOT / "domains" / "design"
 if str(DESIGN_PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(DESIGN_PACKAGE_ROOT))
@@ -155,7 +157,7 @@ def protected_reason(candidate: Path) -> str | None:
     for segment, who in PROTECTED_NAME_SEGMENTS:
         if segment in folded:
             return f"{segment.strip('/')} belongs to {who}"
-    for repo in (REPO_ROOT.parent / "WORK-LAB", REPO_ROOT.parent / "DESIGN-LAB"):
+    for repo in (source_roots.work_root(), source_roots.design_root()):
         try:
             if not repo.exists():
                 continue

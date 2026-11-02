@@ -37,12 +37,14 @@ import sys
 import pytest
 
 TARGET_ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
 CHECKER = TARGET_ROOT / "scripts" / "check_adapter_conformance.py"
 VERDICT = TARGET_ROOT / "config" / "adapter-conformance-verdict.json"
 HARNESS = TARGET_ROOT / "domains" / "work" / "workflow_core" / "adapter_conformance.py"
 REGISTRY = TARGET_ROOT / "config" / "adapter-registry.json"
 CONFORMANCE = TARGET_ROOT / "config" / "capability-conformance.json"
-WORK_SOURCE = TARGET_ROOT.parent / "WORK-LAB" / "packages/client-neutral-core/scripts" / \
+WORK_SOURCE = source_roots.work_root() / "packages/client-neutral-core/scripts" / \
               "adapter_conformance.py"
 
 

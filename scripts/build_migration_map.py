@@ -32,9 +32,12 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-TARGET_ROOT = Path(r"D:\All projects\AI-WORK-LAB")
-WORK_SOURCE_ROOT = Path(r"D:\All projects\WORK-LAB")
-DESIGN_SOURCE_ROOT = Path(r"D:\All projects\DESIGN-LAB")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
+
+TARGET_ROOT = Path(__file__).resolve().parents[1]
+WORK_SOURCE_ROOT = source_roots.work_root()
+DESIGN_SOURCE_ROOT = source_roots.design_root()
 
 HANDOFF_DIRNAME = "AI-WORK-LAB_HANDOFF_20261029"
 OUT_DIR = Path("migration")

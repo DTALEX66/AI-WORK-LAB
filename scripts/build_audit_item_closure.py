@@ -458,6 +458,19 @@ def _published_rows() -> list[dict]:
         return list(csv.DictReader(handle))
 
 
+def archived_receipt_copy(named: str):
+    """The archived receipt the register names, or ``None`` where it was never written.
+
+    This is the single lookup that decides whether the three receipt-derived columns can be
+    reproduced on this machine -- a fresh clone has no local working directory, so the archived
+    copy is not there either. It is a function so a test can drive the no-receipt branch by
+    redirecting this call instead of retargeting ``TARGET_ROOT``, which half a dozen other reads
+    depend on.
+    """
+    path = TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure" / named
+    return path if path.is_file() else None
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true",
@@ -489,9 +502,8 @@ def main(argv: list[str]) -> int:
         if named and len(values) == 1:
             value = values.pop()
             if value and not value.startswith("未在本机测量"):
-                archived = (TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure"
-                            / value)
-                if archived.is_file():
+                archived = archived_receipt_copy(value)
+                if archived is not None:
                     document = json.loads(archived.read_text(encoding="utf-8-sig"))
                     head = document.get("head_commit", "")
                     if not head or subprocess_ancestor(head):
@@ -540,12 +552,23 @@ def main(argv: list[str]) -> int:
         receipt_present=bool(receipt),
         receipt_columns_exempted=sorted(exempted),
         register_drift=drift)
+    summary["verdict"] = ("DRIFT" if drift else
+                          "NOT_OBSERVABLE_HERE" if args.check and not receipt else "MATCHES")
     if args.json_out:
         Path(args.json_out).write_text(json.dumps(dict(summary=summary, rows=rows),
                                                   ensure_ascii=False, indent=2),
                                        encoding="utf-8", newline="\n")
     print(json.dumps(summary, ensure_ascii=True, indent=2))
-    return 1 if (downgraded or drift) else 0
+    if downgraded or drift:
+        # a receipt that cannot be read never excuses a register that disagrees with its own
+        # non-receipt columns, and never excuses a PASS that was downgraded to unresolved
+        return 1
+    if args.check and not receipt:
+        # The three receipt-derived columns are exempted from the comparison by necessity, so a
+        # clone answering 0 here would be a silent pass on the binding this register exists to
+        # publish. The exemption is named and the exit code says what was not observable.
+        return 3
+    return 0
 
 
 if __name__ == "__main__":

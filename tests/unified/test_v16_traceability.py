@@ -40,6 +40,8 @@ from pathlib import Path
 import pytest
 
 TARGET_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
 VENV_PYTHON = str(TARGET_ROOT / ".venv" / "Scripts" / "python.exe")
 BUILDER = TARGET_ROOT / "scripts" / "build_requirement_traceability.py"
 HANDOFF = TARGET_ROOT / "AI-WORK-LAB_HANDOFF_20261029"
@@ -740,7 +742,7 @@ def test_absent_rows_cite_evidence_for_saying_the_surface_never_existed():
     deferral_ids = {entry["id"] for entry in
                     json.loads((TARGET_ROOT / "migration/deferral-register.json")
                                .read_text(encoding="utf-8-sig"))["entries"]}
-    work_source = TARGET_ROOT.parent / "WORK-LAB"
+    work_source = source_roots.work_root()
     rows = read_register(REGISTERS["ui-entry"])
     resolved = 0
     for row in rows:

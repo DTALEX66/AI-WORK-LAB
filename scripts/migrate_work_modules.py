@@ -43,7 +43,10 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-WORK_SOURCE_ROOT = Path(r"D:\All projects\WORK-LAB")
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
+
+WORK_SOURCE_ROOT = source_roots.work_root()
 SCRIPTS = WORK_SOURCE_ROOT / "packages" / "client-neutral-core" / "scripts"
 SERVICES = WORK_SOURCE_ROOT / "services" / "orchestration"
 REGISTER_DIR = REPO_ROOT / ".project-local" / "runs" / "f01-migration"

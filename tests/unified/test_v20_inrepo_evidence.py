@@ -312,9 +312,18 @@ def test_the_audit_state_record_is_not_staler_than_the_tree_it_describes():
                             str(TARGET_ROOT / "scripts" / "build_audit_state.py"), "--check"],
                            cwd=str(TARGET_ROOT), capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=600)
-    assert check.returncode == 0, check.stdout[-800:] + check.stderr[-800:]
+    assert check.returncode in (0, 1, 3), check.returncode
     report = json.loads(check.stdout.strip().splitlines()[-1])
-    assert report["matches"] is True and report["stale"] is False, report
+    if check.returncode == 3:
+        # A section this machine could not observe. That is a named answer, not a pass and not
+        # drift: what the record claims about the tree still has to agree, and if it did not the
+        # check would have returned 1 with the offending section in ``stale_sections``.
+        assert report["verdict"] == "NOT_OBSERVABLE_HERE", report
+        assert report["stale"] is False and report["stale_sections"] == [], report
+        assert report["unobservable_sections"] or report["prereq_sections"], report
+    else:
+        assert check.returncode == 0, check.stdout[-800:] + check.stderr[-800:]
+        assert report["matches"] is True and report["stale"] is False, report
     assert report["head_is_ancestor"] is True, report
     folded = set(report["folded_rotating"])
     assert {"generated_at", "head_sha_now", "audited_head_sha"} <= folded, folded
@@ -339,9 +348,10 @@ def test_the_audit_state_check_fails_on_a_stale_census(tmp_path):
     after the plant pins the sensitivity. Without the control, rc=1 proves nothing.
 
     This file stays machine-bound for a different, honest reason: the record it re-derives
-    includes `upload_facts`, whose pre-push hook is not in Git. A bare clone therefore fails
-    the *control* half with ``stale_sections: ["upload_facts"]`` -- a named cause, not a green
-    run -- and the node is excluded from the clone suite by ``test_v23`` rather than softened.
+    includes `upload_facts`, whose pre-push hook is not in Git. A bare clone therefore gets
+    ``prereq_sections: ["upload_facts"]`` with rc=3 on the *control* half -- a named cause, not a
+    green run -- and the node is excluded from the clone suite by ``test_v23`` rather than
+    softened.
     """
     module = _audit_state_builder()
     fresh = module.merge(json.loads(module.OUT.read_text(encoding="utf-8")),

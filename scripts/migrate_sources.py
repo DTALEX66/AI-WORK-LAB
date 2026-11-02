@@ -53,9 +53,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
-TARGET_ROOT = Path(r"D:\All projects\AI-WORK-LAB")
-WORK_SOURCE_ROOT = Path(r"D:\All projects\WORK-LAB")
-DESIGN_SOURCE_ROOT = Path(r"D:\All projects\DESIGN-LAB")
+sys.path.insert(0, str(Path(__file__).resolve().parent)); import source_roots  # noqa: E402,E702
+TARGET_ROOT = Path(__file__).resolve().parents[1]
+WORK_SOURCE_ROOT, DESIGN_SOURCE_ROOT = source_roots.work_root(), source_roots.design_root()
 
 OUT_MANIFEST = Path("migration/copies.json")
 
@@ -1228,10 +1228,28 @@ def main(argv=None) -> int:
     if args.json_out is not None:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"target_root": str(TARGET_ROOT), "summary": summary,
-                      "unmanaged_count": len(plan["unmanaged"])}, ensure_ascii=False))
+    payload = {"target_root": str(TARGET_ROOT), "summary": summary,
+               "unmanaged_count": len(plan["unmanaged"])}
+    # Both of the plan's claims are enumerations of the source trees: which bytes belong where,
+    # and which file inside a declared destination this tool does not intend. With a source root
+    # missing, `unmanaged` counts destinations it could not enumerate -- 1,092 of them on the
+    # 2026-11-02 cut run -- so neither the number nor a rc=0 is a statement about this
+    # repository. Same name and same rc as the coverage builder uses, so one absent-source
+    # reading does not arrive at a reviewer under two different vocabularies.
+    missing = source_roots.absent_roots()
+    if [entry for entry in missing if entry["name"] in ("work", "design")]:
+        payload.update({"error": "SOURCE_REPO_ABSENT", "verdict": "NOT_RECOMPUTABLE_HERE",
+                        "absent": [{"label": entry["name"], "root": entry["root"]}
+                                   for entry in missing
+                                   if entry["name"] in ("work", "design")],
+                        "note": ("run this plan where WORK-LAB and DESIGN-LAB are present; the "
+                                 "unmanaged count above is a destination this tool could not "
+                                 "enumerate, not a file nobody owns")})
+    print(json.dumps(payload, ensure_ascii=False))
     if args.apply:
         return 0
+    if payload.get("error") == "SOURCE_REPO_ABSENT":
+        return 3
     unattested = report["rework"]["unattested"]
     return 1 if (summary.get("PATCH_ANCHOR_ABSENT") or unattested) else 0
 

@@ -32,14 +32,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PY = sys.executable
 RASTER = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tiff", ".ico")
-# each gate is named by the artefact that owns the claim, not by this script's opinion
+# each gate is named by the artefact that owns the claim, not by this script's opinion.
+# 2026-11-02: the set is the whole gate surface, aligned with the independence instrument. The
+# two that were missing here (the deferral register and the isolated-install verdict) are exactly
+# the two whose clone-state readings a reviewer could not otherwise see.
 GATES = (
     ("顶层入口数字与引用现算相等", ("scripts/check_project_current.py", "--check")),
     ("测试文件声明节点数没有被悄悄改小", ("scripts/build_test_census.py", "--check")),
     ("来源文件去向与登记枚举差集为 0", ("scripts/build_source_coverage.py", "--check")),
     ("验收子句登记与生成一致", ("scripts/build_task_acceptance_register.py", "--check")),
     ("阻断与延期登记与生成一致", ("scripts/build_blocker_register.py", "--check")),
+    ("延期登记与生成一致", ("scripts/build_deferral_register.py", "--check")),
     ("审计项闭环登记表绑在那张命名收据上", ("scripts/build_audit_item_closure.py", "--check")),
+    ("离线安装回执与跟踪记录一致", ("scripts/build_isolated_install_verdict.py", "--check")),
     ("审计状态记录不比当前树旧", ("scripts/build_audit_state.py", "--check")),
     ("迁移计划无未登记目标", ("scripts/migrate_sources.py", "--plan")),
 )
@@ -53,6 +58,35 @@ def git(root, *args):
     return run(["git", *args], cwd=root, timeout=600).stdout.strip()
 
 
+def probe_history_bytes_claimed(root: Path) -> dict:
+    """#58: every tracked byte under the history area is named by one of the four ledgers.
+
+    Driven as a subprocess against the tree being audited, because ``check_project_current`` pins
+    its own root at import: importing it here would audit this checkout while claiming to audit
+    the clone. The population comes from ``git ls-files``, never from a ledger -- starting from
+    the ledger would only prove the ledger agrees with itself.
+    """
+    driver = ("import json,sys;sys.path.insert(0,'scripts');import check_project_current as c;"
+              "tracked, errors = c.tracked_history_files();"
+              "claims = {} if errors else c.history_claims();"
+              "print(json.dumps({'tracked': len(tracked), 'claimed': len(claims),"
+              "'findings': errors or c.unclaimed_history_findings(tracked, claims)}))")
+    completed = run([PY, "-B", "-X", "utf8", "-c", driver], cwd=root, timeout=900)
+    if "Traceback" in completed.stderr or completed.returncode != 0:
+        return {"status": "INSTRUMENT_ERROR", "rc": completed.returncode,
+                "stderr_tail": completed.stderr.strip()[-300:]}
+    try:
+        answer = json.loads(completed.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        return {"status": "INSTRUMENT_ERROR", "error": "the probe printed no JSON answer",
+                "stdout": completed.stdout.strip()[:200]}
+    return {"status": "PASS" if not answer["findings"] else "FAIL",
+            "tracked_history_files": answer["tracked"],
+            "named_by_a_ledger": answer["claimed"],
+            "findings": answer["findings"][:12],
+            "finding_count": len(answer["findings"])}
+
+
 def probe_raster_not_tracked(root: Path) -> dict:
     listed = git(root, "ls-files", "--", "docs/history", "docs/authority-202610")
     hits = [line for line in listed.splitlines() if line.lower().endswith(RASTER)]
@@ -61,26 +95,47 @@ def probe_raster_not_tracked(root: Path) -> dict:
 
 
 def probe_source_root_absent(root: Path) -> dict:
-    """Ask the real probe against a root that does not exist: it must answer, not raise."""
-    script = (Path(root) / "scripts" / "build_audit_state.py").read_text(encoding="utf-8")
-    match = re.search(r"^SOURCE_ROOT_ABSENT\s*=\s*(.+)$", script, re.MULTILINE)
-    missing = (root.drive or "D:") + "\\awl-gone-WORK-LAB"
-    driver = ("import pathlib,sys;sys.path.insert(0,r'scripts');import build_audit_state as m;"
-              "print(m.git(['rev-parse','HEAD'],cwd=pathlib.Path(r'" + missing + "')))")
+    """Drive the real generator through the environment switch and require a named answer.
+
+    The first version scraped ``SOURCE_ROOT_ABSENT`` out of ``build_audit_state.py``'s text and
+    hard-coded a drive letter, so it proved that one path on one machine did not raise -- and
+    proved nothing about the switch that is the whole point of the cut. Now the probe sets the
+    override the same way a reviewer would, asks the resolver what root it settled on, and
+    fails if the answer is a different path, a traceback, or a record without the named
+    absence.
+    """
+    driver = (
+        "import json, os, sys; sys.path.insert(0, 'scripts');"
+        "import source_roots as sr;"
+        "missing = sr.sample_absent_root();"
+        "os.environ[sr.ENVIRONMENT['work']] = str(missing);"
+        "import build_audit_state as m;"
+        "record = m.source_repo_record('work', sr.work_root());"
+        "print(json.dumps({'asked': str(missing), 'resolved': str(sr.work_root()),"
+        "'head_observed': record['head_observed'], 'sentinel': sr.SOURCE_ROOT_ABSENT,"
+        "'named_absence': bool(record.get(m.SOURCE_NOT_OBSERVED_KEY))}))"
+    )
     completed = run([PY, "-B", "-X", "utf8", "-c", driver], cwd=root, timeout=300)
-    crashed = "NotADirectoryError" in completed.stderr or completed.returncode != 0
-    sentinel = match.group(1).strip().strip('"') if match else None
-    if crashed:
-        status = "FAIL"
-    elif not sentinel:
-        status = "FAIL"
-    elif sentinel not in completed.stdout:
-        status = "FAIL"
-    else:
-        status = "PASS"
-    return {"status": status, "asked_about": missing, "sentinel_declared": sentinel,
-            "rc": completed.returncode, "stdout": completed.stdout.strip()[:160],
-            "stderr_tail": completed.stderr.strip()[-200:]}
+    if "Traceback" in completed.stderr or completed.returncode != 0:
+        return {"status": "FAIL", "error": "crashed instead of answering",
+                "rc": completed.returncode, "stderr_tail": completed.stderr.strip()[-200:]}
+    try:
+        answer = json.loads(completed.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        return {"status": "INSTRUMENT_ERROR", "error": "the driver printed no JSON answer",
+                "rc": completed.returncode, "stdout": completed.stdout.strip()[:200],
+                "stderr_tail": completed.stderr.strip()[-200:]}
+    reasons = []
+    if answer["resolved"] != answer["asked"]:
+        reasons.append("the environment override did not reach the resolver")
+    if answer["head_observed"] != answer["sentinel"]:
+        reasons.append("the generator did not answer with the named sentinel")
+    if not answer["named_absence"]:
+        reasons.append("the record does not say which root this machine could not observe")
+    return {"status": "PASS" if not reasons else "FAIL",
+            "asked_about": answer["asked"], "sentinel_declared": answer["sentinel"],
+            "refusals": reasons, "rc": completed.returncode,
+            "stdout": completed.stdout.strip()[:160]}
 
 
 #: what may legitimately be committed after a receipt was taken: the rebind itself, the entry's
@@ -140,10 +195,37 @@ def probe_receipt_describes_this_commit(root: Path) -> dict:
             "digest": receipt["candidate_digest"][:16]}
 
 
+def refusal_name(completed) -> str | None:
+    """The word a gate itself uses for its refusal, read out of its own report.
+
+    A designed absence and a defect must not be told apart by this script's opinion, and a gate
+    that refuses without naming why is not a designed absence. Some gates print one JSON line and
+    some print an indented document, so both shapes are read; the name comes from the gate's own
+    ``error``/``verdict`` field, never from a table kept here.
+    """
+    for stream in (completed.stdout, completed.stderr):
+        text = (stream or "").strip()
+        if not text:
+            continue
+        for candidate in (text, text.splitlines()[-1]):
+            try:
+                payload = json.loads(candidate)
+            except ValueError:
+                continue
+            if isinstance(payload, dict):
+                for key in ("error", "verdict"):
+                    value = payload.get(key)
+                    if isinstance(value, str) and value.isupper():
+                        return value
+            break
+    return None
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=None,
-                       help="run the three unique probes against another checkout (for tests)")
+                       help="run the gates and the named probes against another checkout "
+                            "(this is how a clone is measured)")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
     root = args.root or ROOT
@@ -151,22 +233,41 @@ def main(argv=None) -> int:
     def gate(name, argv):
         """Run a gate that already owns its claim, and never call a broken caller a repo FAIL.
 
-        Exit 2 is argparse's usage error: if this script ever invokes a gate wrongly, the report has
-        to say INSTRUMENT_ERROR. The first version of this file did exactly that by accident -- it
-        splatted the flag string into characters and reported all eight gates as failing, which was
-        a bug in the caller, not eight regressions in the repository.
+        rc semantics, published once here because every gate must land in one of the four:
+        0 = it observed what it claims and agrees; 1 = it disagrees (a defect, never excused by
+        an absent root); 2 or 3 with a name = this machine could not run the observation at all,
+        recorded as PENDING so the verdict cannot silently become CLOSED; 2 with no name =
+        INSTRUMENT_ERROR, i.e. this caller invoked the gate wrongly. The first version of this
+        file did exactly that by accident -- it splatted the flag string into characters and
+        reported all gates as failing, which was a bug in the caller, not a regression here.
         """
         completed = run([PY, "-B", "-X", "utf8", str(root / argv[0]), *argv[1:]], cwd=root,
                         timeout=3600)
-        if completed.returncode == 2:
+        rc = completed.returncode
+        if rc == 0:
+            return {"clause": name, "status": "PASS", "rc": 0, "evidence": " ".join(argv)}
+        if rc == 1:
+            return {"clause": name, "status": "FAIL", "rc": rc,
+                    "note": "the gate disagrees; a missing prerequisite never lands here",
+                    "evidence": " ".join(argv),
+                    "stdout_tail": completed.stdout.strip()[-300:]}
+        named = refusal_name(completed)
+        if named:
+            return {"clause": name, "status": "PENDING", "rc": rc, "refusal": named,
+                    "reason": "this machine cannot observe what the gate measures",
+                    "evidence": " ".join(argv)}
+        if rc == 2:
             return {"clause": name, "status": "INSTRUMENT_ERROR", "rc": 2,
                     "stderr_tail": completed.stderr.strip()[-200:]}
-        return {"clause": name, "status": "PASS" if completed.returncode == 0 else "FAIL",
-                "rc": completed.returncode, "evidence": " ".join(argv)}
+        return {"clause": name, "status": "FAIL", "rc": rc, "evidence": " ".join(argv),
+                "stderr_tail": completed.stderr.strip()[-300:],
+                "note": "a non-zero rc that names nothing is not a designed absence"}
 
     clauses = [gate(name, (script, flag)) for name, (script, flag) in GATES]
     clauses.append({"clause": "截图照片不在仓库里（owner 2026-11-01）",
                     **probe_raster_not_tracked(root)})
+    clauses.append({"clause": "历史区每个字节都被某本台账点名（#58）",
+                    **probe_history_bytes_claimed(root)})
     clauses.append({"clause": "来源根缺失时给具名结论而不是崩溃",
                     **probe_source_root_absent(root)})
     clauses.append({"clause": "全量收据描述当前提交且没有失败", **probe_receipt_describes_this_commit(root)})
