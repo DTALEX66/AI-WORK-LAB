@@ -206,27 +206,71 @@ def test_the_two_consumers_that_resolve_at_call_time_also_follow_the_switch():
     interesting one: its answer is about a *candidate* path, so a deleted source root has to stop
     protecting paths under it while a real one still does -- otherwise the same string is
     protected here and writable there.
+
+    The unprotected probe is built at the *drive root*, not under the switched root. A clone made
+    by `test_v23` lives under the user's temp directory, so a switched root inherited from
+    `TARGET_ROOT.parent` sits inside the home directory -- and `protected_reason` refusing a home
+    path is the rule working, not the switch failing. Measured that way the node was red only
+    inside a clone, and green everywhere else.
+
+    Both halves run in their own process. Setting the variables in this one leaked: a later node
+    in the same run clones the repository and hands that process the inherited environment, so a
+    node that "restores it in a ``finally``" still decides what *elsewhere* the source roots are.
     """
-    for name, value in SWITCH.items():
-        os.environ[name] = value
-    try:
-        state = _module("build_audit_state")
-        assert str(state.SOURCES["work"]) == SWITCH[source_roots.ENVIRONMENT["work"]], state.SOURCES
-        assert str(state.SOURCES["design"]) == SWITCH[source_roots.ENVIRONMENT["design"]]
-        business = _module("migrate_business_data")
-        assert str(business.source_roots.work_root()) == SWITCH[source_roots.ENVIRONMENT["work"]]
-        outside = business.protected_reason(Path(GONE) / "services")
-        assert outside is None, (
-            "with the source root switched away, a path under the switched name is still called "
-            "protected, so the policy resolved something other than the switch: %s" % outside)
-    finally:
-        for name in SWITCH:
-            os.environ.pop(name, None)
-    real = source_roots.work_root()
-    if real.is_dir():
-        guarded = _module("migrate_business_data").protected_reason(real / "services")
-        assert guarded and "source repository" in guarded, (
-            "the real source root exists and its working tree is not protected: %r" % guarded)
+    driver = """
+import importlib.util, json, os, sys
+from pathlib import Path
+scripts = Path(sys.argv[1]); switched = sys.argv[2] == "switch"
+sys.path.insert(0, str(scripts))
+import source_roots as sr
+out = {}
+def load(name):
+    spec = importlib.util.spec_from_file_location(name + "_driver", scripts / (name + ".py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+state = load("build_audit_state")
+out["snapshotted_work"] = str(state.SOURCES["work"])
+out["snapshotted_design"] = str(state.SOURCES["design"])
+business = load("migrate_business_data")
+out["call_time_work"] = str(business.source_roots.work_root())
+out["resolved"] = str(sr.work_root())
+# a path that is nowhere near a home directory or a refused drive, so the only rule in play is
+# the one being tested
+probe = Path(sr.work_root().anchor) / ("awl-cut-probe-%d" % os.getpid()) / "services"
+out["probe"] = str(probe)
+out["probe_under_resolved_root"] = str(Path(sr.work_root()) / "services")
+out["protected"] = business.protected_reason(probe)
+out["protected_under_real_root"] = business.protected_reason(Path(sr.work_root()) / "services")
+print(json.dumps(out))
+"""
+
+    def ask(env_extra):
+        env = {**os.environ, **env_extra}
+        done = subprocess.run([sys.executable, "-B", "-X", "utf8", "-c", driver, str(SCRIPTS),
+                               "switch" if env_extra else "plain"],
+                              cwd=str(TARGET_ROOT), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", env=env, timeout=600)
+        assert done.returncode == 0, done.stderr[-600:]
+        return json.loads(done.stdout.strip().splitlines()[-1])
+
+    switched = ask(SWITCH)
+    expected = SWITCH[source_roots.ENVIRONMENT["work"]]
+    assert switched["snapshotted_work"] == expected, switched
+    assert switched["snapshotted_design"] == SWITCH[source_roots.ENVIRONMENT["design"]], switched
+    assert switched["call_time_work"] == expected, switched
+    assert switched["resolved"] == expected, switched
+    assert switched["protected"] is None, (
+        "a path outside every real root was called protected, so the answer did not come from "
+        "the switch: %s (%s)" % (switched["protected"], switched["probe"]))
+    plain = ask({})
+    assert plain["snapshotted_work"] != expected, (
+        "unsetting the switch changed nothing -- the switch is not what these consumers read")
+    if Path(plain["resolved"]).is_dir():
+        assert (plain["protected_under_real_root"]
+                and "source repository" in plain["protected_under_real_root"]), (
+            "the real source root exists and its working tree is not protected: %r"
+            % plain["protected_under_real_root"])
 
 
 def test_the_migrate_plan_refuses_for_the_root_not_for_its_own_numbering():
