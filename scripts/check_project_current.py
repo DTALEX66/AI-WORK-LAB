@@ -85,6 +85,48 @@ HISTORY_SELF_CLAIM = (
     "docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv",
     "docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.json",
 )
+#: Directories whose tracked files are *registers*: they describe the current state of the
+#: fusion, so each one must be either read or written by a script, or named by the entry with the
+#: role it plays. A register that is neither is a second truth nobody maintains -- that is exactly
+#: how the two source repositories ended up with frozen ledgers nobody could retire.
+REGISTER_AREAS = ("migration", "config")
+
+
+def registers_on_disk(root=ROOT) -> list[str]:
+    """Every tracked file under the register areas."""
+    found = []
+    for rel in _tracked_files(*(path + "/**" for path in REGISTER_AREAS)):
+        normalised = rel.replace("\\", "/")
+        if normalised.split("/", 1)[0] in REGISTER_AREAS and (root / normalised).is_file():
+            found.append(normalised)
+    return sorted(found)
+
+
+def register_vocabulary(root=ROOT) -> str:
+    """The text that can legitimately consume a register: the scripts and the unified tests."""
+    chunks = []
+    for path in sorted(list((root / "scripts").glob("*.py"))
+                       + list((root / "tests").rglob("*.py"))):
+        chunks.append(path.read_text(encoding="utf-8", errors="replace"))
+    return "\n".join(chunks)
+
+
+def register_declaration_findings(registers: list[str], entry_text: str,
+                                 vocabulary: str) -> list[str]:
+    """Registers with neither a consumer nor a declared role in the entry.
+
+    Split out as a pure function so the refusal can be driven against a planted population: a
+    hygiene gate that has never named a file is not yet a gate.
+    """
+    findings = []
+    for rel in registers:
+        name = rel.rsplit("/", 1)[-1]
+        if rel in entry_text or name in vocabulary:
+            continue
+        findings.append("REGISTER_UNDECLARED %s（没有脚本读写它，入口也没有为它声明角色："
+                        "要么接进某个生成器，要么在 §四 里写清它是什么、被谁取代）" % rel)
+    return findings
+
 
 
 def rows(rel: str) -> list[dict]:
@@ -605,6 +647,12 @@ def main(argv=None) -> int:
         findings += check_figures(args.entry)
         findings += check_authority_index()
         findings += check_archive_coverage()
+        registers = registers_on_disk()
+        entry_for_registers = (args.entry.read_text(encoding="utf-8")
+                               if args.entry.is_file() else "")
+        register_findings = register_declaration_findings(
+            registers, entry_for_registers, register_vocabulary())
+        findings += register_findings
         history_tracked, history_findings = tracked_history_files()
         history_claims_map = history_claims() if not history_findings else {}
         findings += history_findings or unclaimed_history_findings(
@@ -620,6 +668,8 @@ def main(argv=None) -> int:
                       "history_area": {"tracked_files": len(history_tracked),
                                        "named_by_a_ledger": len(history_claims_map),
                                        "self_claimed_ledgers": len(HISTORY_SELF_CLAIM)},
+                      "registers": {"tracked": len(registers),
+                                    "undeclared": len(register_findings)},
                       "machine_bound_citations_not_required_in_a_clone": machine_only,
                       "figures_derived": len(derive_figures())},
                      ensure_ascii=False, indent=2))

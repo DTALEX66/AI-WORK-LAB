@@ -374,3 +374,31 @@ def test_a_regeneration_with_identical_readings_writes_no_bytes(tmp_path, monkey
     assert "verdict" not in json.loads(buffer.getvalue()), (
         "真的有新增节点时必须写：不写的话清单就永远落后于套件")
     assert json.loads(census_path.read_text(encoding="utf-8"))["tests"] == 16
+
+
+def test_a_register_that_nothing_reads_or_declares_is_refused():
+    """The hygiene gate must name an orphan register, and must stop naming it once it is declared.
+
+    A tracked file under `migration/` or `config/` that no script touches and the entry does not
+    vouch for is a second truth: it keeps reading as current long after whatever produced it is
+    gone. The population is enumerated from git in production; here the pure function is driven so
+    the refusal -- and the release -- are both observable.
+    """
+    checker = _gate_module()
+    registers = ["migration/live.csv", "migration/orphan-20261102.json", "config/kept.json"]
+    vocabulary = "open(ROOT / 'live.csv')  # generated and read\n" + "kept.json"
+    entry_text = "| 现行登记 | `migration/live.csv`、`config/kept.json` | 链接 |"
+    findings = checker.register_declaration_findings(registers, entry_text, vocabulary)
+    assert len(findings) == 1, findings
+    assert findings[0].startswith("REGISTER_UNDECLARED migration/orphan-20261102.json"), findings
+    # declaring it in the entry is what releases it -- not deleting the gate's population
+    declared = entry_text + " | 血统件 | `migration/orphan-20261102.json` | 后继是 live.csv |"
+    assert checker.register_declaration_findings(registers, declared, vocabulary) == []
+    # and the real tree is clean: every tracked register is read by a script or vouched by the entry
+    real = checker.registers_on_disk()
+    assert len(real) > 20, "the enumeration came back with almost nothing to check: %s" % real
+    entry_full = (TARGET_ROOT / "PROJECT_CURRENT.md").read_text(encoding="utf-8")
+    assert checker.register_declaration_findings(
+        real, entry_full, checker.register_vocabulary()) == [], (
+        "有登记既不接进任何生成器，也没在入口 §四 声明角色：%s"
+        % checker.register_declaration_findings(real, entry_full, checker.register_vocabulary()))

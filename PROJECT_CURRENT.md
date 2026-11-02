@@ -44,11 +44,11 @@ byte_copy_rows = 1234
 capability_families = 30
 capability_implemented_verified = 18
 capability_partial = 12
-crlf_tracked_files = 116
+crlf_tracked_files = 115
 distinct_paths_design = 4055
 distinct_paths_union = 6774
 distinct_paths_work = 2734
-lf_tracked_files = 706
+lf_tracked_files = 707
 route_endpoints = 164
 source_rows_design = 4476
 source_rows_total = 7210
@@ -56,7 +56,7 @@ source_rows_work = 2734
 spdx_claimed_files = 225
 spdx_malformed_lines = 0
 suite_test_files = 35
-suite_test_nodes = 510
+suite_test_nodes = 511
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -169,6 +169,9 @@ unsettled_files = 237
 | 端点面实测 | `migration/route-surface.csv` | 链接 |
 | 审计项闭环与逐轮实测 | `docs/CODEX-AUDIT-ENTRY.md` | 追加小节，不改写历史 |
 | 执行边界与授权沿革 | `INTEGRATION_POLICY.md` | 定点放行，不整份重写 |
+| 对账的**方法与输入**记录（不是行级真值） | `migration/archive-object-reconciliation-20261101.json` | 1212 个对象的逐行真值在同名 `.csv`；入口数字由 `scripts/check_project_current.py` 现算，不从本文件抄 |
+| 「删掉来源仓还剩什么」的后果清单（2026-11-01 读数） | `migration/source-deletion-inventory-20261101.json` | 判断能否找回 git 历史时**只读它新增的 `status_20261102` 一节**：本轮实测它列出的镜射路径 10 条已全部不存在（0 条在位），那些恢复点已被 owner 裁定移除 |
+| P1 迁移快照（**已退役**，血统件） | `migration/p1-coverage.json` | 现行真值在 `migration/capability-family-register.csv`、`migration/route-surface.csv`、`migration/requirement-traceability.csv`；它 32 个 source_keys 里 19 个没有后继行，不得据它判断当前状态 |
 | 统一归档原件 | `D:\All projects\Project Archiving`（**只读**） | 只引摘要，不整包复制、不反向清理 |
 
 ## 五、下一步

@@ -58,6 +58,7 @@ git status --porcelain=v1       # 保护已有改动；发现别人的未提交�
 
 规则：
 
+- **登记必须有人认领。** `migration/`、`config/` 下每个被跟踪的登记，要么被某个脚本读写，要么在 `PROJECT_CURRENT.md` §四 里声明它的角色与后继；两者都没有即 `REGISTER_UNDECLARED` 红。退役不删字节：在原文件里加一段具名状态（谁取代、实测缺口多大、哪些字段已失效），历史读数不改写，现行真值只在一个地方维护。
 - **数字不手抄。** 登记表由生成器现算；改完内容就重跑对应 `scripts/build_*.py`，
   再用它的 `--check`（比较模式，只写不比对的那台除外：`build_requirement_traceability.py` 无 `--check`，
   由 `tests/unified/test_v16_traceability.py` 守）。
