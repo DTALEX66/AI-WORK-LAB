@@ -2162,3 +2162,42 @@ work 78 / design 74 行变了，克隆里行数没回来（仍 2764/4488）。�
 
 **这一轮因此成立的只有**：三根的来源缺失态是单一开关驱动的、10 道闸门两态全具名、
 克隆可跑集在开关设上时 0 失败；跨机复现的缺口是上面那条，具名留在这里。
+
+
+### 15.31 登记卫生轮：无主登记逐条具名退役，`.git` 体积与完整性实测，收据重取并改绑（AH + #58）
+
+**收据重取（覆盖本轮全部代码改动）。** 测于 `add221c`（HEAD 短号以 `git rev-parse HEAD` 现读为准），
+套件行 `517 passed, 1 warning, 3 subtests passed in 968.83s (0:16:08)`，失败 0 / 错误 0，
+候选 7284 文件，摘要 `df617c7e98cf427b…`；
+测量期间跟踪字节是否移动：`[]`。
+
+**终局审计复跑。** `CLOSED`，子句 14，计数 {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}。
+
+**#58 的"压缩收益"这一项按实测改为"没有收益可取"。** 现读：松散对象 135 个 / 1372 KiB，
+包内 9409 个对象分布在 5 个 pack 里共 173.6 MiB；`.git` 目录 176.5 MiB，
+提交数 120，跟踪文件 7284。松散部分只占 `.git` 的 0.76%，
+`git gc` 能回收的量级就是这一部分——**因此本轮不跑 gc/repack/prune**：拿过期 reflog 和删不可达对象
+的风险去换不到 1% 的空间，不成立。
+
+同一会话内还观测到 `.git` 从 336.63 MiB（松散 663 个 / 5193 KiB，包内 26215 个 / 314.4 MiB）
+变成 176.5 MiB（松散 135 个 / 1372 KiB，包内 9409 个 / 173.6 MiB，
+5 个 pack）。**我没有运行任何 gc/repack/prune**，成因未查实——记为待查观测，不写成结论。
+可达性无损是被证明的而不是被假设的：`git fsck --connectivity-only` 无缺失/损坏对象（只有 7 个早前会话留下的
+dangling blob），且 HEAD 树里每个 blob 都逐个回读成功——`blobs=6817 unretrievable=0 size_mismatch=0`。
+
+**登记卫生。** `check_project_current.py` 新增 `REGISTER_UNDECLARED`：`migration/`、`config/` 下
+每个被跟踪登记必须要么被某脚本读写、要么在入口 §四 声明角色。普查从 `git ls-files` 出发
+（34 份跟踪登记，3 份无主），三份的处置都带实测依据：
+- `p1-coverage.json` → 血统件：32 个 source_keys 里 **19 个在现行三份登记里没有后继行**，
+  其证据路径 2 条全在 `.project-local/`（克隆读不到）。
+- `source-deletion-inventory-20261101.json` → 部分作废：它列出的镜射恢复点逐条实测
+  **10 条不存在 / 0 条在位**，"靠 bundle 找回 git 历史"那段对今天的磁盘不成立；
+  `repos` / `not_in_git_totals` / `unsettled_source_files` / `honest_limits` 四节仍成立。
+- `archive-object-reconciliation-20261101.json` → 不是过时是无主：行级真值在同名 CSV，
+  入口数字由 `check_project_current` 现算。
+反例节点证明这个门会红也会放（种一个无主登记→报；声明它→不报；再把两个**不同**去向合并回去→仍报），
+且它不靠"入口恰好提到过文件名"糊过去：历史区那条同样如此（`5964 / 5960 / 4`，
+4 条未认领逐条判定为台账自身，写成具名豁免且豁免名单不能长成白名单）。
+
+**边界照旧**：统一归档只读、未向其清理；两个来源仓未删；本轮所有提交都在本地，
+**推送需要 owner 单独授权**（`refresh_push_authorization.py` 绑新 head → 走 pre-push 守卫，不用 `--no-verify`）。
