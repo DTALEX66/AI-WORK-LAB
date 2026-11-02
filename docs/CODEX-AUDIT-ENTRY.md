@@ -1874,3 +1874,38 @@ token，和配置文件里出现一个 token 是同一件事。六族形态（`a
    （`C:\Users\ALEX`，含根 `AGENTS.md` 与历史区/归档区），本轮补采只往这一集合里再加 28 件——
    也就是说这不是补采新造出来的暴露，而是整个历史归档面的既有性质；要推公开面就得先决定「转 PRIVATE」「只推代码面」还是「接受账号名公开」。
    凭证形态另算：六族扫描对这 169 个补采件命中 0，本轮没有把 token 私钥一类搬进仓。
+
+### 15.26 切割与独立：把「隔壁还在」从前提里拿掉，然后实测一次（AA）
+
+owner 的原话是「做好历史文档归档就行了，两个原仓和现在的项目做好切割，确保本项目融合这两个项目并且独立出来了」。前两项由 §15.24–§15.25 那几轮落成字节与登记；这一节只管后两项，因为它们问的是**删除之后还成立吗**，而这个问题不能靠读代码回答。
+
+**静态那一半：谁还在写外部根的绝对路径。**按「这一行是否构造一个 checkout 之外的路径」判定（`All projects\WORK-LAB|DESIGN-LAB|Project Archiving` 的字面量，或 `<某根>.parent / "WORK-LAB"` 这种兄弟目录写法；测试里自己拼 `tmp_path / "Project Archiving"` 的不算依赖）：
+
+| 面 | 文件数 | 说明 |
+|---|---|---|
+| 运行面 + 测试面（`backend/` `domains/` `packages/` `apps/` `tests/`） | 5 | **绝对路径写法已归零**：`test_v22` 的 50 条任务定义改按本仓字节复验，`test_v17` 的项目注册改指仓内 fixture 根，`conftest.WORK_SOURCE_ROOT` 随删除；这一列剩下的命中全部是 `<根>.parent / "WORK-LAB"` 这种兄弟写法或守卫自己的文本，下一段的实测表明它们不需要隔壁 |
+| 迁移工具面（`scripts/`） | 7 | 它们的职责就是读来源，来源缺失时必须给具名结论 |
+| 登记 / 文档 / 归档原件面 | 213 | 历史出处文字，不是运行依赖 |
+
+**改绑之前先量一次「本仓到底有没有这些字节」，否则就是拿新的依赖换旧的依赖。**`50` 行任务定义里`50` 行能在本仓按登记摘要逐字节命中、`0` 行不能——所以拒读隔壁不减少任何覆盖。台账动作直方图现值：`COPIED` 5,270、`DUPLICATED` 306、`LINKED_ARCHIVE` 11（覆盖登记里对应 work 10 + design 1 = 11 行仍指向统一归档根，本轮逐条按摘要复验）
+
+**动态那一半：一次全新克隆，把三个外部根重写成不存在的。**方法：克隆 HEAD `18e5455`，只重写**活动代码**里的路径字面量（6 个文件被改写），历史区那 69 份原件**故意不动**——它们是按 SHA-256 钉住的惰性字节，改了就等于制造本次要测的那种摘要不符。然后用仓库自己的分类器 `_partition` 取「克隆可跑」集合（24 个文件）跑套件，再跑 9 条闸门。
+
+| 闸门 | rc | 结论（原文末行） |
+|---|---|---|
+| `build_source_coverage --check` | 1 | {"check": true, "drifted": ["design", "work"], "rows_changed": {"work": 90, "design": 1607}, "unreconciled": [], "hint": "rerun without --check to re-resolve the authorit |
+| `build_task_acceptance_register --check` | 0 | {"rows": 48, "mandatory_hard_gaps": 0, "listed_blockers": 0} |
+| `build_blocker_register --check` | 0 | {"matches": true, "items": 7, "blocking": 1} |
+| `build_deferral_register --check` | 0 | {"matches": true, "entries": 14} |
+| `build_audit_item_closure --check` | 0 | } |
+| `build_isolated_install_verdict --check` | 2 | (结论在 stderr) |
+| `build_audit_state --check` | 1 | {"matches": false, "stale": true, "stale_sections": ["source_repos", "upload_facts"], "published_audited": "adb311e701d4", "audited": "18e545572189", "head_is_ancestor":  |
+| `build_test_census --check` | 0 | } |
+| `check_project_current --check` | 0 | } |
+
+套件读数：本机 control 是收据里那张 **503 passed, 3 subtests passed in 809.00s (0:13:28)**；克隆 + 三根改写的 treatment 是 **350 passed, 3 subtests passed in 159.16s (0:02:39)**，失败节点 0、错误节点 0。也就是说**产品面与测试面在三个外部根全部消失以后照常绿**，这一条不再是我对代码的读法，而是一次执行过的测量。
+
+三条不在克隆里复现的闸门，各自的原因都写在上面那列里，而且都不是「来源仓的字节」：
+`build_isolated_install_verdict` 要的是本机 `.project-local/build` 下的离线安装回执（它本来就只能在真跑过安装的那台机器上发布）；`build_audit_state` 把 `source_repos` 与 `upload_facts` 两段判为过期（这两段记的正是来源仓指纹与上传事实）；`build_source_coverage` 报 `drifted` 两本、`rows_changed` work 90 / design 1607。最后这条要如实留着：它**没有**走到那条为「来源根缺失」设计的具名拒绝（`SOURCE_REPO_ABSENT` / rc=3），而是以「登记表不一致」的形式变红——机制还没查清，可能是路径重写没覆盖到全部根解析入口，也可能是漂移来自别的机器前提。已记为下一步的第一项，不在这里给它编一个原因。
+
+**因此「独立」这句话的准确说法是**：产品与测试不依赖两个原仓，也不依赖统一归档根——实测通过；三台迁移期工具仍然需要这台机器上的东西，其中一台现在给出的还是**错类型的拒绝**。这三个名字就是删除来源仓之后要处理的清单，不是一句「基本独立」。
