@@ -142,7 +142,7 @@ unsettled_files = 237
 | workbench bundle | 无法重建（缺 `picomatch`，需网络安装，未授权），两个读 bundle 的 JS 闸门仍校验旧字节 | `docs/CODEX-AUDIT-ENTRY.md` §15.22 |
 | 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。收据已在这两个修复之后重取：现记 `499 passed / 0 failed / 0 errors`，绑在 `94dd47c`（摘要 `1467eeaea846ac08…`），改绑之后只有 `docs/` 与 `migration/` 的字节的动过 | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
 | 归档原件的唯一副本 | `1131` 个对象（约 `1.06 GB`）目前只在统一归档里有；归档自己的 `完整性校验报告.json` 仍写 `source_file_set_unchanged: true`，而它点名的 `2031` 条来源路径现在**一个都不存在**（`D:\All projects\Record` 已消失，`xiangmuguidang` 是空目录）——那句话对今天的磁盘已不成立，归档不可再被当作可清理的副本 | `migration/archive-object-reconciliation-20261101.csv`、`_归档管理\完整性校验报告.json` |
-| 删掉两个来源仓之后本仓还能不能独立跑 | **已实测，且这一轮把切割做完了**（head `18e5455`）：克隆 HEAD，把**活动代码**里三个外部根（WORK-LAB / DESIGN-LAB / 只读统一归档根）的字面量重写为不存在的路径（6 个文件被改写；历史区 69 份按 SHA-256 钉住的惰性原件**故意不动**——改它们就等于自己制造本次要测的摘要不符），再按仓库自己的分类器 `_partition` 取「克隆可跑」的 24 个文件跑：**350 passed / 0 failed**；控制组是本机那张全量收据 **503 passed / 0 failed**。绝对路径写法在运行面与测试面已归零，最后两处是 `test_v22`（50 条任务定义改按本仓字节复验；改前实测 50/50 本来就能在仓内逐字节命中，所以拒读隔壁不减少覆盖）与 `test_v17`（项目注册改指仓内 `tests/fixtures/live-work-root/`），`conftest.WORK_SOURCE_ROOT` 随删除。**删除之后还会红的三个名字已经点名**：`build_isolated_install_verdict`（要本机 `.project-local/build` 下的离线安装回执）、`build_audit_state --check`（`source_repos` 与 `upload_facts` 两段判过期）、`build_source_coverage --check`（报 `drifted` 两本、`rows_changed` work 90 / design 1607，而**没有**给出为「来源根缺失」设计的 `SOURCE_REPO_ABSENT` / rc=3——机制未查清，已列为下一轮第一项）。上一轮同一方法是 control 65 / treatment 67、delta 2（head `86a0642`），当时算作「本机前提」的那两个节点，现在一个被证明能在克隆里跑、一个改绑到了仓内对象 | `.project-local/runs/independence-cut-20261102.json`、docs/CODEX-AUDIT-ENTRY.md §15.26 |
+| 删掉两个来源仓之后本仓还能不能独立跑 | **切割本身已成立**（head `9a83510`，§15.30）：三根收进`scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 三个环境变量指向不存在的路径即全仓进入切割态，**一个字节都不改**（克隆的 `git status` 前后各读一次均为空）；10 道闸门在克隆里两态全部具名，无一 traceback；克隆可跑集 25 文件在开关设上时 **349 passed / 0 failed / 1 skipped**（对照 350 passed），因开关而红的节点 **0** 个。**新查出的缺口换了位置**：`migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 多（work 2764 vs 2734、design 4488 vs 4476），根因定位到 `copied_index()` 以两个绝对路径相等判"同一条去向"——换台机器就不等，于是同一来源文件被记两行。本机 `--check` 仍 rc=0，跨机复现要到克隆里才暴露；本轮试过一处修法并实测两处都不对，已整体回退，未进仓库 | `.project-local/runs/independence-cut-20261102-single-switch.json`、`.project-local/runs/population-difference-20261102.json`、docs/CODEX-AUDIT-ENTRY.md §15.30 |
 
 ## 三、证据分级（不拼接旧成绩）
 
@@ -201,14 +201,15 @@ unsettled_files = 237
      "删掉来源仓之后还能不能找回 git 历史"的答案现在是**不能**——历史以本仓的文档形式归档与逐条
      摘要为准，这正是该裁定选择的取舍，不是疏漏。
    - `237` 条待裁决来源与 `1131` 个归档唯一副本，删了就没有第二次机会；先判定再删。
-   - **与两个原仓的切割已完成并被静态证明**：运行面与测试面（`backend/`、`domains/`、`packages/`、
+   - **与两个原仓的切割已完成，且这一轮起由单一开关可复验**：运行面与测试面（`backend/`、`domains/`、`packages/`、
      `apps/`、`tests/`）里**没有任何一处再写出那两个仓的绝对路径**；上一轮留下的最后两个真实依赖
      （`test_v22` 用来源仓字节做主体、`test_v17` 把项目注册到宿主 WORK-LAB）已分别改绑到仓内原件与
      仓内 fixture 根。仍写出这些路径的只剩 `scripts/` 里的迁移生成器（本轮静态扫描 7 个文件）——它们的职责就是读来源，
-     来源不在时必须给**具名结论**而不是崩溃或假绿。实测真相要如实写着：在「三根改写」的克隆里
-     `build_source_coverage --check` 给出的**不是**它为缺失场景准备的 `SOURCE_REPO_ABSENT` / rc=3，
-     而是 `drifted` 两本（`rows_changed` work 90 / design 1607）——这是错类型的拒绝，机制未查，
-     已列为下一轮第一项（任务 AB）。
+     来源不在时必须给**具名结论**而不是崩溃或假绿。这一轮把来源根收进 `scripts/source_roots.py`
+     一处解析（三个环境变量 = 开关，不改任何字节），上面那句"机制未查"因此作废：当时那份克隆读到的
+     是兄弟派生拼写，而克隆恰好放在同一父目录下，读到了真实来源仓，所以为缺失场景准备的
+     `SOURCE_REPO_ABSENT` / rc=3 从未触发。现在实测到的是它按设计触发（rc=3、不产出 `drifted`），
+     `migrate_sources --plan` 同途。剩下的跨机缺口换成了另一件事，见 §二 同一行与 §15.30。
      删除来源仓后还有一件事必须做：覆盖登记里那 `archived_linked_in_archive` 行现在记的是「统一归档根下
      的原件本轮复验一致」，那个根一旦被删，这些行的证据必须由重发布改成「本机不存在、未复验」——
      `build_source_coverage --check` 会在重发布之前拒绝，这条线是被守卫的，不是靠记得去做。

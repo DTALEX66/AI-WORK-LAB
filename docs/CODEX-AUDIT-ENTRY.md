@@ -2095,3 +2095,70 @@ finding——行级措辞沿用覆盖表已公布的"台账点名的统一归档
 **尚未成立（不要当成已完成）**：AG（用单一开关在**含 AB 的新克隆**里重测独立性与套件，重新发布
 clone-safe / machine-bound / 可跑节点数 / 失败节点数 / 闸门可复现条数）、AH（全量收据、五处改绑、
 刷新推送授权、推送、远端核对）。`.git` 体积与压缩收益本轮**未实测**，不在本节宣称。
+
+
+### 15.30 用单一开关在克隆里重测：闸门 10 道两态全具名、克隆安全集 0 失败；一处登记仍不可跨机复现（AG）
+
+仪器：`.project-local/edits-20261102/cut_instrument.py --mode full`。它 `git clone --no-hardlinks`
+一份 HEAD，**只设三个环境变量**（`AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 指向不存在的路径），
+不写一个字节；"没改字节"不是自报的——克隆的 `git status --porcelain` 在测量前后各读一次，
+两次都为空：`no_bytes_rewritten_verified=True`，
+`clone_has_project_local=False`，克隆 HEAD `9a835106ae14`。
+
+**处理侧（开关设上）与对照侧（同一克隆、不设开关）的 10 道闸门：**
+
+| 闸门 | 对照 rc | 处理 rc | 处理侧末行（截断） |
+|---|---|---|---|
+| `check_project_current` | 0 | 0 | } |
+| `build_test_census` | 0 | 0 | } |
+| `build_source_coverage` | 1 | 3 | {"error": "SOURCE_REPO_ABSENT", "absent": [{"label": "work", "root": "D:\\All projects\\ |
+| `build_task_acceptance_register` | 0 | 0 | {"rows": 48, "mandatory_hard_gaps": 0, "listed_blockers": 0} |
+| `build_blocker_register` | 0 | 0 | {"matches": true, "items": 7, "blocking": 1} |
+| `build_deferral_register` | 0 | 0 | {"matches": true, "entries": 14} |
+| `build_audit_item_closure` | 3 | 3 | } |
+| `build_audit_state` | 3 | 3 | {"matches": false, "stale": false, "stale_sections": [], "unobservable_sections": ["sour |
+| `build_isolated_install_verdict` | 2 | 2 | （stdout 无行，结论在 stderr） |
+| `migrate_sources` | 0 | 3 | {"target_root": "D:\\All projects\\.awl-independence-clone-20261102", "summary": {"SOURC |
+
+无一 traceback（逐条 `traceback=False`）。三类的归属：
+(a) `build_source_coverage`、`migrate_sources` 在开关设上后给 `SOURCE_REPO_ABSENT` / rc=3；
+(b) `build_audit_item_closure`、`build_isolated_install_verdict` 给"本机没有那张收据/那份报告"
+的具名拒绝（对照侧也是——**克隆里根本没有 `.project-local`**，这正是 (b) 类）；
+(c) 本轮没有出现在对照侧，除了下面那条尚未定性的。
+
+**克隆可跑集（由仓库自己的分类器 `_partition` 决定，不是这里挑的）：**
+clone-safe **24** 文件、machine-bound **10** 文件。
+对照 `350 passed, 3 subtests passed in 159.13s (0:02:39)`（失败节点 0）；
+处理 `349 passed, 1 skipped, 3 subtests passed in 158.60s (0:02:38)`（失败 0、skip 1）。
+两侧差集逐条点名：**因开关而红的节点 0 个、
+只在没开关时红 0 个**——处理侧唯一的差别是一个节点
+自陈前提不在本机而 skip（`test_a_moved_register_is_drift…`），不是失败。
+本轮另修一处分类假阳性：`test_v31` 里构造"钩子缺失"状态的字面量含 `.git/hooks`，
+被 `PREREQ` 扫成机器前提而把这 11 个切割守卫整体逐出克隆集；改为拼接后 clone-safe 从 24 回到 25。
+
+**克隆内复跑终局审计：`NOT CLOSED`，子句 14，计数 {"PASS": 8, "FAIL": 0, "PENDING": 6, "INSTRUMENT_ERROR": 0}，
+未具名结论 0 条。** 6 条 PENDING 每一条都带闸门自己给的名字
+（`SOURCE_REPO_ABSENT` ×2、`NOT_OBSERVABLE_HERE` ×2、`NO_ISOLATED_INSTALL_REPORT`、
+以及"本机没有这张收据"）。**不叫 CLOSED，也不说成通过**：它说的是"这台机器观测不到这些"。
+
+**仍未成立（AG 查出来的真缺陷，别当成已切干净）**：在**仍留有来源仓**的对照侧，
+`build_source_coverage --check` 在克隆里给 rc=1，`drifted=["work","design"]`、
+`rows_changed` work 1578 / design 3855。
+逐条测下来这不是登记漂移，而是**行人群本身在克隆里变大**：
+本机重建 work 2734 / design 4476 行，
+克隆里 work 2764 / design 4488 行；
+两边逐枚举文件数相同（work 2638 / design 4049）、
+导入图 universe 相同（1630）、路径集合差集为 0。
+多出来的 30 个 WORK 路径 +
+213 个 DESIGN 路径是**同一来源文件被记了两行**，
+其中一行的 `target` 是审计机那台的路径字面量。
+根因位置已定位到 `copied_index()` 用两个绝对路径 `resolve()` 相等来判"同一条去向"：
+本机两条记录同为审计机根下的同一串路径时合并，克隆里自己那条换成克隆根就不等了。
+published 的 CSV 里没有绝对路径（实测 0 行），所以差异只在克隆侧重建时出现。
+
+我这一轮试过改（把去向规范化成仓内相对路径再判重），实测**两处都不对**：本机 `--check` 反而报出
+work 78 / design 74 行变了，克隆里行数没回来（仍 2764/4488）。已整体回退，未进仓库；
+这条留作下一项的根因待查，**不以"切割完成"的名义记账**。
+
+**这一轮因此成立的只有**：三根的来源缺失态是单一开关驱动的、10 道闸门两态全具名、
+克隆可跑集在开关设上时 0 失败；跨机复现的缺口是上面那条，具名留在这里。

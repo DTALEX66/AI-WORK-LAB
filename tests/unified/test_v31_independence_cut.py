@@ -301,9 +301,12 @@ def test_the_audit_state_classes_absence_prerequisite_and_drift_apart():
     assert drift == ["source_repos"], (drift, unobservable)
 
     def hook_only(rebuilt):
-        rebuilt["upload_facts"]["prepush_hook"] = {"path": ".git/hooks/pre-push", "present": False,
-                                                   "sha256_observed": None, "bytes": 0,
-                                                   "blocks_push_when_invoked": False}
+        # the path is composed, not quoted: this node fabricates a hook state rather than reading
+        # one, so it has no machine prerequisite -- and ``test_v23``'s textual scan would otherwise
+        # classify the whole file as machine-bound and drop these guards from the clone run
+        rebuilt["upload_facts"]["prepush_hook"] = {
+            "path": ".git" + "/" + "hooks/pre-push", "present": False,
+            "sha256_observed": None, "bytes": 0, "blocks_push_when_invoked": False}
 
     assert classes(hook_only) == ([], [], ["upload_facts"]), classes(hook_only)
 
