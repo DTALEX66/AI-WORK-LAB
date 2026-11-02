@@ -28,10 +28,10 @@ archive_registered_not_migrated = 80
 archive_source_hints = 1212
 archive_unclassified_residue = 1
 archived_excluded_cache_and_build = 515
-archived_linked_in_archive = 21
+archived_linked_in_archive = 11
 archived_linked_in_repo = 1108
-archived_objects_copied = 5266
-archived_objects_duplicated = 300
+archived_objects_copied = 5270
+archived_objects_duplicated = 306
 authority_index_entries = 23
 blocker_items = 7
 byte_copy_rows = 1234
@@ -80,8 +80,10 @@ unsettled_files = 237
   `EXCLUDED_BY_OWNER_RULE` 的 `515` 行由三部分构成：`390` 行缓存/构建、`123` 行截图与照片
   （64,092,364 字节）、`2` 个字体二进制（17,313,940 字节，曾进隔离区，现随"去掉其他格式"一并移除），
   移动前后各现算一次摘要。另有 `archived_linked_in_archive` 行原来只记成"与统一归档逐摘要相同、
-  不搬第二份"——本轮（2026-11-02）现算过：文档格式的那 64 行已把同一字节补采进历史区并改记 `COPIED`，
-  剩下的确实都是容器包、`.dat`、`.docx`、`.jpg` 一类非文档格式，按「去掉其他格式的」继续只留摘要与位置。
+  不搬第二份"——本轮（2026-11-02）现算过：文档格式的那些行已把同一字节补采进历史区，或改记成指向仓内原件的
+  别名；剩下的 `archived_linked_in_archive` 全是容器包、Word 文档与一张位图，按「去掉其他格式的」继续只留摘要、
+  字节与位置。第二遍自己抓出的三处错法（扩展名白名单漏了 SVG 与无扩展名 JSON、同摘要别名仍记成外部链接、
+  `LINKED_ARCHIVE` 的登记摘要属于归档根对象而不是来源仓同名文件）逐件记在 docs/CODEX-AUDIT-ENTRY.md §15.25。
   三处缺陷都是复验时抓到并修好的：`37` 行原判"本仓已持有"只凭台账 `sha256_source`，而改后文件让
   本仓实际持有的是修复版本、原始字节无处可寻（已补采并逐行复验摘要）；`1` 个 260 字符以上的
   长路径文件首轮静默丢失（已用 `\\?\` 前缀重写，并按行复验，不再用集合式抽查）。
