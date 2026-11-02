@@ -30,7 +30,6 @@ for entry in (str(TARGET_ROOT), str(TARGET_ROOT / "domains" / "design")):
 
 from backend.app import build_server  # noqa: E402
 
-WORK_SOURCE_ROOT = Path(r"D:\All projects\WORK-LAB")
 #: F07's rule is "a project bound to a directory that really exists is live" -- the rule is about
 #: existence, not about which repository happens to sit on this machine. `work_project` therefore
 #: registers an in-checkout directory: the assertion stays exactly as strong, and a clone without

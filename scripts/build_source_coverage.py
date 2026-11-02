@@ -328,6 +328,7 @@ def attach_archive_dispositions(documents: dict, copied: dict) -> dict:
     unknown_action: list[str] = []
     verified_in_repo = 0
     verified_outside = 0
+    missing_outside = 0
     for label in ("work", "design"):
         for row in documents[label]["rows"]:
             entry = ledger.get((label, row["path"]))
@@ -373,14 +374,25 @@ def attach_archive_dispositions(documents: dict, copied: dict) -> dict:
             elif disposition == "ARCHIVED_ELSEWHERE_LINKED":
                 outside = UNIFIED_ARCHIVE_ROOT / PurePosixPath(target)
                 payload = _read_bytes_any(outside)
-                if outside.is_file() or payload is not None:
-                    if payload is None or sha256_of_bytes(payload) != digest:
-                        raise SystemExit("UNIFIED_ARCHIVE_DIGEST_MISMATCH " + label + ":"
-                                         + row["path"] + " -> " + target)
+                if payload is None and outside.is_file():
+                    raise SystemExit("UNIFIED_ARCHIVE_OBJECT_UNREADABLE " + label + ":"
+                                     + row["path"] + " -> " + target)
+                if payload is None:
+                    # The location this row names is not on this machine. The row stays -- the ledger's
+                    # destination is a recorded fact -- but publishing "re-verified against SHA-256" about
+                    # bytes that could not be read is how a deleted archive root would keep looking like an
+                    # intact second copy.
+                    missing_outside += 1
+                    proof = ("台账点名的统一归档位置在本机不存在（" + target
+                             + "），本轮未按摘要复验；本行只保留台账记下的出处，"
+                               "融合仓的运行与内容都不依赖它")
+                elif sha256_of_bytes(payload) != digest:
+                    raise SystemExit("UNIFIED_ARCHIVE_DIGEST_MISMATCH " + label + ":"
+                                     + row["path"] + " -> " + target)
+                else:
                     verified_outside += 1
-                proof = ("只读统一归档根下的同摘要原件（不在本仓 Git 内），"
-                         "位置按台账登记，2026-11-01 复制运行已按 SHA-256 复验；本机根缺失时"
-                         "不重新宣告字节")
+                    proof = ("只读统一归档根下的同摘要原件（不在本仓 Git 内），位置按台账登记，"
+                             "本轮按 SHA-256 复验一致 " + digest[:12])
             else:
                 proof = ("按 owner 2026-11-01 规则不入 Git（" + _excluded_family(entry["reason"])
                          + "）；台账理由：" + entry["reason"])
@@ -401,6 +413,7 @@ def attach_archive_dispositions(documents: dict, copied: dict) -> dict:
     return {"ledger_rows": len(ledger), "ledger_actions": actions,
             "in_repo_objects_byte_verified": verified_in_repo,
             "unified_archive_objects_byte_verified": verified_outside,
+            "unified_archive_objects_missing_on_this_machine": missing_outside,
             "unified_archive_root_present": UNIFIED_ARCHIVE_ROOT.is_dir(),
             "counts_by_repo": {label: dict(Counter(row["archive_disposition"] for row in
                                                    documents[label]["rows"]))

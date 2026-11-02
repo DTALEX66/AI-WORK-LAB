@@ -50,7 +50,7 @@ source_rows_work = 2734
 spdx_claimed_files = 223
 spdx_malformed_lines = 0
 suite_test_files = 34
-suite_test_nodes = 496
+suite_test_nodes = 497
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -192,5 +192,13 @@ unsettled_files = 237
      "删掉来源仓之后还能不能找回 git 历史"的答案现在是**不能**——历史以本仓的文档形式归档与逐条
      摘要为准，这正是该裁定选择的取舍，不是疏漏。
    - `237` 条待裁决来源与 `1131` 个归档唯一副本，删了就没有第二次机会；先判定再删。
+   - **与两个原仓的切割已完成并被静态证明**：运行面与测试面（`backend/`、`domains/`、`packages/`、
+     `apps/`、`tests/`）里**没有任何一处再写出那两个仓的绝对路径**；上一轮留下的最后两个真实依赖
+     （`test_v22` 用来源仓字节做主体、`test_v17` 把项目注册到宿主 WORK-LAB）已分别改绑到仓内原件与
+     仓内 fixture 根。仍写出这些路径的只剩 `scripts/` 里的 5 台迁移生成器——它们的职责就是读来源，
+     来源不在时必须给**具名结论**而不是崩溃或假绿（覆盖登记给 `SOURCE_REPO_ABSENT` / rc=3）。
+     删除来源仓后还有一件事必须做：覆盖登记里那 `archived_linked_in_archive` 行现在记的是「统一归档根下
+     的原件本轮复验一致」，那个根一旦被删，这些行的证据必须由重发布改成「本机不存在、未复验」——
+     `build_source_coverage --check` 会在重发布之前拒绝，这条线是被守卫的，不是靠记得去做。
    - 本仓的独立性以 §二 最后一行的实测结论为准；凡是依赖来源仓的测试都会显式点名前置，
      不会静默跳过或报错伪装成通过。

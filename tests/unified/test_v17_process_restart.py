@@ -41,7 +41,7 @@ from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 
-from tests.conftest import (Client, WORK_SOURCE_ROOT, produced_after, seed_issue,
+from tests.conftest import (Client, LIVE_WORK_ROOT, produced_after, seed_issue,
                             write_grants)
 from tests.unified.test_v03_work_loop import COLLECTOR, _result_document
 
@@ -110,7 +110,7 @@ def _stop(process: subprocess.Popen) -> int:
 def _run_manual_loop(client) -> dict:
     """The L13 five steps over real HTTP, so there is something to read back."""
     status, project = client.post("/api/v1/projects", {
-        "name": "WORK-LAB", "source": "work", "root_path": str(WORK_SOURCE_ROOT)})
+        "name": "WORK-LAB", "source": "work", "root_path": str(LIVE_WORK_ROOT)})
     assert status == 201, project
     status, task = client.post("/api/v1/tasks", {
         "project_id": project["project_id"], "kind": "work",

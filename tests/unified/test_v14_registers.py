@@ -992,3 +992,58 @@ def test_a_file_that_only_exists_at_a_branch_tip_still_gets_a_row(tmp_path):
             "台账行没有目标位置时必须报缺失，而不是拼出一个假路径")
     finally:
         module.REPO_ROOT = original_root
+
+
+def test_an_archive_link_that_is_not_on_this_machine_stops_claiming_reverification(tmp_path,
+                                                                                  monkeypatch):
+    """只读统一归档根可能被删除：读不到对象时，登记不许继续说「已按 SHA-256 复验」。
+
+    这一支以前把两种情况合成同一句话——「…已按 SHA-256 复验；本机根缺失时不重新宣告字节」。那句话在
+    根还在时读着像复验过，在根被删掉之后**仍然**读着像复验过，于是登记表把一份已经不存在的副本说成
+    第二份保险。三个方向都要走到：对象在位且摘要相同 → 证据点名本轮复验；对象不在位 → 同一行的证据
+    换成「本机不存在、本轮未复验」并在汇总里计数；对象在位但摘要不符 → 仍然拒绝，不降级成警告。
+    """
+    module = _coverage_module()
+    payload = b"# only in the unified archive\n"
+    digest = module.sha256_of_bytes(payload)
+    relative = "docs/history/owner-inputs/20261025/WORK-9.svg"
+    entry = {"repo": "work", "path": relative, "action": "LINKED_ARCHIVE", "sha256": digest,
+             "target_rel": "", "alias_of": "", "linked_location": "_资料库/" + digest + ".md",
+             "reason": "容器与非文档格式按 owner 规则不入 Git"}
+    root = tmp_path / "Project Archiving"
+    monkeypatch.setattr(module, "UNIFIED_ARCHIVE_ROOT", root)
+    # The vocabulary guard wants all four dispositions represented; this fixture is one linked row, and
+    # that guard has its own falsifier (test_the_archive_disposition_guard_can_actually_fail), so stub it
+    # here rather than inventing three more dispositions to satisfy an unrelated rule.
+    monkeypatch.setattr(module, "archive_vocabulary_findings", lambda rows: [])
+    monkeypatch.setattr(module, "archive_ledger",
+                        lambda: ({("work", relative): entry}, {"LINKED_ARCHIVE": 1}))
+
+    def documents():
+        return {"work": {"rows": [{"path": relative, "source_sha256": digest}]},
+                "design": {"rows": []}}
+
+    absent = documents()
+    summary = module.attach_archive_dispositions(absent, {})
+    evidence = absent["work"]["rows"][0]["archive_evidence"]
+    assert summary["unified_archive_objects_missing_on_this_machine"] == 1, summary
+    assert summary["unified_archive_objects_byte_verified"] == 0, summary
+    assert "本机不存在" in evidence and "复验一致" not in evidence, evidence
+    assert absent["work"]["rows"][0]["archive_disposition"] == "ARCHIVED_ELSEWHERE_LINKED"
+
+    (root / "_资料库").mkdir(parents=True)
+    (root / "_资料库" / (digest + ".md")).write_bytes(payload)
+    present = documents()
+    summary = module.attach_archive_dispositions(present, {})
+    assert summary["unified_archive_objects_byte_verified"] == 1, summary
+    assert summary["unified_archive_objects_missing_on_this_machine"] == 0, summary
+    assert "复验一致" in present["work"]["rows"][0]["archive_evidence"], present["work"]["rows"]
+
+    (root / "_资料库" / (digest + ".md")).write_bytes(b"# somebody else's bytes\n")
+    try:
+        module.attach_archive_dispositions(documents(), {})
+    except SystemExit as refusal:
+        assert "UNIFIED_ARCHIVE_DIGEST_MISMATCH" in str(refusal), refusal
+    else:
+        raise AssertionError("归档对象摘要不符却没有拒绝")
+

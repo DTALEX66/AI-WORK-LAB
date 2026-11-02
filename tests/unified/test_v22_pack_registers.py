@@ -16,8 +16,6 @@ import json
 from pathlib import Path
 
 TARGET_ROOT = Path(__file__).resolve().parents[2]
-SOURCE_WORK = Path(r"D:\All projects\WORK-LAB")
-SOURCE_DESIGN = Path(r"D:\All projects\DESIGN-LAB")
 
 
 def _read(relative: str) -> list[dict]:
@@ -67,9 +65,14 @@ def test_mapped_target_state_is_a_closed_vocabulary():
 
 
 def test_design_task_definition_pointers_match_their_bytes():
-    """L02「50任务定义来源保全」: every recorded path must exist and hash to the recorded
-    digest. The frozen originals stay in the read-only source repository — this register
-    pins them by SHA-256 rather than copying them and creating a second truth."""
+    """L02「50 任务定义来源保全」: every recorded path must exist here and hash to the recorded digest.
+
+    The candidates used to include the two read-only source repositories, which meant this node could be
+    green while the merged project held nothing: the sibling checkout answered for it. After the cut the
+    subject is the repository's own bytes, so the register is pinned against the object it is supposed to
+    describe -- measured before the change: all 50 rows already resolve inside the repo, so no coverage is
+    lost by refusing to read next door.
+    """
     rows = _read("migration/design-tasks.csv")
     assert len(rows) == 50, len(rows)
     problems = []
@@ -79,11 +82,12 @@ def test_design_task_definition_pointers_match_their_bytes():
         if not relative or not digest:
             problems.append((row["原任务ID"], "缺路径或缺摘要"))
             continue
-        candidates = [SOURCE_DESIGN / relative, SOURCE_WORK / relative,
-                      TARGET_ROOT / relative]
+        candidates = [TARGET_ROOT / relative,
+                      TARGET_ROOT / "docs/history/sources-20261101/design" / relative,
+                      TARGET_ROOT / "docs/history/sources-20261101/work" / relative]
         found = [path for path in candidates if path.is_file()]
         if not found:
-            problems.append((row["原任务ID"], "定义原件不存在: " + relative))
+            problems.append((row["原任务ID"], "定义原件不在本仓: " + relative))
             continue
         actual = hashlib.sha256(found[0].read_bytes()).hexdigest()
         if actual != digest:
