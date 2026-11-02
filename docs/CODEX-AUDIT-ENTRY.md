@@ -1727,3 +1727,33 @@ PUBLIC，所以本轮把"推上去会公开什么"量成数，写在 `.project-l
 - 还有一条挡在前面的既有策略：`.git/hooks/pre-push` 从 2026-10-29 起拦截本仓**全部** push
   （`LOCAL_ONLY_NO_REMOTE_ACTIONS`，`exit 1`，它自己的注释写明"防误推的 guard，不是网络隔离"）。
   要推送必须先决定怎么处理这条钩子；`--no-verify` 不在我可自行使用的范围里。
+
+**十一、"容量超了的"这句追问：先分类，再删，删的只是没人点名的那部分。** owner 问超容量的东西有用没用，
+「如果都是旧构建 缓存等就不要留着了」。这条是有条件的授权，所以判据不能是大小，也不能是"看着像临时物"，
+而是**有没有被跟踪文件点名**——被寄存器/收据/审计小节点名的路径是证据，删了等于把已发表的数字变回
+无法核验的话。分类器 `list_cited_local_artifacts.py` 扫全部跟踪文件（排除历史区原件），抽出
+`.project-local/...` 引用共 2011 条、聚合到 266 个前缀；`cleanup_local_scratch_20261102.py` 按前缀判定，
+先把 `cleanup-20261102-manifest.csv`（路径 / 字节 / 动作 / 理由）写出来再动手。判定结果：DELETE 153 项、DELETE_CONTENTS 2 项、KEEP 29 项。
+
+删掉的（合计释放 8,419 MB，全部可由其生产者重建）：`task-runtime` 里 6594 个 pytest `mkdtemp*` 目录
+（2,116 MB）、`runs/v12-data-migration` 里 1883 个 `fixture-*` 合成库（3,422 MB——该路径被测试当作
+自己的 scratch 根引用，但引用指向"往哪写"，不是"留着这些字节"）、上一轮整套验证工作区
+（`runs/` 下 137 个目录、2,725 MB，含上一轮整套验证工作区 `runs/20261030-qoder-ed9037` 1,014 MB）、5 个更早的离线安装目录（登记表点名的是
+`20261030-qoder-ed9037` 与三个 `offline-2026…Z`，以及 test_v26 按 mtime 取的最新那份）。
+其中一处第一轮没删掉：`runs/closure-evidence-suite` 抛 `PermissionError [WinError 5]`——原因是文件带
+只读属性而不是被占用；清属性后重删成功。
+
+**没删的，以及为什么**：`audit/20261031-fullclosure`（含 `receipt-archive/` 里登记表点名的那张收据）、
+`build/` 中被 verdict 引用的报告、`runs/independence-*.json` 与 `public-exposure-scope-*.json` 等被
+文档点名的读数、`removed-raster-20261101/`（61 MB）与 `removed-fonts-20261101/`（16 MB）——这两处是
+owner 规则"不入 Git 但字节要留着"的隔离区，删掉就把「不要进仓」变成了「不存在了」。
+三个来源仓镜射 `source-tar-20261101`（5,188 MB）、`source-archive-20261101`（889 MB）、
+`source-mirror-20261101`（702 MB）**一个字节都没动**：它们登记在 `PROJECT_CURRENT.md` §五 里，
+是来源仓 `.git` 历史 / LFS 载荷在本机唯一的副本，删除需要的是长期去处，不是清理。
+
+删后复验（不是"应该没事"，是跑过）：`build_isolated_install_verdict.py --check` PASS、drift false、
+读的仍是那份被点名的最新报告；`build_audit_item_closure.py --check` `register_drift=false`；
+`test_v12_data_migration` + `test_v26_local_run_receipts` 25 passed（v12 自己重建了 scratch 根，
+v26 仍能读到命名收据）。留下的点名证据按大小是：`audit` 61 MB、4 份被 verdict 引用的 `build/` 报告各 45-46 MB、`runs/codex-regression` 与 `runs/final-32c3d22` 各 58 MB、`runs/full-surface` 10 MB。工作目录从 17 GB 降到 7.7 GB，`.project-local` 从 15,995 MB 降到 7,286 MB。
+Git 里没有变化：`.project-local/` 本来就不跟踪，所以收据与登记绑定不受影响——但"未跟踪"也意味着
+**这部分体积只存在于这台机器**，换克隆不会带，换机器不会跟。
