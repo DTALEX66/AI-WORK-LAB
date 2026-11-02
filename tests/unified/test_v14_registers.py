@@ -215,7 +215,11 @@ def test_coverage_register_accounts_for_every_source_file(coverage):
                                 "node_modules"} & set(Path(x).parts)
                        and (repo / x).is_file())
         rows = _read(TARGET_ROOT / ("migration/source-coverage-" + label + ".csv"))
-        assert sorted({row["path"] for row in rows}) == files, label
+        # 登记人群 = 来源工作树 ∪ 台账点名的来源路径。台账是永久记录，工作树只是某一个分支的检出，
+        # 只比工作树就会漏掉"分支头有、检出没展开"的文件——那一行曾经静静少掉一个来源文件。
+        ledger_paths = {entry["path"] for entry in _ledger_rows() if entry["repo"] == label}
+        assert sorted({row["path"] for row in rows}) == sorted(set(files) | ledger_paths), (
+            label + "：登记表人群不等于「工作树 ∪ 台账」，要么漏了盘上的文件，要么丢了台账点名的文件")
         assert document["reconciles"] is True, document["class_counts"]
         assert sum(document["class_counts"].values()) == document["rows"], label
 
@@ -847,6 +851,14 @@ def test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out():
            hashlib.sha256(source.read_bytes()).hexdigest() == \
            hashlib.sha256(destination.read_bytes()).hexdigest():
             manifest_targets.add(dst_rel.replace("\\", "/"))
+    # 第二本台账：历史区的 MANIFEST 也是"这个去向由谁背书"的记录，逐个现算摘要而不是信它的字
+    for entry in _ledger_rows():
+        if entry["action"] != "COPIED" or not entry["target_rel"]:
+            continue
+        relative = entry["target_rel"].replace("\\", "/")
+        target = TARGET_ROOT / relative
+        if target.is_file() and hashlib.sha256(target.read_bytes()).hexdigest() == entry["sha256"]:
+            manifest_targets.add(relative)
     for label in ("work", "design"):
         path = TARGET_ROOT / "migration" / ("source-coverage-%s.csv" % label)
         rows = list(csv.DictReader(io.StringIO(path.read_bytes().decode("utf-8-sig"),
@@ -865,7 +877,7 @@ def test_coverage_row_identity_is_the_pair_and_the_extra_rows_are_the_fan_out():
         invented = sorted(row["target"] for row in rows
                           if row["target"] and row["target"].replace("\\", "/")
                           not in manifest_targets)
-        assert invented == [], (label + "：登记了复制清单里没有的去向：" + str(invented[:5]))
+        assert invented == [], (label + "：登记了两本台账都背不了的去向：" + str(invented[:5]))
         absent = sorted({row["target"] for row in rows if row["target"]
                          and not (TARGET_ROOT / row["target"]).is_file()})
         assert absent == [], ("登记说已经落地的去向在树上不存在：" + str(absent[:5]))
@@ -941,3 +953,42 @@ def test_the_coverage_builder_names_the_absent_source_repo_instead_of_crashing(t
     assert not (tmp_path / "out").exists() or not list((tmp_path / "out").glob("*.csv"))
     after = {name: (TARGET_ROOT / "migration" / name).read_bytes() for name in before}
     assert after == before, "a refused run must not rewrite a tracked register"
+def test_a_file_that_only_exists_at_a_branch_tip_still_gets_a_row(tmp_path):
+    """The register enumerates working trees; the ledger remembers the population. Neither may drop a file.
+
+    A test file existed only on WORK-LAB's `feat/ledger-truth-20261027`, so the checkout that the
+    import walked never showed it, and the register stayed one row short of the ledger while both
+    looked complete. The generator now unions the two, and this node drives that new branch at its
+    three outcomes -- matching bytes, missing target, differing bytes -- because a synthesized row
+    that always reported "verified" would be worse than the row that was missing.
+    """
+    module = _coverage_module()
+    payload = b"BYTES\n"
+    digest = module.sha256_of_bytes(payload)
+    (tmp_path / "history").mkdir(parents=True)
+    (tmp_path / "history" / "ok.ts").write_bytes(payload)
+    (tmp_path / "history" / "bad.ts").write_bytes(b"OTHER\n")
+    original_root = module.REPO_ROOT
+    module.REPO_ROOT = tmp_path
+    try:
+        row = module._ledger_only_row("work", "a/ok.ts",
+                                      {"target_rel": "history/ok.ts", "sha256": digest}, {})
+        assert row["path"] == "a/ok.ts" and row["repo"] == "work", row
+        assert row["class"] == "COPIED_VERIFIED", row
+        assert row["source_sha256"] == digest, row
+        assert row["registered"] == "NO", row
+
+        absent = module._ledger_only_row("work", "a/absent.ts",
+                                         {"target_rel": "history/nope.ts", "sha256": digest}, {})
+        assert absent["class"] == "COPIED_MISSING_IN_TARGET", absent
+
+        drifted = module._ledger_only_row("work", "a/bad.ts",
+                                          {"target_rel": "history/bad.ts", "sha256": digest}, {})
+        assert drifted["class"] == "COPIED_MISSING_IN_TARGET", (
+            "目标字节与台账摘要不同还报 COPIED_VERIFIED，这一行就是在替不存在的字节作证")
+
+        empty = module._ledger_only_row("work", "a/ok.ts", {"target_rel": "", "sha256": digest}, {})
+        assert empty["class"] == "COPIED_MISSING_IN_TARGET", (
+            "台账行没有目标位置时必须报缺失，而不是拼出一个假路径")
+    finally:
+        module.REPO_ROOT = original_root

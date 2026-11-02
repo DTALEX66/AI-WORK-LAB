@@ -750,8 +750,31 @@ def _uncopied_row(repo_label: str, repo: Path, rel: str, key: str, registered: d
     return row
 
 
+def _ledger_only_row(repo_label: str, rel: str, entry: dict, registered: dict) -> dict:
+    """A row for a source file the working tree could not show but the ledger names.
+
+    The registers enumerate the source *working trees*, and those are checked out on one branch, so a
+    file that exists only at another branch tip was never on disk to be walked. Dropping it silently
+    would make "every source file has a destination" false for exactly the file that has the least
+    chance to be noticed; so the row is derived from the ledger and the bytes are re-hashed here.
+    """
+    key = repo_label + ":" + rel
+    target = (entry.get("target_rel") or "").replace("\\", "/")
+    row = {"repo": repo_label, "path": rel, "registered": "YES" if key in registered else "NO",
+           "source_sha256": entry.get("sha256", ""), "target": target}
+    payload = _read_bytes_any(REPO_ROOT / target) if target else None
+    if payload is not None and sha256_of_bytes(payload) == entry.get("sha256"):
+        row["class"] = "COPIED_VERIFIED"
+        row["reason"] = ("分支头独有文件：来源工作树检出在别的分支，导入按工作树走时它不在磁盘上；"
+                        "本轮从来源仓对象库按 blob 补采进历史区，落盘后现算摘要与台账登记的摘要相等")
+    else:
+        row["class"] = "COPIED_MISSING_IN_TARGET"
+        row["reason"] = "台账点名了目标位置，但目标字节缺失或摘要不符"
+    return row
+
+
 def build(repo_label: str, repo: Path, copied: dict, registered: dict, patches: dict,
-          graph: dict) -> dict:
+          graph: dict, ledger_rows: dict | None = None) -> dict:
     global F01_GRAPH
     if not graph or not graph.get("reachable"):
         raise SystemExit("IMPORT_GRAPH_NOT_BUILT: refusing to label closure rows without it")
@@ -769,12 +792,21 @@ def build(repo_label: str, repo: Path, copied: dict, registered: dict, patches: 
                 row = _copied_row(repo_label, repo, rel, key, record, registered, patches)
             counts[row["class"]] += 1
             rows.append(row)
+    seen = {row["path"] for row in rows}
+    for rel, entry in sorted((ledger_rows or {}).items()):
+        if entry.get("repo") != repo_label or rel in seen:
+            continue
+        row = _ledger_only_row(repo_label, rel, entry, registered)
+        counts[row["class"]] += 1
+        rows.append(row)
     pending = sorted(row["path"] for row in rows if row["class"] == "OWNER_DECISION_PENDING")
     adjudicated = sorted(row["path"] for row in rows
                          if row["class"].startswith("UNREGISTERED_"))
     reasons = Counter(row["reason"] for row in rows
                       if row["class"] == "OWNER_DECISION_PENDING")
     return {"repo": repo_label, "root": str(repo), "enumerated_files": len(files),
+            "ledger_only_files": sum(1 for rel, entry in sorted((ledger_rows or {}).items())
+                                     if entry.get("repo") == repo_label and rel not in seen),
             "class_counts": dict(counts), "rows": rows,
             "pending_owner_decisions": pending,
             "adjudicated_population": adjudicated,
@@ -853,10 +885,17 @@ def main(argv=None) -> int:
     copied = copied_index()
     registered = registered_keys()
     patches = patch_map()
+    # the ledger is the permanent record of the source population; the working tree is only what one
+    # branch checked out. Union them so a file that lives at another tip cannot fall between them.
+    ledger_index, _ledger_actions = archive_ledger()
+    ledger_by_repo: dict[str, dict] = {}
+    for (label, path), entry in ledger_index.items():
+        ledger_by_repo.setdefault(label, {})[path] = entry
     graph = f01.build_runtime_import_graph()
     documents = {}
     for label, repo in (("work", WORK), ("design", DESIGN)):
-        document = build(label, repo, copied, registered, patches, graph)
+        document = build(label, repo, copied, registered, patches, graph,
+                         ledger_by_repo.get(label, {}))
         document["csv"] = str(OUT_DIR / ("source-coverage-" + label + ".csv"))
         documents[label] = document
     # owner 2026-11-01 规则的去向：两张表一起过守卫，因为词表要覆盖整个来源人群，

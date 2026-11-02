@@ -21,7 +21,7 @@ archive_excluded_raster_media = 344
 archive_import_verified = 1131
 archive_in_repo_bytes = 217126876
 archive_in_repo_objects = 694
-archive_manifest_rows = 7108
+archive_manifest_rows = 7109
 archive_objects = 1212
 archive_recorded_not_copied = 93
 archive_registered_not_migrated = 80
@@ -30,27 +30,27 @@ archive_unclassified_residue = 1
 archived_excluded_cache_and_build = 515
 archived_linked_in_archive = 85
 archived_linked_in_repo = 1108
-archived_objects_copied = 5100
+archived_objects_copied = 5101
 archived_objects_duplicated = 300
 authority_index_entries = 23
 blocker_items = 7
-byte_copy_rows = 1132
+byte_copy_rows = 1133
 capability_families = 30
 capability_implemented_verified = 18
 capability_partial = 12
 crlf_tracked_files = 116
 distinct_paths_design = 4049
-distinct_paths_union = 6676
-distinct_paths_work = 2638
+distinct_paths_union = 6677
+distinct_paths_work = 2639
 lf_tracked_files = 702
 route_endpoints = 164
 source_rows_design = 4470
-source_rows_total = 7108
-source_rows_work = 2638
+source_rows_total = 7109
+source_rows_work = 2639
 spdx_claimed_files = 223
 spdx_malformed_lines = 0
 suite_test_files = 34
-suite_test_nodes = 494
+suite_test_nodes = 495
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -76,9 +76,18 @@ unsettled_files = 237
   `85` 行与统一归档逐摘要相同（不搬第二份）、`390` 行为缓存/构建按规则不要、`2` 个字体二进制
   （17,313,940 字节）按「及时清理项目体积」同一口径搬进 `.project-local/removed-fonts-20261101/`
   ——这三类合起来正是 `MANIFEST.csv` 里 `EXCLUDED_BY_OWNER_RULE` 的 `515` 行，移动前后各现算一次摘要。
-  两处缺陷是复验时抓到并修好的：`37` 行原判"本仓已持有"只凭台账 `sha256_source`，而改后文件让
+  三处缺陷都是复验时抓到并修好的：`37` 行原判"本仓已持有"只凭台账 `sha256_source`，而改后文件让
   本仓实际持有的是修复版本、原始字节无处可寻（已补采并逐行复验摘要）；`1` 个 260 字符以上的
   长路径文件首轮静默丢失（已用 `\\?\` 前缀重写，并按行复验，不再用集合式抽查）。
+  第三处是本轮按 blob 逐分支头核对抓出的：来源仓一条特性分支上有、`main` 上没有的一份
+  reduced-motion 契约测试，导入按工作树走时它不在磁盘上，所以既没进本仓也没进登记——
+  台账 `2639` 对登记表 `2638` 那一行差就是它（DESIGN-LAB 的 7 个分支头 `0` 缺口）。
+  已从来源对象库按 blob 补采进仓并登记摘要，它在融合仓的位置是
+  `docs/history/sources-20261101/work-branch-feat-ledger-truth-20261027/apps/observer/frontend/src/reducedMotion.contract.test.ts`
+  （来源侧路径与 ref 记在同一行的台账与登记里，不在这里当本仓路径引用），
+  登记生成器的人群口径同时改成"工作树 ∪ 台账"，并把这条不变式的反例改为读现值而不是记死数字。
+  同一次核对里"950 / 151 个摘要对不上"不是缺口而是版本差：那是被后续版本覆盖的中间态，只存在于镜射里，
+  路径集合比对之后确定的未吸收代码就是这个文件。
 - 统一归档的正文对象也已进仓，防的就是"任务漂移"：`1212` 个唯一对象现在**每一个都有具名去处**，
   不再有 `ARCHIVE_ONLY` 这种"没决定"状态——`694` 个（`217,126,876` 字节）逐字节进
   `docs/history/archive-objects-20261101/`、按摘要命名、写后现算复验（失败 0）；`93` 个容器包

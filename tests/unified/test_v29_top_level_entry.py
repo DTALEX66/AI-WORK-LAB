@@ -81,12 +81,23 @@ def test_the_entry_carries_the_figures_the_registers_derive(tmp_path):
 
 
 def test_a_stale_figure_in_the_entry_is_caught(tmp_path):
-    """The entry quoted 7108 rows once; if a register moves and the prose does not, this is red."""
-    entry = _doctored(tmp_path, lambda text: text.replace("source_rows_total = 7108",
-                                                          "source_rows_total = 7107"))
+    """Plant around the figure the entry carries now -- a hardcoded number rots into a no-op.
+
+    This node used to replace the literal `7108`. When the register moved to 7109 the replacement
+    matched nothing, so no defect was planted, the checker stayed clean, and the falsifier quietly
+    stopped falsifying while still passing.
+    """
+    current = re.search(r"^source_rows_total = (\d+)$", ENTRY.read_text(encoding="utf-8"),
+                        re.MULTILINE)
+    assert current, "入口里已经没有这一行，这个反例就没有可种的故障"
+    real = int(current.group(1))
+    planted = real - 1
+    entry = _doctored(tmp_path, lambda text: text.replace("source_rows_total = %d" % real,
+                                                          "source_rows_total = %d" % planted))
     report = _report(_run("--check", "--entry", str(entry)))
     stale = [f for f in report["findings"] if f.startswith("FIGURE_STALE")]
-    assert stale == ["FIGURE_STALE source_rows_total 文档=7107 寄存器=7108"], report["findings"]
+    assert stale == ["FIGURE_STALE source_rows_total 文档=%d 寄存器=%d" % (planted, real)], (
+        report["findings"])
 
 
 def test_a_missing_figures_block_is_refused(tmp_path):
