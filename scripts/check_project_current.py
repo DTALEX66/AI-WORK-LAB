@@ -60,7 +60,9 @@ TEST_CENSUS = "tests/node-census.json"
 #: decided yet" is deliberately absent, that is the state this check exists to forbid
 ADMITTED_DISPOSITIONS = frozenset({
     "ARCHIVED_IN_REPO", "RECORDED_NOT_COPIED", "EXCLUDED_BY_OWNER_RULE",
-    "REGISTERED_NOT_MIGRATED", "UNCLASSIFIED_RESIDUE"})
+    "REGISTERED_NOT_MIGRATED", "UNCLASSIFIED_RESIDUE", "QUARANTINED_CREDENTIALS"})
+#: In-repo home of an imported archive object, used to prove a quarantine actually removed the bytes.
+ARCHIVE_OBJECT_DIR = "docs/history/archive-objects-20261101/by-sha"
 
 
 def rows(rel: str) -> list[dict]:
@@ -162,6 +164,7 @@ def derive_figures() -> dict:
         "archive_excluded_raster_media": disposition["EXCLUDED_BY_OWNER_RULE"],
         "archive_registered_not_migrated": disposition["REGISTERED_NOT_MIGRATED"],
         "archive_unclassified_residue": disposition["UNCLASSIFIED_RESIDUE"],
+        "archive_credential_quarantined": disposition["QUARANTINED_CREDENTIALS"],
         "archive_in_repo_bytes": sum(int(row["bytes"]) for row in archive
                                      if row["disposition"] == "ARCHIVED_IN_REPO"),
         "archive_import_verified": len(imported_rows()),
@@ -355,6 +358,23 @@ def imported_rows() -> list:
     return rows(ARCHIVE_IMPORT) if path.is_file() else []
 
 
+def credential_quarantine_findings(import_rows, object_dir, root=ROOT) -> list:
+    """A row that says "quarantined" must not still have its bytes in the public surface.
+
+    Split out so the refusal can be driven against a scratch directory: a guard that can only be reached
+    with the real repository in place is a guard nobody has seen fail.
+    """
+    findings = []
+    for row in import_rows:
+        if row["action"] != "QUARANTINED_CREDENTIALS":
+            continue
+        if (root / object_dir / (row["sha256"] + ".json")).exists():
+            findings.append("QUARANTINE_NOT_ACTUAL " + row["sha256"][:12])
+        if not row.get("reason"):
+            findings.append("QUARANTINE_REASON_MISSING " + row["sha256"][:12])
+    return findings
+
+
 def check_archive_coverage() -> list:
     """The anti-drift invariant: no archive object may sit in "we have not decided where it goes".
 
@@ -376,6 +396,7 @@ def check_archive_coverage() -> list:
     import_rows = imported_rows()
     if not import_rows:
         findings.append("ARCHIVE_IMPORT_MANIFEST_MISSING")
+    findings += credential_quarantine_findings(import_rows, ARCHIVE_OBJECT_DIR)
     for row in import_rows:
         if row["action"] != "ARCHIVED_IN_REPO":
             continue

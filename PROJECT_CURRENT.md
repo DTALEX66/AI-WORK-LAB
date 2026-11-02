@@ -22,10 +22,11 @@ acceptance_blocked_by_boundary = 2
 acceptance_confirmed = 41
 acceptance_deferred_p3 = 3
 acceptance_partial = 2
+archive_credential_quarantined = 2
 archive_excluded_raster_media = 344
 archive_import_verified = 1131
-archive_in_repo_bytes = 217126876
-archive_in_repo_objects = 694
+archive_in_repo_bytes = 215124851
+archive_in_repo_objects = 692
 archive_manifest_rows = 7210
 archive_objects = 1212
 archive_recorded_not_copied = 93
@@ -55,7 +56,7 @@ source_rows_work = 2734
 spdx_claimed_files = 223
 spdx_malformed_lines = 0
 suite_test_files = 34
-suite_test_nodes = 497
+suite_test_nodes = 499
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -215,3 +216,9 @@ unsettled_files = 237
    从 public 远端重新克隆后「克隆可跑」集 350 passed / 0 failed。仍归 owner 的两件小事：
    那条 integration 分支要不要删（删除远端分支是新的共享状态动作，本仓不动手）、
    远端保持 public 还是转 private（本轮按知情后的「全部上传」执行，未擅自改可见性）。
+7. **安全收尾两件（owner 侧，我不代办）**：GitHub 四条 `aws_temporary_access_key_id` 告警仍处于 open，
+   关闭它们是一次安全背书动作；若要确认这些第三方 key 的现状，请走 AWS 侧核查，不要把值贴进任何会话。
+   仓库侧该做的已做：两个含值的归档对象已从公开面撤下并具名登记（`QUARANTINED_CREDENTIALS`，
+   摘要留档、有反向守卫），凭据扫描族清单已补全并提升为跟踪脚本 `scripts/check_public_hazards.py`，
+   豁免只能来自 `config/secret-scan-adjudications.json` 里绑定文件摘要的逐条裁决。
+   已推送这一事实无法用删文件撤销——见 docs/CODEX-AUDIT-ENTRY.md §15.28。

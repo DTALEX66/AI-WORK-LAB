@@ -697,6 +697,68 @@ def test_pre_push_guard_is_present_and_blocking():
                            cwd=str(TARGET_ROOT), timeout=120)
     assert probe.returncode != 0, "the guard let a push through: " + probe.stdout
     assert "blocked" in (probe.stderr + probe.stdout).lower(), probe.stderr
+    # v2 of the guard refuses for a *reason the owner can satisfy*, not a blanket no: it demands a
+    # recorded authorization whose head_commit equals the head being pushed, and it runs the tracked
+    # public-surface checker. Both facts are pinned so the guard cannot be quietly gutted later.
+    assert "push-authorization" in body, "guard no longer requires a recorded push authorization"
+    assert "check_public_hazards.py" in body, "guard no longer runs the tracked credential checker"
+    executed = [line for line in body.splitlines() if not line.strip().startswith("#")]
+    assert not any("--no-verify" in line for line in executed), (
+        "the guard may mention --no-verify in a comment, but must not run it")
+
+
+def test_aws_temporary_key_shape_is_caught_and_a_bad_checksum_does_not_waive_it():
+    """GitHub 报的是 `ASIA…`，而这个族从来不在我们的扫描清单里——把它钉死。
+
+    两条性质都直接调扫描器自己的函数：临时会话密钥（`ASIA`）与 CloudFront 密钥对 id（`APKA`）必须是命中；
+    而校验和不匹配不得把命中降级成"没事"——正是那套降级逻辑造成了四条告警之下的"0 处活体"自信结论。
+    夹具本身也断言：种下去的 body 必须是 16 位。第一版这里种了 21 位，于是"检测失败"其实是夹具错。
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "hazards_under_test", TARGET_ROOT / "scripts" / "check_public_hazards.py")
+    haz = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(haz)
+
+    planted = {"ASIA": "ABCDEFGHJKLMNPQR", "APKA": "ABCDEFGHIJKLMNOP",
+               "AKIA": "ABCDEFGHIJKLMNOP"}
+    for prefix, body_text in planted.items():
+        assert len(body_text) == 16, "夹具得是 16 位，否则测的是拼写不是检测"
+        value = prefix + body_text
+        hits = list(haz.FAMILIES["aws-key-id"].finditer(
+            "X-Amz-Credential=%s/20260307/us-east-1" % value))
+        assert hits, "%s 形态没被抓到：族清单又漏了" % prefix
+        assert hits[0].group(1) == prefix
+    assert haz.structure_note("AKIA", "ABCDEFGHIJKLMNOP") == "crc-mismatch", "校验和计算本身要能给出信息"
+    assert "AKIAABCDEFGHIJKLMNOP" in {v.upper() for v in haz.CANONICAL_EXAMPLES}
+    assert haz.SHORTHAND.match("x" * 20) and not haz.SHORTHAND.match("ABCDEFGHJKLMNPQR")
+    assert haz.EXAMPLE_LITERAL.match("your_token_here_xxxx")
+    assert not haz.EXAMPLE_LITERAL.match("ABCDEFGHJKLMNPQR"), "随机形状不得被示例规则放过"
+
+
+def test_a_credential_quarantine_that_left_the_bytes_in_repo_is_a_finding(tmp_path):
+    """具名处置必须付出代价：说"已隔离"却把字节留在公开面里，就是第二条假绿。"""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "checker_under_test", TARGET_ROOT / "scripts" / "check_project_current.py")
+    checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checker)
+    assert "QUARANTINED_CREDENTIALS" in checker.ADMITTED_DISPOSITIONS
+
+    sha = "0" * 64
+    rows = [{"sha256": sha, "action": "QUARANTINED_CREDENTIALS", "reason": "写明的理由",
+             "target_rel": "x", "bytes": "14"}]
+    (tmp_path / (sha + ".json")).write_text("still published", encoding="utf-8")
+    assert checker.credential_quarantine_findings(rows, tmp_path, root=tmp_path) == [
+        "QUARANTINE_NOT_ACTUAL " + sha[:12]]
+
+    (tmp_path / (sha + ".json")).unlink()
+    assert checker.credential_quarantine_findings(rows, tmp_path, root=tmp_path) == []
+    rows[0]["reason"] = ""
+    assert checker.credential_quarantine_findings(rows, tmp_path, root=tmp_path) == [
+        "QUARANTINE_REASON_MISSING " + sha[:12]]
 
 
 def test_every_adobe_host_bridge_is_packaged_and_byte_identical():

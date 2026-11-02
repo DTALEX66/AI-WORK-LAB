@@ -1963,3 +1963,45 @@ owner 授权原话：「先全部上传  双端仓库保持一致   该合并的
 并明确这行不声称已同步。没有测试钉住旧名字（grep 过 tests/），所以这是登记自己会烂的那类常量，
 不是被守卫逼着改的。`INTEGRATION_POLICY.md` 按"只追加、不改写历史"处理：10-29 那段授权原样留着，
 新增一段 2026-11-02 的放行与不放行清单。
+
+
+### 15.28 一次真实的安全事件：GitHub 报了四条我们扫不出来的告警（AD）
+
+owner 转来一条来自已验证来源的提醒：AI-WORK-LAB 归档 JSON 里有 **4 项 AWS 临时访问密钥 ID 告警**，
+仓库当前是 public。`gh api` 只读复核：alert 1–4 全部 `state=open`、`secret_type=aws_temporary_access_key_id`、
+`created_at=2026-11-02T08:29:32Z`——与我今天那次"全部上传"的推送同批。**这是我推送造成的暴露面**，
+尽管值不是我们的凭据。
+
+**它们是什么**：两条内容寻址的归档对象里的第三方预签名下载 URL。一件是 Adobe 分发链路的
+`X-Amz-Credential=ASIA…/20260307/us-east-1/s3/aws4_request` 与 CloudFront `Key-Pair-Id=APKA…`；
+另一件是出版商 `preview.pdf` 的三个 `AWSAccessKeyId=ASIA…&Expires=…&Signature=…`。
+`Expires` 时间戳都早于今天，且这些账号属于第三方发布基础设施——**不是本账号的密钥，也没有任何东西需要
+由我去 AWS 轮换**。"已过期"是从 URL 参数读出来的，不是拿值去验证的：我没有、也不会用它发请求。
+"凭据是否仍有效、账号是否被入侵"不由本报告下结论，能下结论的只有 owner 在 AWS 侧的核查。
+
+**我的扫描器为什么没报**：两个独立的错，都不是运气问题。
+1. 族清单只有 `AKIA`。`ASIA`（临时会话）与 `APKA`（CloudFront 密钥对）根本不在表里，
+   于是 GitHub 报的那一类**整族落在被扫描的人群之外**——"九族扫描 0 命中"是个自信的假结论。
+2. 我把"AWS key id 的 CRC 校验不匹配"当成**免责**证据降级。可 GitHub 按格式就报；而且我的校验实现
+   从未拿真实签发过的 key 做过正控，它说 mismatch 这件事本身不构成任何证据。一个能自己把自己说服的守卫
+   比没有守卫更糟：它交付绿色。
+
+**这轮的处理**：两个对象从公开面撤下、进本机隔离区（摘要与字节 2,002,025 留档，写后逐件复验一致）；
+登记不静默少件：新增具名处置 `QUARANTINED_CREDENTIALS`，并配**反向守卫**
+（ **反向守卫**：说已隔离却还能在 `by-sha` 下找到字节 → `QUARANTINE_NOT_ACTUAL`，
+没写理由 → `QUARANTINE_REASON_MISSING`，两条都能红，节点在 tests/unified/test_v14_registers.py）。
+扫描器提升为跟踪脚本 scripts/check_public_hazards.py：AWS 前缀族补全十三种、检测字母表保持宽口径、
+校验和降级为附加信息，**任何 AWS 形态一律算命中**；豁免只能来自 config/secret-scan-adjudications.json
+里逐条绑定"文件当前摘要"的裁决——文件一改，裁决自动失效。pre-push 钩子改跑这个跟踪脚本，
+不再跑 `.project-local` 里的一次性版本。
+
+现算读数（由 scripts/check_public_hazards.py 当场跑出，不抄旧输出）：扫描 7282 个文本跟踪件，命中 13 处，按族 {"github-classic-token": 2, "authorization-bearer": 1, "secret-assignment": 2, "aws-key-id": 7}；按状态 {"unadjudicated": 0, "adjudication-stale": 0, "adjudicated": 6, "example-literal": 7}。
+隔离 2 个对象 / 2,002,025 字节；归档台账动作直方图 {"ARCHIVED_IN_REPO": 692, "QUARANTINED_CREDENTIALS": 2, "RECORDED_NOT_COPIED": 93, "EXCLUDED_BY_OWNER_RULE": 344}。
+
+
+**仍归 owner、我不代做的两件**：
+1. GitHub 那四条告警的**关闭**是一次对安全记录的背书（例如按 `false_positive` 处置）。上面已给出依据，
+   但把它标成误报的是你的账号，不是我；命令是
+   `gh api -X PATCH repos/DTALEX66/AI-WORK-LAB/secret-scanning/alerts/<n> -f state=resolved -f dismissal_reason=false_positive`。
+2. 若你要确认这些第三方 key 现在的状态，请走 AWS 侧（CloudTrail/IAM 或值所属方的公开流程），
+   **不要**把值贴进任何会话或工单。
