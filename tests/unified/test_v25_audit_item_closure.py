@@ -148,25 +148,32 @@ def test_the_isolated_install_record_is_tracked_and_self_describing():
 def test_the_builder_check_mode_reproduces_the_register_without_writing_it(tmp_path):
     """`--check` must be a reader, and its verdict must be honest about its own reach.
 
-    On the audit machine the comparison is whole-table: the receipt is present, so the exit
-    codes and the candidate digest are checked like any other column. In a clone there is no
-    receipt, so those three columns cannot be reproduced by construction -- the check then
-    compares every other column and *names* the three it exempted. A clone that silently
-    "passed" a comparison of numbers it never had would be the pseudo-PASS this whole round
-    is about removing, so the exemption list is asserted in both directions.
+    On the audit machine the comparison is whole-table: the receipt is present, so the exit codes
+    and the candidate digest are checked like any other column, and rc=0 is the only acceptable
+    answer. In a clone there is no receipt, so those four columns cannot be reproduced by
+    construction -- the check compares every other column, *names* the four it exempted, and
+    returns 3 instead of 0. A clone that quietly "passed" a comparison of numbers it never had
+    would be the pseudo-PASS this round exists to remove, so both directions are asserted:
+    drift-free content, and an rc that says which part was not observable here.
     """
     before = REGISTER.read_bytes()
     finished = subprocess.run([sys.executable, "-B", "-X", "utf8", str(BUILDER), "--check"],
                               cwd=str(TARGET_ROOT), capture_output=True, text=True,
                               encoding="utf-8", errors="replace")
-    assert finished.returncode == 0, (finished.stdout[-900:], finished.stderr[-900:])
     summary = json.loads(finished.stdout)
+    expected_rc = 0 if summary["receipt_present"] else 3
+    assert finished.returncode == expected_rc, (
+        "rc=%d where receipt_present=%s asked for %d: %s"
+        % (finished.returncode, summary["receipt_present"], expected_rc,
+           (finished.stdout or "")[-500:]))
     assert summary["register_drift"] is False
     assert REGISTER.read_bytes() == before, "--check 不得写跟踪登记"
     if summary["receipt_present"]:
+        assert summary["verdict"] == "MATCHES", summary
         assert summary["receipt_columns_exempted"] == [], (
             "本机有收据却免检了列，数字就没人对了")
     else:
+        assert summary["verdict"] == "NOT_OBSERVABLE_HERE", summary
         assert summary["receipt_columns_exempted"] == sorted(
             ["真实exit_code", "测量时刻UTC", "受测候选摘要", "运行收据"]), summary
 
