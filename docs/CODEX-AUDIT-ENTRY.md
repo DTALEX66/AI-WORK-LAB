@@ -1757,3 +1757,41 @@ owner 规则"不入 Git 但字节要留着"的隔离区，删掉就把「不要�
 v26 仍能读到命名收据）。留下的点名证据按大小是：`audit` 61 MB、4 份被 verdict 引用的 `build/` 报告各 45-46 MB、`runs/codex-regression` 与 `runs/final-32c3d22` 各 58 MB、`runs/full-surface` 10 MB。工作目录从 17 GB 降到 7.7 GB，`.project-local` 从 15,995 MB 降到 7,286 MB。
 Git 里没有变化：`.project-local/` 本来就不跟踪，所以收据与登记绑定不受影响——但"未跟踪"也意味着
 **这部分体积只存在于这台机器**，换克隆不会带，换机器不会跟。
+
+**十二、"源码吸收完了吗"被量化过一次，代价是一张红收据和三处静默假绿现形。** owner 的裁定是源码与
+未推送内容吸收进来即可，其他产物没那么重要。Git 侧先给事实：两仓所有分支相对上游 **ahead 0**（没有
+未推送的本地提交），DESIGN-LAB 的 `main` 反而落后远端 7 个提交。所以要问的不是"本地有没有没推的"，
+而是"分支头有、而我按工作树导入时看不见的内容有没有漏"。
+
+逐分支头按 blob 核对的答案不是零：WORK-LAB 的 `feat/ledger-truth-20261027`（本地与远端都有，`main`
+没有）上有一份 reduced-motion 契约测试，检出在 `main` 时它不在磁盘上，于是既没进融合仓也没进覆盖登记
+——台账 `2639` 行对登记表 `2638` 行的那一行差就是它；DESIGN-LAB 的 7 个分支头 **0** 缺口。补采走来源仓
+对象库而不是工作树，落盘后现算摘要与 blob 相等，ref 写进路径与台账；`build_source_coverage.py` 的人群
+口径改成"工作树 ∪ 台账"，新增 `_ledger_only_row` 按目标字节重算摘要决定 `COPIED_VERIFIED` 还是
+`COPIED_MISSING_IN_TARGET`，不会因为"台账里有"就直接算已验证。
+两个原始读数在这里必须被纠正而不是引用：逐 ref 摘要比对先报出 work 950 / design 2448 个"对不上"的路径，
+那是**被后续版本覆盖的中间态**（只活在镜射里），按路径集合比对才落到 1 个真缺口。
+
+**这张红收据是本轮最有用的产物。** 442c5ea 上全量跑出 `3 failed`，三个名字直接写在
+`suite.failed_nodes` 里（上一轮给生产器加的字段第一次真的救了时间）：`test_v21` 的阻断登记检查红，
+因为验收表重发布后我没有跟着重发布 `config/blocker-register.json`（它的计数由验收表推导）；
+`test_v20` 红，因为 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 是在新原件尚未提交时写的，
+"被审提交的 blob 数"与文档记的数一比就差 1；`test_v23` 红是前者在克隆里的复现。
+三处都不是判据太严，是我把生成物落在了提交之后——修法是重发布，不是放松断言。
+
+**修的过程又露出判据自身的第二个洞**：改绑之后允许动的类别只有 `docs/`、`migration/` 与四个根 `.md`，
+而 `config/blocker-register.json`、`config/isolated-install-verdict.json` 明明也是生成物，却被当成
+"测量之后动了代码"。按目录放行 `config/` 是错的——那里面一半是手编基线。现在逐文件放行这两本，并由
+`test_generated_registers_may_move_after_a_receipt_but_hand_edited_config_may_not` 双向钉住：这两本提交后
+判据仍 PASS 且逐个点名；同目录的 `config/environment-baseline.json` 一动就必须 FAIL。
+
+**三处"记住数字"的假绿同批现形**，都不是这次改动引入的，是这次改动暴露的：登记人群此前只与工作树比
+（所以一个只活在别的分支上的文件可以让它一直绿）；去向身份此前只认 `migration/copies.json` 一本台账
+（历史区 `MANIFEST.csv` 才是补采件的去处）；`test_a_stale_figure_in_the_entry_is_caught` 把 `7108`
+写死在种子里，数值一变 `replace()` 就什么都没替换，**反例停止反例却仍然通过**。三处现在都读现值。
+克隆侧的分类没有被削弱：`test_v23` 复跑 4 passed，`test_v20` 仍按"读 `.git/hooks`"这一前提被
+`PREREQ` 归入 machine-bound 并点名，而不是改成两边都绿的软断言。
+压缩一侧顺带给数：327,022,335 工作字节已被 git 压成 size-pack 170.33 MiB（约 48%），再 zip 只会破坏
+逐文件摘要核验与可读性，收益不成比例，故不做；历史区"无人认领的字节"实测 4 个，且这 4 个就是两本台账
+自身，也就是说当前每个进仓字节都有台账认领——这条目前是一次性测量，守卫版要与下一次 `scripts/` 改动
+同批排。
