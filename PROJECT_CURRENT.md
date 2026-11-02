@@ -7,9 +7,13 @@
 登记表，不在这里复制维护；本文件的每个数字都由 `scripts/check_project_current.py` 与寄存器
 现值比对，对不上即为红。
 
-- 最近核验：2026-11-01（本地，不联网）
-- 依托提交：`cc4155f`（分支 `integration/local-fusion-20261029`；本行写的是全量收据所测的那棵树，本文件这次修订在它之后的提交里）
-- 远程：`DTALEX66/AI-WORK-LAB`，分支 `integration/local-fusion-20261029` 已推至 `a490f7c`
+- 最近核验：2026-11-02（本地执行，并已推送到 origin；推送事实与公开克隆的独立复跑见 docs/CODEX-AUDIT-ENTRY.md §15.27）
+- 依托提交：全量收据所测的那棵树是 `adb311e`（503 passed / 0 failed）；当前 `main` 的真实 SHA 一律用
+  `git rev-parse main` 自读，不要抄本文件任何数字
+- 远程：`DTALEX66/AI-WORK-LAB`（public），默认分支已改为 `main`；`main` 与
+  `integration/local-fusion-20261029` 同指一个提交，标签 `closure-20261102`、`fusion-candidate-20261102`、
+  `cut-independent-20261102` 已推送；`.git/hooks/pre-push` 现在是"带授权记录才放行并逐项检查"的守卫，
+  不再是一律拦截，也不用 `--no-verify`
 - 入口三件套：本文件 + `README.md` + `AGENTS.md`（同在本仓根目录，读序见 `AGENTS.md` §1）
 
 <!-- entry-figures:start -->
@@ -195,10 +199,18 @@ unsettled_files = 237
    - **与两个原仓的切割已完成并被静态证明**：运行面与测试面（`backend/`、`domains/`、`packages/`、
      `apps/`、`tests/`）里**没有任何一处再写出那两个仓的绝对路径**；上一轮留下的最后两个真实依赖
      （`test_v22` 用来源仓字节做主体、`test_v17` 把项目注册到宿主 WORK-LAB）已分别改绑到仓内原件与
-     仓内 fixture 根。仍写出这些路径的只剩 `scripts/` 里的 5 台迁移生成器——它们的职责就是读来源，
-     来源不在时必须给**具名结论**而不是崩溃或假绿（覆盖登记给 `SOURCE_REPO_ABSENT` / rc=3）。
+     仓内 fixture 根。仍写出这些路径的只剩 `scripts/` 里的迁移生成器（本轮静态扫描 7 个文件）——它们的职责就是读来源，
+     来源不在时必须给**具名结论**而不是崩溃或假绿。实测真相要如实写着：在「三根改写」的克隆里
+     `build_source_coverage --check` 给出的**不是**它为缺失场景准备的 `SOURCE_REPO_ABSENT` / rc=3，
+     而是 `drifted` 两本（`rows_changed` work 90 / design 1607）——这是错类型的拒绝，机制未查，
+     已列为下一轮第一项（任务 AB）。
      删除来源仓后还有一件事必须做：覆盖登记里那 `archived_linked_in_archive` 行现在记的是「统一归档根下
      的原件本轮复验一致」，那个根一旦被删，这些行的证据必须由重发布改成「本机不存在、未复验」——
      `build_source_coverage --check` 会在重发布之前拒绝，这条线是被守卫的，不是靠记得去做。
-   - 本仓的独立性以 §二 最后一行的实测结论为准；凡是依赖来源仓的测试都会显式点名前置，
-     不会静默跳过或报错伪装成通过。
+   - 本仓的独立性以 §二 最后一行与 docs/CODEX-AUDIT-ENTRY.md §15.26、§15.27 的实测结论为准；
+     凡是依赖来源仓的测试都会显式点名前置，不会静默跳过或报错伪装成通过。
+6. **推送已完成于 2026-11-02**（owner 原话「先全部上传 双端仓库保持一致 该合并的合并」）：
+   `main` 与那条 integration 分支同指一个提交，远端默认分支已改为 `main`，三个标签已推送；
+   从 public 远端重新克隆后「克隆可跑」集 350 passed / 0 failed。仍归 owner 的两件小事：
+   那条 integration 分支要不要删（删除远端分支是新的共享状态动作，本仓不动手）、
+   远端保持 public 还是转 private（本轮按知情后的「全部上传」执行，未擅自改可见性）。

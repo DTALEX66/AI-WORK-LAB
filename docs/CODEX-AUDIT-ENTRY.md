@@ -1909,3 +1909,35 @@ owner 的原话是「做好历史文档归档就行了，两个原仓和现在�
 `build_isolated_install_verdict` 要的是本机 `.project-local/build` 下的离线安装回执（它本来就只能在真跑过安装的那台机器上发布）；`build_audit_state` 把 `source_repos` 与 `upload_facts` 两段判为过期（这两段记的正是来源仓指纹与上传事实）；`build_source_coverage` 报 `drifted` 两本、`rows_changed` work 90 / design 1607。最后这条要如实留着：它**没有**走到那条为「来源根缺失」设计的具名拒绝（`SOURCE_REPO_ABSENT` / rc=3），而是以「登记表不一致」的形式变红——机制还没查清，可能是路径重写没覆盖到全部根解析入口，也可能是漂移来自别的机器前提。已记为下一步的第一项，不在这里给它编一个原因。
 
 **因此「独立」这句话的准确说法是**：产品与测试不依赖两个原仓，也不依赖统一归档根——实测通过；三台迁移期工具仍然需要这台机器上的东西，其中一台现在给出的还是**错类型的拒绝**。这三个名字就是删除来源仓之后要处理的清单，不是一句「基本独立」。
+
+### 15.27 全部上传、双端一致、该合并的合并：推送不是终点，公开仓能被独立跑才是（AC）
+
+owner 授权原话：「先全部上传  双端仓库保持一致   该合并的合并」。授权记录把被推的 HEAD 绑死在 `b52764b5cfad`，并且写明这次不延伸到「删除两个来源仓」「改远端可见性」这类动作。
+
+**没有用 `--no-verify`。** 10-29 那道「拦截一切推送」的钩子被换成仍然执行检查的守卫：推送必须带一份把 `head_commit` 绑到当前 HEAD 的授权记录；最大单文件 33,082,203 字节 < GitHub 的 100 MB 硬限；公开面凭证扫描必须为 0 个活体形态。守卫自己也被测过——5 例自检要求「合法校验和的 AKIA 与被分隔符包围的 ghp_ 必须判 live」「坏校验和与嵌在 base64 里的必须判非 live」。自检第一次是**失败**的：夹具的 `ghp_` 后缀我写成 35 位，两个用例返回 no-match，看起来像守卫错、其实是夹具错——修夹具（并加 `assert len(token) == 40`）之后 5 例全符合。
+
+第一轮九族扫描报出的 11 处，逐处判到构造层：`ghp_` 那一串长 59 位、前后都是字母数字、第 40 位之后仍是字母数字，所以它是 base64 载荷里的巧合子串而不是令牌；5 处 AKIA 命中用 AWS access-key-ID 的 CRC 校验和判为**构造上不可能是活体**；`BEGIN OPENSSH PRIVATE KEY` 出现在「常见私钥/token signature 搜索」的检查清单正文里。这些判定留在 `.project-local/edits-20261101/check_public_hazards.py` 与它的自测里，可复跑。
+
+| 端 | main | integration/local-fusion-20261029 |
+|---|---|---|
+| 本地 | `b52764b5cfad` | `b52764b5cfad` |
+| 远端 origin | `b52764b5cfad` | `b52764b5cfad` |
+
+远端默认分支已从那条 integration 分支改为 `main`（这就是「该合并的合并」：两条分支同指一个提交，主干是 main；那条 integration 分支没有被删,删除属于新的共享状态动作,要单独授权）。标签 `closure-20261102`、`fusion-candidate-20261102`、`cut-independent-20261102` 一并推送。
+
+**上传之后真正的问题不是 SHA 对不对，而是公开仓自己能不能站住。**于是从 origin（public）重新克隆一次：
+
+- 克隆头 `b52764b`，跟踪文件 **7,282** 个（与本地一致）；
+- 按仓库自己的分类器取「克隆可跑」24 个文件跑：**350 passed, 3 subtests passed in 155.62s (0:02:35)**，失败节点 0、错误节点 0；本机限定 9 个文件不参与；
+- 闸门复算：
+  - `check_project_current --check` rc=0 }
+  - `build_test_census --check` rc=0 }
+  - `build_task_acceptance_register --check` rc=0 {"rows": 48, "mandatory_hard_gaps": 0, "listed_blockers": 0}
+  - `build_blocker_register --check` rc=0 {"matches": true, "items": 7, "blocking": 1}
+  - `build_deferral_register --check` rc=0 {"matches": true, "entries": 14}
+  - `build_audit_item_closure --check` rc=0 }
+  - `build_audit_state --check` rc=1 {"matches": false, "stale": true, "stale_sections": ["branch", "upload_facts"], "published_audited": "adb311e701d4", "audited": "b52764b5cfad", "head_
+
+唯一一条在公开克隆里不绿的是 `build_audit_state`，stale 段是 `branch` 与 `upload_facts`——它记的还是推送之前的分支与上传事实。这一条**必须靠重发布解决而不是靠忽略**，所以本节写完后 AUDIT-STATE 会随推送事实重发布；这也说明该状态文件是「本机快照」性质，换端就要重取，不是可以长期抄着不动的文档。
+
+收据 `adb311e701d4`（`503 passed, 3 subtests passed in 809.00s (0:13:28)`）描述的本轮终验结论仍是 CLOSED；推送之后允许动的仍只有 docs/migration 与两本生成物登记，这一点由终局审计的子句守着，不是我自己声明的。
