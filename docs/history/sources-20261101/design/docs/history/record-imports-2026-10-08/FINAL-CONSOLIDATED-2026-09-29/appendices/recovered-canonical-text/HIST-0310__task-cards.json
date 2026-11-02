@@ -1,0 +1,3545 @@
+{
+  "schema_version": "3.0",
+  "task_count": 90,
+  "tasks": [
+    {
+      "id": "OD-0001",
+      "phase": 0,
+      "title": "确认仓库与并发状态",
+      "goal": "确认目标仓库、分支、HEAD/tree、remote、工作区、writer 锁和未完成 Git 操作。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/baseline.json"
+      ],
+      "acceptance": [
+        "Git root 必须等于 D:\\All projects\\OPEN-DESIGN-Assistance",
+        "无其他 writer 活跃",
+        "脏工作区被解释并分类，未知脏状态阻断写入"
+      ],
+      "tests": [
+        "git status --short --branch",
+        "git rev-parse HEAD",
+        "git rev-parse HEAD^{tree}"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0002",
+      "phase": 0,
+      "title": "工具与运行时发现",
+      "goal": "现场发现 Python、Git、Node、Open Design、od CLI、Hermes、Codex、gh 的路径、版本和支持命令。",
+      "risk": "medium",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-0001"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/tool-inventory.json"
+      ],
+      "acceptance": [
+        "不使用记忆中的版本或端口",
+        "不读取任何凭据内容",
+        "缺失 required 工具时状态 BLOCKED"
+      ],
+      "tests": [
+        "各工具 --version/--help 的脱敏证据"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0003",
+      "phase": 0,
+      "title": "建立安全工作区",
+      "goal": "创建 Git-ignored .hermes/task-artifacts/open-design-v3 证据、备份、评审与报告目录。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0001"
+      ],
+      "allowed_paths": [
+        ".gitignore",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".gitignore",
+        ".hermes/task-artifacts/open-design-v3/"
+      ],
+      "acceptance": [
+        ".hermes 被 Git ignore",
+        "不创建项目外临时目录",
+        "不修改 E 盘"
+      ],
+      "tests": [
+        "git check-ignore .hermes/task-artifacts/open-design-v3"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0004",
+      "phase": 0,
+      "title": "当前能力证据分级",
+      "goal": "对现有七插件、模板、设计系统、导出案例和脚本按 E0-E4 重新标记。",
+      "risk": "low",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0001"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/**",
+        "project-memory/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/current-capability-map.json",
+        "reports/00-current-capability-map.md"
+      ],
+      "acceptance": [
+        "文件存在不得标为运行成功",
+        "小游戏案例与其他设计门类证据分开",
+        "每项附来源路径或命令"
+      ],
+      "tests": [
+        "JSON Schema validation"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0101",
+      "phase": 1,
+      "title": "统一 Overlay 完整性验证",
+      "goal": "验证任务包内 199 个 Overlay 文件的哈希、JSON、Manifest、Schema、来源登记和依赖关系。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0003"
+      ],
+      "allowed_paths": [
+        "overlay/**",
+        "scripts/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/overlay-verification.json"
+      ],
+      "acceptance": [
+        "文件哈希全部匹配 PACK_MANIFEST",
+        "所有 JSON 可解析",
+        "scenario/atom 依赖可解析"
+      ],
+      "tests": [
+        "python scripts/verify_complete_taskpack.py"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0102",
+      "phase": 1,
+      "title": "隔离 worktree/staging",
+      "goal": "从当前 HEAD 创建项目内或同 Git 仓库安全 worktree，禁止直接在 main 合并 Overlay。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-0001",
+        "OD-0101"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/staging-state.json"
+      ],
+      "acceptance": [
+        "worktree 指向记录的 baseline SHA",
+        "main 未被修改",
+        "路径不在 E 盘"
+      ],
+      "tests": [
+        "git worktree list --porcelain"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0103",
+      "phase": 1,
+      "title": "计划 Overlay 合并",
+      "goal": "运行统一应用器的 plan 模式，生成 create/same/conflict 清单，不写 tracked 文件。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-0102"
+      ],
+      "allowed_paths": [
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/overlay-plan.json"
+      ],
+      "acceptance": [
+        "默认无 tracked 写入",
+        "冲突逐文件分类",
+        "禁止静默覆盖"
+      ],
+      "tests": [
+        "python scripts/apply_unified_overlay.py <staging> --plan"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0104",
+      "phase": 1,
+      "title": "应用 Overlay 到 staging",
+      "goal": "仅在 staging 中应用无冲突文件；冲突文件按语义合并，不使用整文件强制覆盖。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0103"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/**",
+        "project-memory/**",
+        ".github/workflows/**",
+        "THIRD_PARTY_SOURCES*.md",
+        "LICENSING_DECISION_REQUIRED.md"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "199 个 Overlay 目标或明确冲突决议记录"
+      ],
+      "acceptance": [
+        "不删除现有文件",
+        "旧插件内容不丢失",
+        "所有冲突有 before/after/理由"
+      ],
+      "tests": [
+        "V2/V2.1 三个 verifier",
+        "git diff --check"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0105",
+      "phase": 1,
+      "title": "Overlay 回滚演练",
+      "goal": "对 staging 合并执行一次备份恢复或 worktree 重建演练，证明可恢复。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/rollback-evidence.json"
+      ],
+      "acceptance": [
+        "恢复后 tree 等于 baseline",
+        "重应用后 tree 等于候选 tree"
+      ],
+      "tests": [
+        "tree SHA 对比"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0201",
+      "phase": 2,
+      "title": "重写项目定义 V3",
+      "goal": "统一 README、PROJECT_DEFINITION、MIGRATION_STATUS 与 V2/V2.1 文档中的项目定位。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "README.md",
+        "project-memory/**",
+        "opendesign-assistance/*.md"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "README.md",
+        "project-memory/PROJECT_DEFINITION_V3.md",
+        "opendesign-assistance/ARCHITECTURE_V3.md"
+      ],
+      "acceptance": [
+        "明确 Open Design/Agent/Assistance 三层职责",
+        "不再称为单纯资料仓",
+        "不声称替代 Open Design"
+      ],
+      "tests": [
+        "文档一致性检查"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0202",
+      "phase": 2,
+      "title": "建立机器可读产品 Manifest",
+      "goal": "创建产品层、能力层、场景层、证据层和交付层的单一事实源。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0201"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/config/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/config/product-manifest.json"
+      ],
+      "acceptance": [
+        "所有索引可由 Manifest 生成",
+        "版本与迁移策略明确",
+        "旧目录角色明确"
+      ],
+      "tests": [
+        "JSON Schema validation"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0203",
+      "phase": 2,
+      "title": "收敛目录与历史样板",
+      "goal": "将 minigame-runtime 定义为 example/fixture，制定后续拆分计划，不删除历史资产。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0201"
+      ],
+      "allowed_paths": [
+        "README.md",
+        "project-memory/**",
+        "minigame-runtime/README.md",
+        "opendesign-assistance/examples/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "project-memory/LEGACY_AND_EXAMPLE_BOUNDARY_V3.md"
+      ],
+      "acceptance": [
+        "小游戏不再主导产品信号",
+        "保留可运行验证价值",
+        "无未经授权移动或删除"
+      ],
+      "tests": [
+        "引用路径检查"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0204",
+      "phase": 2,
+      "title": "统一能力状态枚举",
+      "goal": "将 L0-L5 与 E0-E4 的职责合并为“能力成熟度 + 执行证据”双轴模型。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/knowledge/governance/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/schemas/capability-evidence-v3.schema.json",
+        "opendesign-assistance/knowledge/governance/EVIDENCE_MODEL_V3.md"
+      ],
+      "acceptance": [
+        "结构、运行、商业验收不可互相冒充",
+        "状态枚举机器可验证"
+      ],
+      "tests": [
+        "schema 正负控"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0301",
+      "phase": 3,
+      "title": "升级旧插件：uiux-layout-director",
+      "goal": "把 uiux-layout-director 从早期 skill manifest 升级到当前 Open Design 兼容结构，补 compat、context、pipeline、preview、exampleOutputs、输入 Schema 和 provenance。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202",
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/plugins/uiux-layout-director/**",
+        "opendesign-assistance/templates/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/plugins/uiux-layout-director/open-design.json",
+        "opendesign-assistance/plugins/uiux-layout-director/SKILL.md",
+        "opendesign-assistance/plugins/uiux-layout-director/README.md"
+      ],
+      "acceptance": [
+        "保留原触发词和专业规则",
+        "manifest 通过当前 schema",
+        "至少一个真实 smoke brief",
+        "不把静态存在宣称为已加载"
+      ],
+      "tests": [
+        "manifest validator",
+        "skill reference validator",
+        "smoke task artifact"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0302",
+      "phase": 3,
+      "title": "升级旧插件：graphic-design-director",
+      "goal": "把 graphic-design-director 从早期 skill manifest 升级到当前 Open Design 兼容结构，补 compat、context、pipeline、preview、exampleOutputs、输入 Schema 和 provenance。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202",
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/plugins/graphic-design-director/**",
+        "opendesign-assistance/templates/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/plugins/graphic-design-director/open-design.json",
+        "opendesign-assistance/plugins/graphic-design-director/SKILL.md",
+        "opendesign-assistance/plugins/graphic-design-director/README.md"
+      ],
+      "acceptance": [
+        "保留原触发词和专业规则",
+        "manifest 通过当前 schema",
+        "至少一个真实 smoke brief",
+        "不把静态存在宣称为已加载"
+      ],
+      "tests": [
+        "manifest validator",
+        "skill reference validator",
+        "smoke task artifact"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0303",
+      "phase": 3,
+      "title": "升级旧插件：brand-visual-director",
+      "goal": "把 brand-visual-director 从早期 skill manifest 升级到当前 Open Design 兼容结构，补 compat、context、pipeline、preview、exampleOutputs、输入 Schema 和 provenance。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202",
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/plugins/brand-visual-director/**",
+        "opendesign-assistance/templates/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/plugins/brand-visual-director/open-design.json",
+        "opendesign-assistance/plugins/brand-visual-director/SKILL.md",
+        "opendesign-assistance/plugins/brand-visual-director/README.md"
+      ],
+      "acceptance": [
+        "保留原触发词和专业规则",
+        "manifest 通过当前 schema",
+        "至少一个真实 smoke brief",
+        "不把静态存在宣称为已加载"
+      ],
+      "tests": [
+        "manifest validator",
+        "skill reference validator",
+        "smoke task artifact"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0304",
+      "phase": 3,
+      "title": "升级旧插件：spatial-exhibition-director",
+      "goal": "把 spatial-exhibition-director 从早期 skill manifest 升级到当前 Open Design 兼容结构，补 compat、context、pipeline、preview、exampleOutputs、输入 Schema 和 provenance。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202",
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/plugins/spatial-exhibition-director/**",
+        "opendesign-assistance/templates/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/plugins/spatial-exhibition-director/open-design.json",
+        "opendesign-assistance/plugins/spatial-exhibition-director/SKILL.md",
+        "opendesign-assistance/plugins/spatial-exhibition-director/README.md"
+      ],
+      "acceptance": [
+        "保留原触发词和专业规则",
+        "manifest 通过当前 schema",
+        "至少一个真实 smoke brief",
+        "不把静态存在宣称为已加载"
+      ],
+      "tests": [
+        "manifest validator",
+        "skill reference validator",
+        "smoke task artifact"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0305",
+      "phase": 3,
+      "title": "升级旧插件：design-qa-critic",
+      "goal": "把 design-qa-critic 从早期 skill manifest 升级到当前 Open Design 兼容结构，补 compat、context、pipeline、preview、exampleOutputs、输入 Schema 和 provenance。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202",
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/plugins/design-qa-critic/**",
+        "opendesign-assistance/templates/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/plugins/design-qa-critic/open-design.json",
+        "opendesign-assistance/plugins/design-qa-critic/SKILL.md",
+        "opendesign-assistance/plugins/design-qa-critic/README.md"
+      ],
+      "acceptance": [
+        "保留原触发词和专业规则",
+        "manifest 通过当前 schema",
+        "至少一个真实 smoke brief",
+        "不把静态存在宣称为已加载"
+      ],
+      "tests": [
+        "manifest validator",
+        "skill reference validator",
+        "smoke task artifact"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0306",
+      "phase": 3,
+      "title": "升级旧插件：minigame-ui-director",
+      "goal": "把 minigame-ui-director 从早期 skill manifest 升级到当前 Open Design 兼容结构，补 compat、context、pipeline、preview、exampleOutputs、输入 Schema 和 provenance。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202",
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/plugins/minigame-ui-director/**",
+        "opendesign-assistance/templates/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/plugins/minigame-ui-director/open-design.json",
+        "opendesign-assistance/plugins/minigame-ui-director/SKILL.md",
+        "opendesign-assistance/plugins/minigame-ui-director/README.md"
+      ],
+      "acceptance": [
+        "保留原触发词和专业规则",
+        "manifest 通过当前 schema",
+        "至少一个真实 smoke brief",
+        "不把静态存在宣称为已加载"
+      ],
+      "tests": [
+        "manifest validator",
+        "skill reference validator",
+        "smoke task artifact"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0307",
+      "phase": 3,
+      "title": "升级旧插件：anomaly-monitor-hud",
+      "goal": "把 anomaly-monitor-hud 从早期 skill manifest 升级到当前 Open Design 兼容结构，补 compat、context、pipeline、preview、exampleOutputs、输入 Schema 和 provenance。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202",
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/plugins/anomaly-monitor-hud/**",
+        "opendesign-assistance/templates/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/plugins/anomaly-monitor-hud/open-design.json",
+        "opendesign-assistance/plugins/anomaly-monitor-hud/SKILL.md",
+        "opendesign-assistance/plugins/anomaly-monitor-hud/README.md"
+      ],
+      "acceptance": [
+        "保留原触发词和专业规则",
+        "manifest 通过当前 schema",
+        "至少一个真实 smoke brief",
+        "不把静态存在宣称为已加载"
+      ],
+      "tests": [
+        "manifest validator",
+        "skill reference validator",
+        "smoke task artifact"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0308",
+      "phase": 3,
+      "title": "升级插件脚手架",
+      "goal": "重写 scaffold_open_design_plugin.py，支持 skill/scenario/atom/bundle、pipeline、GenUI、compat 和 provenance。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0301"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scripts/scaffold_open_design_plugin.py",
+        "tests/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "升级后的脚手架",
+        "scenario/atom/bundle fixtures"
+      ],
+      "acceptance": [
+        "旧 skill 模式仍可生成",
+        "新结构通过官方/本地 schema",
+        "路径和名称安全"
+      ],
+      "tests": [
+        "unit",
+        "contract",
+        "negative path tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0309",
+      "phase": 3,
+      "title": "升级统一验证器",
+      "goal": "使 verify_open_design_assistance.py 覆盖旧插件、V2/V2.1 scenario/atom/bundle、Schema、来源和索引。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0104",
+        "OD-0308"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scripts/**",
+        "tests/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "统一 verifier",
+        "机器可读报告"
+      ],
+      "acceptance": [
+        "required 失败非零",
+        "不使用硬编码 PASS",
+        "报告带证据等级"
+      ],
+      "tests": [
+        "正负控",
+        "损坏 manifest fixture"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0401",
+      "phase": 4,
+      "title": "商业设计总路由",
+      "goal": "把 commercial-design-router 设为商业设计默认场景，路由到领域 pipeline。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0309"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/commercial-design-router/**",
+        "opendesign-assistance/config/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "可执行路由规则",
+        "歧义处理 GenUI"
+      ],
+      "acceptance": [
+        "明确识别 10 个设计领域",
+        "仅在实质歧义时提问",
+        "输出标准 project state"
+      ],
+      "tests": [
+        "路由测试集"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0402",
+      "phase": 4,
+      "title": "品牌 360 场景闭环",
+      "goal": "深化 brand-campaign-360，使策略、方向、DESIGN.md、KV、延展、评审、预检和交付连通。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/brand-campaign-360/**",
+        "opendesign-assistance/atoms/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "完整品牌项目 fixture"
+      ],
+      "acceptance": [
+        "阶段输出符合 Schema",
+        "用户选择可持久化",
+        "评分不足自动迭代且有上限"
+      ],
+      "tests": [
+        "end-to-end isolated scenario test"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0403",
+      "phase": 4,
+      "title": "视觉质量核心 Bundle",
+      "goal": "将 visual-quality-core 嵌入需要视觉输出的所有领域场景，而非作为孤立附加技能。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/bundles/visual-quality-core/**",
+        "opendesign-assistance/scenarios/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "场景与 Bundle 依赖图"
+      ],
+      "acceptance": [
+        "图像/平面/品牌/空间/包装默认启用",
+        "低视觉任务可有界跳过",
+        "依赖无循环"
+      ],
+      "tests": [
+        "dependency graph validator"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0404",
+      "phase": 4,
+      "title": "项目状态与阶段恢复",
+      "goal": "实现 design-project-state 在中断、重试和跨 Agent 调用时的稳定读写。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0204",
+        "OD-0401"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/schemas/**",
+        "opendesign-assistance/scripts/**",
+        "tests/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "project-state reducer/validator"
+      ],
+      "acceptance": [
+        "阶段状态不可倒退或跳过 required gate",
+        "恢复不重复询问已确认问题"
+      ],
+      "tests": [
+        "state transition tests",
+        "resume tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0405",
+      "phase": 4,
+      "title": "统一 GenUI 交互面",
+      "goal": "定义 Brief 补全、方向选择、授权确认、预检阻断和最终审批五类受控界面。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "GenUI surface schemas and fixtures"
+      ],
+      "acceptance": [
+        "persist 级别合理",
+        "超时策略 fail-closed",
+        "不由 Agent 注入任意前端代码"
+      ],
+      "tests": [
+        "schema/trigger validation"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0406",
+      "phase": 4,
+      "title": "产物 provenance",
+      "goal": "所有产物记录 brief、参考、style recipe、方法卡、模型、Agent、插件、版本、评审和预检来源。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0404"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/schemas/**",
+        "opendesign-assistance/atoms/delivery-packager/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "artifact-provenance.schema.json",
+        "provenance fixture"
+      ],
+      "acceptance": [
+        "不记录秘密",
+        "可追踪每次修改",
+        "输出可复现到输入与版本"
+      ],
+      "tests": [
+        "schema tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0501",
+      "phase": 5,
+      "title": "统一视觉质量模型",
+      "goal": "将现有 11 套视觉评分表与 8 套领域评分表映射到 100 分总模型和领域覆盖层。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0403"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/schemas/visual-quality/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "visual-quality-v3.rubric.json",
+        "rubric mapping"
+      ],
+      "acceptance": [
+        "总分 >=82 且无 blocker 才通过",
+        "权重总和严格为 100",
+        "不同领域不使用同一盲目评分"
+      ],
+      "tests": [
+        "score calculator tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0502",
+      "phase": 5,
+      "title": "设计感觉模型深化",
+      "goal": "把“高级、好看、有感觉”拆解为命题、张力、节奏、克制、记忆点、语境和完成度。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0501"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/knowledge/visual-quality/**",
+        "opendesign-assistance/schemas/visual-quality/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "DESIGN_FEELING_MODEL_V3.md",
+        "design-feeling-v3.schema.json"
+      ],
+      "acceptance": [
+        "每个抽象词有可观察证据",
+        "禁止以风格名称代替判断",
+        "支持中文商业语境"
+      ],
+      "tests": [
+        "rubric fixture review"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0503",
+      "phase": 5,
+      "title": "构图与字体工艺引擎",
+      "goal": "深化网格、视觉重心、比例、层级、CJK 字距行距、字体角色、图文关系和多尺寸排版。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0502"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/atoms/typography-composition-director/**",
+        "opendesign-assistance/knowledge/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "composition/typography protocols and fixtures"
+      ],
+      "acceptance": [
+        "不是仅列规则",
+        "至少覆盖海报、品牌 KV、网页、展墙",
+        "可输出可编辑 Token"
+      ],
+      "tests": [
+        "domain fixture scoring"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0504",
+      "phase": 5,
+      "title": "色彩材质光影引擎",
+      "goal": "建立色彩关系、材质物理属性、光源逻辑、反射粗糙度、环境光和品牌情绪的约束模型。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0502"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/atoms/color-material-light-director/**",
+        "opendesign-assistance/knowledge/visual-quality/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "material-lighting-v3.schema.json",
+        "commercial examples"
+      ],
+      "acceptance": [
+        "禁止随机发光/玻璃/金属",
+        "材质与生产媒介一致",
+        "空间和产品渲染含真实尺度"
+      ],
+      "tests": [
+        "schema and example tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0505",
+      "phase": 5,
+      "title": "摄影与产品视觉真实性",
+      "goal": "完善人物、食物、产品、桌面透视、镜头、景深、皮肤、反射、比例锁定和商品一致性检查。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0504"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/atoms/photorealism-artifact-auditor/**",
+        "opendesign-assistance/knowledge/visual-quality/**",
+        "opendesign-assistance/evals/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "photoreal-commercial QA protocol",
+        "product-lock schema"
+      ],
+      "acceptance": [
+        "识别用户长期反馈中的 AI 假感问题",
+        "产品比例/标签/瓶盖等可锁定",
+        "不以锐化冒充高清"
+      ],
+      "tests": [
+        "positive/negative image case metadata"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0506",
+      "phase": 5,
+      "title": "有界微观精修循环",
+      "goal": "细化 micro-detail-finisher 与 visual-polish-loop，确保每轮有差异目标、评分增量和停止条件。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0501",
+        "OD-0503",
+        "OD-0504",
+        "OD-0505"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/atoms/micro-detail-finisher/**",
+        "opendesign-assistance/atoms/visual-polish-loop/**",
+        "opendesign-assistance/scripts/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "iteration state and diff report"
+      ],
+      "acceptance": [
+        "最多 3 轮",
+        "每轮只修最高影响问题",
+        "无提升时停止并报告",
+        "不反复重绘已锁定主体"
+      ],
+      "tests": [
+        "iteration regression tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0601",
+      "phase": 6,
+      "title": "风格谱系本体",
+      "goal": "将 47 个谱系升级为带时期、地域、媒介、原则、反模式、兼容性和商业适配的本体。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/research/style-lineages/**",
+        "opendesign-assistance/schemas/visual-quality/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "style ontology v3",
+        "compatibility matrix"
+      ],
+      "acceptance": [
+        "每个谱系至少两个独立来源",
+        "区分运动/流派/工作室/商业趋势",
+        "禁止纯 mood 标签"
+      ],
+      "tests": [
+        "ontology validator"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0602",
+      "phase": 6,
+      "title": "大师发现登记扩展",
+      "goal": "将 497 条发现层清洗去重、身份消歧、地域/年代/领域标注，建立开放式增量抓取规范。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0601"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/research/master-studies/**",
+        "opendesign-assistance/scripts/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "MASTER_REGISTRY_V3.json",
+        "identity audit report"
+      ],
+      "acceptance": [
+        "同名消歧",
+        "来源不明 fail-closed",
+        "在世/历史人物均不作为最终生成滤镜"
+      ],
+      "tests": [
+        "registry validator"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0603",
+      "phase": 6,
+      "title": "大师方法卡证据化",
+      "goal": "把 77 张草案提升为可验证方法卡，目标第一阶段 150 张，后续可扩展。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0602"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/research/master-studies/**",
+        "opendesign-assistance/schemas/visual-quality/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "verified method cards",
+        "evidence bundles"
+      ],
+      "acceptance": [
+        "至少研究两个作品或时期",
+        "区分直接陈述与分析推断",
+        "记录例外和失效条件",
+        "含 forbidden signatures"
+      ],
+      "tests": [
+        "master-evidence-auditor"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0604",
+      "phase": 6,
+      "title": "跨领域大师覆盖计划",
+      "goal": "覆盖平面、字体、品牌、工业、建筑、室内、展陈、时装、摄影、电影、美术、数字交互、动效和数据可视化。",
+      "risk": "low",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0602"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/research/master-studies/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "MASTER_COVERAGE_MATRIX.md"
+      ],
+      "acceptance": [
+        "不是欧美单中心",
+        "包含东亚、中国现代设计和非西方传统",
+        "每领域有缺口与优先级"
+      ],
+      "tests": [
+        "coverage query"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0605",
+      "phase": 6,
+      "title": "匿名方法转译器",
+      "goal": "把大师/工作室名称转换为不含姓名的构图、字体、色彩、材质、叙事和制作指令。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0603"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/atoms/style-vector-builder/**",
+        "opendesign-assistance/atoms/art-direction-synthesizer/**",
+        "tests/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "name-free style recipe fixtures"
+      ],
+      "acceptance": [
+        "最终生成 prompt 不含大师姓名",
+        "项目 DNA >=50%",
+        "方法参考总占比 <=35%",
+        "保留禁用签名元素"
+      ],
+      "tests": [
+        "name leakage tests",
+        "similarity risk fixtures"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0606",
+      "phase": 6,
+      "title": "原创性与参考转化门禁",
+      "goal": "强化 reference-to-original-system，区分学习结构、直接临摹和商标/版式近似风险。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/reference-to-original-system/**",
+        "opendesign-assistance/evals/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "reference transformation report"
+      ],
+      "acceptance": [
+        "不得复制标志性版式、Logo、字体、图形、摄影或空间",
+        "三方向结构不同",
+        "可解释哪些被保留/改写/禁止"
+      ],
+      "tests": [
+        "reference transformation rubric"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0701",
+      "phase": 7,
+      "title": "建立领域场景：平面与整合传播",
+      "goal": "为 平面与整合传播 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/graphic-campaign/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/graphic-campaign/open-design.json",
+        "opendesign-assistance/scenarios/graphic-campaign/SKILL.md",
+        "opendesign-assistance/scenarios/graphic-campaign/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0702",
+      "phase": 7,
+      "title": "建立领域场景：UI/UX 产品设计",
+      "goal": "为 UI/UX 产品设计 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/ui-product-design/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/ui-product-design/open-design.json",
+        "opendesign-assistance/scenarios/ui-product-design/SKILL.md",
+        "opendesign-assistance/scenarios/ui-product-design/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0703",
+      "phase": 7,
+      "title": "建立领域场景：文化墙与展厅",
+      "goal": "为 文化墙与展厅 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/spatial-exhibition/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/spatial-exhibition/open-design.json",
+        "opendesign-assistance/scenarios/spatial-exhibition/SKILL.md",
+        "opendesign-assistance/scenarios/spatial-exhibition/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0704",
+      "phase": 7,
+      "title": "建立领域场景：包装与印刷",
+      "goal": "为 包装与印刷 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/packaging-design/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/packaging-design/open-design.json",
+        "opendesign-assistance/scenarios/packaging-design/SKILL.md",
+        "opendesign-assistance/scenarios/packaging-design/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0705",
+      "phase": 7,
+      "title": "建立领域场景：编辑与出版",
+      "goal": "为 编辑与出版 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/editorial-publication/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/editorial-publication/open-design.json",
+        "opendesign-assistance/scenarios/editorial-publication/SKILL.md",
+        "opendesign-assistance/scenarios/editorial-publication/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0706",
+      "phase": 7,
+      "title": "建立领域场景：动效与动态品牌",
+      "goal": "为 动效与动态品牌 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/motion-identity/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/motion-identity/open-design.json",
+        "opendesign-assistance/scenarios/motion-identity/SKILL.md",
+        "opendesign-assistance/scenarios/motion-identity/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0707",
+      "phase": 7,
+      "title": "建立领域场景：3D 产品与空间渲染",
+      "goal": "为 3D 产品与空间渲染 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/3d-product-spatial/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/3d-product-spatial/open-design.json",
+        "opendesign-assistance/scenarios/3d-product-spatial/SKILL.md",
+        "opendesign-assistance/scenarios/3d-product-spatial/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0708",
+      "phase": 7,
+      "title": "建立领域场景：产品电商视觉",
+      "goal": "为 产品电商视觉 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/product-commerce-visual/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/product-commerce-visual/open-design.json",
+        "opendesign-assistance/scenarios/product-commerce-visual/SKILL.md",
+        "opendesign-assistance/scenarios/product-commerce-visual/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0709",
+      "phase": 7,
+      "title": "建立领域场景：插画与 IP 系统",
+      "goal": "为 插画与 IP 系统 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/illustration-ip-system/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/illustration-ip-system/open-design.json",
+        "opendesign-assistance/scenarios/illustration-ip-system/SKILL.md",
+        "opendesign-assistance/scenarios/illustration-ip-system/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0710",
+      "phase": 7,
+      "title": "建立领域场景：品牌与视觉识别",
+      "goal": "为 品牌与视觉识别 建立独立 brief 扩展、pipeline、专业规则、评分表、preflight、案例和交付合同。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0401",
+        "OD-0501",
+        "OD-0605"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scenarios/brand-campaign-360/**",
+        "opendesign-assistance/evals/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/scenarios/brand-campaign-360/open-design.json",
+        "opendesign-assistance/scenarios/brand-campaign-360/SKILL.md",
+        "opendesign-assistance/scenarios/brand-campaign-360/README.md"
+      ],
+      "acceptance": [
+        "领域专业维度不少于 8 项",
+        "包含真实生产约束",
+        "至少一个正例和一个负例 fixture",
+        "可接入 visual-quality-core"
+      ],
+      "tests": [
+        "manifest",
+        "scenario isolated run",
+        "rubric/preflight tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0801",
+      "phase": 8,
+      "title": "资产与版权预检",
+      "goal": "检查 Logo/图片/字体/图标/素材来源、许可、分辨率、版本和使用范围。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/atoms/commercial-preflight/**",
+        "opendesign-assistance/profiles/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "asset-preflight profile and report"
+      ],
+      "acceptance": [
+        "所有外部资产有来源状态",
+        "未知许可阻断商业交付",
+        "不复制字体文件"
+      ],
+      "tests": [
+        "license fixtures"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0802",
+      "phase": 8,
+      "title": "数字产品预检",
+      "goal": "检查响应式、可访问性、点击区域、对比度、加载、真实数据、状态和浏览器。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0702"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/profiles/digital-ui.profile.json",
+        "adapters/**",
+        "tests/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "digital preflight evidence"
+      ],
+      "acceptance": [
+        "320/375/414/768 等断点",
+        "无横向滚动",
+        "交互状态完整",
+        "axe/Playwright 可适配"
+      ],
+      "tests": [
+        "browser fixtures"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0803",
+      "phase": 8,
+      "title": "印刷与包装预检",
+      "goal": "检查尺寸、出血、安全区、色彩、图片、专色、刀版、条码、法规和字体处理。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0701",
+        "OD-0704"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/profiles/print-commercial.profile.json",
+        "opendesign-assistance/profiles/packaging.profile.json",
+        "opendesign-assistance/knowledge/standards/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "print/packaging reports"
+      ],
+      "acceptance": [
+        "预检规则区分建议与 blocker",
+        "法规项可配置地域",
+        "不声称自动替代专业打样"
+      ],
+      "tests": [
+        "PDF/SVG metadata fixtures"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0804",
+      "phase": 8,
+      "title": "空间与施工预检",
+      "goal": "检查尺寸、观看距离、材料厚度、接缝、安装、电源、灯光、维护、无障碍和预算。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0703"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/profiles/spatial-exhibition.profile.json",
+        "opendesign-assistance/knowledge/standards/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "spatial preflight report"
+      ],
+      "acceptance": [
+        "包含真实尺度与人参照",
+        "施工未知项明确标记",
+        "数字媒体有静态降级"
+      ],
+      "tests": [
+        "spatial case fixtures"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0805",
+      "phase": 8,
+      "title": "3D/动效交付预检",
+      "goal": "检查 PBR、单位、坐标、贴图、UV、帧率、色彩、音频、字幕、降级和导出格式。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0706",
+        "OD-0707"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/profiles/3d-asset.profile.json",
+        "opendesign-assistance/profiles/motion.profile.json"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "3d/motion preflight reports"
+      ],
+      "acceptance": [
+        "标准与工具适配解耦",
+        "不打包受限模型/权重",
+        "输出格式和版本可追踪"
+      ],
+      "tests": [
+        "metadata fixtures"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0806",
+      "phase": 8,
+      "title": "统一商业交付包",
+      "goal": "交付预览、可编辑源、字体/素材清单、颜色尺寸、版本、生产说明、评分和预检。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0406",
+        "OD-0801",
+        "OD-0802",
+        "OD-0803",
+        "OD-0804",
+        "OD-0805"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/atoms/delivery-packager/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "DESIGN-MANIFEST.json",
+        "DESIGN-HANDOFF.md",
+        "BOM/provenance"
+      ],
+      "acceptance": [
+        "所有必需产物有 hash",
+        "源文件缺失时明确 blocker",
+        "另一个设计师可继续修改"
+      ],
+      "tests": [
+        "handoff contract tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0901",
+      "phase": 9,
+      "title": "建立无 Skill 基线",
+      "goal": "每个重点领域同一 Brief、同一模型、同一工具分别运行无 Skill、旧插件、V3 pipeline。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0701"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/evals/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "baseline protocol and run manifests"
+      ],
+      "acceptance": [
+        "固定任务变量",
+        "记录 token/耗时/失败",
+        "不以单次主观感受下结论"
+      ],
+      "tests": [
+        "runner dry-run"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0902",
+      "phase": 9,
+      "title": "领域评测数据集",
+      "goal": "首批建立品牌、海报、网页、产品视觉、空间各 10 个案例，覆盖中文商业语境。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0901"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/evals/datasets/**",
+        "opendesign-assistance/evals/cases/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "50-case v1 dataset"
+      ],
+      "acceptance": [
+        "输入权利清晰",
+        "不含隐私/客户秘密",
+        "有目标、约束和验收点"
+      ],
+      "tests": [
+        "dataset schema validation"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-0903",
+      "phase": 9,
+      "title": "视觉 Jury 一致性",
+      "goal": "比较多模型评审、规则检查和人工设计师评分，测量一致率与偏差。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0501",
+        "OD-0902"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/evals/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "judge calibration report"
+      ],
+      "acceptance": [
+        "记录 judge/model/version",
+        "避免单模型自评闭环",
+        "分歧大时人工复核"
+      ],
+      "tests": [
+        "calibration tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0904",
+      "phase": 9,
+      "title": "视觉回归与差异",
+      "goal": "支持截图/渲染差异、布局结构差异、Token 差异和评分变化，不用像素相同代替质量。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0506"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scripts/compare_visual_iterations.py",
+        "opendesign-assistance/evals/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "visual regression report"
+      ],
+      "acceptance": [
+        "区分预期变化和退化",
+        "跨尺寸对比",
+        "锁定主体不漂移"
+      ],
+      "tests": [
+        "fixture comparisons"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-0905",
+      "phase": 9,
+      "title": "质量-成本 Pareto",
+      "goal": "记录质量、Token、时间、外部工具成本和人工修订次数，形成模型/Skill 路由依据。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0901",
+        "OD-0903"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/evals/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "quality-cost report schema"
+      ],
+      "acceptance": [
+        "不硬编码易变模型价格",
+        "价格快照带日期来源",
+        "结果可按领域查看"
+      ],
+      "tests": [
+        "schema tests"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1001",
+      "phase": 10,
+      "title": "Open Design daemon 发现",
+      "goal": "启动或连接本机 Open Design，现场发现端口/API/CLI，不使用旧端口假设。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-0309"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/runtime-discovery.json"
+      ],
+      "acceptance": [
+        "不打印认证信息",
+        "端口开放不等同能力可用",
+        "版本与 commit/tag 记录"
+      ],
+      "tests": [
+        "supported doctor/API calls"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1002",
+      "phase": 10,
+      "title": "插件与场景注册验证",
+      "goal": "逐个确认七旧插件、V2/V2.1 atoms/scenarios/bundles 在运行时可见并可 apply。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1001",
+        "OD-0403"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "runtime registry snapshot"
+      ],
+      "acceptance": [
+        "每项有 runtime ID/version",
+        "未加载项不能标 PASS",
+        "静态文件与运行时状态分离"
+      ],
+      "tests": [
+        "od/plugin list or supported API"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1003",
+      "phase": 10,
+      "title": "端到端真实任务",
+      "goal": "运行品牌 360、参考转原创、视觉精修、空间展厅各一个小型真实任务。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1002"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "four runtime project artifacts"
+      ],
+      "acceptance": [
+        "Pipeline stage event 完整",
+        "GenUI 回答能恢复",
+        "critique loop 有界",
+        "provenance 写入"
+      ],
+      "tests": [
+        "live task smoke"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1004",
+      "phase": 10,
+      "title": "Agent 兼容验证",
+      "goal": "用 Codex 和 Hermes 至少各运行一个同场景任务，验证 SKILL.md portable consumption。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1002"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "agent compatibility report"
+      ],
+      "acceptance": [
+        "不复制 OAuth",
+        "CC Switch 不承载 Codex 登录",
+        "输出结构一致可比较"
+      ],
+      "tests": [
+        "live agent markers"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1005",
+      "phase": 10,
+      "title": "运行故障与恢复",
+      "goal": "模拟 daemon 端口变化、Agent 失败、Stage 重试、用户中断和恢复。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-1003"
+      ],
+      "allowed_paths": [
+        "tests/live/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "runtime recovery evidence"
+      ],
+      "acceptance": [
+        "失败不丢 project state",
+        "重试有上限",
+        "不可恢复时 BLOCKED 而非假完成"
+      ],
+      "tests": [
+        "fault injection live tests"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1101",
+      "phase": 11,
+      "title": "真实案例：真实企业品牌/活动整合视觉",
+      "goal": "使用已授权或公开可用资料完成 真实企业品牌/活动整合视觉，保存完整 brief、方向、设计、评审、迭代、预检和交付证据。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1003",
+        "OD-0806",
+        "OD-0903"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/cases/brand-real-01/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/cases/brand-real-01/case-record.json"
+      ],
+      "acceptance": [
+        "不使用隐私或未授权客户资产",
+        "至少与无 Skill/旧插件基线比较",
+        "人工设计评分目标 >=8/10",
+        "生产或实现风险明确"
+      ],
+      "tests": [
+        "case schema",
+        "artifact hashes",
+        "review evidence"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1102",
+      "phase": 11,
+      "title": "真实案例：中文商业海报与系列社媒延展",
+      "goal": "使用已授权或公开可用资料完成 中文商业海报与系列社媒延展，保存完整 brief、方向、设计、评审、迭代、预检和交付证据。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1003",
+        "OD-0806",
+        "OD-0903"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/cases/graphic-real-01/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/cases/graphic-real-01/case-record.json"
+      ],
+      "acceptance": [
+        "不使用隐私或未授权客户资产",
+        "至少与无 Skill/旧插件基线比较",
+        "人工设计评分目标 >=8/10",
+        "生产或实现风险明确"
+      ],
+      "tests": [
+        "case schema",
+        "artifact hashes",
+        "review evidence"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1103",
+      "phase": 11,
+      "title": "真实案例：锁定产品比例的商业摄影/电商视觉",
+      "goal": "使用已授权或公开可用资料完成 锁定产品比例的商业摄影/电商视觉，保存完整 brief、方向、设计、评审、迭代、预检和交付证据。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1003",
+        "OD-0806",
+        "OD-0903"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/cases/product-visual-real-01/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/cases/product-visual-real-01/case-record.json"
+      ],
+      "acceptance": [
+        "不使用隐私或未授权客户资产",
+        "至少与无 Skill/旧插件基线比较",
+        "人工设计评分目标 >=8/10",
+        "生产或实现风险明确"
+      ],
+      "tests": [
+        "case schema",
+        "artifact hashes",
+        "review evidence"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1104",
+      "phase": 11,
+      "title": "真实案例：文化墙或企业展厅真实尺寸项目",
+      "goal": "使用已授权或公开可用资料完成 文化墙或企业展厅真实尺寸项目，保存完整 brief、方向、设计、评审、迭代、预检和交付证据。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1003",
+        "OD-0806",
+        "OD-0903"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/cases/spatial-real-01/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/cases/spatial-real-01/case-record.json"
+      ],
+      "acceptance": [
+        "不使用隐私或未授权客户资产",
+        "至少与无 Skill/旧插件基线比较",
+        "人工设计评分目标 >=8/10",
+        "生产或实现风险明确"
+      ],
+      "tests": [
+        "case schema",
+        "artifact hashes",
+        "review evidence"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1105",
+      "phase": 11,
+      "title": "真实案例：Open Design/AI 工具真实 UI 页面",
+      "goal": "使用已授权或公开可用资料完成 Open Design/AI 工具真实 UI 页面，保存完整 brief、方向、设计、评审、迭代、预检和交付证据。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1003",
+        "OD-0806",
+        "OD-0903"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/cases/ui-real-01/**",
+        ".hermes/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "opendesign-assistance/cases/ui-real-01/case-record.json"
+      ],
+      "acceptance": [
+        "不使用隐私或未授权客户资产",
+        "至少与无 Skill/旧插件基线比较",
+        "人工设计评分目标 >=8/10",
+        "生产或实现风险明确"
+      ],
+      "tests": [
+        "case schema",
+        "artifact hashes",
+        "review evidence"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1106",
+      "phase": 11,
+      "title": "商业证据晋级",
+      "goal": "只有真实客户/生产验收后，能力才从 E3/L4 晋升到商业证明等级。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1101",
+        "OD-1102",
+        "OD-1103",
+        "OD-1104",
+        "OD-1105"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "commercial evidence ledger"
+      ],
+      "acceptance": [
+        "不伪造客户通过",
+        "未获得生产反馈保持 UNVERIFIED",
+        "记录拒绝/修改原因"
+      ],
+      "tests": [
+        "evidence schema"
+      ],
+      "required_evidence_level": "E3",
+      "notes": []
+    },
+    {
+      "id": "OD-1201",
+      "phase": 12,
+      "title": "来源登记统一",
+      "goal": "合并 V2 112 来源与 V2.1 视觉来源，去重并建立版本、许可、用途、风险和集成状态。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0104"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/research/**",
+        "THIRD_PARTY_SOURCES*.md"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "SOURCE_REGISTRY_V3.json",
+        "THIRD_PARTY_SOURCES_V3.md"
+      ],
+      "acceptance": [
+        "每项许可有证据或 quarantine",
+        "标准仅引用不复制受保护文本",
+        "更新有审查流程"
+      ],
+      "tests": [
+        "registry validator"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1202",
+      "phase": 12,
+      "title": "Skill 供应链扫描",
+      "goal": "扫描 SKILL/Prompt 中隐藏 Unicode、注入、危险命令、外部下载、凭据访问和越权路径。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-1201"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scripts/security/**",
+        "tests/security/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "skill security scanner",
+        "findings report"
+      ],
+      "acceptance": [
+        "恶意 fixture 必须失败",
+        "不执行第三方代码完成扫描",
+        "fail-closed"
+      ],
+      "tests": [
+        "negative fixtures"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1203",
+      "phase": 12,
+      "title": "依赖与许可证策略",
+      "goal": "建立 core/adapter/research-only/forbidden 四类依赖策略，生成最小 SBOM。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-1201"
+      ],
+      "allowed_paths": [
+        "pyproject.toml",
+        "opendesign-assistance/config/**",
+        "opendesign-assistance/research/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "SBOM",
+        "license policy"
+      ],
+      "acceptance": [
+        "非商业许可不进入商业 runtime",
+        "GPL/AGPL 重工具进程隔离",
+        "字体/模型权重不 vendoring"
+      ],
+      "tests": [
+        "license policy tests"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1204",
+      "phase": 12,
+      "title": "Secrets 与日志脱敏",
+      "goal": "覆盖代码、Markdown、JSON、YAML、日志和 Git history 的秘密扫描与报告脱敏。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0003"
+      ],
+      "allowed_paths": [
+        "scripts/security/**",
+        "tests/security/**",
+        ".github/workflows/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "secret scan gate"
+      ],
+      "acceptance": [
+        "不输出匹配到的完整秘密",
+        "测试 token 可识别",
+        "真实凭据文件不读取"
+      ],
+      "tests": [
+        "gitleaks fixture",
+        "redaction tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1205",
+      "phase": 12,
+      "title": "外部研究吸收审批",
+      "goal": "新增来源只能先进入 quarantine，经许可、安全、质量和重复性评审后晋升。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-1201",
+        "OD-1202"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/knowledge/governance/**",
+        "opendesign-assistance/schemas/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "promotion workflow"
+      ],
+      "acceptance": [
+        "禁止“找到即并入”",
+        "每次晋升绑定 commit/source/version",
+        "可撤销"
+      ],
+      "tests": [
+        "promotion state tests"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1301",
+      "phase": 13,
+      "title": "本地 Canonical Gate",
+      "goal": "统一 compile、JSON/schema、manifest、source、security、rubric、overlay、case 和 index 检查。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0309",
+        "OD-1204"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scripts/**",
+        "tests/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "run_quality_gate.py"
+      ],
+      "acceptance": [
+        "required 失败非零",
+        "每项证据等级明确",
+        "不把文档存在性当运行证明"
+      ],
+      "tests": [
+        "gate negative controls"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1302",
+      "phase": 13,
+      "title": "GitHub Windows/Linux CI",
+      "goal": "建立 Windows 与 Linux 对同一 SHA 的静态、测试、安全和打包验证。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-1301"
+      ],
+      "allowed_paths": [
+        ".github/workflows/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "CI workflows"
+      ],
+      "acceptance": [
+        "Actions 固定 full SHA",
+        "缓存不掩盖失败",
+        "运行环境差异明确"
+      ],
+      "tests": [
+        "actionlint/yaml validation"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1303",
+      "phase": 13,
+      "title": "依赖与代码安全 CI",
+      "goal": "增加 dependency review、CodeQL、Python SAST、secret scan 和许可证报告。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-1203",
+        "OD-1302"
+      ],
+      "allowed_paths": [
+        ".github/workflows/**",
+        "pyproject.toml"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "security workflows"
+      ],
+      "acceptance": [
+        "缺工具不能假 PASS",
+        "PR 权限最小",
+        "报告可追踪到 exact SHA"
+      ],
+      "tests": [
+        "workflow validation"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1304",
+      "phase": 13,
+      "title": "评测 CI 分层",
+      "goal": "小型 smoke eval 进入 PR；完整视觉/模型评测按手动或计划任务运行，避免成本失控。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0902",
+        "OD-1302"
+      ],
+      "allowed_paths": [
+        ".github/workflows/**",
+        "opendesign-assistance/evals/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "smoke/full eval workflows"
+      ],
+      "acceptance": [
+        "PR 不调用昂贵模型默认",
+        "无凭据时明确 BLOCKED/SKIPPED_OPTIONAL",
+        "结果版本化"
+      ],
+      "tests": [
+        "workflow dry-run"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1305",
+      "phase": 13,
+      "title": "发布包可复现",
+      "goal": "生成插件/场景包、来源清单、哈希和安装说明，不打包缓存、凭据、权重或用户资料。",
+      "risk": "high",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-1301",
+        "OD-1203"
+      ],
+      "allowed_paths": [
+        "scripts/packaging/**",
+        "opendesign-assistance/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "release archive + manifest"
+      ],
+      "acceptance": [
+        "两次构建文件列表一致",
+        "所有文件有 hash",
+        "禁止敏感/大文件"
+      ],
+      "tests": [
+        "reproducibility test"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1401",
+      "phase": 14,
+      "title": "自动生成索引",
+      "goal": "从 Manifest 自动生成插件、Atom、Scenario、Bundle、Schema、Profile、Rubric、Style、Master、Source 和 Case 索引。",
+      "risk": "medium",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0202",
+        "OD-1201"
+      ],
+      "allowed_paths": [
+        "opendesign-assistance/scripts/generate_open_design_indexes.py",
+        "opendesign-assistance/**/INDEX.md"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "generated indexes"
+      ],
+      "acceptance": [
+        "索引无手工漂移",
+        "链接有效",
+        "状态和证据等级可见"
+      ],
+      "tests": [
+        "index freshness test"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1402",
+      "phase": 14,
+      "title": "统一用户入口",
+      "goal": "README 只保留 Open Design 中使用、Hermes 执行、验证和回滚四条主路径。",
+      "risk": "low",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0201",
+        "OD-1401"
+      ],
+      "allowed_paths": [
+        "README.md",
+        "opendesign-assistance/README.md",
+        "docs/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "concise user guide"
+      ],
+      "acceptance": [
+        "不要求用户记忆内部 Atom",
+        "明确哪些步骤需授权",
+        "旧命令有迁移说明"
+      ],
+      "tests": [
+        "doc link checker"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1403",
+      "phase": 14,
+      "title": "开发者与贡献指南",
+      "goal": "说明新增风格、大师卡、领域场景、评测案例、来源和插件的标准流程。",
+      "risk": "low",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0603",
+        "OD-1205",
+        "OD-1401"
+      ],
+      "allowed_paths": [
+        "CONTRIBUTING.md",
+        "docs/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "contributor guide"
+      ],
+      "acceptance": [
+        "包含许可与非模仿规则",
+        "包含 verifier",
+        "包含证据晋级规则"
+      ],
+      "tests": [
+        "doc checks"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1404",
+      "phase": 14,
+      "title": "版本与迁移日志",
+      "goal": "建立 CHANGELOG、迁移指南和旧插件兼容期限。",
+      "risk": "low",
+      "writer": "codex-writer",
+      "dependencies": [
+        "OD-0309"
+      ],
+      "allowed_paths": [
+        "CHANGELOG.md",
+        "docs/migrations/**"
+      ],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "V2/V2.1/V3 migration docs"
+      ],
+      "acceptance": [
+        "不改写历史事实",
+        "breaking change 明确",
+        "可回滚"
+      ],
+      "tests": [
+        "version consistency check"
+      ],
+      "required_evidence_level": "E1",
+      "notes": []
+    },
+    {
+      "id": "OD-1501",
+      "phase": 15,
+      "title": "冻结候选树",
+      "goal": "仅 stage 意图文件，拒绝未知 untracked/unstaged/conflict，记录 exact tree。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1305",
+        "OD-1404"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        ".hermes/task-artifacts/open-design-v3/frozen-tree.json"
+      ],
+      "acceptance": [
+        "tree 与 changed-files 清单一致",
+        "main 未直接修改",
+        "不 commit/push"
+      ],
+      "tests": [
+        "git write-tree",
+        "git status porcelain"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1502",
+      "phase": 15,
+      "title": "独立 Codex 只读复审",
+      "goal": "全新 ephemeral Codex reviewer 审查 exact frozen tree，忽略项目写入规则且禁止修改。",
+      "risk": "high",
+      "writer": "codex-reviewer",
+      "dependencies": [
+        "OD-1501"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "review/verdict.json",
+        "review/findings.json"
+      ],
+      "acceptance": [
+        "前后 tree/status 不变",
+        "GO 时 findings 为空",
+        "解析失败/超时/树变化均 NO-GO"
+      ],
+      "tests": [
+        "tree before/after",
+        "review schema"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1503",
+      "phase": 15,
+      "title": "有限修复循环",
+      "goal": "NO-GO 时由原 writer 修复，加入负控，重新冻结和独立复审，最多 3 轮。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1502"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "review/repair-rounds.json"
+      ],
+      "acceptance": [
+        "不在 reviewer 进程修复",
+        "每轮 finding 状态明确",
+        "超过上限 BLOCKED"
+      ],
+      "tests": [
+        "round evidence"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    },
+    {
+      "id": "OD-1504",
+      "phase": 15,
+      "title": "最终报告与等待审批",
+      "goal": "生成 Markdown/JSON 完整报告、回滚、剩余风险和可选发布步骤。",
+      "risk": "high",
+      "writer": "hermes",
+      "dependencies": [
+        "OD-1502"
+      ],
+      "allowed_paths": [],
+      "forbidden_paths": [
+        "E:/**",
+        "**/.env",
+        "**/auth.json",
+        "**/*token*",
+        "**/*credential*",
+        ".git/objects/**",
+        "project-outside-root/**"
+      ],
+      "outputs": [
+        "final-audit-report.md",
+        "final-audit-report.json",
+        "rollback-evidence.json",
+        "remaining-risks.md"
+      ],
+      "acceptance": [
+        "状态仅 READY_FOR_USER_APPROVAL/BLOCKED/COMPLETED_AND_RELEASE_VERIFIED",
+        "无授权不 commit/push/PR",
+        "所有声明有证据等级"
+      ],
+      "tests": [
+        "report schema"
+      ],
+      "required_evidence_level": "E2",
+      "notes": []
+    }
+  ]
+}

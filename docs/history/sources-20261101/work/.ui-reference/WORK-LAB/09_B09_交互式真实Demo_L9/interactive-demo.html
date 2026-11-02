@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WORK-LAB · L9 Demo</title>
+<style>:root{--bg:#050D16;--sidebar:#07111C;--surface:#081420;--surface2:#0C1B2A;--border:#17435D;--primary:#2A91FF;--secondary:#20CDE1;--text:#EEF6FC;--muted:#8EABBC;--success:#22C55E;--warning:#F59E0B;--error:#EF4444;}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:Inter,"Segoe UI","Noto Sans SC",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.app{display:grid;grid-template-columns:260px 1fr;height:100vh;overflow:hidden}
+.sidebar{background:var(--sidebar);border-right:1px solid var(--border);padding:22px 16px;display:flex;flex-direction:column;min-width:0}
+.brand{display:flex;gap:12px;align-items:center;padding:4px 6px 20px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.mark{width:42px;height:42px;border:1px solid var(--primary);border-radius:12px;display:grid;place-items:center;color:var(--primary);font-weight:800}
+.brand h1{font-size:16px;margin:0}.brand small{display:block;color:var(--primary);font-size:9px;margin-top:4px;line-height:1.2}
+.nav{display:flex;flex-direction:column;gap:6px;overflow:auto}.nav button{display:flex;gap:11px;align-items:center;width:100%;background:transparent;border:1px solid transparent;color:var(--text);padding:11px 12px;border-radius:9px;text-align:left}
+.nav button:hover{background:var(--surface2);border-color:var(--border)}.nav button.active{background:var(--primary);color:#fff}
+.dot{width:9px;height:9px;border-radius:50%;border:2px solid currentColor}.user{margin-top:auto;border-top:1px solid var(--border);padding:16px 6px 0;display:flex;gap:11px;align-items:center}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:grid;place-items:center}
+.main{min-width:0;display:flex;flex-direction:column}.topbar{height:70px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex:0 0 auto}
+.search{width:min(560px,52vw);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--muted);cursor:pointer}
+.top-actions{display:flex;gap:8px}.top-actions button,.ghost{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 11px}
+.content{padding:26px;overflow:auto}.page-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:20px}.page-head h2{font-size:30px;margin:0 0 5px}.page-head p{margin:0;color:var(--muted)}
+.primary{background:var(--primary);border:0;color:#fff;border-radius:9px;padding:10px 15px;font-weight:700}.danger{background:var(--error);border:0;color:#fff;border-radius:9px;padding:10px 15px;font-weight:700}
+.grid{display:grid;gap:16px}.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.two{grid-template-columns:1.3fr 1fr}.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;min-width:0}.card:hover{border-color:var(--primary)}.card h3{font-size:15px;margin:0 0 14px}
+.kpi strong{font-size:31px;display:block;color:var(--primary)}.kpi small{color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:9px}.row{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}.row:hover{border-color:var(--primary)}
+.tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;background:var(--primary);color:#fff}.tag.ok{background:var(--success)}.tag.warn{background:var(--warning)}.tag.bad{background:var(--error)}
+.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--border);font-size:13px}.table th{color:var(--muted)}.table tr:hover td{background:var(--surface2)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar button{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:8px}.toolbar button.active{background:var(--primary);border-color:var(--primary)}
+input,textarea,select{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;outline:none}input:focus,textarea:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 25%, transparent)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:50}.overlay.open{display:flex}.modal{width:min(640px,90vw);background:var(--surface);border:1px solid var(--primary);border-radius:16px;padding:22px;box-shadow:0 20px 80px rgba(0,0,0,.45)}.modal h3{margin-top:0}
+.drawer{position:fixed;top:0;right:-520px;width:min(500px,92vw);height:100vh;background:var(--surface);border-left:1px solid var(--primary);z-index:45;padding:24px;transition:right .24s ease}.drawer.open{right:0}
+.palette{position:fixed;top:12vh;left:50%;transform:translateX(-50%);width:min(760px,90vw);background:var(--surface);border:1px solid var(--primary);border-radius:14px;z-index:60;display:none;box-shadow:0 30px 100px rgba(0,0,0,.5)}.palette.open{display:block}.palette input{width:calc(100% - 28px);margin:14px}.palette .item{padding:11px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between}.palette .item:hover{background:var(--surface2)}
+.toast{position:fixed;right:22px;bottom:22px;background:var(--surface);border:1px solid var(--primary);padding:13px 15px;border-radius:10px;z-index:80;display:none}.toast.show{display:block}
+.canvas{position:relative;min-height:520px;background:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:32px 32px;border:1px dashed var(--border);border-radius:12px;overflow:hidden}.node{position:absolute;min-width:130px;padding:12px 15px;background:var(--surface2);border:1px solid var(--primary);border-radius:9px;user-select:none;cursor:grab}.node:active{cursor:grabbing}
+.graph svg{width:100%;height:360px}.graph circle{cursor:pointer}.graph .selected{stroke:var(--secondary);stroke-width:3}
+.progress{height:9px;background:var(--surface2);border-radius:6px;overflow:hidden}.progress>div{height:100%;background:var(--primary);border-radius:6px}
+.split{display:grid;grid-template-columns:1fr 360px;gap:16px}.muted{color:var(--muted)}.big-number{font-size:42px;font-weight:800;color:var(--primary)}
+pre.log{background:#03070b;border:1px solid var(--border);border-radius:9px;padding:12px;max-height:350px;overflow:auto;color:#b9d6e8;font-size:12px}
+@media(max-width:1000px){.kpis{grid-template-columns:repeat(2,1fr)}.two,.three,.split{grid-template-columns:1fr}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.sidebar{display:none}.top-actions{display:none}.search{width:100%}.content{padding:16px}.kpis{grid-template-columns:1fr}.page-head{flex-direction:column}.card{padding:14px}}
+</style></head>
+<body>
+<div class="app">
+ <aside class="sidebar">
+  <div class="brand"><div class="mark">WL</div><div><h1>WORK-LAB</h1><small>AI WORKFLOW CONTROL PLANE</small></div></div>
+  <div class="nav"><button data-route="overview"><span class="dot"></span>总览</button><button data-route="workflows"><span class="dot"></span>工作流</button><button data-route="editor"><span class="dot"></span>工作流编辑器</button><button data-route="taskpacks"><span class="dot"></span>任务包</button><button data-route="observer"><span class="dot"></span>观察者</button><button data-route="policy"><span class="dot"></span>规则与策略</button><button data-route="integrations"><span class="dot"></span>集成 / MCP</button><button data-route="memory"><span class="dot"></span>记忆管理</button><button data-route="audit"><span class="dot"></span>审计追踪</button><button data-route="approvals"><span class="dot"></span>审批中心</button><button data-route="settings"><span class="dot"></span>设置</button></div>
+  <div class="user"><div class="avatar">A</div><div><b>Alex</b><div class="muted" style="font-size:12px">Personal Workspace</div></div></div>
+ </aside>
+ <main class="main">
+  <header class="topbar"><div class="search" id="openPalette">⌘ K &nbsp; 搜索 / Command Palette</div><div class="top-actions"><button id="notifyBtn">通知</button><button>帮助</button><button id="openDrawer">账户</button></div></header>
+  <section class="content" id="content"></section>
+ </main>
+</div>
+<div class="overlay" id="modal"><div class="modal"><h3 id="modalTitle">确认操作</h3><p class="muted" id="modalText">该操作将被记录。</p><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px"><button class="ghost" data-close-modal>取消</button><button class="primary" id="modalConfirm">确认</button></div></div></div>
+<aside class="drawer" id="drawer"><h3>账户 / Context</h3><p class="muted">当前工作区与快速设置。</p><div class="list"><div class="row"><span>Workspace</span><small>Personal</small></div><div class="row"><span>Theme</span><small>Locked</small></div><div class="row"><span>Local state</span><small>Enabled</small></div></div><button class="primary" id="closeDrawer" style="margin-top:20px">关闭</button></aside>
+<div class="palette" id="palette"><input id="paletteInput" placeholder="搜索页面或命令…"><div id="paletteItems"><div class="item" data-go="overview"><span>总览</span><small>Open</small></div><div class="item" data-go="workflows"><span>工作流</span><small>Open</small></div><div class="item" data-go="editor"><span>工作流编辑器</span><small>Open</small></div><div class="item" data-go="taskpacks"><span>任务包</span><small>Open</small></div><div class="item" data-go="observer"><span>观察者</span><small>Open</small></div><div class="item" data-go="policy"><span>规则与策略</span><small>Open</small></div><div class="item" data-go="integrations"><span>集成 / MCP</span><small>Open</small></div><div class="item" data-go="memory"><span>记忆管理</span><small>Open</small></div><div class="item" data-go="audit"><span>审计追踪</span><small>Open</small></div><div class="item" data-go="approvals"><span>审批中心</span><small>Open</small></div><div class="item" data-go="settings"><span>设置</span><small>Open</small></div></div></div>
+<div class="toast" id="toast">已完成</div>
+<template id="templates"></template>
+<script>
+const APP_KEY="work-lab";
+const NAV=[["overview", "总览"], ["workflows", "工作流"], ["editor", "工作流编辑器"], ["taskpacks", "任务包"], ["observer", "观察者"], ["policy", "规则与策略"], ["integrations", "集成 / MCP"], ["memory", "记忆管理"], ["audit", "审计追踪"], ["approvals", "审批中心"], ["settings", "设置"]];
+const content=document.getElementById("content");
+const palette=document.getElementById("palette"), paletteInput=document.getElementById("paletteInput");
+const modal=document.getElementById("modal"), drawer=document.getElementById("drawer"), toast=document.getElementById("toast");
+function showToast(msg){toast.textContent=msg;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),1800)}
+function setRoute(id){location.hash=id;render(id);}
+function currentRoute(){return location.hash.replace("#","")||NAV[0][0]}
+function activateNav(id){document.querySelectorAll("[data-route]").forEach(b=>b.classList.toggle("active",b.dataset.route===id))}
+document.querySelectorAll("[data-route]").forEach(b=>b.onclick=()=>setRoute(b.dataset.route));
+document.getElementById("openPalette").onclick=()=>{palette.classList.add("open");paletteInput.focus()};
+document.getElementById("openDrawer").onclick=()=>drawer.classList.add("open");
+document.getElementById("closeDrawer").onclick=()=>drawer.classList.remove("open");
+document.getElementById("notifyBtn").onclick=()=>showToast("暂无新的通知");
+document.querySelectorAll("[data-close-modal]").forEach(b=>b.onclick=()=>modal.classList.remove("open"));
+document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();palette.classList.toggle("open");if(palette.classList.contains("open"))paletteInput.focus()} if(e.key==="Escape"){palette.classList.remove("open");modal.classList.remove("open");drawer.classList.remove("open")}});
+paletteInput.addEventListener("input",()=>{const q=paletteInput.value.toLowerCase();document.querySelectorAll("#paletteItems .item").forEach(i=>i.style.display=i.textContent.toLowerCase().includes(q)?"flex":"none")});
+document.querySelectorAll("#paletteItems .item").forEach(i=>i.onclick=()=>{setRoute(i.dataset.go);palette.classList.remove("open")});
+window.addEventListener("hashchange",()=>render(currentRoute()));
+
+const workflows=[
+ {name:"payment-flow",type:"业务",status:"稳定",owner:"Alex",ver:"v2.4"},
+ {name:"release-flow",type:"CI/CD",status:"运行中",owner:"Jordan",ver:"v1.8"},
+ {name:"security-scan",type:"安全",status:"需关注",owner:"Taylor",ver:"v3.1"},
+ {name:"data-pipeline",type:"数据",status:"稳定",owner:"Casey",ver:"v2.0"}
+];
+const nodesDefault=[{id:"Start",x:70,y:190},{id:"Validate",x:290,y:90},{id:"Build",x:520,y:250},{id:"Approve",x:760,y:90},{id:"Deploy",x:990,y:250}];
+let nodes=JSON.parse(localStorage.getItem(APP_KEY+":nodes")||"null")||nodesDefault;
+function head(t,d,a=""){return `<div class="page-head"><div><h2>${t}</h2><p>${d}</p></div>${a?`<button class="primary" data-action="${a}">${a}</button>`:""}</div>`}
+function kpi(v,l,c=""){return `<div class="card kpi"><strong class="${c}">${v}</strong><small>${l}</small></div>`}
+function rows(items){return items.map(x=>`<div class="row"><span>${x[0]}</span><small>${x[1]}</small></div>`).join("")}
+function render(id){
+ activateNav(id);
+ if(id==="overview"){content.innerHTML=head("总览","执行态势、工作流健康、观察者和审计信号","+ 新建执行")+`<div class="grid kpis">${kpi("12","运行中")}${kpi("28","已完成","ok")}${kpi("3","待审批")}${kpi("99.7%","系统健康度")}</div><div class="grid two" style="margin-top:16px"><div class="card"><h3>最近执行</h3><div class="list">${rows([["Research-04","运行中 · 2m"],["Content-Gen","已完成 · 48s"],["Data-ETL","已完成 · 31s"]])}</div></div><div class="card"><h3>系统状态</h3><div class="big-number">99.7%</div><p class="muted">All systems operational</p><div class="progress"><div style="width:99.7%"></div></div></div></div>`}
+ else if(id==="workflows"){content.innerHTML=head("工作流","工作流状态、负责人和版本","+ 新建工作流")+`<div class="toolbar"><input id="wfSearch" placeholder="筛选工作流…"><button data-filter="all" class="active">全部</button><button data-filter="稳定">稳定</button><button data-filter="运行中">运行中</button><button data-filter="需关注">需关注</button></div><div class="card"><table class="table"><thead><tr><th>工作流</th><th>类型</th><th>状态</th><th>负责人</th><th>版本</th></tr></thead><tbody id="wfBody"></tbody></table></div>`;setupWorkflowFilter()}
+ else if(id==="editor"){content.innerHTML=head("工作流编辑器","拖拽节点位置会自动保存","保存并发布")+`<div class="split"><div class="card"><h3>Workflow Canvas</h3><div class="canvas" id="canvas">${nodes.map(n=>`<div class="node" data-node="${n.id}" style="left:${n.x}px;top:${n.y}px">${n.id}</div>`).join("")}</div></div><div class="card"><h3>属性</h3><div class="list">${rows([["运行条件","Always"],["超时","120s"],["失败重试","3"],["审批","Required"]])}</div><button class="danger" id="resetNodes" style="margin-top:14px">重置节点</button></div></div>`;setupDrag()}
+ else if(id==="approvals"){content.innerHTML=head("审批中心","风险上下文与决策记录")+`<div class="card"><table class="table"><thead><tr><th>请求</th><th>风险</th><th>提交者</th><th>状态</th><th></th></tr></thead><tbody><tr><td>Deploy production</td><td><span class="tag bad">高</span></td><td>Jordan</td><td>待审批</td><td><button class="primary approve">审批</button></td></tr><tr><td>Connect MCP</td><td><span class="tag warn">中</span></td><td>Alex</td><td>待审批</td><td><button class="primary approve">审批</button></td></tr></tbody></table></div>`;document.querySelectorAll(".approve").forEach(b=>b.onclick=()=>openConfirm("批准该请求？","操作会进入审计追踪。",()=>showToast("已批准"))) }
+ else if(id==="audit"){content.innerHTML=head("审计追踪","完整事件记录与来源")+`<div class="card"><pre class="log">${["10:24:12 alice approve workflow:user-onboarding SUCCESS","10:22:58 runner-02 deploy production SUCCESS","10:20:14 policy block external-mcp DENIED","10:18:03 alex update memory:portable SUCCESS"].join("\n")}</pre></div>`}
+ else{content.innerHTML=head(NAV.find(x=>x[0]===id)?.[1]||"模块","统一控制平面模块","主要操作")+`<div class="grid three">${["概览","规则","活动"].map((x,i)=>`<div class="card"><h3>${x}</h3><div class="list">${rows([[x+" Item 1","Active"],[x+" Item 2","Ready"],[x+" Item 3","Synced"]])}</div></div>`).join("")}</div>`}
+ wireActions();
+}
+function setupWorkflowFilter(){const body=document.getElementById("wfBody"),search=document.getElementById("wfSearch");let filter="all";function draw(){const q=(search.value||"").toLowerCase();body.innerHTML=workflows.filter(w=>(filter==="all"||w.status===filter)&&w.name.toLowerCase().includes(q)).map(w=>`<tr><td>${w.name}</td><td>${w.type}</td><td><span class="tag ${w.status==="稳定"?"ok":w.status==="需关注"?"warn":""}">${w.status}</span></td><td>${w.owner}</td><td>${w.ver}</td></tr>`).join("")}search.oninput=draw;document.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x===b));draw()});draw()}
+function setupDrag(){const canvas=document.getElementById("canvas");let moving=null,ox=0,oy=0;canvas.querySelectorAll(".node").forEach(el=>el.onpointerdown=e=>{moving=el;ox=e.offsetX;oy=e.offsetY;el.setPointerCapture(e.pointerId)});canvas.onpointermove=e=>{if(!moving)return;const r=canvas.getBoundingClientRect();moving.style.left=Math.max(0,e.clientX-r.left-ox)+"px";moving.style.top=Math.max(0,e.clientY-r.top-oy)+"px"};canvas.onpointerup=()=>{if(!moving)return;const id=moving.dataset.node;const n=nodes.find(x=>x.id===id);n.x=parseInt(moving.style.left);n.y=parseInt(moving.style.top);localStorage.setItem(APP_KEY+":nodes",JSON.stringify(nodes));moving=null;showToast("节点位置已保存")};document.getElementById("resetNodes").onclick=()=>{nodes=nodesDefault.map(x=>({...x}));localStorage.removeItem(APP_KEY+":nodes");render("editor")}}
+function openConfirm(t,m,fn){document.getElementById("modalTitle").textContent=t;document.getElementById("modalText").textContent=m;modal.classList.add("open");document.getElementById("modalConfirm").onclick=()=>{modal.classList.remove("open");fn&&fn()}}
+function wireActions(){document.querySelectorAll("[data-action]").forEach(b=>b.onclick=()=>showToast(b.dataset.action+" 已触发"))}
+
+render(currentRoute());
+</script></body></html>

@@ -1,0 +1,2123 @@
+{
+  "schema": "worklab/research-lifecycle-convergence-proposal/v2",
+  "as_of": "2026-10-01",
+  "timezone": "Asia/Shanghai",
+  "title": "三项目与全局软件生态：成熟方案对比及全生命周期收敛实施方案",
+  "status": "PROPOSAL_NOT_NEW_AUTHORITY",
+  "read_only": true,
+  "auto_apply": false,
+  "execution": {
+    "repository_modified": false,
+    "commit_push_merge": false,
+    "windows_connected": false,
+    "software_uninstalled": false,
+    "user_configuration_changed": false,
+    "user_state_deleted": false,
+    "tests_performed": "仅交付文件结构检查；没有执行部署/构建/Windows/模型运行测试"
+  },
+  "authority": {
+    "precedence": "用户最新明确指令 > 本仓当前权威链；本文件为研究与实施建议，不作新总账/权威/TaskPack",
+    "repository_baseline": "固定 WORK-LAB anchor 与其归档副本；不是今天三个仓库当前 main 的完整新审计",
+    "worklab_anchor": "d43d07a75ef8c556344e9b3a99f9257dd2db7b5c",
+    "worklab_current_task_register": "taskpacks/current/OPEN-TASK-REGISTER.md",
+    "design_lab_current_task_register": "design-lab/config/task-ledger-r3.json（以归档规则和未来当前权威解析确认）",
+    "archeaxis_current_task_register": "读取当前 AA 权威后解析既有唯一入口，不由本方案另建"
+  },
+  "coverage": {
+    "prior_pinned_evidence_hashes": "12/12匹配",
+    "prior_pinned_authority_hashes": "32/32匹配",
+    "prior_archive_hashes": "476/476匹配",
+    "prior_verdict_count": 47,
+    "literature_primary_pages": 38,
+    "cloud_all_three_current_full_trees": false,
+    "gpt_history_complete": false,
+    "windows_live_verified": false,
+    "unarchived_private_state": "UNVERIFIABLE；不从缺档推存在/不存在/合规"
+  },
+  "preserved_constraints": [
+    "WORK-LAB 全局治理只是其职责之一；三个项目各有独立项目治理",
+    "遵守既有三项目领域和目录边界；不另建第四系统/新仓/第二账本/第二配置同步写者",
+    "不改用户 provider/model/auth/桌面状态，不访问或修改 E:/F:",
+    "不删除用户会话/数据库/原生私有记忆，不以体量或 age 判定垃圾",
+    "凭据不采集、不复制、不散列、不公开；私有状态不入公共归档",
+    "当前只读研究；重装、迁移、部署、永久删除均未执行",
+    "未知字段/外部 native 写入不覆盖；必须有源/基准/live三方",
+    "每仓 current 指针和任务入口维持唯一；历史原件保留"
+  ],
+  "selected_components": [
+    {
+      "id": "T01",
+      "name": "现有 WORK-LAB 部署器 + 原生适配器",
+      "role": "受管 Rules/Skills/有界 overlay 的唯一写通道",
+      "benefit": "已有字段所有权、发布基准、冲突拒绝和部分回滚；最贴合现状",
+      "limit": "探针错根、登记不同批、部分验证只依赖标签；须修机制",
+      "decision": "ADOPT_EXISTING_AND_FIX",
+      "cost": "低至中：在现有通道修缺口",
+      "sources": [
+        "R03",
+        "R09",
+        "R10",
+        "R11"
+      ],
+      "rollback": "源提交回退；按目标恢复受管备份与旧基准；重新读回，不能只恢复 JSON 标签。"
+    },
+    {
+      "id": "T02",
+      "name": "WinGet export/import；必要时 WinGet Configuration/DSC",
+      "role": "Windows 软件安装层",
+      "benefit": "声明和检查环境，减少手装遗漏；按软件锁版本及安装来源",
+      "limit": "不是配置迁移或数据库备份；旧包可能不可得；每项受管资源仍需审核",
+      "decision": "ADOPT_WHERE_SUPPORTED",
+      "cost": "低；复杂 DSC 资源保持小范围",
+      "sources": [
+        "S15",
+        "S16",
+        "S17"
+      ],
+      "rollback": "保留可验证的前版本安装介质/来源；只有软件支持兼容降级时才重装旧版本；数据先做隔离恢复证明。"
+    },
+    {
+      "id": "T03",
+      "name": "Rulesync",
+      "role": "跨客户端规则/技能格式转换候选",
+      "benefit": "成熟的支持矩阵、选择式生成和来源锁定；减少未来适配器格式维护",
+      "limit": "不能替代现有权威；部分目标会生成整文件/选项扩大范围；Home 解析会随版本变；上游快速变化",
+      "decision": "PILOT_RENDER_ONLY",
+      "cost": "中：锁版本与逐目标 fixture 必需",
+      "sources": [
+        "S18",
+        "S19",
+        "R03"
+      ],
+      "rollback": "撤掉渲染依赖，回到上个生成器版本；试点仅在隔离目录，无 native 回滚负担。若晋级，部署仍经过唯一通道。"
+    },
+    {
+      "id": "T04",
+      "name": "chezmoi",
+      "role": "用户明确自有 dotfiles 的跨机器渲染候选",
+      "benefit": "差异预览、模板和合并工具已成品",
+      "limit": "不是 WORK-LAB 最后发布基准/字段所有权的替代；再管理同一 Home 会产生双写",
+      "decision": "OPTIONAL_DISJOINT_SCOPE",
+      "cost": "中：需要不重叠的所有权清单",
+      "sources": [
+        "S20",
+        "S21",
+        "R03"
+      ],
+      "rollback": "恢复该工具独占文件备份，撤掉独占集合；不得用全 Home 回灌。当前不新增它作为默认依赖。"
+    },
+    {
+      "id": "T05",
+      "name": "Ansible Windows",
+      "role": "多机配置管理",
+      "benefit": "成熟 Windows 模块与编排生态",
+      "limit": "不是原生 Windows 控制节点方案；额外 Linux 控制面/连接配置与当前单机需求不匹配",
+      "decision": "DEFER",
+      "cost": "高于当前需要",
+      "sources": [
+        "S22"
+      ],
+      "rollback": "本轮不接入；未来单独资格化，不能继承 WinGet 或 native 的验收。"
+    },
+    {
+      "id": "T06",
+      "name": "Git / pre-commit / Gitleaks / git-sizer",
+      "role": "持续仓库卫生和发布证据检查",
+      "benefit": "现成检查覆盖大小、路径、格式、秘密风险与历史体量",
+      "limit": "不能单凭名称、大小、时间判定业务资产可删；扫描必须显示覆盖/跳过",
+      "decision": "ADOPT_IN_EXISTING_CI",
+      "cost": "低：保留已有 Ruff/TS/构建检查，不引入重复 lint 栈",
+      "sources": [
+        "S23",
+        "S24",
+        "S25",
+        "S26",
+        "S27"
+      ],
+      "rollback": "单独回退新增门禁；原有 main 必需门禁仍保留；不通过降低扫描范围换取 PASS。"
+    },
+    {
+      "id": "T07",
+      "name": "Knip",
+      "role": "WORK-LAB/DESIGN-LAB 中 JS/TS 子工程减法候选",
+      "benefit": "发现未使用文件、导出和依赖",
+      "limit": "动态加载、构建导出、品牌资产和宿主入口可超出静态图；不用来审查 AA 的 Rust/.NET 真值",
+      "decision": "PILOT_REPORT_ONLY",
+      "cost": "低至中：先正确配入口和生产模式",
+      "sources": [
+        "S28",
+        "R15"
+      ],
+      "rollback": "报告阶段无代码删除；任何后续删改逐项 Git 回退并跑入口/宿主验证。"
+    },
+    {
+      "id": "T08",
+      "name": "ADR + Diátaxis",
+      "role": "决定和文档维护方法",
+      "benefit": "小决策、明确后继、文档按用途写；无需部署新平台",
+      "limit": "不是新总账或新的目录层级标准；不用统一编号 docs 替换现有目录",
+      "decision": "ADOPT_WITHIN_EXISTING_INDEXES",
+      "cost": "低：按访问/修改热点逐步合并",
+      "sources": [
+        "S29",
+        "S30",
+        "R01",
+        "R15",
+        "R17"
+      ],
+      "rollback": "恢复索引指针和原文；保留迁移映射，引用无断链。"
+    },
+    {
+      "id": "T09",
+      "name": "GitHub Actions artifacts/cache + 现有长期保存",
+      "role": "产物与依赖缓存分开",
+      "benefit": "短期任务产物和可再生成缓存各有成熟机制",
+      "limit": "Actions 产物会过期；不能用它保存唯一历史原件或唯一回滚包；额度/保留以账户实读为准",
+      "decision": "ADOPT_CLASSIFIED_STORAGE",
+      "cost": "低：先用已有能力，不预建对象存储服务",
+      "sources": [
+        "S32",
+        "S33"
+      ],
+      "rollback": "产物迁移前保持原件；恢复位置映射后按 hash/重建或重开检验。"
+    },
+    {
+      "id": "T10",
+      "name": "已有备份方案；缺失时评估 restic",
+      "role": "私有资产的可恢复备份",
+      "benefit": "快照/定向恢复成品能力；先隔离恢复演练",
+      "limit": "文件备份不自动保证正在写的 SQLite 一致性；凭据不进入仓库；不启用自动删快照",
+      "decision": "REUSE_FIRST_OPTIONAL_RESTIC",
+      "cost": "中：应用一致性与恢复演练比安装工具重要",
+      "sources": [
+        "S34",
+        "S35",
+        "S36"
+      ],
+      "rollback": "恢复到隔离副本并验证；用户正式库不作试验目标，不触发 prune、forget、VACUUM 或会话删减。"
+    },
+    {
+      "id": "T11",
+      "name": "OpenGitOps / 演进式架构原则",
+      "role": "声明、版本、观测与可检查性质",
+      "benefit": "将治理性质写成自动检查，变化以小步反馈收敛",
+      "limit": "桌面未知内容不能像容器部署一样自动覆盖；本方案未实现四项完整 GitOps 原则",
+      "decision": "ADOPT_PRINCIPLES_SELECTIVELY",
+      "cost": "低：复用控制面，不引入 Kubernetes 控制器",
+      "sources": [
+        "S31",
+        "S38",
+        "R02"
+      ],
+      "rollback": "门禁与受管变更分别回退；可恢复性、所有权、用户状态边界继续约束后续操作。"
+    }
+  ],
+  "convergence": [
+    {
+      "id": "D01",
+      "target": "三项目身份与两种 WORK-LAB 职责",
+      "action": "KEEP_AS_IS",
+      "reason": "保留三个独立项目和现有控制面。WORK-LAB 全局治理与本项目代码/规范/技能/记忆的职责用既有 owner/scope 区分，不强造 platform-governance 与 worklab-project 新根，也不合成一仓。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/.project/governance/three-project-boundary.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml"
+      ],
+      "sources": [
+        "R01",
+        "R02",
+        "R15",
+        "R17"
+      ],
+      "rollback": "各仓独立分支、独立 PR/回退；任何跨仓接口改动保留旧接口过渡和对应版本。",
+      "needs_local": false
+    },
+    {
+      "id": "D02",
+      "target": "全局与项目规则去重",
+      "action": "MERGE",
+      "reason": "每条常驻规则需有适用范围和可验证理由；全局保留共同边界，项目保留业务/目录/构建差异，长流程移到按需技能。硬边界留在权限/执行器/CI 中，文本缩短不弱化技术门。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+        "https://code.claude.com/docs/en/memory",
+        "https://cursor.com/docs/rules",
+        "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+      ],
+      "sources": [
+        "R01",
+        "R03",
+        "S03",
+        "S05",
+        "S06",
+        "S37"
+      ],
+      "rollback": "保留原始源 hash，源提交回退并由上个渲染器重渲染；行为回归恢复。",
+      "needs_local": true
+    },
+    {
+      "id": "D03",
+      "target": "Codex 用户全局 AGENTS.md",
+      "action": "KEEP_AS_IS",
+      "reason": "文件整体是用户所有。当前无受管块，承认未部署并下调相应声明。未来可审阅 bounded overlay，但须检查 AGENTS.override、启动 CWD、配置和实际指令链，不能整文件接管。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/codex/AGENTS.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/codex/sync_codex_global_assets.py",
+        "https://learn.chatgpt.com/docs/agent-configuration/agents-md"
+      ],
+      "sources": [
+        "R03",
+        "R12",
+        "R09",
+        "S01"
+      ],
+      "rollback": "只恢复受管块及守卫状态；用户非受管正文前后字节相同；重新启动指定载体并证实实际加载。",
+      "needs_local": true
+    },
+    {
+      "id": "D04",
+      "target": "Codex 技能与错根探针",
+      "action": "MERGE",
+      "reason": "先修探针：配置根与技能根分别发现。核验实际 .agents/skills、版本/载体/同名冲突；缺失被证明后才从源重建，不以 .codex/skills 为空重复安装。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/codex/sync_codex_global_assets.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skills-inventory.json",
+        "https://learn.chatgpt.com/docs/build-skills"
+      ],
+      "sources": [
+        "R09",
+        "R06",
+        "S02"
+      ],
+      "rollback": "恢复旧探针源及既有受管技能备份；目录路径和 hash 返回旧基准，无多余同名技能。",
+      "needs_local": true
+    },
+    {
+      "id": "D05",
+      "target": "Hermes Windows 技能三方收敛",
+      "action": "MERGE",
+      "reason": "选择“审核 live 增量回收源，再从源发布”。已核验两段追加；补齐 references 与本机行为。未审新增/改写/删除保持 NEEDS_REVIEW，拒绝旧源覆盖原生策展。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/hermes/skills/software-development/windows-development-environment/SKILL.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/packages/client-neutral-core/skills/software-development/windows-development-environment/SKILL.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/curator_foldback.py",
+        "https://hermes-agent.nousresearch.com/docs/user-guide/features/skills/",
+        "https://hermes-agent.nousresearch.com/docs/user-guide/configuration/"
+      ],
+      "sources": [
+        "R03",
+        "R13",
+        "R14",
+        "R11",
+        "S07",
+        "S08"
+      ],
+      "rollback": "分别恢复仓库源、上次发布基准与受管技能树；再比较三方，不能只恢复 SKILL.md。",
+      "needs_local": true
+    },
+    {
+      "id": "D06",
+      "target": "Hermes model-switch 与漏归档",
+      "action": "NEEDS_USER_DECISION",
+      "reason": "先补真实原文与来源。记录冲突不能证明内容漂移，未知事实不能被 adopt baseline。任何涉及用户 model/provider/auth 的操作持续排除。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skill-provenance.yaml",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/ARCHIVE-INDEX.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-evidence/assets-20260930/global-deployment-readback.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json"
+      ],
+      "sources": [
+        "R08",
+        "R19",
+        "R21",
+        "R03"
+      ],
+      "rollback": "事实未补前无部署动作；若后续变更，仅恢复经审受管文件与旧发布基准。",
+      "needs_local": true
+    },
+    {
+      "id": "D07",
+      "target": "源清单、插件版本、provenance",
+      "action": "MERGE",
+      "reason": "现有登记维持各自语义，同一事实仅一个生成源。发布后独立读回同批生成；source_sha 与 observed_sha 分列；读取失败写 UNKNOWN，不补写 PASS。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skills-inventory.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/plugin-inventory.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skill-provenance.yaml",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/codex/sync_codex_global_assets.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/sync_hermes_workflow_assets.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/curator_foldback.py"
+      ],
+      "sources": [
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11"
+      ],
+      "rollback": "回退生成器与其派生快照；旧历史 receipts 保持不可变；不能把历史安装 receipt 改成新 source commit。",
+      "needs_local": true
+    },
+    {
+      "id": "D08",
+      "target": "目录规范与外溢治理",
+      "action": "MERGE",
+      "reason": "扩展本项目现有目录/模块 owner 与输出根合同；目录名、深度或 age 只触发候选。新根、跨 owner、符号链接/junction、大小写/Unicode 冲突需检查。迁移按源→目的地 hash/引用/入口映射完成，不反复加编号根。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://git-scm.com/docs/gitignore",
+        "https://github.com/pre-commit/pre-commit-hooks"
+      ],
+      "sources": [
+        "R01",
+        "R15",
+        "R17",
+        "S23",
+        "S26"
+      ],
+      "rollback": "保留 rename/move 映射与基线；反向移动后 hash、引用、构建和 owner 匹配恢复。",
+      "needs_local": true
+    },
+    {
+      "id": "D09",
+      "target": "可再生产缓存与受控生成物",
+      "action": "MERGE",
+      "reason": "区分 tracked 合同产物、发布产物、短期可再生成缓存、独有用户原件。DESIGN-LAB tracked build 保留重建 no-drift；缓存先证明可再下载/构建及无运行依赖，才进入精确路径候选。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://git-scm.com/docs/gitignore",
+        "https://knip.dev/guides/handling-issues",
+        "https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching"
+      ],
+      "sources": [
+        "R15",
+        "R17",
+        "S23",
+        "S28",
+        "S32"
+      ],
+      "rollback": "恢复精确路径隔离副本，或按锁定源和工具链重建；功能/产物 hash 或规定语义等价通过。",
+      "needs_local": true
+    },
+    {
+      "id": "D10",
+      "target": "历史文档、提示词、审计与对话",
+      "action": "ARCHIVE_ONLY",
+      "reason": "保留原件与位置/hash/后继映射，活动入口只指当前有效决定；找回历史不等于开机全文加载。未找回材料写缺失，不声称全部 GPT 历史已搜全。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AGENTS.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/ARCHIVE-INDEX.json",
+        "https://diataxis.fr/",
+        "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions",
+        "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+      ],
+      "sources": [
+        "R01",
+        "R16",
+        "R19",
+        "S29",
+        "S30",
+        "S37"
+      ],
+      "rollback": "保留未变原件；恢复索引与 supersedes 关系，可由原 source_id/定位找回。",
+      "needs_local": false
+    },
+    {
+      "id": "D11",
+      "target": "记忆与知识边界",
+      "action": "MERGE",
+      "reason": "三项目都有各自工作上下文。长期可复用知识的接受/存储/回忆属于 ArcheAxis；WL 输出带 provenance 的候选/工作流经验，DL 保留本领域经验并经审核选择性提炼。原生私有记忆和会话不自动导入或晋升为全局规范。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/.project/governance/three-project-boundary.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://code.claude.com/docs/en/memory",
+        "https://hermes-agent.nousresearch.com/docs/user-guide/features/skills/",
+        "https://hermes-agent.nousresearch.com/docs/user-guide/configuration/",
+        "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+      ],
+      "sources": [
+        "R02",
+        "R03",
+        "S05",
+        "S07",
+        "S08",
+        "S37"
+      ],
+      "rollback": "撤回新候选/投影，保持原件与原软件状态；AA 仅沿本仓既有版本/接受协议恢复，不能旁路写库。",
+      "needs_local": true
+    },
+    {
+      "id": "D12",
+      "target": "新软件、新模型资格化",
+      "action": "MERGE",
+      "reason": "核心需求用能力、输出合同和风险描述；适配器记录实际软件版本、发现根、工具/技能行为与模型声明。使用用户原生选定的模型做配对评测，不改变默认 model/provider/auth，不用厂商旗舰排序代表兼容性。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/adapter-registry.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/global-agent-policy.yaml",
+        "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+        "https://developers.openai.com/blog/eval-skills",
+        "https://agentskills.io/specification",
+        "https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture"
+      ],
+      "sources": [
+        "R01",
+        "R04",
+        "R05",
+        "S03",
+        "S04",
+        "S13",
+        "S14"
+      ],
+      "rollback": "恢复上个合格源/渲染器/受管配置集合；软件降级另需数据兼容证明；模型选择保持用户控制。",
+      "needs_local": true
+    },
+    {
+      "id": "D13",
+      "target": "DSH / Cursor / Claude Code 等扩展客户端",
+      "action": "KEEP_AS_IS",
+      "reason": "当前登记能力仍由实际探针决定。新上游能力只进入候选矩阵；可渲染到 fixture，discover/plan/apply/readback/rollback/drift 逐项资格化，不因 Rulesync 的勾选升为 READBACK_VERIFIED。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/adapter-registry.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/software-registry.json",
+        "https://code.claude.com/docs/en/memory",
+        "https://cursor.com/docs/rules",
+        "https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/skill/skill-filesystem/README.md",
+        "https://github.com/deepseek-ai/deepseek-harness/blob/master/AGENTS.md",
+        "https://rulesync.dyoshikawa.com/reference/supported-tools.html"
+      ],
+      "sources": [
+        "R04",
+        "R23",
+        "S05",
+        "S06",
+        "S09",
+        "S10",
+        "S18"
+      ],
+      "rollback": "试点去掉候选依赖；未来受管变更沿客户端独立备份/恢复与加载检查回退。",
+      "needs_local": true
+    },
+    {
+      "id": "D14",
+      "target": "Open Design / OpenHuman / GitHub / CC Switch",
+      "action": "KEEP_AS_IS",
+      "reason": "按既有 MANAGE/OBSERVE/IGNORE 与每项能力授权执行。Open Design 客户端不拥有 DESIGN-LAB 资产；CC Switch 不进入默认主动写通道，但不据此批准卸载；GitHub 保留现有交付门，OpenHuman 保持观察。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/.project/governance/three-project-boundary.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/adapter-registry.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/software-registry.json",
+        "https://github.com/nexu-io/open-design/blob/main/README.md",
+        "https://github.com/tinyhumansai/openhuman/blob/main/README.md"
+      ],
+      "sources": [
+        "R02",
+        "R03",
+        "R04",
+        "R23",
+        "S11",
+        "S12"
+      ],
+      "rollback": "每客户端保留独立前版本和受管差异；用户状态不纳入统一回灌；GitHub 改动以仓库规则/PR 回退。",
+      "needs_local": true
+    },
+    {
+      "id": "D15",
+      "target": "统一生产—晋升—退出机制",
+      "action": "MERGE",
+      "reason": "在现有任务/receipt/cleanup 通道加入输出用途、目标 owner、保留规则和关闭清单；合并现有清理/备份/配额规则。登记是派生视图，不新建生命周期总账或第四产品。",
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/.project/governance/three-project-boundary.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://martinfowler.com/articles/evo-arch-forward.html",
+        "https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching"
+      ],
+      "sources": [
+        "R01",
+        "R02",
+        "R03",
+        "R15",
+        "R17",
+        "S31",
+        "S32"
+      ],
+      "rollback": "回退对应功能源，保留已生成 receipt 与原件；运行输出回到允许根，历史不改为未发生。",
+      "needs_local": true
+    }
+  ],
+  "asset_classes": [
+    {
+      "category": "规范权威/合同",
+      "canonical": "每仓既有 Authority/Index/机器合同",
+      "action": "KEEP 或经 owner 修正；一事实一可写源",
+      "guard": "全局发布器不能写项目权威；旧记录只读映射，不增加第二权威",
+      "sources": [
+        "R01",
+        "R02",
+        "R15",
+        "R17"
+      ]
+    },
+    {
+      "category": "可编辑源码/原始设计/知识原件",
+      "canonical": "所属项目或用户原有真值位置",
+      "action": "KEEP、语义审阅 MERGE、带映射 MOVE",
+      "guard": "相同 hash 只证明字节重复，不证明许可、可见性、用途一致；无法证明价值时不删",
+      "sources": [
+        "R02",
+        "R15",
+        "R17"
+      ]
+    },
+    {
+      "category": "派生规则/技能/登记",
+      "canonical": "有 source_commit + renderer/version + receipt 的投影",
+      "action": "REBUILD 或更新生成器，禁止手工补 PASS",
+      "guard": "只有声明源可信且目标读回成功才升格；用户混合文件只写有界区域",
+      "sources": [
+        "R03",
+        "R06",
+        "R07",
+        "R08",
+        "S02",
+        "S13"
+      ]
+    },
+    {
+      "category": "受控 tracked build / 固定 fixture",
+      "canonical": "项目当前合同规定的源控路径",
+      "action": "KEEP + 锁工具链重建 + no-drift",
+      "guard": "不能以 build/dist 名称一律忽略或去跟踪；变更存储政策需先改合同和消费者",
+      "sources": [
+        "R15",
+        "R17",
+        "S23"
+      ]
+    },
+    {
+      "category": "可重新生成的缓存/测试临时输出",
+      "canonical": "允许的本机输出根或 CI cache",
+      "action": "QUARANTINE 后精确路径到期处理候选",
+      "guard": "构建/离线依赖、占用与唯一副本检查；从 fresh 环境重建通过；不含 DB/WAL/会话/记忆原件",
+      "sources": [
+        "S24",
+        "S28",
+        "S32",
+        "S35"
+      ]
+    },
+    {
+      "category": "任务产物/发布包/迁移证据",
+      "canonical": "本仓产物合同及已有长期保存",
+      "action": "晋升正式产物或冻结归档；临时项有 TTL",
+      "guard": "唯一验收包/恢复包不依赖会过期 Actions 保存；大型对象须 hash 与位置映射",
+      "sources": [
+        "S32",
+        "S33",
+        "R15"
+      ]
+    },
+    {
+      "category": "过时文档/历史提示/原始对话",
+      "canonical": "现有 history 入口与用户私有历史存储",
+      "action": "ARCHIVE_ONLY；短 current 指针 + supersedes",
+      "guard": "时间旧不是错误；必要约束尚无后继前保持有效；历史全文不纳入常驻 prompt",
+      "sources": [
+        "S29",
+        "S30",
+        "S37",
+        "R01"
+      ]
+    },
+    {
+      "category": "用户凭据/认证/会话/原生记忆/数据库",
+      "canonical": "原软件与用户私有位置",
+      "action": "OBSERVE 允许的元数据；必要私有一致性备份",
+      "guard": "不归档公开正文，不复制或散列凭据；不删、不瘦身、不 VACUUM、不改路由和桌面状态",
+      "sources": [
+        "R03",
+        "S35",
+        "S36"
+      ]
+    }
+  ],
+  "deployment_transaction": {
+    "stages": [
+      "discover version/carrier/native roots/ownership",
+      "plan exact write set/source+renderer digests/before state/backup",
+      "stage rendered non-secret artifacts",
+      "guarded apply through existing writer",
+      "independent native readback and loading check",
+      "generate source/native/plugin projections from their actual facts",
+      "publish cohort receipt only after required gates",
+      "second plan NOOP and rollback drill"
+    ],
+    "generated_records": [
+      "skills-inventory.json：源清单由 source bytes 生成",
+      "skill-provenance.yaml：source 与 native observed 分列，native最后独立读回",
+      "plugin-inventory.json：身份、安装revision/包内容证据；缺失UNKNOWN"
+    ],
+    "proposed_fields": [
+      "run_id",
+      "source_repo",
+      "source_commit",
+      "source_path",
+      "source_sha256",
+      "renderer_id",
+      "renderer_version_or_digest",
+      "client_version",
+      "carrier",
+      "resolved_native_root",
+      "scope",
+      "target_path",
+      "observed_at",
+      "observed_sha256",
+      "normalized_sha256",
+      "backup_reference",
+      "receipt_reference",
+      "verification_scope",
+      "verification_status"
+    ],
+    "atomicity": "各文件采用可行的原子替换；跨Git/软件Home/三仓没有天然原子性，依靠cohort/pending/recovery表达逻辑事务",
+    "maturity": "six capability bits independently qualified；所有必需native读取/加载/恢复证据成功才可声明相应成熟度",
+    "schema_note": "以上字段是对现有 schema 的扩展提案；不是宣称当前生成器已实现"
+  },
+  "phases": [
+    {
+      "id": "P00",
+      "phase": "P0",
+      "target": "所有项目/所有软件",
+      "title": "建立明确范围和 coverage 清单",
+      "work": "读取本仓当前权威；分别固定三个仓 observed_commit/tree；列 tracked、refs、submodule/LFS 和读取失败；本机只读列允许根内未提交/忽略项及客户端载体版本。",
+      "acceptance": "公开 tree 的每个条目都分类；NOT_FOUND/UNREAD/SKIPPED 数量可计算；原件和复制件、历史 snapshot 与当前 commit 分开。",
+      "fail_when": "无法解析 current 权威、根身份不明或把固定 WL 档案当三仓全量，阻断对应动作。",
+      "rollback": "纯读取无回滚；报告保留时间点，不覆写原有任务账本。",
+      "needs_local": true,
+      "sources": [
+        "R01",
+        "R15",
+        "R17",
+        "R19"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/ARCHIVE-INDEX.json"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P01",
+      "phase": "P0",
+      "target": "历史完整性",
+      "title": "关闭历史输入缺口",
+      "work": "把已找回的三项目历史报告作为索引；通过用户可用导出/原附件建立原件 manifest、大小/hash、对话/附件定位和重复映射。无法获取的长对话与配额引用保留 NOT_FOUND/UNKNOWN。",
+      "acceptance": "完整性以已声明时间范围和来源清单为分母，读取字节与 manifest 对上；仅搜索命中不算全文。",
+      "fail_when": "缺失不阻断无关、证据独立的低风险修正；阻断依赖该材料的永久删除、覆盖、经验晋升或全量完成声明。",
+      "rollback": "仅增加索引/映射；原件不改、不删。",
+      "needs_local": false,
+      "sources": [
+        "R19",
+        "S30",
+        "S37"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/ARCHIVE-INDEX.json",
+        "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions",
+        "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P02",
+      "phase": "P0",
+      "target": "软件/状态分离",
+      "title": "形成最小重装包候选",
+      "work": "每客户端分开安装介质、受管 overlay、用户正文、秘密/私有状态；准确列 package ID/版本/平台/来源校验与不受管范围。",
+      "acceptance": "重装包仅官方软件和审核受管资产；不能以整个旧 Home 为可移植模板。",
+      "fail_when": "软件身份未知、介质不可得、数据无法一致备份或 schema 迁移不可回退，阻断该客户端重装。",
+      "rollback": "本步只规划；先证明旧版本与数据副本恢复，不执行卸载。",
+      "needs_local": true,
+      "sources": [
+        "R03",
+        "R23",
+        "S15",
+        "S16",
+        "S17",
+        "S35",
+        "S36"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/software-registry.json",
+        "https://learn.microsoft.com/en-us/windows/package-manager/winget/configure",
+        "https://learn.microsoft.com/en-us/windows/package-manager/winget/export",
+        "https://learn.microsoft.com/en-us/windows/package-manager/winget/import",
+        "https://sqlite.org/wal.html",
+        "https://sqlite.org/backup.html"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P03",
+      "phase": "P1",
+      "target": "WORK-LAB",
+      "title": "修正已证伪声明与探针",
+      "work": "区分对象域与能力域、source_inventory 与 native_installation；修 Codex agent-home 发现；每目标 marker/字节/readback 结果分列；UNKNOWN 不升格。",
+      "acceptance": "使用显式 agent-home、profile、override、CWD fixture 的探针结果符合真实加载规则；历史收据不被重写。",
+      "fail_when": "仍用空目录、PASS 字符串或 stdout 文本作为全部验证，失败。",
+      "rollback": "独立 PR 源回退；native 未写时无需还原 Home。",
+      "needs_local": false,
+      "sources": [
+        "R04",
+        "R06",
+        "R09",
+        "R12",
+        "S01",
+        "S02",
+        "S09"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/adapter-registry.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skills-inventory.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/codex/sync_codex_global_assets.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/codex/AGENTS.md",
+        "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+        "https://learn.chatgpt.com/docs/build-skills",
+        "https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/skill/skill-filesystem/README.md"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P04",
+      "phase": "P1",
+      "target": "WORK-LAB",
+      "title": "同批生成源/安装/插件登记",
+      "work": "在现有发布通道引入 cohort/run_id、源/渲染/目标 before/after 指纹和独立读回；源清单从源生成；插件版本从安装元数据+内容身份；失败记录 UNKNOWN。",
+      "acceptance": "任意故障阶段均不出现虚假成功；第二次 plan 无变化；登记不是人工修 hash；native 外部写入被冲突检测发现。",
+      "fail_when": "跨提交/跨版本混写、source_hash 复制成 live_hash、读取失败仍 PASS，失败。",
+      "rollback": "恢复上个生成器与派生登记；native 如有写入须同时恢复受管备份/基准并读回。",
+      "needs_local": false,
+      "sources": [
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skills-inventory.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/plugin-inventory.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skill-provenance.yaml",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/codex/sync_codex_global_assets.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/sync_hermes_workflow_assets.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/curator_foldback.py"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P05",
+      "phase": "P1",
+      "target": "三个项目",
+      "title": "接入仓库卫生增量门禁",
+      "work": "复用现有 CI/命名/目录 owner/边界守卫；加入新增非法根、Windows 名称/大小写、未知大文件、源控缓存、断链、未声明输出路径检查；扫描结果逐项显示范围。",
+      "acceptance": "既有门禁继续有效；新增问题被阻断；历史存量以基线候选跟踪而非先要求全仓无问题。",
+      "fail_when": "用 ignore 大范围吞掉历史失败，或把受控 tracked build 当缓存，失败。",
+      "rollback": "回退本次新增检查源；原有必需门禁不移除。",
+      "needs_local": false,
+      "sources": [
+        "R01",
+        "R15",
+        "R17",
+        "S23",
+        "S25",
+        "S26",
+        "S27"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://git-scm.com/docs/gitignore",
+        "https://github.com/github/git-sizer",
+        "https://github.com/pre-commit/pre-commit-hooks",
+        "https://github.com/gitleaks/gitleaks"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P06",
+      "phase": "P2",
+      "target": "三个项目",
+      "title": "语义收敛文档与规则",
+      "work": "按现有 authority-index/crosswalk 把重复 current、旧链接、孤儿指令和冲突字段列清单；合并 current 叙述，保留原件后继映射；将任务特定指南移为按需引用。",
+      "acceptance": "每条有效约束仍有唯一归属与可发现入口；构建/规则/任务入口不丢；不创建新全局或目录总权威。",
+      "fail_when": "只是按 age/name 批量归档，或索引要求 bootstrap 仍失效，失败。",
+      "rollback": "各仓单独 PR 回退及引用映射恢复；原件 hash 对齐。",
+      "needs_local": false,
+      "sources": [
+        "R01",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "S29",
+        "S30"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AGENTS.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/AGENTS.md",
+        "https://diataxis.fr/",
+        "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P07",
+      "phase": "P2",
+      "target": "三个项目",
+      "title": "目录和重复资产迁移",
+      "work": "对重复/旧目录作精确源目的映射、owner、读写调用者、动态加载和构建依赖检查；更新引用和输出生产者；禁止跨仓整个目录复制。",
+      "acceptance": "目的地 hash/语义、消费者、入口和 owner 都通过；Windows case/Unicode/path/junction fixture 通过。",
+      "fail_when": "仅凭目录深或相同 hash 判断可删，或引出受保护根/其他项目写入，失败。",
+      "rollback": "反向移动映射；恢复引用和生产者配置；不得恢复成同时两处活跃写。",
+      "needs_local": true,
+      "sources": [
+        "R02",
+        "R15",
+        "R17",
+        "S23",
+        "S26",
+        "S28"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/.project/governance/three-project-boundary.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://git-scm.com/docs/gitignore",
+        "https://github.com/pre-commit/pre-commit-hooks",
+        "https://knip.dev/guides/handling-issues"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P08",
+      "phase": "P2",
+      "target": "WORK-LAB/DESIGN-LAB 子工程",
+      "title": "验证构建产物和缓存分流",
+      "work": "每项生成物找到 producer、源码/锁文件、工具链、输出根、消费者与是否唯一副本；tracked build 保持 no-drift；其他临时 output 仅列隔离候选。",
+      "acceptance": "从干净隔离 checkout 可重建；正式宿主/交付路径仍使用正确产物；原文件尚保留。",
+      "fail_when": "新构建依赖本机旧缓存，或 tracked build/hash 与合同不符，失败。",
+      "rollback": "恢复精确备份，或从旧源/工具链重建；原合同门禁通过。",
+      "needs_local": true,
+      "sources": [
+        "R15",
+        "R17",
+        "S23",
+        "S28",
+        "S32",
+        "S33"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://git-scm.com/docs/gitignore",
+        "https://knip.dev/guides/handling-issues",
+        "https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching",
+        "https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P09",
+      "phase": "P2",
+      "target": "三个项目",
+      "title": "约束所有生成器和任务出口",
+      "work": "现有 generator/task/cleanup 入口声明输出用途、允许根、最大体量/TTL、晋升目标和关闭清单；关闭时检测本仓及声明外置输出根新增文件；其他位置只报告允许的元数据。",
+      "acceptance": "新输出均有 receipt 和归属；不再出现无 owner 的新根/副本/最终版；失败任务输出也可退出。",
+      "fail_when": "生成器继续写未知根、关闭任务只加报告未处理输出，失败。",
+      "rollback": "回退 producer 变更，保留本次 receipt；输出恢复到已允许位置。",
+      "needs_local": true,
+      "sources": [
+        "R01",
+        "R02",
+        "R15",
+        "R17",
+        "S31",
+        "S32"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/.project/governance/three-project-boundary.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://martinfowler.com/articles/evo-arch-forward.html",
+        "https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P10",
+      "phase": "P3",
+      "target": "Windows/每客户端",
+      "title": "验证私有恢复路径",
+      "work": "使用客户端官方/宿主支持的一致性导出或由用户控制的停写备份；restore 到隔离副本核验可打开/读取关系和 schema；不上传正文。",
+      "acceptance": "数据恢复与版本兼容已证明；用户正式库不作为迁移实验；验收只披露可公开摘要。",
+      "fail_when": "只有文件复制成功或备份压缩包存在，缺恢复证明；新版本写库后只保证可重装旧 exe，失败。",
+      "rollback": "不替换正式状态；保留原软件和原数据；恢复演练失败即保持旧安装。",
+      "needs_local": true,
+      "sources": [
+        "S34",
+        "S35",
+        "S36",
+        "R03"
+      ],
+      "evidence_urls": [
+        "https://restic.readthedocs.io/en/stable/050_restore.html",
+        "https://sqlite.org/wal.html",
+        "https://sqlite.org/backup.html",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P11",
+      "phase": "P3",
+      "target": "Hermes",
+      "title": "补三方和 references 后回收",
+      "work": "独立读取已许可受管技能树；补 windows 引用与 model-switch 缺原文；核对 last published baseline、native curator 差异和依赖；技术经验先验证。",
+      "acceptance": "整包 source/live/baseline 对齐；新增经验有有效引用和平台 fixture；删除/改写人工审阅有记录。",
+      "fail_when": "只检查 SKILL.md，不检查 supporting refs；将未审 native 改动采用为基准，失败。",
+      "rollback": "恢复完整受管树与旧 baseline；仓库回收提交另行回退。",
+      "needs_local": true,
+      "sources": [
+        "R08",
+        "R10",
+        "R11",
+        "R13",
+        "R14",
+        "R19",
+        "S07",
+        "S08"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skill-provenance.yaml",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/sync_hermes_workflow_assets.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/curator_foldback.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/hermes/skills/software-development/windows-development-environment/SKILL.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/packages/client-neutral-core/skills/software-development/windows-development-environment/SKILL.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/ARCHIVE-INDEX.json",
+        "https://hermes-agent.nousresearch.com/docs/user-guide/features/skills/",
+        "https://hermes-agent.nousresearch.com/docs/user-guide/configuration/"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P12",
+      "phase": "P3",
+      "target": "Codex",
+      "title": "核验用户正文与有界 overlay",
+      "work": "实际载体解析 instruction chain 与 skills；保留用户正文，展示仅受管块 diff；安装缺失被证明后才重建源投影。",
+      "acceptance": "未知用户文字原字节保留；实际会话读到所期望块；skills 无重复候选；verify/readback/rollback 独立成功。",
+      "fail_when": "仍未解析 override/Home/CWD、块重复、用户正文变化、wrong-root 误补装，失败。",
+      "rollback": "受管块/技能树/状态基准逐项恢复；用户全文仍相同；实际加载回到旧状态。",
+      "needs_local": true,
+      "sources": [
+        "R03",
+        "R09",
+        "R12",
+        "S01",
+        "S02"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/codex/sync_codex_global_assets.py",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/codex/AGENTS.md",
+        "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+        "https://learn.chatgpt.com/docs/build-skills"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P13",
+      "phase": "P3",
+      "target": "DSH/其他客户端",
+      "title": "小范围格式渲染资格化",
+      "work": "选择一个确有使用需求的客户端；在隔离 fixture 验证支持的规则/技能/MCP 功能、根发现和排除字段；必要时评估 Rulesync 渲染。",
+      "acceptance": "来源锁版本/hash；client 原生发现可回读；不产生第二同步写者；成熟度按六位能力分别记录。",
+      "fail_when": "强开所有 targets/features、未知Home写入、功能只有勾选无 native 验证，失败。",
+      "rollback": "fixture 删除不是用户清理；撤试点依赖。正式晋级后的目标变更有单独备份。",
+      "needs_local": true,
+      "sources": [
+        "R04",
+        "R23",
+        "S09",
+        "S10",
+        "S13",
+        "S14",
+        "S18",
+        "S19"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/adapter-registry.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/software-registry.json",
+        "https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/skill/skill-filesystem/README.md",
+        "https://github.com/deepseek-ai/deepseek-harness/blob/master/AGENTS.md",
+        "https://agentskills.io/specification",
+        "https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture",
+        "https://rulesync.dyoshikawa.com/reference/supported-tools.html",
+        "https://rulesync.dyoshikawa.com/guide/declarative-sources.html"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P14",
+      "phase": "P3",
+      "target": "Windows/用户选定客户端",
+      "title": "逐客户端重装演练与部署",
+      "work": "在 P02/P10 完成后冻结候选版本，先用隔离可行载体验证官方基线；正式卸载前有明确目标列表、保留用户状态路径和回滚证据。仅部署审核受管包。",
+      "acceptance": "新软件官方入口工作、原生用户设置保留、受管资产发现/加载/读回/NOOP/回滚通过。",
+      "fail_when": "旧版本不可得、卸载行为会删用户状态、数据回退不兼容或包未知，阻断该客户端。",
+      "rollback": "按软件支持方案恢复安装与经审受管集合；数据按独立一致性恢复证明处理，不能盲目全Home回灌。",
+      "needs_local": true,
+      "sources": [
+        "R01",
+        "R03",
+        "S15",
+        "S16",
+        "S17",
+        "S35",
+        "S36"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+        "https://learn.microsoft.com/en-us/windows/package-manager/winget/configure",
+        "https://learn.microsoft.com/en-us/windows/package-manager/winget/export",
+        "https://learn.microsoft.com/en-us/windows/package-manager/winget/import",
+        "https://sqlite.org/wal.html",
+        "https://sqlite.org/backup.html"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P15",
+      "phase": "P4",
+      "target": "三个项目/模型适配",
+      "title": "用同组任务比较新旧模型/规则",
+      "work": "在用户选定且可用的运行时执行成对 fixture：指令加载、触发/不触发、工具输出、中文Windows路径、未知字段、故障恢复、关闭产物；记录旧/新语义和执行身份。",
+      "acceptance": "硬边界零回归；关键任务质量不低于既定门；输入常驻负担与产物增长有测量；模型与软件变化尽量分开。",
+      "fail_when": "新模型仅靠参数能力宣传合格，或将模型/软件/目录/记忆迁移同时改变导致无法归因，失败。",
+      "rollback": "恢复上个规则/适配器集合；用户模型选择由用户掌握，不自动路由切换。",
+      "needs_local": true,
+      "sources": [
+        "R01",
+        "R04",
+        "R05",
+        "S03",
+        "S04",
+        "S13",
+        "S14"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/adapter-registry.json",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/global-agent-policy.yaml",
+        "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+        "https://developers.openai.com/blog/eval-skills",
+        "https://agentskills.io/specification",
+        "https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    },
+    {
+      "id": "P16",
+      "phase": "P4",
+      "target": "各项目",
+      "title": "合并到 main 并持续验收",
+      "work": "任务进入本仓现有唯一 current 入口；各仓独立 PR，exact-SHA 结构/边界/证据/构建门；本机受管部署收据绑定同一候选版本。",
+      "acceptance": "源码与派生投影同批；冲突和未验状态诚实；只有所需Windows门通过才声明重装/部署成功。",
+      "fail_when": "跳过必需 gate 当 PASS；拿旧 SHA 的 GUI/运行证据替新产物；跨仓/桌面全量大合并，失败。",
+      "rollback": "各仓独立 revert；deploy 恢复上个 cohort 的受管集合；历史验收收据仍保留。",
+      "needs_local": true,
+      "sources": [
+        "R01",
+        "R15",
+        "R16",
+        "R17",
+        "S31"
+      ],
+      "evidence_urls": [
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AGENTS.md",
+        "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+        "https://martinfowler.com/articles/evo-arch-forward.html"
+      ],
+      "status": "PROPOSED_NOT_EXECUTED"
+    }
+  ],
+  "merge_gates": [
+    {
+      "id": "G00",
+      "name": "范围门",
+      "pass_when": "每动作列输入/目标/排除范围和身份；覆盖率、未读/跳过、历史缺口各自计数；其依赖证据缺失则不能声称全量。",
+      "fail_when": "仓库原件树与客户端 live、复制档案混为一谈。",
+      "needs_local": false
+    },
+    {
+      "id": "G01",
+      "name": "现有权威/唯一写者",
+      "pass_when": "当前项目 authority、目录匹配和唯一任务入口解析通过；无第二 mutable ledger/配置写者/知识真值 owner。",
+      "fail_when": "新增 .global 或其他第二权威、新工具与旧同步器同写目标。",
+      "needs_local": false
+    },
+    {
+      "id": "G02",
+      "name": "结构与引用",
+      "pass_when": "新增根/非法名称/大小写或Unicode碰撞/深度与路径预算/断链/旧路径引用均已处理或具体豁免；无凭命名删资产。",
+      "fail_when": "候选迁移缺目的 owner、consumer 或引用映射。",
+      "needs_local": false
+    },
+    {
+      "id": "G03",
+      "name": "证据重算",
+      "pass_when": "本次允许公开的源、派生文件、归档原件逐字节重算；raw_sha 与 normalized_sha 分列，summary 从明细派生。",
+      "fail_when": "以归一化 hash 代替精确恢复 hash；引用漏读却写 VERIFIED。",
+      "needs_local": false
+    },
+    {
+      "id": "G04",
+      "name": "秘密与私有边界",
+      "pass_when": "仅扫描准予发布的材料；高置信疑似项为零或经记录误报；跳过明列；公开输出只含位置/模式；禁止用户凭据探测辅助 hook。",
+      "fail_when": "秘密值入报告；把私有状态不在档案推为不存在；无限 glob 扫软件Home。",
+      "needs_local": false
+    },
+    {
+      "id": "G05",
+      "name": "三项目边界",
+      "pass_when": "检查新调用者/写者/依赖与数据流，不仅查 BOUNDARY 字符串；项目可 standalone；Open Design 软件与 DL 领域分开。",
+      "fail_when": "全局同步器写项目 overlay；WL 接受知识真值；全仓共用新运行时。",
+      "needs_local": false
+    },
+    {
+      "id": "G06",
+      "name": "生成可复现",
+      "pass_when": "锁源/渲染器/工具链；二次生成 no-drift；tracked build 按其合同重建；缓存缺失仍能构建。",
+      "fail_when": "源控产物被全局忽略/删除；source-inventory 读取旧 hash；依赖隐蔽旧缓存。",
+      "needs_local": false
+    },
+    {
+      "id": "G07",
+      "name": "原生加载",
+      "pass_when": "运行版本/载体/启动根/Profile/override 明确；由宿主发现目录、有效指令与技能选择核验；无只看 marker 的成功。",
+      "fail_when": "正确文件在错误 Home、重复名称或规则未实际加载。",
+      "needs_local": true
+    },
+    {
+      "id": "G08",
+      "name": "受管部署与登记事务",
+      "pass_when": "独立 readback/NOOP/漂移拒绝/失败中断通过；cohort 一致；安装事实由 native 生成，失败 UNKNOWN。",
+      "fail_when": "stdout PASS 或 source_hash 被用为 installed_hash；部分失败仍统一 complete。",
+      "needs_local": true
+    },
+    {
+      "id": "G09",
+      "name": "恢复与数据兼容",
+      "pass_when": "精确备份可隔离恢复；旧安装可得；数据库 schema/关系与宿主支持明确；用户状态不实验、不删除。",
+      "fail_when": "只重装旧软件即当回滚；WAL 被视为缓存；缺一致性和恢复证明。",
+      "needs_local": true
+    },
+    {
+      "id": "G10",
+      "name": "模型/技能行为",
+      "pass_when": "代表任务和负例触发都测；硬边界零回归，新增约束有可观测理由，退役约束已有替代证明。",
+      "fail_when": "以新旗舰更强推定任何旧规则可删；未测便更改默认路由。",
+      "needs_local": true
+    },
+    {
+      "id": "G11",
+      "name": "产物出口与增长",
+      "pass_when": "任务写集合和允许输出根正确；所有新产物有 owner/用途/保留或晋升；非预期外溢与未知新增活跃权威为零。",
+      "fail_when": "只生成报告不关闭产物，候选隔离又产生无限备份。",
+      "needs_local": true
+    }
+  ],
+  "behavioral_fixtures": [
+    {
+      "id": "B01",
+      "scenario": "修一处文档错字",
+      "expected": "只加载用户共同行为、当前项目必要入口和相关局部规则",
+      "measurement": "观察读取文件数、常驻上下文和无关 skill 触发；不用削弱既有 bootstrap 边界换速度",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B02",
+      "scenario": "改一个模块",
+      "expected": "能发现模块 owner/合同和正确构建，不读三个项目全史",
+      "measurement": "记录实际 CWD 与祖先规则；不误读其他项目 current",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B03",
+      "scenario": "重建 DESIGN-LAB workbench",
+      "expected": "现行 tracked 生成物重建 no-drift，动态/宿主入口保持",
+      "measurement": "不用“build 是垃圾”误删，真实宿主验收另行执行",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04",
+      "scenario": "发布受管技能",
+      "expected": "正确原生根加载，登记从最后 readback 生成",
+      "measurement": "source_sha/observed_sha/renderer/receipt 同 cohort；二次 plan NOOP",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05",
+      "scenario": "Hermes curator 新增经验",
+      "expected": "新增待审、引用可核、回收入源后才部署",
+      "measurement": "未审改写/删除不被 adopt/overwrite；mainfile 及引用树同时比对",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06",
+      "scenario": "DSH 从分类源发现技能",
+      "expected": "适配后本机根直接子包可发现，无效条目有诊断",
+      "measurement": "不把 Hermes 多层分类目录原样复制；目录存在不等于 catalog 出现",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07",
+      "scenario": "Windows 路径和别名",
+      "expected": "中文/空格/case/长路径以及 junction fixture 在许可范围内正确",
+      "measurement": "不跟随到未知/受保护根；有效目标使用宿主解析；测试不访问 E:/F:",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08",
+      "scenario": "中途失败/故障恢复",
+      "expected": "部分写失败不升格，已写受管范围能恢复",
+      "measurement": "阶段 fault injection；原生未知改动保留；重新回读验证旧基准",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09",
+      "scenario": "新模型减少旧指令",
+      "expected": "触发/不触发、完成质量、行为边界及产物增长不回归",
+      "measurement": "同任务同软件同输入；至少保存旧/新可比较执行记录；质量阈值由该任务标准确定",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10",
+      "scenario": "历史查询和知识晋升",
+      "expected": "可以定位原始来源，但不会自动变成 current 指令/全局记忆",
+      "measurement": "历史 UNKNOWN 明列；知识候选经 AA 接受；不读或散列用户凭据",
+      "status": "NOT_RUN"
+    }
+  ],
+  "metrics": [
+    {
+      "id": "M01",
+      "name": "未声明的新输出/根",
+      "target": "0 新增",
+      "interpretation": "现有门禁先冻结已知存量，禁止新增；不要求隐藏存量取得0",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M02",
+      "name": "第二可写事实源/第二同步写者",
+      "target": "0",
+      "interpretation": "不同语义登记可以共存；同一事实所有者唯一",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M03",
+      "name": "必需门禁未执行、读取失败仍PASS",
+      "target": "0",
+      "interpretation": "SKIPPED/UNKNOWN 独立计数，不能隐入成功率",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M04",
+      "name": "高置信发布秘密命中",
+      "target": "0",
+      "interpretation": "范围明列；此值不证明私有软件状态绝对无秘密",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M05",
+      "name": "二次生成/部署计划差异",
+      "target": "0 非预期",
+      "interpretation": "timestamps 等字段从 receipt 引用，避免每运行即漂移",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M06",
+      "name": "全局规则 + 项目规则 +技能目录占用",
+      "target": "观测实际值；试点减少25%–40%作为候选目标",
+      "interpretation": "这是工程试点目标，非厂商限制或已达到结果；只有行为门通过才采纳减量",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M07",
+      "name": "无关技能触发/缺失技能/重复候选",
+      "target": "必测关键集0；一般集按基线比较",
+      "interpretation": "不能只按 installed skill 数量判轻量；目录元数据也占上下文",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M08",
+      "name": "无owner或无生命周期的新文档/产物",
+      "target": "0 新增",
+      "interpretation": "存量按依赖/访问/冲突排序，不能因为未访问日志缺失推unused",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M09",
+      "name": "本机产物/缓存/隔离备份增长",
+      "target": "每类独立计量，连续两期异常增长发候选",
+      "interpretation": "默认只观察；保留阈值由真实基线定，不自动删用户状态",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    },
+    {
+      "id": "M10",
+      "name": "恢复演练与关键行为",
+      "target": "所需集合全部通过",
+      "interpretation": "恢复到隔离副本能打开/语义/关系正确，不能只看压缩包hash",
+      "status": "PROPOSED_NO_BASELINE_MEASUREMENT"
+    }
+  ],
+  "risks": [
+    {
+      "id": "K01",
+      "risk": "适配器或工具升级改变加载根、优先级或输出格式，产生双份活动资产",
+      "signal": "真实 catalog 缺失/重复；Profile 根变化；二次 plan 持续有差异；同名 skill 被另一作用域遮蔽",
+      "mitigation": "运行时发现、按版本 fixture、一个写通道、逐客户端 canary；来源与生成器锁定",
+      "sources": [
+        "S01",
+        "S02",
+        "S07",
+        "S09",
+        "S18"
+      ]
+    },
+    {
+      "id": "K02",
+      "risk": "把静态未引用或目录名当可删，破坏 tracked build、动态插件、离线资源或用户原件",
+      "signal": "fresh build失败、宿主重开缺资产、还原依赖旧缓存、Knip入口/生成文件配置提示、未映射消费者",
+      "mitigation": "逐项重建/消费者证明；精确隔离+恢复；业务原件和数据库强排除；生命周期从producer开始",
+      "sources": [
+        "R15",
+        "R17",
+        "S23",
+        "S28",
+        "S32",
+        "S35"
+      ]
+    },
+    {
+      "id": "K03",
+      "risk": "一次同时改模型、软件、目录和记忆，或者新版本迁移状态后盲目降级，无法恢复/归因",
+      "signal": "旧软件无法打开新schema；run_id/source/renderer与receipt混批；任务质量下降但不知道是哪项改动",
+      "mitigation": "先治理源/机制，后native；一轮只变一条轴；原始数据不动；隔离兼容和恢复门先通过",
+      "sources": [
+        "R03",
+        "S03",
+        "S04",
+        "S10",
+        "S35",
+        "S36"
+      ]
+    }
+  ],
+  "cleanup_policy": {
+    "prior_13_candidates": "上一轮逐项裁决仍有效；本方案不额外批准删除",
+    "codex_history": "1.5GiB 是当时记录的用户状态，仅OBSERVE/私有一致性备份，非清理范围",
+    "hermes_state": "state.db 4.2GiB 是当时记录；数据库及WAL强排除；不是本轮live体量",
+    "delete_eligibility": "仅精确allowlist的可再生成非用户临时项，在依赖/占用/恢复/范围门通过后才能形成可执行候选；本方案无删除命令或执行授权",
+    "archive_eligibility": "必要证据和原件保持可恢复；隔离区有明确用途、manifest和保留策略，不能成为无限新垃圾"
+  },
+  "unverifiable": [
+    "今天三个仓库完整current树、分支/本机未提交与忽略项：需要各仓当前exact-SHA树清单及本机许可范围manifest",
+    "所有GPT历史与附件已完整找回：需要原导出/上传原件、明确时间范围及hash/定位manifest；搜索命中不能证明完整",
+    "494项配额裁剪references正文与Hermes model-switch live原文：需要补原件再核hash/引用/三方",
+    "当前Windows已安装版本、载体、Profile、override、真实加载目录及未知用户修改：需要真实只读发现与native加载读回",
+    "新软件重装不会丢用户状态、旧软件可读新schema：需要官方卸载/迁移契约与隔离一致性恢复证明",
+    "新模型下缩减规则有质量增益：需要同组任务成对评测和硬边界/产物关闭回归；未实测",
+    "外部软件隐藏缓存/会话/数据库是否有冗余、合规或违规：公开包无法判定；不建议据此读取私有正文",
+    "现有上游最新能力在用户当前版本可用：需要安装版本、官方相应tag与实际功能探针"
+  ],
+  "research_sources": [
+    {
+      "id": "S01",
+      "title": "OpenAI：AGENTS.md 发现顺序",
+      "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+      "summary": "全局与项目指令的发现、覆盖和读取上限；需检查 override 文件。",
+      "web_ref": "turn7view1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S02",
+      "title": "OpenAI：Skills 与实际加载目录",
+      "url": "https://learn.chatgpt.com/docs/build-skills",
+      "summary": "按需加载；Codex 当前文档区分 .agents/skills 与 Codex 配置目录；同名技能不会自动合并。",
+      "web_ref": "turn17view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S03",
+      "title": "OpenAI / Eric Provencher：新模型下重审 Skills 与 Prompts",
+      "url": "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+      "summary": "2026-09-11 工程文章建议缩短触发描述、移出无关流程，重审旧 AGENTS 与任务提示。不是删除安全边界的证据。",
+      "web_ref": "turn3view2",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S04",
+      "title": "OpenAI：以评测检验技能",
+      "url": "https://developers.openai.com/blog/eval-skills",
+      "summary": "从可观测执行行为和轻量确定性检查判断改动；按风险加入运行、清洁树和权限回归。",
+      "web_ref": "turn19view6",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S05",
+      "title": "Claude Code：指令、自动记忆与局部规则",
+      "url": "https://code.claude.com/docs/en/memory",
+      "summary": "指令与自动记忆分别处理；规则文本不是强制安全层；AGENTS 的直接支持有版本条件。",
+      "web_ref": "turn5view4",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S06",
+      "title": "Cursor：规则范围与反例",
+      "url": "https://cursor.com/docs/rules",
+      "summary": "支持选择适用范围；建议避免复制完整指南、常识工具命令和代码已有内容。",
+      "web_ref": "turn11view2",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S07",
+      "title": "Hermes：项目技能与信任边界",
+      "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/skills/",
+      "summary": "项目技能须信任；项目目录不由原生 curator 自动改写；项目、本地、外部来源有发现优先级。",
+      "web_ref": "turn5view3",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S08",
+      "title": "Hermes：配置、Profile 与写入审阅",
+      "url": "https://hermes-agent.nousresearch.com/docs/user-guide/configuration/",
+      "summary": "HERMES_HOME 是 Profile 数据边界；当前文档提供技能写入暂存与审阅。需本机版本资格化。",
+      "web_ref": "turn19view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S09",
+      "title": "DeepSeek Harness：文件系统技能供应器",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/skill/skill-filesystem/README.md",
+      "summary": "项目、自定义、用户根分开；根下技能包或平铺 md 被识别，任意递归分类目录不等价；无效条目可能被跳过。",
+      "web_ref": "turn22view3",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S10",
+      "title": "DeepSeek Harness：公开 API 与持久化约束",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/blob/master/AGENTS.md",
+      "summary": "上游注明 API 尚未稳定、Session 持久化代际不得覆盖，SQLite schema 单调；重装不意味着数据可降级。",
+      "web_ref": "turn22view4",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S11",
+      "title": "OpenDesign：官方 README",
+      "url": "https://github.com/nexu-io/open-design/blob/main/README.md",
+      "summary": "分别描述插件、行为技能、渲染模板和设计系统；数据目录须依据上游专门合同，不可从别的客户端类推。",
+      "web_ref": "turn18view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S12",
+      "title": "OpenHuman：官方 README",
+      "url": "https://github.com/tinyhumansai/openhuman/blob/main/README.md",
+      "summary": "桌面、Web、终端为不同载体；可复用核心不使其成为 WORK-LAB 的必装运行时或第二权威。",
+      "web_ref": "turn19view2",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S13",
+      "title": "Agent Skills：开放格式规范",
+      "url": "https://agentskills.io/specification",
+      "summary": "SKILL.md、可选引用/脚本/资产与渐进读取；allowed-tools 支持具有实现差异。格式共用不保证运行兼容。",
+      "web_ref": "turn11view1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S14",
+      "title": "MCP：官方架构与协议版本",
+      "url": "https://modelcontextprotocol.io/docs/2026-07-28/learn/architecture",
+      "summary": "文档有明确协议版本、能力发现及工具/资源/提示接口；协议不负责应用的知识真值或全部上下文策略。",
+      "web_ref": "turn13view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S15",
+      "title": "Microsoft：WinGet configure",
+      "url": "https://learn.microsoft.com/en-us/windows/package-manager/winget/configure",
+      "summary": "以配置声明开发环境；提供 show、validate、test 等接口。可用子命令和资源仍要按本机版本核对。",
+      "web_ref": "turn1search1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S16",
+      "title": "Microsoft：WinGet export",
+      "url": "https://learn.microsoft.com/en-us/windows/package-manager/winget/export",
+      "summary": "安装包可导出版本；清单可能有无法匹配的软件，不能代替完整配置与用户状态备份。",
+      "web_ref": "turn20view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S17",
+      "title": "Microsoft：WinGet import",
+      "url": "https://learn.microsoft.com/en-us/windows/package-manager/winget/import",
+      "summary": "按清单安装；忽略版本或忽略不可用会改变复现语义；包可得性不由导出文件保证。",
+      "web_ref": "turn20view1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S18",
+      "title": "Rulesync：支持矩阵及 Hermes 根迁移限制",
+      "url": "https://rulesync.dyoshikawa.com/reference/supported-tools.html",
+      "summary": "不同客户端与不同功能有各自支持范围；Hermes 兼容基线和 Profile 根解析有明确限制。",
+      "web_ref": "turn15view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S19",
+      "title": "Rulesync：声明来源与锁定",
+      "url": "https://rulesync.dyoshikawa.com/guide/declarative-sources.html",
+      "summary": "支持筛选规则/技能与来源锁文件；默认分支、latest 和全量拉取不是本方案采用的基线。",
+      "web_ref": "turn15view1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S20",
+      "title": "chezmoi：日常 diff/apply",
+      "url": "https://www.chezmoi.io/user-guide/daily-operations/",
+      "summary": "可先比较源渲染结果与目标，再应用；update 会拉取并应用，不能默认用来治理所有软件 Home。",
+      "web_ref": "turn19view7",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S21",
+      "title": "chezmoi：merge 语义",
+      "url": "https://www.chezmoi.io/reference/commands/merge/",
+      "summary": "源、计算目标、当前目标可交给合并工具；这不等于已有 WORK-LAB 上次发布基准与字段所有权。",
+      "web_ref": "turn22view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S22",
+      "title": "Ansible：Windows 管理",
+      "url": "https://docs.ansible.com/projects/ansible/latest/os_guide/intro_windows.html",
+      "summary": "Windows 可作受管节点，不能原生作 control node；文档另注明 WSL 不受生产支持。",
+      "web_ref": "turn19view4",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S23",
+      "title": "Git：gitignore",
+      "url": "https://git-scm.com/docs/gitignore",
+      "summary": "忽略规则不影响已经跟踪的文件，也不提供任何删除正确性的证明。",
+      "web_ref": "turn10view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S24",
+      "title": "Git：git clean",
+      "url": "https://git-scm.com/docs/git-clean",
+      "summary": "dry-run 只列候选；强制和忽略规则选项扩大删除范围。本方案不发布仓库全根强制清理命令。",
+      "web_ref": "turn21view6",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S25",
+      "title": "GitHub：git-sizer",
+      "url": "https://github.com/github/git-sizer",
+      "summary": "度量历史对象、树、文件、引用等规模；识别大小风险，不能判断文档业务价值。",
+      "web_ref": "turn16view0",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S26",
+      "title": "pre-commit：官方 hooks",
+      "url": "https://github.com/pre-commit/pre-commit-hooks",
+      "summary": "大文件、大小写冲突、非法 Windows 名称、格式等已有检查；禁用读取用户凭据文件的辅助 hook。",
+      "web_ref": "turn22view1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S27",
+      "title": "Gitleaks：官方扫描器",
+      "url": "https://github.com/gitleaks/gitleaks",
+      "summary": "支持 git、dir、stdin 扫描和输出脱敏；需另外把可公开结果限制为位置/模式，记录跳过范围。",
+      "web_ref": "turn17view6",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S28",
+      "title": "Knip：未使用文件判定和配置限制",
+      "url": "https://knip.dev/guides/handling-issues",
+      "summary": "JS/TS 未使用图从入口可达性计算；动态导入、生成文件、别名需要正确配置，不能自动等于可删。",
+      "web_ref": "turn21view5",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S29",
+      "title": "Diátaxis：文档用途",
+      "url": "https://diataxis.fr/",
+      "summary": "区分教程、操作指南、技术参考与解释；用途分类和项目权威、历史状态是不同维度。",
+      "web_ref": "turn21view1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S30",
+      "title": "Michael Nygard：Architecture Decision Records",
+      "url": "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions",
+      "summary": "一项重要决定一条短记录；被替代决定保留并指向后继，而不是反复创建多个最终版。",
+      "web_ref": "turn21view2",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S31",
+      "title": "Martin Fowler：演进式架构",
+      "url": "https://martinfowler.com/articles/evo-arch-forward.html",
+      "summary": "以小步变化与反馈约束架构演进；架构性质可由检查持续观察，长期数据需要专门处理。",
+      "web_ref": "turn16view4",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S32",
+      "title": "GitHub：缓存与产物用途",
+      "url": "https://docs.github.com/en/actions/concepts/workflows-and-actions/dependency-caching",
+      "summary": "缓存用于可重新下载/生成的复用输入；产物用于任务输出，两者不可互换。",
+      "web_ref": "turn22view2",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S33",
+      "title": "GitHub：产物保留期限",
+      "url": "https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts",
+      "summary": "工作流产物会过期，保留设置可调；任务验收和历史原件需要另行保证持久保存。",
+      "web_ref": "turn20view2",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S34",
+      "title": "restic：恢复到指定目标",
+      "url": "https://restic.readthedocs.io/en/stable/050_restore.html",
+      "summary": "可 dry-run 并恢复到指定目标；建议先隔离恢复演练，不使用删除或覆盖非空数据的恢复选项。",
+      "web_ref": "turn21view4",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S35",
+      "title": "SQLite：WAL 是持久状态的一部分",
+      "url": "https://sqlite.org/wal.html",
+      "summary": "单独复制数据库主文件可能丢失已提交事务；不能把 WAL 名称当缓存来清理。",
+      "web_ref": "turn17view4",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S36",
+      "title": "SQLite：在线备份 API",
+      "url": "https://sqlite.org/backup.html",
+      "summary": "数据库一致性备份有专门 API；使用它需要宿主支持，普通文件备份工具不替代应用一致性。",
+      "web_ref": "turn16view2",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S37",
+      "title": "Anthropic 工程团队：Context Engineering",
+      "url": "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents",
+      "summary": "轻量引用和按任务取上下文、逐步披露；历史可检索与常驻上下文可分别优化。",
+      "web_ref": "turn17view1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    },
+    {
+      "id": "S38",
+      "title": "OpenGitOps：四原则",
+      "url": "https://opengitops.dev/",
+      "summary": "声明、版本不可变、自动拉取、持续协调。这里借鉴声明、版本、观测；不宣称桌面受管系统满足全部四原则。",
+      "web_ref": "turn23view1",
+      "level": "FETCHED",
+      "kind": "PRIMARY_SOURCE",
+      "local_compatibility": "UNKNOWN",
+      "as_of": "2026-10-01"
+    }
+  ],
+  "repo_evidence": [
+    {
+      "id": "R01",
+      "path": "WORK-LAB-AUTHORITY.md",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/WORK-LAB-AUTHORITY.md",
+      "level": "VERIFIED",
+      "sha256": "0938ff2452da5c5a5eef08673e25009d4f558ad5199a700aab8d7e2e56d6221c",
+      "sha256_prefix": "0938ff2452da5c5a",
+      "bytes": 10777,
+      "claim": "WORK-LAB 既是控制面又是独立项目；治理最小化，现有目录和唯一主干，不拥有他仓领域真值或用户认证。"
+    },
+    {
+      "id": "R02",
+      "path": ".project/governance/three-project-boundary.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/.project/governance/three-project-boundary.json",
+      "level": "VERIFIED",
+      "sha256": "1833136debe98bddd8683d2e035c2a4ecbe16685a5ba36c4dbf08a6b875dbb30",
+      "sha256_prefix": "1833136debe98bdd",
+      "bytes": 6444,
+      "claim": "三项目职责和禁止第二运行时、第二配置治理系统、第二账本等边界。"
+    },
+    {
+      "id": "R03",
+      "path": "config/config-ownership.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/config-ownership.json",
+      "level": "VERIFIED",
+      "sha256": "d799c9925d32b1e14c04fc99d2639ca3be6b8eba224ff72001e936da704b1b2b",
+      "sha256_prefix": "d799c9925d32b1e1",
+      "bytes": 21535,
+      "claim": "全局只管理声明资产/字段；项目 overlay 由项目写；原生策展 additions 可审核回收，用户未知状态保留。"
+    },
+    {
+      "id": "R04",
+      "path": "config/adapter-registry.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/adapter-registry.json",
+      "level": "VERIFIED",
+      "sha256": "245e7e1829757d2d10a089b80622e599ac829b55d00d937cf597a55d37e42bc4",
+      "sha256_prefix": "245e7e1829757d2d",
+      "bytes": 24343,
+      "claim": "19 能力域投影、六项能力位和声明成熟度；声明不是运行验证。"
+    },
+    {
+      "id": "R05",
+      "path": "config/global-agent-policy.yaml",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/global-agent-policy.yaml",
+      "level": "VERIFIED",
+      "sha256": "928a9989f41b1808dddc92e100b51f80ad7ce972985286e1c187476df4452b2f",
+      "sha256_prefix": "928a9989f41b1808",
+      "bytes": 7172,
+      "claim": "政策对象数与能力域数应分开；规则采用能力语义而非某个旗舰名称。"
+    },
+    {
+      "id": "R06",
+      "path": "config/skills-inventory.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skills-inventory.json",
+      "level": "VERIFIED",
+      "sha256": "b858208ededf68275e3bd95e5e49b7ae0859ad26a7bf32c5e32da44337958fce",
+      "sha256_prefix": "b858208ededf6827",
+      "bytes": 3727,
+      "claim": "Codex 14 项源清单其中 6 项哈希陈旧；源目录不是已安装事实。"
+    },
+    {
+      "id": "R07",
+      "path": "config/plugin-inventory.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/plugin-inventory.json",
+      "level": "VERIFIED",
+      "sha256": "60fd5219b48d32e3c678162aa0f3fdc39d95b4df26140b97aaf21a4557dceb40",
+      "sha256_prefix": "60fd5219b48d32e3",
+      "bytes": 2417,
+      "claim": "安装版本记录不能由目录名和可用字符串代替包内容证据。"
+    },
+    {
+      "id": "R08",
+      "path": "config/skill-provenance.yaml",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/skill-provenance.yaml",
+      "level": "VERIFIED",
+      "sha256": "6816b73f616bf73ec13f977f360fdcbfca24f957cb00b85241b8e185b718890e",
+      "sha256_prefix": "6816b73f616bf73e",
+      "bytes": 6330,
+      "claim": "Hermes 13 项 source_hash 与源一致；部分 live 记录陈旧，不能从 source_hash 推写 live_hash。"
+    },
+    {
+      "id": "R09",
+      "path": "integrations/executors/codex/sync_codex_global_assets.py",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/codex/sync_codex_global_assets.py",
+      "level": "VERIFIED",
+      "sha256": "15aedf186aaae25f97ea6779edebb9ba5f3f4ca2cd76d239640aff74d1fee375",
+      "sha256_prefix": "15aedf186aaae25f",
+      "bytes": 44902,
+      "claim": "Codex 技能使用 agent-home；有 plan/apply/verify/rollback 和计划摘要守卫。"
+    },
+    {
+      "id": "R10",
+      "path": "integrations/executors/hermes/sync_hermes_workflow_assets.py",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/sync_hermes_workflow_assets.py",
+      "level": "VERIFIED",
+      "sha256": "315daadd4b2886cf1fa31df84b73550500443383ff07aa398df20db36c543db3",
+      "sha256_prefix": "315daadd4b2886cf",
+      "bytes": 62458,
+      "claim": "受管部署基准/冲突拒绝；不能假定它已经同批更新仓库 provenance 或支持 --rollback。"
+    },
+    {
+      "id": "R11",
+      "path": "integrations/executors/hermes/curator_foldback.py",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/integrations/executors/hermes/curator_foldback.py",
+      "level": "FETCHED",
+      "sha256": "d801a24b217a790f469a832509457e94209d9a2190f522d304c909289970beaf",
+      "sha256_prefix": "d801a24b217a790f",
+      "bytes": 15282,
+      "claim": "独立回收路径与登记刷新需改成部署最后独立读回生成，而非提前把源哈希当 live。"
+    },
+    {
+      "id": "R12",
+      "path": "reports/audit-archive/20260930/codex/AGENTS.md",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/codex/AGENTS.md",
+      "level": "VERIFIED",
+      "sha256": "cf73c8e58ba8fbf9a721fc2db886161f49ab56db325e0df51ea87016917fea76",
+      "sha256_prefix": "cf73c8e58ba8fbf9",
+      "bytes": 16805,
+      "claim": "该归档用户文件没有 WORK-LAB 受管 overlay；不能当作可整体覆盖的仓库文件。"
+    },
+    {
+      "id": "R13",
+      "path": "reports/audit-archive/20260930/hermes/skills/software-development/windows-development-environment/SKILL.md",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/hermes/skills/software-development/windows-development-environment/SKILL.md",
+      "level": "VERIFIED",
+      "sha256": "c058b29a669a8f23b811cac37e6bc0af61fc2cba98efd8c56ca20213c6ae81c3",
+      "sha256_prefix": "c058b29a669a8f23",
+      "bytes": 23680,
+      "claim": "Windows 技能与源确有新增正文；该副本不是用户当前 live 读回。"
+    },
+    {
+      "id": "R14",
+      "path": "packages/client-neutral-core/skills/software-development/windows-development-environment/SKILL.md",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/packages/client-neutral-core/skills/software-development/windows-development-environment/SKILL.md",
+      "level": "FETCHED",
+      "sha256": "2e1fc6dcdf51ee899700da4615f50e419eb4d54cfb726a5250e58809f7ca1aae",
+      "sha256_prefix": "2e1fc6dcdf51ee89",
+      "bytes": 21982,
+      "claim": "重建或回收前需要源/发布基准/live 三方，而非简单 old source 覆盖。"
+    },
+    {
+      "id": "R15",
+      "path": "reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AUTHORITY.md",
+      "level": "VERIFIED",
+      "sha256": "7b29d3ea90122b74a59d3b905a0064fcabd54e0d545e70e3bc3388fbc9c212ec",
+      "sha256_prefix": "7b29d3ea90122b74",
+      "bytes": 15036,
+      "claim": "DESIGN-LAB 有独立职责/目录/账本；部分 tracked workbench build 有 no-drift 合同，禁止为好看全仓搬迁。"
+    },
+    {
+      "id": "R16",
+      "path": "reports/audit-archive/20260930/projects/DESIGN-LAB/AGENTS.md",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/DESIGN-LAB/AGENTS.md",
+      "level": "VERIFIED",
+      "sha256": "7531838c75adb6659a8b82bd6d39e7a381b4c1275cfba9bc8d088c27bb285b50",
+      "sha256_prefix": "7531838c75adb665",
+      "bytes": 10055,
+      "claim": "唯一可变任务源为 design-lab/config/task-ledger-r3.json；当前任务入口和冻结历史分开。"
+    },
+    {
+      "id": "R17",
+      "path": "reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/DIRECTORY_AUTHORITY.yaml",
+      "level": "VERIFIED",
+      "sha256": "310096407363c3cbfbc8d60a6cc0aea2736696446021d341a8d96d5dd60d493e",
+      "sha256_prefix": "310096407363c3cb",
+      "bytes": 20601,
+      "claim": "目录匹配、执行 lane、生成文件受控及禁止提交本机运行态等已有合同，不再加一个目录总权威。"
+    },
+    {
+      "id": "R18",
+      "path": "reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/AGENTS.md",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/projects/ArcheAxis-Knowledge-OS/AGENTS.md",
+      "level": "VERIFIED",
+      "sha256": "dbaa61d05d5d0134fe2e9d1fdaa1ad57b818de2acc64956174e617871d2d8576",
+      "sha256_prefix": "dbaa61d05d5d0134",
+      "bytes": 10132,
+      "claim": "项目规则与旧 WORK-LAB 路径引用须按本项目权威修；公共复制件不能代替完整 AA 仓树。"
+    },
+    {
+      "id": "R19",
+      "path": "reports/audit-archive/20260930/ARCHIVE-INDEX.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-archive/20260930/ARCHIVE-INDEX.json",
+      "level": "VERIFIED",
+      "sha256": "78e6b6ba96ae8b8a5b055bf342f8bf142ce5a1835ed457c7c3b9d839d656457a",
+      "sha256_prefix": "78e6b6ba96ae8b8a",
+      "bytes": 313019,
+      "claim": "476 个副本均核验；494 个 references 配额排除，档案完整性不能直接推为三项目全量。"
+    },
+    {
+      "id": "R20",
+      "path": "reports/audit-evidence/assets-20260930/MANIFEST.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-evidence/assets-20260930/MANIFEST.json",
+      "level": "FETCHED",
+      "sha256": "fe43434f2bb19df5cb77347aa08b7a35b495b5aee015c01e72665ad23f66392c",
+      "sha256_prefix": "fe43434f2bb19df5",
+      "bytes": 13786,
+      "claim": "证据与权威哈希核验范围可追溯。"
+    },
+    {
+      "id": "R21",
+      "path": "reports/audit-evidence/assets-20260930/global-deployment-readback.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/reports/audit-evidence/assets-20260930/global-deployment-readback.json",
+      "level": "VERIFIED",
+      "sha256": "fedd647162284ebcdc9ddc0715a57852fc6a4844593646e4a9a514d5ca3eba86",
+      "sha256_prefix": "fedd647162284ebc",
+      "bytes": 4471,
+      "claim": "历史本机回读声明与公开副本有对应关系，但不能替代新软件版本的本机验证。"
+    },
+    {
+      "id": "R22",
+      "path": "taskpacks/current/error-ledger.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/taskpacks/current/error-ledger.json",
+      "level": "VERIFIED",
+      "sha256": "23596310d8bafb6107069c86266eb30818abb8e7b3eefdb340dfa66177f41acf",
+      "sha256_prefix": "23596310d8bafb61",
+      "bytes": 181015,
+      "claim": "错误汇总需从明细生成，历史错误修复叙述与当前可证明事实分开。"
+    },
+    {
+      "id": "R23",
+      "path": "config/software-registry.json",
+      "url": "https://raw.githubusercontent.com/DTALEX66/WORK-LAB/d43d07a75ef8c556344e9b3a99f9257dd2db7b5c/config/software-registry.json",
+      "level": "VERIFIED",
+      "sha256": "3a60543fdbd538e3471eb31da05844b961364741435bf3c27f0ad6477264fa9d",
+      "sha256_prefix": "3a60543fdbd538e3",
+      "bytes": 4703,
+      "claim": "7 项登记不等于已安装/可管理软件全量；扩容需实际发现和所有权判定。"
+    }
+  ],
+  "research_method": "全网搜索发现，官方文档/维护者仓库/第一方工程文章核读；明显无关结果、论坛转述与营销比较未用于技术结论。工具维护成本与组合取舍为本报告工程判断，不是实测跑分。",
+  "directly_mergeable": "不依赖未知live的证据表达修正、探针/生成机制/增量门禁提案，可在本仓正常PR与相应测试后合并；本轮未提交任何代码",
+  "requires_windows": "软件卸载重装、native资产移迁/加载/部署成功、用户状态恢复、缓存实际无依赖、Windows GUI与新模型行为改善结论"
+}

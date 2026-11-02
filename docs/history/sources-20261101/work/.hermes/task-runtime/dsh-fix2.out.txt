@@ -1,0 +1,73 @@
+﻿===== A. desktop-user-data: profile-setup / identity (persisted data-root selection?) =====
+[profile-setup] files:
+   \profile-setup\055881bd22ee5c14619a101e7de52e8cb9dc0af6728f8fce068b2715eef0b920\state.json  254B
+   \profile-setup\be6e67ab2e4a86fe127a17addb34e94111904b105eb566e7b4f87f8e4a403722\state.json  253B
+   \profile-setup\c67745dd15ad7e7e0e947c239c5f7630af1f45a6f71784bed0515dea2d8047d6\state.json  254B
+[profile-preferences] files:
+   \profile-preferences\055881bd22ee5c14619a101e7de52e8cb9dc0af6728f8fce068b2715eef0b920\state.json  467B
+   \profile-preferences\be6e67ab2e4a86fe127a17addb34e94111904b105eb566e7b4f87f8e4a403722\state.json  441B
+   \profile-preferences\c67745dd15ad7e7e0e947c239c5f7630af1f45a6f71784bed0515dea2d8047d6\state.json  467B
+[identity] files:
+   \identity\installation-id  37B
+[host-commands] files:
+   \host-commands\desktop\bin\dsh.cmd  296B
+   \host-commands\desktop\generations\9e931aa06250a67d851137efd7685779b9ead405602133b7940792db611bcfb1-e11bc313-ece9-4809-88bf-cbd1ea0d752b\.generation.json  311B
+   \host-commands\desktop\generations\9e931aa06250a67d851137efd7685779b9ead405602133b7940792db611bcfb1-e11bc313-ece9-4809-88bf-cbd1ea0d752b\bin\dsh.cmd  291B
+   \host-commands\desktop\generations\ac52ee52981ab62a63f6dc639b496b0ee3efec01d8b74c3e78649859a4c7c234-a84ce854-867a-4583-bf0b-dac1653e6e2d\.generation.json  311B
+   \host-commands\desktop\generations\ac52ee52981ab62a63f6dc639b496b0ee3efec01d8b74c3e78649859a4c7c234-a84ce854-867a-4583-bf0b-dac1653e6e2d\bin\dsh.cmd  487B
+   \host-commands\desktop\generations\c82699f8ad45f5257ce397ebdff5c0f395efbf5ada29c28c7382fc1dd77327d0-12643c86-f9f3-4627-8802-17b93fa8ec82\.generation.json  311B
+   \host-commands\desktop\generations\c82699f8ad45f5257ce397ebdff5c0f395efbf5ada29c28c7382fc1dd77327d0-12643c86-f9f3-4627-8802-17b93fa8ec82\bin\dsh.cmd  481B
+   \host-commands\web\bin\dsh.cmd  292B
+
+===== B. source: channelHomeResolution / desktopChannelHome (how data root resolves + persists) =====
+file: {0}  line {1}
+   3570: * the shared home stays in use and the caller reports the overlap instead.
+   3571: */
+   3572: /** Resolve the home directory a release channel owns, without touching disk. */
+   3573: function desktopChannelHome(identity = DESKTOP_PRODUCT_IDENTITY, homeDirectory = homedir()) {
+   3574: 	return resolve(join(homeDirectory, identity.homeDirectoryName));
+   3575: }
+   3576: /** Decide which home this launch uses before any Desktop selection is read. */
+   3577: function resolveDesktopChannelHome(options = {}) {
+   3578: 	const { identity = DESKTOP_PRODUCT_IDENTITY, environment = process.env, homeDirectory = homedir(), homeInUse = validDesktopProfileExists } = options;
+   3579: 	const channelHome = desktopChannelHome(identity, homeDirectory);
+   3580: 	const legacyHome = desktopChannelHome(DESKTOP_RELEASE_IDENTITIES.stable, homeDirectory);
+   3581: 	const configured = environment.DSH_HOME;
+   3582: 	if (configured !== void 0 && configured.trim().length > 0) return Object.freeze({
+   3583: 		homeDir: resolveDshHome(void 0, environment),
+   3584: 		channelHome,
+   3585: 		legacyHome,
+   3586: 		status: "explicit"
+   3587: 	});
+   3588: 	if (channelHome === legacyHome) return Object.freeze({
+   3589: 		homeDir: channelHome,
+   3590: 		channelHome,
+   3591: 		legacyHome,
+   3592: 		status: "channel"
+   3593: 	});
+   3594: 	if (!homeInUse(channelHome) && homeInUse(legacyHome)) return Object.freeze({
+   3595: 		homeDir: legacyHome,
+   3596: 		channelHome,
+   3597: 		legacyHome,
+   3598: 		status: "legacy-shared"
+   3599: 	});
+   3600: 	return Object.freeze({
+   3601: 		homeDir: channelHome,
+   3602: 		channelHome,
+   3603: 		legacyHome,
+
+===== C. relaunch DSH with DSH_HOME injected (verify data-root resolution) =====
+current PS env DSH_HOME set to: D:\All projects\DSH\.dsh
+D:\.dsh mtime BEFORE: 2026/9/23 19:18:14
+C:\.dsh existed before relaunch: True
+launched pid=12708
+waiting 25s for boot + session restore ...
+
+===== D. verification =====
+DSH process count: 7
+main cmdline: "D:\All projects\DSH\DSH Desktop.exe" --user-data-dir="D:\All projects\DSH\desktop-user-data" 
+main window title: 'DSH Desktop.exe'
+MainWindowTitle: 'DeepSeek Harness Desktop'
+43120 LISTENING: 1
+D:\.dsh mtime AFTER: 2026/9/24 23:27:19  (advanced: True)
+C:\.dsh exists after: True  (recreated: False)

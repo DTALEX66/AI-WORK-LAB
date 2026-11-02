@@ -1,0 +1,2241 @@
+{
+  "format_version": "static-handoff/1",
+  "package_id": "WORK-LAB-UNIVERSAL-WORKFLOW-TASKPACK-20260916",
+  "date": "2026-09-16",
+  "language": "zh-CN",
+  "mode": "plan_only",
+  "artifact_type": "implementation_taskpack",
+  "native_ledger_import": false,
+  "authority": "用户要求的差集规划；本文件不是新的运行时、全局配置或授权服务。实施后接入原 NF/WL-R 任务账本。",
+  "scope": {
+    "maintainer_project": "WORK-LAB",
+    "beneficiaries": "所有经用户接入授权的项目与工作流软件；不限定目前三个项目或七个客户端",
+    "dimensions": [
+      "跨软件",
+      "跨项目",
+      "跨环境",
+      "双向任务与证据流转",
+      "全局规则与原生增强适配"
+    ],
+    "universal_constraints": {
+      "hardcoded_project_ids": false,
+      "requires_git_repository": false,
+      "requires_github": false,
+      "requires_hermes": false,
+      "requires_codex": false,
+      "requires_worklab_source_copy_per_project": false,
+      "requires_private_chat_export": false
+    },
+    "distinctions": [
+      "共同机制共享不等于业务数据混库",
+      "任务材料共享不等于多个执行者重复执行",
+      "交接不是原生会话无损迁移",
+      "任务发布授权不等于执行/付费/部署授权",
+      "回执已发布不等于已唤醒任何旧聊天"
+    ],
+    "five_dimensions": [
+      "每软件唯一权威入口（原生 GUI/CLI 可属于同一安装）",
+      "GUI 桌面入口可用；CLI/云端入口按实际适用性标注",
+      "官方标准＋用户配置，保留用户原生选择",
+      "规则技能按需、轻量、不阻断无关任务",
+      "任务级质量/成本/隐私/延迟；不新增全局费用或限速上限"
+    ]
+  },
+  "baseline": {
+    "repository": "DTALEX66/WORK-LAB",
+    "branch": "r4-recovery-exec",
+    "observed_head": "7e19fb545c7d9af3ec08427749cd72bff7902287",
+    "observed_main": "e5231f0f605d1515ed12958267b394c9de1da20c",
+    "local_worktree": "NOT_OBSERVED",
+    "current_runtime": "NOT_OBSERVED",
+    "exact_head_ci": "NOT_RECHECKED_IN_THIS_PLANNING",
+    "predecessor_package": "WORK-LAB-INTEGRATED-TASKPACK-20260916",
+    "revalidate_changed_scope_before_execution": true
+  },
+  "authorization": {
+    "this_request": "只规划和生成交付文件；未进行仓库写、全局改动、发布、安装、模型调用或自动化创建。",
+    "grants_new_permissions": false,
+    "existing_valid_grants": "未来执行时沿用可核验的既有有效授权，不因换软件/任务卡无意义地重复询问。",
+    "new_side_effects": "超出范围才申请目标明确的批量授权；宿主仍要求的确认不能绕过。",
+    "paid_calls": "没有隐含 API/付费回退；必要真实模型验收须在已有明确费用授权内。",
+    "approval_payload_is_not_authority": true
+  },
+  "architecture_decisions": {
+    "first_transport": "每项目自己的 GitHub 原生 API/官方 MCP 或现有获准连接",
+    "second_transport": "不可变工件包的文件/共享存储薄适配；复用已有传输，rclone/Syncthing 可选",
+    "state_owner": "继续使用现有 TaskLedger 持久化；增加必要 inbox/outbox 不新建任务队列数据库",
+    "task_definition_owner": "该项目指定的材料权威；冻结修订，不多平台互相覆盖",
+    "execution_owner": "每 project/task/revision 一个当前认领端，原生执行器事实为执行证据",
+    "telemetry_owner": "原有 Telemetry；只保存允许元数据/引用",
+    "observer": "既有 Observer，只读",
+    "runtime": "复用原 worker/runner/adapter；不强制 Hermes，不自研上游更新器",
+    "active_active": "默认不启用；多节点用明确路由和受控接管。不能把本地租约当分布式仲裁"
+  },
+  "scope_supersessions": [
+    {
+      "old": "只在 WORK-LAB 仓库内部跑通即可",
+      "new": "WORK-LAB 是维护方也是普通消费者，必须验证独立外部项目",
+      "reason": "用户明确纠正"
+    },
+    {
+      "old": "只支持三项目、七软件、固定 GitHub 仓库",
+      "new": "登记驱动；当前对象是覆盖清单不是硬编码能力上限",
+      "reason": "用户明确纠正；旧消息枚举有代码证据"
+    },
+    {
+      "old": "全内容必须留 WORK-LAB Git 根且正文都不能传",
+      "new": "项目工件按其授权根/发布目标流转，原生私有会话与遥测正文仍不自动同步",
+      "reason": "最小规则澄清，需实施时更新相关规则并测试"
+    },
+    {
+      "old": "全部执行永远经 Hermes",
+      "new": "Hermes 可承担当前实施，但最终使用不能依赖 Hermes 必然在线",
+      "reason": "跨软件通用与原生优先"
+    },
+    {
+      "old": "内存重复调用已验证重启与跨软件执行",
+      "new": "保留为单元/模型证据；真实进程/网络/原生执行另验",
+      "reason": "固定 SHA 源码区分"
+    },
+    {
+      "old": "升级/付费研究未获批使整个功能永久只读",
+      "new": "只暂停对应副作用；继续可授权实现，不把模拟阶段冒充最终交付",
+      "reason": "减负且真实验收"
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M0",
+      "label": "差集与通用边界确定",
+      "claim": "PLAN_READY",
+      "requirements": [
+        "NF-00-SYNC",
+        "NF-01-SYNC",
+        "NF-03-SYNC",
+        "NF-08-0"
+      ],
+      "not_full_delivery": true
+    },
+    {
+      "id": "M1",
+      "label": "首条真实云端到本地往返",
+      "claim": "ONE_REAL_FLOW_VERIFIED",
+      "requirements": [
+        "NF-08-A",
+        "NF-08-B",
+        "NF-05-SYNC",
+        "NF-08-C",
+        "NF-08-D"
+      ],
+      "not_full_delivery": true
+    },
+    {
+      "id": "M2",
+      "label": "多项目、多软件、多环境和非 Git 扩展实证",
+      "claim": "UNIVERSAL_TRANSPORT_EXECUTION_VERIFIED",
+      "requirements": [
+        "NF-08-E",
+        "NF-08-F",
+        "NF-08-G",
+        "NF-08-H",
+        "NF-08-I",
+        "NF-02-SYNC"
+      ],
+      "not_full_delivery": true
+    },
+    {
+      "id": "M3",
+      "label": "共同规则增强、实际覆盖及薄部署收口",
+      "claim": "UNIVERSAL_WORKFLOW_VERIFIED",
+      "requirements": [
+        "NF-00-SYNC",
+        "NF-01-SYNC",
+        "NF-03-SYNC",
+        "NF-08-0",
+        "NF-08-A",
+        "NF-08-B",
+        "NF-05-SYNC",
+        "NF-08-C",
+        "NF-08-D",
+        "NF-08-E",
+        "NF-08-F",
+        "NF-08-G",
+        "NF-08-H",
+        "NF-08-I",
+        "NF-10-SYNC",
+        "NF-12-SYNC",
+        "NF-09-SYNC",
+        "NF-02-SYNC",
+        "NF-11-SYNC",
+        "NF-14-SYNC"
+      ],
+      "not_full_delivery": false
+    }
+  ],
+  "sources": [
+    {
+      "id": "U1",
+      "kind": "用户原文",
+      "title": "本会话跨软件、跨项目、跨环境要求及开始规划任务包",
+      "locator": "本会话用户消息",
+      "verified_scope": "由 WORK-LAB 建设维护，所有接入项目和软件使用；统一五维、官方原生和用户配置；不再人力复制；本轮仅规划。"
+    },
+    {
+      "id": "U2",
+      "kind": "附件：执行者历史报告",
+      "title": "CLOUD-GPT-QUESTION-LIST-20260915.md",
+      "locator": "本会话附件；/mnt/data/CLOUD-GPT-QUESTION-LIST-20260915.md",
+      "verified_scope": "八组已完成项承接，不重复诊断；遗留原因推断不自动晋升为已证实事实；2026-09-15 版本不是机器当前状态。"
+    },
+    {
+      "id": "L1",
+      "kind": "已读取的上轮交付文件",
+      "title": "WORK-LAB-INTEGRATED-TASKPACK-20260916/TASKS.json",
+      "locator": "上轮附件 TASKS.json",
+      "verified_scope": "保留 20 个父级任务编号和 4 个条件项；本轮取差集，不重新启动全部旧任务。",
+      "sha256": "ac7f030a3965e43f18e6e04b6ec3f1cf6c93fb8533b5d53ef72a1cb227930d9f"
+    },
+    {
+      "id": "L2",
+      "kind": "已读取的上轮来源映射",
+      "title": "SOURCE-AND-TASK-MAPPING.md",
+      "locator": "上轮同名附件",
+      "verified_scope": "继承历史主题及明确列出的材料缺口；不冒充本轮已逐字读取所有历史对话。",
+      "sha256": "d26bd8a155414972c4c07d964540bf73488b2e00c007f9c9b54cf5d28684168a"
+    },
+    {
+      "id": "R1",
+      "kind": "连接器：固定远端元数据",
+      "title": "恢复分支与 main",
+      "locator": "https://github.com/DTALEX66/WORK-LAB/commit/7e19fb545c7d9af3ec08427749cd72bff7902287",
+      "verified_scope": "r4-recovery-exec=7e19fb545c7d9af3ec08427749cd72bff7902287；main=e5231f0f605d1515ed12958267b394c9de1da20c。不证明本地工作区一致，不证明已合入 main。"
+    },
+    {
+      "id": "R2",
+      "kind": "连接器：固定 SHA 文件",
+      "title": "AGENTS.md",
+      "locator": "https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/AGENTS.md",
+      "verified_scope": "全文已读；五维基线、字段归属、Observer 只读、项目产物边界；不是将硬编码历史安装版本永久冻结。"
+    },
+    {
+      "id": "R3",
+      "kind": "连接器：固定 SHA 文件",
+      "title": "跨项目消息旧格式",
+      "locator": "https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/.project/governance/federation/federation-envelope.v1.schema.json",
+      "verified_scope": "全文已读；producer/consumer 为三个项目枚举；历史 TP-20260819 格式需要兼容扩展，但不能仅据此断言所有现有通路都被这个格式阻断。"
+    },
+    {
+      "id": "R4",
+      "kind": "连接器：固定 SHA 源码",
+      "title": "handoff.py",
+      "locator": "https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/handoff.py",
+      "verified_scope": "全文已读；内存字典去重、同一对象内模拟 restart、浅层字段白名单；没有真实网络发送。"
+    },
+    {
+      "id": "R5",
+      "kind": "连接器：固定 SHA 源码片段",
+      "title": "task_ledger.py 第 1–145 行",
+      "locator": "https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/task_ledger.py",
+      "verified_scope": "现有 ledger.json、原子文件替换、任务状态与效果记录；不能把原子文件替换直接等同跨进程事务。"
+    },
+    {
+      "id": "R6",
+      "kind": "连接器：固定 SHA 源码片段",
+      "title": "product_project.py 第 1–190 行",
+      "locator": "https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/packages/client-neutral-core/scripts/product_project.py",
+      "verified_scope": "已区分产品项目/仓库/工作树/模块；项目定义与本机路径分开；保留并扩展，不另造项目模型。"
+    },
+    {
+      "id": "R7",
+      "kind": "连接器：最新收口报告提交差异",
+      "title": "7e19fb5 收口报告",
+      "locator": "https://github.com/DTALEX66/WORK-LAB/commit/7e19fb545c7d9af3ec08427749cd72bff7902287",
+      "verified_scope": "报告称 16 必做卡在 READ_ONLY_PREVIEW 范围收口；1259 passed/8 skipped 属执行者报告，不是本轮重跑结果。已报修复不重开；真实交付缺口单列。"
+    },
+    {
+      "id": "R8",
+      "kind": "连接器：目录树",
+      "title": "固定提交文件树",
+      "locator": "https://api.github.com/repos/DTALEX66/WORK-LAB/git/trees/4c78fdd4b9100efc06e627c4bc8f88f954cca9a8?recursive=1",
+      "verified_scope": "用于路径定位；目录存在不表示实现已验证。"
+    },
+    {
+      "id": "R9",
+      "kind": "前一轮固定 SHA 源码证据",
+      "title": "session-federation/provider.py、continues.py 与 run_taskpack_agent.py",
+      "locator": "https://github.com/DTALEX66/WORK-LAB/blob/7e19fb545c7d9af3ec08427749cd72bff7902287/services/session-federation/",
+      "verified_scope": "本会话前轮已读取同一 SHA；本轮不重复全文件审计。导出不等于远程送达；现有 runner 偏 Hermes，需在已有接口外接分派而不是强制所有工具经 Hermes。"
+    },
+    {
+      "id": "W1",
+      "kind": "官方项目文档；2026-09-16 核对",
+      "title": "GitHub official MCP Server",
+      "locator": "https://github.com/github/github-mcp-server",
+      "verified_scope": "官方仓库/Issue/PR 工具、远程/本地接入；各宿主配置与授权不同，不证明本连接可写；MIT。"
+    },
+    {
+      "id": "W2",
+      "kind": "官方文档；2026-09-16 核对",
+      "title": "GitHub REST API best practices",
+      "locator": "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api",
+      "verified_scope": "条件请求、分页、错误与速率限制处理；本包首通道采用出站增量读取是方案取舍。"
+    },
+    {
+      "id": "W3",
+      "kind": "官方文档；2026-09-16 核对",
+      "title": "GitHub webhook best practices",
+      "locator": "https://docs.github.com/en/enterprise-cloud@latest/webhooks/using-webhooks/best-practices-for-using-webhooks",
+      "verified_scope": "按事件验证、HTTPS/secret、重投标识不变；webhook 只提示事件，不替代业务认领。"
+    },
+    {
+      "id": "W4",
+      "kind": "OpenAI 官方文档；2026-09-16 核对",
+      "title": "Codex non-interactive mode",
+      "locator": "https://developers.openai.com/codex/noninteractive",
+      "verified_scope": "重定向至 learn.chatgpt.com/docs/non-interactive-mode；exec、JSONL、指定会话 resume、非 Git 开关；实际安装需探针，不采纳跳过用户配置/规则等危险默认。"
+    },
+    {
+      "id": "W5",
+      "kind": "OpenAI 官方文档；2026-09-16 核对",
+      "title": "Codex App Server",
+      "locator": "https://developers.openai.com/codex/app-server",
+      "verified_scope": "官方线程/turn 生命周期与批准交互；实验接口和版本支持需单独核实。"
+    },
+    {
+      "id": "W6",
+      "kind": "官方规范；2026-09-16 核对",
+      "title": "Agent Skills specification",
+      "locator": "https://agentskills.io/specification",
+      "verified_scope": "渐进加载和资源分离；并非每个宿主都自动支持全部字段。"
+    },
+    {
+      "id": "W7",
+      "kind": "官方文档；2026-09-16 核对",
+      "title": "Linear MCP",
+      "locator": "https://linear.app/docs/mcp",
+      "verified_scope": "可选成熟任务系统接入；不声称已安装或已有用户授权。"
+    },
+    {
+      "id": "W8",
+      "kind": "官方文档；2026-09-16 核对",
+      "title": "n8n MCP Server Trigger",
+      "locator": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger",
+      "verified_scope": "多系统连接候选；不是本包默认新调度核心；使用前核对许可/费用。"
+    },
+    {
+      "id": "W9",
+      "kind": "官方文档；2026-09-16 核对",
+      "title": "rclone copy",
+      "locator": "https://rclone.org/commands/rclone_copy/",
+      "verified_scope": "复制不删除目的端多余文件；作为可选不可变交接包传输，不同步活动数据库或原生配置。"
+    },
+    {
+      "id": "W10",
+      "kind": "官方文档；2026-09-16 核对",
+      "title": "Syncthing FAQ",
+      "locator": "https://docs.syncthing.net/users/faq.html",
+      "verified_scope": "设备间文件同步候选；不等于云端 ChatGPT 直连本地，不具备任务认领语义。"
+    },
+    {
+      "id": "W11",
+      "kind": "官方项目说明；2026-09-16 核对",
+      "title": "OpenAI Symphony",
+      "locator": "https://github.com/openai/symphony",
+      "verified_scope": "工程预览参考；不得按成熟即用平台强替现有运行体系。"
+    },
+    {
+      "id": "W12",
+      "kind": "产品官方文档；2026-09-16 核对",
+      "title": "Vibe Kanban MCP",
+      "locator": "https://vibekanban.com/docs/integrations/vibe-kanban-mcp-server",
+      "verified_scope": "多编程软件任务/执行入口候选；本地 MCP 连接约束，不证明 Hermes/DSH 支持。"
+    },
+    {
+      "id": "W13",
+      "kind": "规范维护者官方源码；2026-09-16 核对",
+      "title": "MCP 2026-07-28 Authorization Security Considerations",
+      "locator": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/basic/authorization/security-considerations.mdx",
+      "verified_scope": "凭据 audience 与上下游 token 分离；不得转发用户凭据正文。核对目标协议版本，不强制所有软件升级最新协议。"
+    },
+    {
+      "id": "W14",
+      "kind": "官方文档；2026-09-16 核对",
+      "title": "GitHub Actions secure use",
+      "locator": "https://docs.github.com/en/actions/reference/security/secure-use",
+      "verified_scope": "自托管 runner 承载非可信代码的风险；不把日常电脑暴露给公开仓库任意 PR。"
+    },
+    {
+      "id": "W15",
+      "kind": "官方文档；2026-09-16 核对",
+      "title": "Hermes updating",
+      "locator": "https://hermes-agent.nousresearch.com/docs/getting-started/updating/",
+      "verified_scope": "原生维护通道；不借更新任务绕过运行中占用守卫。"
+    }
+  ],
+  "carry_forward": [
+    {
+      "legacy_id": "NF-00",
+      "legacy_title": "锁定真实执行基线与交接入口",
+      "historical_plan_status": "OPEN_CONFIRMED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "基线锁定已有报告",
+      "continuation_ids": [
+        "NF-00-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-01",
+      "legacy_title": "统一规则语义与历史任务收口",
+      "historical_plan_status": "OPEN_CONFIRMED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "执行标准语义修复已有报告",
+      "continuation_ids": [
+        "NF-00-SYNC",
+        "NF-01-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-02",
+      "legacy_title": "精确 SHA 的 CI 真相与顺序依赖测试根治",
+      "historical_plan_status": "OPEN_CONFIRMED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "旧 radar 硬导入修复已有报告",
+      "continuation_ids": [
+        "NF-02-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-03",
+      "legacy_title": "项目产物边界、工具链发现与外溢定点收尾",
+      "historical_plan_status": "PARTIAL_REPORTED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "外溢/体积审计已有报告",
+      "continuation_ids": [
+        "NF-01-SYNC",
+        "NF-03-SYNC",
+        "NF-08-G",
+        "NF-11-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-04",
+      "legacy_title": "可解释的轻量配置变更闭环",
+      "historical_plan_status": "NEEDS_SCOPED_VERIFICATION",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "配置 NOOP/UNDETERMINED/SIMULATED 状态修复已有报告",
+      "continuation_ids": [
+        "NF-08-0",
+        "NF-10-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-05",
+      "legacy_title": "各客户端原生接口与能力最小适配",
+      "historical_plan_status": "NEEDS_SCOPED_VERIFICATION",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "身份/能力契约与只读样例已有报告",
+      "continuation_ids": [
+        "NF-03-SYNC",
+        "NF-08-A",
+        "NF-05-SYNC",
+        "NF-12-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-06",
+      "legacy_title": "先跑通一个真实客户端的只读价值闭环",
+      "historical_plan_status": "NEEDS_SCOPED_VERIFICATION",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "只读预览闭环已有报告",
+      "continuation_ids": [
+        "NF-05-SYNC",
+        "NF-08-C"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-07",
+      "legacy_title": "一个低风险用户字段的受控应用与恢复",
+      "historical_plan_status": "NEEDS_SCOPED_VERIFICATION",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "受控恢复算法与合成测试已有报告；真实字段写入未证实",
+      "continuation_ids": [
+        "NF-10-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-08",
+      "legacy_title": "跨软件交接、任务连续性与取消恢复",
+      "historical_plan_status": "PARTIAL_REPORTED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "本地交接原语已有报告；本轮源码确认并非真实通用同步",
+      "continuation_ids": [
+        "NF-08-0",
+        "NF-08-A",
+        "NF-08-B",
+        "NF-08-C",
+        "NF-08-D",
+        "NF-08-E",
+        "NF-08-F",
+        "NF-08-G",
+        "NF-08-H",
+        "NF-08-I",
+        "NF-02-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-09",
+      "legacy_title": "Observer 只读真实状态与必要交互完善",
+      "historical_plan_status": "NEEDS_SCOPED_VERIFICATION",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "五态投影已有报告；非端到端当前实测",
+      "continuation_ids": [
+        "NF-08-D",
+        "NF-09-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-10",
+      "legacy_title": "规则、技能、插件按需加载与可增删生命周期",
+      "historical_plan_status": "PARTIAL_REPORTED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "技能/规则收敛审计已有报告",
+      "continuation_ids": [
+        "NF-01-SYNC",
+        "NF-08-F",
+        "NF-10-SYNC",
+        "NF-12-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-11",
+      "legacy_title": "模块、语言、依赖与可交付运行方式收敛",
+      "historical_plan_status": "NEEDS_SCOPED_VERIFICATION",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "依赖/目录审计已有报告",
+      "continuation_ids": [
+        "NF-08-I",
+        "NF-11-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-12",
+      "legacy_title": "原生软件更新与新模型差分适配",
+      "historical_plan_status": "PARTIAL_REPORTED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "能力差分审计已有报告；真实维护另验",
+      "continuation_ids": [
+        "NF-12-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-13",
+      "legacy_title": "价值验证：状态四臂与模型对照分开",
+      "historical_plan_status": "OPTIONAL_DEFERRED",
+      "latest_report_status": "OPTIONAL_DEFERRED",
+      "reported_evidence": "上轮条件项；本轮未执行",
+      "continuation_ids": [],
+      "remaining": "条件研究继续默认不执行；是否需费用按所选方法判断，不把整卡永久解释为必然付费。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "NF-14",
+      "legacy_title": "有限范围验收、交付与停止条件",
+      "historical_plan_status": "NEEDS_SCOPED_VERIFICATION",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "READ_ONLY_PREVIEW 收口报告保留",
+      "continuation_ids": [
+        "NF-14-SYNC"
+      ],
+      "remaining": "只完成本包列出的通用协作差集；原卡其它未完成范围保留，已报修复不重做。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "WL-R01",
+      "legacy_title": "Radar 从离线样本到可复用候选闭环",
+      "historical_plan_status": "PARTIAL_REPORTED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "离线差分/复用判断已有报告；真实第三方调用不据此推定",
+      "continuation_ids": [],
+      "remaining": "保留 Radar 真实来源接线/实际开源复用后续。此次 W1/W9 真实适配采用证据可复用进该卡，但不自动关闭 Radar 全部任务。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "WL-R07",
+      "legacy_title": "价格身份、真实成本和工作簿后半程",
+      "historical_plan_status": "PARTIAL_REPORTED",
+      "latest_report_status": "REPORTED_READ_ONLY_SCOPE_CLOSED",
+      "reported_evidence": "代码价格身份/UNKNOWN 传播已有报告；工作簿实体未取得",
+      "continuation_ids": [
+        "NF-08-D",
+        "NF-09-SYNC"
+      ],
+      "remaining": "回传/Observer 的真实成本接线进入本包；工作簿原件、Excel/WPS 加固仍按原卡独立待输入，不能杜撰完成。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "W05",
+      "legacy_title": "现有会员和免费权益的条件核对",
+      "historical_plan_status": "OPTIONAL_DEFERRED",
+      "latest_report_status": "OPTIONAL_DEFERRED",
+      "reported_evidence": "上轮条件项；本轮未执行",
+      "continuation_ids": [],
+      "remaining": "条件研究继续默认不执行；是否需费用按所选方法判断，不把整卡永久解释为必然付费。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "W06",
+      "legacy_title": "Agents API/框架是否真正替代现有自研的条件比较",
+      "historical_plan_status": "OPTIONAL_DEFERRED",
+      "latest_report_status": "OPTIONAL_DEFERRED",
+      "reported_evidence": "上轮条件项；本轮未执行",
+      "continuation_ids": [],
+      "remaining": "条件研究继续默认不执行；是否需费用按所选方法判断，不把整卡永久解释为必然付费。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    },
+    {
+      "legacy_id": "W08",
+      "legacy_title": "隔离的 Web 原型候选实验",
+      "historical_plan_status": "OPTIONAL_DEFERRED",
+      "latest_report_status": "OPTIONAL_DEFERRED",
+      "reported_evidence": "上轮条件项；本轮未执行",
+      "continuation_ids": [],
+      "remaining": "条件研究继续默认不执行；是否需费用按所选方法判断，不把整卡永久解释为必然付费。",
+      "source_refs": [
+        "L1",
+        "R7"
+      ],
+      "full_capability_complete": false
+    }
+  ],
+  "optional_legacy_ids": [
+    "NF-13",
+    "W05",
+    "W06",
+    "W08"
+  ],
+  "tasks": [
+    {
+      "id": "NF-00-SYNC",
+      "title": "锁定差集与部署对象，不重开全部历史",
+      "parent_ids": [
+        "NF-00",
+        "NF-01"
+      ],
+      "wave": 0,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [],
+      "known_state": "恢复分支已观察到 7e19fb5；main 仍 e5231f0；上轮报告在 READ_ONLY_PREVIEW 范围收口。",
+      "goal": "一个通用能力交付目标、一个现有任务入口、可追溯旧编号；不把历史临时离线限制升级成永久禁联网。",
+      "steps": [
+        "读取当前 HEAD、受影响模块规则及本卡关联来源；若 HEAD 变化只检查相关 diff，不重审全仓。",
+        "将本包子卡挂接原 NF/WL-R 父卡；保留既有修复证据与 4 个条件项。",
+        "区分 WORK-LAB 代码开发范围、目标项目接入范围、远端发布目标和本机部署范围；记录现有有效授权。",
+        "用一个默认路径开始：每项目一处材料权威、每项目一个当前认领端；多设备按路由接入，之后受控转移。"
+      ],
+      "acceptance": [
+        "本地/远端/目标分支状态分别记录，无“默认已合 main”。",
+        "全部 20 个旧父卡都有承接去向；没有因为本包重复执行已完成修复。",
+        "通用范围覆盖新项目、非 Git、非 Hermes、非 GitHub；代码使用项目参数。"
+      ],
+      "entrypoints": [
+        "AGENTS.md",
+        ".project/governance/taskpack-authority-index.json",
+        "taskpacks/current/"
+      ],
+      "source_refs": [
+        "U1",
+        "L1",
+        "L2",
+        "R1",
+        "R7"
+      ],
+      "required_authorization": [
+        "本卡读取和后续仓内开发按已有有效授权；本包不授予任何新的写入"
+      ],
+      "rollback": "本包是候选计划；接入时只变更当前入口映射，保留旧包内容和版本，不覆盖历史证据。",
+      "do_not": [
+        "不要把 NF-08 重新命名为只服务 WORK-LAB 的功能",
+        "不要恢复 693471c 为执行 HEAD",
+        "不要自动合并恢复分支"
+      ],
+      "acceptance_case_ids": [
+        "AT-01"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-01-SYNC",
+      "title": "统一规则语义与材料/遥测边界",
+      "parent_ids": [
+        "NF-01",
+        "NF-03",
+        "NF-10"
+      ],
+      "wave": 0,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-00-SYNC"
+      ],
+      "known_state": "根规则明确五维、Observer 只读；同时包含“项目 Git 根内”和禁止 prompt/response bodies 的宽泛表述。",
+      "goal": "允许用户主动发布的审计/任务文档合法传输，仍禁止私人会话库镜像和遥测正文；不以保护规则阻断产品目标。",
+      "steps": [
+        "保留五维原义，不将“官方默认”解释成覆盖用户选择。",
+        "只澄清受影响规则：明确发布的任务/审计是可授权业务工件；原始聊天、凭据、浏览器库不纳入自动同步；Telemetry 只留引用与最小元数据。",
+        "产物归属从固定 WORK-LAB Git 根转为当前获授权项目根及其明确交接出口；全局受管资产仍走既有授权同步器。",
+        "未知或冲突仅阻断对应敏感动作；非安全建议故障不使无关项目停工。"
+      ],
+      "acceptance": [
+        "A 项目的临时离线/模型偏好不成为 B 的全局强制。",
+        "合法任务正文可在授权目标流转；正文不进入共享遥测/Observer。",
+        "未授权正文、秘密、路径外溢仍拒绝；本次语义调整有对照测试而非直接关闭守卫。"
+      ],
+      "entrypoints": [
+        "AGENTS.md",
+        "docs/decisions/global-execution-standard.md",
+        "config/config-ownership.json",
+        ".project/governance/project-data-boundary.json"
+      ],
+      "source_refs": [
+        "U1",
+        "R2",
+        "L2"
+      ],
+      "required_authorization": [
+        "修改仓内规则需已授权开发范围；批准规则文本不自动批准全局部署或工件外发"
+      ],
+      "rollback": "回退受影响规则提交与映射；运行中的已授权任务按其冻结规则版本继续或进入安全暂停。",
+      "do_not": [
+        "不要用“跨项目”授予任意目录读写",
+        "不要把所有任务正文一刀切禁止",
+        "不要让接收者提供 approved=true 即获得授权"
+      ],
+      "acceptance_case_ids": [
+        "AT-02",
+        "AT-03",
+        "AT-04"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-03-SYNC",
+      "title": "通用项目登记与本机路径绑定",
+      "parent_ids": [
+        "NF-03",
+        "NF-05"
+      ],
+      "wave": 0,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-00-SYNC",
+        "NF-01-SYNC"
+      ],
+      "known_state": "ProductProject 已分离项目/仓库/工作树/模块，存在本机 root binding；不需新项目模型。",
+      "goal": "新增项目只增加声明与本机绑定；Git、多仓、文件夹和文档型项目都可接入。",
+      "steps": [
+        "扩展既有 ProductProject/注册入口，不以三个名称、Git remote、单一盘符为身份。使用稳定不透明 project_id，repo_id 是可选关联。",
+        "本机路径只从用户认可的 binding 解析；云端任务不能自带绝对路径重新指向其他项目。",
+        "为非 Git 项目支持工件 revision/hash 基线；Git 项目继续使用准确 commit/worktree。",
+        "为每项目指定任务材料存储位置、接收节点和允许工件/能力；默认不扫描未接入目录。"
+      ],
+      "acceptance": [
+        "三个不同项目可仅靠配置接入，第三个无 .git；核心代码无新增分支。",
+        "同名不同项目不串；同项目不同工作树不被误拆为不同业务项目。",
+        "旧三项目别名仍可读；未知 ID 拒绝执行但可显示“未接入”。"
+      ],
+      "entrypoints": [
+        "packages/client-neutral-core/scripts/product_project.py",
+        "packages/client-neutral-core/scripts/project_registry.py",
+        "packages/client-neutral-core/scripts/project_identity_resolver.py",
+        ".project/governance/federation/"
+      ],
+      "source_refs": [
+        "U1",
+        "R6",
+        "R8"
+      ],
+      "required_authorization": [
+        "真实目标项目与路径需已有接入授权；合成项目限定当前批准测试根"
+      ],
+      "rollback": "仅撤销新增绑定/订阅，保留目标工件和用户文件；不执行数据搬迁、仓库清理。",
+      "do_not": [
+        "不要把非 Git 项目自动 git init",
+        "不要要求每项目复制 WORK-LAB 源码或另装守护进程",
+        "不要从远端载荷采信本机绝对路径"
+      ],
+      "acceptance_case_ids": [
+        "AT-05",
+        "AT-06",
+        "AT-07"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-0",
+      "title": "兼容扩展交接格式与真实授权引用",
+      "parent_ids": [
+        "NF-08",
+        "NF-04"
+      ],
+      "wave": 0,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-01-SYNC",
+        "NF-03-SYNC"
+      ],
+      "known_state": "旧 federation envelope 枚举三个项目；handoff v1 缺持久化、修订和强内容验证。",
+      "goal": "复用已有 Envelope/Work Unit/Capsule/Receipt，增加必要通用字段，不并排造第二套权威格式。",
+      "steps": [
+        "将旧 producer/consumer 项目枚举迁移为已登记项目引用；单列 source/target 软件与环境，避免把项目 ID 当客户端 ID。",
+        "在现有契约族增量增加任务 revision、基线类型、不可变工件 digest/引用、回执位置、目标能力、授权引用及 supersedes。",
+        "明确 code/workspace 基线与任务正文版本不同；不可变快照完成后再发布 Ready 指针。",
+        "验证嵌套数据和允许字段值；授权来自可信连接主体及本地有效授权记录，不信任模型可改的 scope/approved 文本。"
+      ],
+      "acceptance": [
+        "旧合法交接仍可读取；不支持新格式的旧接收器明确拒绝新写，不静默截字段。",
+        "秘密埋在 goal/next_step/嵌套属性里仍被隔离；只删除顶层 api_key 不算合格。",
+        "同一 task+revision 对应不同 digest 报冲突；新修订不得覆盖旧证据。"
+      ],
+      "entrypoints": [
+        ".project/governance/federation/federation-envelope.v1.schema.json",
+        "packages/client-neutral-core/scripts/handoff.py",
+        "packages/contracts/schemas/workflow/",
+        "services/session-federation/"
+      ],
+      "source_refs": [
+        "R3",
+        "R4",
+        "R9",
+        "W13",
+        "U1"
+      ],
+      "required_authorization": [
+        "契约修改/迁移为仓内开发；真实导出只针对用户选择的任务材料"
+      ],
+      "rollback": "先兼容读后新写；回退只能停止新格式派发并保留数据，不能删掉新修订让旧接收器误运行。",
+      "do_not": [
+        "不要强制全部客户端同时支持 MCP+ACP+A2A",
+        "不要新建全局会话镜像",
+        "不要把 hash 当作授权签名"
+      ],
+      "acceptance_case_ids": [
+        "AT-08",
+        "AT-09",
+        "AT-10"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-A",
+      "title": "云端和其他规划端真实发布审计/任务",
+      "parent_ids": [
+        "NF-08",
+        "NF-05"
+      ],
+      "wave": 1,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-0"
+      ],
+      "known_state": "前轮生成包仍依赖用户下载；工具动作存在不等于连接有写权。本轮未试写任何远端。",
+      "goal": "任一具备受支持写入接口的规划软件可将选定结果发布到目标项目的权威位置。",
+      "steps": [
+        "优先复用当前连接的 GitHub 写接口或官方 MCP；逐动作核对文件写、Issue 写、评论写权限，不能用一个 push=false 推断所有动作。",
+        "按项目选择存储目标；不得把所有项目任务都发进公开 WORK-LAB 仓库；私人材料只到明确授权的私有目标。",
+        "大正文/附件保存为固定版本工件，Issue/入口保存小摘要与引用；先写齐工件，再发布指定版本。",
+        "发布后从服务端回读 ID/revision/digest；未获写权则明确停在发布待授权，不称同步成功。"
+      ],
+      "acceptance": [
+        "实际云端规划端发布后返回可回读任务 ID/版本；用户不复制任务正文。",
+        "同请求重复调用不造重复任务；应答丢失先查询再补发。",
+        "对不同项目发布时路由正确，公开目标拒收私人 canary。"
+      ],
+      "entrypoints": [
+        "integrations/",
+        "packages/client-neutral-core/scripts/github_common.py",
+        "packages/client-neutral-core/scripts/handoff.py"
+      ],
+      "source_refs": [
+        "U1",
+        "W1",
+        "W2",
+        "R8"
+      ],
+      "required_authorization": [
+        "目标空间的发布权限与用户对该批材料外发的授权；不读取或显示凭据"
+      ],
+      "rollback": "用撤销/新修订状态停止后续领取，保留审计追溯；不自动删除 Issue、改公开性或清理仓库历史。",
+      "do_not": [
+        "不要把 sandbox 下载链接当永久云端工件地址",
+        "不要自动把内容公开发布",
+        "不要绕过宿主要求的写操作确认"
+      ],
+      "acceptance_case_ids": [
+        "AT-11",
+        "AT-12",
+        "AT-13"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-B",
+      "title": "在既有账本实现持久化收件与待回传记录",
+      "parent_ids": [
+        "NF-08",
+        "WL-R05"
+      ],
+      "wave": 1,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-0"
+      ],
+      "known_state": "当前 HandoffRelay 是内存模型；TaskLedger 使用 ledger.json，需明确复用存储与跨进程更新边界。",
+      "goal": "电脑/进程重启、重复通知和应答丢失不让同一任务重复启动；不再由人搬运。",
+      "steps": [
+        "把订阅接到既有 worker/sidecar 生命周期；每个本机实例一个接收生命周期，项目各自命名空间和可暂停状态。",
+        "首通道用条件请求/分页游标/重叠扫描增量读取，按完整事件身份去重；遵守上游 Retry-After，不做忙轮询或模型轮询。",
+        "将 inbox/outbox/任务修订认领整合进现有 TaskLedger 持久化边界；复用可靠锁或已有事务设施，覆盖整个读改写。禁止新增独立队列数据库。",
+        "先持久化领取意图再调用执行器；恢复时以原生 run/session 及效果证据对账，不能看不到应答就再起一个任务。"
+      ],
+      "acceptance": [
+        "进程 A 领取后退出，独立进程 B 重启读同一持久记录不重复启动。",
+        "不同进程同时认领同任务，仅一方进入派发；失去认领权者不能开始新副作用。",
+        "第二项目正常工作时，第一项目的网络故障不会阻断它。",
+        "仅同步检查不调用模型；未改变任务时不重复重写全部工件。"
+      ],
+      "entrypoints": [
+        "packages/client-neutral-core/scripts/task_ledger.py",
+        "services/orchestration/durable_worker.py",
+        "services/orchestration/sidecar_lock.py",
+        "packages/client-neutral-core/scripts/handoff.py"
+      ],
+      "source_refs": [
+        "R4",
+        "R5",
+        "R8",
+        "W2",
+        "W3"
+      ],
+      "required_authorization": [
+        "持久化仅当前批准根；真实订阅需项目/节点接入授权"
+      ],
+      "rollback": "暂停对应订阅并保留 inbox/outbox；恢复从持久游标和已知版本继续，不删除领取记录。",
+      "do_not": [
+        "不要复制活动 ledger.json/SQLite 到多机器做多主共享",
+        "不要把 os.replace 当作完整并发事务",
+        "不要把同对象调用两次称进程重启测试"
+      ],
+      "acceptance_case_ids": [
+        "AT-14",
+        "AT-15",
+        "AT-16",
+        "AT-17"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-05-SYNC",
+      "title": "客户端能力按角色登记，复用原生接口",
+      "parent_ids": [
+        "NF-05",
+        "NF-06"
+      ],
+      "wave": 1,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-03-SYNC",
+        "NF-08-0"
+      ],
+      "known_state": "已有 Adapter 和 Hermes runner；支持/安装/认证/真实执行几种状态不能混同。",
+      "goal": "同一任务格式面向不同软件；增加软件主要是薄适配，不改每个项目。",
+      "steps": [
+        "将规划发布、任务执行、审阅、存储、观察分成能力角色；GitHub/CC Switch 不伪装为代码执行者。",
+        "优先 Hermes/Codex 已有路径；Codex exec/app-server 根据实际版本选择，不装第二套冲突 CLI；其他软件由原生 CLI/API/MCP/插件/文件入口适配。",
+        "只声明探针确认的能力：read/publish/execute/status/cancel/resume；动态能力表不是固定七项 enum。",
+        "对没有受支持执行接口的软件先支持任务可见/工件导入，明确 PARTIAL/UNSUPPORTED，并记录补齐接口的前提。"
+      ],
+      "acceptance": [
+        "缺 Hermes 时其它可用执行器仍能工作，反之亦然。",
+        "同一 Adapter 被两个项目配置复用，不在代码内按项目名称分派。",
+        "实际使用的所有客户端有逐能力覆盖行；缺接口不报“全功能完成”。"
+      ],
+      "entrypoints": [
+        "integrations/executors/",
+        "packages/client-neutral-core/scripts/adapter_sdk.py",
+        "packages/client-neutral-core/scripts/real_adapters.py",
+        "services/orchestration/run_taskpack_agent.py"
+      ],
+      "source_refs": [
+        "R8",
+        "R9",
+        "W4",
+        "W5",
+        "U1"
+      ],
+      "required_authorization": [
+        "真实客户端启动与订阅模型调用需对应授权/原生会话许可；元数据探针不等于付费调用"
+      ],
+      "rollback": "禁用新增适配行，保留原生软件安装和用户配置；从原任务继续选择已授权能力。",
+      "do_not": [
+        "不要把 Hermes 固定为每种软件的必经中介",
+        "不要依赖窗口粘贴作为默认执行接口",
+        "不要调用 --ignore-user-config/--ignore-rules 或绕过沙箱"
+      ],
+      "acceptance_case_ids": [
+        "AT-18",
+        "AT-19",
+        "AT-20"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-C",
+      "title": "真实领取到执行，不再停在交接模拟",
+      "parent_ids": [
+        "NF-08",
+        "NF-06"
+      ],
+      "wave": 1,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-A",
+        "NF-08-B",
+        "NF-05-SYNC"
+      ],
+      "known_state": "现有 runner 可复用；本包没有新启动任何原生执行器。",
+      "goal": "跑通用户痛点的第一条真正闭环，并为第二软件保留同一分派合同。",
+      "steps": [
+        "分派前冻结 task/revision/baseline/执行者/授权引用，解析本机工作区；本地脏工作树不自动 pull/reset。",
+        "将目标任务正文以原生输入或获准工件引用传入，记录启动前意图、真实 run/session ID 与实际指令源，不用全局 --last。",
+        "先运行低风险确定性原生任务，再在已有费用授权下运行必要的最小 Agent 任务；假执行器只算契约证据。",
+        "同任务换执行者时先确认旧运行体已完成/安全暂停；只交剩余工作，不重复整包。"
+      ],
+      "acceptance": [
+        "真实规划端发布→本地原生执行器领取→产生可检验工件，人工正文复制次数为 0。",
+        "未经批准的代码基线变化会给出明确阻塞，不偷偷在另一项目工作。",
+        "启动失败标明是哪层：传输/权限/运行体/模型；其它项目继续。"
+      ],
+      "entrypoints": [
+        "services/orchestration/run_taskpack_agent.py",
+        "integrations/executors/",
+        "packages/client-neutral-core/scripts/task_ledger.py"
+      ],
+      "source_refs": [
+        "R5",
+        "R9",
+        "W4",
+        "W5"
+      ],
+      "required_authorization": [
+        "本机对应项目写入、原生执行及本任务模型费用授权；不自动获得 commit/push/merge"
+      ],
+      "rollback": "请求原生受支持的安全停止；保留结果和检查点，不能强杀用户进程或把文件回滚当业务副作用已撤销。",
+      "do_not": [
+        "不要把命令返回 0 或模型 DONE 作为验收全部通过",
+        "不要未经授权启用 API 付费回退",
+        "不要从远端字符串拼接任意 shell 命令"
+      ],
+      "acceptance_case_ids": [
+        "AT-11",
+        "AT-18",
+        "AT-21"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-D",
+      "title": "结果回传、读取与显式复核触发",
+      "parent_ids": [
+        "NF-08",
+        "NF-09",
+        "WL-R07"
+      ],
+      "wave": 1,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-B",
+        "NF-08-C"
+      ],
+      "known_state": "已有回执/Telemetry/Observer，尚未证明实际云端接收每次执行结果。",
+      "goal": "把结果送回发起任务的权威位置；任何有授权的审查端能读取并接续。",
+      "steps": [
+        "输出回执绑定 project/task/revision/run/基线/工件 digest，区分执行完成与验收通过；回执只携带必要摘要与引用。",
+        "在现有 outbox 持久记录待回传；远端暂不可用仍保留本地完成事实，重试只重发回执不重跑任务。",
+        "返回状态、改动、测试、commit/PR（如果实际存在）、阻塞和未完成；token/cost 缺失显示 UNKNOWN。",
+        "把外部任务页面状态作为投影，反向编辑必须经过同一权限/版本检查；复核触发使用明确支持的通知或自动化，未设置则显示等待复核。"
+      ],
+      "acceptance": [
+        "规划端新一次读取可以准确看到对应修订的结果，无需用户搬回日志。",
+        "回传应答丢失不造重复结果；任务正文不进入公开遥测。",
+        "显示 RECEIPT_PUBLISHED 与 REVIEW_REQUESTED 的区别，不声称唤醒了当前旧聊天。"
+      ],
+      "entrypoints": [
+        "services/receipts/",
+        "packages/client-neutral-core/scripts/task_ledger.py",
+        "packages/client-neutral-core/scripts/observer_projection_adapter.py",
+        "apps/observer/"
+      ],
+      "source_refs": [
+        "R2",
+        "R5",
+        "R8",
+        "W1"
+      ],
+      "required_authorization": [
+        "仅原任务指定目标的回执写权限；主动触发新审查/模型调用需既有有效授权"
+      ],
+      "rollback": "可重发同一版本回执；撤回展示需状态更正而非删除失败历史；不会逆转已经发生的外部副作用。",
+      "do_not": [
+        "不要将完整私有会话日志回写 Issue",
+        "不要把“完成”状态与模型文本直接互相映射",
+        "不要因回传失败重新执行工作"
+      ],
+      "acceptance_case_ids": [
+        "AT-22",
+        "AT-23",
+        "AT-24"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-E",
+      "title": "修订、取消、乱序和未知效果收敛",
+      "parent_ids": [
+        "NF-08",
+        "WL-R05",
+        "WL-R06"
+      ],
+      "wave": 2,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-B",
+        "NF-08-C",
+        "NF-08-D"
+      ],
+      "known_state": "已有单写者重放 8 场景和 handoff 模拟 4 场景；只补实际差集。",
+      "goal": "用户跨软件调整要求时旧版本不复活、不冲掉新版本；取消与已发生效果诚实处理。",
+      "steps": [
+        "同任务修订追加而不覆盖；发布冻结内容与授权范围，旧运行在安全检查点处理 supersedes。",
+        "外部未见/超时不是 CONFIRMED ABSENT；保留 UNKNOWN，查询原生结果和持久意图再决定。",
+        "实现 cancel_requested 与原生确认取消的区别；没有可靠取消接口就如实暂停后续派发，旧进程未停不启动替代写者。",
+        "处理乱序事件、重复 webhook、失效授权、修改工件和晚到结果；低版本回执保留但不推进高版本完成。"
+      ],
+      "acceptance": [
+        "rev1 运行中发布 rev2；rev1 晚到完成不会结束 rev2。",
+        "取消后不会再启动新效果；已经发生/仍不确定的效果都可查询。",
+        "执行效果未知不会盲重试，拒绝对象只限受影响任务。"
+      ],
+      "entrypoints": [
+        "packages/client-neutral-core/scripts/handoff.py",
+        "packages/client-neutral-core/scripts/task_ledger.py",
+        "services/orchestration/",
+        "tests/workflow-assistance/test_task_ledger_replay.py"
+      ],
+      "source_refs": [
+        "R4",
+        "R5",
+        "U1"
+      ],
+      "required_authorization": [
+        "只对受管任务使用原生取消；没有用户进程终止权限就不 kill"
+      ],
+      "rollback": "恢复已确认检查点；原生效果不可逆时记录人工决策需求，不能自动“恢复原样”。",
+      "do_not": [
+        "不要用租约到期推断旧原生进程已停止",
+        "不要将 UNKNOWN 当 ABSENT",
+        "不要对任意软件宣称 exactly-once"
+      ],
+      "acceptance_case_ids": [
+        "AT-25",
+        "AT-26",
+        "AT-27",
+        "AT-28"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-F",
+      "title": "各软件一个按需入口，减少人工操作",
+      "parent_ids": [
+        "NF-08",
+        "NF-10"
+      ],
+      "wave": 2,
+      "priority": "P1",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-A",
+        "NF-08-D",
+        "NF-05-SYNC"
+      ],
+      "known_state": "上轮 START-HERMES 是特定执行入口；这次交付不能要求永远转交 Hermes。",
+      "goal": "用统一语义的发布、查看、接续、调整与回传入口覆盖不同宿主，不需要用户记目录。",
+      "steps": [
+        "复用/精简现有全局技能，对应发布、领取、状态、回传语义；按宿主支持生成适配，不伪造所有软件通用 slash 命令。",
+        "仅加载当前项目与任务的核心材料，附件按需取；未选择项目不得用 cwd/上次会话强猜。",
+        "任务识别不明确时给出可见候选；已经由链接或绑定唯一确定时不重复询问。",
+        "衡量人工正文复制、重复确认、加载字节和空闲模型调用；日志只记录计数和标识。"
+      ],
+      "acceptance": [
+        "两种不同宿主入口操作都无需复制任务正文；一个不依赖 Hermes。",
+        "已明确授权范围内不逐卡重复确认；新增外发/写入才触发对应授权。",
+        "标准接续不加载所有项目历史和技能全文。"
+      ],
+      "entrypoints": [
+        ".agents/skills/",
+        "packages/client-neutral-core/skills/",
+        "packages/client-neutral-core/templates/",
+        "integrations/"
+      ],
+      "source_refs": [
+        "U1",
+        "R2",
+        "W6"
+      ],
+      "required_authorization": [
+        "仓内技能可按开发授权编辑；发布到各软件全局配置是独立、可批量批准的部署动作"
+      ],
+      "rollback": "只回退本次受管技能版本，保留用户自建技能；已有任务链接仍可访问。",
+      "do_not": [
+        "不要再发明一个聊天界面",
+        "不要为每个项目安装同名全局技能副本",
+        "不要将“按需入口”变成每轮必跑全量审计"
+      ],
+      "acceptance_case_ids": [
+        "AT-29",
+        "AT-30"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-G",
+      "title": "第二传输通道与非 Git 项目落地",
+      "parent_ids": [
+        "NF-08",
+        "NF-03"
+      ],
+      "wave": 2,
+      "priority": "P1",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-0",
+        "NF-08-B",
+        "NF-08-D"
+      ],
+      "known_state": "GitHub 是首选参考通道，不是所有项目的必需依赖。",
+      "goal": "用第二个真实可配置通道证明不锁定 GitHub；非 Git 项目能发布、执行与回传。",
+      "steps": [
+        "实现薄文件交接包适配器，面向用户批准的项目交换目录；可由已有共享存储/rclone/Syncthing 输送，默认不新增服务。",
+        "只传不可变任务包/工件/回执，先文件后完整 manifest；接收端仍逐项验证完整性，不能因看到 Ready 文件就假设同步顺序正确。",
+        "不对活动源目录运行破坏性同步；不传 .git、原生会话/认证库、venv、活动 ledger/SQLite。",
+        "非 Git 工件型项目用内容 revision/hash；执行软件要求 Git 时使用其合法显式方式或标明局部不支持，不伪造仓库。"
+      ],
+      "acceptance": [
+        "相同业务交接可通过 GitHub 和文件通道往返，核心分派代码不改。",
+        "第三个非 Git 示例项目完成工件往返；真实云端端点能力另行准确标注。",
+        "半上传、过期/缺失附件、重复文件和路径穿越都不会触发任务。"
+      ],
+      "entrypoints": [
+        "integrations/",
+        "packages/client-neutral-core/scripts/handoff.py",
+        "packages/client-neutral-core/scripts/product_project.py"
+      ],
+      "source_refs": [
+        "W9",
+        "W10",
+        "W4",
+        "R6",
+        "U1"
+      ],
+      "required_authorization": [
+        "已批准的第二存储/设备接入；没有安装授权不安装新文件同步软件"
+      ],
+      "rollback": "停止第二通道订阅；保留交换目录工件，不删除目标端多余文件。",
+      "do_not": [
+        "不要把同目录两次读当跨环境验证",
+        "不要说 Syncthing 能直接读取 ChatGPT 私有会话",
+        "不要让文件删除同步取消任务或删用户源文件"
+      ],
+      "acceptance_case_ids": [
+        "AT-07",
+        "AT-31",
+        "AT-32"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-H",
+      "title": "跨项目协作引用与隔离",
+      "parent_ids": [
+        "NF-08",
+        "WL-R04"
+      ],
+      "wave": 2,
+      "priority": "P1",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-03-SYNC",
+        "NF-08-E"
+      ],
+      "known_state": "项目模型和消息族已有基础；旧三项目枚举不应限制未来合作。",
+      "goal": "一个能力服务多个隔离项目，也允许有明确授权的项目之间交付成果，不混库。",
+      "steps": [
+        "同 task_id 在不同 project_id 下是不同身份；收件、租约、回执、失败隔离均含项目键。",
+        "跨项目任务仅共享双方授权的不可变工件引用与状态摘要；引用不自动授权读取正文。",
+        "双方各自创建本地子任务/绑定，不自动修改别的项目配置、代码或发布状态。",
+        "取消父任务只停止未启动依赖；已执行外部项目按独立授权处理；全局配置冲突按共同原生所有权协调，不每项目反复覆盖。"
+      ],
+      "acceptance": [
+        "A 网络失败、A 修改规则、A 取消任务都不影响独立 B。",
+        "A→B 的许可成果交付能完成；未授权引用不得绕过项目读取边界。",
+        "跨项目关联只显示授权可见的状态；共享 UI 不暴露其他项目摘要。"
+      ],
+      "entrypoints": [
+        "packages/client-neutral-core/scripts/product_project.py",
+        "packages/client-neutral-core/scripts/task_ledger.py",
+        ".project/governance/federation/",
+        "services/policy/"
+      ],
+      "source_refs": [
+        "U1",
+        "R3",
+        "R5",
+        "R6",
+        "R8"
+      ],
+      "required_authorization": [
+        "跨项目协作需双方作用域内有效授权；项目名称本身不构成批准"
+      ],
+      "rollback": "撤销联动引用与未启动子任务，不删除双方已产生工件或已独立批准的任务。",
+      "do_not": [
+        "不要将所有项目资料提交到 WORK-LAB",
+        "不要把“共同全局规则”变成跨项目共享记忆",
+        "不要因模块目录相似自动合并项目"
+      ],
+      "acceptance_case_ids": [
+        "AT-05",
+        "AT-17",
+        "AT-33",
+        "AT-34"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-08-I",
+      "title": "多环境路由与受控接管",
+      "parent_ids": [
+        "NF-08",
+        "NF-11"
+      ],
+      "wave": 2,
+      "priority": "P1",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-B",
+        "NF-08-E",
+        "NF-08-H"
+      ],
+      "known_state": "本地租约不等于跨机器分布式锁；没有证明原生执行器接受统一 fencing。",
+      "goal": "不同电脑/云端可接入，任务只有一个有效派发方；离线接管不能造双写。",
+      "steps": [
+        "用 environment/node binding 路由；一个项目同一时段仅一个有效领取端，多个项目可以分配不同节点。",
+        "计划性接管先停止旧派发、对账原生任务与待回传结果，再转移已批准的执行者绑定；本机路径重新映射。",
+        "无法确认旧节点状态时只允许继续同步/查询，不自动启动相同写任务；不要仅靠可变 Issue 标签充当全局锁。",
+        "若未来确需主动-主动并行，单独以具备强一致 CAS/lease 的既有后端为前提；本轮不新建分布式平台。"
+      ],
+      "acceptance": [
+        "不同环境路径不相同仍能取得同一 project/task/revision。",
+        "接管后旧节点恢复在线不会重新派发旧任务；不能确认旧运行状态时保持明确阻塞。",
+        "至少一个真实云端发布端与真实本地执行环境完成往返；双设备接管声明需两真实环境证据，模拟只能算测试。"
+      ],
+      "entrypoints": [
+        "packages/client-neutral-core/scripts/product_project.py",
+        "services/orchestration/sidecar_lock.py",
+        "services/orchestration/run_taskpack_agent.py",
+        "integrations/"
+      ],
+      "source_refs": [
+        "U1",
+        "R5",
+        "R6",
+        "W2"
+      ],
+      "required_authorization": [
+        "新增设备绑定与受控接管批准；不复制跨设备凭据"
+      ],
+      "rollback": "恢复原领取端需重新对账；不恢复旧 lease/旧授权镜像，不同时启用两个主领取端。",
+      "do_not": [
+        "不要把多台共享文件夹当强一致仲裁",
+        "不要为证明通用性强上 Redis/Kafka/Kubernetes",
+        "不要自动关闭用户其它软件"
+      ],
+      "acceptance_case_ids": [
+        "AT-15",
+        "AT-16",
+        "AT-35"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-10-SYNC",
+      "title": "共同规则、技能插件和用户差异真实适配",
+      "parent_ids": [
+        "NF-10",
+        "NF-04",
+        "NF-07"
+      ],
+      "wave": 2,
+      "priority": "P1",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-01-SYNC",
+        "NF-05-SYNC"
+      ],
+      "known_state": "根规则仅授权 Hermes 两个显示字段及受管资产；上轮配置模拟状态已修，真实全局写未据本轮证实。",
+      "goal": "一套共同用户语义在不同软件生效；允许增强资产增删，不覆盖用户原生选择。",
+      "steps": [
+        "复用 config-ownership 与现有同步器；规则定义、软件适配、用户偏好、项目差分、任务临时约束分开。",
+        "以 base/live/candidate 三方比较保留用户修改；上游变化视为待适配，不无条件恢复旧快照。",
+        "技能按需加载；删重复、停无收益、增缺口能力；13 是当前库存而非永久数量；只管理已有 provenance 的资产。",
+        "部署按原生支持方式和批量授权执行；不支持热加载就标记待新会话/重启，回读验证实际生效而非只验源文件。"
+      ],
+      "acceptance": [
+        "相同共同规则在两种真实软件的原生载体生效并有读取证据。",
+        "两个项目差分不污染全局；模型、provider、reasoning、auth、用户插件保持原值。",
+        "删除受管增强只删除其拥有内容；增删/回退不碰未知字段。"
+      ],
+      "entrypoints": [
+        "config/config-ownership.json",
+        "config/skill-provenance.yaml",
+        "scripts/workflow/sync_hermes_workflow_assets.py",
+        "packages/client-neutral-core/scripts/canonical_skill.py",
+        "packages/client-neutral-core/skills/"
+      ],
+      "source_refs": [
+        "R2",
+        "W6",
+        "L1",
+        "R7"
+      ],
+      "required_authorization": [
+        "真实全局规则/资产部署需用户对目标与字段的有效授权；现有 OBSERVE 字段不因本包变可写"
+      ],
+      "rollback": "按 last_written 对照回退本次拥有字段/文件；出现用户并发改动保留并报告，不盲恢复。",
+      "do_not": [
+        "不要为了同步任务改 provider 或 API Key",
+        "不要修改上游产品内部文件",
+        "不要为每个新模型复制整套技能"
+      ],
+      "acceptance_case_ids": [
+        "AT-02",
+        "AT-30",
+        "AT-36"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-12-SYNC",
+      "title": "软件/模型/协议更新只做受影响适配",
+      "parent_ids": [
+        "NF-12",
+        "NF-05",
+        "NF-10"
+      ],
+      "wave": 3,
+      "priority": "P1",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-05-SYNC",
+        "NF-10-SYNC"
+      ],
+      "known_state": "上轮完成收敛审计与能力差分标注，真实维护受授权及活动运行体约束。",
+      "goal": "版本变化后仍可交接，不冻结旧版本、不绑某模型、不每次重装全部软件。",
+      "steps": [
+        "记录真实运行体/协议/能力快照；更新仅检查所用字段、技能、插件、输入输出和取消/恢复接口。",
+        "目标能力无变化则产出 NO_CHANGE；有不兼容才生成最小补丁与回退计划。",
+        "模型参数由用户原生选择；仅核验支持性和必要上下文，不强制最高推理或新模型。",
+        "采用官方维护窗口；运行中的 Hermes venv 不强更新；配置同步故障隔离于原生工作与其他项目。"
+      ],
+      "acceptance": [
+        "一次版本/能力变化只触发受影响适配，其他客户端不重装。",
+        "两项目共用适配器升级后验证旧交接仍可读；未知成本保持 UNKNOWN。",
+        "无变化可合法 NO_CHANGE；不以“文件数增加”证明增强。"
+      ],
+      "entrypoints": [
+        ".project/governance/compatibility-policy.yaml",
+        "integrations/executors/",
+        "config/skill-provenance.yaml",
+        "services/orchestration/"
+      ],
+      "source_refs": [
+        "R2",
+        "R7",
+        "W4",
+        "W5",
+        "W6",
+        "W15"
+      ],
+      "required_authorization": [
+        "软件更新/全局部署/新增插件分目标批量授权；纯文档和合成能力测试不须收费调用"
+      ],
+      "rollback": "保留已知可用适配版本与任务格式读兼容；恢复原安装遵循原生 SOP，不搬迁活 venv。",
+      "do_not": [
+        "不要对模型供应方未证实能力猜参数",
+        "不要使用 --force-venv 解真实占用",
+        "不要把一次维护未批准扩散为整包失败"
+      ],
+      "acceptance_case_ids": [
+        "AT-36",
+        "AT-37"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-09-SYNC",
+      "title": "多项目任务投影与运行证据可见",
+      "parent_ids": [
+        "NF-09",
+        "WL-R07"
+      ],
+      "wave": 2,
+      "priority": "P1",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-D",
+        "NF-08-H"
+      ],
+      "known_state": "上轮已报五态投影与前端回归；只补接收/执行/回传实际数据接线。",
+      "goal": "用户看到各项目任务在哪一步、哪种软件执行、谁在等谁，不进入重复聊天 UI。",
+      "steps": [
+        "既有 Observer 增加项目过滤和来源/目标软件、材料版本、投递/执行/回传/复核分阶段状态。",
+        "权限不足、实际零、未知、陈旧、在线分别展示；更新时间来自对应事实而非界面刷新。",
+        "Observer 继续只读；发布/批准/取消入口留原生客户端或链接，不向 sidecar GET 通道加写按钮。",
+        "成本按任务与调用来源分组，不把订阅用量推算成 API 已收费金额。"
+      ],
+      "acceptance": [
+        "A/B 项目并行可独立查看，任务已执行但未回传不会显示“全部失败”或“云端已收到”。",
+        "客户端断线后旧快照标明陈旧；未知值不补 0。",
+        "无任何 Observer 写入任务/配置/Telemetry 的新能力。"
+      ],
+      "entrypoints": [
+        "apps/observer/",
+        "packages/client-neutral-core/scripts/observer_projection_adapter.py",
+        "services/orchestration/composition_root.py"
+      ],
+      "source_refs": [
+        "R2",
+        "R7",
+        "L1"
+      ],
+      "required_authorization": [
+        "仅授权项目的脱敏元数据读取；不新增 Observer 写权限"
+      ],
+      "rollback": "回退新增展示/映射，保留原来的只读功能和历史事件。",
+      "do_not": [
+        "不要重新开发一个工作台/看板",
+        "不要把网络连接绿灯当任务成功",
+        "不要泄露别的项目标题或正文"
+      ],
+      "acceptance_case_ids": [
+        "AT-24",
+        "AT-34",
+        "AT-38"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-02-SYNC",
+      "title": "真实跨进程/跨项目验收与精确版本 CI",
+      "parent_ids": [
+        "NF-02",
+        "NF-08"
+      ],
+      "wave": 3,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-E",
+        "NF-08-G",
+        "NF-08-H",
+        "NF-08-I"
+      ],
+      "known_state": "旧 CI 导入问题在最新报告中已修；既有 8 场景不删除；Windows 顺序债务按相关性接续。",
+      "goal": "测试检验实际执行结果，不能再以模拟计数、同对象重复或仅绿灯验收通用交付。",
+      "steps": [
+        "将 AT 用例接入现有测试入口，变更影响选择运行；不新造第二套测试系统。",
+        "至少两真实独立项目（不都放在 WORK-LAB 测试子目录）、两真实执行软件、两不同规划/查询入口、两环境、两通道验证；第三个非 Git 示例检验扩展性。",
+        "通过操作系统启动第二进程验证锁、重启、pending intent、outbox；记录原生 run ID/工件 digest。",
+        "Windows 与所交付环境的相关行为真实测试，CI 精确 SHA 绑定；平台 skip/未授权外部样例不得算该能力通过。"
+      ],
+      "acceptance": [
+        "所有所声称支持的必要 AT 有真实或相应等级证据；模拟与实测分别计。",
+        "至少一个外部真实项目不需要复制核心源码；项目角色切换无串线。",
+        "新增相关测试无偶发线程异常；原报告已修项目不无故重开。"
+      ],
+      "entrypoints": [
+        "tests/workflow-assistance/",
+        "services/orchestration/run_quality_gate.py",
+        ".github/workflows/work-lab-gate.yml"
+      ],
+      "source_refs": [
+        "R4",
+        "R5",
+        "R7",
+        "R8",
+        "U1"
+      ],
+      "required_authorization": [
+        "真实项目/设备/客户端测试取得相应已有或批量授权；未获授权只保留待验，不伪通过"
+      ],
+      "rollback": "回退本次相关实现及测试变更，保留失败证据；不 deselect 后宣布原失败已解决。",
+      "do_not": [
+        "不要在公开仓库上连接任意 PR 可调用的日常电脑 self-hosted runner",
+        "不要让可选成熟方案比较阻塞 required gate",
+        "不要用另一个 SHA 的 CI 成功替代"
+      ],
+      "acceptance_case_ids": [
+        "AT-01",
+        "AT-14",
+        "AT-15",
+        "AT-25",
+        "AT-31",
+        "AT-35",
+        "AT-39"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-11-SYNC",
+      "title": "薄部署、既有模块复用与退出路径",
+      "parent_ids": [
+        "NF-11",
+        "NF-03"
+      ],
+      "wave": 3,
+      "priority": "P1",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-08-F",
+        "NF-08-G"
+      ],
+      "known_state": "当前存在 TaskLedger、Telemetry、sidecar、runner 和适配器，不需要另建平台。",
+      "goal": "共同能力一次安装维护，项目只配置；卸载增强后原生软件仍能独立用。",
+      "steps": [
+        "把接收/回传挂进已有运行生命周期；无 UI、无第二调度器、无新增常驻 LLM 轮询。",
+        "只为确有缺口的少量网络/存储适配增加依赖；复用已经采用的成熟客户端或 SDK，保留来源/版本/许可。",
+        "项目本地运行数据按原项目声明落盘；官方软件 HOME 和活动库不搬迁；不同项目不复制代码/venv。",
+        "提供暂停同步、撤销单项目接入、回退适配版本和移除受管资产的边界，不影响原生任务。"
+      ],
+      "acceptance": [
+        "新增项目只增加配置和其本地状态，没有新核心源码副本/新守护进程。",
+        "关闭同步增强后已安装原生软件可独立运行；未回传记录保存。",
+        "至少一个实际复用组件交出调用、测试与替代点，不以候选登记代替采用。"
+      ],
+      "entrypoints": [
+        "services/orchestration/",
+        "integrations/",
+        "packages/client-neutral-core/",
+        "scripts/workflow/"
+      ],
+      "source_refs": [
+        "R2",
+        "R8",
+        "W1",
+        "W9",
+        "L2"
+      ],
+      "required_authorization": [
+        "本机安装/启动项/全局资产调整需有效部署授权；不私自安装额外服务"
+      ],
+      "rollback": "停订阅→确认受管任务→保留 inbox/outbox→回退本次受管资产；不清掉用户数据。",
+      "do_not": [
+        "不要同时叠加 n8n/Linear/Vibe Kanban/Symphony 四套任务核心",
+        "不要更换全仓语言",
+        "不要把暂停同步当删除历史"
+      ],
+      "acceptance_case_ids": [
+        "AT-29",
+        "AT-30",
+        "AT-40"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    },
+    {
+      "id": "NF-14-SYNC",
+      "title": "分层交付，通用目标必须真实签收",
+      "parent_ids": [
+        "NF-14"
+      ],
+      "wave": 3,
+      "priority": "P0",
+      "status": "PLANNED_DELTA",
+      "status_zh": "差集计划，未实施",
+      "depends_on": [
+        "NF-02-SYNC",
+        "NF-09-SYNC",
+        "NF-10-SYNC",
+        "NF-12-SYNC",
+        "NF-11-SYNC"
+      ],
+      "known_state": "前轮 READ_ONLY_PREVIEW 属历史交付范围，不能扩大为通用协作已完成。",
+      "goal": "发布可实际使用的通用协作能力，同时列清所有客户端覆盖、尚未实现能力与旧任务去向。",
+      "steps": [
+        "先交付单链路可用结果，再补完整通用证明；中间结果明确名称，不偷换最终目标。",
+        "给出每个已接入项目×软件×能力×环境的真实证据矩阵；当前七客户端按各自角色验收，新增者同接口进入。",
+        "验收共同规则/项目隔离/官方原生选择、0 人工正文复制、回执回读、修订取消与真实重启；批准次数只反映真正新增副作用。",
+        "输出版本、启动使用方式、暂停/恢复、缺口和旧卡去向；main/发布/安装只在已有有效授权内完成。"
+      ],
+      "acceptance": [
+        "最终标签 UNIVERSAL_WORKFLOW_VERIFIED 仅在通用验证矩阵实测达标时使用。",
+        "缺一真实外部项目或第二执行器时只能报阶段完成，不得称全部完成。",
+        "条件研究与不相关软件维护不会无限拖延已明确范围的交付，但其缺口保留。"
+      ],
+      "entrypoints": [
+        "taskpacks/current/",
+        "reports/",
+        "apps/observer/",
+        "AGENTS.md"
+      ],
+      "source_refs": [
+        "U1",
+        "L1",
+        "R1",
+        "R2",
+        "R7"
+      ],
+      "required_authorization": [
+        "合并/发布/部署是独立副作用；本包不授权，沿用之后可验证的范围批准"
+      ],
+      "rollback": "保留已验证版本与原生工作通路；发布撤回仅更正可用版本，不抹除任务审计。",
+      "do_not": [
+        "不要又发“再审计一轮”无限循环",
+        "不要给未安装软件伪造 LIVE PASS",
+        "不要把完整支持范围缩成两个样本"
+      ],
+      "acceptance_case_ids": [
+        "AT-39",
+        "AT-40"
+      ],
+      "execution_authorized_by_this_package": false,
+      "dependency_semantics": "设计、代码、合成测试可在已授权范围并行；真实外部副作用必须等对应授权与接口就绪。只暂停受影响分支。"
+    }
+  ],
+  "acceptance_cases": [
+    {
+      "id": "AT-01",
+      "title": "精确基线与承接",
+      "minimum_evidence_level": "DOCUMENT_CHECK",
+      "scenario": "比较本包、原卡、实际 HEAD 与最终 CI SHA。",
+      "expected": "旧修复保留；本地、远端、main 不混写；原 20 卡均有去向。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-02",
+      "title": "共同规则与项目差分",
+      "minimum_evidence_level": "REAL_CLIENT_READBACK",
+      "scenario": "同一全局规则部署到两个软件；项目 A 追加临时约束，再切 B。",
+      "expected": "原生回读生效；A 约束不进入 B；共同语义一致但文件可不同。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-03",
+      "title": "用户主动工件与遥测分离",
+      "minimum_evidence_level": "INTEGRATION",
+      "scenario": "发布授权任务正文，同时检测 Telemetry/Observer 输出。",
+      "expected": "正文只在获准材料空间；遥测仅保存引用/状态；不读取原生私有会话库。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-04",
+      "title": "伪造授权拒绝",
+      "minimum_evidence_level": "NEGATIVE",
+      "scenario": "不可信任务填 approved=true、permission_scope=all；或公开评论改标签。",
+      "expected": "不能自我授权，不能触发受限操作；关联项目仍可查看待授权信息。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-05",
+      "title": "项目同名同任务号隔离",
+      "minimum_evidence_level": "INTEGRATION",
+      "scenario": "A/B 使用相同名称与 task_id，路径不同。",
+      "expected": "任务键含稳定 project_id；锁、回执、规则和故障隔离。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-06",
+      "title": "换设备路径重绑定",
+      "minimum_evidence_level": "REAL_ENVIRONMENT",
+      "scenario": "同一项目在 Windows 与另一真实环境路径不同。",
+      "expected": "按本机认可 binding 解析；绝不使用云端给出的任意本机路径。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-07",
+      "title": "第三个非 Git 项目",
+      "minimum_evidence_level": "FILESYSTEM_INTEGRATION",
+      "scenario": "无 .git 的普通工件项目仅新增配置，发布一个任务并完成回传。",
+      "expected": "不改核心、不 git init；revision/hash 基线可用；原生执行限制诚实标注。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-08",
+      "title": "旧消息兼容与未知项目",
+      "minimum_evidence_level": "CONTRACT",
+      "scenario": "旧三项目 v1 与新项目扩展消息往返。",
+      "expected": "旧合法消息可读，未登记/不兼容消息无执行副作用，不能静默丢权限字段。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-09",
+      "title": "允许字段中藏秘密",
+      "minimum_evidence_level": "NEGATIVE",
+      "scenario": "将合成秘密分别置于 goal、next_step、嵌套证据或工件路径查询参数。",
+      "expected": "不可只按顶层键过滤；拒收或隔离且错误日志不回显秘密。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-10",
+      "title": "相同修订不同内容",
+      "minimum_evidence_level": "NEGATIVE",
+      "scenario": "同 project/task/revision 携带不同 digest。",
+      "expected": "明确冲突，不以最后写入覆盖已批准内容。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-11",
+      "title": "真实云端发布到本地执行",
+      "minimum_evidence_level": "REAL_END_TO_END",
+      "scenario": "在真实云端规划端发布指定任务；本地自动领取和执行。",
+      "expected": "0 次人工正文复制；有远端 ID/版本、真实 run ID 和可检验工件。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-12",
+      "title": "发布应答丢失",
+      "minimum_evidence_level": "NETWORK_INTEGRATION",
+      "scenario": "服务端已创建任务后让客户端未收到响应。",
+      "expected": "先查既有绑定/内容摘要再补发，不造重复任务。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-13",
+      "title": "私人内容禁止错发公开库",
+      "minimum_evidence_level": "NEGATIVE",
+      "scenario": "为私人 canary 指定公开材料目标。",
+      "expected": "发布前拒绝；只显示安全错误码，不以日志泄漏内容。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-14",
+      "title": "独立进程重启去重",
+      "minimum_evidence_level": "MULTIPROCESS",
+      "scenario": "进程 A 持久领取后退出；新进程 B 读取同一状态再收相同投递。",
+      "expected": "只有一次原生启动；不能使用同 Python 对象模拟重启。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-15",
+      "title": "并发认领",
+      "minimum_evidence_level": "MULTIPROCESS",
+      "scenario": "两独立进程同刻认领同 project/task/revision。",
+      "expected": "只有一个进入派发；不因原子文件 rename 误以为读改写事务安全。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-16",
+      "title": "崩溃在启动边界",
+      "minimum_evidence_level": "MULTIPROCESS",
+      "scenario": "分别在持久意图后、启动后 run ID 写入前、已回读后退出。",
+      "expected": "有 run/effect 对账策略；未知时不盲目重起；丢失响应不等于效果不存在。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-17",
+      "title": "故障隔离",
+      "minimum_evidence_level": "INTEGRATION",
+      "scenario": "A 网络 401/429/断线，B 使用正常通道。",
+      "expected": "只退避 A，B 仍可领取；退避不被误解释为新增全局模型限速。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-18",
+      "title": "第二个真实执行软件",
+      "minimum_evidence_level": "REAL_END_TO_END",
+      "scenario": "相同工件格式分别给两个不同真实软件执行低风险任务。",
+      "expected": "两个原生 run/result；fake executor 不计第二软件，二者不强依赖 Hermes。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-19",
+      "title": "能力声明诚实",
+      "minimum_evidence_level": "CONTRACT_AND_PROBE",
+      "scenario": "客户端能读却不能 cancel/publish；另一客户端未安装。",
+      "expected": "逐项 PARTIAL/UNSUPPORTED/UNAVAILABLE；不把整个项目设成失败，也不报已全支持。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-20",
+      "title": "宿主原生配置保留",
+      "minimum_evidence_level": "REAL_CLIENT_READBACK",
+      "scenario": "执行前后对允许读取的配置元数据和受管字段比对。",
+      "expected": "用户 model/provider/reasoning/auth/插件不被静默重置；无凭据正文读取。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-21",
+      "title": "脏工作区与错误基线",
+      "minimum_evidence_level": "NEGATIVE",
+      "scenario": "工作区有用户改动或与任务基线不一致。",
+      "expected": "不 reset/clean/盲 pull；只该任务停在需处理基线的状态。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-22",
+      "title": "执行完成但回传断线",
+      "minimum_evidence_level": "NETWORK_INTEGRATION",
+      "scenario": "执行完成后让回执目标不可用，再恢复网络。",
+      "expected": "只重发待回传记录；执行结果保持；不再次运行任务。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-23",
+      "title": "重复回执和字段缺失",
+      "minimum_evidence_level": "INTEGRATION",
+      "scenario": "同回执重复发送；供应方无明确费用字段。",
+      "expected": "幂等；未知费用为 UNKNOWN/null，订阅用量不冒充现金计费。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-24",
+      "title": "云端回读及等待复核",
+      "minimum_evidence_level": "REAL_END_TO_END",
+      "scenario": "原规划端或第二审查端重新读取该任务。",
+      "expected": "无需用户回贴结果；版本准确；未设触发时只标等待复核，不称已唤醒旧会话。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-25",
+      "title": "运行中任务修订",
+      "minimum_evidence_level": "INTEGRATION",
+      "scenario": "rev1 运行中发布 rev2，rev1 后来成功。",
+      "expected": "rev1 证据保留；不能使 rev2 完成；权限扩展需相应授权。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-26",
+      "title": "取消不是已停",
+      "minimum_evidence_level": "REAL_CLIENT_CONTROL",
+      "scenario": "对受管测试运行请求取消，延迟原生确认并观察晚到工件。",
+      "expected": "明确 cancel_requested 与已取消；未停旧写者不启替代者；不 kill 用户进程。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-27",
+      "title": "UNKNOWN 不塌缩 ABSENT",
+      "minimum_evidence_level": "NEGATIVE",
+      "scenario": "远端超时且无权查结果。",
+      "expected": "外部效果保持未知，不“已回滚”“未发生”或盲重试。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-28",
+      "title": "乱序与授权撤销",
+      "minimum_evidence_level": "INTEGRATION",
+      "scenario": "倒序投递旧修订、已撤销授权与新事件。",
+      "expected": "旧版本不复活；撤销后不启动新副作用；当前事实可以查询。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-29",
+      "title": "用户操作与轻量",
+      "minimum_evidence_level": "REAL_USER_FLOW",
+      "scenario": "两个规划/查询宿主完成发布、状态查询、接续。",
+      "expected": "任务正文复制数=0；支持一处可理解入口，不要求记内部路径。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-30",
+      "title": "空闲与增量开销",
+      "minimum_evidence_level": "INSTRUMENTED",
+      "scenario": "无任务变更运行同步，然后只改一个受管技能。",
+      "expected": "空闲同步模型调用=0；不加载所有历史，不重写全库存；记录实测字节/耗时不编造提升。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-31",
+      "title": "第二传输往返",
+      "minimum_evidence_level": "REAL_TRANSPORT",
+      "scenario": "同协议由 GitHub 与独立文件交接通道传输到认可的环境。",
+      "expected": "核心不改；工件与回执可验证；一次本地写读不算全部跨环境能力。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-32",
+      "title": "半包/路径/附件有效性",
+      "minimum_evidence_level": "NEGATIVE",
+      "scenario": "先到 manifest 后到附件、ZIP 路径穿越、symlink、膨胀包、失效短链。",
+      "expected": "完整校验前不运行；不越界解包；错误仅隔离该包。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-33",
+      "title": "跨项目许可成果交付",
+      "minimum_evidence_level": "REAL_PROJECT_INTEGRATION",
+      "scenario": "A 导出一项获准成果供 B 的明确任务使用。",
+      "expected": "引用准确，双方授权各自检查；没有权限仅凭 URI 不得读正文。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-34",
+      "title": "多项目可见性",
+      "minimum_evidence_level": "INTEGRATION",
+      "scenario": "观察账号只获 A 权限，B 有私人任务。",
+      "expected": "看不到 B 标题/摘要/日志；A 的取消不自动取消独立 B。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-35",
+      "title": "受控节点接管",
+      "minimum_evidence_level": "REAL_ENVIRONMENT",
+      "scenario": "两个实际节点做计划接管，再让旧节点恢复在线。",
+      "expected": "先对账再接管；旧节点不能重复启动；状态不明就阻塞同写任务而非所有同步。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-36",
+      "title": "受管资产增删和回退",
+      "minimum_evidence_level": "REAL_CLIENT_READBACK",
+      "scenario": "两软件受管规则/技能小变更，同时用户修改另一个字段。",
+      "expected": "只更改自己的内容；三方比较保留用户修改；新会话是否加载明确。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-37",
+      "title": "版本变化受影响适配",
+      "minimum_evidence_level": "CONTRACT_AND_PROBE",
+      "scenario": "比较真实版本能力快照；模拟一个字段废弃。",
+      "expected": "只有受影响客户端/技能发生变更；无影响为 NO_CHANGE；不批量改模型。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-38",
+      "title": "Observer 保持只读",
+      "minimum_evidence_level": "INTEGRATION",
+      "scenario": "查看新投递/执行/回传阶段和陈旧/未知值。",
+      "expected": "所有 UI/接口仍无批准/执行/重试写权限；时间来自事实，不伪造实时。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-39",
+      "title": "最终通用覆盖矩阵",
+      "minimum_evidence_level": "REAL_END_TO_END",
+      "scenario": "核对两真实独立项目、两真实执行器、两入口、两环境、两通道及非 Git 示例。",
+      "expected": "全部声明能力有对应证据；缺授权/环境单列；不能只靠 WORK-LAB 子目录 fixture 签完整交付。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    },
+    {
+      "id": "AT-40",
+      "title": "停用/接续/单项目退出",
+      "minimum_evidence_level": "REAL_DEPLOYMENT",
+      "scenario": "停同步服务、重启、撤销一个项目接入。",
+      "expected": "原生软件可继续用；其它项目可继续同步；待回传可恢复；不删除用户文件。",
+      "status": "NOT_RUN",
+      "product_pass": false
+    }
+  ],
+  "coverage_limitations": [
+    "未逐字读取所有历史原文；继承上轮映射所列缺口",
+    "本机配置、安装、费用、写权限和真实跨环境执行未在本轮验证",
+    "当前七客户端的全能力未验证；源码/声明不等于已部署",
+    "引用现有目录不表示本轮逐文件审查完整实现",
+    "验收用例是计划；本包静态检查通过不表示产品通过"
+  ]
+}

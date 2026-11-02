@@ -1,0 +1,54 @@
+UI-WS: B10/L4/L7 authoritative Observer front-end theme + 5 honest governance views + shell
+
+Source: D:/All projects/UI套件 WORK-LAB batches (B10 supreme, L4/L6/L7 + L8
+prototype) extracted to gitignored .ui-reference/WORK-LAB/; authority chain
+B10>B09>...>B01, three-way-identical token truth (L4 design_tokens.json =
+L7 theme/tokens.json = B10 :root).
+
+SPEC-A design tokens: index.css full B10 dark/light rewrite (deep-navy
+#050D16 console, electric blue #2A91FF primary, cyan #20CDE1 secondary,
+border #17435D, radius 4/10/16/22, motion 120/180/220/280/420, density
+68/56/44); legacy GitHub palette + violet #7C6CF0 removed (CODEX hard
+constraint: no purple / warm gold / cross-project mixing).
+src/theme/tokens.ts = CI-assertable single source of truth (DARK/LIGHT),
+asserted by tokens.test.ts incl. purple-residue negative checks.
+tailwind.config.js: sidebar/muted/info colors, radius/shadow/
+transitionDuration; theme flip stays URL-driven (?theme=).
+
+SPEC-B shared components (src/components/ui/, zero new deps): button /
+input / tag / modal (220ms Esc aria-modal) / drawer (280ms cubic-bezier) /
+toast (4s stack) / states (L7 five-state Empty/Loading/Error/Offline/
+Unknown) / command-palette (Ctrl+K, arrow+Enter, Esc, fuzzy includes)
+- pinned by components.test.tsx.
+
+SPEC-C five honest views + routes (SnapshotV3 truth, no fabricated KPIs):
+RulesPolicyView (governance.families), AuditTrailView (ci[]/executions[]/
+sourceRefs read-only filter+sort), ApprovalsView (workspace.plan.approvals
+else UNKNOWN projection note), IntegrationsView (adapters family + static
+7-client documentation), TaskPacksView (snap.tasks counts + plan tasks).
+viewRegistry +5 lanes (rules-policy/audit/approvals/integrations/task-packs),
+15 total; views.test.tsx pins empty-state text + real field rendering.
+
+SPEC-D shell: Sidebar 260<->72px collapse + 4 foldable groups
+(overview/exec/insight/governance) + mobile overlay drawer; TopStatusBar
+global search trigger; App global Ctrl/Cmd+K palette (view jumps +
+theme/layout actions) + deep-link write-back (?view=/?theme=/?layout=);
+App.smoke.test.tsx.
+
+Root-cause colour fix (same class as SPEC-A): TokenPanel.tsx + Views.tsx
+chart series hardcoded #00d4ff/#7c6cf0 now resolve via rgb(var(--primary-rgb))
+/ rgb(var(--secondary-rgb)).
+
+Verification (layered): tsc --noEmit PASS; vitest full 47/47; vite build
+PASS (1598 modules); dist colour audit = authoritative tokens present,
+legacy purple count 0; real-WebView render of dist (static :54321, browser
+screenshots overview + audit) confirmed deep-navy console, 4-group sidebar,
+honest empty states, no purple, no layout breakage; temp server stopped.
+Build PASS != runtime PASS: verified in a real browser.
+
+Docs: apps/observer/UI_IMPLEMENTATION_AUDIT.md (audit + acceptance) and
+UI_DECISIONS.md (D1-D9 conflict decisions). .ui-reference/ gitignored.
+
+Not included (queued after UI, per priority): the pre-existing convergence
+workstream changes (taskpack archive moves, governance, config, CI scripts)
+remain in the working tree.

@@ -1,0 +1,50 @@
+CONV: WS-2/3/4 convergence landing + U19 CDP diagnostic hardening (gated, mainline-verified)
+
+WS-2 (Observer software[] backend wiring):
+- composition_root.py +153: _build_software_projection() cross-joins
+  registry x discovery x resolver with UNKNOWN discipline (no obs ->
+  locationStatus=UNKNOWN / discoverySource=unavailable; no fabrication),
+  bounded 60s in-memory TTL cache, try/except degradation so a failed
+  discovery never crashes snapshot build.
+- snapshot_api.py +5: additive optional `software` param on build_snapshot
+  (key omitted when None -> backward-compatible; no observer gate breaks).
+- tests/workflow-assistance/test_software_projection_shape.py: 10 new
+  shape/behavior tests, auto-included by mandatory discovery.
+- Frontend SoftwareIdentity (13 fields) already aligned; no TS changes.
+
+WS-3 (E/F protected-drive truth unified):
+- project-data-boundary.json: F:/ + F:\\ on forbiddenExternalRoots and
+  spillGovernance.protectedDataVolume.roots.
+- README L85 + project-data-boundary SKILL.md rule 8: E: AND F: protected
+  (existing E:\ test assertion still passes).
+- NEW packages/client-neutral-core/scripts/verify_protected_drives_
+  consistency.py (stdlib-only, fail-closed): asserts {E,F} equal across
+  global-agent-policy.yaml, projects.json, both boundary lists; registered
+  as gate protected-drives-consistency in run_quality_gate.py.
+- Negative control verified: strip F -> verifier exit 1; restore -> 0.
+- test_workflow_governance.py: VERIFY_ORDER tuple gains the new gate
+  (mainline decision carried from WS-3 open items).
+
+WS-4 (de-Stage3 structural decoupling + taskpack archive):
+- generate_current_state.py: Stage3 files optional (missing -> fail-open
+  rc=0); canonical projects.json missing stays fail-closed rc=1; negative
+  controls in tests/ci/test_stage3_baseline.py + test_current_state.py.
+- 46 non-CURRENT taskpacks archived taskpacks/current/ -> taskpacks/
+  history/ (current keeps 28); mainline twin-verified 46/46.
+- project-authority-index.json allowlist cleaned; README L90-92 repointed.
+
+U19 diagnostic hardening (CI TASK-1 evidence gap):
+- u19_webview_e2e.py +53: stderr capture to log + staged process-liveness
+  checks so the 'no CDP page target' failure yields REAL artifact evidence
+  on CI instead of silent exit 1.
+
+Misc landing: tests/workflow-assistance/nf10_config_transaction.py
+(U10 D3 negative-control module, mandatory-discovery included).
+
+Gate evidence (mainline re-verified, project interpreter w/ pytest 9.1.1):
+- FULL run_quality_gate verify -> QUALITY_GATE_PASS (all gates listed,
+  including new protected-drives-consistency).
+- governance batch: 165 modules, Ran 1650 tests OK (skipped=8).
+- Note: gate batch run under a python WITHOUT pytest fails 3 pre-existing
+  import-pytest modules (exit 1) -> interpreter environment issue, not a
+  product regression; project env declares pytest.

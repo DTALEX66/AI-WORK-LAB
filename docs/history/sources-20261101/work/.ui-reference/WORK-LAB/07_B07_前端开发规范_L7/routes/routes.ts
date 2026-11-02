@@ -1,0 +1,14 @@
+export const routes = [
+  { path: "/", id: "overview", label: "总览" },
+  { path: "/workflows", id: "workflows", label: "工作流" },
+  { path: "/workflows/:id", id: "workflow-detail", label: "工作流详情" },
+  { path: "/workflows/:id/edit", id: "workflow-editor", label: "工作流编辑器" },
+  { path: "/task-packs", id: "task-packs", label: "任务包" },
+  { path: "/observer", id: "observer", label: "观察者" },
+  { path: "/policies", id: "rules-policy", label: "规则与策略" },
+  { path: "/integrations", id: "integrations", label: "集成 / MCP" },
+  { path: "/memory", id: "memory", label: "记忆管理" },
+  { path: "/audit", id: "audit", label: "审计追踪" },
+  { path: "/approvals", id: "approvals", label: "审批中心" },
+  { path: "/settings", id: "settings", label: "系统设置" }
+] as const;

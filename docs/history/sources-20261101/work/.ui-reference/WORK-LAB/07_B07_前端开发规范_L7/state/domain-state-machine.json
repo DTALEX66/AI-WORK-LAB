@@ -1,0 +1,58 @@
+{
+  "id": "work_lab",
+  "initial": "draft",
+  "states": {
+    "draft": {
+      "on": {
+        "NEXT": "ready",
+        "FAIL": "failed"
+      }
+    },
+    "ready": {
+      "on": {
+        "NEXT": "running",
+        "BACK": "draft",
+        "FAIL": "failed"
+      }
+    },
+    "running": {
+      "on": {
+        "NEXT": "paused",
+        "BACK": "ready",
+        "FAIL": "failed"
+      }
+    },
+    "paused": {
+      "on": {
+        "NEXT": "completed",
+        "BACK": "running",
+        "FAIL": "failed"
+      }
+    },
+    "completed": {
+      "on": {
+        "NEXT": "failed",
+        "BACK": "paused"
+      }
+    },
+    "failed": {
+      "on": {
+        "NEXT": "blocked",
+        "BACK": "completed"
+      }
+    },
+    "blocked": {
+      "on": {
+        "NEXT": "approval_required",
+        "BACK": "failed",
+        "FAIL": "failed"
+      }
+    },
+    "approval_required": {
+      "on": {
+        "BACK": "blocked",
+        "FAIL": "failed"
+      }
+    }
+  }
+}

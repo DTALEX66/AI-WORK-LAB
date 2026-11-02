@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WORK-LAB · 最终版</title>
+<style>
+:root{
+--bg:#050D16;--sidebar:#07111C;--surface:#081420;--surface2:#0C1B2A;--border:#17435D;
+--primary:#2A91FF;--secondary:#20CDE1;--text:#EEF6FC;--muted:#8EABBC;--success:#22C55E;--warning:#F59E0B;--error:#EF4444;
+}
+
+:root{
+  --radius:18px;
+  --radius-sm:12px;
+  --blur:18px;
+  --shadow:0 20px 80px rgba(0,0,0,.35);
+  --shadow-soft:0 12px 48px rgba(0,0,0,.22);
+  --grid:rgba(255,255,255,.05);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:Inter,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow:hidden;
+}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+a{text-decoration:none;color:inherit}
+.app{
+  position:relative;
+  display:grid;
+  grid-template-columns:280px 1fr;
+  min-height:100vh;
+  isolation:isolate;
+  overflow:hidden;
+}
+.ambient,.ambient::before,.ambient::after{
+  content:"";
+  position:absolute;
+  inset:auto;
+  border-radius:999px;
+  filter:blur(80px);
+  z-index:-2;
+  opacity:.45;
+  animation:floatGlow 12s ease-in-out infinite;
+}
+.ambient{
+  width:360px;height:360px;left:-100px;top:-80px;
+  background:color-mix(in srgb,var(--primary) 40%, transparent);
+}
+.ambient::before{
+  width:320px;height:320px;right:-20vw;top:8vh;
+  background:color-mix(in srgb,var(--secondary) 30%, transparent);
+  animation-delay:-4s;
+}
+.ambient::after{
+  width:280px;height:280px;left:35vw;bottom:-100px;
+  background:color-mix(in srgb,var(--primary) 22%, transparent);
+  animation-delay:-7s;
+}
+.grid-bg{
+  position:absolute;inset:0;z-index:-3;opacity:.22;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px, transparent 1px);
+  background-size:32px 32px;
+  mask-image:radial-gradient(circle at center, black 45%, transparent 95%);
+}
+.sidebar{
+  position:relative;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--sidebar) 85%, #fff 2%),var(--sidebar));
+  border-right:1px solid color-mix(in srgb,var(--border) 75%, transparent);
+  padding:22px 18px;
+  display:flex;
+  flex-direction:column;
+  backdrop-filter:blur(18px);
+}
+.brand{
+  display:flex;gap:14px;align-items:center;
+  padding:8px 10px 22px;
+  border-bottom:1px solid color-mix(in srgb,var(--border) 55%, transparent);
+  margin-bottom:16px;
+}
+.brand-mark{
+  width:48px;height:48px;border-radius:16px;
+  display:grid;place-items:center;
+  color:#fff;font-weight:900;letter-spacing:.04em;
+  background:
+    radial-gradient(circle at 30% 30%,color-mix(in srgb,var(--primary) 80%, white 6%),transparent 45%),
+    linear-gradient(135deg,color-mix(in srgb,var(--primary) 80%, #fff 3%),color-mix(in srgb,var(--secondary) 55%, var(--primary)));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--primary) 25%, white 5%),0 10px 30px color-mix(in srgb,var(--primary) 38%, transparent);
+}
+.brand h1{margin:0;font-size:17px;line-height:1.15}
+.brand small{display:block;margin-top:4px;color:var(--primary);font-size:10px;letter-spacing:.12em}
+.nav{display:flex;flex-direction:column;gap:7px;overflow:auto;padding-right:4px}
+.nav button{
+  position:relative;
+  display:flex;gap:12px;align-items:center;
+  width:100%;
+  padding:12px 14px;
+  border-radius:14px;
+  color:var(--text);
+  background:transparent;
+  border:1px solid transparent;
+  text-align:left;
+  transition:.22s ease;
+}
+.nav button:hover{
+  background:color-mix(in srgb,var(--surface2) 78%, transparent);
+  border-color:color-mix(in srgb,var(--border) 70%, transparent);
+  transform:translateX(3px);
+}
+.nav button.active{
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--primary) 26%, transparent),color-mix(in srgb,var(--primary) 16%, transparent)),
+    color-mix(in srgb,var(--surface2) 68%, transparent);
+  border-color:color-mix(in srgb,var(--primary) 45%, white 5%);
+  box-shadow:0 8px 28px color-mix(in srgb,var(--primary) 18%, transparent), inset 0 0 0 1px color-mix(in srgb,var(--primary) 10%, white 4%);
+}
+.nav button.active::before{
+  content:"";
+  position:absolute;left:-4px;top:10px;bottom:10px;width:3px;border-radius:999px;
+  background:linear-gradient(180deg,var(--secondary),var(--primary));
+  box-shadow:0 0 16px color-mix(in srgb,var(--primary) 70%, transparent);
+}
+.nav-dot{
+  width:10px;height:10px;border-radius:50%;
+  border:2px solid currentColor;opacity:.9;flex:0 0 auto;
+}
+.sidebar-footer{
+  margin-top:auto;
+  border-top:1px solid color-mix(in srgb,var(--border) 55%, transparent);
+  padding:16px 8px 4px;
+  display:flex;align-items:center;gap:12px;
+}
+.avatar{
+  width:40px;height:40px;border-radius:50%;
+  display:grid;place-items:center;
+  background:color-mix(in srgb,var(--surface2) 82%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 72%, transparent);
+  color:#fff;
+}
+.sidebar-footer small{display:block;color:var(--muted);margin-top:3px}
+.main{
+  display:flex;flex-direction:column;min-width:0;
+}
+.topbar{
+  height:78px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;
+  border-bottom:1px solid color-mix(in srgb,var(--border) 60%, transparent);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 82%, transparent),color-mix(in srgb,var(--surface) 72%, transparent));
+  backdrop-filter:blur(18px);
+}
+.search{
+  width:min(620px,54vw);
+  display:flex;align-items:center;gap:10px;
+  background:color-mix(in srgb,var(--surface2) 72%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 72%, transparent);
+  border-radius:14px;
+  padding:12px 14px;
+  color:var(--muted);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+}
+.search:hover{border-color:color-mix(in srgb,var(--primary) 45%, white 3%)}
+.top-actions{display:flex;gap:10px}
+.ghost-btn,.soft-btn,.primary-btn,.danger-btn{
+  border-radius:12px;padding:10px 14px;
+  transition:.2s ease;
+}
+.ghost-btn,.soft-btn{
+  border:1px solid color-mix(in srgb,var(--border) 72%, transparent);
+  background:color-mix(in srgb,var(--surface2) 62%, transparent);
+  color:var(--text);
+}
+.ghost-btn:hover,.soft-btn:hover{
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb,var(--primary) 38%, white 3%);
+  box-shadow:0 8px 28px rgba(0,0,0,.15);
+}
+.primary-btn{
+  border:0;color:#fff;font-weight:700;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 92%, white 4%),color-mix(in srgb,var(--secondary) 55%, var(--primary)));
+  box-shadow:0 12px 30px color-mix(in srgb,var(--primary) 28%, transparent);
+}
+.primary-btn:hover{transform:translateY(-1px) scale(1.01)}
+.danger-btn{
+  border:0;color:#fff;font-weight:700;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--error) 88%, white 3%),color-mix(in srgb,var(--error) 60%, #000));
+}
+.content{
+  flex:1;overflow:auto;padding:26px 28px 30px;
+}
+.page-head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:20px;
+  margin-bottom:22px;
+}
+.page-head h2{margin:0 0 6px;font-size:32px;letter-spacing:.01em}
+.page-head p{margin:0;color:var(--muted);max-width:760px;line-height:1.55}
+.page-actions{display:flex;gap:10px;align-items:center}
+.kpi-grid,.two-col,.three-col,.split{
+  display:grid;gap:16px;
+}
+.kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.two-col{grid-template-columns:1.2fr 1fr}
+.three-col{grid-template-columns:repeat(3,minmax(0,1fr))}
+.split{grid-template-columns:1.35fr .95fr}
+.panel{
+  position:relative;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--surface) 82%, white 1%),color-mix(in srgb,var(--surface) 94%, #000 2%));
+  border:1px solid color-mix(in srgb,var(--border) 70%, transparent);
+  border-radius:var(--radius);
+  padding:18px;
+  box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.02);
+  overflow:hidden;
+}
+.panel::before{
+  content:"";
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 18%);
+  pointer-events:none;
+}
+.panel:hover{
+  border-color:color-mix(in srgb,var(--primary) 44%, white 3%);
+  box-shadow:0 18px 44px rgba(0,0,0,.22), 0 0 0 1px color-mix(in srgb,var(--primary) 10%, white 2%);
+}
+.panel h3{
+  margin:0 0 14px;font-size:15px;letter-spacing:.02em
+}
+.kpi strong{
+  display:block;font-size:35px;line-height:1.05;margin-bottom:10px;color:var(--primary)
+}
+.kpi small{color:var(--muted)}
+.kpi .trend{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-top:10px;color:var(--muted)}
+.kpi .trend.up{color:var(--success)}
+.kpi .trend.warn{color:var(--warning)}
+.list{display:flex;flex-direction:column;gap:10px}
+.list-item{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:13px 14px;border-radius:14px;
+  background:color-mix(in srgb,var(--surface2) 74%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 68%, transparent);
+  transition:.18s ease;
+}
+.list-item:hover{
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb,var(--primary) 34%, white 3%);
+}
+.list-item small{display:block;color:var(--muted);margin-top:3px}
+.tag{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;
+  white-space:nowrap;
+}
+.tag.ok{background:linear-gradient(135deg,#27c86a,#11a74d)}
+.tag.warn{background:linear-gradient(135deg,#f2b541,#c98c00)}
+.tag.bad{background:linear-gradient(135deg,#f86b6b,#cb3e3e)}
+.tag.info{background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--secondary) 45%, var(--primary)))}
+.table-wrap{overflow:auto}
+.table{
+  width:100%;border-collapse:collapse;min-width:720px;
+}
+.table th,.table td{
+  text-align:left;padding:12px 10px;border-bottom:1px solid color-mix(in srgb,var(--border) 60%, transparent);font-size:13px;vertical-align:middle
+}
+.table th{color:var(--muted);font-weight:600}
+.table tbody tr:hover td{background:color-mix(in srgb,var(--surface2) 74%, transparent)}
+.toolbar{
+  display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px
+}
+.toolbar input,.toolbar textarea,.toolbar select,.input{
+  width:auto;min-width:0;
+  border:1px solid color-mix(in srgb,var(--border) 72%, transparent);
+  background:color-mix(in srgb,var(--surface2) 72%, transparent);
+  color:var(--text);padding:11px 12px;border-radius:12px;
+  outline:none;
+}
+.toolbar input:focus,.toolbar textarea:focus,.toolbar select:focus,.input:focus{
+  border-color:color-mix(in srgb,var(--primary) 48%, white 4%);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 12%, transparent);
+}
+.toolbar .seg{
+  display:flex;gap:8px;flex-wrap:wrap
+}
+.toolbar .seg button{
+  border:1px solid color-mix(in srgb,var(--border) 70%, transparent);
+  background:color-mix(in srgb,var(--surface2) 68%, transparent);
+  color:var(--text);padding:10px 12px;border-radius:12px
+}
+.toolbar .seg button.active{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 86%, white 3%),color-mix(in srgb,var(--secondary) 44%, var(--primary)));
+  border-color:color-mix(in srgb,var(--primary) 48%, white 4%);
+  color:#fff;
+}
+.muted{color:var(--muted)}
+.big-number{
+  font-size:42px;font-weight:900;letter-spacing:-.02em;color:var(--primary);
+  text-shadow:0 0 24px color-mix(in srgb,var(--primary) 32%, transparent)
+}
+.spark{
+  width:100%;height:180px;
+}
+.progress{
+  width:100%;height:10px;border-radius:999px;overflow:hidden;
+  background:color-mix(in srgb,var(--surface2) 82%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 55%, transparent)
+}
+.progress > div{
+  height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--primary),color-mix(in srgb,var(--secondary) 45%, var(--primary)));
+  box-shadow:0 0 20px color-mix(in srgb,var(--primary) 30%, transparent);
+}
+.canvas{
+  position:relative;
+  min-height:520px;
+  border-radius:18px;
+  border:1px solid color-mix(in srgb,var(--border) 60%, transparent);
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px, transparent 1px),
+    radial-gradient(circle at 30% 20%, color-mix(in srgb,var(--primary) 8%, transparent), transparent 40%);
+  background-size:30px 30px,30px 30px,auto;
+  overflow:hidden;
+}
+.flow-svg{
+  position:absolute;inset:0;pointer-events:none;z-index:0;
+}
+.flow-svg path{
+  stroke:color-mix(in srgb,var(--primary) 62%, white 3%);
+  stroke-width:3;fill:none;stroke-linecap:round;
+  stroke-dasharray:10 14;
+  animation:dashMove 3.6s linear infinite;
+  filter:drop-shadow(0 0 10px color-mix(in srgb,var(--primary) 40%, transparent));
+}
+.node{
+  position:absolute;z-index:2;
+  min-width:150px;max-width:190px;
+  padding:14px 16px;border-radius:16px;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--surface2) 82%, white 1%),color-mix(in srgb,var(--surface2) 96%, #000 2%));
+  border:1px solid color-mix(in srgb,var(--primary) 42%, white 3%);
+  box-shadow:0 16px 34px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.03);
+  user-select:none;cursor:grab;
+  transition:.18s ease;
+}
+.node:hover{transform:translateY(-2px)}
+.node:active{cursor:grabbing}
+.node .title{font-weight:800}
+.node .meta{color:var(--muted);font-size:12px;margin-top:5px}
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;padding:20px;z-index:90;
+}
+.overlay.open{display:flex}
+.modal{
+  width:min(760px,96vw);
+  border-radius:22px;padding:22px 22px 18px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 90%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  border:1px solid color-mix(in srgb,var(--primary) 35%, white 4%);
+  box-shadow:var(--shadow);
+}
+.modal h3{margin:0 0 10px}
+.modal .body{color:var(--muted);line-height:1.6}
+.modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.drawer{
+  position:fixed;top:0;right:-540px;height:100vh;width:min(520px,95vw);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 90%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  border-left:1px solid color-mix(in srgb,var(--primary) 28%, white 4%);
+  box-shadow:-18px 0 50px rgba(0,0,0,.25);
+  z-index:88;
+  padding:24px;
+  transition:right .28s cubic-bezier(.2,0,0,1);
+}
+.drawer.open{right:0}
+.palette{
+  position:fixed;left:50%;top:11vh;transform:translateX(-50%);
+  width:min(820px,96vw);
+  border-radius:20px;overflow:hidden;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 90%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  border:1px solid color-mix(in srgb,var(--primary) 34%, white 4%);
+  box-shadow:var(--shadow);
+  display:none;z-index:95;
+}
+.palette.open{display:block}
+.palette input{
+  width:calc(100% - 24px);margin:12px;
+  border:1px solid color-mix(in srgb,var(--border) 70%, transparent);
+  background:color-mix(in srgb,var(--surface2) 74%, transparent);
+  color:var(--text);padding:14px;border-radius:14px;outline:none;
+}
+.palette .item{
+  display:flex;justify-content:space-between;gap:12px;align-items:center;
+  padding:13px 16px;border-top:1px solid color-mix(in srgb,var(--border) 55%, transparent);
+}
+.palette .item:hover{
+  background:color-mix(in srgb,var(--surface2) 74%, transparent)
+}
+.toast{
+  position:fixed;right:18px;bottom:18px;z-index:110;
+  min-width:220px;max-width:420px;
+  padding:13px 15px;border-radius:16px;
+  border:1px solid color-mix(in srgb,var(--primary) 34%, white 4%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 88%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  box-shadow:var(--shadow-soft);
+  opacity:0;transform:translateY(12px) scale(.98);pointer-events:none;
+  transition:.22s ease;
+}
+.toast.show{opacity:1;transform:translateY(0) scale(1)}
+.review-card{
+  perspective:1200px;
+  width:min(680px,100%);height:360px;margin:auto;
+}
+.review-inner{
+  position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transition:transform .55s cubic-bezier(.2,.6,.1,1);
+}
+.review-card.flipped .review-inner{transform:rotateY(180deg)}
+.review-face{
+  position:absolute;inset:0;border-radius:20px;padding:28px;
+  backface-visibility:hidden;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 88%, white 1%),color-mix(in srgb,var(--surface) 98%, black 1%));
+  border:1px solid color-mix(in srgb,var(--primary) 34%, white 4%);
+  box-shadow:var(--shadow-soft);
+}
+.review-face.back{transform:rotateY(180deg)}
+.metric-ring{
+  position:relative;width:120px;height:120px;margin:auto;
+}
+.metric-ring svg{transform:rotate(-90deg)}
+.metric-ring .label{
+  position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:24px
+}
+.graph-stage{
+  position:relative;
+  min-height:380px;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb,var(--primary) 12%, transparent), transparent 45%),
+    linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+  border:1px solid color-mix(in srgb,var(--border) 58%, transparent);
+  overflow:hidden;
+}
+.graph-stage svg{width:100%;height:100%}
+.graph-stage circle.node-dot{
+  fill:color-mix(in srgb,var(--surface2) 88%, transparent);
+  stroke:color-mix(in srgb,var(--secondary) 65%, white 2%);
+  stroke-width:2;
+  cursor:pointer;
+  transition:.2s ease;
+  filter:drop-shadow(0 0 8px color-mix(in srgb,var(--primary) 18%, transparent));
+}
+.graph-stage circle.node-dot:hover,
+.graph-stage circle.node-dot.active{
+  stroke:var(--secondary);
+  stroke-width:3;
+  transform:scale(1.06);
+  filter:drop-shadow(0 0 14px color-mix(in srgb,var(--secondary) 40%, transparent));
+}
+.graph-stage .core{
+  fill:var(--primary);
+  filter:drop-shadow(0 0 18px color-mix(in srgb,var(--primary) 48%, transparent));
+  animation:pulse 3s ease-in-out infinite;
+}
+.metric-row{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px
+}
+.metric-box{
+  padding:14px;border-radius:14px;
+  background:color-mix(in srgb,var(--surface2) 74%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 62%, transparent);
+}
+.comment{
+  padding:12px 14px;border-radius:14px;
+  background:color-mix(in srgb,var(--surface2) 74%, transparent);
+  border:1px solid color-mix(in srgb,var(--border) 62%, transparent);
+}
+.comment strong{display:block;margin-bottom:6px}
+.scan-line{
+  position:relative;overflow:hidden
+}
+.scan-line::after{
+  content:"";position:absolute;left:0;right:0;top:-20%;
+  height:36%;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--primary) 18%, white 3%),transparent);
+  animation:scanSweep 2.4s linear infinite;
+  pointer-events:none;
+}
+.status-stack{display:flex;gap:10px;flex-wrap:wrap}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.empty{
+  text-align:center;padding:56px 20px;color:var(--muted)
+}
+.empty .icon{
+  width:64px;height:64px;margin:0 auto 14px;border-radius:50%;
+  border:1px solid color-mix(in srgb,var(--primary) 38%, white 3%);
+  display:grid;place-items:center;color:var(--primary);font-size:28px;
+  box-shadow:0 0 24px color-mix(in srgb,var(--primary) 18%, transparent);
+}
+@keyframes floatGlow{
+  0%,100%{transform:translateY(0) translateX(0) scale(1)}
+  50%{transform:translateY(20px) translateX(12px) scale(1.06)}
+}
+@keyframes dashMove{to{stroke-dashoffset:-48}}
+@keyframes pulse{
+  0%,100%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.05);opacity:.86}
+}
+@keyframes scanSweep{
+  0%{transform:translateY(-120%)}
+  100%{transform:translateY(420%)}
+}
+@media (max-width:1160px){
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two-col,.three-col,.split,.metric-row{grid-template-columns:1fr}
+}
+@media (max-width:840px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .top-actions{display:none}
+  .search{width:100%}
+  .content{padding:18px}
+  .kpi-grid{grid-template-columns:1fr}
+  .page-head{flex-direction:column}
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="ambient"></div>
+  <div class="grid-bg"></div>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">WL</div>
+      <div>
+        <h1>WORK-LAB</h1>
+        <small>AI WORKFLOW CONTROL PLANE</small>
+      </div>
+    </div>
+    <div class="nav"><button data-route="overview"><span class="nav-dot"></span><span>总览</span></button>
+<button data-route="workflows"><span class="nav-dot"></span><span>工作流</span></button>
+<button data-route="editor"><span class="nav-dot"></span><span>工作流编辑器</span></button>
+<button data-route="taskpacks"><span class="nav-dot"></span><span>任务包</span></button>
+<button data-route="observer"><span class="nav-dot"></span><span>观察者</span></button>
+<button data-route="policy"><span class="nav-dot"></span><span>规则与策略</span></button>
+<button data-route="integrations"><span class="nav-dot"></span><span>集成 / MCP</span></button>
+<button data-route="memory"><span class="nav-dot"></span><span>记忆管理</span></button>
+<button data-route="audit"><span class="nav-dot"></span><span>审计追踪</span></button>
+<button data-route="approvals"><span class="nav-dot"></span><span>审批中心</span></button>
+<button data-route="settings"><span class="nav-dot"></span><span>设置</span></button></div>
+    <div class="sidebar-footer">
+      <div class="avatar">A</div>
+      <div><strong>Alex</strong><small>Personal Workspace</small></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="search" id="openPalette">⌘ K　搜索页面 / 命令 / 资源</div>
+      <div class="top-actions">
+        <button class="ghost-btn" id="topNotice">通知</button>
+        <button class="ghost-btn" id="openDrawer">工作区</button>
+      </div>
+    </header>
+    <section class="content" id="content"></section>
+  </main>
+</div>
+
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">确认操作</h3>
+    <div class="body" id="modalBody">该操作将写入本地状态。</div>
+    <div class="actions">
+      <button class="ghost-btn" data-close-modal>取消</button>
+      <button class="primary-btn" id="modalConfirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer">
+  <h3 style="margin:0 0 8px">工作区 / Context</h3>
+  <p class="muted" style="margin-top:0">当前演示支持 localStorage 持久化、Command Palette、Toast、Modal、Drawer 与动画反馈。</p>
+  <div class="status-stack" style="margin:14px 0 20px">
+    <span class="tag info">Live UI</span>
+    <span class="tag ok">Local State</span>
+    <span class="tag warn">Static Deploy</span>
+  </div>
+  <div class="panel">
+    <h3>界面状态</h3>
+    <div class="list">
+      <div class="list-item"><span>Rendering</span><span class="tag ok">Ready</span></div>
+      <div class="list-item"><span>Motion Effects</span><span class="tag ok">Enabled</span></div>
+      <div class="list-item"><span>Palette</span><span class="tag info">Ctrl/Cmd + K</span></div>
+    </div>
+  </div>
+  <button class="primary-btn" id="closeDrawer" style="margin-top:18px;width:100%">关闭</button>
+</aside>
+
+<div class="palette" id="palette">
+  <input id="paletteInput" placeholder="搜索页面、命令或模块…">
+  <div id="paletteItems"><div class="item" data-go="overview"><span>总览</span><small>Open</small></div>
+<div class="item" data-go="workflows"><span>工作流</span><small>Open</small></div>
+<div class="item" data-go="editor"><span>工作流编辑器</span><small>Open</small></div>
+<div class="item" data-go="taskpacks"><span>任务包</span><small>Open</small></div>
+<div class="item" data-go="observer"><span>观察者</span><small>Open</small></div>
+<div class="item" data-go="policy"><span>规则与策略</span><small>Open</small></div>
+<div class="item" data-go="integrations"><span>集成 / MCP</span><small>Open</small></div>
+<div class="item" data-go="memory"><span>记忆管理</span><small>Open</small></div>
+<div class="item" data-go="audit"><span>审计追踪</span><small>Open</small></div>
+<div class="item" data-go="approvals"><span>审批中心</span><small>Open</small></div>
+<div class="item" data-go="settings"><span>设置</span><small>Open</small></div></div>
+</div>
+
+<div class="toast" id="toast">Done</div>
+
+<script>
+const APP_KEY = "work-lab-final";
+const NAV = [["overview", "总览"], ["workflows", "工作流"], ["editor", "工作流编辑器"], ["taskpacks", "任务包"], ["observer", "观察者"], ["policy", "规则与策略"], ["integrations", "集成 / MCP"], ["memory", "记忆管理"], ["audit", "审计追踪"], ["approvals", "审批中心"], ["settings", "设置"]];
+const content = document.getElementById("content");
+const modal = document.getElementById("modal");
+const modalTitle = document.getElementById("modalTitle");
+const modalBody = document.getElementById("modalBody");
+const modalConfirm = document.getElementById("modalConfirm");
+const drawer = document.getElementById("drawer");
+const palette = document.getElementById("palette");
+const paletteInput = document.getElementById("paletteInput");
+const toast = document.getElementById("toast");
+
+function getHash(){return location.hash.replace("#","") || NAV[0][0];}
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add("show");
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>toast.classList.remove("show"),1800);
+}
+function activateNav(id){
+  document.querySelectorAll("[data-route]").forEach(btn=>btn.classList.toggle("active", btn.dataset.route === id));
+}
+function setRoute(id){location.hash = id; render(id);}
+function openModal(title, html, onConfirm){
+  modalTitle.textContent = title;
+  modalBody.innerHTML = html;
+  modal.classList.add("open");
+  modalConfirm.onclick = ()=>{ modal.classList.remove("open"); onConfirm && onConfirm(); };
+}
+function closeModal(){ modal.classList.remove("open"); }
+function openDrawer(){ drawer.classList.add("open"); }
+function closeDrawer(){ drawer.classList.remove("open"); }
+function openPalette(){ palette.classList.add("open"); paletteInput.focus(); paletteInput.select(); }
+function closePalette(){ palette.classList.remove("open"); paletteInput.value=""; document.querySelectorAll("#paletteItems .item").forEach(el=>el.style.display="flex"); }
+function renderPageHead(title, desc, actionText="", secondary=""){
+  return `
+    <div class="page-head">
+      <div>
+        <h2>${title}</h2>
+        <p>${desc}</p>
+      </div>
+      <div class="page-actions">
+        ${secondary ? `<button class="ghost-btn" data-action="${secondary}">${secondary}</button>` : ""}
+        ${actionText ? `<button class="primary-btn" data-action="${actionText}">${actionText}</button>` : ""}
+      </div>
+    </div>
+  `;
+}
+function sparkline(values){
+  const width = 100, height = 100;
+  const step = width / (values.length - 1);
+  const points = values.map((v,i)=>`${(i*step).toFixed(1)},${(100-v).toFixed(1)}`).join(" ");
+  return `<svg class="spark" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <defs><linearGradient id="spark-grad" x1="0" x2="1"><stop offset="0%" stop-color="var(--primary)"/><stop offset="100%" stop-color="var(--secondary)"/></linearGradient></defs>
+    <polyline points="${points}" fill="none" stroke="url(#spark-grad)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+function animateCounters(){
+  document.querySelectorAll("[data-count]").forEach(el=>{
+    const raw = el.dataset.count;
+    const suffix = el.dataset.suffix || "";
+    const target = parseFloat(raw);
+    const decimals = (raw.includes(".")) ? raw.split(".")[1].length : 0;
+    let current = 0;
+    const duration = 900;
+    const start = performance.now();
+    function tick(now){
+      const p = Math.min(1,(now-start)/duration);
+      const eased = 1 - Math.pow(1-p,3);
+      current = target * eased;
+      el.textContent = current.toFixed(decimals) + suffix;
+      if(p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+document.getElementById("openPalette").onclick = openPalette;
+document.getElementById("openDrawer").onclick = openDrawer;
+document.getElementById("closeDrawer").onclick = closeDrawer;
+document.getElementById("topNotice").onclick = ()=>showToast("暂无新的通知");
+document.querySelectorAll("[data-close-modal]").forEach(btn=>btn.onclick = closeModal);
+document.querySelectorAll("[data-route]").forEach(btn=>btn.onclick = ()=>setRoute(btn.dataset.route));
+document.querySelectorAll("#paletteItems .item").forEach(el=>el.onclick = ()=>{ setRoute(el.dataset.go); closePalette(); });
+paletteInput.addEventListener("input", ()=>{
+  const q = paletteInput.value.toLowerCase();
+  document.querySelectorAll("#paletteItems .item").forEach(el=>el.style.display = el.textContent.toLowerCase().includes(q) ? "flex" : "none");
+});
+window.addEventListener("keydown",(e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==="k"){ e.preventDefault(); palette.classList.contains("open") ? closePalette() : openPalette(); }
+  if(e.key==="Escape"){ closePalette(); closeModal(); closeDrawer(); }
+});
+window.addEventListener("hashchange", ()=>render(getHash()));
+
+let workflows = JSON.parse(localStorage.getItem(APP_KEY + ":workflows") || "null") || [
+  {name:"payment-flow", type:"业务", status:"稳定", owner:"Alex", version:"v2.4"},
+  {name:"release-flow", type:"CI/CD", status:"运行中", owner:"Jordan", version:"v1.8"},
+  {name:"security-scan", type:"安全", status:"需关注", owner:"Taylor", version:"v3.1"},
+  {name:"data-pipeline", type:"数据", status:"稳定", owner:"Casey", version:"v2.0"}
+];
+let flowNodes = JSON.parse(localStorage.getItem(APP_KEY + ":nodes") || "null") || [
+  {id:"Start", meta:"Input / Trigger", x:80, y:220},
+  {id:"Validate", meta:"Rules Check", x:300, y:90},
+  {id:"Build", meta:"Agent Runtime", x:540, y:260},
+  {id:"Approve", meta:"Human Gate", x:790, y:90},
+  {id:"Deploy", meta:"Execution", x:1020, y:250}
+];
+
+function kpiCard(num, label, trend="↑ 12%", trendCls="up", suffix=""){
+  return `<div class="panel kpi">
+    <strong data-count="${num}" data-suffix="${suffix}">0${suffix}</strong>
+    <small>${label}</small>
+    <div class="trend ${trendCls}">${trend}</div>
+  </div>`;
+}
+function statusTag(status){
+  if(status === "稳定") return `<span class="tag ok">稳定</span>`;
+  if(status === "运行中") return `<span class="tag info">运行中</span>`;
+  return `<span class="tag warn">需关注</span>`;
+}
+function renderOverview(){
+  content.innerHTML = `
+    ${renderPageHead("总览","执行态势、工作流健康、观察者与审计信号整合到同一控制平面。","+ 新建执行","导出状态")}
+    <div class="kpi-grid">
+      ${kpiCard("12","运行中工作流","↑ 18%","up")}
+      ${kpiCard("28","已完成执行","↑ 9%","up")}
+      ${kpiCard("3","待审批项","需处理","warn")}
+      ${kpiCard("99.7","系统健康度","稳定","up","%")}
+    </div>
+    <div class="two-col" style="margin-top:16px">
+      <div class="panel">
+        <h3>执行趋势</h3>
+        ${sparkline([18,26,24,38,41,52,48,61,58,73,79])}
+      </div>
+      <div class="panel">
+        <h3>系统状态</h3>
+        <div class="metric-row">
+          <div class="metric-box"><div class="muted">Observer</div><div class="big-number">8/8</div></div>
+          <div class="metric-box"><div class="muted">Ports</div><div class="big-number">13</div></div>
+          <div class="metric-box"><div class="muted">MCP</div><div class="big-number">5</div></div>
+          <div class="metric-box"><div class="muted">Agents</div><div class="big-number">7</div></div>
+        </div>
+        <div class="status-stack" style="margin-top:16px">
+          <span class="tag ok">Pipelines Healthy</span>
+          <span class="tag info">Low Latency</span>
+          <span class="tag warn">3 Approvals Pending</span>
+        </div>
+      </div>
+    </div>
+    <div class="split" style="margin-top:16px">
+      <div class="panel">
+        <h3>最近执行</h3>
+        <div class="list">
+          <div class="list-item"><div><strong>Research-04</strong><small>Runtime / Agent chain</small></div><span class="tag info">运行中</span></div>
+          <div class="list-item"><div><strong>Content-Gen</strong><small>Prompt to deliverable</small></div><span class="tag ok">已完成</span></div>
+          <div class="list-item"><div><strong>Data-ETL</strong><small>Ingest and normalize</small></div><span class="tag ok">已完成</span></div>
+          <div class="list-item"><div><strong>Policy Sync</strong><small>Governance layer</small></div><span class="tag warn">待审核</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Observer Signal Map</h3>
+        <div class="graph-stage" style="min-height:330px">
+          <svg viewBox="0 0 100 100">
+            <line x1="50" y1="50" x2="18" y2="30" stroke="var(--border)"/>
+            <line x1="50" y1="50" x2="20" y2="72" stroke="var(--border)"/>
+            <line x1="50" y1="50" x2="48" y2="16" stroke="var(--border)"/>
+            <line x1="50" y1="50" x2="82" y2="28" stroke="var(--border)"/>
+            <line x1="50" y1="50" x2="86" y2="70" stroke="var(--border)"/>
+            <line x1="50" y1="50" x2="52" y2="86" stroke="var(--border)"/>
+            <circle class="core" cx="50" cy="50" r="8"></circle>
+            <text x="50" y="52" text-anchor="middle" font-size="5" fill="#fff">Core</text>
+            ${[
+              ["Agents",18,30],["Memory",20,72],["Policies",48,16],["MCP",82,28],["Tools",86,70],["Audit",52,86]
+            ].map(n=>`<circle class="node-dot" cx="${n[1]}" cy="${n[2]}" r="5"></circle><text x="${n[1]}" y="${n[2]+1.4}" text-anchor="middle" font-size="3.8" fill="var(--text)">${n[0]}</text>`).join("")}
+          </svg>
+        </div>
+      </div>
+    </div>
+  `;
+  wireCommonButtons();
+  animateCounters();
+}
+function renderWorkflows(){
+  content.innerHTML = `
+    ${renderPageHead("工作流","按状态、负责人和版本统一筛选工作流。","+ 新建工作流","批量导出")}
+    <div class="toolbar">
+      <input class="input" id="wfSearch" placeholder="搜索工作流…" style="min-width:260px;flex:1">
+      <div class="seg">
+        <button data-filter="all" class="active">全部</button>
+        <button data-filter="稳定">稳定</button>
+        <button data-filter="运行中">运行中</button>
+        <button data-filter="需关注">需关注</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>工作流</th><th>类型</th><th>状态</th><th>负责人</th><th>版本</th><th></th></tr></thead>
+          <tbody id="wfBody"></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  let filter = "all";
+  const body = document.getElementById("wfBody");
+  const search = document.getElementById("wfSearch");
+  function draw(){
+    const q = search.value.toLowerCase();
+    body.innerHTML = workflows
+      .filter(w => (filter === "all" || w.status === filter) && w.name.toLowerCase().includes(q))
+      .map((w,i)=>`<tr>
+        <td><strong>${w.name}</strong></td>
+        <td>${w.type}</td>
+        <td>${statusTag(w.status)}</td>
+        <td>${w.owner}</td>
+        <td>${w.version}</td>
+        <td><button class="ghost-btn editFlow" data-i="${i}">编辑</button></td>
+      </tr>`).join("");
+    document.querySelectorAll(".editFlow").forEach(btn => btn.onclick = ()=>editWorkflow(parseInt(btn.dataset.i)));
+  }
+  document.querySelectorAll("[data-filter]").forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll("[data-filter]").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      filter = btn.dataset.filter;
+      draw();
+    };
+  });
+  search.oninput = draw;
+  draw();
+  wireCommonButtons();
+}
+function editWorkflow(i){
+  const w = workflows[i];
+  openModal("编辑工作流", `
+    <div style="display:grid;gap:10px;margin-top:12px">
+      <input class="input" id="editName" value="${w.name}">
+      <select class="input" id="editStatus">
+        ${["稳定","运行中","需关注"].map(s=>`<option ${s===w.status?"selected":""}>${s}</option>`).join("")}
+      </select>
+    </div>
+  `, ()=>{
+    w.name = document.getElementById("editName").value;
+    w.status = document.getElementById("editStatus").value;
+    localStorage.setItem(APP_KEY + ":workflows", JSON.stringify(workflows));
+    showToast("工作流已更新");
+    renderWorkflows();
+  });
+}
+function renderEditor(){
+  content.innerHTML = `
+    ${renderPageHead("工作流编辑器","拖拽节点、保留光效、动画与路径连线。节点位置会自动保存。","保存并发布","重置布局")}
+    <div class="split">
+      <div class="panel">
+        <h3>Workflow Canvas</h3>
+        <div class="canvas" id="flowCanvas">
+          <svg class="flow-svg" id="flowSvg"></svg>
+          ${flowNodes.map(n=>`<div class="node" data-id="${n.id}" style="left:${n.x}px;top:${n.y}px">
+            <div class="title">${n.id}</div><div class="meta">${n.meta}</div>
+          </div>`).join("")}
+        </div>
+      </div>
+      <div class="panel">
+        <h3>属性与运行配置</h3>
+        <div class="list">
+          <div class="list-item"><div><strong>Execution Mode</strong><small>Pipeline Orchestration</small></div><span class="tag info">Live</span></div>
+          <div class="list-item"><div><strong>Failure Retry</strong><small>自动重试 3 次</small></div><span class="tag ok">Enabled</span></div>
+          <div class="list-item"><div><strong>Approval Gate</strong><small>发布前人工审批</small></div><span class="tag warn">Required</span></div>
+        </div>
+        <div class="panel" style="margin-top:14px;padding:14px">
+          <h3>部署说明</h3>
+          <div class="muted">此版本用于最终 UI 表达，可直接交开发接入真实 Workflow Schema 与执行引擎。</div>
+        </div>
+      </div>
+    </div>
+  `;
+  const canvas = document.getElementById("flowCanvas");
+  const svg = document.getElementById("flowSvg");
+  function drawLines(){
+    const rect = canvas.getBoundingClientRect();
+    const items = [...canvas.querySelectorAll(".node")];
+    const ids = ["Start","Validate","Build","Approve","Deploy"];
+    const map = {};
+    items.forEach(el=>{
+      const r = el.getBoundingClientRect();
+      map[el.dataset.id] = {x:r.left-rect.left+r.width/2, y:r.top-rect.top+r.height/2};
+    });
+    svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+    svg.innerHTML = ids.slice(0,-1).map((id,idx)=>{
+      const a = map[id], b = map[ids[idx+1]];
+      if(!a || !b) return "";
+      const mx = (a.x + b.x) / 2;
+      return `<path d="M ${a.x} ${a.y} C ${mx} ${a.y}, ${mx} ${b.y}, ${b.x} ${b.y}"></path>`;
+    }).join("");
+  }
+  let dragEl = null, offsetX = 0, offsetY = 0;
+  canvas.querySelectorAll(".node").forEach(el=>{
+    el.onpointerdown = (e)=>{
+      dragEl = el;
+      const rect = el.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      el.setPointerCapture(e.pointerId);
+    };
+  });
+  canvas.onpointermove = (e)=>{
+    if(!dragEl) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.max(18, Math.min(rect.width - dragEl.offsetWidth - 18, e.clientX - rect.left - offsetX));
+    const y = Math.max(18, Math.min(rect.height - dragEl.offsetHeight - 18, e.clientY - rect.top - offsetY));
+    dragEl.style.left = x + "px";
+    dragEl.style.top = y + "px";
+    drawLines();
+  };
+  canvas.onpointerup = ()=>{
+    if(!dragEl) return;
+    const id = dragEl.dataset.id;
+    const item = flowNodes.find(n=>n.id===id);
+    item.x = parseFloat(dragEl.style.left);
+    item.y = parseFloat(dragEl.style.top);
+    localStorage.setItem(APP_KEY + ":nodes", JSON.stringify(flowNodes));
+    dragEl = null;
+    showToast("节点位置已保存");
+  };
+  drawLines();
+  wireCommonButtons((action)=>{
+    if(action === "重置布局"){
+      flowNodes = [
+        {id:"Start", meta:"Input / Trigger", x:80, y:220},
+        {id:"Validate", meta:"Rules Check", x:300, y:90},
+        {id:"Build", meta:"Agent Runtime", x:540, y:260},
+        {id:"Approve", meta:"Human Gate", x:790, y:90},
+        {id:"Deploy", meta:"Execution", x:1020, y:250}
+      ];
+      localStorage.setItem(APP_KEY + ":nodes", JSON.stringify(flowNodes));
+      renderEditor();
+    } else if(action === "保存并发布"){
+      showToast("工作流已保存并发布");
+    }
+  });
+}
+function renderApprovals(){
+  content.innerHTML = `
+    ${renderPageHead("审批中心","带有上下文与风险提示的产品级审批界面。","批量审批","导出记录")}
+    <div class="panel">
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>请求</th><th>风险</th><th>提交者</th><th>状态</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><strong>Deploy production</strong></td><td><span class="tag bad">高风险</span></td><td>Jordan</td><td>待审批</td><td><button class="primary-btn approveBtn" data-name="Deploy production">审批</button></td></tr>
+            <tr><td><strong>Connect MCP</strong></td><td><span class="tag warn">中风险</span></td><td>Alex</td><td>待审批</td><td><button class="primary-btn approveBtn" data-name="Connect MCP">审批</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.querySelectorAll(".approveBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      openModal("确认审批", `你即将批准 <strong>${btn.dataset.name}</strong>。该操作会被记录到 Audit Trail。`, ()=>{
+        showToast("审批已通过");
+      });
+    };
+  });
+  wireCommonButtons();
+}
+function renderAudit(){
+  content.innerHTML = `
+    ${renderPageHead("审计追踪","所有关键行为都被记录，便于治理与回溯。","导出日志")}
+    <div class="panel">
+      <pre class="mono" style="margin:0;white-space:pre-wrap;line-height:1.7;color:#b9d6e8">10:24:12  alice      APPROVE workflow:user-onboarding     SUCCESS
+10:22:58  runner-02  DEPLOY  env:production               SUCCESS
+10:20:14  policy     BLOCK   external-mcp                 DENIED
+10:18:03  alex       UPDATE  memory:portable              SUCCESS
+10:16:44  observer   REPORT  runtime:latency              INFO</pre>
+    </div>
+  `;
+  wireCommonButtons();
+}
+function renderGeneric(id){
+  const label = NAV.find(x=>x[0]===id)?.[1] || "模块";
+  content.innerHTML = `
+    ${renderPageHead(label,"继承最终版视觉、光效与交互规范。","主要操作","导出")}
+    <div class="three-col">
+      ${["概览","策略","活动"].map(x=>`<div class="panel"><h3>${x}</h3><div class="list">
+        <div class="list-item"><div><strong>${x} Item 01</strong><small>Unified control plane</small></div><span class="tag info">Live</span></div>
+        <div class="list-item"><div><strong>${x} Item 02</strong><small>Reusable module</small></div><span class="tag ok">Ready</span></div>
+        <div class="list-item"><div><strong>${x} Item 03</strong><small>Connected state</small></div><span class="tag warn">Review</span></div>
+      </div></div>`).join("")}
+    </div>
+  `;
+  wireCommonButtons();
+}
+function wireCommonButtons(customHandler){
+  document.querySelectorAll("[data-action]").forEach(btn=>{
+    btn.onclick = ()=>{
+      if(customHandler){ customHandler(btn.dataset.action); return; }
+      showToast(btn.dataset.action + " 已触发");
+    };
+  });
+}
+function render(id){
+  activateNav(id);
+  if(id === "overview") return renderOverview();
+  if(id === "workflows") return renderWorkflows();
+  if(id === "editor") return renderEditor();
+  if(id === "approvals") return renderApprovals();
+  if(id === "audit") return renderAudit();
+  return renderGeneric(id);
+}
+
+render(getHash());
+</script>
+</body>
+</html>

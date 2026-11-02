@@ -1,0 +1,577 @@
+schema_version: "1.0.0"
+ledger_id: "design-lab-2026-09-04-wave0"
+taskpack:
+  id: "DESIGN-LAB-TODAY-EXECUTION-TASKPACK-2026-09-04"
+  version: "v1.4-operational-closure"
+  companion_file: "DESIGN-LAB-TODAY-EXECUTION-TASKPACK-2026-09-04.md"
+
+dispatch:
+  state: "NOT_READY"
+  reason: "Exact repository facts and path leases must be resolved before dispatch."
+  coordinator_only: true
+  mutation_authorized: false
+  remote_mutation: "FORBIDDEN"
+  direct_main_write: "FORBIDDEN"
+  one_task_per_branch: true
+  one_task_per_worktree: true
+  coordinator_serial_merge: true
+
+repository:
+  expected_url: "DTALEX66/DESIGN-LAB"
+  observed_url: "UNRESOLVED"
+  default_branch: "main"
+  remote_ref: "origin/main"
+  expected_origin_main_sha: "2aca27f69b1909251640382ed3b4195cf9accd9b"
+  observed_origin_main_sha: "UNRESOLVED"
+  worktree_status: "UNRESOLVED"
+  agents_instructions: "UNRESOLVED"
+  ci_definition_paths: []
+  branch_protection: "UNKNOWN"
+  merge_queue:
+    availability: "UNKNOWN"
+    merge_group_ci_verified: false
+    fallback: "LOCAL_COORDINATOR_QUEUE"
+
+policy_mirror:
+  authority: "TASKPACK_AND_VERSIONED_SCHEMAS"
+  purpose: "GENERATED_DISPATCH_ENFORCEMENT_SUBSET"
+  taskpack_version: "v1.4-operational-closure"
+  taskpack_sha256: "7432d53bdebb14f21f62390a422268a575e95d97f2fe979ac5dda731434dcadb"
+  history_crosswalk_sha256: "74c5b7cc132f626ad839e2a36566af92e650886cffeb4d7d41c290c657aa393c"
+
+readiness_gates:
+  - id: "GATE-REPO-IDENTITY"
+    required: true
+    checks:
+      - "Resolve repository URL, default branch, exact origin/main SHA, current branch and worktree status."
+      - "If origin/main differs from the frozen baseline, stop and produce a delta audit."
+  - id: "GATE-INSTRUCTIONS"
+    required: true
+    checks:
+      - "Read every applicable AGENTS.md before defining paths or commands."
+      - "Resolve test and validation commands from AGENTS.md, CI, package scripts or maintained repository scripts."
+  - id: "GATE-OWNERSHIP"
+    required: true
+    checks:
+      - "Replace all UNRESOLVED owned paths with repository-relative paths."
+      - "Prove parallel tasks have no overlapping write scope."
+      - "Acquire a coordinator-issued path lease before an agent starts."
+  - id: "GATE-BASELINE"
+    required: true
+    checks:
+      - "Reproduce all known test baselines without deleting failures or state."
+      - "Record exact commands, counts, duration, environment fingerprint and evidence hashes."
+  - id: "GATE-RIGHTS"
+    required: true
+    checks:
+      - "Record project use as personal research and noncommercial."
+      - "Keep H3 download, install, mount, execution, output display and delivery blocked until actual territory and license conditions are resolved."
+
+known_baselines:
+  status: "HISTORICAL_UNVERIFIED_ON_CURRENT_SHA"
+  suites:
+    - name: "aggregate"
+      expected_observation: "49/49 pass"
+      command: "UNRESOLVED_FROM_REPOSITORY"
+    - name: "node"
+      expected_observation: "300/300 pass"
+      command: "UNRESOLVED_FROM_REPOSITORY"
+    - name: "python"
+      expected_observation: "507 collected; 3 fail; 3 error; 6 skipped"
+      command: "UNRESOLVED_FROM_REPOSITORY"
+    - name: "reconstruction"
+      expected_observation: "34 collected; 1 fail"
+      command: "UNRESOLVED_FROM_REPOSITORY"
+
+global_policy:
+  project_mode: "STANDALONE_FULL"
+  federation_default: "DISABLED"
+  use_scope: "PERSONAL_RESEARCH_NONCOMMERCIAL"
+  rights_default: "FAIL_CLOSED"
+  risk_default: "A3_DESTRUCTIVE_OR_EXTERNAL"
+  active_state_database: ".project-local/state/design-lab.db"
+  state_database_count: 1
+  runtime_write_root: ".project-local/"
+  allowed_evidence_levels:
+    - "E0_DECLARED"
+    - "E1_PROBED"
+    - "E2_CONTRACT_VERIFIED"
+    - "E3_HOST_VERIFIED"
+    - "E4_SUSTAINED"
+  forbidden_actions:
+    - "Accept licenses or terms on behalf of the user."
+    - "Enter credentials, 2FA, UAC or bypass security controls."
+    - "Push, merge, publish, release or upload externally."
+    - "Run arbitrary shell, PowerShell, VBA, JSX or host scripts from model text."
+    - "Use coordinate clicks, mouse injection or keyboard injection as production control."
+    - "Write outside the task worktree or approved runtime root."
+    - "Download, install or execute MiniMax H3 before the rights gate is cleared."
+    - "Automatically redispatch an unresolved A2 or A3 OUTCOME_UNKNOWN operation."
+    - "Terminate or attach a Job Object to a user-started design host."
+    - "Treat loopback, Job Object, HF offline mode or a green mock as a security or E3 proof."
+    - "Delete history or existing user changes to make the tree clean."
+
+authoritative_paths:
+  ownership: "COORDINATOR_SERIAL_ONLY"
+  paths:
+    - ".project/manifest.yaml"
+    - "uv.lock"
+    - "package-lock.json"
+    - "UNRESOLVED_SCHEMA_REGISTRY_OR_INDEX"
+    - "UNRESOLVED_CURRENT_GENERATED_REPORTS"
+    - "UNRESOLVED_RELEASE_MANIFEST"
+    - "UNRESOLVED_DATABASE_MIGRATION_HEAD"
+  agent_rule: "Agents emit a manifest_delta in handoff; only the coordinator applies it."
+
+state_store_contract:
+  canonical_truth: "SQLITE_ROWS_AND_TRANSACTIONAL_OUTBOX"
+  exported_events: "DERIVED_EXPORT_REGENERABLE_NOT_RECOVERY_SOURCE"
+  writer_access: "MAIN_RUNTIME_WRITER_ONLY"
+  outbox_delivery: "AT_LEAST_ONCE_CONSUMER_DEDUP_BY_EVENT_ID"
+  operation_delivery: "AT_LEAST_ONCE_ATTEMPT_EFFECTIVELY_ONCE_ONLY_WHEN_ADAPTER_SUPPORTS_IDEMPOTENCY"
+  unknown_outcome: "RECONCILE_BEFORE_RETRY"
+  attempt_identity: "LOGICAL_OPERATION_STABLE_ATTEMPT_UNIQUE"
+  fixed_local_disk:
+    journal_mode: "WAL"
+    synchronous: "FULL"
+    writer_model: "SINGLE_WRITER_ACTOR"
+  direct_attached_portable_disk:
+    journal_mode: "DELETE"
+    synchronous: "FULL"
+    writer_model: "SINGLE_PROCESS_SINGLE_WRITER"
+  network_sync_or_unknown_filesystem:
+    active_database: "FORBIDDEN"
+    allowed_mode: "READ_ONLY_SNAPSHOT_IMPORT_EXPORT"
+  required_pragmas:
+    foreign_keys: true
+    busy_timeout: "BOUNDED_AND_RECORDED"
+  backup: "SQLITE_BACKUP_API_ONLY"
+  crash_recovery:
+    - "filesystem_and_permission_probe"
+    - "database_quick_check"
+    - "start_new_runtime_instance_and_invalidate_prior_boot_leases"
+    - "unfinished_job_and_dispatch_phase_scan"
+    - "mark_post_dispatch_unresolved_attempts_outcome_unknown"
+    - "reconcile_identity_matched_owned_processes"
+    - "host_document_reconciliation"
+    - "reconcile_before_retry"
+    - "human_confirmation_for_high_risk_resume"
+
+observability_contract:
+  canonical_audit: "UNSAMPLED_TRANSACTIONAL"
+  telemetry: "OPTIONAL_LOCAL_OFF_BY_DEFAULT"
+  schema: "W3C_TRACE_CONTEXT_AND_OTEL_COMPATIBLE"
+  collector_required: false
+  sensitive_data_policy: "ALLOWLIST"
+  telemetry_retention: "PROFILE_BOUNDED_DEFAULT_14_DAYS_OR_2_GIB"
+  canonical_audit_retention: "PROJECT_POLICY_NO_AUTOMATIC_PRESSURE_DELETION"
+  support_bundle: "MANIFEST_REDACTION_REPORT_HUMAN_REVIEW_AND_POST_EXPORT_INTEGRITY_CHECK"
+  support_bundle_claim: "INTEGRITY_VERIFIABLE_AFTER_EXPORT"
+
+review_surface:
+  lifecycle: "ON_DEMAND_SAME_PYTHON_RUNTIME"
+  bind: "LOOPBACK_RANDOM_PORT"
+  launcher: "NO_VISIBLE_TERMINAL_DEFAULT"
+  direct_database_access: false
+  intent_routes:
+    approve_reject: "ApprovalStore"
+    cancel: "LocalOrchestrator.ControlIntent"
+    takeover: "LeaseManager.TakeoverIntent"
+  second_daemon: false
+  desktop_shell_0_1: "NONE"
+  protections:
+    - "PER_RUNTIME_SESSION_SECRET"
+    - "ONE_TIME_ACTION_NONCE"
+    - "CURRENT_USER_ACL_BOOTSTRAP_TICKET"
+    - "HOST_ORIGIN_ALLOWLIST"
+    - "CSRF_CUSTOM_HEADER"
+    - "NO_WILDCARD_CORS"
+    - "NO_SENSITIVE_BROWSER_PERSISTENCE"
+
+design_diff_contract:
+  approval_binding:
+    - "context_hash"
+    - "changeset_hash"
+    - "diff_hash"
+    - "expected_revision"
+    - "expiry"
+  channels: ["SEMANTIC", "VISUAL"]
+  pixel_only_approval: "FORBIDDEN"
+  must_keep_enforced: true
+
+host_session_contract:
+  attach_vs_launch_explicit: true
+  process_identity: "PID_CREATION_TIME_EXECUTABLE_HASH"
+  tracks:
+    - "host_version_build_plugin"
+    - "hwnd_logon_session_integrity_locale_dpi"
+    - "document_id_revision_dirty_modal_focus_selection"
+    - "heartbeat_and_human_external_change"
+  preexisting_dirty_document: "HUMAN_CHOICE_REQUIRED"
+  keylogging_or_clipboard_capture: "FORBIDDEN"
+
+process_containment:
+  owned_helpers_job_object: true
+  user_started_gui_hosts_job_object: false
+  shutdown_order:
+    - "STOP_ACCEPTING"
+    - "CHECKPOINT"
+    - "COOPERATIVE_CANCEL"
+    - "DEADLINE"
+    - "TERMINATE_OWNED_TREE"
+    - "WAIT_AND_READBACK"
+  security_sandbox_claim: "FORBIDDEN"
+  gpu_lease: "APPLICATION_FENCING_NOT_VRAM_ISOLATION"
+  identity_match: "PID_CREATION_TIME_EXECUTABLE_HASH_RUNTIME_INSTANCE_MARKER"
+  hard_resource_caps: "OPTIONAL_AFTER_PROFILE_QUALIFICATION"
+
+plugin_lifecycle:
+  states:
+    - "DISCOVERED"
+    - "FETCHED"
+    - "VERIFIED"
+    - "STAGED"
+    - "CANARY_PASSED"
+    - "PROMOTED"
+    - "ACTIVE"
+    - "QUARANTINED"
+    - "DISABLED"
+    - "ROLLED_BACK"
+  retain_last_known_good: true
+  promotion_during_active_job_or_document: "FORBIDDEN"
+  permission_or_min_version_change: "REAPPROVAL_AND_REQUALIFICATION"
+
+developer_environment:
+  winget_config: "./.config/configuration.winget"
+  winget_scope: "FREE_CLI_AND_BUILD_PREREQUISITES_ONLY"
+  python_sync: "uv sync --locked"
+  node_sync: "npm ci"
+  gui_hosts_containerized: false
+  platform_specific_wheelhouse: true
+
+risk_matrix:
+  A0_READ_ONLY:
+    approval: "AUTO"
+    retry: "BOUNDED"
+  A1_REVERSIBLE_LOCAL:
+    approval: "RECIPE_POLICY"
+    requirements: ["lease", "precondition", "native_transaction", "receipt"]
+    retry: "IDEMPOTENT_OR_RECEIPT_GUARDED"
+  A2_WORKING_DOCUMENT_WRITE:
+    approval: "PLAN_DIFF_AND_SCOPE_DEPENDENT"
+    requirements: ["plan", "diff_or_preview", "undo", "dual_readback"]
+    retry: "RECONCILE_THEN_EXPLICIT_POLICY_NO_BLIND_REPLAY"
+  A3_DESTRUCTIVE_OR_EXTERNAL:
+    approval: "HUMAN_EACH_TIME"
+    retry: "FORBIDDEN"
+  A4_PROHIBITED:
+    approval: "IMPOSSIBLE"
+    retry: "NOT_APPLICABLE"
+
+profile_resolver:
+  hard_filters:
+    - "rights_and_territory"
+    - "offline_requirement"
+    - "target_format"
+    - "native_editability"
+    - "host_and_version_availability"
+    - "required_recipe"
+    - "rollback_capability"
+    - "license_or_seat"
+    - "network_and_cost_ceiling"
+  score_weights:
+    native_format_and_edit_fidelity: 30
+    structured_readback: 20
+    native_transaction_and_rollback: 15
+    current_e3_e4_stability: 15
+    throughput_and_batching: 10
+    install_and_maintenance_cost: 5
+    privacy_and_observability_cost: 5
+  tie_break_order:
+    - "existing_native_file_host"
+    - "explicit_user_profile_preference"
+    - "fewer_conversions"
+    - "higher_current_evidence_level"
+
+batches:
+  - id: "GATE-0"
+    mode: "SERIAL"
+    tasks: ["DL-TP-R0-001"]
+    starts_after_gates: ["ALL_READINESS_GATES_PASS"]
+  - id: "PARALLEL-A"
+    mode: "PARALLEL_ONLY_IF_PATH_LEASES_DO_NOT_OVERLAP"
+    tasks:
+      - "DL-TP-R0-002"
+      - "DL-TP-R0-003"
+      - "DL-TP-R0-004"
+      - "DL-TP-R0-006"
+      - "DL-TP-R0-007"
+      - "DL-TP-R0-008"
+    starts_after_tasks: ["DL-TP-R0-001"]
+  - id: "GATE-B"
+    mode: "SERIAL"
+    tasks: ["DL-TP-R0-005"]
+    starts_after_tasks: ["DL-TP-R0-003", "DL-TP-R0-004"]
+  - id: "INTEGRATION"
+    mode: "COORDINATOR_SERIAL"
+    action: "MERGE_AND_FULL_REVERIFY"
+    starts_after_batches: ["PARALLEL-A", "GATE-B"]
+
+tasks:
+  - id: "DL-TP-R0-001"
+    title: "Freeze the single forward baseline"
+    status: "BLOCKED_BY_READINESS"
+    owner_role: "COORDINATOR"
+    risk: "A2_WORKING_DOCUMENT_WRITE"
+    operation_mode: "READ_ONLY_DISCOVERY_THEN_CONTROLLED_DOCUMENT_WRITE"
+    depends_on: []
+    owned_paths: ["UNRESOLVED_FROM_REPOSITORY"]
+    must_not_modify: ["source_code", "lock_files", "remote_repository"]
+    acceptance:
+      - "Exact local HEAD and origin/main SHA recorded."
+      - "Current, historical and generated document classes are explicit."
+      - "Manifest references resolve or are listed as blockers."
+      - "history-baseline.json seals source-set, conversation archive, history manifest and Git baseline hashes."
+      - "The sealed crosswalk reproduces 1450 occurrence rows, 527 original IDs, 774 source-qualified entities and all 421 strict canonical definitions."
+      - "Historical material is retrievable by occurrence key, legacy ID, path, content hash, conversation ID and locator; bare collisions return AMBIGUOUS and later material is append-only."
+      - "Worktree status and existing user changes are preserved."
+    evidence:
+      - "repo_identity.json"
+      - "baseline_delta_report.md"
+      - "history-baseline.json"
+      - "history_lookup_test_report.json"
+      - "manifest_reference_report.json"
+
+  - id: "DL-TP-R0-002"
+    title: "Repair manifest and document reference gates"
+    status: "BLOCKED_BY_DL-TP-R0-001"
+    owner_role: "TASK_AGENT"
+    risk: "A2_WORKING_DOCUMENT_WRITE"
+    depends_on: ["DL-TP-R0-001"]
+    owned_paths: ["UNRESOLVED_VALIDATOR_PATHS", "UNRESOLVED_VALIDATOR_TEST_PATHS"]
+    must_not_modify: [".project/manifest.yaml", "lock_files", "runtime_state"]
+    acceptance:
+      - "Missing or out-of-scope current references fail validation."
+      - "Historical references do not become current capability claims."
+      - "Tests cover accept and reject cases."
+    evidence: ["validator_test_report.json", "manifest_delta.yaml"]
+
+  - id: "DL-TP-R0-003"
+    title: "Unify runtime writes under .project-local"
+    status: "BLOCKED_BY_DL-TP-R0-001"
+    owner_role: "TASK_AGENT"
+    risk: "A2_WORKING_DOCUMENT_WRITE"
+    depends_on: ["DL-TP-R0-001"]
+    owned_paths: ["UNRESOLVED_RUNTIME_PATH_CODE", "UNRESOLVED_RUNTIME_PATH_TESTS"]
+    must_not_modify: [".project/manifest.yaml", "lock_files", "user_external_assets"]
+    acceptance:
+      - "All active runtime writes resolve below an injectable runtime root."
+      - "No active code or test writes .hermes or repository-root state."
+      - "Tests use an isolated temporary runtime root."
+    evidence: ["runtime_write_scan.json", "path_isolation_test_report.json", "manifest_delta.yaml"]
+
+  - id: "DL-TP-R0-004"
+    title: "Make evidence sealing and promotion atomic"
+    status: "BLOCKED_BY_DL-TP-R0-001"
+    owner_role: "TASK_AGENT"
+    risk: "A2_WORKING_DOCUMENT_WRITE"
+    depends_on: ["DL-TP-R0-001"]
+    owned_paths: ["UNRESOLVED_RECONSTRUCTION_CODE", "UNRESOLVED_RECONSTRUCTION_TESTS"]
+    must_not_modify: [".project/manifest.yaml", "lock_files", "historical_evidence"]
+    acceptance:
+      - "Evidence flow is write-temp, fsync, seal, hash, atomic-promote, then reference commit."
+      - "Failure restores the pre-operation state without stale journal hashes."
+      - "The reconstruction suite is fully green on the task commit."
+    evidence: ["reconstruction_test_report.json", "fault_injection_report.json", "manifest_delta.yaml"]
+
+  - id: "DL-TP-R0-005"
+    title: "Prove test isolation and order independence"
+    status: "BLOCKED_BY_DL-TP-R0-003_AND_DL-TP-R0-004"
+    owner_role: "TASK_AGENT"
+    risk: "A1_REVERSIBLE_LOCAL"
+    depends_on: ["DL-TP-R0-003", "DL-TP-R0-004"]
+    owned_paths: ["UNRESOLVED_TEST_HARNESS_PATHS"]
+    must_not_modify: ["product_behavior", ".project/manifest.yaml", "lock_files"]
+    acceptance:
+      - "Every test gets an independent temporary runtime root."
+      - "Default, reversed and randomized order are green."
+      - "Twenty repeated runs do not dirty the repository worktree."
+    evidence: ["test_order_matrix.json", "repeat_run_report.json", "post_test_worktree_status.txt"]
+
+  - id: "DL-TP-R0-006"
+    title: "Create the project-level rights decision"
+    status: "BLOCKED_BY_DL-TP-R0-001"
+    owner_role: "TASK_AGENT_WITH_HUMAN_REVIEW"
+    risk: "A2_WORKING_DOCUMENT_WRITE"
+    operation_mode: "POLICY_WRITE_WITH_HUMAN_REVIEW"
+    depends_on: ["DL-TP-R0-001"]
+    owned_paths: ["UNRESOLVED_RIGHTS_SCHEMA", "UNRESOLVED_RIGHTS_POLICY", "UNRESOLVED_RIGHTS_TESTS"]
+    must_not_modify: [".project/manifest.yaml", "license_acceptance_state", "model_cache"]
+    acceptance:
+      - "Personal research and noncommercial use are recorded."
+      - "Territory, redistribution, disclosure, downstream training and hosted-use fields are explicit."
+      - "Actual territory is operator-declared and bound to license/AUP hashes and any written authorization reference."
+      - "Unknown or disallowed H3 status blocks download, install, mount, execution, output display, backup movement and delivery."
+    evidence: ["rights_decision.json", "rights_rejection_tests.json", "manifest_delta.yaml"]
+
+  - id: "DL-TP-R0-007"
+    title: "Correct adapter registry truth"
+    status: "BLOCKED_BY_DL-TP-R0-001"
+    owner_role: "TASK_AGENT"
+    risk: "A2_WORKING_DOCUMENT_WRITE"
+    depends_on: ["DL-TP-R0-001"]
+    owned_paths: ["UNRESOLVED_REGISTRY_GENERATOR", "UNRESOLVED_REGISTRY_TESTS"]
+    must_not_modify: [".project/manifest.yaml", "host_software", "remote_services"]
+    acceptance:
+      - "Protocol, server existence and real host capability are separate fields."
+      - "Historical smoke evidence cannot populate the current capability index."
+      - "Generic Adobe MCP templates do not claim Photoshop or Acrobat desktop control."
+    evidence: ["registry_truth_report.json", "capability_index_diff.json", "manifest_delta.yaml"]
+
+  - id: "DL-TP-R0-008"
+    title: "Ratify the standalone-first ADR"
+    status: "BLOCKED_BY_DL-TP-R0-001"
+    owner_role: "TASK_AGENT_WITH_HUMAN_REVIEW"
+    risk: "A2_WORKING_DOCUMENT_WRITE"
+    operation_mode: "ARCHITECTURE_DECISION_WITH_HUMAN_REVIEW"
+    depends_on: ["DL-TP-R0-001"]
+    owned_paths: ["UNRESOLVED_ADR_PATH"]
+    must_not_modify: [".project/manifest.yaml", "source_code", "federation_installation"]
+    acceptance:
+      - "DESIGN-LAB owns its design-domain runtime, queue, leases, approvals and evidence."
+      - "WORK-LAB and ArcheAxis are optional disabled-by-default federation adapters."
+      - "The runtime remains functional when both external projects are absent."
+    evidence: ["standalone_first_adr.md", "manifest_delta.yaml"]
+
+handoff_schema:
+  required_fields:
+    - "task_id"
+    - "base_sha"
+    - "branch"
+    - "worktree"
+    - "commit_sha"
+    - "changed_paths"
+    - "tests"
+    - "exact_results"
+    - "evidence_hashes"
+    - "unresolved_items"
+    - "rollback_point"
+    - "manifest_delta"
+    - "final_worktree_status"
+  rules:
+    - "All paths are repository-relative except the coordinator-controlled worktree locator."
+    - "No secrets, credentials, tokens, usernames or machine-specific absolute paths."
+    - "An uncommitted handoff is not eligible for integration."
+    - "A task with failing acceptance evidence returns to its own worktree."
+
+integration_policy:
+  base_drift: "STOP_AND_REBASE_OR_REDISPATCH"
+  path_scope_violation: "REJECT_HANDOFF"
+  conflict_resolution: "RETURN_TO_ORIGINAL_TASK_WORKTREE"
+  merge_order: "DEPENDENCY_TOPOLOGICAL_THEN_TASK_ID"
+  after_each_merge: "RUN_AFFECTED_TESTS"
+  after_each_batch: "RUN_FULL_SUITE_AND_VERIFY_CLEAN_WORKTREE"
+  on_main_failure: "STOP_QUEUE_AND_REVERT_OR_ROLL_BACK_LAST_INTEGRATION"
+  success_requires:
+    - "All acceptance checks pass on latest main."
+    - "Evidence hashes resolve."
+    - "No unauthorized paths changed."
+    - "No current capability exceeds its evidence level."
+    - "Repository worktree is clean or all remaining changes are attributed to the user."
+
+next_wave_registration:
+  status: "REGISTER_ONLY_DO_NOT_EXECUTE_IN_WAVE0"
+  task_definitions_authority: "DESIGN-LAB-TODAY-EXECUTION-TASKPACK-2026-09-04.md#6-完整任务卡"
+  dependency_materialization: "REQUIRED_BEFORE_ANY_TASK_BECOMES_READY"
+  flat_ids_are_registration_only: true
+  task_ids:
+    - "DL-TP-R1-001"
+    - "DL-TP-R1-002"
+    - "DL-TP-R1-003"
+    - "DL-TP-R1-004"
+    - "DL-TP-R1-005"
+    - "DL-TP-R1-006"
+    - "DL-TP-R1-007"
+    - "DL-TP-R1-008"
+    - "DL-TP-R2-001"
+    - "DL-TP-R2-002"
+    - "DL-TP-R2-003"
+    - "DL-TP-R2-004"
+    - "DL-TP-R2-005"
+    - "DL-TP-R2-006"
+    - "DL-TP-R2-007"
+    - "DL-TP-R2-008"
+    - "DL-TP-R2-009"
+    - "DL-TP-R2-010"
+    - "DL-TP-R2-011"
+    - "DL-TP-R2-012"
+    - "DL-TP-R2-013"
+    - "DL-TP-R2-014"
+    - "DL-TP-R2-015"
+    - "DL-TP-R2-016"
+    - "DL-TP-R2-017"
+    - "DL-TP-R2-018"
+    - "DL-TP-R2-019"
+    - "DL-TP-R2-020"
+    - "DL-TP-R2-021"
+    - "DL-TP-R3-001"
+    - "DL-TP-R3-002"
+    - "DL-TP-R3-003"
+    - "DL-TP-R3-004"
+    - "DL-TP-R3-005"
+    - "DL-TP-R3-006"
+    - "DL-TP-R3-007"
+    - "DL-TP-R3-008"
+    - "DL-TP-R3-009"
+    - "DL-TP-R3-010"
+    - "DL-TP-R3-011"
+    - "DL-TP-R3-012"
+    - "DL-TP-R3-013"
+    - "DL-TP-R4-001"
+    - "DL-TP-R4-002"
+    - "DL-TP-R4-003"
+    - "DL-TP-R4-004"
+    - "DL-TP-R4-005"
+    - "DL-TP-R5-001"
+    - "DL-TP-R5-002"
+    - "DL-TP-R5-003"
+
+history_task_ids_preserved:
+  - id: "DL-OD-KNW-001"
+    status: "NON_DISPATCH_HISTORICAL_COMMITMENT"
+    current_targets: ["DL-TP-R0-006", "DL-TP-R2-017", "DL-TP-R4-001"]
+  - id: "DL-OD-PROJECTION-001"
+    status: "NON_DISPATCH_HISTORICAL_COMMITMENT"
+    current_targets: ["DL-TP-R2-004", "DL-TP-R2-009", "DL-TP-R3-006"]
+  - id: "DL-DESIGN-ASSETS-001"
+    status: "NON_DISPATCH_HISTORICAL_COMMITMENT"
+    current_targets: ["DL-TP-R0-006", "DL-TP-R2-010", "DL-TP-R2-017"]
+  - id: "DL-TRI-LAYER-CONTRACT-001"
+    status: "NON_DISPATCH_HISTORICAL_COMMITMENT"
+    current_targets: ["DL-TP-R0-008", "DL-TP-R2-006"]
+
+legacy_task_reconciliation:
+  source_of_truth: "DESIGN-LAB-HISTORY-TASK-ID-CROSSWALK-2026-09-04.csv"
+  source_manifest: "DESIGN-LAB-HISTORY-EVIDENCE-MANIFEST-2026-09-04.csv"
+  sha256: "74c5b7cc132f626ad839e2a36566af92e650886cffeb4d7d41c290c657aa393c"
+  occurrence_rows: 1450
+  unique_original_ids: 527
+  source_qualified_entities: 774
+  collision_original_ids: 178
+  strict_definition_occurrences_covered: 421
+  strict_definition_original_ids_covered: 385
+  unresolved_source_qualified_review_rows: 0
+  key_fields: ["source_sha256", "conversation_id", "locator", "original_id"]
+  direct_legacy_dispatch: "FORBIDDEN"
+  bare_id_collision_result: "AMBIGUOUS_CANDIDATE_ARRAY"
+  policy: "Legacy IDs remain immutable; duplicate content keeps every manifest record/path alias and no grouped Cartesian mapping is permitted."
+  allowed_dispositions:
+    - "MAPPED_CURRENT"
+    - "SUPERSEDED_WITH_SCOPE_PRESERVED"
+    - "HISTORICAL_ONLY"
+    - "REQUIRES_REQUALIFICATION"
+    - "SOURCE_QUALIFIED_REVIEW_REQUIRED"
+  target_rules:
+    current_targets: "ONLY_MAPPED_OR_SUPERSEDED_AND_MUST_RESOLVE_TO_ONE_OF_58_CURRENT_TASKS"
+    candidate_targets: "ONLY_REQUIRES_REQUALIFICATION_AND_NEVER_DISPATCHABLE"
+    unresolved_review_rows: "BLOCK_UNTIL_SOURCE_QUALIFIED_MANUAL_DECISION"

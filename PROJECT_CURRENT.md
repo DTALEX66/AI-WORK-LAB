@@ -21,32 +21,32 @@ archive_excluded_raster_media = 344
 archive_import_verified = 1131
 archive_in_repo_bytes = 217126876
 archive_in_repo_objects = 694
-archive_manifest_rows = 7109
+archive_manifest_rows = 7210
 archive_objects = 1212
 archive_recorded_not_copied = 93
 archive_registered_not_migrated = 80
 archive_source_hints = 1212
 archive_unclassified_residue = 1
 archived_excluded_cache_and_build = 515
-archived_linked_in_archive = 85
+archived_linked_in_archive = 21
 archived_linked_in_repo = 1108
-archived_objects_copied = 5101
+archived_objects_copied = 5266
 archived_objects_duplicated = 300
 authority_index_entries = 23
 blocker_items = 7
-byte_copy_rows = 1133
+byte_copy_rows = 1234
 capability_families = 30
 capability_implemented_verified = 18
 capability_partial = 12
 crlf_tracked_files = 116
-distinct_paths_design = 4049
-distinct_paths_union = 6677
-distinct_paths_work = 2639
+distinct_paths_design = 4055
+distinct_paths_union = 6774
+distinct_paths_work = 2734
 lf_tracked_files = 702
 route_endpoints = 164
-source_rows_design = 4470
-source_rows_total = 7109
-source_rows_work = 2639
+source_rows_design = 4476
+source_rows_total = 7210
+source_rows_work = 2734
 spdx_claimed_files = 223
 spdx_malformed_lines = 0
 suite_test_files = 34
@@ -62,23 +62,26 @@ unsettled_files = 237
 ## 一、现在成立什么
 
 - 单一融合后端：统一信封、统一存储、只读验收门；两套旧生产权威已不是并行入口。
-- 历史资产去向已逐条登记：来源仓逐仓去重 `2638`（WORK）+ `4049`（DESIGN）条不同路径，
-  跨仓并集 `6676` 条（有 11 条路径两边都出现，所以并集小于两数之和），共 `7108` 行去向，
-  与登记枚举差集为 0；本项目按字节持有其中 `1132` 行对应的副本。
+- 历史资产去向已逐条登记：来源仓逐仓去重的不同路径数、跨仓并集、总行数与本项目按字节持有的行数，
+  一律取下方现算数字里的 `distinct_paths_work`、`distinct_paths_design`、`distinct_paths_union`、
+  `source_rows_total`、`byte_copy_rows`，处置枚举与实际行值的差集为 0。
 - 置顶区已立：根级 `AUTHORITY-INDEX.md` 收 `23` 条 2026-10 当时两仓各自的"任务·规划·权威索引"，
   原件逐字节复制进 `docs/authority-202610/`；每条记来源仓、原路径、版本或日期、SHA-256、字节、
   现在的定性与替代关系。检查器会**重算每个原件的摘要**并与表里记的比对，摘要一旧就红。
 - 历史区已迁入：按 owner 规则（缓存与构建不要、其他按历史/文档归档进本仓）把来源内容复制进
-  `docs/history/sources-20261101/`，逐条去向在 `MANIFEST.csv`（`7109` 行全覆盖）：
-  `5101` 行逐字节复制、`300` 行同字节去重指向已复制件、`1108` 行本仓已按字节持有、
+  `docs/history/sources-20261101/`，逐条去向在 `MANIFEST.csv`（行数 = `archive_manifest_rows`，全覆盖）：
+  逐字节复制 = `archived_objects_copied` 行、同字节去重指回已复制件 = `archived_objects_duplicated` 行、
+  本仓已按字节持有 = `archived_linked_in_repo` 行；
   `123` 张截图与照片（64,092,364 字节）按 owner 2026-11-01「截图照片去掉」移出 Git，先搬进本机隔离区；
   owner 2026-11-02 又裁定「历史记录归档 文档形式归档就行 去掉其他格式的」，于是**这类二进制连隔离区也不再留存**——
   本仓保留的是摘要与逐条登记（`linked_location` 已清空并在 reason 里写明原因），删除时点这些原件的其余副本
   只在来源仓自己的对象库与工作树里，来源仓一旦删除即无第三份。`38` 个 SVG 是图形不是照片，仍按文档留仓。
 
-  `85` 行与统一归档逐摘要相同（不搬第二份）、`390` 行为缓存/构建按规则不要、`2` 个字体二进制
-  （17,313,940 字节）同一口径处理（曾进隔离区，现随"去掉其他格式"一并移除）
-  ——这三类合起来正是 `MANIFEST.csv` 里 `EXCLUDED_BY_OWNER_RULE` 的 `515` 行，移动前后各现算一次摘要。
+  `EXCLUDED_BY_OWNER_RULE` 的 `515` 行由三部分构成：`390` 行缓存/构建、`123` 行截图与照片
+  （64,092,364 字节）、`2` 个字体二进制（17,313,940 字节，曾进隔离区，现随"去掉其他格式"一并移除），
+  移动前后各现算一次摘要。另有 `archived_linked_in_archive` 行原来只记成"与统一归档逐摘要相同、
+  不搬第二份"——本轮（2026-11-02）现算过：文档格式的那 64 行已把同一字节补采进历史区并改记 `COPIED`，
+  剩下的确实都是容器包、`.dat`、`.docx`、`.jpg` 一类非文档格式，按「去掉其他格式的」继续只留摘要与位置。
   三处缺陷都是复验时抓到并修好的：`37` 行原判"本仓已持有"只凭台账 `sha256_source`，而改后文件让
   本仓实际持有的是修复版本、原始字节无处可寻（已补采并逐行复验摘要）；`1` 个 260 字符以上的
   长路径文件首轮静默丢失（已用 `\\?\` 前缀重写，并按行复验，不再用集合式抽查）。
@@ -91,6 +94,15 @@ unsettled_files = 237
   登记生成器的人群口径同时改成"工作树 ∪ 台账"，并把这条不变式的反例改为读现值而不是记死数字。
   同一次核对里"950 / 151 个摘要对不上"不是缺口而是版本差：那是被后续版本覆盖的中间态，只存在于镜射里，
   路径集合比对之后确定的未吸收代码就是这个文件。
+  第四处不是复制缺陷而是**人群口径的盲区**：覆盖登记枚举的是来源仓的工作树（跟踪 + 未跟踪但未被忽略）
+  与归档台账，而来源仓自己 `git-ignore` 掉的路径两边都不在——所以 `--plan` 报 `unmanaged 0` 时，
+  `.ui-reference`、`.hermes`、`.workbuddy` 这些目录里的内容其实从未被任何登记表称过。本轮按"除 `.git`
+  之外的每个文件"重扫两仓，先按扩展名与路径规则分桶（构建与缓存、位图、其他格式、文档），只给文档桶算摘要，
+  再和登记表现值做联合判定：**登记行都没有的 101 个**、以及**台账只链到统一归档根的文档件**，一起补采进
+  `docs/history/sources-20261101/`，写后逐个现算摘要复验，台账改记 `COPIED`；已按具名规则处置的行
+  （构建/仓库元数据、或本仓持现行版的版本差）不动，因为摘要不同 ≠ 内容缺失。落盘前对补采字节做过凭证形态扫描，
+  命中 0 处。分桶读数与逐件清单一律取 `docs/history/sources-20261101/MANIFEST.json` 的
+  `source_ignored_sweep_20261102` 块，不在这里抄第二份。
 - 统一归档的正文对象也已进仓，防的就是"任务漂移"：`1212` 个唯一对象现在**每一个都有具名去处**，
   不再有 `ARCHIVE_ONLY` 这种"没决定"状态——`694` 个（`217,126,876` 字节）逐字节进
   `docs/history/archive-objects-20261101/`、按摘要命名、写后现算复验（失败 0）；`93` 个容器包
