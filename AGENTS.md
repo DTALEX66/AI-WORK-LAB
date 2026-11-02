@@ -48,7 +48,7 @@ git status --porcelain=v1       # 保护已有改动；发现别人的未提交�
 | 内容 | 唯一维护位置 | 其他文件 |
 |---|---|---|
 | 项目身份与当前结论 | `PROJECT_CURRENT.md` | 引用 |
-| 能力族与验证状态 | `migration/capability-family-register.csv`（由 `scripts/build_requirement_traceability.py` 生成） | 链接 |
+| 能力族与验证状态 | `migration/capability-family-register.csv`（由 `scripts/build_requirement_traceability.py` 生成）。列的解析根不同：`拟模块边界` 是从来源任务表逐字带来的**计划边界**，不是本仓磁盘路径；要在磁盘上找实现，看 `当前实现位置` 与 `验证证据` 两列 | 链接 |
 | 验收子句逐条结论 | `migration/task-acceptance.csv`（`scripts/build_task_acceptance_register.py`） | 链接 |
 | 来源文件去向 | `migration/source-coverage-work.csv`、`migration/source-coverage-design.csv`（`scripts/build_source_coverage.py`）、`migration/copies.json` | 链接 |
 | 阻断与延期 | `config/blocker-register.json`（`scripts/build_blocker_register.py`）、`migration/deferral-register.json` | 链接 |
