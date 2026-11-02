@@ -10,8 +10,9 @@
 - 最近核验：2026-11-02（本地执行，并已推送到 origin；推送事实与公开克隆的独立复跑见 docs/CODEX-AUDIT-ENTRY.md §15.27）
 - 依托提交：全量收据所测的那棵树是 `adb311e`（503 passed / 0 failed）；当前 `main` 的真实 SHA 一律用
   `git rev-parse main` 自读，不要抄本文件任何数字
-- 远程：`DTALEX66/AI-WORK-LAB`（public），默认分支已改为 `main`；`main` 与
-  `integration/local-fusion-20261029` 同指一个提交，标签 `closure-20261102`、`fusion-candidate-20261102`、
+- 远程：`DTALEX66/AI-WORK-LAB`（public），**唯一分支与默认分支都是 `main`**——那条融合批次分支已在
+  2026-11-02 按 owner「没问题就把分支合并到主线啊」退掉（退掉前核过：两指针互无独有提交，三个标签指向的
+  提交全部在 `main` 历史内，恢复点即 main 尖端）；标签 `closure-20261102`、`fusion-candidate-20261102`、
   `cut-independent-20261102` 已推送；`.git/hooks/pre-push` 现在是"带授权记录才放行并逐项检查"的守卫，
   不再是一律拦截，也不用 `--no-verify`
 - 入口三件套：本文件 + `README.md` + `AGENTS.md`（同在本仓根目录，读序见 `AGENTS.md` §1）

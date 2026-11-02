@@ -238,6 +238,14 @@ def route_counts() -> tuple[int, int]:
     return int(entry["v1_routes"]), int(entry["compat_routes"])
 
 
+def current_branch() -> str:
+    """The checked-out branch, read live: naming it in a register otherwise rots the day the branch moves."""
+    import subprocess
+    out = subprocess.run(["git", "symbolic-ref", "--short", "HEAD"], capture_output=True,
+                         cwd=str(REPO_ROOT)).stdout.decode("utf-8", errors="replace").strip()
+    return out or "(detached HEAD)"
+
+
 _PACK_CACHE: dict | None = None
 
 
@@ -1141,9 +1149,13 @@ def requirement_claims() -> dict[str, dict]:
                         "真实 loopback HTTP + 持久化 + 重启读回由具名测试断言。"
                         % route_counts()},
         "U11": {"location": ".git/HEAD:1", "evidence": "evidence:delivery-summary.json#git", "status": "IMPLEMENTED_VERIFIED",
-                "basis": "本仓确在本地工作分支 integration/local-fusion-20261029 上执行（.git/HEAD 第一行就是该 branch ref），"
-                        "增量保全由 delivery-summary.json#git 与 snapshot-before/after 逐文件摘要证明；注意 HEAD 仍是 unborn（无提交），"
-                        "本行不据此声称已提交或已同步。"},
+                "basis": "本仓在检出的本地工作分支上执行，分支名由 `git symbolic-ref --short HEAD` 现读"
+                        "（现为 %s；2026-11-02 仓库规范化时主线定为 main，那条融合批次分支已退掉，"
+                        "恢复点就是 main 的尖端）——写死分支名会让登记在改名后变成假话。增量保全由 "
+                        "delivery-summary.json#git 与 snapshot-before/after 逐文件摘要证明；"
+                        "该行记录的是 2026-10-29 交接当时的保全证据，那时 HEAD 尚未产生任何提交，"
+                        "现在已有提交，本行不据此声称内容已同步到远端。"
+                        % current_branch()},
         "U12": {"location": find_definition("derive_catalog", "backend/core/capabilities.py"), "evidence": caps + ";" + "tests/unified/test_v11_audit_rework.py::test_f01_registered_gap_paths_all_have_a_real_disposition",
                 "status": "IMPLEMENTED_VERIFIED",
                 "basis": "两条都可测：延期面在能力目录里保持 DECLARED/DEFERRED 并带 phase、can_invoke=false（不降级冒充）；"

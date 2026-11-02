@@ -134,6 +134,12 @@ def live_fields(audited_commit: str | None) -> dict:
             "remote_url": git(["remote", "get-url", "origin"]),
             "remote_ref_observed": remote_ref,
             "default_branch": git(["symbolic-ref", "--short", "HEAD"]),
+            # Read from local remote-tracking refs, not `ls-remote`: a register that needs the network to
+            # reproduce itself would stop being checkable on the very machine that deleted the sources.
+            "remote_branches_observed": sorted(
+                line.strip() for line in
+                git(["branch", "-r", "--format=%(refname:short)"]).splitlines()
+                if "/" in line.strip()),
             "prepush_hook": hook_facts(),
             "core_hooks_path": git(["config", "--get", "core.hooksPath"]) or None,
         },

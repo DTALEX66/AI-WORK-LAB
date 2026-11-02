@@ -9,7 +9,8 @@
 | 分支 | 用途 |
 |---|---|
 | `main` | 稳定主干。日常不直接推；由 `integration/*` 通过快进合并进来 |
-| `integration/<主题>-YYYYMMDD` | 融合与批次工作分支（当前：`integration/local-fusion-20261029`） |
+| `integration/<主题>-YYYYMMDD` | 融合与批次工作分支的命名约定；当前仓库已收敛到单一主线，
+  批次分支完成后并入 `main` 并退掉（`integration/local-fusion-20261029` 于 2026-11-02 这样退掉） |
 
 - 不重写已推送的历史：`--force` / `--force-with-lease` / `commit --amend` 已推送的提交都是禁止动作。
 - 打标签只用带注标签，且必须指向一次全量收据对应的提交。
