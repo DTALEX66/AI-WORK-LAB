@@ -305,8 +305,9 @@ def test_the_audit_state_record_is_not_staler_than_the_tree_it_describes():
     A whole-document comparison can never come out true here: the record cannot name the commit
     that carries it, and ``generated_at`` moves with every run -- so the check used to print
     ``matches: false`` while exiting 0, which reads as a broken guard. The self-referential
-    fields are now folded out *and named*; the register census, the source-repo digests and the
-    re-review conclusion are compared in full, and the exit code follows that comparison.
+    fields are now folded out *and named*; the register census, the source-repo digests, the
+    audited binding and the re-review conclusion are compared in full, and the exit code follows
+    that comparison.
     """
     check = subprocess.run([sys.executable, "-B", "-X", "utf8",
                             str(TARGET_ROOT / "scripts" / "build_audit_state.py"), "--check"],
@@ -326,8 +327,12 @@ def test_the_audit_state_record_is_not_staler_than_the_tree_it_describes():
         assert report["matches"] is True and report["stale"] is False, report
     assert report["head_is_ancestor"] is True, report
     folded = set(report["folded_rotating"])
-    assert {"generated_at", "head_sha_now", "audited_head_sha"} <= folded, folded
-    for compared in ("registers", "source_repos", "re_review", "candidate_manifest"):
+    assert {"generated_at", "head_sha_now", "audited_candidate_digest",
+            "audited_candidate_files", "commit_count_observed"} <= folded, folded
+    # The binding is not a rotating field: it names an ancestor, so it can be compared. Folding it
+    # is what let a record bound to the head carrying the document print MATCHES.
+    for compared in ("registers", "source_repos", "re_review", "candidate_manifest",
+                     "audited_head_sha", "audited_head_tree"):
         assert not any(part in folded for part in (compared, "upload_facts/" + compared)), (
             compared, sorted(folded))
 

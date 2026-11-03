@@ -363,6 +363,95 @@ def test_the_audit_state_classes_absence_prerequisite_and_drift_apart():
         "it: drift=%s prereq=%s" % (drift, prereq))
 
 
+def test_the_audit_binding_only_moves_when_a_caller_names_the_commit(tmp_path):
+    """Tonight's own accident, turned into a guard: publishing an observation is not a re-measure.
+
+    Republishing the push facts means running ``build_audit_state.py`` at a HEAD newer than the
+    receipt. It used to resolve the binding from ``audited_commit or "HEAD"``, so an unflagged
+    refresh moved the record onto the head carrying the document itself -- a tree no receipt can
+    describe -- while the check folded that field as a rotating one. The generator ran green and
+    the record it wrote was a fake binding. Everything below runs against a real repository built
+    in a temp directory, so the refusal paths are reached through the same code path a caller uses.
+    """
+    repo = tmp_path / "binding-repo"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "docs").mkdir()
+    for name in ("build_audit_state.py", "candidate_snapshot.py", "source_roots.py"):
+        (repo / "scripts" / name).write_bytes((SCRIPTS / name).read_bytes())
+    out = repo / "docs" / "AUDIT-STATE.json"
+
+    def git(*args):
+        finished = subprocess.run(["git", *args], cwd=str(repo), capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace")
+        assert finished.returncode == 0, (args, finished.stderr[-400:])
+        return finished.stdout.strip()
+
+    def run(*args):
+        """One invocation, stdout parsed as the whole JSON document it is meant to be."""
+        finished = subprocess.run([sys.executable, "-B", "-X", "utf8",
+                                   str(repo / "scripts" / "build_audit_state.py"), *args],
+                                  cwd=str(repo), capture_output=True, text=True,
+                                  encoding="utf-8", errors="replace", timeout=600)
+        body = (finished.stdout or "").strip()
+        payload = json.loads(body) if body.startswith("{") else {}
+        return finished, payload
+
+    git("init", "-q")
+    git("config", "user.email", "awl-binding-test@example.invalid")
+    git("config", "user.name", "AWL binding test")
+    (repo / "payload.txt").write_text("first\n", encoding="utf-8", newline="\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "the commit that gets measured")
+    measured = git("rev-parse", "HEAD")
+
+    finished, _payload = run("--audited-commit", measured)
+    assert finished.returncode == 0, finished.stderr[-600:]
+    assert out.is_file(), "the generator wrote nothing, so the binding it claims never existed"
+
+    # A second commit is what a push-fact refresh looks like: HEAD moves, the measurement does not.
+    (repo / "payload.txt").write_text("second\n", encoding="utf-8", newline="\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "the commit that carries this document")
+    later = git("rev-parse", "HEAD")
+    assert later != measured
+    finished, _payload = run()
+    assert finished.returncode == 0, finished.stderr[-600:]
+    assert _payload.get("binding_moved_this_run") is False, (
+        "the generator says it moved the binding on a run that named no commit: %s" % _payload)
+    published = json.loads(out.read_text(encoding="utf-8"))
+    assert published["audited_head_sha"] == measured, (
+        "an unflagged refresh re-pinned the binding to %s, a tree nothing measured: the record now "
+        "claims the commit that carries it was audited" % published["audited_head_sha"][:12])
+    assert published["head_sha_now"] == later, (
+        "the rotating field is the only place HEAD is allowed to appear")
+    assert published["audited_head_tree"] == git("rev-parse", measured + "^{tree}")
+
+    finished, payload = run("--check")
+    assert finished.returncode == 0 and payload["verdict"] == "MATCHES", (
+        "the binding and its tree are now compared in full, so an untouched record on the same "
+        "machine must still agree with itself: %s" % payload)
+
+    # Naming a different commit on the check side is a disagreement, not a rotating field.
+    finished, payload = run("--check", "--audited-commit", later)
+    assert finished.returncode == 1, (
+        "--check agreed with the record and with a different binding at the same time: %s"
+        % payload)
+    assert "audited_head_sha" in payload["stale_sections"], payload
+
+    finished, payload = run("--audited-commit", "awl-no-such-ref")
+    assert finished.returncode == 1 and payload.get("error") == "AUDITED_COMMIT_UNRESOLVABLE", (
+        "an unresolvable flag fell through to HEAD, which is the re-pin this node exists to "
+        "forbid: %s" % payload)
+
+    # A commit that exists but this branch cannot reach is refused before anything is written.
+    orphan = git("commit-tree", git("rev-parse", "HEAD^{tree}"), "-m", "unreachable")
+    before = out.read_bytes()
+    finished, payload = run("--audited-commit", orphan)
+    assert finished.returncode == 1 and payload.get("error") == "AUDITED_COMMIT_NOT_IN_THIS_BRANCH", (
+        "the generator published a binding to a commit outside this branch: %s" % payload)
+    assert out.read_bytes() == before, "the refusal still wrote the document"
+
+
 def test_the_spelling_guard_refuses_a_planted_file(tmp_path):
     """The guard's own population, proven: it enumerates, it can be pointed at a plant, and the
     real tree is clean.

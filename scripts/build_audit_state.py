@@ -8,7 +8,9 @@ not compute untouched, so an older document keeps the keys its tests still asser
 
 Usage: after committing a candidate, run
     python scripts/build_audit_state.py --audited-commit <that commit>
-and commit the resulting one-line-per-round change.
+and commit the resulting one-line-per-round change. Without the flag the document is refreshed
+in place and the binding stays where the last measurement put it; a run that republished the
+remote facts must not be able to move what is claimed to have been measured.
 """
 from __future__ import annotations
 
@@ -182,6 +184,10 @@ def merge(existing: dict, updates: dict) -> dict:
             if isinstance(manifest, dict):
                 manifest = dict(manifest)
                 manifest["口径_implementation"] = "scripts/candidate_snapshot.py"
+                manifest["what_audited_candidate_names_read"] = (
+                    "the working tree at run time (%s), not the tree of audited_head_sha; "
+                    "audited_head_tree is that commit's own tree and is compared in full"
+                    % manifest.get("口径", "git_cached_plus_non_ignored_untracked"))
                 merged["candidate_manifest"] = manifest
         else:
             merged[key] = value
@@ -191,7 +197,17 @@ def merge(existing: dict, updates: dict) -> dict:
 #: Fields the record cannot pin without lying about itself (self-reference) or restarting
 #: the clock. ``audited_candidate_files`` and ``commit_count_observed`` belong here too: a
 #: commit that carries this document changes both by construction.
-ROTATING_FIELDS = ("generated_at", "head_sha_now", "audited_head_sha", "audited_head_tree",
+#: ``audited_head_sha`` and ``audited_head_tree`` used to sit in this list as well, on the
+#: reasoning that a tracked document cannot name its own commit. That is true of
+#: ``head_sha_now``, not of the *binding*: the binding names an ancestor, so comparing it costs
+#: nothing, and a ``--check --audited-commit X`` run against a record naming Y now says DRIFT
+#: instead of agreeing with both. What this comparison cannot decide is whether the published
+#: binding was ever measured at all -- only the suite receipt says that, and the clause that
+#: reads it lives in ``audit_objective_closure``, not here.
+#: What genuinely rotates is the ``audited_candidate_*`` pair: that 口径 reads the working tree
+#: (git cached plus non-ignored untracked), so it changes whenever an uncommitted document
+#: changes, even while the binding stays put.
+ROTATING_FIELDS = ("generated_at", "head_sha_now",
                    "audited_candidate_digest", "audited_candidate_files",
                    "commit_count_observed")
 ROTATING_NESTED = ("remote_ref_observed",)
@@ -307,14 +323,40 @@ def _absent_source_roots(document: dict) -> list[dict]:
             if isinstance(entry, dict) and entry.get(SOURCE_NOT_OBSERVED_KEY)]
 
 
+def binding_commit(existing: dict, requested: str | None) -> str:
+    """Which commit the record binds to: re-pinning is an explicit act, never a side effect.
+
+    Omitting ``--audited-commit`` used to mean HEAD, so the ordinary act of publishing a fresh
+    observation (the remote ref after a push, today) silently moved the binding onto the head
+    carrying this very document -- a tree no receipt can describe -- while ``--check`` folded
+    ``audited_head_sha`` and still printed ``MATCHES``. That combination is how a fake binding
+    survives a green gate, so the flag is now the only thing that moves it.
+    """
+    if requested:
+        # ``rev-parse`` echoes an unresolvable argument back on stdout and only signals failure in
+        # its exit code, which this module's git() does not read; --verify prints nothing instead,
+        # so a typo arrives as an empty answer the caller refuses rather than as a literal ref
+        # written into the record as if it were a commit.
+        return git(["rev-parse", "--verify", requested + "^{commit}"])
+    published = (existing.get("audited_head_sha") or "").strip()
+    return published or git(["rev-parse", "--verify", "HEAD^{commit}"])
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--audited-commit")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv[1:])
 
-    updates = live_fields(args.audited_commit)
     existing = json.loads(OUT.read_text(encoding="utf-8")) if OUT.is_file() else {}
+    binding = binding_commit(existing, args.audited_commit)
+    if not binding:
+        # An empty answer here would make live_fields fall back to HEAD, which is the re-pin this
+        # function exists to forbid: a typo in the flag must refuse, not silently measure nothing.
+        print(json.dumps({"error": "AUDITED_COMMIT_UNRESOLVABLE",
+                          "requested": args.audited_commit}, ensure_ascii=True))
+        return 1
+    updates = live_fields(binding)
     document = merge(existing, updates)
     # a stale audited commit is only legitimate if it really is in this branch's history
     ancestry = subprocess.run(["git", "merge-base", "--is-ancestor",
@@ -350,12 +392,24 @@ def main(argv: list[str]) -> int:
         if stale or ancestry.returncode != 0:
             return 1
         return 3 if (unobservable or prereq) else 0
+    if ancestry.returncode != 0:
+        # Writing this document would be publishing a binding to a tree that is not in this
+        # branch, which is the one claim a reader cannot check after the fact. Refuse instead.
+        print(json.dumps({"error": "AUDITED_COMMIT_NOT_IN_THIS_BRANCH",
+                          "audited_head_sha": document["audited_head_sha"],
+                          "head_now": document["head_sha_now"]}, ensure_ascii=True))
+        return 1
     OUT.write_text(text, encoding="utf-8", newline="\n")
+    # A clone has no hook file, so sha256_observed is None there. Slicing it unconditionally made
+    # the write path raise exactly where the record is meant to say "this machine did not have one".
+    hook_digest = document["upload_facts"]["prepush_hook"]["sha256_observed"]
     print(json.dumps(dict(written=str(OUT), audited_head_sha=document["audited_head_sha"],
                           candidate_files=document["audited_candidate_files"],
                           head_is_ancestor=ancestry.returncode == 0,
-                          hook_sha256=document["upload_facts"]["prepush_hook"]
-                          ["sha256_observed"][:12] + "…"), ensure_ascii=True))
+                          hook_sha256=(hook_digest[:12] + "…" if hook_digest else None),
+                          binding_moved_this_run=(
+                              existing.get("audited_head_sha") != document["audited_head_sha"])),
+                      ensure_ascii=True))
     return 0
 
 
