@@ -8,7 +8,7 @@
 现值比对，对不上即为红。
 
 - 最近核验：2026-11-02（本地执行，并已推送到 origin；推送事实与公开克隆的独立复跑见 docs/CODEX-AUDIT-ENTRY.md §15.27）
-- 依托提交：全量收据所测的那棵树是 `127e571`（520 passed, 1 warning, 3 subtests passed in 1474.85s (0:24:34)，摘要 `05f23dbf3551a294…`，候选 7284 文件）；当前 `main` 的真实 SHA 一律用
+- 依托提交：全量收据所测的那棵树是 `6b0cfbf`（520 passed, 1 warning, 3 subtests passed in 1599.45s (0:26:39)，摘要 `add908836cce1b3d…`，候选 7284 文件）；当前 `main` 的真实 SHA 一律用
   当前 `main` 的真实 SHA 一律用 `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**唯一分支与默认分支都是 `main`**——那条融合批次分支已在
   2026-11-02 按 owner「没问题就把分支合并到主线啊」退掉（退掉前核过：两指针互无独有提交，三个标签指向的
@@ -142,7 +142,7 @@ unsettled_files = 237
 | workbench bundle | 无法重建（缺 `picomatch`，需网络安装，未授权），两个读 bundle 的 JS 闸门仍校验旧字节 | `docs/CODEX-AUDIT-ENTRY.md` §15.22 |
 | 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。收据已在这两个修复之后重取：现记 `499 passed / 0 failed / 0 errors`，绑在 `94dd47c`（摘要 `1467eeaea846ac08…`），改绑之后只有 `docs/` 与 `migration/` 的字节的动过 | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
 | 归档原件的唯一副本 | `1131` 个对象（约 `1.06 GB`）目前只在统一归档里有；归档自己的 `完整性校验报告.json` 仍写 `source_file_set_unchanged: true`，而它点名的 `2031` 条来源路径现在**一个都不存在**（`D:\All projects\Record` 已消失，`xiangmuguidang` 是空目录）——那句话对今天的磁盘已不成立，归档不可再被当作可清理的副本 | `migration/archive-object-reconciliation-20261101.csv`、`_归档管理\完整性校验报告.json` |
-| 删掉两个来源仓之后本仓还能不能独立跑 | **切割本身在最终代码态重测成立**（克隆 HEAD `127e571`，§15.32；收据测的也是这一头 `127e571`）：三根收进 `scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 三个环境变量指向不存在的路径即全仓进入切割态，**一个字节都不改**（克隆的 `git status` 前后各读一次均为空：`no_bytes_rewritten_verified=True`，克隆里没有 `.project-local`=False）；**10 道闸门两态全部具名、无 traceback**（`SOURCE_REPO_ABSENT`/rc=3、无收据与无安装报告的具名拒绝、真漂移 rc=1 三类互不塌陷）；克隆可跑集 25 文件，对照 `363 passed, 1 warning, 3 subtests passed in 303.63s (0:05:03)`（失败 0），处理 `361 passed, 2 skipped, 3 subtests passed in 159.22s (0:02:39)`（失败 0），因开关而红的节点 **0** 个、只在没开关时红 **0** 个，两个 skip 逐条点名（§15.32）。克隆内复跑终局审计 `NOT CLOSED`：{"PASS": 8, "FAIL": 0, "PENDING": 6, "INSTRUMENT_ERROR": 0}，未具名 0 条——它说的是这台机器观测不到，不是通过。**新查出的缺口换了位置**：`migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 多（本机 work 2734 / design 4476 vs 克隆 2764 / 4488），根因定位在 `copied_index()` 以两个绝对路径相等判「同一条去向」——换台机器就不等，于是同一来源文件被记两行；本机 `--check` 仍 rc=0，跨机复现要到克隆里才暴露，本轮试过一处修法并实测两处都不对，已整体回退，未进仓库 | `.project-local/runs/independence-cut-20261103-final.json`、`.project-local/runs/ag-skip-names-20261103.txt`、docs/CODEX-AUDIT-ENTRY.md §15.32 |
+| 删掉两个来源仓之后本仓还能不能独立跑 | **切割本身在最终代码态重测成立**（克隆 HEAD `6b0cfbf`，§15.32；收据测的也是这一头 `6b0cfbf`）：三根收进 `scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 三个环境变量指向不存在的路径即全仓进入切割态，**一个字节都不改**（克隆的 `git status` 前后各读一次均为空：`no_bytes_rewritten_verified=True`，克隆里没有 `.project-local`=False）；**10 道闸门两态全部具名、无 traceback**（`SOURCE_REPO_ABSENT`/rc=3、无收据与无安装报告的具名拒绝、真漂移 rc=1 三类互不塌陷）；克隆可跑集 25 文件，对照 `363 passed, 1 warning, 3 subtests passed in 470.33s (0:07:50)`（失败 0），处理 `361 passed, 2 skipped, 3 subtests passed in 160.37s (0:02:40)`（失败 0），因开关而红的节点 **0** 个、只在没开关时红 **0** 个，两个 skip 逐条点名（§15.32）。克隆内复跑终局审计 `NOT CLOSED`：{"PASS": 8, "FAIL": 0, "PENDING": 6, "INSTRUMENT_ERROR": 0}，未具名 0 条——它说的是这台机器观测不到，不是通过。**新查出的缺口换了位置**：`migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 多（本机 work 2734 / design 4476 vs 克隆 2764 / 4488），根因定位在 `copied_index()` 以两个绝对路径相等判「同一条去向」——换台机器就不等，于是同一来源文件被记两行；本机 `--check` 仍 rc=0，跨机复现要到克隆里才暴露，本轮试过一处修法并实测两处都不对，已整体回退，未进仓库 | `.project-local/runs/independence-cut-20261103-final.json`、`.project-local/runs/ag-skip-names-20261103.txt`、docs/CODEX-AUDIT-ENTRY.md §15.32 |
 
 ## 三、证据分级（不拼接旧成绩）
 
@@ -176,7 +176,7 @@ unsettled_files = 237
 
 ## 五、下一步
 
-1. ~~重取全量收据并改绑登记表~~ 本轮又做了两遍，因为每次收紧都是活代码：收据现在测 `127e571`（`520 passed, 1 warning, 3 subtests passed in 1474.85s (0:24:34)`，摘要 `05f23dbf3551a294…`，候选 7284 文件，`tracked_bytes_moved_during_run` 为空），`migration/audit-item-closure.csv` 的收据列、`docs/AUDIT-STATE.json`、`migration/task-acceptance.csv`、`config/blocker-register.json` 与入口数字段一起按这张收据重发布。
+1. ~~重取全量收据并改绑登记表~~ 本轮又做了两遍，因为每次收紧都是活代码：收据现在测 `6b0cfbf`（`520 passed, 1 warning, 3 subtests passed in 1599.45s (0:26:39)`，摘要 `add908836cce1b3d…`，候选 7284 文件，`tracked_bytes_moved_during_run` 为空），`migration/audit-item-closure.csv` 的收据列、`docs/AUDIT-STATE.json`、`migration/task-acceptance.csv`、`config/blocker-register.json` 与入口数字段一起按这张收据重发布。
    判据口径沿用上一轮定下的那条并且仍然成立：收据不要求点名 HEAD，只要求「收据的提交是 HEAD 的祖先，且其间每个动过的跟踪文件都是文档或生成登记表，逐个点名」；代码或测试出现在那个区间就是 `FAIL`。
    本轮同时记下两个真实缺口，不用「闭环」二字把它们盖掉：① `migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 大（work 2764 vs 2734、design 4488 vs 4476），根因指向 `copied_index()` 以绝对路径相等判「同一条去向」，换机器就不等；② `apps/workbench` 的 bundle 仍无法离线重建，两个读 bundle 的JS 闸门仍在校验旧字节。两条都在 docs/CODEX-AUDIT-ENTRY.md 有对应小节。
 2. owner 对 `237` 条待裁决来源做批量判定（含 32 条阻断 `L10#0` 的）。
@@ -211,7 +211,7 @@ unsettled_files = 237
      `build_source_coverage --check` 会在重发布之前拒绝，这条线是被守卫的，不是靠记得去做。
    - 本仓的独立性以 §二 最后一行与 docs/CODEX-AUDIT-ENTRY.md §15.26、§15.27 的实测结论为准；
      凡是依赖来源仓的测试都会显式点名前置，不会静默跳过或报错伪装成通过。
-6. **推送与标签（owner 2026-11-03「同时打一个标签再推」）**：第一次续推落在 `31605d7`，恢复点是附注标签 `closure-20261103`（解引用到 `31605d7bf012`）；本轮改绑与登记的提交在同一句授权下继续推同一分支。**两端当前关系一律用 `git ls-remote` 现读，不抄本行数字**：写入本行时远端 `main` = `31605d7bf012`，本地 `HEAD` = `127e571fdb07`（本地领先 3 个提交）。`--no-verify` 未使用，守卫三条检查逐条现跑（授权 head 相等、最大单文件 33082203 字节 <100MB、公开面危害 rc=0，见 §15.32）。独立性现行读数取自 **§15.32 的最终态重测**（克隆 HEAD `127e571`，三个环境变量一设即切割态、`no_bytes_rewritten_verified=True`）：克隆可跑集 25 文件，对照 `363 passed, 1 warning, 3 subtests passed in 303.63s (0:05:03)`，处理 `361 passed, 2 skipped, 3 subtests passed in 159.22s (0:02:39)`，因开关而红 0 个、只在没开关时红 0 个，10 道闸门两态全具名无 traceback。仍归 owner 的两件小事不变：那条 integration 分支要不要删（远端分支删除是新的共享状态动作，本仓不动手）、远端保持 public 还是转 private（本轮按知情后的「全部上传」执行，未擅自改可见性）。
+6. **推送与标签（owner 2026-11-03「同时打一个标签再推」）**：第一次续推落在 `31605d7`，恢复点是附注标签 `closure-20261103`（解引用到 `31605d7bf012`）；本轮改绑与登记的提交在同一句授权下继续推同一分支。**两端当前关系一律用 `git ls-remote` 现读，不抄本行数字**：写入本行时远端 `main` = `31605d7bf012`，本地 `HEAD` = `6b0cfbfbe96f`（本地领先 5 个提交）。`--no-verify` 未使用，守卫三条检查逐条现跑（授权 head 相等、最大单文件 33082203 字节 <100MB、公开面危害 rc=0，见 §15.32）。独立性现行读数取自 **§15.32 的最终态重测**（克隆 HEAD `6b0cfbf`，三个环境变量一设即切割态、`no_bytes_rewritten_verified=True`）：克隆可跑集 25 文件，对照 `363 passed, 1 warning, 3 subtests passed in 470.33s (0:07:50)`，处理 `361 passed, 2 skipped, 3 subtests passed in 160.37s (0:02:40)`，因开关而红 0 个、只在没开关时红 0 个，10 道闸门两态全具名无 traceback。仍归 owner 的两件小事不变：那条 integration 分支要不要删（远端分支删除是新的共享状态动作，本仓不动手）、远端保持 public 还是转 private（本轮按知情后的「全部上传」执行，未擅自改可见性）。
 7. **安全收尾两件（owner 侧，我不代办）**：GitHub 四条 `aws_temporary_access_key_id` 告警仍处于 open，
    关闭它们是一次安全背书动作；若要确认这些第三方 key 的现状，请走 AWS 侧核查，不要把值贴进任何会话。
    仓库侧该做的已做：两个含值的归档对象已从公开面撤下并具名登记（`QUARANTINED_CREDENTIALS`，
