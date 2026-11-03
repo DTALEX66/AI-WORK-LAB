@@ -2416,3 +2416,141 @@ evidence XML 为凭，两者不互换；② 它在被忽略的审计目录里加
 无查询/仅 A/仅 B/未知项目四种；N03 定一个规范字段并拒绝冲突与非法类型，**不得用默认全 false 把测试"修绿"**；
 N04 限定 `work/design`、其余 400，且拒绝时两个库都不留残留。每条都要真实 HTTP 正例 + 拒绝例 + 重启读回，
 增量测试有意义即可，不重复堆断言。
+### 15.34 云端审计第一批 N01–N05 落地：每条都先证明能红；第五条改到判据层，Linux 原生复跑如实 NOT_RUN
+
+**范围与授权。** owner 指令「前端不用你做 你来执行后端」：本轮只做任务包第一批的后端条目 N01–N05。
+N06/N07（统一 UI 会话与同源接线、面向新前端的接口 manifest）与全部 STITCH 前端工作**不在本轮**；
+包内第二批留在后面。工作全部在本地分支 `audit/backend-closure-20261103`，起点 `0de1ade`。包内逐字写着「不自动
+fetch/pull/push、不 PR、不 Release、不部署、不触发远程 CI」与「不要依据仓库历史上传记录推定获得
+新的上传授权」——§15.32 那次推送授权**不延伸到本批**，本批到现在一次也没推。
+
+**提交面（`git log 0de1ade..HEAD` 现读；本节自己那次追加提交不在表里，它在这张表写完之后才存在）。**
+
+```
+2319365 改绑到覆盖本批代码态的干净收据：`06a17d0` 上 535 passed / 0 failed，五处一起跟着走
+06a17d0 把审计记录绑回本轮真正测过的那棵树：`audited_candidate_files` 之前记的是别的树的文件数
+1cb8ee2 N05 修根因：venv 解释器的布局按平台派生，绝对路径判据补上 POSIX 一支
+809b5a8 重发布派生登记表：backend/v1.py 的行号被 N02–N04 挪动，handler 位置列现读重算
+c97c72c N03+N04 修根因：专业确认字段不再被静默忽略，项目来源在两个库都不碰之前枚举拒绝
+005634c N02 修根因：任务项目筛选抵达 handler，空项目/未知项目/畸形参数各自具名
+f7d640a N01 修根因：工作区初始化成为显式契约，首次运行回一条 json 与下一步命令，而不是裸 traceback
+82c8d36 归档 owner 交付的云端审计与 STITCH 包，并在本机真实 HTTP 上复现它的四条发现
+```
+
+**逐条：根因、修法、能红的反证。** 每条"修之前是什么"都在本机真实 loopback HTTP 上重取过，
+原始读数和前后对照留在 `.project-local/runs/n03-{before,after}.json`、
+`n04-{before,after}.json`、`n02-surface/`（路由登记同一棵表的两次跑）。
+
+- **N01 首次启动没有可执行契约。** `PathPolicyError` 直接穿出、`stdout` 零字节、失败启动还先把
+  运行时根建出来，而 README 第 1 步写的就是那条命令。新增 `backend/workspace.py` 做唯一写者：
+  `guard()` 不写一个字节答完五类拒绝（`WORKSPACE_NOT_INITIALIZED` 可修并附下一步命令；
+  `WORKSPACE_IS_A_FILE` / `WORKSPACE_IS_A_DRIVE_ROOT` / `WORKSPACE_IS_A_NETWORK_PATH` /
+  `WORKSPACE_CONTAINS_REPOSITORY` 不可修——尤其最后一条：在 checkout 里放标记等于把整个仓变成
+  别人的 project root）；`init()` 显式调用、目录可建、标记**只在不存在时写**；CLI `--init` 排在
+  token 握手之前；`boot_probe` 现在先跑真实 `--init` 再把 `workspace_init` 一起报出来。
+  路径策略一条没放宽。反证 `falsify_workspace_contract.py` 四处退回旧语义，各处只红自己那条腿。
+- **N02 筛选从未抵达 handler。** `dispatch()` 对 `exact` 路由拿整条 `self.path` 比对，除非路由
+  声明 `path_only`；`GET /api/v1/tasks` 少这一旗，所以 handler 里那段 `project_id` 解析自写下起
+  **一次也没被执行过**（同表 `/api/v1/search`、`/api/v1/design/plans` 等四条都带着）。修法补旗，
+  并把契约收口成"这条路由只定义 `project_id`"：其余查询名 `400 TASK_FILTER_PARAM_UNKNOWN`、
+  重复 `..._DUPLICATE`（`dict(parse_qsl())` 会静默留最后一个，两个不同项目不该由解析顺序决定）、
+  空值/纯空白 `..._EMPTY`（空值不是"没筛选"）；未知项目回与同路径 POST 同一支
+  `404 PROJECT_NOT_FOUND`——`200 + []` 与"这个项目存在但还没有任务"逐字节相同，而交付单 04 行
+  要求前端不许把吞掉的错误渲染成"没有任务"。响应形状保持 `{tasks}` 一格没加，理由在下面。
+  五个新节点全走真实 HTTP；反证 A 只摘旗 → 五条全红，B 只把 handler 退回 `or None`（路由保持
+  正确）→ 恰那两条契约节点红、隔离节点仍绿，归因不连坐。
+- **N03 专业确认字段朝两个方向静默。** 旧的一行只读嵌套拼写，并把读到的东西塞进 `bool()`。
+  本机旧读数：顶层 `true` → 201 存 **0**；顶层 `true` 配嵌套 `false` → 201 存 0（谁赢由读哪支
+  决定，不报错）；嵌套字符串 `"false"` → 存 **1**（`bool("false")` 为真）——审计只报了前一种，
+  后两种更糟：它替没要门的人立了一道真人门。修法 `_professional_required()`：两种拼写都有效
+  （顶层是库列名与响应键的名字，嵌套是老调用方一直在写的），出现过的值必须是 JSON 布尔否则
+  `400 PROFESSIONAL_REQUIRED_NOT_BOOLEAN`（含 `null`、`0/1`、`"true"`），两种拼写同时出现必须
+  一致否则 `400 PROFESSIONAL_REQUIRED_CONFLICT`；只有两者都不出现才落库声明的默认。
+  **没有任何测试靠"默认全 false"变绿**：六个布尔组合逐个断言存回 0/1，并要完成投影对三支
+  声明 true 的任务点名 `PROFESSIONAL_ACCEPTANCE_MISSING`、对三支不要求的不点——标记不是装饰。
+  重启那一半扩进 `test_v17` 已有的双启动节点：顶层声明的任务在第二个进程里仍是 1、lifecycle 仍
+  不是 COMPLETED、投影仍点同一个名，且 `after == before` 逐字节不变（不额外开机）。
+  反证三支单变量各只红自己的腿。
+- **N04 错来源不但换域，还绕过根校验。** `if source == "work": … else: design` 使
+  `not-a-supported-source` / `WORK` / `Design` / "错来源+缺 work 根" 四支都拿 201，
+  **统一库与设计域各多一行**。修法在任何一次写之前按枚举拒绝 `400 PROJECT_SOURCE_UNKNOWN`
+  （与 `unified_store.register_project` 自己抛的码同名，一套词汇）。大小写不折叠；`_require`
+  已有的首尾裁剪保留（`"  work  "` 必须继续走 work 支，缺根时回 `WORK_PROJECT_ROOT_REQUIRED`，
+  这条钉在节点里，用来证明枚举没把它悄悄改道到 design）；缺省来源继续显式拒绝。
+  反证三支（删枚举 / 换错误码 / 折叠大小写）都恰红 N04 那一个节点，邻座三个 N03 节点保持绿。
+- **N05 两处"只认 Windows"。** ① 八个站点手拼 `.venv/Scripts/python.exe`——Linux 上同一个 venv
+  根底下是 `bin/python`，审计那次 21 个迁移/重启节点起不来就是这个；② `_cfg_machine_path()`
+  只认盘符式与 UNC，`/home/…` 在它眼里"不是路径"，于是 `carriers == ["probe"]` 这类形状断言
+  在非 Windows 上必然对不上。修法：布局按平台派生，`.venv` 字面量**故意留在每个文件里**——克隆
+  分区（`test_v23.PREREQ`）靠读文本判定"这个文件绑本机先决条件"，挪进 helper 会把信号从真正
+  依赖它的文件上移走；判据加 `startswith("/")` 一支，并排除本服务自己的端点前缀 `/api/`
+  （实测这六个面里以 `/` 开头的值只有 surface-map 的十条端点说明）。没有改用
+  `Path(...).is_absolute()`：那是"本平台"判据，在 Linux 上会把台账里逐字带来的 `C:\…` 读成
+  "不是路径"，而那串恰恰是这个节点要盯的泄漏对象。新节点 `test_the_venv_interpreter_layout_is_
+  derived_and_agrees_with_this_interpreter` 用 `sysconfig.get_paths()["scripts"]` 对账——解释器
+  自己回答"脚本目录叫什么"，所以这条腿在任何平台都是真判据，不是 `os.name` 和自己比。
+  反证四支（去 POSIX 支 / 去端点排除 / 对调两布局 / 手拼 Windows 路径）各只红对应节点。
+  **状态如实 PARTIAL**：Windows 原生复跑过（八个文件现数 157 节点全绿、`boot_probe` OK），
+  **Linux 原生复跑 NOT_RUN**——这台机器没有 Linux 解释器，远程 CI 需要 owner 单独授权。
+
+**响应形状为什么一格里都没加。** `migration/route-surface.csv` 第 10 行登记的顶层键就是 `tasks`；
+那本登记是 164 条路由逐条实测一次写成的，而生成器每次跑都会重铸路径里的 id。本机对照：在册那份与
+改动后重跑那份（同一份代码、`--csv` 指到 scratch，不动跟踪文件）164 行人群相同，逐列比对后
+**唯一**变化的列是「可选分支变体」，且每条差异都只是新铸的项目 id / 资产摘要。所以给响应加键等于
+用一次性随机路径覆盖已登记的实测形状；N02 因此不动形状，契约强度全在具名拒绝码上。
+
+**本轮被自己点亮的第一盏红灯：行尾。** 反证脚本第一版用 `write_text(newline="\n")` 还原
+`backend/v1.py`，而该文件在 HEAD 里是 CRLF。两处植入都按要求红了，但"还原"把 1480 个行尾改成 LF，
+`git diff --stat` 报出 2930 行纯行尾噪声。按字节还原（`read_bytes`/`write_bytes` + 回贴 CRLF），
+再与 `git show HEAD:backend/v1.py` 逐行比对，差集只剩这条改动本身（现读 `git diff --numstat`
+33 增 4 删）；脚本改用字节写回，同批判据重跑仍绿。
+
+**第二盏：一张收据替不了它没测过的树。** 第一次全量跑 `533 passed / 2 failed`，两条是
+`test_v20…two_readings_are_distinct…` 与 `test_v23…machine_independent_part…`，同一个根因：
+`docs/AUDIT-STATE.json` 的 `audited_candidate_files` 是"刷新那一刻的工作树"数出来的 7308，
+而 `audited_head_sha` 还指着 `6b0cfbf`（7284 个 blob）。`--check` 看不见它——这个字段在
+`test_v20` 自己钉住的折叠名单里；能看见它的只有按被审提交的 git 对象重算，而那正是这两条在做的事。
+上一轮 §15.24 为同一个字段记过一次同形账，结论原样适用：**重发布，不放松断言**。这条红也暴露了我
+自己的受影响面清单漏项——改了 `backend/*.py` 的行数就必须跑引用行号的登记测试，`test_v16` 当时没在
+名单里。
+
+**顺带查清的一处登记腐烂（未修，点名留给下一批）。** 注释里的行号引用是同类漂移，这次的账要算准：
+现读 `tests/` 与 `scripts/` 里指向 `backend/v1.py` 的引用共 14 条，其中 5 条是
+`test_v16_traceability.py` 为反例自己种的假位置（`:999999`、`:130`、`:146`、`:195`×2），不计入判决；
+剩下 **9 条**按各自句子点名的函数逐条重算（`.project-local/edits-20261103/measure_v1_line_cites.py`
+与 `attribute_cite_drift.py`，对着 `0de1ade` 和 `HEAD` 两棵树各跑一遍）：
+**本批开始的那棵树上就已经有 8 条对不上**，本批只新增 1 条漂移——
+`test_v02_surface.py:840` 的 `398-419` 说 `_v1_capabilities`，现在该函数起于 455；
+另有 2 处 `659-683` 被插入的行数**碰巧碰回**了 `_v1_create_attempt` 的起始行（659），
+这是巧合不是修复，也不能当证据。现读仍有 **7 条**对不上：`_v1_import_result` 被指到 `910-934`
+（现在 943 起）、`_v1_verify_result` 被指到 `978-984` 与 `987-995`（现在 1032 起），
+在 `test_v11_audit_rework.py` 的三段里各写了两遍。
+没有节点解析注释里的数字，所以全量一直绿。唯一对的修法是**改成符号名而不是重排数字**，
+而且必须排在一次代码改动之前，不能挂在收据之后的文档改绑里（`tests/` 不在 `REBIND_OK` 名单，
+那是有意的）。
+
+**新收据与五处改绑。** 全量 `535 passed, 1 warning, 3 subtests passed in 938.56s (0:15:38)`，退出码 0，failed 0 / errors 0 /
+deselected 0；被测树 `06a17d07c63e`（候选 7308 文件，摘要 `43aa0bace1c0438c…`），
+开始时跟踪树干净、**跑动期间跟踪字节移动 0**；`boot_probe` verdict OK；验收闸门仍答
+**REFUSED**（`config/blocker-register.json` 现读 blocking 1，即 `L10#0` 未清），本轮没有
+把它写成 PASS。五处按这张收据重发布：闭环表（收据副本 `receipt-archive/CLOSURE-STATE-43aa0bace1c0438c.json`
+由生成器自己写）、`docs/AUDIT-STATE.json`（`--audited-commit` 显式点名，`binding_moved_this_run: true`
+是防漂移守卫所见的动作）、`migration/task-acceptance.csv`、`config/blocker-register.json`、
+`PROJECT_CURRENT.md` 数字段。改绑之后闸门 `--check` 组 check audit-state / check blocker-register / check closure register / check entry / check isolated install verdict / check node census / check source coverage / check task-acceptance 全部 rc=0，终局审计
+`scripts/audit_objective_closure.py` 答 **NOT CLOSED**
+（14 条：PASS 13 / FAIL 1 / PENDING 0 /
+INSTRUMENT_ERROR 0，退出码 1）。节点清单
+`514 → 529`（本批 +15，起点是 `0de1ade` 那张清单的现读值；
+`build_test_census --check` 报 `tests_published == tests_now == 529`）。
+
+**照实留下的口子。**
+- N05 是 **PARTIAL**：派生分支由 `sysconfig` 那条腿在任何平台自证，但"Linux 上整套绿"没有证据。
+- `17` 条注释行号引用已漂，见上一段。
+- `_v1_create_task` 里 `acceptance` 若不是 dict 会被静默换成 `{}` 再落库——N03 的邻座，本批只按
+  验收条款收了 `professional_required` 那一格。
+- 一次运行环境事实：九个文件塞进同一次会话（149 节点）时
+  `test_v11_audit_rework.py::test_f09_observer_writes_are_refused_and_recorded` 在 `socket.connect`
+  上抛 `OSError [WinError 10055]`；单跑 `test_v11` 35 节点全绿，本张全量收据里它也是绿的。
+  记为本机连接压力下的观察，不记为已结清的判据。
+- N06/N07 与第二批未开始。第二批第一项就是这张收据的独立复现路径：从当前候选在**新克隆**里重跑
+  适用套件与隔离安装，切 cwd、清 `PYTHONPATH`，本地留原始证据与重跑方法，不上传私有日志。

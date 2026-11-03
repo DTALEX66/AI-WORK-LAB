@@ -8,7 +8,7 @@
 现值比对，对不上即为红。
 
 - 最近核验：2026-11-02（本地执行，并已推送到 origin；推送事实与公开克隆的独立复跑见 docs/CODEX-AUDIT-ENTRY.md §15.27）
-- 依托提交：全量收据所测的那棵树是 `6b0cfbf`（520 passed, 1 warning, 3 subtests passed in 1599.45s (0:26:39)，摘要 `add908836cce1b3d…`，候选 7284 文件）；当前 `main` 的真实 SHA 一律用
+- 依托提交：全量收据所测的那棵树是 `06a17d0`（535 passed, 1 warning, 3 subtests passed in 938.56s (0:15:38)，摘要 `43aa0bace1c0438c…`，候选 7308 文件）；当前分支的真实 SHA 一律用
   当前 `main` 的真实 SHA 一律用 `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**唯一分支与默认分支都是 `main`**——那条融合批次分支已在
   2026-11-02 按 owner「没问题就把分支合并到主线啊」退掉（退掉前核过：两指针互无独有提交，三个标签指向的
@@ -218,3 +218,14 @@ unsettled_files = 237
    摘要留档、有反向守卫），凭据扫描族清单已补全并提升为跟踪脚本 `scripts/check_public_hazards.py`，
    豁免只能来自 `config/secret-scan-adjudications.json` 里绑定文件摘要的逐条裁决。
    已推送这一事实无法用删文件撤销——见 docs/CODEX-AUDIT-ENTRY.md §15.28。
+8. **本批（云端审计 N01–N05）之后仍然开着的口子**（现读，勿当已完成）：
+   N05 是 PARTIAL——Linux 原生复跑 NOT_RUN（本机无 Linux 解释器，远程 CI 需 owner 另行授权）；
+   `tests/` 与 `scripts/` 里指向 `backend/v1.py` 的行号引用共 14 条，去掉 `test_v16` 自己种的 5 条
+   反例假位置后按函数名重算：**本批开始前就已有 8 条对不上**，本批只新增 1 条
+   （`test_v02_surface.py:840` 的 `398-419`，`_v1_capabilities` 现在起于 455），另有 2 条被插入的行数
+   碰巧碰回正确位置（巧合，不算修好）；现读仍 7 条对不上。修法是改成符号名而不是重排数字，
+   且要排在下一次代码改动之前（`tests/` 不在收据后的允许改动名单里）；
+   `_v1_create_task` 对非 dict 的 `acceptance` 仍静默换 `{}`；
+   任务包 N06/N07 与第二批（克隆重跑与隔离安装证据、`copied_index()` 的原机绝对路径身份、
+   `237` 未决 + `32` 个人决定项、小游戏领域包 INVALID、workbench 离线构建缺口）未开始。
+   本轮实测读数与反证件在 docs/CODEX-AUDIT-ENTRY.md §15.34。
