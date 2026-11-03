@@ -218,14 +218,15 @@ unsettled_files = 237
    摘要留档、有反向守卫），凭据扫描族清单已补全并提升为跟踪脚本 `scripts/check_public_hazards.py`，
    豁免只能来自 `config/secret-scan-adjudications.json` 里绑定文件摘要的逐条裁决。
    已推送这一事实无法用删文件撤销——见 docs/CODEX-AUDIT-ENTRY.md §15.28。
-8. **本批（云端审计 N01–N05）之后仍然开着的口子**（现读，勿当已完成）：
-   N05 是 PARTIAL——Linux 原生复跑 NOT_RUN（本机无 Linux 解释器，远程 CI 需 owner 另行授权）；
-   `tests/` 与 `scripts/` 里指向 `backend/v1.py` 的行号引用共 14 条，去掉 `test_v16` 自己种的 5 条
-   反例假位置后按函数名重算：**本批开始前就已有 8 条对不上**，本批只新增 1 条
-   （`test_v02_surface.py:840` 的 `398-419`，`_v1_capabilities` 现在起于 455），另有 2 条被插入的行数
-   碰巧碰回正确位置（巧合，不算修好）；现读仍 7 条对不上。修法是改成符号名而不是重排数字，
-   且要排在下一次代码改动之前（`tests/` 不在收据后的允许改动名单里）；
-   `_v1_create_task` 对非 dict 的 `acceptance` 仍静默换 `{}`；
-   任务包 N06/N07 与第二批（克隆重跑与隔离安装证据、`copied_index()` 的原机绝对路径身份、
-   `237` 未决 + `32` 个人决定项、小游戏领域包 INVALID、workbench 离线构建缺口）未开始。
-   本轮实测读数与反证件在 docs/CODEX-AUDIT-ENTRY.md §15.34。
+8. **云端审计第一批（N01–N05）之后仍然开着的口子**（现读，勿当已完成）：
+   N05 仍是 PARTIAL——Linux 原生复跑 `NOT_RUN`（本机无 Linux 解释器，远程 CI 需 owner 另行授权）。
+   §15.34 点名的两条本仓自己的口子已在 §15.35 收口：`backend/v1.py` 的 9 条注释行号引用改成符号并由
+   `test_v16` 两条新判据守着（现扫现判 + 三种假引用精确点名），`acceptance` 非 dict 与
+   `data_origin` 非词不再静默落库或崩成 500，各回具名 400。**新查清但没收口的**：`or {}` / `or []`
+   形状的站点在 `backend/` + `domains/work/` 现读 268 处，绝大多数是把可空列读成投影的合法归一化，
+   本轮只收了请求体那两处——把"哪些是外部输入的静默"逐点判清是单独一趟，顺手改等于把 268 处
+   判据未覆盖的地方改成未验证地动行为；另有 74 条 `*.py:NNN` 引用指向来源仓路径（本仓无从解析，
+   不在新判据范围内）。任务包 N06/N07 与第二批（克隆重跑与隔离安装证据、`copied_index()` 的原机
+   绝对路径身份、`237` 未决 + `32` 个人决定项、小游戏领域包 INVALID、workbench 离线构建缺口）未开始。
+   **本批全程未推送**（`audit/backend-closure-20261103`，最新收据 `5fafd91` / `539 passed`）。
+   读数与反证件：docs/CODEX-AUDIT-ENTRY.md §15.34、§15.35。
