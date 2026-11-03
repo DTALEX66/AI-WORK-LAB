@@ -107,3 +107,28 @@ Owner 原话两次：「先全部上传  双端仓库保持一致   该合并的
 来源仓只读；E:/F: 盘不访问；真实用户数据迁移、真实宿主写入、模型推理、外部执行器资格、
 STITCH 前端、真人签字仍按 `docs/CODEX-AUDIT-ENTRY.md` §5 的 NOT_RUN/BLOCKED/DEFERRED 记录。
 
+### 授权追加：2026-11-03 续推 main 并打一个恢复点标签
+
+Owner 原话：「同时打一个标签再推」——在 §6 上一节那次「先全部上传 双端仓库保持一致」仍然成立的前提下，
+这一句放行的是两件事：把本地 `main` 的新尖端再推一次，以及**创建一个标签并推送它**。标签是一次新的
+共享状态动作类型，所以单独记：
+
+1. 推送 `main`：本轮第一次续推是 `ff34884..31605d7bf012`，远端 `refs/heads/main` 现读
+   `31605d7bf012`；其后的改绑与文档提交在同一句授权下继续推同一分支，最终读数记在
+   `docs/CODEX-AUDIT-ENTRY.md` §15.32 与 `.project-local` 的推送授权记录里，不在这里抄第二遍。
+2. 创建附注标签 `closure-20261103`（标签对象 `dfa9051b8979`）并推送，解引用指向
+   `31605d7bf012`；它是本轮的恢复点，标签信息里写明它取代 `cut-independent-20261102` 那条已被
+   §15.29 作废的读数。
+3. 推送方式不变：不使用 `--no-verify`；`.git/hooks/pre-push` 三条检查现跑——
+   `push-authorization-20261102.json` 的 `head_commit` 等于被推提交、最大单文件 33082203 字节 < 100MB、
+   公开面危害 rc=0：扫 7284 个跟踪文件，findings 17（adjudicated 6 / example-literal 11 / unadjudicated 0），blocking 0。换提交时增量若离开 `docs/`、`migration/`、`config/`、根 `.md`
+   与生成登记表，守卫继续拦，除非那部分代码由一张 `failed==0` 的收据覆盖且收据提交是 HEAD 的祖先
+   （本轮即是这种情形，收据头写进同一份授权记录的 `code_delta_covered_by_measurement`）。
+
+不放行的仍然不放行：不改写已推送历史、不移动或删除已推送标签、不 `--force`、
+不删 `D:\All projects\WORK-LAB` 或 `DESIGN-LAB`、不改远端可见性（保持 PUBLIC 是 owner 知情后的选择）、
+不发布、不部署、不上传 `.project-local\` 内容、不触发远程 CI。
+标签 `closure-20261103` 之后若 `main` 又前进，**不重打这个标签**；新的恢复点用新名字。
+
+实测细节与推导过程记在 `docs/CODEX-AUDIT-ENTRY.md` §15.32（含推送后第一次刷新暴露的假绑定、
+以及测试沙箱跨会话累积的成因与夹具）。
