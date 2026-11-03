@@ -2351,3 +2351,33 @@ errors 0 / deselected 0；描述 `6b0cfbfbe96f`（树 `3ed7116362ca`），candid
 
 **边界照旧**：统一归档只读、未向其清理；两个来源仓未删；远端可见性未改（owner 未选转 PRIVATE）；
 不动已推送的历史与标签（`cut-independent-20261102` 那条过期读数因此留在原处，由本节的标签说明取代关系）。
+
+**「全部上传」再核一次（2026-11-03T12:45:37Z，读数全部现取）。** 工作树干净、
+本地 `main` = 远端 `main` = `20477577f13a`（`0 / 0`）、`origin/main..HEAD` 无未推提交、本地分支只有 `main`、
+本地与远端标签逐名相同（4 个：closure-20261102, closure-20261103, cut-independent-20261102, fusion-candidate-20261102）。**没有任何东西没上传**；按边界继续不上传的是
+`.project-local\`（Git 排除的运行产物）与 owner 已裁掉的 344 个位图 / 93 个容器包。
+
+唯一还会滞后的"双端一致"是**仓库描述**——它不在 Git 里，改绑与重测都不会动它。现读发现它仍写着
+`收据 adb311e：503 passed / 0 failed；终局审计 CLOSED（11/11 PASS）… 350 节点…§15.24–§15.27`，
+这三支数已经两轮不是真的了。描述是对公众读者的项目断言，所以按 §6 第 4 项（同一句「全部上传」授权的
+动作）从 artefact 重写并回读核对。第一次提交被 GitHub 拒了：
+`HTTP 422: description cannot be more than 350 characters`（我那条 521 字符）——
+这是本文件第一次记录这个硬上限，脚本自此在调用前先量长度。重写后的 320 字符版回读逐字相同：
+
+```
+AI-WORK-LAB — WORK-LAB 与 DESIGN-LAB 融合后的单一项目：统一信封/存储、只读验收门。与来源仓的切割已在最终代码态实测：三个环境变量一设即切割态、零字节改写，10 道闸门两态全具名，克隆对照 363 passed、处理 361 passed + 2 skipped，因开关而红 0 个。收据 520 passed / 0 failed @ 6b0cfbf；终局审计 CLOSED 14 条子句全 PASS。L10#0 仍阻断，验收门 REFUSED；宿主/模型/真实数据/真人签字 NOT_RUN。见 PROJECT_CURRENT.md 与 docs/CODEX-AUDIT-ENTRY.md §15.32
+```
+
+旧文案留档在 `.project-local/runs/repo-description-current.txt`（`OLD:` / `NEW:` 两段），
+生成脚本 `.project-local/edits-20261103/refresh_repo_description.py` 里所有数字从收据、终局审计
+与 AG 仪器 JSON 现取；`6b0cfbf` 那条收据仍是 `docs/AUDIT-STATE.json` 的 `audited_head_sha`，
+本节末尾追加的这段文字只动 `docs/`，不触碰代码，所以收据仍然覆盖得上一切实测过的东西。
+
+**关于时间戳，如实记一条机器观测。** 本节那个 `Z` 后缀是**本机 UTC**（与同一时刻的 `date -u` 一致），
+不是任何外部时钟：本机时区 +0800，`datetime.now(timezone.utc)` 与 `date -u` 给出同一个读数。
+但本轮观察到本机时钟相对自身历史读数有过一次前跳——上面那个提交的 committer date 是
+`11:30:42 +0800`，而写这段时的 `date -u` 已是 `12:46Z`，两者之间我只过了十几分钟的活动。
+速率本身正常（实测 `sleep 60` 之间相差 61s）。所有影响结论的时间判断都不依赖绝对钟面：
+收据与改绑用的是祖先关系与"区间内逐个文件的类别"，夹具的会话窗口用同一台机器上的相对时间，
+所以这一步跳变不改变本节任何一条判定；被改变的只是"这些 `Z` 数字与真实世界时刻相差多少"这一件
+我无法从机器内部证实的事。与 `.git` 体积那次一样：只记录，不猜测，不据此重跑或改写已有收据。
