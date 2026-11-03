@@ -142,9 +142,13 @@ def probe_source_root_absent(root: Path) -> dict:
 #: regenerated figures and the registers whose own builders are in this script's gate set. Never code
 #: or tests -- those would need a fresh receipt. `config/` is enumerated file by file on purpose: most
 #: of it is hand-edited baseline, and a blanket allow would let a registry change ride on an old run.
+#: A Markdown file at the repository root is prose by shape, so the branch is a pattern, not the four
+#: names it used to list: enumerating them made `INTEGRATION_POLICY.md` -- which is precisely where
+#: AGENTS.md §3 requires an authorization to be recorded -- read as code, and a policy paragraph would
+#: then demand a fresh 25-minute suite run to certify a sentence nobody imports.
 REBIND_OK = re.compile(r"^(docs/|migration/"
                        r"|config/(blocker-register|isolated-install-verdict)\.json$"
-                       r"|(PROJECT_CURRENT|README|AGENTS|AUTHORITY-INDEX)\.md$)")
+                       r"|[^/]+\.md$)")
 
 
 def probe_receipt_describes_this_commit(root: Path) -> dict:

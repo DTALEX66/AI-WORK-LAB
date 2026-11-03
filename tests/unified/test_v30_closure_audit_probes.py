@@ -85,10 +85,16 @@ def test_documents_committed_after_the_receipt_keep_the_clause_green(tmp_path):
     _write_receipt(root, measured)
     _touch_and_commit(root, "docs/CODEX-AUDIT-ENTRY.md", "render the measured section")
     _touch_and_commit(root, "migration/audit-item-closure.csv", "rebind the register")
+    # a root-level policy document: AGENTS.md §3 sends authorizations to INTEGRATION_POLICY.md, and
+    # when the allowance enumerated four names instead of the shape, writing that record read as if
+    # code had shipped after the measurement
+    _touch_and_commit(root, "INTEGRATION_POLICY.md", "record the owner's authorization")
+    _touch_and_commit(root, "SECURITY.md", "record the disclosure status")
     verdict = audit.probe_receipt_describes_this_commit(root)
     assert verdict["status"] == "PASS", verdict
     assert set(verdict["commited_after_receipt_documents_and_registers_only"]) == {
-        "docs/CODEX-AUDIT-ENTRY.md", "migration/audit-item-closure.csv"}, verdict
+        "docs/CODEX-AUDIT-ENTRY.md", "migration/audit-item-closure.csv",
+        "INTEGRATION_POLICY.md", "SECURITY.md"}, verdict
     assert verdict["receipt_commit"] != verdict["head"], (
         "PASS must be reachable while the receipt names an ancestor, not only the exact commit")
 
@@ -104,9 +110,14 @@ def test_code_committed_after_the_receipt_turns_the_clause_red(tmp_path):
     measured = _git(root, "rev-parse", "HEAD")
     _write_receipt(root, measured)
     _touch_and_commit(root, "scripts/a.py", "fix shipped after the measurement")
+    # the root-level allowance is a Markdown shape, not "anything sitting at the top": a JSON registry
+    # or a Makefile there would otherwise ride on a measurement that never contained it
+    _touch_and_commit(root, "Makefile", "build rule nobody re-ran")
+    _touch_and_commit(root, "config/adapter-registry.json", "registry change after the run")
     verdict = audit.probe_receipt_describes_this_commit(root)
     assert verdict["status"] == "FAIL", verdict
-    assert verdict["unexpected"] == ["scripts/a.py"], verdict
+    assert sorted(verdict["unexpected"]) == ["Makefile", "config/adapter-registry.json",
+                                             "scripts/a.py"], verdict
 
 
 def test_a_receipt_whose_suite_recorded_failures_is_a_fail_not_a_pending(tmp_path):
