@@ -837,7 +837,7 @@ def test_settings_read_set_answers_and_writes_nothing(server):
 #     → composition_root._adapter_capability_rows:815-866 → adapter_capability_projection
 #       .load_inputs:409-414（`<root>/config/adapter-registry.json` 等三份，每次请求现读）
 #     → project_adapter_capabilities:274-363（本机绝对路径经 `versionSource`:341 透传）
-#   GET /api/v1/capabilities → backend/v1.py:398-419 → capabilities.derive_catalog:97-128
+#   GET /api/v1/capabilities → backend/v1.py#_v1_capabilities → capabilities.derive_catalog:97-128
 #     ——它只遍历 CATALOG_SPEC 声明 + 资格台账，不打开 adapter-registry.json。
 #   POST /api/work/control/operations → work_surfaces.control_execute:297-325
 #     → control_service.ControlPlane.execute:500-540（合同 → 封闭 OPERATIONS 枚举:185-253

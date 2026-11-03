@@ -425,7 +425,14 @@ class V1API:
         if source not in PROJECT_SOURCES:
             _reject(400, "PROJECT_SOURCE_UNKNOWN")
         name = _require(value, "name", "PROJECT_NAME_REQUIRED")
-        declared = value.get("data_origin") or "live"
+        declared = value.get("data_origin")
+        if declared is None or declared == "":
+            declared = "live"
+        elif not isinstance(declared, str):
+            # Measured before this line existed: a list reached origin_rules.check() and left the
+            # process answering 500 INTERNAL, while an integer answered 400 by accident of the
+            # exception text. A value that is not a word is a refusal, never a crash.
+            _reject(400, "DATA_ORIGIN_UNKNOWN")
         try:
             origin_rules.check(declared)
         except origin_rules.OriginError as exc:
@@ -619,7 +626,12 @@ class V1API:
             _reject(404, "PROJECT_NOT_FOUND")
         kind = _require(value, "kind", "TASK_KIND_REQUIRED")
         title = _require(value, "title", "TASK_TITLE_REQUIRED")
-        acceptance = value.get("acceptance") if isinstance(value.get("acceptance"), dict) else {}
+        acceptance = value.get("acceptance")
+        if "acceptance" in value and not isinstance(acceptance, dict):
+            # `null` is a declared non-document, not an absent key: measured, the old line answered
+            # 201 for a string, a list, an integer and a boolean alike, storing `{}` each time.
+            _reject(400, "TASK_ACCEPTANCE_NOT_OBJECT")
+        acceptance = acceptance if isinstance(acceptance, dict) else {}
         professional_required = _professional_required(value, acceptance)
         declared = acceptance.get("data_origin", "live")
         try:

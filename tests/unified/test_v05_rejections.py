@@ -163,6 +163,93 @@ def test_adapter_dispatch_is_not_allowed_this_batch(server, work_project):
     assert body["error"].startswith("ADAPTER_DISPATCH_NOT_ALLOWED")
 
 
+def _design_projects(client) -> list:
+    status, body = client.get("/api/v1/projects")
+    assert status == 200, body
+    return body["design_runtime"]
+
+
+def test_non_object_acceptance_is_refused_instead_of_stored_empty(server):
+    """`acceptance` is a document, so a non-document is a refusal -- never an empty `{}`.
+
+    Measured before this node existed: POST with `acceptance: "a plain string"` (or a list, an
+    integer, a boolean) answered 201 and stored `{}` -- the caller's acceptance text was gone with
+    no signal anywhere, which is the same family as N03's dropped flag. The control legs keep the
+    two shapes that are legitimately "no acceptance declared": an absent key and a real dict.
+    """
+    status, project = server.client.post("/api/v1/projects", {"name": "验收形状", "source": "design"})
+    assert status == 201, project
+    project_id = project["project_id"]
+    tasks_before = len(_tasks(server.client))
+
+    for label, shape in (("字符串", "分镜表一份"), ("列表", ["分镜表一份"]), ("整数", 42),
+                         ("布尔", True), ("空串", ""), ("null", None)):
+        status, body = server.client.post("/api/v1/tasks", {
+            "project_id": project_id, "kind": "design", "title": label,
+            "acceptance": shape})
+        assert status == 400, (label, shape, status, body)
+        assert body == {"error": "TASK_ACCEPTANCE_NOT_OBJECT"}, (label, body)
+        assert "task_id" not in body, (label, body)
+
+    # the legitimate shapes still work, so the refusal above is not a blanket ban
+    status, absent = server.client.post("/api/v1/tasks", {
+        "project_id": project_id, "kind": "design", "title": "无 acceptance 键"})
+    assert status == 201, absent
+    status, documented = server.client.post("/api/v1/tasks", {
+        "project_id": project_id, "kind": "design", "title": "文档验收",
+        "acceptance": {"delivery": "分镜表一份"}})
+    assert status == 201, documented
+    status, readback = server.client.get("/api/v1/tasks/" + documented["task_id"])
+    assert status == 200 and readback["acceptance"] == {"delivery": "分镜表一份"}, readback
+    assert len(_tasks(server.client)) == tasks_before + 2, (
+        "一条被拒绝的创建仍然写了任务行")
+
+
+def test_data_origin_that_is_not_a_word_is_refused_not_crashed(server):
+    """A list used to leave the process answering 500 INTERNAL (measured before this line).
+
+    The refusals have to be named 400s on the same code the string path already uses, and neither
+    store may gain a row. `""` and an absent key stay mapped to the documented default `live`,
+    because that is the contract this endpoint had before and this node pins it rather than
+    quietly loosening it.
+    """
+    before_unified = len(_projects(server.client))
+    before_design = len(_design_projects(server.client))
+
+    for label, shape in (("列表", ["live"]), ("整数", 7), ("对象", {"kind": "live"}),
+                         ("布尔", True), ("只有空白", "   ")):
+        status, body = server.client.post("/api/v1/projects", {
+            "name": label, "source": "design", "data_origin": shape})
+        assert status == 400, (label, shape, status, body)
+        assert body == {"error": "DATA_ORIGIN_UNKNOWN"}, (label, body)
+        assert "project_id" not in body, (label, body)
+
+    for label, shape, expected in (("缺省", None, "live"), ("空串", "", "live"),
+                                   ("test", "test", "test")):
+        body = {"name": label, "source": "design"}
+        if shape is not None:
+            body["data_origin"] = shape
+        status, created = server.client.post("/api/v1/projects", body)
+        assert status == 201, (label, status, created)
+
+    assert len(_projects(server.client)) == before_unified + 3, (
+        "被拒的项目还是写进了统一库")
+    assert len(_design_projects(server.client)) == before_design + 3, (
+        "被拒的项目还是写进了设计域")
+
+
+def _tasks(client) -> list:
+    status, body = client.get("/api/v1/tasks")
+    assert status == 200, body
+    return body["tasks"]
+
+
+def _projects(client) -> list:
+    status, body = client.get("/api/v1/projects")
+    assert status == 200, body
+    return body["unified"]
+
+
 def test_work_project_root_must_exist(server):
     status, body = server.client.post("/api/v1/projects", {
         "name": "不存在", "source": "work", "root_path": r"Q:\definitely\not\here"})

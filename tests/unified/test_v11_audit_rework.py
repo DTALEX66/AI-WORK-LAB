@@ -974,13 +974,13 @@ def test_f09_observer_events_surface_serves_real_sse_frames(server):
 #              `binds.issueFingerprints` / `binds.evidenceRefs`；packId 内容寻址于 :91-96。
 #   ③ 存储行  domains/work/workflow_core/canonical_store.py:1122-1176 表 `action_plans`
 #              快照 payload 由 domains/work/workflow_core/repair_state.py:77-90 写入。
-#   ④ 尝试    backend/v1.py:659-683 → backend/core/unified_store.py:448-492
+#   ④ 尝试    backend/v1.py#_build_work_pack → backend/core/unified_store.py:448-492
 #              `pack_plan_id` / `pack_ref.issue_fingerprints` / `binding_sha256`。
-#   ⑤ 结果    backend/v1.py:910-934 → backend/core/unified_store.py:506-544
+#   ⑤ 结果    backend/v1.py#_v1_import_result → backend/core/unified_store.py:506-544
 #              `task_id` / `attempt_id` / `pack_id` / `binding` / `subject_fingerprint`。
-#   ⑥ 判定    backend/v1.py:978-984 → backend/core/unified_store.py:580-617
+#   ⑥ 判定    backend/v1.py#_v1_verify_result → backend/core/unified_store.py:580-617
 #              `result_id` / `subject_fingerprint` / `origin_chain`。
-#   反向闭合  backend/v1.py:987-995 → repair_state.py:308-311
+#   反向闭合  backend/v1.py#_v1_verify_result → repair_state.py:308-311
 #              修复记录的 `outcome.evidenceRefs` = `"unified-verification:<判定 id>"`。
 #
 # 产品自己的完整性面只有两处，且都不覆盖 ②→③→④ 这几跳：
@@ -1375,8 +1375,8 @@ def test_issue_chain_forward_references_resolve_to_real_rows_in_the_same_store(s
     验证过的真实链路（不是测试自己拼的关系）：
       issue_projection.py:567→:177 出问题行；repair_pack_projection.py:231-272 绑定；
       repair_state.py:77-90 + canonical_store.py:1122-1176 落 action_plans 行；
-      backend/v1.py:659-683 写 attempts.pack_plan_id/pack_ref/binding_sha256；
-      backend/v1.py:910-934 写 results；backend/v1.py:978-984 写 verifications。
+      backend/v1.py#_build_work_pack 写 attempts.pack_plan_id/pack_ref/binding_sha256；
+      backend/v1.py#_v1_import_result 写 results；backend/v1.py#_v1_verify_result 写 verifications。
 
     明确没有证明：真宿主修好了什么（结果文档 data_origin=test，是夹具导入）；判定所依据的门能跑
     （目标根里那个 run_quality_gate.py 只被存在性检查数到，从未执行）；真人验收；release。
@@ -1559,7 +1559,7 @@ def test_issue_chain_reverse_trace_from_a_verdict_names_the_same_ids(server):
     所以包→问题这一跳是内容寻址、可由行内容复算，不是一个无人维护的指针。
 
     再加一条真正的跨库反向链：修复记录闭合时写回的
-    `outcome.evidenceRefs = ["unified-verification:<判定 id>"]`（backend/v1.py:987-995 →
+    `outcome.evidenceRefs = ["unified-verification:<判定 id>"]`（backend/v1.py#_v1_verify_result →
     repair_state.py:308-311）必须能在统一库里解析到那一行判定，且那行判定的 result_id 回到本链
     的结果行。缺任何一环，`_reverse_trace_problems` 点名。
 

@@ -688,6 +688,100 @@ def test_authored_python_locations_name_a_symbol_not_a_typed_line_number(builder
     assert builder.find_binding("NO_SUCH_BINDING", "backend/v1.py") is None
 
 
+#: `file.py#symbol`. A realm-prefixed key (`design:src/...py#L144`) is left out by the optional
+#: group below: those are source-repository identity keys quoted in the migration map, not
+#: citations of this checkout's code, and this node cannot resolve a file it does not carry.
+PROSE_SYMBOL_CITE = re.compile(r"(?:(?P<realm>[a-z_]+):)?([A-Za-z0-9_./-]+\.py)#"
+                               r"([A-Za-z_][A-Za-z0-9_]*)")
+PROSE_SKIP_PARTS = {"__pycache__", ".pytest_cache", ".venv"}
+#: A `#L144` fragment is a GitHub line permalink, not a symbol reference -- a different convention,
+#: used by `scripts/build_migration_map.py` for links into the source repos. It rots the same way a
+#: typed number does, and it is out of this node's scope; naming it here keeps the exclusion honest
+#: instead of silently shrinking the population.
+LINE_PERMALINK = re.compile(r"^L\d+$")
+#: The citation grammar is necessarily written out in this file, so its own examples would be
+#: judged by the rule they define (same reason the clone instrument excludes `test_v23`).
+SELF_FILE = "tests/unified/test_v16_traceability.py"
+
+
+def prose_symbol_citations(root: Path) -> list:
+    """Every `file.py#symbol` citation written in this checkout's own Python prose.
+
+    ``root`` is a parameter so a counter-example can point the scan at a planted tree; the same
+    reason ``_active_python_files`` takes one in the clone instrument.
+    """
+    found = []
+    for path in sorted(list(root.glob("scripts/*.py")) + list(root.glob("tests/**/*.py"))):
+        if PROSE_SKIP_PARTS & set(path.parts):
+            continue
+        if path.relative_to(root).as_posix() == SELF_FILE:
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            for match in PROSE_SYMBOL_CITE.finditer(line):
+                if match.group("realm") or LINE_PERMALINK.match(match.group(3)):
+                    continue
+                found.append({"from": "%s:%d" % (path.relative_to(root).as_posix(), line_number),
+                              "file": match.group(2), "symbol": match.group(3)})
+    return found
+
+
+def unresolved_prose_symbol_citations(root: Path) -> list:
+    """Citations whose named object is not a def/class/assignment in the file they point at."""
+    definition = re.compile(r"(?:^|\s)(?:def|class)\s+%s\b|%s\s*=" %
+                            ((re.escape(c["symbol"]),) * 2) if False else r"(?:def|class)\s+")
+    offenders = []
+    cache = {}
+    for cite in prose_symbol_citations(root):
+        target = root / cite["file"]
+        if not target.is_file():
+            offenders.append(dict(cite, why="FILE_ABSENT"))
+            continue
+        if target not in cache:
+            cache[target] = target.read_text(encoding="utf-8", errors="replace")
+        body = cache[target]
+        pattern = re.compile(r"(?:def|class)\s+%s\s*[(:]|%s\s*=" %
+                             (re.escape(cite["symbol"]), re.escape(cite["symbol"])))
+        if not pattern.search(body):
+            offenders.append(dict(cite, why="SYMBOL_NOT_IN_TARGET"))
+    return offenders
+
+
+def test_prose_symbol_citations_in_this_checkout_all_resolve():
+    """#14's durable half: a citation by name is only better than a number if it still resolves.
+
+    The register columns already refuse typed line numbers (see
+    ``test_authored_python_locations_name_a_symbol_not_a_typed_line_number``); the same failure mode
+    lives in comments -- nine `backend/v1.py:NNN` cites in test prose, of which seven had drifted
+    (six of them before this batch even started, which is what makes the format the defect rather
+    than any one edit). They now read `backend/v1.py#_v1_import_result` and this node is what stops
+    a future `#_renamed_thing` from sitting there unclaimed.
+    """
+    cites = prose_symbol_citations(TARGET_ROOT)
+    assert cites, "没有任何 `file.py#symbol` 引用被扫到：这条判据可能只是在检查空集合"
+    offenders = unresolved_prose_symbol_citations(TARGET_ROOT)
+    assert offenders == [], "注释里的符号引用指不到真东西：%s" % offenders
+
+
+def test_falsification_a_planted_symbol_citation_is_named(tmp_path):
+    """The resolver has to be able to go red: plant one good cite and two broken ones."""
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "scripts" / "real_helper.py").write_text(
+        "def keep_me():\n    return 1\n", encoding="utf-8")
+    (tmp_path / "tests" / "t_prose.py").write_text(
+        '"""doc: scripts/real_helper.py#keep_me resolves, '
+        'scripts/real_helper.py#moved_away does not, gone_file.py#keep_me points at nothing."""\n'
+        "def test_placeholder():\n    assert True\n", encoding="utf-8")
+
+    cites = prose_symbol_citations(tmp_path)
+    assert [c["symbol"] for c in cites] == ["keep_me", "moved_away", "keep_me"], cites
+    offenders = unresolved_prose_symbol_citations(tmp_path)
+    assert {o["symbol"] for o in offenders} == {"moved_away", "keep_me"}, offenders
+    assert {o["why"] for o in offenders} == {"SYMBOL_NOT_IN_TARGET", "FILE_ABSENT"}, offenders
+    assert offenders[0]["from"].startswith("tests/t_prose.py"), offenders
+
+
 def test_every_register_row_carries_the_six_required_columns():
     required = ["来源行标识", "要求原文", "当前实现位置", "验证证据", "状态", "依据说明"]
     for path in list(REGISTERS.values()):
