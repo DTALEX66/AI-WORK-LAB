@@ -28,12 +28,14 @@ instead of from the code. With one resolver there is nothing left to argue from.
 from __future__ import annotations
 
 import atexit
+import importlib.util
 import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 TARGET_ROOT = Path(__file__).resolve().parents[2]
@@ -224,3 +226,97 @@ def test_the_three_outside_roots_have_exactly_one_spelling():
             offenders[path.relative_to(TARGET_ROOT).as_posix()] = hits
     assert not offenders, (
         "这些文件还在自己拼来源根，所以环境变量开关到不了它们：%s" % offenders)
+
+
+def _load_conftest():
+    """``tests/conftest.py`` as a module, under a name pytest will not collect."""
+    spec = importlib.util.spec_from_file_location(
+        "conftest_under_test", TARGET_ROOT / "tests" / "conftest.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_a_session_leaves_no_forgotten_mkdtemp_sandbox(tmp_path):
+    """The harness sweeps the sandboxes it made, and never touches the ones a document cites.
+
+    Measured on 2026-11-03: every full-suite run left **80** directories under
+    ``.project-local/task-runtime`` -- 1,040 of them, 286 MB -- because several legacy tests pass
+    that project-owned root to ``mkdtemp`` as its parent and nothing removes the result. The other
+    thing in this root is real: ``penpot-import``, ``kit-register`` and friends are named as
+    evidence paths by tracked documents, so the population is (name matches, directory, created
+    after the session snapshot) and all three conditions are planted for here.
+    """
+    conftest = _load_conftest()
+    root = tmp_path / "task-runtime"
+    root.mkdir()
+    (root / "penpot-import").mkdir()          # named evidence directory: no claim on it
+    (root / "tmpNotMine").mkdir()             # present when the session snapshot was taken
+    (root / "tmpLeaked9000").mkdir()          # the leak this fixture exists to remove
+    (root / "tmp_underscore7").mkdir()        # mkdtemp's alphabet includes "_" right after tmp
+    (root / "tmpFileNotDir").write_text("not a directory\n", encoding="utf-8")
+
+    created = conftest.sandboxes_created(root, {"tmpNotMine"})
+    # a set, not a list: on Windows PurePath ordering folds case, so "tmp_..." sorts before
+    # "tmpL..." there and after it on a POSIX runner -- which names are swept is the contract
+    assert {path.name for path in created} == {"tmpLeaked9000", "tmp_underscore7"}, (
+        "the sweep selected the wrong population: %s" % [path.name for path in created])
+
+    removed, failed = conftest.remove_sandboxes(created)
+    assert (removed, failed) == (2, []), (removed, failed)
+    assert not (root / "tmpLeaked9000").exists(), "remove_sandboxes reported success it did not have"
+    assert not (root / "tmp_underscore7").exists(), "the underscore name survived the sweep"
+    assert (root / "penpot-import").is_dir() and (root / "tmpNotMine").is_dir(), (
+        "the sweep deleted something outside its claim -- a cited evidence directory or one that "
+        "existed before this session")
+    assert (root / "tmpFileNotDir").is_file(), (
+        "a plain file entered a directory-only population -- the sweep would have "
+        "tried to rmtree something that is not a sandbox")
+    assert "tmpFileNotDir" not in {path.name for path in created}, created
+
+    (root / "tmpAlsoOld").mkdir()
+    assert conftest.sandboxes_created(root, {"tmpNotMine", "tmpAlsoOld"}) == [], (
+        "with every sandbox accounted for before the session, the sweep still found work: the "
+        "snapshot is not what limits it")
+
+    # the failure path is part of the contract: a sandbox that cannot be removed is reported, not
+    # swallowed -- otherwise the sweep summary would say "cleaned" about a leak that is still there
+    class _RaisingShutil:
+        @staticmethod
+        def rmtree(path, onerror=None):
+            raise OSError(13, "planted: the sandbox is still open")
+
+    real_shutil = conftest.shutil
+    try:
+        conftest.shutil = _RaisingShutil
+        planted = [root / "tmpAlsoOld", root / "penpot-import"]
+        removed, failed = conftest.remove_sandboxes(planted)
+        assert (removed, failed) == (0, ["tmpAlsoOld", "penpot-import"]), (
+            "a removal that always failed was reported as cleaned: %s" % ((removed, failed),))
+    finally:
+        conftest.shutil = real_shutil
+
+    # the age floor is a second, independent guard: a matching directory that predates the session
+    # is not this session's to remove, even when the snapshot says nothing about it. This exists
+    # because a falsification run on 2026-11-03 mutated away the snapshot check inside a live
+    # session and deleted 1,041 sandboxes that had accumulated before that run started.
+    (root / "tmpPredatesSession").mkdir()
+    backdated = time.time() - 86400
+    os.utime(root / "tmpPredatesSession", (backdated, backdated))
+    fresh = root / "tmpFreshOne"
+    fresh.mkdir()
+    floor = fresh.stat().st_mtime - 1.0
+    selected = {path.name for path in conftest.sandboxes_created(root, set(), floor)}
+    assert "tmpFreshOne" in selected, selected
+    assert "tmpPredatesSession" not in selected, (
+        "the age floor did not exclude a directory that predates the session -- the snapshot is "
+        "the only thing limiting it, and one dropped condition is enough to eat the residue")
+
+    # the pattern has to match the names this repository actually leaked (read off the disk on
+    # 2026-11-03, kept here so the check stays meaningful after the residue is swept away)
+    actually_leaked = ["tmpxquepdl8", "tmpfjrsydpt", "tmpzxhlp0z_", "tmpv5_6kp7r", "tmp_s1j7k3i"]
+    cited_by_a_document = ["penpot-import", "kit-register", "reconstruction", "asset-analysis",
+                           "assurance-jury-tests", "browser-fixture"]
+    assert all(conftest.SANDBOX_NAME.match(name) for name in actually_leaked), actually_leaked
+    assert [name for name in cited_by_a_document
+            if conftest.SANDBOX_NAME.match(name)] == [], cited_by_a_document

@@ -14,7 +14,11 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
+import re
 import secrets
+import shutil
+import stat
 import sys
 import threading
 import time
@@ -81,12 +85,93 @@ class Client:
 #: and rerun §4. Creating only directories, never files.
 SCRATCH_ROOTS = (".project-local/task-runtime", ".project-local/runs", ".project-local/build")
 
+#: The same ``mkdtemp`` calls, measured on 2026-11-03: every full-suite run left **80**
+#: directories under ``task-runtime`` -- 1,040 on disk, 286 MB -- because nobody removes them.
+#: Named subdirectories of that root (``penpot-import``, ``kit-register``, ``reconstruction``…)
+#: are cited as evidence paths by tracked documents, so the sweep takes only ``tmp``-prefixed
+#: entries that appeared during this session.
+SWEEP_ROOT = ".project-local/task-runtime"
+SWEEP_SUMMARY = ".project-local/runs/sandbox-sweep-latest.json"
+#: ``mkdtemp`` names are ``tmp`` plus eight characters from ``[a-z0-9_]``, so the underscore has to
+#: be allowed immediately after the prefix -- measured on 2026-11-03, a first sweep that let
+#: ``tmp_s1j7k3i`` through because the class started with alphanumerics.
+SANDBOX_NAME = re.compile(r"tmp[A-Za-z0-9_]{6,}$")
+
+
+def sandboxes_created(root: Path, before: set, started_at: float | None = None) -> list:
+    """The mkdtemp sandboxes that appeared in ``root`` after the snapshot ``before`` was taken.
+
+    Two independent conditions rather than one, because the first one alone was demonstrably
+    dangerous: while falsifying this fixture on 2026-11-03 a mutation that dropped the snapshot
+    check ran in a live pytest session and deleted 1,041 accumulated sandboxes. The age floor is
+    the backstop -- a directory that predates the session is not this session's to remove, even if
+    every other condition matches.
+    """
+    if not root.is_dir():
+        return []
+    selected = []
+    for path in sorted(root.iterdir()):
+        if not path.is_dir() or not SANDBOX_NAME.match(path.name) or path.name in before:
+            continue
+        if started_at is not None and path.stat().st_mtime < started_at:
+            continue
+        selected.append(path)
+    return selected
+
+
+def _clear_read_only(func, path, exc_info):
+    """Windows teardown error handler: a read-only file is the common case, not the exotic one."""
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except OSError:
+        raise exc_info[1]
+
+
+def remove_sandboxes(paths) -> tuple:
+    """Delete sandboxes; report what survived instead of failing the session over it.
+
+    A still-open handle or a read-only file inside a sandbox must not turn a green suite into a
+    collection error at teardown. The leftovers are returned by name, so a leak that came back is
+    visible in the sweep summary rather than hidden by a swallowed exception.
+    """
+    removed, failed = 0, []
+    for path in paths:
+        try:
+            shutil.rmtree(path, onerror=_clear_read_only)
+            removed += 1
+        except OSError:
+            failed.append(path.name)
+    return removed, failed
+
 
 @pytest.fixture(scope="session", autouse=True)
 def ensure_scratch_roots():
     for relative in SCRATCH_ROOTS:
         (TARGET_ROOT / relative).mkdir(parents=True, exist_ok=True)
     yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def sweep_test_sandboxes():
+    """No sandbox outlives the session that made it, and the count is published, not assumed."""
+    root = TARGET_ROOT / SWEEP_ROOT
+    started_at = time.time()
+    before = {path.name for path in root.iterdir()} if root.is_dir() else set()
+    yield
+    created = sandboxes_created(root, before, started_at)
+    removed, failed = remove_sandboxes(created)
+    summary = {"root": SWEEP_ROOT, "present_before_session": len(before),
+               "sandboxes_created_this_session": len(created),
+               "removed": removed, "left_behind": failed,
+               "selection_rule": "name matches tmp<mkdtemp alphabet>, is a directory, absent from "
+                                 "the snapshot taken at session start, and modified after it",
+               "note": "created = leaked-and-not-cleaned by a test; named directories are never "
+                       "candidates because they are cited as evidence paths"}
+    destination = TARGET_ROOT / SWEEP_SUMMARY
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+                           encoding="utf-8", newline="\n")
 
 
 @pytest.fixture()
