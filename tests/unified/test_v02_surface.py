@@ -964,17 +964,31 @@ def _cfg_changed_clients(before: list, after: list) -> list:
                   and previous[card["clientId"]] != _cfg_stripped(card))
 
 
+#: 本服务自己的端点串：这一支以 / 开头，但它是路由名，不是"某台机器上的位置"。本机实测这六个面
+#: 里所有以 / 开头的字符串值都落在它上面（`/api/work/surface-map` 的十条端点说明），其余一面为零。
+_CFG_ENDPOINT_PREFIX = "/api/"
+
+
 def _cfg_machine_path(value) -> bool:
-    """解析后的值（含嵌套）里是否带本机绝对路径：盘符式（C 冒号加反斜杠或斜杠），或 UNC 共享名。
+    """解析后的值（含嵌套）里是否带本机绝对路径：盘符式（C 冒号加反斜杠或斜杠）、UNC 共享名，
+    或以 / 开头的 POSIX 绝对路径（本服务自己的端点串除外）。
 
     比较的是 JSON 解析出来的字符串，不是对外卖出的转义文本——序列化会把一个反斜杠写成两个，
     拿台账里的路径去搜序列化文本会得到"没有"这个假结论（本节点的上一版就是这么错的）。
+
+    POSIX 那一支是审计 N05 在 Linux 上唯一一条失败的原因：旧实现只认 Windows 形状，`/home/…`
+    在这里等于"不是路径"，于是 `carriers == ["probe"]` 这类形状断言在非 Windows 机器上必然对不上。
+    没有改用 `Path(value).is_absolute()`：那是"本平台"的绝对路径判据，在 Linux 上会把台账里逐字
+    带来的 `C:\\…` 读成"不是路径"，而那一串恰恰是本节点要盯的泄漏对象。盘符式因此与平台无关地
+    保留，POSIX 式按前缀加进来，两条并列。
     """
     import re
 
     drive = re.compile(r"[A-Za-z]:[\\/]")
     if isinstance(value, str):
-        return bool(drive.search(value)) or value.startswith(chr(92) * 2)
+        if drive.search(value) or value.startswith(chr(92) * 2):
+            return True
+        return value.startswith("/") and not value.startswith(_CFG_ENDPOINT_PREFIX)
     if isinstance(value, dict):
         return any(_cfg_machine_path(item) for item in value.values())
     if isinstance(value, (list, tuple)):
@@ -1593,3 +1607,69 @@ def test_machine_absolute_paths_travel_as_paths_not_as_verified_evidence(server,
 
     assert resources.adapter_registry_path().read_bytes() == registry_bytes_before
     assert _cfg_digest_tree(resources.config_dir()) == managed_config_before
+
+
+def test_the_machine_path_recognizer_covers_both_platform_shapes_and_its_own_exclusion(server):
+    """识别器是那条"路径只准待在探测格里"断言的眼睛，所以它自己的形状必须能红。
+
+    少认一支：Linux 上 `/home/…` 被判成"不是路径"，`carriers == ["probe"]` 这类形状断言就对不上
+    （审计 N05 实测到的正是这个）。多认一支：服务自己的端点串以 `/` 开头，会被当成"某台机器上的
+    位置"，同一批断言就会把没有路径的格指控成有路径。两种错法在下面都落在具体的一条腿上。
+    """
+    recognised = (
+        # Windows 形状：盘符加任一种分隔符，以及 UNC 共享名
+        (r"C:\Users\ALEX\adapter-stamp.json", True),
+        ("C:/All projects/x/y.json", True),
+        (chr(92) * 2 + "filesrv\\share\\tool", True),
+        # POSIX 形状：N05 补进来的那一支
+        ("/home/dev/.venv/bin/python", True),
+        ("/tmp/pytest-work/workspace/.project-local/ai-work-lab", True),
+        # 本服务自己的端点串：以 / 开头但不是位置
+        ("/api/work/observer/snapshot", False),
+        ("/api/v1/capabilities", False),
+        # 仓内相对引用与裸词：两种形状都不该命中
+        ("work:config/adapter-registry.json", False),
+        ("config/adapter-registry.json", False),
+        ("AGENTS.md", False),
+        ("", False),
+    )
+    for value, expected in recognised:
+        assert _cfg_machine_path(value) is expected, value
+        # 嵌套不改变判定：路径待在 dict/list 里也仍然是路径
+        assert _cfg_machine_path({"probe": {"source": value}}) is expected, ("nested", value)
+        assert _cfg_machine_path([{"x": [value]}]) is expected, ("nested list", value)
+    assert _cfg_machine_path(None) is False
+    assert _cfg_machine_path(12) is False
+
+    # 现读的一腿：这台机器答出来的每一个以 / 开头的**值**，要么是端点，要么本平台称之为绝对路径。
+    # 只取值不取键：识别器遍历的是 dict 的 values()，而 surface-map 把兼容映射当字典端出来，键里
+    # 就有 `/healthz` 这种旧路径名——把键算进来会让这条腿指控一个识别器根本不看的东西（第一次就
+    # 这么错了，读数见本轮记录）。
+    def values_only(node, out):
+        if isinstance(node, str):
+            out.append(node)
+        elif isinstance(node, dict):
+            for value in node.values():
+                values_only(value, out)
+        elif isinstance(node, (list, tuple)):
+            for item in node:
+                values_only(item, out)
+
+    faces = ("/api/v1/capabilities", "/api/v1/connections", "/api/v1/tools",
+             "/api/work/control/descriptor", "/api/work/surface-map",
+             "/api/work/observer/snapshot")
+    slash_values = set()
+    for path in faces:
+        status, body = server.client.get(path)
+        assert status == 200, (path, body)
+        collected = []
+        values_only(body, collected)
+        slash_values.update(value for value in collected if value.startswith("/"))
+    assert slash_values, "这六个面里一个以 / 开头的值都没有：下面这条腿是空转"
+    endpoints = sorted(value for value in slash_values if value.startswith(_CFG_ENDPOINT_PREFIX))
+    others = sorted(slash_values - set(endpoints))
+    assert others == [], (
+        "以 / 开头却不在端点前缀里的值，识别器会把它们当本机路径：现读为 %s" % others)
+    # 排除支不是摆设：本机上确实有端点串走进来了（实测十条，都在 surface-map 的说明里）
+    assert len(endpoints) >= 1, endpoints
+    assert _cfg_machine_path("/api/work/surface-map") is False

@@ -43,7 +43,8 @@ from domains.work.workflow_core.canonical_store import CanonicalStore
 from scripts.migrate_business_data import data_types, row_digest
 
 TARGET_ROOT = Path(__file__).resolve().parents[2]
-VENV_PYTHON = TARGET_ROOT / ".venv" / "Scripts" / "python.exe"
+#: venv 解释器的布局是平台的，不是机器的：Windows 是 Scripts/python.exe，POSIX 是 bin/python（审计 N05）。
+VENV_PYTHON = TARGET_ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 SCRIPT = TARGET_ROOT / "scripts" / "migrate_business_data.py"
 LIVE_STORES = TARGET_ROOT / "workspace" / ".project-local" / "ai-work-lab"
 SCRATCH = TARGET_ROOT / ".project-local" / "runs" / "v12-data-migration"

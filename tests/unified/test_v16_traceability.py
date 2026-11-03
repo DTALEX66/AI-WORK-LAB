@@ -32,6 +32,7 @@ import ast as _ast
 import csv
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -42,7 +43,8 @@ import pytest
 TARGET_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(TARGET_ROOT / "scripts"))
 import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
-VENV_PYTHON = str(TARGET_ROOT / ".venv" / "Scripts" / "python.exe")
+#: venv 解释器的布局是平台的，不是机器的：Windows 是 Scripts/python.exe，POSIX 是 bin/python（审计 N05）。
+VENV_PYTHON = str(TARGET_ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python"))
 BUILDER = TARGET_ROOT / "scripts" / "build_requirement_traceability.py"
 HANDOFF = TARGET_ROOT / "AI-WORK-LAB_HANDOFF_20261029"
 MIGRATION = TARGET_ROOT / "migration"

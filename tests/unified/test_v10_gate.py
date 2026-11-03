@@ -20,13 +20,15 @@ different on purpose:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import subprocess
 from pathlib import Path
 
 TARGET_ROOT = Path(__file__).resolve().parents[2]
 GATE = TARGET_ROOT / "scripts" / "acceptance_gate.py"
-VENV_PYTHON = TARGET_ROOT / ".venv" / "Scripts" / "python.exe"
+#: venv 解释器的布局是平台的，不是机器的：Windows 是 Scripts/python.exe，POSIX 是 bin/python（审计 N05）。
+VENV_PYTHON = TARGET_ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 
 _TABLES = (
     "CREATE TABLE projects (project_id TEXT PRIMARY KEY, source TEXT NOT NULL,"

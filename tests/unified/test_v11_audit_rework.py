@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import subprocess
 import sys
 import urllib.parse
@@ -29,7 +30,8 @@ from tests.unified.test_v03_work_loop import _result_document
 from tests.unified.test_v06_knowledge import _entry
 
 TARGET_ROOT = __import__("pathlib").Path(__file__).resolve().parents[2]
-VENV_PYTHON = str(TARGET_ROOT / ".venv" / "Scripts" / "python.exe")
+#: venv 解释器的布局是平台的，不是机器的：Windows 是 Scripts/python.exe，POSIX 是 bin/python（审计 N05）。
+VENV_PYTHON = str(TARGET_ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python"))
 DESIGN_RESULT_SCHEMA = "ai-work-lab/design-result/v1"
 PROFILE_KEY = "minimax-h3--api--video-reference"
 

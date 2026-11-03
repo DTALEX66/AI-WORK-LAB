@@ -34,6 +34,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import time
 from pathlib import Path
@@ -226,6 +227,81 @@ def test_the_three_outside_roots_have_exactly_one_spelling():
             offenders[path.relative_to(TARGET_ROOT).as_posix()] = hits
     assert not offenders, (
         "这些文件还在自己拼来源根，所以环境变量开关到不了它们：%s" % offenders)
+
+
+#: A virtualenv's *root* is a prerequisite of this machine, but the layout under it belongs to the
+#: platform that built it: Windows writes ``Scripts/python.exe``, POSIX writes ``bin/python``.
+#: Eight sites spelled only the Windows form, which is what stopped 21 migration and restart nodes
+#: from even starting on the audit's Linux run (N05). The ban below is on the *path construction*;
+#: descriptive strings such as ``build_audit_item_closure.INTERPRETER`` ("which interpreter produced
+#: that receipt") are prose about a measurement, not a locator, and are not matched.
+VENV_WINDOWS_ONLY_BUILD = re.compile(
+    r"[\"'][.]venv[\"']\s*/\s*[\"']Scripts[\"']\s*/\s*[\"']python\.exe")
+VENV_DERIVED_BUILD = re.compile(r"[.]venv[\"']\s*/\s*\([\"']Scripts/python\.exe[\"']\s*if os\.name")
+
+
+def test_the_venv_interpreter_layout_is_derived_and_agrees_with_this_interpreter():
+    """Nobody may hand-build the Windows venv path, and the derived spelling is checked against
+    the running interpreter's own answer for where scripts live.
+
+    ``sysconfig.get_paths()["scripts"]`` is how the interpreter itself names that directory --
+    ``Scripts`` on Windows, ``bin`` on POSIX -- so the agreement leg is a real cross-platform
+    assertion rather than ``os.name`` compared with itself. What is NOT proven here is that a Linux
+    host runs this suite green: this machine has no Linux interpreter to run it with, so the native
+    re-run the task card asks for stays NOT_RUN and is recorded as such.
+    """
+    offenders = {}
+    derived_sites = []
+    for path in _active_python_files(TARGET_ROOT):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        relative = path.relative_to(TARGET_ROOT).as_posix()
+        hits = sorted({match.group(0) for match in VENV_WINDOWS_ONLY_BUILD.finditer(text)})
+        if hits:
+            offenders[relative] = hits
+        if VENV_DERIVED_BUILD.search(text):
+            derived_sites.append(relative)
+    assert not offenders, (
+        "这些文件还在按 Windows 布局自己拼 venv 解释器，POSIX 上拼出来的路径不存在：%s" % offenders)
+    assert len(derived_sites) >= 7, (
+        "派生布局的站点少于 7 处（7 个测试文件 + boot_probe），说明上面那条禁令可能只是没东西可管：%s"
+        % derived_sites)
+
+    layout = Path(sysconfig.get_paths()["scripts"]).name
+    assert layout == ("Scripts" if os.name == "nt" else "bin"), (
+        "这台机器上的解释器把自己的脚本目录叫 %r，而本仓派生布局用的是另一套名字：%s"
+        % (layout, sysconfig.get_paths()["scripts"]))
+    derived = TARGET_ROOT / ".venv" / (
+        "Scripts/python.exe" if os.name == "nt" else "bin/python")
+    assert derived.is_file(), (
+        "测试与探针按平台派生出来的 venv 解释器在本机不存在：%s（这是本机的先决条件，缺它就是红，"
+        "不是 skip）" % derived)
+
+
+def test_falsification_a_planted_windows_only_venv_spelling_is_named(tmp_path):
+    """The ban has to be able to fire: plant the old spelling where the guard's own scan looks.
+
+    ``_active_python_files`` takes a root precisely so a counter-example can redirect the
+    population; the same predicate is then applied to the derived spelling the repo uses now, which
+    is what separates "this regex bans one shape" from "this regex bans everything".
+    """
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    old_spelling = ('TARGET_ROOT = __import__("pathlib").Path(".")\n'
+                    'VENV_PYTHON = str(TARGET_ROOT / ".venv" / "Scripts" / "python.exe")\n')
+    derived = ('TARGET_ROOT = __import__("pathlib").Path(".")\n'
+               'VENV_PYTHON = str(TARGET_ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt"'
+               ' else "bin/python"))\n')
+    (scripts / "bad_site.py").write_text(old_spelling, encoding="utf-8")
+    (scripts / "good_site.py").write_text(derived, encoding="utf-8")
+
+    scanned = {path.relative_to(tmp_path).as_posix(): path.read_text(encoding="utf-8")
+               for path in _active_python_files(tmp_path)}
+    assert set(scanned) == {"scripts/bad_site.py", "scripts/good_site.py"}, sorted(scanned)
+    hits = {name: sorted({m.group(0) for m in VENV_WINDOWS_ONLY_BUILD.finditer(text)})
+            for name, text in scanned.items()}
+    planted_hit = ['".venv" / "Scripts" / "python.exe']
+    assert hits["scripts/bad_site.py"] == planted_hit, hits
+    assert hits["scripts/good_site.py"] == [], hits
 
 
 def _load_conftest():

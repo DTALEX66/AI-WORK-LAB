@@ -24,6 +24,7 @@ import collections
 import hashlib
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -34,7 +35,8 @@ import pytest
 TARGET_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(TARGET_ROOT / "scripts"))
 import source_roots  # noqa: E402  the one place roots outside this checkout are resolved
-VENV_PYTHON = str(TARGET_ROOT / ".venv" / "Scripts" / "python.exe")
+#: venv 解释器的布局是平台的，不是机器的：Windows 是 Scripts/python.exe，POSIX 是 bin/python（审计 N05）。
+VENV_PYTHON = str(TARGET_ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python"))
 WORK_SOURCE = source_roots.work_root()
 DESIGN_SOURCE = source_roots.design_root()
 BRIDGE_PACKAGED = (TARGET_ROOT / "domains" / "design" / "design_lab" / "resources"
