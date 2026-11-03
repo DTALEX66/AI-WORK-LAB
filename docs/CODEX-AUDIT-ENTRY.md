@@ -2201,3 +2201,153 @@ dangling blob），且 HEAD 树里每个 blob 都逐个回读成功——`blobs=
 
 **边界照旧**：统一归档只读、未向其清理；两个来源仓未删；本轮所有提交都在本地，
 **推送需要 owner 单独授权**（`refresh_push_authorization.py` 绑新 head → 走 pre-push 守卫，不用 `--no-verify`）。
+
+### 15.32 推送与标签落地；推送后的第一次刷新暴露了假绑定；测试沙箱不再跨会话存活（AH 续 + 运行残留）
+
+**推送事实（owner 2026-11-03 授权「同时打一个标签再推」）。** `7` 个提交
+`ff34884..31605d7bf012` 已进 `origin/main`，远端 `refs/heads/main` 现读为 `31605d7bf012`，
+写入本节时本地 `HEAD` 是 `935d0fe2afbb`（比远端多 6 个提交，改动为 8 个代码/测试文件（audit_objective_closure.py, build_audit_state.py, conftest.py, test_v12_data_migration.py, test_v20_inrepo_evidence.py, test_v23_clone_repro.py）与 5 个文档或登记表，
+由本节下面的新收据覆盖），
+附注标签 `closure-20261103`（标签对象 `dfa9051b8979`）解引用到
+`31605d7bf012`，它是本轮的恢复点。pre-push 守卫三条检查全部现跑，未用 `--no-verify`：
+授权记录 `push-authorization-20261102.json` 的 `head_commit` 与被推的 head 相等；最大单文件 33082203 字节 < 100MB；
+公开面危害 rc=0：扫 7284 个跟踪文件，findings 17（adjudicated 6 / example-literal 11 / unadjudicated 0），blocking 0。推送时那一份的终局审计读数是 `CLOSED（14 条子句 {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}，复跑于 31605d7）`。
+
+**推完第一次刷新就踩到一个洞：审计绑定是可以被"不带参数"挪走的。** 推送之后 `upload_facts`
+里的远端 ref 过期了，重发布就是 `scripts/build_audit_state.py` 不带参数跑一次——而它把
+audited 提交解析成 `audited_commit or "HEAD"`，于是绑定从被测量的 `6b0cfbfbe96f` 跳到了
+`31605d7bf012`，也就是**承载这份文档自己的提交**，没有任何收据描述过那棵树。更难看的是
+`--check` 恰好把 `audited_head_sha` 折进 rotating 名单，所以它当场打印 `MATCHES`（rc=0）。
+门是绿的，记录是假的。发现它靠的是 diff，不是任何闸门。
+
+收紧成三条，每条都能红：
+
+1. **绑定只在显式点名时移动。** `binding_commit()` 省略参数时保留已发布值；`rev-parse` 认不出的
+   参数会把原串打印到 stdout 而只在退出码里失败（本模块的 `git()` 不读退出码），所以改用
+   `rev-parse --verify <x>^{commit}`，空答复 → 具名拒绝 `AUDITED_COMMIT_UNRESOLVABLE`，不退回 HEAD。
+2. **不在本分支历史上的绑定，写盘前就拒绝**：`AUDITED_COMMIT_NOT_IN_THIS_BRANCH`。
+3. **`audited_head_sha` / `audited_head_tree` 退出 rotating 名单**：`--check --audited-commit X`
+   对着绑定 Y 的记录现在是 DRIFT，不再两边都认。真正自指的是 `head_sha_now` 与
+   `commit_count_observed`；`audited_candidate_*` 留在名单里，因为那个口径读的是工作盘
+   （git cached + 非忽略 untracked），未提交的文档改动就会让它变——本轮只刷新一次记录，
+   绑定提交没动，摘要却从 `2bf65142…` 走到 `7fb70f58`，所以它从来不等于收据的 candidate 摘要。
+   这一点现在写在 `candidate_manifest.what_audited_candidate_names_read` 里，不靠读者记住。
+
+顺带修掉一个克隆里必现的崩溃：写模式无条件对 `prepush_hook.sha256_observed` 切片，
+而克隆没有钩子（该值为 `None`）→ `TypeError` 而不是它想说的"本机没有钩子"。写模式现在另外公布
+`binding_moved_this_run`，让"这次有没有挪绑定"成为一句可核对的输出。
+
+**运行残留：两处"跑一次就长一次"的泄漏，都修在创建者身上。**
+`.project-local` 本轮开始时约 1100 MB，现在 374.2 MB。
+
+*第一处 · `task-runtime` 的 mkdtemp 沙箱。* 几个 legacy 设计测试把项目内的根当 `mkdtemp` 的 parent
+传进去，没人删结果，一次全量套件漏 **80** 个目录；本机积到 **1041** 个（**286 MB**）。
+同一个根下的**具名**子目录是被跟踪文档点名的证据路径，所以不能整根清空。会话夹具
+`sweep_test_sandboxes` 只删本次会话新建的 `tmp*`，四个条件彼此独立：名字匹配 `mkdtemp` 的字母表
+（`tmp[A-Za-z0-9_]{6,}`——下划线紧跟 `tmp` 的名字实测漏过一版，`tmp_s1j7k3i` 就是这样活下来的）、
+是目录、不在会话开始时的快照里、mtime 不早于会话开始。删不掉的写进 `left_behind` 而不是
+`except: pass`，每次运行把汇总重写到 `sandbox-sweep-latest.json`（现值：会话内新建 0 个、
+删除 0 个、遗留 [] 个）。
+
+**这里有一次真实的误删，也是第四道条件为什么存在。** 反证脚本把"快照"那一条件改成恒真之后，被改的
+`tests/conftest.py` 在同一个 pytest 会话里就是活的夹具，于是会话收尾把累积的 1041 个目录全删了
+——正是本轮想要的清理，但走的是没清单的路径。事后按精确核对确认没丢证据：现行文档里没有任何一条
+引用过 `task-runtime/tmp*`（`git grep -l -I "task-runtime/tmp"` 对 PROJECT_CURRENT / README / AGENTS /
+SECURITY / CONTRIBUTING / INTEGRATION_POLICY / 现行 docs 节 / config / migration / scripts / tests
+零命中；唯一形似的 `kit-raster` 在 test_v24 自己的临时 project 里，不在本仓这个根下）。
+mtime 下限保证单点失效不再能吃掉旧目录，反证脚本自此每次运行都打印那个根的条目数变化：
+
+```
+underscore left out of the name class (the miss measured tonight) node rc=1 RED (guard works)   residue entries 0 -> 0
+session snapshot ignored (would eat anything older than the run) node rc=1 RED (guard works)   residue entries 0 -> 0
+age floor dropped (the backstop against a single lost condition) node rc=1 RED (guard works)   residue entries 0 -> 0
+files allowed into the population (is_dir dropped)             node rc=1 RED (guard works)   residue entries 0 -> 0
+a failed removal swallowed (leak reported as cleaned)          node rc=1 RED (guard works)   residue entries 0 -> 0
+```
+
+这一处的前值只有读数没有清单（00:40 的 `du` 与目录计数），已不可独立复现，`residue-measurement-20261103.json` 把它按
+"本会话观测"标注而不是伪装成新生成的测量——这正是为什么两处都改成"每次运行自己报告"。
+
+*第二处 · `runs/v12-data-migration` 的合成库根，比第一处大一个数量级。*
+`tests/unified/test_v12_data_migration.py:301` 的 `make_roots` 工厂把合成 sqlite 根写进这个根，
+**它本来就把自己创建过的目录记在 `created` 名单里，只是从来没人删**：上一张未修复的收据在自己的
+时间窗内留下 **20** 个，本机积到 **320** 个 / **502.6 MB**
+（§15.31 早就记过同一处 1,883 个 / 3,422 MB，手删过一次又涨回来，说明必须修根因）。
+删除走清单不走记忆：`scratch-residue-20261103.json` 逐条记路径、文件数、字节与时间，并与**全部**跟踪文档的引用取差
+（本群被点名 0 个），`--apply` 后根内条目 0。
+根因修在工厂自己身上：`make_roots(request)` 用 `request.addfinalizer` 回收，回收函数 `reclaim()`
+先试两次（中间 `gc.collect()`——sqlite 的句柄能比 `close()` 多活一轮），删不掉的**按名字返回**；
+只读文件走 `onerror` 清位再删（Windows 的常态）。反证 `.project-local/edits-20261103/falsify_v12_reclaim.py`：
+吞掉残留 → 红，只试一次 → 红，不清只读位 → 红，而**摘掉 finalizer 仍绿**——接线不是这个节点能看见的，
+那条探针按预期留在绿色并在脚本 docstring 里写明；接线的证据是端到端的：整份 test_v12（22 个测试）
+跑完后该根新建目录 **0** 个，权威收据自己的时间窗内新建 **0** 个。
+
+**反例（新节点 `test_the_audit_binding_only_moves_when_a_caller_names_the_commit`）。** 它在临时目录里
+`git init` 一个真仓库，把生成器连同 `candidate_snapshot.py` / `source_roots.py` 复制进去，四条判定
+全部走命令行。仪器是 `.project-local/edits-20261103/falsify_binding_guard.py`：它把上面三处收紧各退回
+旧语义、再加上"不可解析退回 HEAD"那一处，逐次跑这个节点，最后从自己的字节副本还原并核对：
+
+```
+re-pin on the omitted flag (tonight's accident)         node rc=1 RED (guard works)
+fold audited_head_sha back into the rotating fields     node rc=1 RED (guard works)
+write a binding that is not in this branch              node rc=1 RED (guard works)
+let an unresolvable ref fall through to HEAD            node rc=1 RED (guard works)
+restored byte-identical: True
+```
+
+`test_v20` 里原来把 `audited_head_sha` 钉在"允许被折掉"的名单里——那是旧语义的合同，改成钉住
+"绑定必须被比较"（`audited_head_tree` 一并），这是在收紧不是放松。节点清单 511→514
+由 `build_test_census.py --allow` 现算，入口数字段随之重取，`check_project_current.py --check` rc=0。
+
+**本轮新收据（覆盖改动后的代码）。** `520 passed, 1 warning, 3 subtests passed in 1599.45s (0:26:39)`，退出码 0，failed 0 /
+errors 0 / deselected 0；描述 `6b0cfbfbe96f`（树 `3ed7116362ca`），candidate 7284 文件、摘要
+`add908836cce1b3d…`；取数开始时跟踪树干净，全程 `tracked_bytes_moved_during_run` =
+`[]`。五处改绑随这张收据重做（`audit-item-closure` 四列 + 按摘要归档、`AUDIT-STATE`
+的 `--audited-commit`、`task-acceptance`、`blocker-register`、入口数字段）。
+
+**改绑后的终局审计（head `935d0fe`）：`CLOSED`，子句 14，计数 {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}。**
+
+**AG 在最终代码态重测一次，不沿用 §15.30 的读数。** 这一轮往活代码里加了四样东西：`build_audit_state`
+的绑定语义、`tests/conftest.py` 里那个会话 autouse 夹具、`test_v12` 工厂的回收 finalizer，以及终局审计
+"收据之后只许动文档"那条子句的名单形状。其中夹具与工厂是**每一个克隆都会跑到**的，所以"切割仍然成立"
+不能拿上一节的数字当证据。仪器仍是
+`.project-local/edits-20261102/cut_instrument.py --mode full`，克隆 HEAD `6b0cfbfbe96f`，
+`clone_has_project_local=False`；开关设上前后各读一次克隆的 `git status`，
+两次都为空 → `no_bytes_rewritten_verified=True`，"没改字节"这件事是被测出来的而不是声明的。
+分区由仓库自己的 `_partition` 决定：clone-safe **25** 文件 / machine-bound **9** 文件。
+对照侧 `363 passed, 1 warning, 3 subtests passed in 470.33s (0:07:50)`；处理侧（三个环境变量指向不存在的路径）`361 passed, 2 skipped, 3 subtests passed in 160.37s (0:02:40)`；
+因开关而红的节点 **0** 个、只在没开关时红 **0** 个。
+处理侧的 skip 逐个点名（仪器只报计数；名字由 `.project-local/edits-20261103/name_the_clone_skips.py`
+再跑一遍同一人群取回，存 `ag-skip-names-20261103.txt`；两者计数不一致时本节直接拒绝写——克隆里一个没人认领的 skip
+就是本仓拒绝当成绿的那种东西）：
+- `the read-only WORK-LAB checkout is not on this machine; the in-repo harness is still checked by every test below`
+- `this node re-verifies the registers against the read-only sources, and the switch says they are absent: ['D:\\All projects\\awl-gone-WORK-LAB', 'D:\\All projects\\awl-gone-DESIGN-LAB', 'D:\\All projects\\awl-gone-Project Archiving']`
+
+| 闸门 | 对照 rc | 切割 rc | 切割侧末行（截断） |
+|---|---|---|---|
+| `check_project_current` | 0 | 0 | } |
+| `build_test_census` | 0 | 0 | } |
+| `build_source_coverage` | 1 | 3 | {"error": "SOURCE_REPO_ABSENT", "absent": [{"label": "work", "root": "D:\\All pr |
+| `build_task_acceptance_register` | 0 | 0 | {"rows": 48, "mandatory_hard_gaps": 0, "listed_blockers": 0} |
+| `build_blocker_register` | 0 | 0 | {"matches": true, "items": 7, "blocking": 1} |
+| `build_deferral_register` | 0 | 0 | {"matches": true, "entries": 14} |
+| `build_audit_item_closure` | 3 | 3 | } |
+| `build_audit_state` | 3 | 3 | {"matches": false, "stale": false, "stale_sections": [], "unobservable_sections" |
+| `build_isolated_install_verdict` | 2 | 2 | (空) |
+| `migrate_sources` | 0 | 3 | {"target_root": "D:\\All projects\\.awl-independence-clone-20261102", "summary": |
+
+克隆内复跑终局审计：rc=1，`NOT CLOSED`，计数 {"PASS": 8, "FAIL": 0, "PENDING": 6, "INSTRUMENT_ERROR": 0}，
+未具名结论 0 条。**不叫 CLOSED，也不说成通过**——它说的是这台机器观测不到这些。
+
+**仍未成立（三条，具名，不因推送而改变）**：
+- `migration/source-coverage-work.csv` / `-design.csv` 离开本机不可复现（本机 work 2734 /
+  design 4476 行 vs 克隆 2764 / 4488 行），成因定位在 `copied_index()` 按绝对 target 去重；
+  一次归一化尝试已实测否决（它让在位树多报 work 78 / design 74 行漂移，克隆侧仍是 2764），
+  已回滚，不做第二遍。
+- `apps/workbench` 的离线包在克隆里重建不出来（#45），闸门给的是它自己的具名拒绝。
+- **新增一条**：AUDIT-STATE 的绑定没有第二方核对——只有 `.project-local` 里那张收据能证明
+  "测过哪棵树"，而克隆里没有收据，那条子句在那里给具名拒绝。也就是说"绑定是不是假的"这件事
+  在别的机器上不可观测；本机侧靠本节这个节点兜住。
+
+**边界照旧**：统一归档只读、未向其清理；两个来源仓未删；远端可见性未改（owner 未选转 PRIVATE）；
+不动已推送的历史与标签（`cut-independent-20261102` 那条过期读数因此留在原处，由本节的标签说明取代关系）。
