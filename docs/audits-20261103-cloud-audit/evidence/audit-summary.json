@@ -1,0 +1,129 @@
+{
+  "schema": "ai-work-lab/independent-cloud-audit/20261103",
+  "repository": "DTALEX66/AI-WORK-LAB",
+  "branch": "main",
+  "commit": "0de1ade4b9f03fd734e11f2b5ae54ca95867cd7f",
+  "verdict": "CONDITIONAL_FOUNDATION_ONLY_NOT_FULL_PRODUCT_CLOSED",
+  "cloud_mutations": false,
+  "tracked_source_modified": false,
+  "scope": "Read-only cloud source review; isolated Linux synthetic fixtures and loopback HTTP; no real model/host/private migration/live professional acceptance",
+  "test_runs": [
+    {
+      "run": "core",
+      "tests": 100,
+      "outcomes": {
+        "PASSED": 99,
+        "FAILED": 1
+      },
+      "junit": "audit-20261103-core.sanitized.xml"
+    },
+    {
+      "run": "restart_migration_initial",
+      "tests": 23,
+      "outcomes": {
+        "PASSED": 2,
+        "FAILED": 21
+      },
+      "junit": "audit-20261103-restart-migration.sanitized.xml"
+    },
+    {
+      "run": "migration_gate_retest_with_linux_launcher_bridge",
+      "tests": 29,
+      "outcomes": {
+        "PASSED": 29
+      },
+      "junit": "audit-20261103-migration-gate-retest.sanitized.xml"
+    }
+  ],
+  "distinct_latest_nodes": 130,
+  "distinct_latest_outcomes": {
+    "PASSED": 129,
+    "FAILED": 1
+  },
+  "findings": [
+    {
+      "id": "N01",
+      "priority": "P1",
+      "title": "新克隆默认启动缺工作区初始化",
+      "fact": "README默认入口 python -m backend 因 owning project marker is missing 退出；显式准备合成工作区后可以启动。",
+      "location": "backend/__main__.py:24,36；backend/app.py:40–43；domains/design/design_lab/runtime/paths.py:240–243",
+      "impact": "用户首次打开与新前端连接受阻；测试fixture的成功启动不能覆盖默认启动缺口。",
+      "fix": "提供安全初始化/选择工作区契约和可运行命令，不删除目录拥有权校验、不静默写任意目录。",
+      "evidence": "evidence/default-startup.json"
+    },
+    {
+      "id": "N02",
+      "priority": "P1",
+      "title": "任务列表加项目筛选返回404",
+      "fact": "无参数GET /api/v1/tasks为200；同一服务带合法project_id为404。exact路由缺path_only，查询handler无法抵达。",
+      "location": "backend/v1.py:166,538–543；domains/design/design_lab/http_service.py:592",
+      "impact": "项目任务列表接线失败，UI若吞错会误报没有任务。",
+      "fix": "修正路径/查询匹配，验证两个项目隔离、未知ID和参数错误的真实HTTP行为。",
+      "evidence": "evidence/http-probes.json#tasks_project_query"
+    },
+    {
+      "id": "N03",
+      "priority": "P1",
+      "title": "顶层专业确认要求被静默忽略",
+      "fact": "POST任务professional_required=true放顶层时201却返回0；当前实现仅读acceptance内字段。",
+      "location": "backend/v1.py:545–557",
+      "impact": "调用方明确提出的专业确认要求可能丢失。没有证明正确嵌套配置下真人门被绕过。",
+      "fix": "规范字段并拒绝歧义/冲突/错误类型；创建后读回，要求专业确认的任务无批准始终不完成。",
+      "evidence": "evidence/http-probes.json#top_level_professional_required"
+    },
+    {
+      "id": "N04",
+      "priority": "P2",
+      "title": "非法项目source被自动当成design",
+      "fact": "source=not-a-supported-source返回201并创建design项目。",
+      "location": "backend/v1.py:365–395",
+      "impact": "错误输入静默写入错误域，污染项目上下文与映射。",
+      "fix": "显式枚举校验；拒绝后统一库和设计域均无残留。",
+      "evidence": "evidence/http-probes.json#unknown_project_source"
+    },
+    {
+      "id": "N05",
+      "priority": "P2",
+      "title": "探针和测试硬编码Windows路径",
+      "fact": "核心有1项Windows盘符匹配断言在Linux失败；迁移命令初次21项无法启动，增加审计解释器桥后相关29项通过。",
+      "location": "tests/unified/test_v02_surface.py；tests/unified/test_v12_data_migration.py；scripts/boot_probe.py",
+      "impact": "新克隆/不同平台难以复验，不能把环境故障直接算业务功能失效或无条件忽略。",
+      "fix": "明确平台矩阵、使用当前解释器与平台适当路径断言；不删测试或skip换绿。",
+      "evidence": "三份sanitized JUnit及独立节点CSV"
+    }
+  ],
+  "repository_registers": {
+    "capability_families": {
+      "IMPLEMENTED_VERIFIED": 18,
+      "PARTIAL": 12
+    },
+    "ui_entries": {
+      "PARTIAL": 34,
+      "GAP": 7,
+      "DEFERRED_P3": 1,
+      "IMPLEMENTED_UNVERIFIED": 6,
+      "IMPLEMENTED_VERIFIED": 7,
+      "EXCLUDED_BY_OWNER": 1
+    },
+    "task_acceptance": {
+      "CONFIRMED": 41,
+      "PARTIAL": 2,
+      "BLOCKED_BY_BOUNDARY": 2,
+      "DEFERRED_P3": 3
+    },
+    "route_statuses": {
+      "200": 73,
+      "201": 24,
+      "400": 15,
+      "404": 10,
+      "409": 5,
+      "405": 37
+    }
+  },
+  "runtime_observation": {
+    "capabilities": 20,
+    "can_invoke": 8,
+    "boot_as_declared": true
+  },
+  "raw_executor_520_receipt_independently_reproduced": false
+}

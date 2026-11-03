@@ -1,0 +1,1067 @@
+{
+  "commit": "0de1ade4b9f03fd734e11f2b5ae54ca95867cd7f",
+  "started_at": "2026-11-03T13:27:01.021142+00:00",
+  "interpreter": "<AUDIT_CLONE>/.project-local/audit-env/bin/python",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "versions": {
+    "pytest": "9.2.0",
+    "jsonschema": "4.26.0",
+    "Pillow": "12.3.0",
+    "PyYAML": "6.0.3"
+  },
+  "data_origin": "test",
+  "probes": {
+    "health": {
+      "method": "GET",
+      "path": "/api/v1/health",
+      "input": null,
+      "status": 200,
+      "response": {
+        "service": "ai-work-lab",
+        "version": "0.1.0-alpha.0+fusion.r1",
+        "data_mode": "live",
+        "started_at": "2026-11-03T13:27:01+00:00",
+        "design_api": "migrated design_lab http_service",
+        "unified_store": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace/.project-local/ai-work-lab/unified.sqlite3",
+        "work_store": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace/.project-local/ai-work-lab/work-store.sqlite3",
+        "work_issue_source": "readable",
+        "candidate_version": {
+          "digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+          "files": 901,
+          "computed_at": "2026-11-03T13:27:01+00:00"
+        },
+        "envelope": "08_前后端交接约定.json v1-draft",
+        "envelope_rework": "2026-10-30 audit F02/F03/F04/F05/F07/F08/F10"
+      }
+    },
+    "create_work_project": {
+      "method": "POST",
+      "path": "/api/v1/projects",
+      "input": {
+        "name": "independent-work-audit",
+        "source": "work",
+        "root_path": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/synthetic-work-project",
+        "data_origin": "test"
+      },
+      "status": 201,
+      "response": {
+        "project_id": "4231840cc2564c858c828ba167a70d80",
+        "source": "work",
+        "display_name": "independent-work-audit",
+        "root_path": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/synthetic-work-project",
+        "data_origin": "test",
+        "origin_provenance": "ENFORCED_CHAIN",
+        "registered_at": "2026-11-03T13:27:01+00:00"
+      }
+    },
+    "create_task": {
+      "method": "POST",
+      "path": "/api/v1/tasks",
+      "input": {
+        "project_id": "4231840cc2564c858c828ba167a70d80",
+        "kind": "work",
+        "title": "audit-filter-task",
+        "acceptance": {
+          "data_origin": "test",
+          "professional_required": false
+        }
+      },
+      "status": 201,
+      "response": {
+        "task_id": "ea2c5fe1cc3145c99178d52b5906fb64",
+        "project_id": "4231840cc2564c858c828ba167a70d80",
+        "kind": "work",
+        "lifecycle": "DRAFT",
+        "title": "audit-filter-task",
+        "input_refs": [],
+        "acceptance": {
+          "data_origin": "test",
+          "professional_required": false
+        },
+        "professional_required": 0,
+        "current_attempt_id": null,
+        "revision": 1,
+        "data_origin": "test",
+        "origin_provenance": "ENFORCED_CHAIN",
+        "created_at": "2026-11-03T13:27:01+00:00",
+        "updated_at": "2026-11-03T13:27:01+00:00",
+        "attempts": [],
+        "results": []
+      }
+    },
+    "tasks_without_query": {
+      "method": "GET",
+      "path": "/api/v1/tasks",
+      "input": null,
+      "status": 200,
+      "response": {
+        "tasks": [
+          {
+            "task_id": "ea2c5fe1cc3145c99178d52b5906fb64",
+            "project_id": "4231840cc2564c858c828ba167a70d80",
+            "kind": "work",
+            "lifecycle": "DRAFT",
+            "title": "audit-filter-task",
+            "input_refs": [],
+            "acceptance": {
+              "data_origin": "test",
+              "professional_required": false
+            },
+            "professional_required": 0,
+            "current_attempt_id": null,
+            "revision": 1,
+            "data_origin": "test",
+            "origin_provenance": "ENFORCED_CHAIN",
+            "created_at": "2026-11-03T13:27:01+00:00",
+            "updated_at": "2026-11-03T13:27:01+00:00"
+          }
+        ]
+      }
+    },
+    "tasks_project_query": {
+      "method": "GET",
+      "path": "/api/v1/tasks?project_id=4231840cc2564c858c828ba167a70d80",
+      "input": null,
+      "status": 404,
+      "response": {
+        "error": "NOT_FOUND"
+      }
+    },
+    "tasks_other_query": {
+      "method": "GET",
+      "path": "/api/v1/tasks?project_id=ffffffffffffffffffffffffffffffff",
+      "input": null,
+      "status": 404,
+      "response": {
+        "error": "NOT_FOUND"
+      }
+    },
+    "unknown_project_source": {
+      "method": "POST",
+      "path": "/api/v1/projects",
+      "input": {
+        "name": "audit-invalid-source",
+        "source": "not-a-supported-source",
+        "data_origin": "test"
+      },
+      "status": 201,
+      "response": {
+        "project_id": "15043742cb32412f810c53c5e883de87",
+        "source": "design",
+        "display_name": "audit-invalid-source",
+        "root_path": "434072f20083470da5c13b64d51609c8",
+        "data_origin": "test",
+        "origin_provenance": "ENFORCED_CHAIN",
+        "registered_at": "2026-11-03T13:27:01+00:00"
+      }
+    },
+    "top_level_professional_required": {
+      "method": "POST",
+      "path": "/api/v1/tasks",
+      "input": {
+        "project_id": "4231840cc2564c858c828ba167a70d80",
+        "kind": "work",
+        "title": "audit-must-review",
+        "professional_required": true,
+        "acceptance": {
+          "data_origin": "test"
+        }
+      },
+      "status": 201,
+      "response": {
+        "task_id": "0651450285774ce5b93582e9569cedae",
+        "project_id": "4231840cc2564c858c828ba167a70d80",
+        "kind": "work",
+        "lifecycle": "DRAFT",
+        "title": "audit-must-review",
+        "input_refs": [],
+        "acceptance": {
+          "data_origin": "test"
+        },
+        "professional_required": 0,
+        "current_attempt_id": null,
+        "revision": 1,
+        "data_origin": "test",
+        "origin_provenance": "ENFORCED_CHAIN",
+        "created_at": "2026-11-03T13:27:01+00:00",
+        "updated_at": "2026-11-03T13:27:01+00:00",
+        "attempts": [],
+        "results": []
+      }
+    },
+    "capabilities": {
+      "method": "GET",
+      "path": "/api/v1/capabilities",
+      "input": null,
+      "status": 200,
+      "response": {
+        "capabilities": [
+          {
+            "capability_id": "core.projects",
+            "source_refs": [
+              "migration/mapping.csv#family:project"
+            ],
+            "domain": "core",
+            "operation": "projects.read_write",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "VERIFIED",
+            "qualification_detail": "probe record accepted",
+            "authorization": "NOT_REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "SATISFIED",
+            "dependency_source": "observed by probe 2026-11-03T13:27:01+00:00",
+            "can_invoke": true,
+            "unavailable_reasons": [],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "local_read",
+              "subject": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace/.project-local/ai-work-lab/unified.sqlite3",
+              "data_origin": "live",
+              "evidence_refs": [
+                "probe:core.projects/count"
+              ],
+              "command": "backend.core.probes.run_read_probes (read-only)"
+            }
+          },
+          {
+            "capability_id": "core.tasks",
+            "source_refs": [
+              "migration/mapping.csv#family:task"
+            ],
+            "domain": "core",
+            "operation": "tasks.attempts.results.verifications",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "VERIFIED",
+            "qualification_detail": "probe record accepted",
+            "authorization": "NOT_REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "SATISFIED",
+            "dependency_source": "observed by probe 2026-11-03T13:27:01+00:00",
+            "can_invoke": true,
+            "unavailable_reasons": [],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "local_read",
+              "subject": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace/.project-local/ai-work-lab/unified.sqlite3",
+              "data_origin": "live",
+              "evidence_refs": [
+                "probe:core.tasks/count"
+              ],
+              "command": "backend.core.probes.run_read_probes (read-only)"
+            }
+          },
+          {
+            "capability_id": "design.knowledge.search",
+            "source_refs": [
+              "design:src/design_lab/knowledge_library.py"
+            ],
+            "domain": "design",
+            "operation": "knowledge.search",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "VERIFIED",
+            "qualification_detail": "probe record accepted",
+            "authorization": "NOT_REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "SATISFIED",
+            "dependency_source": "observed by probe 2026-11-03T13:27:01+00:00",
+            "can_invoke": true,
+            "unavailable_reasons": [],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "local_read",
+              "subject": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace",
+              "data_origin": "live",
+              "evidence_refs": [
+                "probe:design.knowledge.search/total"
+              ],
+              "command": "backend.core.probes.run_read_probes (read-only)"
+            }
+          },
+          {
+            "capability_id": "design.plans",
+            "source_refs": [
+              "design:src/design_lab/assistance_plan.py"
+            ],
+            "domain": "design",
+            "operation": "plans.read",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "VERIFIED",
+            "qualification_detail": "probe record accepted",
+            "authorization": "NOT_REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "SATISFIED",
+            "dependency_source": "observed by probe 2026-11-03T13:27:01+00:00",
+            "can_invoke": true,
+            "unavailable_reasons": [],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "local_read",
+              "subject": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace",
+              "data_origin": "live",
+              "evidence_refs": [
+                "probe:design.plans/count"
+              ],
+              "command": "backend.core.probes.run_read_probes (read-only)"
+            }
+          },
+          {
+            "capability_id": "design.target_profiles",
+            "source_refs": [
+              "design:src/design_lab/target_profile.py"
+            ],
+            "domain": "design",
+            "operation": "target_profiles.read",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "VERIFIED",
+            "qualification_detail": "probe record accepted",
+            "authorization": "NOT_REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "SATISFIED",
+            "dependency_source": "observed by probe 2026-11-03T13:27:01+00:00",
+            "can_invoke": true,
+            "unavailable_reasons": [],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "local_read",
+              "subject": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace",
+              "data_origin": "live",
+              "evidence_refs": [
+                "probe:design.target_profiles/count"
+              ],
+              "command": "backend.core.probes.run_read_probes (read-only)"
+            }
+          },
+          {
+            "capability_id": "work.repair_packs",
+            "source_refs": [
+              "work:packages/client-neutral-core/scripts/repair_state.py"
+            ],
+            "domain": "work",
+            "operation": "repair_pack.lifecycle",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "authorization=REQUIRED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "work.solution_library.search",
+            "source_refs": [
+              "work:packages/client-neutral-core/scripts/solution_library.py",
+              "domains/work/control/solution_library.py"
+            ],
+            "domain": "work",
+            "operation": "solutions.search",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "VERIFIED",
+            "qualification_detail": "probe record accepted",
+            "authorization": "NOT_REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "SATISFIED",
+            "dependency_source": "observed by probe 2026-11-03T13:27:01+00:00",
+            "can_invoke": true,
+            "unavailable_reasons": [],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "local_read",
+              "subject": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace/.project-local/ai-work-lab/work-store.sqlite3",
+              "data_origin": "live",
+              "evidence_refs": [
+                "probe:work.solution_library.search/status"
+              ],
+              "command": "backend.core.probes.run_read_probes (read-only)"
+            }
+          },
+          {
+            "capability_id": "work.observer.read_surface",
+            "source_refs": [
+              "domains/work/control/sidecar.py"
+            ],
+            "domain": "work",
+            "operation": "observer.snapshot_reads",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "VERIFIED",
+            "qualification_detail": "probe record accepted",
+            "authorization": "NOT_REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "SATISFIED",
+            "dependency_source": "observed by probe 2026-11-03T13:27:01+00:00",
+            "can_invoke": true,
+            "unavailable_reasons": [],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "local_read",
+              "subject": "<AUDIT_CLONE>/.project-local/cloud-audit-20261103/workspace/.project-local/ai-work-lab/work-store.sqlite3",
+              "data_origin": "live",
+              "evidence_refs": [
+                "probe:work.observer.read_surface"
+              ],
+              "command": "backend.core.probes.run_read_probes (read-only)"
+            }
+          },
+          {
+            "capability_id": "work.control_operations",
+            "source_refs": [
+              "domains/work/control/control_service.py#ControlPlane"
+            ],
+            "domain": "work",
+            "operation": "control.operations.write",
+            "implementation": "PARTIAL",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "implementation=PARTIAL",
+              "authorization=REQUIRED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "backend.http_surface",
+            "source_refs": [
+              "design:src/design_lab/http_service.py"
+            ],
+            "domain": "core",
+            "operation": "http.loopback_api",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "VERIFIED",
+            "qualification_detail": "probe record accepted",
+            "authorization": "NOT_REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "SATISFIED",
+            "dependency_source": "observed by probe 2026-11-03T13:27:01+00:00",
+            "can_invoke": true,
+            "unavailable_reasons": [],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "loopback_http",
+              "subject": "http://127.0.0.1:45605/api/v1/health",
+              "data_origin": "live",
+              "evidence_refs": [
+                "probe:backend.http_surface/loopback"
+              ],
+              "command": "<AUDIT_CLONE>/.project-local/audit-env/bin/python -B -c <authenticated http get> http://127.0.0.1:45605/api/v1/health"
+            }
+          },
+          {
+            "capability_id": "design.native_hosts",
+            "source_refs": [
+              "design:src/design_lab/native_workers.py",
+              "design:src/design_lab/adapters/photoshop_com.py"
+            ],
+            "domain": "design",
+            "operation": "native_host.invoke",
+            "implementation": "IMPLEMENTED",
+            "phase": "P2",
+            "locally_probeable": false,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_PROBED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)",
+              "connection=NOT_PROBED"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "design.reconstruction",
+            "source_refs": [
+              "design:packages/capabilities/reconstruction"
+            ],
+            "domain": "design",
+            "operation": "reconstruction.run",
+            "implementation": "IMPLEMENTED",
+            "phase": "P3",
+            "locally_probeable": false,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_PROBED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)",
+              "connection=NOT_PROBED"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "design.generative",
+            "source_refs": [
+              "design:src/design_lab/creative"
+            ],
+            "domain": "design",
+            "operation": "generative.invoke",
+            "implementation": "IMPLEMENTED",
+            "phase": "P3",
+            "locally_probeable": false,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_PROBED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)",
+              "connection=NOT_PROBED"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "work.executors",
+            "source_refs": [
+              "work:config/adapter-registry.json"
+            ],
+            "domain": "work",
+            "operation": "executor.invoke",
+            "implementation": "PARTIAL",
+            "phase": "P2",
+            "locally_probeable": false,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_PROBED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "implementation=PARTIAL",
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)",
+              "connection=NOT_PROBED"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "work.execution_federation",
+            "source_refs": [
+              "work:services/execution-federation"
+            ],
+            "domain": "work",
+            "operation": "federation.dispatch",
+            "implementation": "DEFERRED",
+            "phase": "P3",
+            "locally_probeable": false,
+            "can_probe": false,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_PROBED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "implementation=DEFERRED",
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)",
+              "connection=NOT_PROBED"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "work.collectors",
+            "source_refs": [
+              "domains/work/orchestration/collectors.py (迁入；默认不自动运行)"
+            ],
+            "domain": "work",
+            "operation": "collector.run",
+            "implementation": "IMPLEMENTED",
+            "phase": "P2",
+            "locally_probeable": false,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_PROBED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)",
+              "connection=NOT_PROBED"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "core.evolution",
+            "source_refs": [
+              "08_前后端交接约定.json#ImprovementCandidate"
+            ],
+            "domain": "core",
+            "operation": "self_improvement.candidate",
+            "implementation": "DECLARED",
+            "phase": "P3",
+            "locally_probeable": false,
+            "can_probe": false,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "implementation=DECLARED",
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "integrations.knowledge_candidate",
+            "source_refs": [
+              "design:src/design_lab/assurance/knowledge_feedback.py"
+            ],
+            "domain": "integrations",
+            "operation": "knowledge_candidate.export",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1合同/P3深度AAOS",
+            "locally_probeable": false,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_PROBED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)",
+              "connection=NOT_PROBED"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "work.session_continuity",
+            "source_refs": [
+              "work:services/memory"
+            ],
+            "domain": "work",
+            "operation": "session.continue",
+            "implementation": "DEFERRED",
+            "phase": "P2",
+            "locally_probeable": false,
+            "can_probe": false,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "connection_state": "NOT_PROBED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "implementation=DEFERRED",
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)",
+              "connection=NOT_PROBED"
+            ],
+            "probe": null
+          },
+          {
+            "capability_id": "data.migration",
+            "source_refs": [
+              "scripts/migrate_business_data.py"
+            ],
+            "domain": "core",
+            "operation": "business_data.migrate_verify",
+            "implementation": "IMPLEMENTED",
+            "phase": "P1",
+            "locally_probeable": true,
+            "can_probe": true,
+            "declared_by": "backend.core.capabilities.CATALOG_SPEC (declaration only)",
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "data_origin": "live",
+            "design_routes_declared": 89,
+            "qualification": "NOT_VERIFIED",
+            "qualification_detail": "synthetic probe origin",
+            "authorization": "REQUIRED",
+            "connection_state": "NOT_REQUIRED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "can_invoke": false,
+            "unavailable_reasons": [
+              "authorization=REQUIRED (fail closed)",
+              "qualification=NOT_VERIFIED (probe origin is 'test'; a synthetic probe never grants a live qualification)",
+              "dependency=UNKNOWN (declared)"
+            ],
+            "probe": {
+              "observed_at": "2026-11-03T13:27:01+00:00",
+              "candidate_digest": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+              "scope": "local_roundtrip_scratch",
+              "subject": "subject.sqlite3",
+              "data_origin": "test",
+              "evidence_refs": [
+                "probe:data.migration/scratch-roundtrip"
+              ],
+              "command": ""
+            }
+          }
+        ],
+        "count": 20,
+        "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+        "qualification_rule": "can_invoke is derived from a probe record bound to this candidate version; no constant, file existence or compile option grants it"
+      }
+    },
+    "connections": {
+      "method": "GET",
+      "path": "/api/v1/connections",
+      "input": null,
+      "status": 200,
+      "response": {
+        "connections": [
+          {
+            "connection_id": "design-native-hosts",
+            "tool_ref": "photoshop/illustrator(COM)",
+            "note": "P2 逐次 Human Gate 后受控探测；本机宿主连接未探测，不因内置本地探测升格",
+            "state": "NOT_PROBED",
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "connection_observed_by_probe": null,
+            "unavailable_reasons": [
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)"
+            ],
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "bound_capability": "design.native_hosts",
+            "operation": "native_host.invoke",
+            "evidence": null,
+            "declared_by": "backend.v1.TOOL_SPEC/CONNECTION_SPEC (declaration only, no status)"
+          },
+          {
+            "connection_id": "design-comfy",
+            "tool_ref": "ComfyUI(HTTP)",
+            "note": "不联网；本机生成服务未探测，生成能力与连接同属未取证",
+            "state": "NOT_PROBED",
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "connection_observed_by_probe": null,
+            "unavailable_reasons": [
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)"
+            ],
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "bound_capability": "design.generative",
+            "operation": "generative.invoke",
+            "evidence": null,
+            "declared_by": "backend.v1.TOOL_SPEC/CONNECTION_SPEC (declaration only, no status)"
+          },
+          {
+            "connection_id": "work-adapters",
+            "tool_ref": "config/adapter-registry.json",
+            "note": "适配器合同已迁入；执行器连接未探测",
+            "state": "NOT_PROBED",
+            "qualification": "NOT_PROBED",
+            "qualification_detail": "no probe record for this capability + operation",
+            "authorization": "NOT_GRANTED",
+            "dependency": "UNKNOWN",
+            "dependency_source": "declared",
+            "connection_observed_by_probe": null,
+            "unavailable_reasons": [
+              "implementation=PARTIAL",
+              "authorization=NOT_GRANTED (fail closed)",
+              "qualification=NOT_PROBED",
+              "dependency=UNKNOWN (declared)"
+            ],
+            "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971",
+            "bound_capability": "work.executors",
+            "operation": "executor.invoke",
+            "evidence": null,
+            "declared_by": "backend.v1.TOOL_SPEC/CONNECTION_SPEC (declaration only, no status)"
+          }
+        ],
+        "count": 3,
+        "state_rule": "connection state is read from the qualification-ledger record bound to this candidate version; no constant, file existence or compile option grants CONNECTED, and the default is NOT_PROBED with reasons",
+        "candidate_version": "442c26041086287ca75b9a995f476e78eff5212c13a5fc5738f8287ad9102971"
+      }
+    },
+    "improvements": {
+      "method": "GET",
+      "path": "/api/v1/improvements",
+      "input": null,
+      "status": 200,
+      "response": {
+        "status": "CONTRACT_ONLY",
+        "implementation": "DECLARED",
+        "activation_state": "UNAVAILABLE",
+        "reason": "自身改写执行链按 P3 延期；候选/差异/验证/激活/回滚数据合同保留，本轮不接受执行请求",
+        "contract_ref": "08_前后端交接约定.json#ImprovementCandidate"
+      }
+    },
+    "integrity": {
+      "method": "GET",
+      "path": "/api/v1/integrity",
+      "input": null,
+      "status": 200,
+      "response": {
+        "problems": [],
+        "counts": {
+          "tasks": 2,
+          "attempts": 0,
+          "results": 0,
+          "attempts_with_pack_plan": 0,
+          "pack_plan_check": "RUN"
+        }
+      }
+    }
+  },
+  "boot_checks": {
+    "as_declared": true,
+    "checks": {
+      "v1_health": {
+        "method": "GET",
+        "path": "/api/v1/health",
+        "auth": true,
+        "expected": [
+          200
+        ],
+        "status": 200,
+        "as_declared": true,
+        "head": "{\"service\": \"ai-work-lab\", \"version\": \"0.1.0-alpha.0+fusion.r1\", \"data_mode\": \"live\", \"started_at\": \"2026-11-03T13:27:01"
+      },
+      "design_compat_health": {
+        "method": "GET",
+        "path": "/api/health",
+        "auth": true,
+        "expected": [
+          200
+        ],
+        "status": 200,
+        "as_declared": true,
+        "head": "{\"status\": \"OK\", \"version\": \"0.1.0-alpha.0\", \"scope\": \"project-metadata\", \"bundleSha256\": null, \"bundleOrigin\": \"not-bui"
+      },
+      "design_compat_capabilities": {
+        "method": "GET",
+        "path": "/api/capabilities",
+        "auth": true,
+        "expected": [
+          200
+        ],
+        "status": 200,
+        "as_declared": true,
+        "head": "{\"schemaVersion\": \"design-lab/capability-library/v1\", \"classification\": {\"joined\": 37, \"unclassifiedAxes\": [\"aestheticAx"
+      },
+      "design_compat_knowledge_search": {
+        "method": "GET",
+        "path": "/api/knowledge-entries/search",
+        "auth": true,
+        "expected": [
+          200
+        ],
+        "status": 200,
+        "as_declared": true,
+        "head": "{\"schemaVersion\": \"design-lab/knowledge-library/v1\", \"query\": null, \"filters\": {\"type\": null, \"domain\": null, \"task\": nu"
+      },
+      "workbench_shell": {
+        "method": "GET",
+        "path": "/workbench",
+        "auth": false,
+        "expected": [
+          200
+        ],
+        "status": 200,
+        "as_declared": true,
+        "head": "<!doctype html>\n<html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial"
+      },
+      "v1_health_no_token": {
+        "method": "GET",
+        "path": "/api/v1/health",
+        "auth": false,
+        "expected": [
+          401
+        ],
+        "status": 401,
+        "as_declared": true,
+        "head": "{\"error\": \"UNAUTHORIZED\"}"
+      },
+      "design_compat_health_no_token": {
+        "method": "GET",
+        "path": "/api/health",
+        "auth": false,
+        "expected": [
+          401
+        ],
+        "status": 401,
+        "as_declared": true,
+        "head": "{\"error\": \"UNAUTHORIZED\"}"
+      },
+      "design_compat_health_wrong_host": {
+        "method": "GET",
+        "path": "/api/health",
+        "auth": true,
+        "expected": [
+          403
+        ],
+        "status": 403,
+        "as_declared": true,
+        "head": "{\"error\": \"HOST_DENIED\"}"
+      }
+    }
+  },
+  "route_counts": {
+    "unified_and_work": 75,
+    "design_compatibility": 89,
+    "sum": 164
+  },
+  "finished_at": "2026-11-03T13:27:01.677819+00:00"
+}

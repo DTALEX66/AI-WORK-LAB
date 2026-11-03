@@ -2381,3 +2381,38 @@ AI-WORK-LAB — WORK-LAB 与 DESIGN-LAB 融合后的单一项目：统一信封/
 收据与改绑用的是祖先关系与"区间内逐个文件的类别"，夹具的会话窗口用同一台机器上的相对时间，
 所以这一步跳变不改变本节任何一条判定；被改变的只是"这些 `Z` 数字与真实世界时刻相差多少"这一件
 我无法从机器内部证实的事。与 `.git` 体积那次一样：只记录，不猜测，不据此重跑或改写已有收据。
+
+### 15.33 owner 交付「云端审计与 STITCH 任务包」：四条发现全部在本机真实 HTTP 上复现，其中两处报告还低估了
+
+**包的来源与边界（不是 Authority）。** owner 2026-11-03 附件交付
+`AI-WORK-LAB_云端审计与STITCH任务包_20261103.zip`：ZIP 摘要 `14d0c086eea31d47`、106341 字节、22 个成员、解出后逐份共 517759 字节；
+逐字节进仓到 `docs/audits-20261103-cloud-audit/` 并生成 `SOURCE-MANIFEST.json`
+（每份 `path_in_zip` / `stored_as` / 字节 / sha256 / 包内 CRC）。它自报基线 `0de1ade4b9f0…`：在本仓可解析，且**就是当前 `HEAD`（`0de1ade4b9f0`）本身**——即 §15.32 入册后那一头，报告读的就是我推上去的内容。
+包内写明：**只在本地执行，不 fetch/pull/push、不 PR、不 Release、不部署、不触发远程 CI，
+且"不要依据仓库历史上传记录推定获得新的上传授权"**——本轮工作因此走本地分支
+`audit/backend-closure-20261103`，与上面那次推送互不相干。统一归档只读，本次只读取 ZIP。
+
+**复现（真实 loopback HTTP，不直接调 handler）。**
+
+| 发现 | 报告说 | 本机实测 |
+|---|---|---|
+| N01 默认工作区起不来 | 新克隆按 README 跑 `python -m backend` 因缺 `AGENTS.md` 以 `PathPolicyError` 退出 | **成立**：退出码 `1`，`stdout` 为空——只有一段裸 traceback（`paths.py:243 owning project marker is missing`），没有任何能指导下一步的 JSON |
+| N02 任务筛选 404 | `GET /api/v1/tasks?project_id=<存在>` 返回 404 | **成立**：无查询 200 / 3 条，带任一已存在项目的 `project_id` → `404 {"error":"NOT_FOUND"}`；未知项目同为 404（连"空结果"这条契约都没有） |
+| N03 顶层 `professional_required` 被丢 | 201 但 `professional_required=0` | **成立且更宽**：顶层 true → `201 professional_required=0`；嵌套 true → `1`；**顶层 true 与嵌套 false 冲突 → 0（静默降 false，不拒绝）**；顶层给非布尔 `"yes please"` → `0`（一并静默吞掉）。库里逐条核对：`{"nested_true": true, "top_true": false, "conflict": false}` |
+| N04 非法 `source` 落入 design | 未知 source 仍 201 并登记为 design | **成立且多一处**：`not-a-supported-source` → `201`，统一库自记 `source=design`，**并且设计域也真的多了一行**（`1 → 2`）——报告只说被登记成 design，实测是两边都留了记录。空串正确 400；**大写 `WORK` 未被识别为 work 而静默按 design 接收**（`201`，报告未提） |
+
+第一次探针我把 `kind` 写成 `work_pack`，N03/N02 的建立请求都得到 400——**那是探针的错，不是反证**；
+改用 `backend/core/unified_store.py` 里那份 `TASK_KINDS`（`work/design/repair/improvement`）后
+才拿到上面这些结论。原始读数：`.project-local/runs/audit-20261103-reproduction.json`
+（sha256 前 16 `25c72e01f7c412e7`）与 `.project-local/runs/audit-20261103-reproduction-pass2.json`（`8cb6f96cf27e2b75`）。
+
+**报告里两处需要按本仓口径重新表述的事**：① 它说"未全量复现 520"，本仓的判据本来就不要求外部执行器
+重跑全量——`520 passed / 0 failed` 是绑定 `6b0cfbf` 的执行器收据，独立复现以 130 节点子集与
+evidence XML 为凭，两者不互换；② 它在被忽略的审计目录里加了 Linux 解释器启动桥来跑迁移测试，
+这**不是**本仓的生产修法（N05 要求按当前解释器与声明的平台矩阵解决，且不得删断言或 skip 换绿）。
+
+**接下来按包内第一批做（N01→N04 先于任何前端接线）**：N01 给可执行的初始化契约与能指导 UI 的失败信息，
+不删路径策略、不往任意用户目录偷写 `AGENTS.md`；N02 修 exact 路由与查询解析并测两个项目各有任务时
+无查询/仅 A/仅 B/未知项目四种；N03 定一个规范字段并拒绝冲突与非法类型，**不得用默认全 false 把测试"修绿"**；
+N04 限定 `work/design`、其余 400，且拒绝时两个库都不留残留。每条都要真实 HTTP 正例 + 拒绝例 + 重启读回，
+增量测试有意义即可，不重复堆断言。

@@ -1,0 +1,37 @@
+﻿界面动作,当前真实入口,审计状态,数据形状/主要字段,设计与接线要求
+连接/启动,GET /api/v1/health,存在；已初始化测试工作区可读,服务状态、版本、候选标识,默认新克隆启动失败；先完成安全工作区初始化。health.data_mode不能覆盖单条记录来源。
+鉴权,统一HTTP内核,Bearer + Host/Origin约束,连接状态与缺失条件,同源托管或可信原生桥接；当前统一CLI未开启本地会话握手。禁用跨域放行式修复。
+项目列表,GET /api/v1/projects,存在,"{unified, design_runtime}",统一ID与设计运行时ID不同；显式映射，不能将两个数组直接拼成重复项目。
+项目创建,POST /api/v1/projects,存在；非法source校验缺陷N04,name/source/root_path/data_origin,source仅work/design；服务端修复之前不发送其他值。work真实根目录须存在。
+任务列表,GET /api/v1/tasks,存在,{tasks},附project_id查询会404：N02。修复前呈现筛选不可用，不吞错为空列表。
+任务创建,POST /api/v1/tasks,存在；顶层字段缺陷N03,project_id/kind/title/input_refs/acceptance,专业确认使用acceptance.professional_required，并读回确认。顶层同名字段会被静默忽略。
+任务详情,GET /api/v1/tasks/{task_id},存在,Task / current_attempt_id,按当前尝试展示，历史结果不能覆盖当前状态。
+完成判定,GET /api/v1/tasks/{task_id}/completion,存在；子集测试通过,服务端完成投影,不得由前端根据某次历史PASS自行结案。
+创建尝试,POST /api/v1/tasks/{task_id}/attempts,存在,idempotency_key/execution_mode/base_fingerprint,当前MANUAL_COPY；自动执行方式未接通。重试创建新Attempt，保持旧记录。
+尝试详情,GET /api/v1/attempts/{attempt_id},存在,Attempt及关联results,任务、尝试、结果、验证分别建模。
+构建任务包,POST /api/v1/attempts/{attempt_id}/pack,存在；两域返回形状不同,work:handoff_text/pack；design:pack_body/pack_ref,由前端adapter归一化，保留原始来源及版本。
+受限执行批准,POST /api/v1/attempts/{attempt_id}/approval,存在；受可信授权账本约束,authorization_ref/expected_version,前端不能自造grant。当前网页不具备通用签发授权能力。
+人工交接声明,POST /api/v1/attempts/{attempt_id}/handoff-declarations,存在,用户声明及目标版本,复制成功≠已发送；用户声明≠外部Agent已确认收到。
+结果导入,POST /api/v1/attempts/{attempt_id}/results,存在；子集正反例通过,域专用结果与绑定信息,不提供能绕过版本、路径、范围校验的万能JSON导入框。
+结果查看,GET /api/v1/results/{result_id},存在,Result及verifications,对比尝试、内容摘要、输入版本、目标组合；有来源标签。
+技术核验,POST /api/v1/results/{result_id}/verifications,存在,axis=technical,WORK读取问题状态；DESIGN核对方案/目标绑定。DESIGN通过不等于作品质量通过。
+专业确认,POST /api/v1/results/{result_id}/verifications,存在；需approval_ref,axis=professional/approval_ref,live批准仅由现有本地TTY真人门产生；没有网页签发API。原生确认桥未接通时只能提示待本地确认。
+停止/取消/恢复,未见通用V1任务控制路由,缺口,未来控制动作,不能添加可点击按钮后伪造取消成功；外部执行取消也未验收。
+设计方案查询,GET /api/v1/design/plans,存在,方案及修订投影,设计运行时project_id与统一ID通过adapter映射。
+设计修订读取,GET /api/v1/design/plans/{plan_id}/revisions/{n},存在,指定不可混用的修订,切换版本必须提示目标组合与结果绑定是否过期。
+设计方案创建/编辑,/api/projects/{design_project_id}/assistance-plans 等兼容路由,已有成熟兼容面,方案及修订/导出/选择/反馈,从route-surface核对具体方法；不臆造POST /api/v1/design/plans。
+目标档案,GET /api/v1/design/target-profiles；/api/target-profiles,读投影及兼容能力存在,软件×模型×接入方式,已选择不是已连接；读写方法按兼容路由核对。
+统一检索,GET /api/v1/search；GET /api/v1/knowledge/search,存在；短中文/空结果/重启子集通过,跨WORK维护方案与DESIGN知识,保留来源分组；错误不可转为空结果。
+知识写入,/api/knowledge-entries 及修订兼容路由,存在,知识内容、修订、冲突,禁止臆造POST /api/v1/knowledge。
+资产输入输出,DESIGN资产兼容路由，见完整route-surface快照,部分现存能力,输入/资产/产物引用及版本,不可承诺所有格式解析、视频音频生成、宿主实写均已支持。
+运行观察,GET /api/work/observer/projection 等,按需只读投影,状态/问题/软件/用量摘要,不把ON_DEMAND_READ或未探测sidecar显示为持续采集。
+事件记录,/api/work/observer/evidence/events 等,有限事件响应,事件与证据区间,有SSE响应不等于后台watcher已经持续运行。
+受限控制,POST /api/work/control/operations,已有范围/状态/修订/权限边界,具体操作的受限请求,Observer不能写；不能把Control入口等同于任意宿主写权限。
+能力目录,GET /api/v1/capabilities,存在；运行目录20项,implementation/qualification/connection/authorization/dependency/data_origin,受控测试工作区8项内置操作can_invoke=true；不能固定写死8/20用于所有用户。
+资格证据,GET /api/v1/qualification-evidence,存在,版本/操作/范围/TTL绑定证据,历史PASS、存在文件和import成功不能独立授予资格。
+工具列表,GET /api/v1/tools,存在；派生投影,工具与条件,保留未知和缺依赖，不用虚假绿灯填空。
+连接列表,GET /api/v1/connections,存在；本次3项均未探测未授权,状态与缺失条件,未提供通用自动发现/登录/连接写API，不做假的连接成功。
+自我迭代,GET /api/v1/improvements,CONTRACT_ONLY / DECLARED / UNAVAILABLE,未来候选/差异/验证/恢复合同,真实创建、执行、激活、回滚动作均未接通，当前保持禁用。
+完整性检查,GET /api/v1/integrity,存在,统一对象与方案绑定完整性,空problems只说明当前检查范围，不代表全部产品质量通过。
+设置/规则/隐私,未见通用统一配置保存接口,旧入口多项GAP,外观偏好与系统配置分开,本地主题偏好可以前端保存；权限/采集/模型配置无接口不能显示已保存。
+BOT/外部Agent,合同、适配器和人工任务包；自动会话未验收,PARTIAL / 后续接入,端点、范围、回执、结果与当前尝试,保留人工替代；不声称已连接任意Agent、BOT或自我进化。
