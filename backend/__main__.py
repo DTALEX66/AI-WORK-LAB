@@ -15,6 +15,7 @@ import threading
 from pathlib import Path
 
 from backend.app import build_server
+from backend.workspace import WorkspaceRefused, init as init_workspace
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -22,7 +23,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--workspace", default=str(Path(__file__).resolve().parents[1] / "workspace"),
                         help="workspace root (runtime state lives in its .project-local)")
     parser.add_argument("--port", type=int, default=0, help="loopback port (0 = pick a free one)")
+    parser.add_argument("--init", action="store_true",
+                        help="create the workspace marker and exit; never overwrites an existing one")
     args = parser.parse_args(argv)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    repo_root = Path(__file__).resolve().parents[1]
+    if args.init:
+        # Initialising needs no service token: it is the step a user runs *before* a launcher
+        # exists, and it writes one marker file or nothing at all.
+        try:
+            print(json.dumps(init_workspace(Path(args.workspace), repo_root)), flush=True)
+        except WorkspaceRefused as refused:
+            print(json.dumps(refused.as_payload()), flush=True)
+            return 2
+        return 0
     if sys.stdin.isatty():
         print(json.dumps({"status": "ERROR",
                           "reason": "SERVICE_REQUIRES_LAUNCHER_STDIN"}), flush=True)
@@ -31,9 +46,11 @@ def main(argv: list[str] | None = None) -> int:
     if not re.fullmatch(r"[0-9a-f]{64}", token):
         print(json.dumps({"status": "ERROR", "reason": "INVALID_SERVICE_TOKEN"}), flush=True)
         return 2
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
-    httpd, context = build_server(Path(args.workspace), token, args.port)
+    try:
+        httpd, context = build_server(Path(args.workspace), token, args.port)
+    except WorkspaceRefused as refused:
+        print(json.dumps(refused.as_payload()), flush=True)
+        return 2
     print(json.dumps({"status": "LISTENING", "host": "127.0.0.1", "port": httpd.server_port,
                       "workspace": str(Path(args.workspace).resolve()),
                       "reconciled_attempts": len(context["reconciled"]),

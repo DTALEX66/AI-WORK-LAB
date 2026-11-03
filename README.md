@@ -12,16 +12,20 @@
 ## 五分钟跑起来（本地，不联网）
 
 ```bash
-# 1) 起后端（token 从 stdin 读，不写进命令行也不落盘）
-python -m backend
+# 1) 初始化工作区（幂等：只写一个"归属项目"标记；标记已存在就一字不改，也不碰别的文件）
+python -m backend --init
 
-# 2) 真实 HTTP 启动探测：统一面 + 兼容面逐个路由读回，打印一条 json 判定
+# 2) 起后端：token 从 stdin 读，不进命令行、不落盘。缺这一步标记时服务不会自己造工作区，
+#    而是回一条 WORKSPACE_NOT_INITIALIZED 的 json 与 next_action（这是新克隆上的第一步）
+python -c "import secrets; print(secrets.token_hex(32))" | python -m backend
+
+# 3) 真实 HTTP 启动探测：统一面 + 兼容面逐个路由读回，打印一条 json 判定
 python scripts/boot_probe.py
 
-# 3) 顶层入口防漂移：根入口引用的路径与数字，逐条与寄存器现值比对
+# 4) 顶层入口防漂移：根入口引用的路径与数字，逐条与寄存器现值比对
 python scripts/check_project_current.py --check
 
-# 4) 全量回归（本机约 14 分钟）
+# 5) 全量回归（本机约 14 分钟）
 python -m pytest tests/unified tests/legacy -q
 ```
 

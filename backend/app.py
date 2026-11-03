@@ -25,6 +25,7 @@ if str(DESIGN_PACKAGE_ROOT) not in sys.path:
 from design_lab.http_service import make_server  # noqa: E402
 from design_lab.knowledge_library import KnowledgeLibrary  # noqa: E402
 from design_lab.assistance_plan import AssistancePlans  # noqa: E402
+from design_lab.runtime.paths import PathPolicyError  # noqa: E402
 from design_lab.service import ProjectService  # noqa: E402
 from design_lab.target_profile import TargetProfiles  # noqa: E402
 
@@ -34,14 +35,27 @@ from backend.core.qualifications import QualificationLedger  # noqa: E402
 from backend.core.unified_store import UnifiedStore  # noqa: E402
 from backend.core.workpacks import WorkPacks  # noqa: E402
 from backend.v1 import V1API, V1_ROUTES  # noqa: E402
+from backend.workspace import WorkspaceRefused, guard as workspace_guard  # noqa: E402
 
 
 def build_workspace(workspace_root: Path) -> dict:
     workspace_root = Path(workspace_root)
+    # Guarded before anything is created: the old order made the runtime root first and let the
+    # path policy refuse afterwards, so a refused start still left a half-built workspace behind.
+    verdict = workspace_guard(workspace_root, TARGET_ROOT)
+    if verdict is not None:
+        raise WorkspaceRefused(verdict["reason"], verdict["workspace"], verdict["detail"])
     local_root = workspace_root / ".project-local" / "ai-work-lab"
     local_root.mkdir(parents=True, exist_ok=True)
-    service = ProjectService(str(workspace_root))
-    reconciled = service.reconcile_interrupted_attempts()
+    try:
+        service = ProjectService(str(workspace_root))
+        reconciled = service.reconcile_interrupted_attempts()
+    except PathPolicyError as exc:
+        # Anything the migrated policy still refuses -- an escaping ambient PROJECT_LOCAL_ROOT, a
+        # link in the path -- arrives here as the same one-line answer, not as a traceback.
+        raise WorkspaceRefused("WORKSPACE_PATH_REFUSED", workspace_root, str(exc),
+                               next_action="unset PROJECT_LOCAL_ROOT, or pass --workspace under a "
+                                           "directory you own, then re-run") from None
     unified = UnifiedStore(local_root / "unified.sqlite3")
     work = WorkPacks(local_root / "work-store.sqlite3",
                      grants_path=local_root / "trusted-grants.json")

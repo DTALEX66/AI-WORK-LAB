@@ -102,6 +102,21 @@ def run_checks(port: int, token: str) -> tuple[dict, bool]:
 
 def main() -> int:
     workspace = TARGET_ROOT / "workspace"
+    # Initialise through the CLI itself, the way a first run on a fresh clone has to: the default
+    # workspace directory is Git-excluded, so a probe that assumed it already existed could only
+    # ever pass on a machine that had run the service before. `--init` writes a marker or nothing.
+    initialised = subprocess.run(
+        [str(PYTHON), "-X", "utf8", "-m", "backend", "--init", "--workspace", str(workspace)],
+        cwd=str(TARGET_ROOT), capture_output=True, text=True, encoding="utf-8")
+    try:
+        workspace_init = json.loads(initialised.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        workspace_init = {"status": "ERROR", "reason": "INIT_PRINTED_NO_JSON",
+                          "stdout": (initialised.stdout or "")[:200]}
+    if initialised.returncode != 0:
+        print(json.dumps({"verdict": "FAILED", "reason": "WORKSPACE_INIT_REFUSED",
+                          "workspace_init": workspace_init}, ensure_ascii=True))
+        return 1
     token = secrets.token_hex(32)
     process = subprocess.Popen(
         [str(PYTHON), "-X", "utf8", "-m", "backend", "--workspace", str(workspace), "--port", "8765"],
@@ -111,22 +126,27 @@ def main() -> int:
         process.stdin.write(token + "\n")
         process.stdin.flush()
         listening = None
+        seen: list[str] = []
         deadline = time.time() + 30
         while time.time() < deadline:
             line = process.stdout.readline()
             if not line:
                 break
+            seen.append(line.rstrip()[:300])
             if '"status": "LISTENING"' in line or '"status":"LISTENING"' in line:
                 listening = json.loads(line)
                 break
         if listening is None:
-            print(json.dumps({"verdict": "FAILED", "reason": "no LISTENING line"},
-                             ensure_ascii=True))
+            # the child's own last lines: a structured refusal from the CLI is the evidence of why,
+            # and dropping it here would turn a clear "reason" into an unanswerable "it did not start"
+            print(json.dumps({"verdict": "FAILED", "reason": "no LISTENING line",
+                              "child_last_lines": seen[-4:]}, ensure_ascii=True))
             return 1
         port = listening["port"]
         results, ok = run_checks(port, token)
         print(json.dumps({"verdict": "OK" if ok else "FAILED",
                           "listening": listening,
+                          "workspace_init": workspace_init,
                           "checks": len(CHECKS),
                           "probes": results},
                          ensure_ascii=True, indent=2))

@@ -291,3 +291,115 @@ def test_backend_boots_twice_and_recovers_the_orphan(tmp_path: Path):
     # releasing the lock does not retroactively change what the second boot saw
     assert _attempt_state(service, "live",
                           planted["live"])["state"] == "RUNNING"
+
+
+def _cli(*extra_args: str, token: str = "") -> subprocess.CompletedProcess:
+    """One ``python -m backend`` child process, with ``token`` on stdin.
+
+    The default is an empty line because the start path must refuse a missing launcher token
+    *before* it looks at any filesystem -- that order is what makes the assertions below mean what
+    they say, so a case that wants to reach the workspace guard passes a real token instead.
+    """
+    return subprocess.run([sys.executable, "-B", "-X", "utf8", "-m", "backend", *extra_args],
+                          cwd=str(REPO), input=token + "\n", capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", timeout=300)
+
+
+def _first_json(completed: subprocess.CompletedProcess) -> dict:
+    lines = [line for line in (completed.stdout or "").splitlines() if line.strip()]
+    assert lines, ("the CLI answered with nothing on stdout; stderr tail: %s"
+                   % (completed.stderr or "")[-600:])
+    return json.loads(lines[0])
+
+
+def test_an_uninitialised_workspace_is_refused_with_the_command_that_fixes_it(tmp_path):
+    """N01: the first run on a fresh clone answers in one JSON line, with no traceback and no litter.
+
+    ``workspace/`` is Git-excluded, so every fresh clone hit this: the migrated path policy raised
+    deep inside ``ProjectService``, the CLI let the exception escape (empty stdout, stack trace on
+    stderr), and ``build_workspace`` had already created ``workspace/.project-local/ai-work-lab/``
+    before the policy refused. A launcher cannot branch on a stack trace, and a refusal that leaves a
+    half-built workspace behind is not a refusal.
+    """
+    workspace = tmp_path / "fresh-clone"
+    completed = _cli("--workspace", str(workspace), "--port", "0", token=secrets.token_hex(32))
+    payload = _first_json(completed)
+    assert completed.returncode == 2, completed
+    assert payload["status"] == "ERROR", payload
+    assert payload["reason"] == "WORKSPACE_NOT_INITIALIZED", payload
+    assert "--init" in payload["next_action"], payload
+    assert "Traceback" not in (completed.stderr or ""), completed.stderr[-600:]
+    assert not (workspace / ".project-local").exists(), (
+        "the refused start still created the runtime root, so a user who re-runs after fixing the "
+        "path inherits a half-built workspace")
+    assert not workspace.exists(), (
+        "the refused start still created the workspace directory, so a failed run is not "
+        "distinguishable from a half-finished one")
+
+    # the order is part of the contract: without a token the process refuses on the handshake and
+    # never touches a filesystem, so no run can create a workspace as a side effect of a typo
+    blank = _cli("--workspace", str(tmp_path / "second-fresh-clone"), "--port", "0")
+    assert _first_json(blank)["reason"] == "INVALID_SERVICE_TOKEN", blank
+    assert not (tmp_path / "second-fresh-clone").exists(), (
+        "an empty token reached the workspace guard")
+
+
+def test_the_init_path_makes_the_default_start_answer_on_both_domains(tmp_path):
+    """The whole N01 acceptance chain: init, then a real boot, then real HTTP on both surfaces.
+
+    ``--init`` is idempotent and content-preserving: a second run says ``already`` and rewrites the
+    marker's bytes not at all. The boot that follows is the CLI as the launcher runs it (token on
+    stdin, loopback only), and the probes are HTTP requests against that process -- the unified
+    envelope and the migrated compatibility surface are answered by the same server.
+    """
+    workspace = tmp_path / "workspace"
+    first = _first_json(_cli("--init", "--workspace", str(workspace)))
+    assert first["status"] == "WORKSPACE_INITIALIZED" and first["marker_written"] is True, first
+    marker = workspace / "AGENTS.md"
+    assert marker.is_file() and "workspace" in marker.read_text(encoding="utf-8").lower()
+
+    second = _first_json(_cli("--init", "--workspace", str(workspace)))
+    written_before = marker.read_bytes()
+    assert second["status"] == "WORKSPACE_ALREADY_INITIALIZED", second
+    assert second["marker_written"] is False, second
+    assert marker.read_bytes() == written_before, "an existing marker was overwritten"
+
+    token = secrets.token_hex(32)
+    process, listening, client = _boot(workspace, token)
+    try:
+        assert listening["workspace"] == str(workspace.resolve()), listening
+        for path in ("/api/v1/health", "/api/v1/projects", "/api/v1/tasks",
+                     "/api/health", "/api/capabilities"):
+            status, body = client.get(path)
+            assert status == 200, (path, status, str(body)[:200])
+    finally:
+        _stop(process)
+
+
+def test_paths_that_can_never_be_a_workspace_are_named_and_untouched(tmp_path):
+    """The guard's refusals: each is a different reason, and none of them writes anything.
+
+    ``WORKSPACE_CONTAINS_REPOSITORY`` is the one that matters most: a marker at the checkout's own
+    root or above it would make the repository someone's project root, which is exactly how a
+    "helpful" wizard does damage. The drive-root and UNC cases are refused before the marker check,
+    so a typo like ``D:/`` cannot be answered by creating anything at all.
+    """
+    a_file = tmp_path / "is-a-file"
+    a_file.write_text("not a directory\n", encoding="utf-8")
+    cases = [
+        (a_file, "WORKSPACE_IS_A_FILE"),
+        (REPO, "WORKSPACE_CONTAINS_REPOSITORY"),
+        (REPO.parent, "WORKSPACE_CONTAINS_REPOSITORY"),
+        (Path("D:/"), "WORKSPACE_IS_A_DRIVE_ROOT"),
+        (Path("\\\\server\\share\\workspace"), "WORKSPACE_IS_A_NETWORK_PATH"),
+    ]
+    for workspace, reason in cases:
+        marker = workspace / "AGENTS.md"
+        before = marker.read_bytes() if marker.is_file() else None
+        payload = _first_json(_cli("--init", "--workspace", str(workspace)))
+        assert payload.get("reason") == reason, (str(workspace), payload)
+        assert payload["status"] == "ERROR", payload
+        after = marker.read_bytes() if marker.is_file() else None
+        assert after == before, (
+            "a refused --init changed %s: it wrote, replaced or removed a marker it was told not "
+            "to touch" % marker)
