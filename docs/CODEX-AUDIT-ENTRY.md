@@ -2554,3 +2554,67 @@ INSTRUMENT_ERROR 0，退出码 1）。节点清单
   记为本机连接压力下的观察，不记为已结清的判据。
 - N06/N07 与第二批未开始。第二批第一项就是这张收据的独立复现路径：从当前候选在**新克隆**里重跑
   适用套件与隔离安装，切 cwd、清 `PYTHONPATH`，本地留原始证据与重跑方法，不上传私有日志。
+### 15.35 §15.34 点名的两项当天闭环，收据重取一次；第一次跑被我自己的并发写入污染，这件事也记进账
+
+**这一节只做两件事**：把 §15.34「照实留下的口子」里属于本仓自己的两条修掉，并如实记一次
+**测量被自己污染源**的事故。范围与授权不变：本地分支 `audit/backend-closure-20261103`，不推送、不开远程 CI。
+起点是 §15.34 那次入册（`a4d072f`），本轮代码改动落在 `5fafd91`，改绑落在 `df26949`。
+
+**N15 形状静默（真实 HTTP 前后对照：`.project-local/runs/acceptance-shapes.json`
+与 `acceptance-shapes-after2.json`）。** 旧行为两条：`POST /api/v1/tasks` 的 `acceptance` 给成
+字符串、列表、整数、布尔或 `null` 时一律 **201 而库里存 `{}`**——调用方写的验收文档消失，读回与
+"从未声明"逐字节相同；`POST /api/v1/projects` 的 `data_origin` 给成列表时进程答 **500 INTERNAL**
+（整数碰巧 400，那是异常文本首词的巧合而不是设计）。修法：`acceptance` 这个键只要出现就必须是
+dict，否则 `400 TASK_ACCEPTANCE_NOT_OBJECT`；`data_origin` 不是词就 `400 DATA_ORIGIN_UNKNOWN`，
+与 `unified_store` 自己抛的码同名。缺键与 `""` 仍按既有契约落 `live`、空白串仍拒——**这一条我在
+本轮先写宽过**：第一版把 `"   "` 也吞进默认，把旧的拒绝改成了接受，是前后逐腿对照才看见的，
+已改回；两个新节点在 `test_v05_rejections.py`（拒绝族的归属文件）除了逐条断言答复恰等于
+`{"error": 具名码}`，还钉住"被拒之后统一库与设计域都没有新增行"与三条合法形状
+（缺省 / `""` / `test`）仍然成功——否则一次 blanket refusal 也能把拒绝组全骗绿。反证
+`.project-local/edits-20261103/falsify_15_type_guards.py` 两支单变量退回旧代码：去 acceptance 闸
+只红 acceptance 节点，去 data_origin 闸只红 origin 节点，还原逐字节相同、控制腿绿。
+
+**N14 锚点腐烂，先算账再动手。** 现读 `tests/` 与 `scripts/` 指向 `backend/v1.py` 的引用 14 条：
+`test_v16` 自己为反例种的 5 条假位置不计判决；剩下 9 条按"各自句子里点名的函数"在
+`0de1ade` 与当前两棵树上各判一次——**本批开始时就已有 8 条对不上**，本轮代码改动只新增 1 条
+（`test_v02_surface.py:840` 说 `_v1_capabilities` 在 398-419，实际早已到 455），另有 2 条
+`659-683` 被插入的行数**碰巧碰回**正确位置（写明是巧合，不当证据）。结论：坏的是格式，不是某一次
+编辑——数字锚点每在上方加一行就烂一次，而且此前没有任何判据看得见它。9 条全部改成
+`backend/v1.py#_v1_import_result` 这种符号写法；右半截（`unified_store.py:448-492`、
+`repair_state.py:308-311`、`capabilities.derive_catalog:97-128`）本轮没加行，不动它——给还活着的
+引用重编号是伪装成修复的抖动。新增两条判据在 `test_v16_traceability.py`（它已拥有"引用必须解析到
+真东西"这一族）：群体为空即红的 `test_prose_symbol_citations_in_this_checkout_all_resolve`，与把
+"能解析 / 符号不存在 / 文件不存在"三种引用种进 tmp 树、要求精确点名后两种的
+`test_falsification_a_planted_symbol_citation_is_named`。两条排除规则写在判据里而不是靠运气：
+`design:`/`work:` 前缀的是来源仓身份键（本仓无从解析，判它"漂移"是误报；把 `*.py:NNN` 全集扫一遍是
+143 条，其中 74 条属这一类），`#L144` 是 GitHub 行号永久链接而不是符号名。
+
+**一次测量被我自己污染，记进账。** 本轮第一次全量（`2 failed, 537 passed, 1 warning, 3 subtests passed in 937.08s (0:15:37)`）红了两条：
+`test_settings_read_set_answers_and_writes_nothing` 与 `test_design_asset_reference_pins_its_bytes_and_other_projects_are_refused`。两条单独跑都是绿的， uncontended 重跑就全绿——差别只在于
+第一次跑期间我**同时在跑反证脚本、探针和另一些 pytest 文件**。机制未被证明（当时留下的只有节点名，
+见下一段），能确证的只有"并发会话共享同一份 scratch 根、彼此能碰得到"这一条结构事实；因此这一轮
+不再重述原因，只把事故与代价写清：**收据必须在无并发的前提下取，污染一次的成本是一整轮 15 分钟。**
+顺带修掉让这次事故无法复盘的那个缺陷——生产器把 pytest 全量输出写死到
+`suite-receipt.txt` 一个固定路径，干净重跑正好覆盖掉污染那次的唯一现场；现在按被测提交命名
+（`suite-receipt-<head7>.txt`），下一轮若再被污染，失败原文还在。
+
+**新收据与改绑。** 全量 `539 passed, 1 warning, 3 subtests passed in 944.11s (0:15:44)`，退出码 0，failed 0 / errors 0 /
+deselected 0；`--collect-only` 现数 539 个节点，与通过数逐一对齐，**这一跑没有
+静默跳过**。被测树 `5fafd9112601`（候选 7308 文件，摘要 `be4a7f8e37703111…`），开始时跟踪树
+干净、跑动期间跟踪字节移动 0；`boot_probe` 退出码 0（verdict OK）；验收闸门仍答
+**REFUSED**（`config/blocker-register.json` 现读 blocking 1，`L10#0` 未清）。五处按这张
+收据重发布：闭环表 `MATCHES`、`docs/AUDIT-STATE.json`（`--audited-commit` 显式点名，
+`binding_moved_this_run: true` 是防漂移守卫所见的动作）、验收表 48 行、阻断登记 blocking 1、
+入口数字段 `UNCHANGED`（本轮没有新增跟踪文件，数字不该动）。闸门 `--check` 组读数：
+audit-state=0, blocker-register=0, closure register=0, entry=0, isolated install verdict=0, node census=0, source coverage=0, task-acceptance=0, point audit-state at the measured commit=0, publish blocker-register=0, publish closure register=0, publish task-acceptance=0, rewrite entry figure block=0, terminal closure audit=0；节点清单现数 533（`build_test_census --check` 报 published == now == 533）。
+终局审计 `scripts/audit_objective_closure.py` 在改绑提交 `df26949` 上（干净树）答 **CLOSED**
+（14 条：PASS 14 / FAIL 0 / PENDING 0 /
+INSTRUMENT_ERROR 0）。**改绑提交之前它是 FAIL 1**，唯一那条说的是
+"本机还有未提交的跟踪改动，这张收据替不了它们"并逐个点名——它拒绝替未提交的字节作证，那次 FAIL
+是对的行为，不是缺陷。
+
+**还开着的。** N05 的 Linux 原生复跑仍 `NOT_RUN`（本机无 Linux 解释器，远程 CI 需 owner 放行）；
+`or {}` / `or []` 形状的站点全仓现读 **268 处**（`backend/` + `domains/work/`），绝大多数是把可空
+列读成投影的合法归一化，本轮只收口了**请求体形状**的那两处；把"哪些是外部输入的静默"逐点判清需要
+单独一趟，顺手改会把 268 处判据未覆盖的地方变成"未验证地动了行为"。74 条来源仓数字引用不在判据
+范围内；N06/N07 与任务包第二批其余项未开始。**本批仍未推送**，推送需要 owner 另行授权。

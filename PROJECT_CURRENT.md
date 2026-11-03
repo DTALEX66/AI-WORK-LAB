@@ -8,7 +8,7 @@
 现值比对，对不上即为红。
 
 - 最近核验：2026-11-02（本地执行，并已推送到 origin；推送事实与公开克隆的独立复跑见 docs/CODEX-AUDIT-ENTRY.md §15.27）
-- 依托提交：全量收据所测的那棵树是 `06a17d0`（535 passed, 1 warning, 3 subtests passed in 938.56s (0:15:38)，摘要 `43aa0bace1c0438c…`，候选 7308 文件）；当前分支的真实 SHA 一律用
+- 依托提交：全量收据所测的那棵树是 `5fafd91`（539 passed, 1 warning, 3 subtests passed in 944.11s (0:15:44)，摘要 `be4a7f8e37703111…`，候选 7308 文件）；当前分支的真实 SHA 一律用
   当前 `main` 的真实 SHA 一律用 `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**唯一分支与默认分支都是 `main`**——那条融合批次分支已在
   2026-11-02 按 owner「没问题就把分支合并到主线啊」退掉（退掉前核过：两指针互无独有提交，三个标签指向的
