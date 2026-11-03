@@ -20,9 +20,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import gc
 import os
+import shutil
 import sqlite3
+import stat
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -43,6 +47,46 @@ VENV_PYTHON = TARGET_ROOT / ".venv" / "Scripts" / "python.exe"
 SCRIPT = TARGET_ROOT / "scripts" / "migrate_business_data.py"
 LIVE_STORES = TARGET_ROOT / "workspace" / ".project-local" / "ai-work-lab"
 SCRATCH = TARGET_ROOT / ".project-local" / "runs" / "v12-data-migration"
+
+
+def _clear_for_removal(func, target, exc_info):
+    """Windows teardown handler: a read-only file in the tree is the normal case, not the exotic one."""
+    try:
+        os.chmod(target, stat.S_IWRITE)
+        func(target)
+    except OSError:
+        raise exc_info[1]
+
+
+def _remove_tree(path: Path) -> None:
+    """One removal attempt. The node swaps this out to drive the retry and failure paths."""
+    shutil.rmtree(path, onerror=_clear_for_removal)
+
+
+def reclaim(paths) -> list[str]:
+    """Delete the scratch roots a test created, and name any that survived.
+
+    ``make_roots`` has always recorded what it created; nothing ever removed it. Measured on
+    2026-11-03: 320 synthetic sqlite roots (502.6 MB) under this root, ~20 more inside one receipt's
+    own window, and §15.31 had already recorded the same path at 1,883 directories / 3,422 MB before
+    a hand prune -- so removal has to be a property of the fixture, not a task for a human.
+
+    A sqlite handle can outlive ``close()`` by one garbage collection, so a failed attempt retries
+    once. What still cannot be removed is returned by name rather than swallowed: a leak reported as
+    reclaimed is how this file got here in the first place.
+    """
+    survivors = [path for path in paths if path.is_dir()]
+    for path in paths:
+        for attempt in (0, 1):
+            if path not in survivors:
+                break
+            try:
+                _remove_tree(path)
+                survivors.remove(path)
+            except OSError:
+                gc.collect()
+    leftovers = [path.name for path in survivors]
+    return leftovers
 
 # The DESIGN plan contract pins project_id to ^[0-9a-f]{32}$, so the shared identity has
 # to be a valid one on the design side; the WORK store accepts any text. Using the SAME
@@ -298,7 +342,7 @@ def build_sources(roots: Roots) -> Roots:
 
 
 @pytest.fixture()
-def make_roots():
+def make_roots(request):
     """A fresh, uniquely named scratch pair of workspace roots with real-schema data."""
     created: list[Path] = []
 
@@ -308,7 +352,14 @@ def make_roots():
         created.append(base)
         return build_sources(Roots(base))
 
+    def _discard():
+        survived = reclaim(created)
+        if survived:
+            print("[v12] scratch roots survived reclaim: %s" % ", ".join(survived),
+                  file=sys.stderr)
+
     _make.created = created  # type: ignore[attr-defined]
+    request.addfinalizer(_discard)
     return _make
 
 
@@ -1049,3 +1100,59 @@ def test_dry_run_writes_no_rows(roots: Roots):
     assert report["preflight"]["types"]["unified.tasks"]["source_rows"] == 2
     for key in SOURCE_TABLES:
         assert _target_rows(roots, key) == [], key
+
+
+def test_the_migration_scratch_factory_reclaims_what_it_created(tmp_path, monkeypatch):
+    """``reclaim`` removes the scratch roots handed to it, retries once, and names what survives.
+
+    Three behaviours, each driven with planted directories rather than asserted from the prose:
+    ordinary removal including a read-only file inside the tree (the Windows case), a removal that
+    fails once and succeeds after the retry, and a removal that never succeeds -- which must be
+    *reported* instead of counted as reclaimed. What this node cannot see is the fixture wiring;
+    that is proven by the receipt-window measurement in §15.32, where a run must leave zero new
+    directories under ``SCRATCH``.
+    """
+    module = sys.modules[__name__]
+    planted = []
+    for name in ("fixture-0123abcd", "fixture-89abcdef", "other-0000aaaa"):
+        path = tmp_path / name
+        (path / "workspace" / ".project-local").mkdir(parents=True)
+        (path / "workspace" / ".project-local" / "state.db").write_text("sqlite-ish\n",
+                                                                        encoding="utf-8")
+        planted.append(path)
+    read_only = planted[0] / "workspace" / ".project-local" / "state.db"
+    os.chmod(read_only, stat.S_IREAD)
+
+    assert reclaim(planted) == [], "a planted scratch root survived a reclaim that claimed success"
+    assert [path for path in planted if path.exists()] == [], (
+        "reclaim returned no leftovers while the directories are still on disk")
+
+    flaky = tmp_path / "fixture-heldhandle"
+    flaky.mkdir()
+    calls = {"n": 0}
+    real_remove = module._remove_tree
+
+    def first_attempt_fails(path):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError(32, "planted: the database file is still open")
+        return real_remove(path)
+
+    monkeypatch.setattr(module, "_remove_tree", first_attempt_fails)
+    assert reclaim([flaky]) == [], (
+        "the retry did not reclaim a tree the first attempt lost -- one attempt is how a held "
+        "handle turns into a permanent leak")
+    assert not flaky.exists()
+
+    stuck = tmp_path / "fixture-stuck0000"
+    stuck.mkdir()
+
+    def always_fails(path):
+        raise OSError(32, "planted: permanently open")
+
+    monkeypatch.setattr(module, "_remove_tree", always_fails)
+    assert reclaim([stuck]) == ["fixture-stuck0000"], (
+        "a scratch root nobody could remove was counted as reclaimed -- that is how the residue "
+        "comes back looking like a clean run")
+    monkeypatch.undo()
+    assert stuck.exists()
