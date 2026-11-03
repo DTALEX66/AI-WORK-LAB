@@ -92,6 +92,101 @@ def test_design_domain_read_routes_answer_real_data(server):
     assert isinstance(profiles, dict)
 
 
+def _project(server, name, *, source, tmp_path=None):
+    """Register one project of each domain and hand back the id every task row is filed under."""
+    body = {"name": name, "source": source}
+    if source == "work":
+        root = tmp_path / name
+        root.mkdir()
+        body["root_path"] = str(root)
+    status, project = server.client.post("/api/v1/projects", body)
+    assert status == 201, project
+    return project["project_id"]
+
+
+def _task(server, project_id, title, kind):
+    status, task = server.client.post("/api/v1/tasks", {
+        "project_id": project_id, "kind": kind, "title": title,
+        "acceptance": {"professional_required": False, "data_origin": "test"}})
+    assert status == 201, task
+    return task["task_id"]
+
+
+# The project filter on the task list, measured over real HTTP rather than by calling the handler:
+# cloud audit N02 was exactly the gap between the two. The route declares `exact=True`, dispatch
+# then compares it against the *raw* request target unless the route also declares `path_only`, so
+# a handler that parses `?project_id=` is unreachable code while the flag is missing -- the list
+# route answered 404 for a filter its own code had already implemented.
+def test_task_list_filter_returns_one_projects_tasks_not_the_whole_table(server, tmp_path):
+    first = _project(server, "筛选-A", source="work", tmp_path=tmp_path)
+    second = _project(server, "筛选-B", source="design")
+    first_tasks = [_task(server, first, "A1", "work"), _task(server, first, "A2", "repair")]
+    second_tasks = [_task(server, second, "B1", "design")]
+
+    status, listed = server.client.get("/api/v1/tasks")
+    assert status == 200, listed
+    unfiltered = {row["task_id"] for row in listed["tasks"]}
+    assert unfiltered == set(first_tasks) | set(second_tasks), (
+        "the query-less request is the whole table; if it is not, the three legs below "
+        "cannot tell a filter from a bug")
+
+    for project_id, expected, others in ((first, first_tasks, second_tasks),
+                                         (second, second_tasks, first_tasks)):
+        status, body = server.client.get("/api/v1/tasks?project_id=" + project_id)
+        assert status == 200, body
+        rows = body["tasks"]
+        # the store orders by (created_at, task_id) and tasks made in the same instant are
+        # therefore ordered by their random ids, so the filter's answer is a set, not a sequence
+        assert {row["task_id"] for row in rows} == set(expected), (
+            "filter %s answered %s" % (project_id, [row["task_id"] for row in rows]))
+        assert all(row["project_id"] == project_id for row in rows), (
+            "a task from another project leaked into the filtered answer")
+        assert not ({row["task_id"] for row in rows} & set(others)), (
+            "the other project's tasks are present, which is the swallow the audit reported")
+        assert len(rows) < len(unfiltered), (
+            "the filtered answer is the same size as the unfiltered one: the query was ignored")
+
+
+def test_task_list_filter_tells_an_empty_project_apart_from_an_unknown_one(server):
+    empty = _project(server, "筛选-空", source="design")
+    unknown = "0" * 32
+
+    status, body = server.client.get("/api/v1/tasks?project_id=" + empty)
+    assert status == 200, body
+    assert body["tasks"] == [], (
+        "a project with no tasks has to answer as data, not as a refusal")
+
+    status, body = server.client.get("/api/v1/tasks?project_id=" + unknown)
+    assert status == 404, body
+    assert body == {"error": "PROJECT_NOT_FOUND"}, (
+        "the same code POST /api/v1/tasks answers for the same unknown project; an empty 200 "
+        "here is indistinguishable from 'this project has no tasks yet'")
+
+
+def test_task_list_filter_refuses_its_parameters_by_name(server, tmp_path):
+    """A misspelled, blank or duplicated filter must not become the full task table.
+
+    Each leg asserts `"tasks" not in body`: the refusal is only honest if no list rides along
+    with it, because a client that renders `body.tasks` would otherwise show every project's
+    work under one project's heading.
+    """
+    known = _project(server, "筛选-拒绝", source="work", tmp_path=tmp_path)
+
+    refusals = (
+        ("/api/v1/tasks?project_id=", "TASK_FILTER_PROJECT_ID_EMPTY"),
+        ("/api/v1/tasks?project_id=%20", "TASK_FILTER_PROJECT_ID_EMPTY"),
+        ("/api/v1/tasks?project_id=%s&project_id=%s" % (known, "0" * 32),
+         "TASK_FILTER_PROJECT_ID_DUPLICATE"),
+        ("/api/v1/tasks?projectId=" + known, "TASK_FILTER_PARAM_UNKNOWN"),
+        ("/api/v1/tasks?limit=5", "TASK_FILTER_PARAM_UNKNOWN"),
+    )
+    for path, code in refusals:
+        status, body = server.client.get(path)
+        assert status == 400, (path, status, body)
+        assert body == {"error": code}, (path, body)
+        assert "tasks" not in body, (path, body)
+
+
 # ===========================================================================
 # 追加节点（登记行 04#L5 / L6 / L8 / L18 / L36 / L39 / L51）
 #

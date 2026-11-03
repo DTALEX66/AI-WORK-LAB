@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import inspect
 import re
 import sys
 from pathlib import Path
@@ -393,6 +394,93 @@ def test_kernel_guard_holds_on_every_compat_route(server, register):
     wanted = {(SOURCE_COMPAT, route.method, route.pattern)
               for route in hs.ROUTES if route.method == "GET"}
     assert len(legs) == len(plan) == len(wanted)
+
+
+# --------------------------------------------------------------------------- 3b
+#: ``dispatch()`` matches a route against the **raw** request target unless that route declares
+#: ``path_only`` (``design_lab/http_service.py:592``). A handler that reads the query behind a
+#: route without the flag is therefore unreachable code for every request carrying one: the query
+#: is part of the string being compared and the comparison fails. That is cloud audit N02 on
+#: ``GET /api/v1/tasks`` -- its handler had parsed ``project_id`` since it was written, and no
+#: request with a filter had ever reached it. The flag is one boolean on one table row, and until
+#: this section nothing compared that row with the body of the handler the row names.
+#:
+#: The compat table is deliberately not walked here: its handlers live on delegate objects built
+#: inside ``build_server`` and its convention names the query inside the pattern
+#: (``/api/projects/…/directions(?:\?after=…)?``), which is a different contract from the flag. Its
+#: guard stays the live three-leg sweep below.
+QUERY_READING = re.compile(r"parse_qsl\(|urlsplit\(handler\.path\)")
+
+
+def _v1_namespace_texts() -> dict:
+    """Source of every function in ``backend.v1``: module-level helpers and ``V1API`` methods.
+
+    Helpers belong in the population because a handler that hands the request to ``_search`` or to
+    ``_query_pairs`` reads the query through them; scanning only the 40 action bodies would leave
+    ``/api/v1/knowledge/search`` and ``/api/v1/tasks`` unpinned.
+    """
+    import backend.v1 as v1_module
+    from types import FunctionType
+    texts = {name: inspect.getsource(value)
+             for name, value in vars(v1_module).items()
+             if isinstance(value, FunctionType) and value.__module__ == v1_module.__name__}
+    texts.update({name: inspect.getsource(value)
+                  for name, value in vars(v1_module.V1API).items()
+                  if isinstance(value, FunctionType)})
+    return texts
+
+
+def query_reading_names(texts=None) -> set:
+    """Every name that reads the query, directly or through any number of in-module hops."""
+    texts = _v1_namespace_texts() if texts is None else texts
+    found = {name for name, text in texts.items() if QUERY_READING.search(text)}
+    for _ in range(len(texts) + 1):
+        added = {name for name, text in texts.items()
+                 if name not in found and any(
+                     re.search(r"(?:self\.)?%s\s*\(" % re.escape(reader), text)
+                     for reader in found)}
+        if not added:
+            return found
+        found |= added
+    return found
+
+
+def routes_reaching_the_query_without_the_flag(table) -> list:
+    readers = query_reading_names()
+    return ["%s %s -> %s" % (route.method, route.pattern, route.action)
+            for route in table if route.action in readers and not route.path_only]
+
+
+def test_every_backend_route_whose_handler_reads_the_query_declares_path_only():
+    flagged = ["%s %s" % (route.method, route.pattern)
+               for route in V1_ROUTES if route.action in query_reading_names() and route.path_only]
+    offenders = routes_reaching_the_query_without_the_flag(V1_ROUTES)
+    assert query_reading_names(), (
+        "no function in backend.v1 reads a query -- the pattern has stopped matching the real "
+        "code and the assertion below would be vacuously green")
+    assert "GET /api/v1/tasks" in flagged, (
+        "the task list is the route N02 was about; losing it from the population means the "
+        "guard stopped seeing its handler, not that the defect went away")
+    assert offenders == [], (
+        "these handlers can only be reached by a request without a query, yet they parse one: %s"
+        % offenders)
+
+
+def test_falsification_removing_the_flag_names_the_route_it_blinds():
+    """The guard above must be able to fail: flip the one boolean on one row and it has to say so.
+
+    The copy is a fresh ``Route`` object, never a mutation of the mounted table -- the mounted
+    table is the control, so a plant that reports on both proves nothing.
+    """
+    blind = [hs.Route(route.method, route.pattern, route.action,
+                      exact=route.exact, path_only=False, when=route.when)
+             if route.pattern == "/api/v1/tasks" and route.action == "_v1_list_tasks" else route
+             for route in V1_ROUTES]
+    named = routes_reaching_the_query_without_the_flag(blind)
+    assert named == ["GET /api/v1/tasks -> _v1_list_tasks"], named
+    assert routes_reaching_the_query_without_the_flag(V1_ROUTES) == [], (
+        "the mounted table is the control for this plant; if it also reports the defect the "
+        "plant proves nothing")
 
 
 # --------------------------------------------------------------------------- 4

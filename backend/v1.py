@@ -165,7 +165,7 @@ def _routes():
         Route("GET", "/api/v1/connections", "_v1_connections", exact=True),
         Route("GET", "/api/v1/tools", "_v1_tools", exact=True),
         Route("GET", "/api/v1/improvements", "_v1_improvements", exact=True),
-        Route("GET", "/api/v1/tasks", "_v1_list_tasks", exact=True),
+        Route("GET", "/api/v1/tasks", "_v1_list_tasks", exact=True, path_only=True),
         Route("POST", "/api/v1/tasks", "_v1_create_task", exact=True),
         Route("GET", "/api/v1/tasks/" + TASK_ID_PATTERN, "_v1_get_task"),
         Route("GET", "/api/v1/tasks/" + TASK_ID_PATTERN + "/completion", "_v1_task_completion"),
@@ -204,6 +204,26 @@ def _require(mapping, key, code):
     if not isinstance(value, str) or not value.strip():
         _reject(400, code)
     return value.strip()
+
+
+def _query_pairs(handler) -> list:
+    """The raw ordered query pairs of this request, before any dict() collapses them.
+
+    Ordered and un-collapsed on purpose: ``dict(parse_qsl(...))`` silently keeps the last of
+    ``?x=1&x=2``, which is the same class of swallow as the un-named filter values this helper was
+    written for.
+    """
+    from urllib.parse import parse_qsl, urlsplit
+    return parse_qsl(urlsplit(handler.path).query, keep_blank_values=True)
+
+
+#: The only query name ``GET /api/v1/tasks`` defines. Anything else is refused by name instead of
+#: being ignored, and a blank value is not "no filter": both would answer the full task table to a
+#: caller that believes it asked for one project (cloud audit N02). An unknown project answers the
+#: same 404 the POST on this path already answers, because 200 plus an empty list cannot be told
+#: apart from "this project exists and has no tasks yet" -- and the front end is required to show
+#: the difference rather than render a swallowed error as "no tasks".
+TASK_LIST_FILTER_NAMES = ("project_id",)
 
 
 class V1API:
@@ -537,9 +557,18 @@ class V1API:
     # -- tasks -----------------------------------------------------------------
     def _v1_list_tasks(self, handler, match):
         handler.guard()
-        from urllib.parse import parse_qsl, urlsplit
-        params = dict(parse_qsl(urlsplit(handler.path).query, keep_blank_values=True))
-        project_id = params.get("project_id") or None
+        pairs = _query_pairs(handler)
+        unknown = sorted({name for name, _ in pairs if name not in TASK_LIST_FILTER_NAMES})
+        if unknown:
+            _reject(400, "TASK_FILTER_PARAM_UNKNOWN")
+        if sum(1 for name, _ in pairs if name == "project_id") > 1:
+            _reject(400, "TASK_FILTER_PROJECT_ID_DUPLICATE")
+        raw = dict(pairs).get("project_id")
+        if raw is not None and not raw.strip():
+            _reject(400, "TASK_FILTER_PROJECT_ID_EMPTY")
+        project_id = raw.strip() if raw is not None else None
+        if project_id is not None and self.unified.get_project(project_id) is None:
+            _reject(404, "PROJECT_NOT_FOUND")
         return handler.send_json(200, {"tasks": self.unified.list_tasks(project_id=project_id)})
 
     def _v1_create_task(self, handler, match):
