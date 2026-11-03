@@ -225,6 +225,41 @@ def _query_pairs(handler) -> list:
 #: the difference rather than render a swallowed error as "no tasks".
 TASK_LIST_FILTER_NAMES = ("project_id",)
 
+#: The two domains a project may be registered into, and the only two the store accepts
+#: (``unified_store.register_project`` raises ``PROJECT_SOURCE_UNKNOWN`` for anything else). The
+#: handler used to branch ``if source == "work": … else: design``, so every other word -- an
+#: uppercase ``WORK``, a typo, a ``bogus`` that also forgot the work root -- landed a real project
+#: in the design domain and answered 201. Refusing by name before either store is touched is the
+#: whole fix. Case is not normalised -- ``WORK`` and ``Design`` are refused, not folded -- while the
+#: outer whitespace ``_require`` already trims stays trimmed (``"  work  "`` registers as work,
+#: measured): the store column, the design runtime's routing and the task packages all spell these
+#: two words exactly, and inventing a third spelling here is what a caller has to guess next time.
+PROJECT_SOURCES = ("work", "design")
+
+
+def _professional_required(value: dict, acceptance: dict) -> bool:
+    """Read the professional-acceptance requirement without inferring it.
+
+    Two spellings are in use and both stay valid: the request's own ``professional_required`` -- the
+    name of the store column and of the response key -- and the nested
+    ``acceptance.professional_required`` that every existing caller already sends. The cloud audit
+    (N03) measured the old behaviour: only the nested one was read, so a top-level ``true`` answered
+    201 and was stored as ``0``. The same line also ran whatever it found through ``bool()``, and on
+    this machine the string ``"false"`` measured ``1`` -- a requirement imposed on a caller who asked
+    for none. A declared value therefore has to be a JSON boolean and the two spellings have to
+    agree; only a task where neither appears falls back to the store's documented default.
+    """
+    declared = [("professional_required" in value, value.get("professional_required")),
+                ("professional_required" in acceptance,
+                 acceptance.get("professional_required"))]
+    for present, item in declared:
+        if present and not isinstance(item, bool):
+            _reject(400, "PROFESSIONAL_REQUIRED_NOT_BOOLEAN")
+    given = [item for present, item in declared if present]
+    if len(set(given)) > 1:
+        _reject(400, "PROFESSIONAL_REQUIRED_CONFLICT")
+    return given[0] if given else False
+
 
 class V1API:
     """Delegate handlers; each receives (kernel_handler, route_match)."""
@@ -387,6 +422,8 @@ class V1API:
         value = handler.body(fields={"name", "source"}, optional={"root_path", "data_origin"},
                              limit=16384)
         source = _require(value, "source", "PROJECT_SOURCE_REQUIRED")
+        if source not in PROJECT_SOURCES:
+            _reject(400, "PROJECT_SOURCE_UNKNOWN")
         name = _require(value, "name", "PROJECT_NAME_REQUIRED")
         declared = value.get("data_origin") or "live"
         try:
@@ -583,7 +620,7 @@ class V1API:
         kind = _require(value, "kind", "TASK_KIND_REQUIRED")
         title = _require(value, "title", "TASK_TITLE_REQUIRED")
         acceptance = value.get("acceptance") if isinstance(value.get("acceptance"), dict) else {}
-        professional_required = bool(acceptance.get("professional_required"))
+        professional_required = _professional_required(value, acceptance)
         declared = acceptance.get("data_origin", "live")
         try:
             origin_rules.check(declared)

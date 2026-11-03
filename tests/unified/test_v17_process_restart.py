@@ -142,8 +142,20 @@ def _run_manual_loop(client) -> dict:
     status, failing = client.post(f"/api/v1/results/{result_id}/verifications",
                                   {"axis": "technical"})
     assert status == 201 and failing["outcome"] == "FAIL", failing
+
+    # The restart half of cloud audit N03. This one is declared with the *top-level* spelling, which
+    # is the field the old handler never read: a 201 that echoed the requirement back is not enough,
+    # the flag has to still be there in a row read by a different process. No attempt is started on
+    # purpose -- the whole claim of this task is that nothing completes it without a named verdict.
+    status, professional = client.post("/api/v1/tasks", {
+        "project_id": project["project_id"], "kind": "work",
+        "title": "重启样例：要求真人专业判定",
+        "professional_required": True,
+        "acceptance": {"data_origin": "test"}})
+    assert status == 201, professional
+    assert professional["professional_required"] == 1, professional
     return {"task_id": task_id, "attempt_id": attempt_id, "result_id": result_id,
-            "pack_id": pack_id}
+            "pack_id": pack_id, "professional_task_id": professional["task_id"]}
 
 
 def _read_back(client, facts: dict) -> dict:
@@ -156,7 +168,14 @@ def _read_back(client, facts: dict) -> dict:
     assert status == 200, result
     status, completion = client.get("/api/v1/tasks/" + facts["task_id"] + "/completion")
     assert status == 200, completion
-    return {"task": task, "attempt": attempt, "result": result, "completion": completion}
+    status, professional_task = client.get("/api/v1/tasks/" + facts["professional_task_id"])
+    assert status == 200, professional_task
+    status, professional_completion = client.get(
+        "/api/v1/tasks/" + facts["professional_task_id"] + "/completion")
+    assert status == 200, professional_completion
+    return {"task": task, "attempt": attempt, "result": result, "completion": completion,
+            "professional_task": professional_task,
+            "professional_completion": professional_completion}
 
 
 def _seed_open_issue(workspace: Path) -> None:
@@ -266,6 +285,16 @@ def test_backend_boots_twice_and_recovers_the_orphan(tmp_path: Path):
             assert [row["outcome"] for row in after["result"]["verifications"]] == \
                 ["FAIL", "PASS"], after["result"]["verifications"]
             assert after["completion"]["supported"] is True, after["completion"]
+
+            # ... and the requirement declared at the top level is still a requirement in the
+            # second process: identical bytes are not enough on their own, because the old code
+            # stored 0 on both sides of a restart and read back identically
+            assert after["professional_task"]["professional_required"] == 1, (
+                after["professional_task"])
+            assert after["professional_task"]["lifecycle"] != "COMPLETED", (
+                after["professional_task"])
+            assert "PROFESSIONAL_ACCEPTANCE_MISSING" in " ".join(
+                after["professional_completion"]["problems"]), after["professional_completion"]
 
             # (c) the orphan is "result unknown", never a silent completion
             orphan = _attempt_state(service, "orphan", planted["orphan"])

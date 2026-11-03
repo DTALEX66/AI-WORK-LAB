@@ -192,6 +192,185 @@ def test_body_size_and_json_guards(server):
         connection.close()
 
 
+# 云端审计 N03：`professional_required` 是"这条任务必须有具名真人判定才收得了口"的唯一开关。
+# 旧实现只读 `acceptance` 里那一个，再把读到的东西塞进 `bool()`。本机在同一份代码上按真实 HTTP
+# 逐条复现（.project-local/runs/n03-before.json）：顶层 true → 201 而库里存的是 0；顶层 true 配
+# 嵌套 false → 201 存 0（谁赢由解析顺序决定，不报错）；嵌套字符串 "false" → 201 存 **1**，因为
+# `bool("false")` 为真——替没要门的人立了一道门。下面两组节点要求：两种拼写都算数、声明值必须
+# 是 JSON 布尔、两种拼写不一致要具名拒绝、只有两者都没出现才落到库自己声明的"不要求"。
+# 拒绝组逐条断言答复里没有 task_id **并且任务表一行没多**：这个缺陷的形态正是"被接受的 201"，
+# 任何 4xx 都不许在库里留下任务。
+def _design_project(server, name):
+    status, project = server.client.post("/api/v1/projects", {"name": name, "source": "design"})
+    assert status == 201, project
+    return project["project_id"]
+
+
+def _prof_request(title, project_id, extra_top, nested):
+    """One task-creation body with the requirement spelled however the case says.
+
+    ``nested is None`` means the nested key is absent, not that it carries ``None`` -- the two
+    differ for the conflict legs, and a null is tested on purpose in the type node.
+    """
+    body = {"project_id": project_id, "kind": "design", "title": title,
+            "acceptance": {"data_origin": "test"}}
+    if nested is not None:
+        body["acceptance"]["professional_required"] = nested
+    body.update(extra_top)
+    return body
+
+
+def _prof_tasks(server):
+    status, listed = server.client.get("/api/v1/tasks")
+    assert status == 200, listed
+    return listed["tasks"]
+
+
+def test_professional_requirement_is_read_from_either_spelling_and_named_by_the_gate(server):
+    project_id = _design_project(server, "专业门-N03")
+
+    def create(title, extra_top, nested):
+        status, task = server.client.post("/api/v1/tasks",
+                                         _prof_request(title, project_id, extra_top, nested))
+        assert status == 201, (title, status, task)
+        return task
+
+    cases = (("(top,true)", {"professional_required": True}, None, 1),
+             ("(nested,true)", {}, True, 1),
+             ("(both,true)", {"professional_required": True}, True, 1),
+             ("(top,false)", {"professional_required": False}, None, 0),
+             ("(nested,false)", {}, False, 0),
+             ("(undeclared)", {}, None, 0))
+    for title, extra_top, nested, expected in cases:
+        task = create(title, extra_top, nested)
+        assert task["professional_required"] == expected, (title, task)
+        status, stored = server.client.get("/api/v1/tasks/" + task["task_id"])
+        assert status == 200 and stored["professional_required"] == expected, (title, stored)
+
+    # the flag is not decoration: the completion projection has to name the missing human verdict
+    # for the three declared-true shapes and stay out of the way for the three not-required ones
+    problems = {}
+    for title, _extra, _nested, expected in cases:
+        task = next(row for row in _prof_tasks(server) if row["title"] == title)
+        status, completion = server.client.get("/api/v1/tasks/%s/completion" % task["task_id"])
+        assert status == 200, (title, status, completion)
+        problems[title] = [problem.split(" ")[0] for problem in completion["problems"]]
+    for title, _extra, _nested, expected in cases:
+        named = "PROFESSIONAL_ACCEPTANCE_MISSING" in problems[title]
+        assert named == (expected == 1), (title, problems[title])
+
+
+def test_non_boolean_professional_requirement_is_refused_by_name(server):
+    """A declared value has to be a JSON boolean; `bool()` of anything else is not a reading.
+
+    The audited line ran whatever it found through ``bool()``, so the string ``"false"`` stored
+    ``1`` -- a professional gate put on a task whose caller asked for none, in the opposite
+    direction from the dropped top-level ``true`` the sibling node covers.
+    """
+    project_id = _design_project(server, "专业门-类型-N03")
+    for title, extra_top, nested in (
+            ("嵌套写成字符串 false", {}, "false"),
+            ("嵌套写成字符串 true", {}, "true"),
+            ("嵌套写成整数 1", {}, 1),
+            ("嵌套写成整数 0", {}, 0),
+            ("顶层写成 null", {"professional_required": None}, None),
+            ("顶层写成列表", {"professional_required": [True]}, None),
+            ("顶层写成字符串 false", {"professional_required": "false"}, None)):
+        status, body = server.client.post(
+            "/api/v1/tasks", _prof_request(title, project_id, extra_top, nested))
+        assert status == 400, (title, status, body)
+        assert body == {"error": "PROFESSIONAL_REQUIRED_NOT_BOOLEAN"}, (title, body)
+        assert "task_id" not in body, (title, body)
+    assert _prof_tasks(server) == [], (
+        "a refused create still wrote a task row: %s" % _prof_tasks(server))
+
+
+def test_conflicting_professional_requirement_spellings_are_refused_by_name(server):
+    """Two spellings that disagree is an ambiguous request, not a precedence rule.
+
+    The old code never saw the top-level value at all, so ``true`` beside ``false`` answered 201
+    with whichever spelling happened to be read; a caller that sent both got a silent decision.
+    """
+    project_id = _design_project(server, "专业门-冲突-N03")
+    for title, extra_top, nested in (
+            ("顶层 true 与嵌套 false", {"professional_required": True}, False),
+            ("顶层 false 与嵌套 true", {"professional_required": False}, True)):
+        status, body = server.client.post(
+            "/api/v1/tasks", _prof_request(title, project_id, extra_top, nested))
+        assert status == 400, (title, status, body)
+        assert body == {"error": "PROFESSIONAL_REQUIRED_CONFLICT"}, (title, body)
+        assert "task_id" not in body, (title, body)
+    assert _prof_tasks(server) == [], (
+        "a refused create still wrote a task row: %s" % _prof_tasks(server))
+
+
+# 云端审计 N04：`POST /api/v1/projects` 的 `source` 只写了「是不是 work」，不是「是不是这两种之一」。
+# 本机真实 HTTP 复现（.project-local/runs/n04-before.json）里，`not-a-supported-source`、`WORK`、
+# `Design` 三支都得到 201，且统一库与设计域各多出一行——错误输入静默换了一个域。修法是先在两个
+# 库都不碰之前按名字拒绝；大小写不折叠（`WORK` 拒），`_require` 已有的首尾空白裁剪保持
+# （`"  work  "` 仍走 work 支，缺根时回 `WORK_PROJECT_ROOT_REQUIRED`，这条也在下面钉住）。
+def test_project_source_is_enumerated_and_a_refusal_writes_in_neither_store(server, tmp_path):
+    def listing():
+        status, body = server.client.get("/api/v1/projects")
+        assert status == 200, body
+        return (len(body["unified"]), len(body["design_runtime"]),
+                sorted(row["display_name"] for row in body["unified"]),
+                sorted({row["source"] for row in body["unified"]}))
+
+    work_root = tmp_path / "合法-work-根"
+    work_root.mkdir()
+    baseline = listing()
+
+    # the control: a blanket refusal would make every leg below green, so the two legal values are
+    # read back first, in this same node, on this same server
+    status, work_project = server.client.post(
+        "/api/v1/projects", {"name": "合法-work", "source": "work", "root_path": str(work_root)})
+    assert status == 201 and work_project["source"] == "work", work_project
+    status, design_project = server.client.post(
+        "/api/v1/projects", {"name": "合法-design", "source": "design"})
+    assert status == 201 and design_project["source"] == "design", design_project
+
+    after_legal = listing()
+    assert after_legal[0] == baseline[0] + 2 and after_legal[1] == baseline[1] + 1, after_legal
+
+    refusals = (
+        ({"name": "未知词", "source": "not-a-supported-source"}, "PROJECT_SOURCE_UNKNOWN"),
+        ({"name": "全大写", "source": "WORK"}, "PROJECT_SOURCE_UNKNOWN"),
+        ({"name": "混合大小写", "source": "Design"}, "PROJECT_SOURCE_UNKNOWN"),
+        ({"name": "两个值拼一起", "source": "work,design"}, "PROJECT_SOURCE_UNKNOWN"),
+        ({"name": "近似拼写", "source": "wrok"}, "PROJECT_SOURCE_UNKNOWN"),
+        # a wrong source beside a missing work root is a source problem first: the old code never
+        # reached the root check for a value it silently treated as design
+        ({"name": "双错", "source": "bogus"}, "PROJECT_SOURCE_UNKNOWN"),
+        ({"name": "空串", "source": ""}, "PROJECT_SOURCE_REQUIRED"),
+        ({"name": "只有空白", "source": "   "}, "PROJECT_SOURCE_REQUIRED"),
+        ({"name": "空值", "source": None}, "PROJECT_SOURCE_REQUIRED"),
+        ({"name": "整数", "source": 123}, "PROJECT_SOURCE_REQUIRED"),
+        ({"name": "缺字段"}, "INVALID_PROJECT_FIELDS"),
+    )
+    for body, code in refusals:
+        status, answer = server.client.post("/api/v1/projects", body)
+        assert status == 400, (body, status, answer)
+        assert answer == {"error": code}, (body, answer)
+        assert "project_id" not in answer, (body, answer)
+
+    # "拒绝后两库无新增记录" is a measurement here, not an inference from the 400
+    now = listing()
+    assert now[:2] == after_legal[:2], (
+        "a refused source still created rows: %s -> %s" % (after_legal[:2], now[:2]))
+    assert now[2] == after_legal[2], (
+        "the unified table or the design domain gained a project nobody asked for: %s"
+        % sorted(set(now[2]) - set(after_legal[2])))
+    assert now[3] == ["design", "work"], (
+        "the unified table holds a source outside the enumerated two: %s" % now[3])
+
+    # padding is trimmed and case is not folded: this leg must reach the *work* branch, which is
+    # where it has to land to prove the enum check did not reroute it to design
+    status, answer = server.client.post(
+        "/api/v1/projects", {"name": "带空白的 work", "source": "  work  "})
+    assert status == 400 and answer == {"error": "WORK_PROJECT_ROOT_REQUIRED"}, answer
+
+
 # ===========================================================================
 # 追加段：capability-family 行 `05#L27|contracts`（公共协议与 Schema）
 # 核心验收原文：「现有消费者与版本兼容，错误输入和资源路径回归」。
