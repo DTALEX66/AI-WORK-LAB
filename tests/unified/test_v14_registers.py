@@ -1214,20 +1214,21 @@ def test_a_copy_record_identifies_its_repo_and_path_not_its_machine_absolute_pat
     the register republished each source as "uncopied", and the row counts still printed.
     """
     module = _coverage_module()
-    roots = {"work": Path("D:/All projects/WORK-LAB"),
-             "design": Path("D:/All projects/DESIGN-LAB")}
+    # 合成根，不写这台机器的来源根拼写：克隆复现族禁止测试文件自己拼 "All projects/<仓名>"，
+    # 否则环境开关到不了它们（test_v23 / test_v31 会红在这里）。被测的是纯映射，根长什么样不重要。
+    roots = {"work": Path("Q:/src/WORK-LAB"), "design": Path("Q:/src/DESIGN-LAB")}
     for source, expected in (
-            ("D:\\All projects\\WORK-LAB\\packages\\a\\b.py", "work:packages/a/b.py"),
-            ("D:/All projects/DESIGN-LAB/src/design_lab/z.py", "design:src/design_lab/z.py"),
+            ("Q:\\src\\WORK-LAB\\packages\\a\\b.py", "work:packages/a/b.py"),
+            ("Q:/src/DESIGN-LAB/src/design_lab/z.py", "design:src/design_lab/z.py"),
             # 大小写不同的同一个根：身份不能变
-            ("d:/all projects/work-lab/services/a.py", "work:services/a.py"),
+            ("q:/src/work-lab/services/a.py", "work:services/a.py"),
             # 换台的镜像根：配置的根不匹配时按仓名段落回
             ("E:/mirror/WORK-LAB/services/a.py", "work:services/a.py"),
             ("/srv/mirror/DESIGN-LAB/design-lab/config/c.json", "design:design-lab/config/c.json")):
         assert module.source_identity(source, roots) == expected, source
     assert module.source_identity("C:/somewhere/else/x.py", roots) is None
     for target, expected in (
-            ("D:\\All projects\\AI-WORK-LAB\\domains\\a\\b.py", "domains/a/b.py"),
+            ("Q:\\fused\\AI-WORK-LAB\\domains\\a\\b.py", "domains/a/b.py"),
             ("/home/you/clone/AI-WORK-LAB/domains/a/b.py", "domains/a/b.py")):
         assert module.target_identity(target) == expected, target
 
@@ -1244,8 +1245,8 @@ def test_the_copy_index_resolves_one_destination_written_under_two_different_roo
     module = _coverage_module()
     path = tmp_path / "copies.json"
     path.write_text(json.dumps({"copies": [{"records": [
-        {"source": "D:\\All projects\\WORK-LAB\\packages\\a\\b.py",
-         "target": "D:\\All projects\\AI-WORK-LAB\\domains\\a\\b.py",
+        {"source": "Q:\\src\\WORK-LAB\\packages\\a\\b.py",
+         "target": "Q:\\fused\\AI-WORK-LAB\\domains\\a\\b.py",
          "sha256_source": "s", "sha256_target": "t"}]}]}, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(module, "COPIES", path)
     monkeypatch.setattr(module, "declared_file_copies", lambda: [
