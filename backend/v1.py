@@ -1308,8 +1308,7 @@ class V1API:
         return self._search(handler, include_knowledge=True)
 
     def _search(self, handler, *, include_knowledge: bool):
-        from urllib.parse import parse_qsl, urlsplit
-        params = dict(parse_qsl(urlsplit(handler.path).query, keep_blank_values=True))
+        params = self._query_params(handler)
 
         def number(name, default):
             raw = params.get(name)
@@ -1378,8 +1377,7 @@ class V1API:
 
     def _v1_design_plans(self, handler, match):
         handler.guard()
-        from urllib.parse import parse_qsl, urlsplit
-        params = dict(parse_qsl(urlsplit(handler.path).query, keep_blank_values=True))
+        params = self._query_params(handler)
         project_id = params.get("project_id") or ""
         if len(project_id) != 32:
             _reject(400, "DESIGN_PROJECT_ID_REQUIRED")
@@ -1426,8 +1424,7 @@ class V1API:
 
     def _v1_design_target_profiles(self, handler, match):
         handler.guard()
-        from urllib.parse import parse_qsl, urlsplit
-        params = dict(parse_qsl(urlsplit(handler.path).query, keep_blank_values=True))
+        params = self._query_params(handler)
 
         def number(name, default):
             raw = params.get(name)
@@ -1447,8 +1444,18 @@ class V1API:
 
     # -- WORK observer / control surfaces (audit F09) --------------------------
     def _query_params(self, handler) -> dict:
-        from urllib.parse import parse_qsl, urlsplit
-        return dict(parse_qsl(urlsplit(handler.path).query, keep_blank_values=True))
+        """The request's query as a mapping -- with the refusal the old one-liner never made.
+
+        ``dict(parse_qsl(...))`` keeps the last of ``?x=1&x=2``, so a caller that sent two values for
+        one filter was answered about whichever one happened to sort last. N02 named that collapse for
+        the task list (``TASK_FILTER_PROJECT_ID_DUPLICATE``); this is the same rule for every remaining
+        GET surface, so the four parsers become one.
+        """
+        pairs = _query_pairs(handler)
+        names = [name for name, _ in pairs]
+        if any(names.count(name) > 1 for name in set(names)):
+            _reject(400, "QUERY_PARAM_DUPLICATE")
+        return dict(pairs)
 
     def _work_observer_health(self, handler, match):
         from backend.core import work_surfaces

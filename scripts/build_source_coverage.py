@@ -584,8 +584,95 @@ def _heading_anchor(lines: list[str], number: int) -> str:
     return "DOCUMENT-PREAMBLE"
 
 
+_SYMBOL_CACHE: dict[str, list] = {}
+_PROSE_CACHE: dict[str, set] = {}
+
+
+def _py_symbols(path: Path) -> list:
+    """(name, start, end, is_scope) for every def, class and assignment in an authority file."""
+    import ast
+
+    key = str(path)
+    if key not in _SYMBOL_CACHE:
+        entries = []
+        prose: set[int] = set()
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+        except (OSError, SyntaxError, ValueError):
+            tree = None
+        if tree is not None:
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    entries.append((node.name, node.lineno, node.end_lineno or node.lineno, True))
+                elif isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if isinstance(target, ast.Name):
+                            entries.append((target.id, node.lineno,
+                                            node.end_lineno or node.lineno, False))
+                body = getattr(node, "body", None)
+                # a lambda's ``body`` is one expression, not a statement list
+                if isinstance(body, list) and body:
+                    first = body[0]
+                    if (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+                            and isinstance(first.value.value, str)):
+                        # the docstring is prose that happens to live inside a definition: it is
+                        # covered by that definition's span, so "inside a def" alone does not make
+                        # it a line of code
+                        prose.update(range(first.lineno, (first.end_lineno or first.lineno) + 1))
+        _SYMBOL_CACHE[key] = entries
+        _PROSE_CACHE[key] = prose
+    return _SYMBOL_CACHE[key]
+
+
+def _py_prose_lines(path: Path) -> set:
+    """The line numbers this file spends on docstrings (filled by the same parse as the symbols)."""
+    _py_symbols(path)
+    return _PROSE_CACHE[str(path)]
+
+
+def _py_symbol_at(path: Path, line: int) -> str:
+    """The name a ``::`` anchor can point at for ``line``, or "" when only a number would do.
+
+    A definition wins over a statement inside it -- the anchor is meant to say *where the rule
+    lives*, and a variable assigned in a function body is not the address of that body. A
+    module-level statement is covered by its own assignment name; where no single symbol covers the
+    line, or a candidate name appears twice in the file, the caller keeps the number, because an
+    anchor that could mean two places is worse than one that moves.
+    """
+    entries = _py_symbols(path)
+    covering = [(name, start, is_scope) for name, start, end, is_scope in entries
+                if start <= line <= end]
+    candidates = [row for row in covering if row[2]] or covering
+    if not candidates:
+        return ""
+    innermost = max(start for _name, start, _scope in candidates)
+    names = sorted({name for name, start, _scope in candidates if start == innermost})
+    if len(names) != 1:
+        return ""
+    if sum(1 for name, _start, _end, _scope in entries if name == names[0]) != 1:
+        return ""
+    return names[0]
+
+
 def _line_of(kind: str, needle: str) -> str:
-    """A citation into an authority file: ``file:line`` for code, ``file#heading`` for prose."""
+    """A citation into an authority file: ``file::symbol`` for code, ``file#heading`` for prose.
+
+    Code used to be cited as ``file:line``. Measured on 2026-11-04 against the registers as they were
+    published: **152 of 294** of those numbers no longer sat in the construct that produced them --
+    they still resolved, because the line still exists, and they named a different piece of the file.
+    A symbol anchor says the same thing and cannot rot that way; where no symbol covers the line the
+    number stays, because a wrong anchor is worse than a moving one.
+
+    The needle is matched against whole lines first. A fragment is allowed too -- prose cites quote
+    a phrase by design -- but for code the match must be a line of code, and "the first line that
+    contains it" is not: the earliest mention of an identifier is usually its introduction in prose.
+    That is how 32 rows came to cite a sentence of this module's own docstring instead of the
+    statement that returns the pending-owner class. A second, closer trap sits behind that one: a
+    docstring *inside* a function is covered by that function's span, so "inside a definition" is not
+    the same as "is code" either -- the first version of this fix produced ``::_line_of`` for a needle
+    that belongs to ``adjudicate_unregistered``, because the sentence explaining the fix was itself the
+    first covered line. See ``_code_match``.
+    """
     path = AUTHORITY_SCANNED[kind]
     key = str(path)
     if key not in _LINE_CACHE:
@@ -599,31 +686,62 @@ def _line_of(kind: str, needle: str) -> str:
                 _LINE_CACHE[key][text] = number + 1
     hit = _LINE_CACHE[key].get(needle)
     if hit is None:
-        for text, number in _LINE_CACHE[key].items():
-            if needle in text:
-                hit = number
-                break
-    if hit is None:
-        return path.relative_to(REPO_ROOT).as_posix() + ":AUTHORITY_NOT_FOUND"
+        matches = [(number, text) for text, number in _LINE_CACHE[key].items() if needle in text]
+        if not matches:
+            return path.relative_to(REPO_ROOT).as_posix() + ":AUTHORITY_NOT_FOUND"
+        hit = _code_match(path, matches) if path.suffix == ".py" else matches[0][0]
     if path.suffix == ".md":
         lines = path.read_text(encoding="utf-8-sig").splitlines()
         return "%s#%s" % (path.relative_to(REPO_ROOT).as_posix(), _heading_anchor(lines, hit))
-    return path.relative_to(REPO_ROOT).as_posix() + ":" + str(hit)
+    relative = path.relative_to(REPO_ROOT).as_posix()
+    symbol = _py_symbol_at(path, hit) if path.suffix == ".py" else ""
+    if symbol:
+        return relative + "::" + symbol
+    return relative + ":" + str(hit)
+
+
+def _code_match(path: Path, matches: list) -> int:
+    """The first candidate line that is a line of code, or the earliest one when none is.
+
+    "Code" is a line that is not a comment, not inside a docstring, and spanned by some def, class or
+    assignment. Each of those three conditions removes a way a cite can land in prose that was really
+    observed this round, and the fallback to the earliest match is asserted rather than assumed: a
+    needle that exists only in prose gets a number, which is honest about being a line.
+    """
+    prose = _py_prose_lines(path)
+    code = [(number, text) for number, text in matches
+            if not text.lstrip().startswith("#") and number not in prose]
+    anchored = [number for number, _text in code if _py_symbol_at(path, number)]
+    return anchored[0] if anchored else matches[0][0]
 
 
 def resolve_authority_cite(cite: str) -> tuple[bool, str]:
     """Does one authority citation still point at something that exists?
 
-    Two shapes: ``file:line`` (code, where the number is meaningful) and ``file#anchor`` (prose,
-    where a number would be moved by any paragraph edited above it). A prose cite resolves when
-    the anchor is the section number (or sanitised title) of exactly one heading in that file.
-    Living next to ``_line_of`` keeps the producing and checking rules one implementation.
+    Three shapes: ``file::symbol`` (code anchored on a definition, which a line number is not --
+    it survives anybody editing the file above the cited text), ``file:line`` (a module-level
+    statement no symbol covers) and ``file#anchor`` (prose, where a number would be moved by any
+    paragraph edited above it). A prose cite resolves when the anchor is the section number (or
+    sanitised title) of exactly one heading in that file; a symbol cite resolves when the file
+    defines that name exactly once. Living next to ``_line_of`` keeps the producing and checking
+    rules one implementation.
     """
     cite = cite.strip()
     if not cite:
         return (False, "empty citation")
     if "AUTHORITY_NOT_FOUND" in cite:
         return (False, "the authority text this cite was built from is no longer in the file")
+    if "::" in cite:
+        rel, symbol = cite.split("::", 1)
+        path = REPO_ROOT / rel
+        if not path.is_file():
+            return (False, "file absent: " + rel)
+        defined = [name for name, _start, _end, _scope in _py_symbols(path) if name == symbol]
+        if not defined:
+            return (False, "no symbol %r is defined in %s" % (symbol, rel))
+        if len(defined) != 1:
+            return (False, "symbol %r is defined %d times in %s" % (symbol, len(defined), rel))
+        return (True, "symbol " + symbol)
     if "#" in cite:
         rel, anchor = cite.split("#", 1)
     else:

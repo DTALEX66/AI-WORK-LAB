@@ -232,6 +232,128 @@ def test_prose_authority_cites_point_at_a_section_and_stay_valid_when_prose_grow
         module.REPO_ROOT = original
 
 
+def test_a_code_authority_is_anchored_on_the_definition_not_on_a_line_number(tmp_path):
+    """The register's self-citations moved 152 of 294 rows onto a different construct; now they cannot.
+
+    Measured on 2026-11-04 against the registers as published: 152 of the 294 line-number cites no
+    longer sat inside the def, class or assignment that produced them, and every one of them still
+    resolved -- a line number is never *wrong*, it is only about a different line than it was. The
+    numbers were correct each time the builder ran, which is exactly why the drift looked harmless.
+    Code cites therefore anchor on the definition holding the line -- a def, class or module-level
+    assignment; where the line is a bare statement no symbol covers, or the name occurs twice, the
+    number stays, because a wrong anchor is worse than a moving one.
+    """
+    module = _coverage_module()
+    root = tmp_path / "clone"
+    scripts = root / "scripts"
+    scripts.mkdir(parents=True)
+    original = module.REPO_ROOT
+    module.REPO_ROOT = root
+    source = ('"""Builder docstring."""\n'
+              'CONST = 1\n'
+              'raise SystemExit("boot")\n'
+              'def adjudicate(kind):\n'
+              '    UNREGISTERED_TARGET_PATH_PRESENT = kind\n'
+              '    return UNREGISTERED_TARGET_PATH_PRESENT\n')
+    try:
+        (scripts / "builder.py").write_text(source, encoding="utf-8")
+        scanned = module.AUTHORITY_SCANNED
+        module.AUTHORITY_SCANNED = dict(scanned, self=scripts / "builder.py")
+        try:
+            cite = module._line_of("self", "UNREGISTERED_TARGET_PATH_PRESENT = kind")
+            assert cite == "scripts/builder.py::adjudicate", cite
+            assert module.resolve_authority_cite(cite) == (True, "symbol adjudicate")
+            # 200 lines above the cited text: the anchor must not move
+            (scripts / "builder.py").write_text(
+                "".join("# pad %d\n" % i for i in range(200)) + source, encoding="utf-8")
+            # all three caches are per-run by design (the builder reads each authority once); a test
+            # that rewrites the file has to reset them, or it would be asserting on a stale snapshot
+            module._LINE_CACHE.clear()
+            module._SYMBOL_CACHE.clear()
+            module._PROSE_CACHE.clear()
+            assert module._line_of("self", "UNREGISTERED_TARGET_PATH_PRESENT = kind") == cite, (
+                "the anchor still moved with the line count")
+            assert module.resolve_authority_cite(cite)[0] is True
+            # a module-level assignment is its own definition, so it anchors too
+            assert module._line_of("self", "CONST = 1") == "scripts/builder.py::CONST"
+            # a module-level statement no symbol covers keeps the number -- and that number is
+            # now 200 lines further down than the file it was written against, which is the whole
+            # reason the symbol form exists
+            number = module._line_of("self", 'raise SystemExit("boot")')
+            assert number == "scripts/builder.py:203", number
+            assert module.resolve_authority_cite(number)[0] is True
+            # a name defined twice cannot be an anchor -- it would not say which one
+            (scripts / "twin.py").write_text("def dup():\n    return 1\n\n\ndef dup():\n    return 2\n",
+                                             encoding="utf-8")
+            module.AUTHORITY_SCANNED = dict(scanned, self=scripts / "twin.py")
+            assert module._line_of("self", "return 2") == "scripts/twin.py:6", (
+                "an ambiguous symbol name was anchored anyway: %s"
+                % module._line_of("self", "return 2"))
+            # and the resolver refuses both a missing name and a file that is not Python
+            assert module.resolve_authority_cite("scripts/builder.py::nowhere")[0] is False
+            assert module.resolve_authority_cite("scripts/twin.py::dup")[0] is False
+        finally:
+            module.AUTHORITY_SCANNED = scanned
+    finally:
+        module.REPO_ROOT = original
+
+
+def test_a_code_needle_mentioned_in_prose_above_the_statement_cites_the_statement(tmp_path):
+    """A fragment lookup for code takes the first line that *is* code -- and prose hides in four places.
+
+    32 rows of the two registers cited line 23 of ``build_source_coverage.py``, a sentence of its own
+    module docstring, because the needle is introduced in prose before it is returned in code and the
+    lookup stopped at the earliest line containing it. Fixing that to "the first line a symbol spans"
+    then produced ``::_line_of`` for the same needle: a docstring *inside* a function is spanned by
+    that function, so it is prose that has moved inside a definition. A comment is the third way, and
+    a module-level statement that no definition spans is the fourth -- it is code, but it has no
+    address to name, so it must not win over a line that does. All four are planted in one synthetic
+    file here: drop any one exclusion and the cite names a different place, which is what makes each
+    of them a guard rather than decoration.
+    """
+    module = _coverage_module()
+    root = tmp_path / "clone"
+    scripts = root / "scripts"
+    scripts.mkdir(parents=True)
+    original = module.REPO_ROOT
+    module.REPO_ROOT = root
+    try:
+        (scripts / "ladder.py").write_text(
+            '"""模块说明里提到 NEEDLE_TOKEN 一次。\n'
+            '仅出现在文档字符串里的短语。\n'
+            '"""\n'
+            'print("NEEDLE_TOKEN")\n'
+            'def documented():\n'
+            '    """函数文档字符串又提到 NEEDLE_TOKEN。\n'
+            '    """\n'
+            '    return 1\n'
+            '\n'
+            'def commented():\n'
+            '    # 注释里也提到 NEEDLE_TOKEN\n'
+            '    return 2\n'
+            '\n'
+            'def produces():\n'
+            '    return ("NEEDLE_TOKEN", "value")\n', encoding="utf-8")
+        scanned = module.AUTHORITY_SCANNED
+        module.AUTHORITY_SCANNED = dict(scanned, self=scripts / "ladder.py")
+        try:
+            cite = module._line_of("self", "NEEDLE_TOKEN")
+            assert cite == "scripts/ladder.py::produces", cite
+            assert module.resolve_authority_cite(cite) == (True, "symbol produces")
+            # a needle that exists only in prose keeps the number rather than being dragged to a def:
+            # line 2 is inside the module docstring, which no symbol spans
+            prose = module._line_of("self", "仅出现在文档字符串里的短语。")
+            assert prose == "scripts/ladder.py:2", prose
+            assert module.resolve_authority_cite(prose)[0] is True
+            # a needle that is nowhere in the file is refused, not pointed at the nearest neighbour
+            missing = module._line_of("self", "NEVER_WRITTEN_ANYWHERE")
+            assert missing.endswith("AUTHORITY_NOT_FOUND"), missing
+            assert module.resolve_authority_cite(missing)[0] is False
+        finally:
+            module.AUTHORITY_SCANNED = scanned
+    finally:
+        module.REPO_ROOT = original
+
 def test_coverage_register_accounts_for_every_source_file(coverage):
     note = _absent_source_note([WORK_SOURCE, DESIGN_SOURCE])
     if note:
@@ -295,6 +417,14 @@ def test_coverage_register_leaves_no_row_undecided(coverage):
             assert row["reason"].startswith("待 owner 判定（本行字节 "
                                             + row["source_sha256"][:12] + "）"), row
             assert "NONE（无现成权威覆盖此行）" in row["authority"], row
+            # the half after the arrow is a citation like any other, and the pending population is
+            # exactly the rows the loop above does not reach -- so until now an unresolvable anchor
+            # on a pending row would have stayed invisible. The joiner in this template carries no
+            # leading space, which is why the split cannot assume one; the resolver's own refusal of
+            # a missing name is planted in the anchor node, and this consumes that same function.
+            cite = re.split(r";|\s*→\s*", row["authority"])[-1].strip()
+            ok, why = _coverage_module().resolve_authority_cite(cite)
+            assert ok, (row["path"], cite, why)
         adjudicated = [row for row in rows if row["class"] in ADJUDICATED_CLASSES]
         assert adjudicated, label
         # the register must say which population it adjudicated, per repo

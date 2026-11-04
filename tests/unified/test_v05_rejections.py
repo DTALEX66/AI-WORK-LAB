@@ -1696,3 +1696,49 @@ def test_result_produced_at_refuses_the_spelling_it_parses(server):
     clean = dict(document, producedAt="2026-11-02T10:00:00+00:00")
     assert server.api._result_problems(clean, None, attempt, facts) == [], \
         server.api._result_problems(clean, None, attempt, facts)
+
+
+def test_a_duplicated_query_parameter_is_refused_on_every_get_surface(server, work_project):
+    """Four GET parsers collapsed ``?x=1&x=2`` to whichever value parsed last; now there is one rule.
+
+    N02 named the defect for the task list (``TASK_FILTER_PROJECT_ID_DUPLICATE``) and left the rest of
+    the surface as it was: ``dict(parse_qsl(...))`` in ``_search``, ``_v1_design_plans``,
+    ``_v1_design_target_profiles`` and ``_query_params`` (observer solutions and evidence-range). A
+    caller that sent two filters for one name was answered about the last one, which is the same
+    silent choice this file exists to refuse. The four became one parser that refuses, while the task
+    list keeps its own, more specific code -- asserted here so the generic rule cannot eat it.
+    """
+    # the request line is ASCII (CVE-2019-9740), so the terms go on the wire percent-encoded --
+    # which is also what a browser does, so this is the shape the route really sees
+    from urllib.parse import quote
+
+    fen, jing = quote("分"), quote("镜")
+    for label, url in (
+            ("知识检索", f"/api/v1/knowledge/search?q={fen}&q={jing}"),
+            ("方案列表", "/api/v1/design/plans?project_id=" + "a" * 32 + "&project_id=" + "b" * 32),
+            ("目标档案", "/api/v1/design/target-profiles?limit=5&limit=6"),
+            ("维护方案", "/api/work/observer/solutions?limit=5&limit=6"),
+            ("证据区间", "/api/work/observer/evidence-range?handle=x&handle=y")):
+        status, body = server.client.get(url)
+        assert status == 400, (label, url, status, body)
+        assert body["error"] == "QUERY_PARAM_DUPLICATE", (label, body)
+
+    # the task list keeps the specific code that names which filter collided
+    status, body = server.client.get("/api/v1/tasks?project_id=" + "a" * 32 + "&project_id=" + "b" * 32)
+    assert status == 400 and body["error"] == "TASK_FILTER_PROJECT_ID_DUPLICATE", body
+
+    # single occurrences still answer, so the refusal above is about duplication, not about the routes
+    status, search = server.client.get(f"/api/v1/knowledge/search?q={fen}")
+    assert status == 200 and search["query"] == "分", search
+    status, solutions = server.client.get("/api/work/observer/solutions?limit=5")
+    assert status == 200, solutions
+    status, profiles = server.client.get("/api/v1/design/target-profiles?limit=5")
+    assert status == 200, profiles
+
+    # the pinned contrast with the evidence-range digest: a blank search term is a form field left
+    # empty, while a blank digest pin is a malformed claim -- one refusal, one default
+    status, blank_query = server.client.get("/api/v1/knowledge/search?q=")
+    assert status == 200 and blank_query["query"] == "", blank_query
+    status, blank_limit = server.client.get("/api/work/observer/solutions?limit=")
+    assert status == 200, (status, blank_limit)
+
