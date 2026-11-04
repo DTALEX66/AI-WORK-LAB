@@ -2850,3 +2850,61 @@ owner 2026-11-04 连着给了两句：「全部开始」与「合并并打标签
 
 本节自身是合并之后写在审计分支上的落地登记——所以 `main` 上这一节的上一格才是被审的尖；
 下一批合并时它会随代码一起进主线。这是"每一句带上它实际覆盖的头"的必然形状，不是漏了一步。
+
+### 15.40 第三批：一条重复参数的规则、一处符号锚、和一个把自己骗了的探针
+
+代码格 `52439bd` 与 `6490171`，收据 `556 passed, 3 subtests passed in 1649.21s (0:27:29)`，候选 `7309` 个文件 /
+摘要 `1cc11152204c92e8…`，测量期间跟踪字节移动 `[]`，两个来源仓 `未变`。
+
+**一、#26：重复 GET 参数从各自静默收成一条具名拒绝。** `backend/v1.py` 里原本有 4 处
+各写各的 `dict(parse_qsl(urlsplit(handler.path)...))`（数的是 git 里最近一次还在的那个提交）：
+`_search`、`_v1_design_plans`、`_v1_design_target_profiles` 与 observer 用的 `_query_params`。
+`?x=1&x=2` 只剩后到的那个，调用方拿到的是"关于另一个值的答案"。N02 只给任务列表
+点了名（`TASK_FILTER_PROJECT_ID_DUPLICATE`），其余面照旧。现在 inline 的剩 0 处、
+5 个 GET 调用点共用同一条解析，重复即
+400 `QUERY_PARAM_DUPLICATE`（5 个面共用一条断言，`_query_params` 的文档串把"为什么不是一
+行"写在生产侧），任务列表保留它自己那条点名的码。会不会打断已发布的调用方，按人群答：7309 个跟踪件里
+216 条字面查询串，重复名的共 2 条，且那两条正是 `backend/v1.py` 自己文档里举的
+`?x=1&x=2` 例子；三处 `params.append` 是 SQL 绑定参数，不是拼 URL。反例两个：把解析器换回原来那一行
+→ 节点在第一个面就红；把任务列表的具名码换成通用码 → "任务列表说得出是哪个 filter 撞了"那句红。
+
+**二、#28 与 #29：代码权威引用换成符号锚，然后被自己的第一版修法绊了一次。**
+拿 `f0ccf7f` 那两本登记对照今日工作树：294 条数字型代码引用（按引用片段计）里
+152 条已经不在产出它们的 def/class/赋值里——行号不"错"，它只是关于另一行，而且照样
+resolve。改成 `file::symbol` 后逐格对照：226 格变动、引用文件序列 0 处不同、262 条新锚
+覆盖当初那行、mismatches 0；两本登记里剩下的数字型代码引用 0 条。
+#29 是 #28 暴露的：
+32 行的 authority 指向 `build_source_coverage.py` 第 23 行
+——模块 docstring 里的一句话，而不是返回 pending-owner 判定的那条语句，因为片段匹配取"第一条包含
+它的行"。第一版修法（取第一条被定义跨度覆盖的行）随即产出 `::_line_of`：函数内的 docstring 也被那个
+函数覆盖，"在定义里"不等于"是代码"。现在的规则三条一起——非注释、非 docstring、被某个定义跨度覆盖，
+全不满足才退回最早一行并保留数字。#28/#29 共 10 个反例，全部按要求红（红而不得 0 个），
+四个落点各红在自己的那一条上（`:1` / `::documented` / `::commented` / `:4`）。顺带补一处暗账：
+`OWNER_DECISION_PENDING` 那批的 authority 后半从来没被 resolve 过——它不在 `ADJUDICATED_CLASSES` 里，
+v14 的循环整本跳过 pending 人群，现在接进同一支循环。
+
+**三、红点归因：#25 的边界探针把自己放在了被检查的地盘里。** 本批代码格的第一张收据读数是
+`1 failed, 555 passed, 3 subtests passed in 1659.47s (0:27:39)`（`suite_exit` 非 0），红的就是
+`tests/unified/test_v23_clone_repro.py::test_the_basetemp_sweep_only_reaches_roots_this_project_owns`。
+单跑绿、进套件红，两边都不是巧合：收据把 `--basetemp` 指进 `.project-local/runs`，于是这条节点的
+`tmp_path` 本身就在本仓 scratch 内——而它拿 `tmp_path` 拼"外人的临时目录""另一份检出"两个应当被拒绝
+的样本，等于把反例放进规则必须认领的地方。规则是对的，是探针骗了自己。改法只动测试：反例换成与本机
+无关的合成绝对根，共享 runs/build/audit 三条仍按项目根拼，另加一条"当且仅当 runner 把 tmp_path 放
+进本仓 scratch 就断言该根被认领"的正控。按反例必能红复跑一次定向反证：默认临时根下 绿，
+收据上下文里 红，两次一起才说明红的是上下文不是运气，文件逐字节复原。清扫在真收据里的
+效果按跑完之后的现场读：收据自己的 `--basetemp` 根里现在剩 1 个条目
+（["coverage0"]，共 17772 字节），其中 `test_*<n>` 形态的沙箱 0 个——
+上一格实测一次全量在那里留 1,649 个 / 120.69 MiB（§15.37）。留下的那一个是
+`tmp_path_factory.mktemp("coverage")` 造的 `coverage0`，不在清扫认领的名字形态里，也不该假装它被扫掉了。
+
+**四、这一格的判据读数。** 改绑链 14 步里当场 12 步 rc=0，红的两步点名：
+["check entry", "terminal closure audit"]。「check entry」那条是 `RECEIPT_POINTER_STALE`（链上记的是 {"verdict": "FAIL", "finding_count": 1}，改写与
+提交见 `609cbf9`）——入口的「- 依托提交」还写着上一批的收据头，而 audit-state 已经改绑到本批头；
+链末的终端审计红是因为工作树里还有未提交的改绑件（那张收据替不了它们）。指针由工件现读改写、五处改绑
+（closure register / audit-state `--audited-commit` / task-acceptance / blocker-register /
+PROJECT_CURRENT `--write-block`）提交之后复跑：`{"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}` @ `609cbf9`，
+危害扫描现跑 `{"scanned_files": 7309, "findings": 17, "blocking": 0}`。
+本批不做的事照旧登记着走：`api-contract-check.json` 的 `handler位置` 仍是行号锚（本轮实测：一次
+`v1.py` 的两行折叠挪走了 4 个，被 test_v16 的"该行必须是该 handler 的 def"当场抓住，重发布后转绿——
+它不说谎，但每改一次就要重发布一次，已派为下一项）；#16 那 322 个含机器名的跟踪件仍未分类；
+L20#0 宿主往返、真人专业签字、模型推理、真实私有数据迁移、Linux 复跑（N05 因此 PARTIAL）维持具名延后。
