@@ -92,6 +92,31 @@ def _normalize_list(value: Any) -> list[str]:
     return [str(value)]
 
 
+def _list_field(draft: Mapping[str, Any], name: str, *, allow_objects: bool) -> list:
+    """The list declared under ``name``, or a refusal -- never a shape inferred from a non-list.
+
+    ``list("…")`` is a per-character list and ``list({...})`` is a list of its keys: measured, a
+    draft whose ``unresolved`` was a string blocked the plan on its letters, and one whose
+    ``changes`` was a dict reported that dict's keys as the proposed scope. This is the ingest
+    boundary, so it refuses; ``candidate_content`` keeps the tolerant reader because a digest
+    must not start raising on a candidate that was already stored.
+    """
+    value = draft.get(name)
+    if value is None:
+        return []
+    if not isinstance(value, (list, tuple)):
+        raise ValueError("%s must be a list of items, not %s" % (name, type(value).__name__))
+    items = [item for item in value if not (isinstance(item, str) and not item.strip())]
+    for item in items:
+        if isinstance(item, str):
+            continue
+        if isinstance(item, Mapping) and allow_objects:
+            continue
+        raise ValueError("%s entries must be %s, not %s" % (
+            name, "strings or objects" if allow_objects else "strings", type(item).__name__))
+    return items
+
+
 def candidate_content(candidate: Mapping[str, Any]) -> dict[str, Any]:
     """The content that defines a candidate's identity.
 
@@ -136,7 +161,9 @@ def build_candidate(draft: Mapping[str, Any]) -> dict[str, Any]:
     baseline = dict(draft.get("baseline") or {})
     if not (baseline.get("commit") or baseline.get("digest")):
         raise ValueError("baseline requires an exact commit or an immutable digest")
-    revision = int(draft.get("taskRevision", 0))
+    revision = draft.get("taskRevision")
+    if isinstance(revision, bool) or not isinstance(revision, int):
+        raise ValueError("taskRevision must be an integer, not %s" % type(revision).__name__)
     if revision < 1:
         raise ValueError("taskRevision must be >= 1")
 
@@ -149,12 +176,12 @@ def build_candidate(draft: Mapping[str, Any]) -> dict[str, Any]:
         "baseline": baseline,
         "contextRef": draft.get("contextRef"),
         "contextDigest": draft.get("contextDigest"),
-        "assumptions": _normalize_list(draft.get("assumptions")),
-        "changes": list(draft.get("changes") or []),
-        "verification": list(draft.get("verification") or []),
-        "references": _normalize_list(draft.get("references")),
-        "unresolved": list(draft.get("unresolved") or []),
-        "openQuestions": _normalize_list(draft.get("openQuestions")),
+        "assumptions": _list_field(draft, "assumptions", allow_objects=False),
+        "changes": _list_field(draft, "changes", allow_objects=True),
+        "verification": _list_field(draft, "verification", allow_objects=True),
+        "references": _list_field(draft, "references", allow_objects=False),
+        "unresolved": _list_field(draft, "unresolved", allow_objects=True),
+        "openQuestions": _list_field(draft, "openQuestions", allow_objects=False),
         "targetCapability": draft.get("targetCapability", ""),
         "authorizationRef": draft.get("authorizationRef", ""),
         # Never carried forward as truth: kept only so the verdict can report
@@ -164,6 +191,10 @@ def build_candidate(draft: Mapping[str, Any]) -> dict[str, Any]:
         },
         "createdAt": draft.get("createdAt", ""),
     }
+    for field in ("changes", "verification"):
+        if not candidate[field]:
+            raise ValueError("%s is required and ends up empty once blank entries are dropped"
+                             % field)
     if not candidate["candidateId"]:
         candidate["candidateId"] = f"pc-{stable_digest(candidate_content(candidate))[:16]}"
     candidate["contentDigest"] = stable_digest(candidate_content(candidate))

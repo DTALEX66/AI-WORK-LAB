@@ -261,6 +261,28 @@ def _professional_required(value: dict, acceptance: dict) -> bool:
     return given[0] if given else False
 
 
+def _input_refs(value: dict) -> list:
+    """The task's declared structured references, or a named refusal.
+
+    Measured before this guard: the caller's ``input_refs`` was passed through only when it was
+    already a list, and every other shape -- a string, a dict, ``null`` -- answered 201 with ``[]``
+    stored, so the references a pack was supposed to be built from vanished without a word. An
+    absent key is a real empty list; a declared non-list is a shape nobody asked to be guessed.
+    """
+    if "input_refs" not in value:
+        return []
+    refs = value["input_refs"]
+    if not isinstance(refs, list):
+        _reject(400, "TASK_INPUT_REFS_NOT_ARRAY")
+    for ref in refs:
+        if not isinstance(ref, dict):
+            _reject(400, "TASK_INPUT_REF_NOT_OBJECT")
+        kind = ref.get("kind")
+        if not isinstance(kind, str) or not kind.strip():
+            _reject(400, "TASK_INPUT_REF_KIND_MISSING")
+    return refs
+
+
 class V1API:
     """Delegate handlers; each receives (kernel_handler, route_match)."""
 
@@ -646,7 +668,7 @@ class V1API:
         try:
             task = self.unified.create_task(
                 project_id=project_id, kind=kind, title=title,
-                input_refs=value.get("input_refs") if isinstance(value.get("input_refs"), list) else [],
+                input_refs=_input_refs(value),
                 acceptance=acceptance, professional_required=professional_required,
                 data_origin=declared, candidate_version=self.candidate()["digest"])
         except StoreError as exc:
@@ -914,12 +936,20 @@ class V1API:
         if attempt["execution_state"] != "WAITING_HANDOFF":
             _reject(409, "ATTEMPT_STATE " + repr(attempt["execution_state"])
                     + " is not WAITING_HANDOFF")
-        value = handler.body(fields={"claim", "target_version"},
-                             optional={"channel", "claimed_recipient", "expected_version",
-                                       "actor"}, limit=16384)
+        value = handler.body(fields={"claim", "target_version", "actor"},
+                             optional={"channel", "claimed_recipient", "expected_version"},
+                             limit=16384)
         claim = _require(value, "claim", "CLAIM_REQUIRED")
         target_version = _require(value, "target_version", "TARGET_VERSION_REQUIRED")
-        actor = str(value.get("actor") or "user")
+        # An omitted actor used to default to "user" -- a live human -- which is the label the
+        # synthetic-on-live guard below reads, so the default disarmed the guard.
+        actor = _require(value, "actor", "HANDOFF_ACTOR_REQUIRED")
+        declared_version = value.get("expected_version")
+        if "expected_version" in value and (isinstance(declared_version, bool)
+                                            or not isinstance(declared_version, int)
+                                            or declared_version < 1):
+            _reject(400, "HANDOFF_EXPECTED_VERSION_INVALID")
+            return
         if claim not in ("copiedByUser", "userDeclaredHandoff"):
             _reject(400, "CLAIM_UNKNOWN")
             return
@@ -931,8 +961,8 @@ class V1API:
             try:
                 record = self.work.declare_handoff(
                     attempt["pack_plan_id"], claim=claim,
-                    expected_version=int(value.get("expected_version")
-                                         or current_record.get("version") or 1),
+                    expected_version=(declared_version if declared_version is not None
+                                      else int(current_record.get("version") or 1)),
                     target_version=target_version,
                     channel=value.get("channel"),
                     claimed_recipient=value.get("claimed_recipient"))
@@ -1290,6 +1320,9 @@ class V1API:
             except ValueError:
                 raise RequestError(400, "KNOWLEDGE_FILTER_MALFORMED") from None
 
+        # A blank filter here is a form field left empty, which asks the same question as omitting
+        # it -- deliberately the opposite of the evidence-range route, where a blank digest pin is
+        # a malformed claim rather than an absent one.
         query = params.get("q") or ""
         try:
             knowledge = self._knowledge_factory(self.design_service).search(
@@ -1455,14 +1488,18 @@ class V1API:
         handler.guard()
         params = self._query_params(handler)
         try:
-            offset = int(params.get("offset") or 0)
-            limit = int(params.get("limit") or 4096)
+            offset = int(params["offset"]) if "offset" in params else 0
+            limit = int(params["limit"]) if "limit" in params else 4096
         except ValueError:
             _reject(400, "EVIDENCE_RANGE_QUERY_MALFORMED")
             return
+        # A declared empty digest stays empty instead of becoming "no digest": the reader
+        # refuses a value that is not 64 hex characters, and an explicitly blank identity pin
+        # must not be downgraded into an unpinned read. domains/work/control/sidecar.py already
+        # forwards the raw value; the two surfaces of one reader now agree.
         return work_surfaces.observer_evidence_range(
-            self, handler, handle=params.get("handle") or "", offset=offset, limit=limit,
-            expected_digest=params.get("expectedDigest") or None)
+            self, handler, handle=params.get("handle", ""), offset=offset, limit=limit,
+            expected_digest=params.get("expectedDigest"))
 
     def _work_observer_events(self, handler, match):
         from backend.core import work_surfaces

@@ -466,7 +466,7 @@ def test_project_source_is_enumerated_and_a_refusal_writes_in_neither_store(serv
 #   - domains/work/control/control_service.py:76,328-330  读 control-operation.schema.json，
 #     :501-507 用 jsonschema 拒绝并给出具名 reason_code "INVALID_REQUEST"；
 #     该 Schema 由 GET /api/work/control/descriptor 这条活路由触发读取
-#     （backend/core/work_surfaces.py:274-285 → :256-271 → ControlPlane.__init__）。
+#     （backend/core/work_surfaces.py::control_descriptor → ::control_plane → ControlPlane.__init__）。
 #   - domains/work/orchestration/adapter_capability_projection.py:154-179 读
 #     client-adapter.schema.json 并与 config/capability-matrix.json 交叉核对，
 #     不一致时 raise ValueError("adapter interface verb drift: …")；消费端是
@@ -701,7 +701,7 @@ def _unresolved_refs(root: _Path) -> list[str]:
 def test_contracts_control_plane_reads_the_published_request_contract(server):
     """Consumer 1: the Control service. The Schema file is read on a live HTTP route.
 
-    Proves: `GET /api/work/control/descriptor` (backend/core/work_surfaces.py:274-285)
+    Proves: `GET /api/work/control/descriptor` (backend/core/work_surfaces.py::control_descriptor)
     constructs the plane, whose __init__ opens
     `packages/contracts/schemas/workflow/control-operation.schema.json` (:76,:328), and
     that the operation list the service publishes is *the same closed set* the file
@@ -770,7 +770,7 @@ def test_contracts_control_request_documents_accepted_and_refused_with_named_cod
 
     # The unified HTTP mount is NOT a live consumer of this contract today, and the register
     # line treats it as one. `control_execute` calls `handler.body(fields={}, optional={})`
-    # (backend/core/work_surfaces.py:319) and that helper refuses any body with keys
+    # (backend/core/work_surfaces.py::control_execute) and that helper refuses any body with keys
     # (domains/design/design_lab/http_service.py:539-541), so no request ever reaches
     # plane.execute over POST. Pinned so a future fix has to re-classify this row.
     status, body = server.client.post("/api/work/control/operations", _control_request())
@@ -1359,3 +1359,340 @@ def test_contracts_published_inventory_and_consumed_set_do_not_drift(server, mon
     assert opened < published and len(unread) == len(published) - 3, (
         "the register sentence reads as if the whole published directory is consumed; "
         f"measured: {len(opened)} opened vs {len(published)} published")
+
+
+def _waiting_attempt(server, work_project, key):
+    """A task and attempt sitting in WAITING_HANDOFF -- the state a declaration is answered in."""
+    seed_issue(server.work.store)
+    status, task = server.client.post("/api/v1/tasks", {
+        "project_id": work_project["project_id"], "kind": "work",
+        "title": "声明字段样例",
+        "input_refs": [{"kind": "work_project", "project_id": work_project["project_id"]}]})
+    assert status == 201, task
+    status, attempt = server.client.post(f"/api/v1/tasks/{task['task_id']}/attempts",
+                                         {"idempotency_key": key})
+    assert status == 201, attempt
+    status, pack_response = server.client.post(
+        f"/api/v1/attempts/{attempt['attempt_id']}/pack", {})
+    assert status == 201, pack_response
+    # re-read: the pack is what puts pack_plan_id and WAITING_HANDOFF on the attempt
+    status, current = server.client.get("/api/v1/attempts/" + attempt["attempt_id"])
+    assert status == 200 and current["execution_state"] == "WAITING_HANDOFF", current
+    return current
+
+
+def _declare_url(attempt):
+    return f"/api/v1/attempts/{attempt['attempt_id']}/handoff-declarations"
+
+
+def _attempt_state(server, attempt):
+    status, body = server.client.get("/api/v1/attempts/" + attempt["attempt_id"])
+    assert status == 200, body
+    return body["execution_state"]
+
+
+def test_handoff_actor_is_declared_not_invented(server, work_project):
+    """The handoff actor has no default: omitting it used to manufacture a live human.
+
+    Measured before this node: ``actor = str(value.get("actor") or "user")`` -- and two lines below
+    it, ``HANDOFF_ACTOR_SYNTHETIC_ON_LIVE`` reads the *actor's role* to decide whether a simulated
+    declaration may touch live material. So the cheapest way to declare a handoff against a live
+    attempt was to say nothing about who made it. An empty, whitespace, null or non-string actor is
+    the same invention in a different shape and is refused by name; nothing is written.
+    """
+    attempt = _waiting_attempt(server, work_project, "att-actor")
+    status, body = server.client.post(_declare_url(attempt), {
+        "claim": "copiedByUser", "target_version": "work-store-v1"})
+    assert status == 400 and body["error"] == "INVALID_PROJECT_FIELDS", (status, body)
+
+    for label, shape in (("空串", ""), ("空白", "   "), ("null", None), ("整数", 5),
+                         ("列表", ["user"]), ("布尔", True), ("对象", {})):
+        status, body = server.client.post(_declare_url(attempt), {
+            "claim": "copiedByUser", "target_version": "work-store-v1", "actor": shape})
+        assert status == 400, (label, shape, status, body)
+        assert body["error"] == "HANDOFF_ACTOR_REQUIRED", (label, body)
+
+    assert _attempt_state(server, attempt) == "WAITING_HANDOFF", "一次被拒绝的声明推进了尝试"
+
+
+def test_handoff_expected_version_is_a_positive_integer_or_a_named_refusal(server, work_project):
+    """A list in ``expected_version`` used to leave the process answering 500 INTERNAL.
+
+    Measured before this node: ``int(value.get("expected_version") or ...)`` -- ``[5]`` reached
+    ``int()`` and raised TypeError, which the kernel reports as 500; ``"3"`` and ``3.5`` were
+    silently coerced into a number the version check then compared, and ``0`` became the default.
+    A declared non-integer is now refused by name before any write, and an omitted one stays legal
+    because the server reads the record it is about to change.
+    """
+    attempt = _waiting_attempt(server, work_project, "att-expected")
+    for label, shape in (("列表", [5]), ("对象", {"v": 5}), ("数字串", "3"), ("词", "abc"),
+                         ("浮点", 3.5), ("布尔", True), ("假布尔", False), ("零", 0),
+                         ("负数", -1), ("null", None), ("空串", "")):
+        status, body = server.client.post(_declare_url(attempt), {
+            "claim": "copiedByUser", "target_version": "work-store-v1",
+            "actor": "user", "expected_version": shape})
+        assert status == 400, (label, shape, status, body)
+        assert body["error"] == "HANDOFF_EXPECTED_VERSION_INVALID", (label, body)
+
+    assert _attempt_state(server, attempt) == "WAITING_HANDOFF"
+
+
+def test_handoff_expected_version_is_compared_not_swallowed(server, work_project):
+    """The integer a caller declares is the version the store compares -- naming a wrong one conflicts.
+
+    The route's own default is the version it just read, which is why a declared value has to be
+    honoured rather than ignored: measured here, a well-formed `expected_version` that does not match
+    the record is refused with the store's own `ACTION_PLAN_VERSION_CONFLICT` and the row does not
+    move, and the same request carrying the version that IS stored answers 200 and bumps it by
+    exactly one. A second declaration after that is refused earlier, by the attempt-state gate, so
+    this is the leg that reaches the version check at all.
+    """
+    attempt = _waiting_attempt(server, work_project, "att-cas")
+    plan_id = attempt["pack_plan_id"]
+    version = server.work.read_record(plan_id)["version"]
+
+    status, conflict = server.client.post(_declare_url(attempt), {
+        "claim": "copiedByUser", "target_version": "work-store-v1",
+        "channel": "wrong-version", "actor": "user", "expected_version": version + 5})
+    assert status == 409, (version, conflict)
+    assert conflict["error"] == "ACTION_PLAN_VERSION_CONFLICT", conflict
+    assert server.work.read_record(plan_id)["version"] == version, "被拒的写仍然改了版本"
+    assert _attempt_state(server, attempt) == "WAITING_HANDOFF"
+
+    status, declared = server.client.post(_declare_url(attempt), {
+        "claim": "copiedByUser", "target_version": "work-store-v1",
+        "channel": "right-version", "actor": "user", "expected_version": version})
+    assert status == 200, declared
+    assert server.work.read_record(plan_id)["version"] == version + 1, (
+        version, server.work.read_record(plan_id)["version"])
+
+
+def test_task_input_refs_shape_is_declared_not_guessed(server, work_project):
+    """``input_refs`` was forwarded only when it was already a list; every other shape stored ``[]``.
+
+    Measured before this node: ``value.get("input_refs") if isinstance(value.get("input_refs"), list)
+    else []`` -- a string, an object, an integer, a boolean or ``null`` each answered 201 with the
+    references gone, and the pack built afterwards complained about a *missing* reference rather
+    than the shape that was dropped. Element shapes are named too: every consumer reads
+    ``ref["kind"]``, so an entry that is not an object -- or an object carrying no kind -- addresses
+    nothing and used to be stored as though it did.
+    """
+    base = {"project_id": work_project["project_id"], "kind": "work", "title": "引用形状"}
+    before = len(_tasks(server.client))
+
+    for label, shape in (("字符串", "abc"), ("对象", {"kind": "work_project"}), ("整数", 7),
+                         ("布尔", False), ("null", None)):
+        status, body = server.client.post("/api/v1/tasks", dict(base, input_refs=shape))
+        assert status == 400, (label, shape, status, body)
+        assert body["error"] == "TASK_INPUT_REFS_NOT_ARRAY", (label, body)
+
+    for label, shape in (("裸字符串条目", ["work_project"]), ("数字条目", [7]),
+                         ("嵌套列表条目", [["kind", "work_project"]])):
+        status, body = server.client.post("/api/v1/tasks", dict(base, input_refs=shape))
+        assert status == 400, (label, shape, status, body)
+        assert body["error"] == "TASK_INPUT_REF_NOT_OBJECT", (label, body)
+
+    for label, shape in (("无 kind 的对象", [{"project_id": "p"}]), ("空 kind", [{"kind": "  "}]),
+                         ("非字符串 kind", [{"kind": 5}]), ("null kind", [{"kind": None}])):
+        status, body = server.client.post("/api/v1/tasks", dict(base, input_refs=shape))
+        assert status == 400, (label, shape, status, body)
+        assert body["error"] == "TASK_INPUT_REF_KIND_MISSING", (label, body)
+
+    # the legitimate shapes stay legal, so the refusals above are not a blanket ban
+    status, empty = server.client.post("/api/v1/tasks", dict(base, input_refs=[]))
+    assert status == 201 and empty["input_refs"] == [], empty
+    refs = [{"kind": "work_project", "project_id": work_project["project_id"]}]
+    status, declared = server.client.post("/api/v1/tasks", dict(base, input_refs=refs))
+    assert status == 201, declared
+    assert declared["input_refs"] == refs, declared
+    assert len(_tasks(server.client)) == before + 2, "一条被拒绝的引用形状仍然写了任务行"
+
+
+def test_evidence_range_blank_digest_pin_is_not_an_absent_pin(server):
+    """``?expectedDigest=`` used to mean "no digest asked for", turning a bad claim into an unpinned read.
+
+    The reader refuses a value that is not 64 hex characters with ``DIGEST_SHAPE``, and
+    ``domains/work/control/sidecar.py`` forwards the raw query value; the HTTP route collapsed the
+    empty value to ``None`` first, so the one spelling that says "verify the identity" was the one
+    that skipped verification. Measured here over real loopback HTTP: an empty pin is refused by
+    name, an absent pin reads with ``digestSource: not-requested``, and a correct pin reads with
+    ``verified: true`` -- the refusal is about the shape, not a route that refuses everything.
+    """
+    import hashlib
+    from urllib.parse import quote
+
+    root = server.workspace / ".project-local" / "artifacts"
+    root.mkdir(parents=True)
+    target = root / "range-sample.txt"
+    payload = b"0123456789" * 12
+    target.write_bytes(payload)
+    base = "/api/work/observer/evidence-range?handle=" + quote(str(target))
+
+    status, blank = server.client.get(base + "&expectedDigest=")
+    assert status == 200, (status, blank)
+    assert blank["status"] == "REFUSED" and blank["reason_code"] == "DIGEST_SHAPE", blank
+    assert blank["content"] is None, blank
+
+    status, unpinned = server.client.get(base)
+    assert status == 200 and unpinned["status"] == "OK", unpinned
+    assert unpinned["identity"]["digestSource"] == "not-requested", unpinned
+
+    status, pinned = server.client.get(base + "&expectedDigest=" + hashlib.sha256(payload).hexdigest())
+    assert status == 200 and pinned["status"] == "OK", pinned
+    assert pinned["identity"]["verified"] is True, pinned["identity"]
+
+    for label, query in (("空 limit", "&limit="), ("空 offset", "&offset="), ("词 limit", "&limit=abc")):
+        status, body = server.client.get(base + query)
+        assert status == 400, (label, status, body)
+        assert body["error"] == "EVIDENCE_RANGE_QUERY_MALFORMED", (label, body)
+
+
+_NO_PEER = object()
+
+
+def test_loopback_gates_refuse_a_peer_they_cannot_identify(server):
+    """Both loopback gates answered an unknown peer as if it had arrived from 127.0.0.1.
+
+    The line was ``handler.client_address[0] if hasattr(handler, "client_address") else
+    "127.0.0.1"``: a handler carrying no peer information passed the check that exists to keep the
+    evidence-range reader and the control-plane write entry loopback-only, so the connections that
+    said least about their origin were the ones allowed through. A peer that is present but not
+    loopback keeps its own code, and a loopback peer still reaches the reader -- the refusal is the
+    missing identity, not a gate that stopped working.
+    """
+    from backend.core import work_surfaces
+
+    class _Handler:
+        def __init__(self, peer):
+            self.answer = None
+            self.reached_plane = False
+            if peer is not _NO_PEER:
+                self.client_address = peer
+
+        def send_json(self, status, body):
+            self.answer = (status, body)
+
+        def body(self, *, fields, optional, limit):
+            # Reaching this line means the peer gate let the request through to the plane.
+            self.reached_plane = True
+            return {}
+
+    for label, peer in (("没有 client_address", _NO_PEER), ("client_address 是 None", None)):
+        handler = _Handler(peer)
+        work_surfaces.observer_evidence_range(server.api, handler, handle="docs/x.md",
+                                             offset=0, limit=8)
+        status, body = handler.answer
+        assert status == 403 and body["reason_code"] == "PEER_UNKNOWN", (label, body)
+
+        handler = _Handler(peer)
+        work_surfaces.control_execute(server.api, handler)
+        status, body = handler.answer
+        assert status == 403 and body["code"] == "PEER_UNKNOWN", (label, body)
+        assert handler.reached_plane is False, (label, "无对端信息的请求进入了控制面")
+
+    handler = _Handler(("10.12.0.7", 51234))
+    work_surfaces.observer_evidence_range(server.api, handler, handle="docs/x.md",
+                                          offset=0, limit=8)
+    status, body = handler.answer
+    assert status == 403 and body["reason_code"] == "PEER_NOT_LOOPBACK", body
+
+    handler = _Handler(("10.12.0.7", 51234))
+    work_surfaces.control_execute(server.api, handler)
+    status, body = handler.answer
+    assert status == 403 and body["code"] == "PEER_NOT_LOOPBACK", body
+
+    # a loopback peer passes the gate and is answered by the reader's own rules
+    handler = _Handler(("127.0.0.1", 51234))
+    work_surfaces.observer_evidence_range(server.api, handler, handle="docs/x.md",
+                                          offset=0, limit=8)
+    status, body = handler.answer
+    assert status == 200 and body["reason_code"] == "ABSOLUTE_PATH_REQUIRED", (status, body)
+
+
+def _valid_candidate_draft():
+    return {"planningSoftware": "web-gpt", "workUnitId": "WU-REJ", "taskRevision": 1,
+            "baseline": {"commit": "0" * 40}, "contextRef": "capsule-rej",
+            "contextDigest": "d" * 64,
+            "changes": [{"path": "docs/x.md", "op": "edit"}],
+            "verification": ["run the gate"]}
+
+
+def test_plan_candidate_list_and_revision_fields_are_not_re_shaped(server):
+    """``list("…")`` is a per-character list and ``list({...})`` is a list of keys -- both were accepted.
+
+    Measured before this node: a planning draft whose ``unresolved`` was the string ``"Q1"`` blocked
+    the plan on ``["Q", "1"]``, one whose ``changes`` was a dict reported that dict's keys as the
+    proposed scope, ``taskRevision: "3"`` was coerced by ``int()`` and ``1.5`` was truncated to 1.
+    The draft is request content (``payload.candidate`` of ``work-unit.materialize``), so a shape
+    that is not a list of items is refused by field name at ingest; ``candidate_content`` keeps its
+    tolerant reader because a digest must not start raising on a candidate already stored.
+    """
+    from domains.work.control import plan_candidate
+
+    draft = _valid_candidate_draft()
+    for label, override, needle in (
+            ("changes 是字符串", {"changes": "改一处文档"}, "changes"),
+            ("verification 是对象", {"verification": {"step": "run"}}, "verification"),
+            ("unresolved 是字符串", {"unresolved": "Q1"}, "unresolved"),
+            ("assumptions 是对象", {"assumptions": {"a": 1}}, "assumptions"),
+            ("references 是整数", {"references": 7}, "references"),
+            ("openQuestions 里有对象", {"openQuestions": [{"q": "??"}]}, "openQuestions"),
+            ("taskRevision 是数字串", {"taskRevision": "3"}, "taskRevision"),
+            ("taskRevision 是浮点", {"taskRevision": 1.5}, "taskRevision"),
+            ("taskRevision 是布尔", {"taskRevision": True}, "taskRevision"),
+            ("changes 只有空白条目", {"changes": ["   "]}, "changes")):
+        try:
+            plan_candidate.build_candidate(dict(draft, **override))
+            raise AssertionError("%s 被静默接受了" % label)
+        except ValueError as error:
+            assert needle in str(error), (label, str(error))
+
+    built = plan_candidate.build_candidate(draft)
+    assert built["changes"] == draft["changes"], built["changes"]
+    assert built["taskRevision"] == 1, built["taskRevision"]
+
+    # the same draft, reached through the control plane, comes back as a named refusal
+    from backend.core import work_surfaces
+
+    plane = work_surfaces.control_plane(server.api)
+    answer = plane.execute(_control_request(
+        operation="work-unit.materialize", task_id="WU-REJ",
+        payload={"candidate": dict(draft, changes="改一处文档")}))
+    assert answer["status"] == "REFUSED", answer
+    assert answer["reason_code"] == "CANDIDATE_INVALID", answer
+    assert "changes" in answer["reason"], answer["reason"]
+
+
+def test_result_produced_at_refuses_the_spelling_it_parses(server):
+    """The instant is read from either spelling but was only checked against one.
+
+    ``parse_instant(document.get("producedAt", document.get("produced_at")))`` accepted the
+    snake_case name, while the invalid-instant check re-read only ``producedAt`` -- so a design
+    result stating ``produced_at: "昨天下午"`` reported no problem at all and skipped the staleness
+    comparison, whereas the same garbage under the camelCase name was refused. Both spellings now
+    produce ``RESULT_PRODUCED_AT_INVALID``, naming the one that was seen. Exercised through the
+    route's own dispatch (``_result_problems``), not only the validator.
+    """
+    from backend.core import binding as binding_rules
+
+    facts = {"task_id": "t" * 32, "attempt_id": "a" * 32, "project_id": "p" * 32,
+             "design_project_id": "dp-1", "plan_id": "plan-1", "plan_revision": 1,
+             "plan_content_sha256": "c" * 64, "binding_sha256": "b" * 64,
+             "handoff_target_version": "plan-r2",
+             "handoff_declared_at": "2026-11-02T09:00:00+00:00",
+             "existing_result_ids": ()}
+    document = {"schemaVersion": binding_rules.DESIGN_RESULT_SCHEMA_VERSION,
+                "resultId": "res-spelling", "summary": "样例结果",
+                "targetVersion": "plan-r2", "evidenceRefs": []}
+    attempt = {"pack_ref": {"flavor": "design_task_pack"}}
+
+    for spelling in ("producedAt", "produced_at"):
+        problems = server.api._result_problems(dict(document, **{spelling: "昨天下午"}),
+                                               None, attempt, facts)
+        codes = [problem.split(" ")[0] for problem in problems]
+        assert "RESULT_PRODUCED_AT_INVALID" in codes, (spelling, problems)
+        assert spelling + " is not an ISO instant" in " ".join(problems), (spelling, problems)
+
+    clean = dict(document, producedAt="2026-11-02T10:00:00+00:00")
+    assert server.api._result_problems(clean, None, attempt, facts) == [], \
+        server.api._result_problems(clean, None, attempt, facts)

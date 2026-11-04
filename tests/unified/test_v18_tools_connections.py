@@ -814,8 +814,8 @@ def test_unauthorized_software_installation_probe_records_nothing():
 #   assumed. `usage_summary` is built in
 #   `domains/work/workflow_core/canonical_store.py:1380-1409` (a GROUP BY over
 #   `usage_samples`) and surfaced verbatim as the `usage` key of
-#   `GET /api/work/observer/projection` by `backend/core/work_surfaces.py:98`
-#   (route registered at `backend/core/work_surfaces.py:376`). Row writes are
+#   `GET /api/work/observer/projection` by `backend/core/work_surfaces.py::observer_projection`
+#   (route registered in `backend/core/work_surfaces.py::build_routes`). Row writes are
 #   `canonical_store.py:677-753`: `input_tokens` / `output_tokens` / `total_tokens`
 #   are measured counters, `cost_estimate` is the estimate and `cost_reconciled`
 #   the reconciled (measured) cost; an absent counter is stored as NULL, and a row

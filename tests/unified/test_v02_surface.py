@@ -839,7 +839,7 @@ def test_settings_read_set_answers_and_writes_nothing(server):
 #     → project_adapter_capabilities:274-363（本机绝对路径经 `versionSource`:341 透传）
 #   GET /api/v1/capabilities → backend/v1.py#_v1_capabilities → capabilities.derive_catalog:97-128
 #     ——它只遍历 CATALOG_SPEC 声明 + 资格台账，不打开 adapter-registry.json。
-#   POST /api/work/control/operations → work_surfaces.control_execute:297-325
+#   POST /api/work/control/operations → work_surfaces.control_execute
 #     → control_service.ControlPlane.execute:500-540（合同 → 封闭 OPERATIONS 枚举:185-253
 #       → _scope_failure:570-603 → PermissionGate（forbidden_paths=FORBIDDEN_TARGETS:108,323-327）
 #       → 唯一实现的配置动词 _config_diff:870-920）。
@@ -1219,7 +1219,7 @@ def test_no_write_entry_reaches_managed_config_native_auth_or_global_environment
     (3) HTTP 面到不了写：`POST /api/work/control/operations` 带一份完全合合同的文档仍是
         `400 INVALID_PROJECT_FIELDS` 且答复体里没有 `reason_code`——`control_execute` 的
         `handler.body(fields={})` 在 `plane.execute` 之前就把带键的请求体拒了
-        （`backend/core/work_surfaces.py:319`），所以这条被 surface-map 称作
+        （`backend/core/work_surfaces.py::control_execute` 里的 `handler.body`），所以这条被 surface-map 称作
         `control_write_entry` 的入口在本统一进程里不是可用的配置写入口；Observer 只读面
         POST/PUT/PATCH/DELETE 一律 `405 OBSERVER_IS_READ_ONLY` 并把拒绝记进工作区台账；
         整张路由表（`backend.v1.V1_ROUTES`，含 WORK 面）里非 GET 的方法没有任何一条的
@@ -1618,8 +1618,8 @@ def test_the_machine_path_recognizer_covers_both_platform_shapes_and_its_own_exc
     """
     recognised = (
         # Windows 形状：盘符加任一种分隔符，以及 UNC 共享名
-        (r"C:\Users\ALEX\adapter-stamp.json", True),
-        ("C:/All projects/x/y.json", True),
+        (r"C:\Users\someone\adapter-stamp.json", True),
+        ("C:/work-root/x/y.json", True),
         (chr(92) * 2 + "filesrv\\share\\tool", True),
         # POSIX 形状：N05 补进来的那一支
         ("/home/dev/.venv/bin/python", True),

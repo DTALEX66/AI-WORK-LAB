@@ -845,6 +845,12 @@ DECLARED_REWORK = {
         "af1b0a548d97fbd90ebdb36af225c88c31ec517ceb69a5c321baa5c4c13b0a86", 3399, 2,
         "本轮 I-e: 公开合同描述里「回落到每用户默认根」的举例带出本机用户名，改为同义的 "
         "%USERPROFILE% 写法；规则语义与来源仓一致，只是不再写出这台机器的账号名"),
+    "domains/work/control/plan_candidate.py": (
+        "a1e561cb8345b015d385dd505f9c92d77ab9f04a662c4036f6a713d9d417d0ba", 16617, 45,
+        "本轮 N17: 六个列表字段不再用 list() 猜形状（给字符串会得到逐字符列表，给 dict 会得到键集，"
+        "于是 unresolved 卡在字母上、changes 把键当成了变更范围），taskRevision 不再被 int() 截断或"
+        "从数字串造出来；不合形状的输入按字段名具名拒绝。来源原件字节已按 owner「其他内容归档进本仓」"
+        "补采进历史区并逐字节复验，见 docs/history/sources-20261101/MANIFEST.csv 同一行"),
 }
 
 

@@ -153,7 +153,14 @@ def observer_repair_packs(api, handler):
 
 def observer_evidence_range(api, handler, *, handle, offset, limit, expected_digest=None):
     from domains.work.control import evidence_range_reader
-    peer = str(handler.client_address[0] if hasattr(handler, "client_address") else "127.0.0.1")
+    address = getattr(handler, "client_address", None)
+    peer = str(address[0]) if address else ""
+    if not peer:
+        # The old fallback was the literal "127.0.0.1": a handler that carried no peer
+        # information was trusted as loopback by default, which is this gate failing open.
+        return handler.send_json(403, {"schema_version": evidence_range_reader.SCHEMA_VERSION,
+                                       "status": "REFUSED", "reason_code": "PEER_UNKNOWN",
+                                       "reason": "没有对端地址信息，环回判定无从做起。", "content": None})
     try:
         loopback = ipaddress.ip_address(peer).is_loopback
     except ValueError:
@@ -309,7 +316,14 @@ def control_execute(api, handler):
     except Exception as exc:  # noqa: BLE001
         return _blocked(handler, "CONTROL_PLANE_UNAVAILABLE",
                         type(exc).__name__ + ": " + str(exc)[:300], subject="control plane")
-    peer = str(handler.client_address[0] if hasattr(handler, "client_address") else "127.0.0.1")
+    address = getattr(handler, "client_address", None)
+    peer = str(address[0]) if address else ""
+    if not peer:
+        # Same fail-open default as the evidence-range gate: no peer information used to answer
+        # "127.0.0.1", so the check that exists to keep the control plane loopback-only was
+        # skipped by the connections that said least about where they came from.
+        return handler.send_json(403, {"status": "REFUSED", "code": "PEER_UNKNOWN",
+                                       "reason": "控制面缺少对端地址，无法判定环回来源"})
     try:
         if not ipaddress.ip_address(peer).is_loopback:
             return handler.send_json(403, {"status": "REFUSED", "code": "PEER_NOT_LOOPBACK",

@@ -222,9 +222,11 @@ def validate_design_result(document, facts, *, allowed_roots) -> list[str]:
                                      "pinned plan revision nor the pinned binding document; a digest "
                                      "the server cannot re-derive is not evidence"))
 
-    produced = parse_instant(document.get("producedAt", document.get("produced_at")))
-    if produced is None and str(document.get("producedAt", "") or "").strip():
-        problems.append(_problem("RESULT_PRODUCED_AT_INVALID", "producedAt is not an ISO instant"))
+    declared_produced = document.get("producedAt", document.get("produced_at"))
+    produced = parse_instant(declared_produced)
+    if produced is None and str(declared_produced or "").strip():
+        spelling = "producedAt" if "producedAt" in document else "produced_at"
+        problems.append(_problem("RESULT_PRODUCED_AT_INVALID", spelling + " is not an ISO instant"))
     declared_at = parse_instant(facts.get("handoff_declared_at"))
     if produced is not None and declared_at is not None and produced < declared_at:
         problems.append(_problem("RESULT_STALE", "result was produced at " + produced.isoformat()
