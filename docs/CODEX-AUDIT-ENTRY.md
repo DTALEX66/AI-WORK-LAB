@@ -2829,3 +2829,24 @@ owner 2026-11-04 那句「推送吧」是本批第一次也是唯一一次推送
 每一句都带上它实际覆盖的头，而不是让下一位把旧读数当成"尖端已验"——这正是 §15.32 那条
 "声称修过但不存在"教训要防的形状。
 
+### 15.39 第二批并入 main 并打标签：三处远端读数与一个自动合并的 PR
+
+owner 2026-11-04 连着给了两句：「全部开始」与「合并并打标签」。做的顺序是先让**要被并入的那一格**
+自己跑一次终端闭环审计，再合并——否则 `main` 的尖永远背着上一格的读数。
+
+- 快进：`main` `0de1ade` → `f77ceac`（`--ff-only`，23 个提交），推 `origin/main`。
+- 标签：注释标签 `closure-20261104`（对象 `b57abb6`）指向 `f77ceac`，
+  正文点名收据、审计、反证与危害扫描的读数，并写明"本标签不代表产品验收通过，只代表这一格闭环自洽"。
+- PR #1：`MERGED`，`mergedAt=2026-11-04T14:45:27Z`，merge commit `f77ceac`——
+  GitHub 认出了快进（提交集合相同），所以没有产生合并提交，也没有留下悬挂的 PR。
+- 远端读回（现读，不是抄写）：`refs/heads/main` = `f77ceac`，
+  `refs/heads/audit/backend-closure-20261103` = `f77ceac`，两者同为被审的尖。
+
+覆盖这一格的测量：终端闭环审计 `{"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}` 跑在 `f77ceac`（工件
+`.project-local/runs/20261104-n17/closure-audit-premerge.txt`）；全量收据 `2a05140 / 550 passed, 0 failed, 0 errors in 1724.45s (0:28:44)`；
+危害扫描在两次推送前各现跑一次（`unadjudicated 0 / blocking 0`）；验收门 `REFUSED`（`L10#0`）
+按原样并入，没有为变绿动判据。pre-push 守卫每次都按 `head_commit` 绑定被推的头
+（`.project-local/push-authorization-20261104c.json`），不用 `--no-verify`。
+
+本节自身是合并之后写在审计分支上的落地登记——所以 `main` 上这一节的上一格才是被审的尖；
+下一批合并时它会随代码一起进主线。这是"每一句带上它实际覆盖的头"的必然形状，不是漏了一步。
