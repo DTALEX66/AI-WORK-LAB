@@ -2756,3 +2756,40 @@ N05 仍是 PARTIAL——本机无 Linux 解释器，Linux 原生复跑 NOT_RUN�
 真人专业签字、模型推理、真实私有数据迁移、L00#2 出网隔离、推送与远程 CI、两个来源仓的删除与
 告警、GitHub 临时密钥告警、机器路径守卫的人群（322 个含账号名的跟踪件未分类，扩人群会先把
 来源记录当成违规）、以及第四段点名的 authority 自引用数字锚。
+
+### 15.37 两次 scratch 回收之后，闭环在同一棵树上复测仍然是 CLOSED
+
+这一节不做代码事，只做两件审计卫生事，并把它们与终端判据的关系钉住。范围：只动 Git 不跟踪的
+`.project-local/`，跟踪树一格未改（HEAD 仍是 §15.36 的入册提交 `f30dad2`）。
+
+**一、回收了多少，按现算说。** `.project-local` 从约 444 MiB 降到 `137.1 MiB`（6386 个文件）。
+- `build/`：236.3 → 53.5 MiB。删的是四次离线安装运行各自的 `src/`（wheel 构建暂存副本）、
+  `isolated/`（`pip install --target` 树）与 `dist/`（wheel），共 182.78 MiB；**全部 `*.json` / `*.txt`
+  报告一份没动**，因为 `scripts/build_isolated_install_verdict.py` 与
+  `tests/unified/test_v26_local_run_receipts.py` 都按 `build/*/verify-report.json` 以 mtime 取最新，
+  且审计日志的多个历史小节是按路径点名这些报告的。最新那份 `offline-20261104T203311Z` 整树保留——
+  它就是现行 verdict 指向的证据。
+- `runs/`：145.5 → 15.9 MiB（2585 → 743 个文件）。删的是 `closure-evidence-suite`（本轮全量收据自己的
+  `--basetemp`，120.69 MiB / 1649 个沙箱）、`final-32c3d22`（10-31 那轮的 basetemp）与 `head-tree.txt`。
+
+**二、"先证明无引用再删"这次拦下三处。** 工具对每个候选名字 grep `tests/` 与 `scripts/`，命中即保留：
+`runs/codex-regression` 被 `scripts/build_audit_item_closure.py` 读、`runs/full-surface` 是
+`scripts/probe_full_surface.py` 的输出口、`runs/f01-migration/F01-MIGRATION-REGISTER.json` 是
+`scripts/build_f01_disposition.py` 的生成器输入，`runs/v12-data-migration/` 是 `test_v12` 的运行根。
+执行中还撞了一次 `PermissionError [WinError 5]`：沙箱里建的是真 git 仓库，松散对象是只读的，
+`shutil.rmtree` 必须先 `chmod(S_IWRITE)` 再重试（已写进工具的 `onexc`）。
+
+**三、回收暴露的缺口，记成待修而不是当巧合过。** `tests/conftest.py` 的清扫根只有
+`.project-local/task-runtime`，而收据生产器把全量套件的 `--basetemp` 指到
+`.project-local/runs/closure-evidence-suite`——**每跑一次全量就在那里留 120.69 MiB / 1649 个沙箱**，
+清扫看不见它。这与 §15.34/§15.35 收口过的"每次套件漏 80 个目录"是同一族，只差根没被覆盖。
+修它要动 `tests/` 与 `.project-local` 里的生产器，收据后的允许改动名单不含 `tests/`，
+所以本轮只手工回收并把它派给下一批。
+
+**四、复测读数。** 删完先跑七道快闸门（`check_project_current` / `build_test_census` /
+`build_audit_item_closure` / `build_blocker_register` / `build_task_acceptance_register` /
+`build_audit_state` / `build_isolated_install_verdict`，均 rc=0）与两套按 `runs/` 落盘的套件
+（`test_v26` + `test_v12`，26 passed），再复跑终端闭环审计：
+`{"verdict": "CLOSED", "head": "f30dad2", "clauses": 14, "counts": {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}}`。三次审计的关系写清楚，避免被读成"换个条件再绿一次"：
+`{"PASS": 13, "FAIL": 1, "PENDING": 0, "INSTRUMENT_ERROR": 0}`（改绑链第一次跑，红在入口指针与未提交的改绑文件）→ `{"verdict": "CLOSED", "head": "f30dad2", "counts": {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}}`（批次尖端）→ `{"verdict": "CLOSED", "head": "f30dad2", "counts": {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}}`（清理之后，同一棵树）。
+读数工件：`.project-local/runs/20261104-n17/{closure-audit-n17.txt, closure-audit-tip.txt, closure-audit-postclean.txt, scratch-reclaim-record.json}`。

@@ -244,4 +244,6 @@ unsettled_files = 237
    远程 CI、来源仓删除与告警、GitHub 四条 key 告警、机器路径守卫的人群（322 个含账号名的跟踪件
    未分类，扩人群会先把来源记录当成违规）。**本批全程未推送**（`audit/backend-closure-20261103`，
    最新收据 `2a05140` / `550 passed`，候选摘要 `dca84807b24510fd…`；终端闭环审计
-   `CLOSED`，14 条 PASS 14 / FAIL 0）。读数与反证件：docs/CODEX-AUDIT-ENTRY.md §15.34–§15.36。
+   `CLOSED`，14 条 PASS 14 / FAIL 0，在 `f30dad2` 这棵树上跑过两次——批次尖端一次、
+   `.project-local` 两次 scratch 回收（`build/` 182.78 MiB、`runs/` 129.6 MiB）之后复测一次，
+   读数与缺口见 docs/CODEX-AUDIT-ENTRY.md §15.34–§15.37）。
