@@ -173,19 +173,74 @@ def declared_file_copies() -> list[dict]:
     return records
 
 
-def copied_index() -> dict[str, list[dict]]:
-    """Absolute source path -> EVERY copy record that reads from it."""
+#: the two read-only source repositories by the directory name they are known under, so a record
+#: written on another root still says which repository its file came from
+SOURCE_REPO_NAMES = (("WORK-LAB", "work"), ("DESIGN-LAB", "design"))
+TARGET_REPO_NAME = "AI-WORK-LAB"
+
+
+def _forward(text: object) -> str:
+    return str(text).replace("\\", "/")
+
+
+def source_identity(absolute: object, roots: dict[str, Path]) -> str | None:
+    """``<repo label>:<path inside it>`` for a recorded source path, or None when it maps to neither.
+
+    The configured root is tried first; the repo-name segment is the fallback, because the name is
+    what survives a move and the absolute prefix is not.
+    """
+    text = _forward(absolute)
+    for label, root in roots.items():
+        prefix = _forward(root).rstrip("/")
+        if text.casefold().startswith(prefix.casefold() + "/"):
+            return label + ":" + text[len(prefix) + 1:]
+    parts = text.split("/")
+    for name, label in SOURCE_REPO_NAMES:
+        for position, segment in enumerate(parts):
+            if segment.casefold() == name.casefold() and position + 1 < len(parts):
+                return label + ":" + "/".join(parts[position + 1:])
+    return None
+
+
+def target_identity(absolute: object) -> str:
+    """The path inside this repository -- the destination half of the same host-independent identity."""
+    text = _forward(absolute)
+    parts = text.split("/")
+    for position, segment in enumerate(parts):
+        if segment.casefold() == TARGET_REPO_NAME.casefold() and position + 1 < len(parts):
+            return "/".join(parts[position + 1:])
+    return text
+
+
+def copied_index(roots: dict[str, Path] | None = None) -> tuple[dict[str, list[dict]], list[str]]:
+    """Source identity -> EVERY copy record that reads from it, and what could not be mapped.
+
+    The identity is ``<repo label>:<path inside that repo>`` -- the same vocabulary the registered
+    table and the archive ledger already use. ``migration/copies.json`` records the absolute path
+    each copy was read from, which is a fact about the machine that ran it: keyed by that string, a
+    second host (another drive letter, a mirrored root, a forward-slash clone) matches nothing, every
+    source silently degrades to "uncopied", and the register still prints its row counts.
+    """
+    roots = roots or {"work": WORK, "design": DESIGN}
     manifest = json.loads(COPIES.read_text(encoding="utf-8"))
     index: dict[str, list[dict]] = {}
+    unmapped: list[str] = []
     for group in manifest["copies"]:
         for record in group.get("records", []):
-            index.setdefault(str(Path(record["source"]).resolve()), []).append(record)
-    for record in declared_file_copies():
-        key = str(Path(record["source"]).resolve())
-        if not any(Path(existing["target"]).resolve() == Path(record["target"]).resolve()
-                   for existing in index.get(key, [])):
+            key = source_identity(record["source"], roots)
+            if key is None:
+                unmapped.append(str(record["source"]))
+                continue
             index.setdefault(key, []).append(record)
-    return index
+    for record in declared_file_copies():
+        key = source_identity(record["source"], roots)
+        if key is None:
+            unmapped.append(str(record["source"]))
+            continue
+        target = target_identity(record["target"])
+        if not any(target_identity(existing["target"]) == target for existing in index.get(key, [])):
+            index.setdefault(key, []).append(record)
+    return index, unmapped
 
 
 def _mapping_rows() -> list[dict]:
@@ -798,7 +853,7 @@ def build(repo_label: str, repo: Path, copied: dict, registered: dict, patches: 
     counts: Counter[str] = Counter()
     for rel in files:
         key = repo_label + ":" + rel
-        for record in copied.get(str((repo / rel).resolve())) or [None]:
+        for record in copied.get(key) or [None]:
             if record is None:
                 row = _uncopied_row(repo_label, repo, rel, key, registered, index)
             else:
@@ -895,7 +950,7 @@ def main(argv=None) -> int:
             args.json_out.write_text(text + "\n", encoding="utf-8")
         print(text)
         return 3
-    copied = copied_index()
+    copied, copy_identity_unmapped = copied_index()
     registered = registered_keys()
     patches = patch_map()
     # the ledger is the permanent record of the source population; the working tree is only what one
@@ -966,7 +1021,12 @@ def main(argv=None) -> int:
             "mapping_rows": len(_mapping_rows()),
             "mapping_unique_paths": len(registered),
             "copy_manifest_records": sum(len(records) for records in copied.values()),
-            "copy_manifest_distinct_sources": len(copied)},
+            "copy_manifest_distinct_sources": len(copied),
+            # A copy record whose source maps to neither repository is named, not dropped: under
+            # the old absolute-path identity a moved root produced no error at all, it just stopped
+            # matching and every source re-appeared in the register as "uncopied".
+            "copy_identity_unmapped": len(copy_identity_unmapped),
+            "copy_identity_unmapped_sample": copy_identity_unmapped[:5]},
     }
     payload = json.dumps(summary, ensure_ascii=True, indent=2)
     if args.json_out is not None:
@@ -978,9 +1038,10 @@ def main(argv=None) -> int:
         print(json.dumps(dict(check=True, drifted=sorted(drifted),
                               rows_changed={label: len(sample) for label, sample in drift.items()},
                               unreconciled=unreconciled,
+                              copy_identity_unmapped=len(copy_identity_unmapped),
                               hint="rerun without --check to re-resolve the authority lines"),
                          ensure_ascii=True))
-        return 1 if (drifted or unreconciled) else 0
+        return 1 if (drifted or unreconciled or copy_identity_unmapped) else 0
     print(payload)
     return 0 if all(doc["reconciles"] for doc in documents.values()) else 1
 

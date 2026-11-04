@@ -1203,3 +1203,61 @@ def test_an_archive_link_that_is_not_on_this_machine_stops_claiming_reverificati
     else:
         raise AssertionError("归档对象摘要不符却没有拒绝")
 
+
+def test_a_copy_record_identifies_its_repo_and_path_not_its_machine_absolute_path():
+    """``migration/copies.json`` names a source by repository + path inside it, on any host.
+
+    Measured before this node: ``copied_index()`` keyed by ``Path(source).resolve()`` and
+    de-duplicated targets the same way, so the identity of a copied file was the drive layout of
+    the machine that ran the copy. On any other root -- another letter, a mirrored tree, a POSIX
+    clone where ``D:\\x`` resolves to a path under the current directory -- every lookup missed,
+    the register republished each source as "uncopied", and the row counts still printed.
+    """
+    module = _coverage_module()
+    roots = {"work": Path("D:/All projects/WORK-LAB"),
+             "design": Path("D:/All projects/DESIGN-LAB")}
+    for source, expected in (
+            ("D:\\All projects\\WORK-LAB\\packages\\a\\b.py", "work:packages/a/b.py"),
+            ("D:/All projects/DESIGN-LAB/src/design_lab/z.py", "design:src/design_lab/z.py"),
+            # 大小写不同的同一个根：身份不能变
+            ("d:/all projects/work-lab/services/a.py", "work:services/a.py"),
+            # 换台的镜像根：配置的根不匹配时按仓名段落回
+            ("E:/mirror/WORK-LAB/services/a.py", "work:services/a.py"),
+            ("/srv/mirror/DESIGN-LAB/design-lab/config/c.json", "design:design-lab/config/c.json")):
+        assert module.source_identity(source, roots) == expected, source
+    assert module.source_identity("C:/somewhere/else/x.py", roots) is None
+    for target, expected in (
+            ("D:\\All projects\\AI-WORK-LAB\\domains\\a\\b.py", "domains/a/b.py"),
+            ("/home/you/clone/AI-WORK-LAB/domains/a/b.py", "domains/a/b.py")):
+        assert module.target_identity(target) == expected, target
+
+
+def test_the_copy_index_resolves_one_destination_written_under_two_different_roots(tmp_path,
+                                                                                    monkeypatch):
+    """A manifest record and a declared copy of the same file are one record, wherever they were written.
+
+    The old comparison resolved both destinations against this machine, so ``D:\\All projects\\…``
+    and ``F:/clone/…`` were two different targets and the same source produced two index entries
+    under two different keys -- which is how a clone's counts drifted from the published register.
+    A source that names neither repository is reported, never silently dropped.
+    """
+    module = _coverage_module()
+    path = tmp_path / "copies.json"
+    path.write_text(json.dumps({"copies": [{"records": [
+        {"source": "D:\\All projects\\WORK-LAB\\packages\\a\\b.py",
+         "target": "D:\\All projects\\AI-WORK-LAB\\domains\\a\\b.py",
+         "sha256_source": "s", "sha256_target": "t"}]}]}, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(module, "COPIES", path)
+    monkeypatch.setattr(module, "declared_file_copies", lambda: [
+        {"source": "E:/mirror/WORK-LAB/packages/a/b.py",
+         "target": "F:/clone/AI-WORK-LAB/domains/a/b.py",
+         "sha256_source": "s2", "sha256_target": "t2", "declared_by": "test"},
+        {"source": "C:/other/tree/packages/a/b.py",
+         "target": "F:/clone/AI-WORK-LAB/domains/other.py",
+         "sha256_source": "s3", "sha256_target": "t3", "declared_by": "test"}])
+    index, unmapped = module.copied_index({"work": Path("E:/mirror/WORK-LAB"),
+                                           "design": Path("E:/mirror/DESIGN-LAB")})
+    assert list(index) == ["work:packages/a/b.py"], sorted(index)
+    assert len(index["work:packages/a/b.py"]) == 1, index["work:packages/a/b.py"]
+    assert unmapped == ["C:/other/tree/packages/a/b.py"], unmapped
+
