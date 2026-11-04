@@ -16,8 +16,7 @@
   pre-push 守卫逐条核（blob 上限、危害扫描现跑），不用 `--no-verify`。合并前专门为"要被并入的那一格"
   跑了一次终端闭环审计（CLOSED 14/14 @ `f77ceac`），落地过程见 docs/CODEX-AUDIT-ENTRY.md §15.39。
   上一次"已推送到 origin 并被公开克隆独立复跑"的核验仍是 2026-11-02，见 §15.27——那条不描述本批。
-- 依托提交：全量收据所测的那棵树是 `6490171`（556 passed, 3 subtests passed in 1649.21s (0:27:29)，该收据自己的候选摘要 `1cc11152204c92e8…`、7309 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
-  与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
+- 依托提交：全量收据所测的那棵树是 `5459ba4`（556 passed, 3 subtests passed in 1667.62s (0:27:47)，该收据自己的候选摘要 `96f9162dd0a85509…`、7309 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
   本分支与 `main` 的真实 SHA 一律用 `git rev-parse HEAD` / `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**默认分支是 `main`**；2026-11-04 起远端多一条
   `audit/backend-closure-20261103`（`git branch -r` 现读两条：`origin/main` 与它，`origin/HEAD` 仍指 main）。
@@ -255,13 +254,15 @@ unsettled_files = 237
    发布 Release、改可见性或分支保护、删分支
    都不在那两句授权里，未动。
 
-   **第三批（#25/#26/#27/#28/#29）落地状态**：代码与登记表已提交在审计分支上，
-   收据、改绑与逐轮实测见 docs/CODEX-AUDIT-ENTRY.md §15.40。**这一批没有推送**——上一批的
-   「推送吧」只覆盖上一批那一次推送，本批推送、并入 `main`、打标签各需新的明确授权。
-   新登记的下一项：`migration/api-contract-check.json` 的 `handler位置` 仍是行号锚（本轮实测一次
-   `backend/v1.py` 的两行折叠挪走了 4 个，被 test_v16 的「该行必须是该 handler 的 def」当场抓住；
-   它不说谎，但每改一次代码就要重发布一次，下一步按 #28 的形状换成 `file::symbol`）。
-   清扫面本批补齐：收据自己的 `--basetemp` 根现在会被扫（上一格一次全量在那里留 1,649 个沙箱 /
-   120.69 MiB），其余人群不变：真人/owner 项、`237` 未决 + `32` 个人决定项、L10#0 验收门 `REFUSED`、
+   **第三批与第四批（#25–#30）落地状态**：代码、登记表与逐轮实测都在审计分支上，
+   读数见 docs/CODEX-AUDIT-ENTRY.md §15.40 与 §15.41。**这两批都没有推送**——上一批的
+   「推送吧」只覆盖那一次推送，本批推送、并入 `main`、打标签各需 owner 新的明确授权。
+   锚点这一族已经收口的：`migration/source-coverage-*.csv` 的 `authority` 列与
+   `migration/api-contract-check.json` / `requirement-traceability.csv` 的 python 位置列现在都是
+   `file::name`；改代码不再挪动登记的指向。仍然在账上的下一项：`backend/v1.py` 里 `V1_ROUTES`
+   被绑两次（第 149 行的 `()` 声明与装配后的表），名字不唯一，这一条只能留在行号形态，且留的是
+   第一条——要说准"路由表在哪"得先动 backend 的声明，不在本轮擅动。
+   清扫面已补齐：收据自己的 `--basetemp` 根会被扫（上一格一次全量在那里留 1,649 个沙箱 /
+   120.69 MiB）。其余人群不变：真人/owner 项、`237` 未决 + `32` 个人决定项、L10#0 验收门 `REFUSED`、
    L20#0 真实宿主、模型推理、真实私有数据迁移、L00#2 出网隔离、来源仓删除与告警、GitHub 四条 key
    告警、322 个含机器名的跟踪件未分类、Linux 复跑（N05 因此 PARTIAL）。
