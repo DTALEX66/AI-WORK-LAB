@@ -8,10 +8,13 @@
 现值比对，对不上即为红。
 
 - 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）在本地测量并全绿，
-  **2026-11-04 按 owner「推送吧」推到 origin 的同名新分支**（远端该 ref 实测等于本地 HEAD，
-  授权记录 `.project-local/push-authorization-20261104.json` 绑在这个头上；合并进 `main`、打标签、
-  开 PR 都不在那句授权里，未做）。上一次"已推送到 origin 并被公开克隆独立复跑"的核验仍是 2026-11-02，
-  见 docs/CODEX-AUDIT-ENTRY.md §15.27——那条**不适用于本批**：本批推的是分支，`main` 未动。
+  **2026-11-04 按 owner「推送吧」已推到 origin 的同名分支**。远端到底在哪个头，用
+  `git ls-remote origin refs/heads/audit/backend-closure-20261103` 现读，不在这里抄写——本行所在的
+  提交本身就会被推上去，任何写死的 SHA 都会在下一秒落后一格。授权记录在
+  `.project-local/push-authorization-20261104*.json`，按 `head_commit` 绑定被推的那个头，pre-push 守卫
+  逐条核（blob 上限、危害扫描现跑）。**`main` 未合并、标签未打、PR 未开**——不在那句授权里，需 owner
+  另行指明；`origin/HEAD` 仍指 `main`。上一次"已推送到 origin 并被公开克隆独立复跑"的核验仍是
+  2026-11-02，见 docs/CODEX-AUDIT-ENTRY.md §15.27——那条不描述本批。
 - 依托提交：全量收据所测的那棵树是 `2a05140`（550 passed, 1 warning, 3 subtests passed in 1724.45s (0:28:44)，该收据自己的候选摘要 `dca84807b24510fd…`）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files`
   与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
   本分支与 `main` 的真实 SHA 一律用 `git rev-parse HEAD` / `git rev-parse main` 自读，不要抄本文件任何数字
@@ -246,8 +249,9 @@ unsettled_files = 237
    `REFUSED`、L20#0 真实宿主、真人专业签字、模型推理、真实私有数据迁移、L00#2 出网隔离、推送与
    远程 CI、来源仓删除与告警、GitHub 四条 key 告警、机器路径守卫的人群（322 个含账号名的跟踪件
    未分类，扩人群会先把来源记录当成违规）。**本批推送状态**：2026-11-04 按 owner「推送吧」推到
-   `origin/audit/backend-closure-20261103`，远端该 ref 实测等于当时本地 HEAD（21 个提交，授权记录
-   `.project-local/push-authorization-20261104.json` 绑在这个头上）；合并进 `main`、打标签、开 PR
+   `origin/audit/backend-closure-20261103`（远端在哪个头，用
+   `git ls-remote origin refs/heads/audit/backend-closure-20261103` 现读；授权记录按 `head_commit`
+   绑定被推的那个头）；合并进 `main`、打标签、开 PR
    都不在那句授权里，未动。最新收据 `2a05140` / `550 passed`，候选摘要 `dca84807b24510fd…`；终端闭环审计
    `CLOSED`，14 条 PASS 14 / FAIL 0，最近一次跑在尖端 `cab062d`（本行所在的那个文档提交之前一格），
    `.project-local` 两次 scratch 回收（`build/` 182.78 MiB、`runs/` 129.6 MiB）之后在同一棵树复测同读数，
