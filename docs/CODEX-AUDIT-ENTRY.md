@@ -2793,3 +2793,39 @@ N05 仍是 PARTIAL——本机无 Linux 解释器，Linux 原生复跑 NOT_RUN�
 `{"verdict": "CLOSED", "head": "f30dad2", "clauses": 14, "counts": {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}}`。三次审计的关系写清楚，避免被读成"换个条件再绿一次"：
 `{"PASS": 13, "FAIL": 1, "PENDING": 0, "INSTRUMENT_ERROR": 0}`（改绑链第一次跑，红在入口指针与未提交的改绑文件）→ `{"verdict": "CLOSED", "head": "f30dad2", "counts": {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}}`（批次尖端）→ `{"verdict": "CLOSED", "head": "f30dad2", "counts": {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}}`（清理之后，同一棵树）。
 读数工件：`.project-local/runs/20261104-n17/{closure-audit-n17.txt, closure-audit-tip.txt, closure-audit-postclean.txt, scratch-reclaim-record.json}`。
+
+### 15.38 本批落地到远端：推的是分支，`main` 与标签都没动；顺带追正 §15.37 里一处把两次红说成一格的措辞
+
+owner 2026-11-04 那句「推送吧」是本批第一次也是唯一一次推送授权。按 §5 的边界（提交、推送、合并、
+发布、远程 CI 各自判断授权，一次不延伸到下一次），执行面只做了"推分支"这一件：
+
+- 推到 `origin/audit/backend-closure-20261103`（新建），远端 ref 实测
+  `587409187415009fa56ac10970c7f02cf192ecde` 等于当时本地 HEAD；`origin/main` 仍是 `0de1ade`，
+  `origin/HEAD` 仍指 `main`。
+- **没做**：合并进 `main`、打或推标签、开 PR、发布、远程 CI（本仓没有 `.github/workflows/`，
+  push 本身不触发任何流水线）。要合并或打标签需 owner 再指明一次。
+- pre-push 守卫按它自己的规矩跑，不用 `--no-verify`：授权记录
+  `.project-local/push-authorization-20261104.json` 的 `head_commit` 必须等于被推的 HEAD；
+  最大单 blob 33,082,203 字节 < 100 MB；`scripts/check_public_hazards.py` 现扫 7,309 个跟踪件、
+  17 处命中全部有裁决或属示例字面量，`unadjudicated 0 / blocking 0`。
+- 公开面既有性质照实重申：322 个跟踪件含本机账号名，绝大多数是来源记录（实测安装路径、
+  原机来源路径、`root_absent` 说明）；本批没新增这类字面量，并把上一轮引入在
+  `test_v02_surface.py` 里的那一条换成了合成值。
+- `docs/AUDIT-STATE.json` 随本次推送重发布（`--audited-commit` 仍绑 `2a05140`，
+  `binding_moved_this_run=false`）：`upload_facts.remote_ref_observed` 现读到 `5874091…`，
+  `remote_branches_observed` 现读到两条。该文档的 `default_branch` 字段读的是**本地**
+  `symbolic-ref --short HEAD`，不是远端默认分支——远端默认仍是 `main`，两个别混。
+
+**追正一处 §15.37 的措辞（不改写那一节的读数，只把归属说对）。** §15.37 写"改绑链第一次跑
+`{"PASS": 13, "FAIL": 1}`，两处红——入口指针仍指旧树、改绑未提交"。现读工件纠正如下：那是**两次**
+不同的红被并成了一句。改绑链自身的日志 `.project-local/runs/rebind-n17.json` 里 rc≠0 的步骤是两条：
+`check entry`（`RECEIPT_POINTER_STALE 文档=5fafd91 寄存器 audited_head_sha=2a05140c48ee`）与
+`terminal closure audit`（`NOT CLOSED`，`{"PASS": 12, "FAIL": 2, ...}`）；而 `closure-audit-n17.txt`
+那份 13/1 是**修完入口指针之后**单独复跑的审计，那时只剩"改绑未提交"这一条红。两个读数都是真的，
+错的是我把它们混成同一次——归属照上面分开，引用时以各自的工件为准。
+
+终端闭环审计的复测停在哪一格，也说明白：最后一次整跑是 `cab062d`（CLOSED 14/14）；本节的落地登记
+在它之后，是纯文档与登记字节。跑一次完整审计约 15 分钟而判据不会因这几格文档改变结论，所以登记里
+每一句都带上它实际覆盖的头，而不是让下一位把旧读数当成"尖端已验"——这正是 §15.32 那条
+"声称修过但不存在"教训要防的形状。
+
