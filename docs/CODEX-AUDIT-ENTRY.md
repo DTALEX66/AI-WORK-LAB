@@ -2908,3 +2908,39 @@ PROJECT_CURRENT `--write-block`）提交之后复跑：`{"PASS": 14, "FAIL": 0, 
 `v1.py` 的两行折叠挪走了 4 个，被 test_v16 的"该行必须是该 handler 的 def"当场抓住，重发布后转绿——
 它不说谎，但每改一次就要重发布一次，已派为下一项）；#16 那 322 个含机器名的跟踪件仍未分类；
 L20#0 宿主往返、真人专业签字、模型推理、真实私有数据迁移、Linux 复跑（N05 因此 PARTIAL）维持具名延后。
+
+### 15.41 第四批：登记的指向不再跟着代码挪；顺带追正 §15.40 里我一个没测就说出口的数字
+
+代码格 `5459ba4`，收据 `556 passed, 3 subtests passed in 1667.62s (0:27:47)`，候选 `7309` 个文件 / 摘要 `96f9162dd0a85509…`，
+测量期间跟踪字节移动 `[]`，两个来源仓未变。终端闭环审计 `{"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}` @ `a1f6be5`，
+收据头之后的区间里只含文档与登记表；危害扫描现跑 `{"scanned_files": 7309, "findings": 17, "blocking": 0}`；反例 4 个，
+红而不得 0 个。
+
+**一、#30 做的事。** `migration/api-contract-check.json` 的 `handler位置` 和
+`migration/requirement-traceability.csv` 的 python 位置列，以前由 `find_definition` / `find_binding`
+出 `backend/v1.py:1378` 这种派生行号。派生挡住了"抄错"，挡不住"挪走"：现在 API 登记里
+15 条 handler 引用全部是 `file::name`，行号形态剩 0 条；
+追溯表 42 条位置引用换了形，仍是行号的 2 条（例：`backend/v1.py:149`），其中一条是
+`V1_ROUTES`——它在 `backend/v1.py` 模块级被绑两次（`()` 的声明与装配后的表），名字不唯一，
+按 #28 定的规则只能退回行号，且退回的是第一条。判定两侧都补了，缺一边都能被绕：
+生产侧 `check_location` 认 `file::name`，条件是"这个名字在该文件里作为 def/class 头或模块级绑定
+恰好出现一次"；检查侧 `resolve_location_independently` 独立实现同一条，另把
+`test_no_api_row_claims_verified…` 里那句"行号那行必须是 handler 的 def"换成
+`cite_names_the_handler`，符号形态查"锚点叫的就是这一行 handler"，行号形态照旧查真 def/class。
+四个反例各红在自己的那一条：锚退回行号、重名也当锚、`check_location` 对任意名字放行、
+登记里的名字与 handler 不再一致。生成器重跑第二次逐字节相同（共享时间戳规则留住未变的
+`generated_at`，这条由 `test_rebuilding_over_the_published_registers_does_not_relamp_them` 看着）。
+
+**二、追正：§15.40 说"一次 `v1.py` 的两行折叠挪走了 4 个"handler 行号，这个数我没测就说出口了。**
+现读两个提交态的同一本登记（`52439bd` 与它的父格），15 条带 handler 引用的行里
+真正换了字符串的是 **2 条**（08#api_proposals[12]：`backend/v1.py:1379` → `backend/v1.py:1378`）。4 是我从 `git diff --stat` 的
+行数推出来的：一行换锚会同时改 `handler位置` 和引用它的那句 `依据说明`，两行/条 × 2 条
+= 4 行改动，我把改动行数当成了被挪走的锚点数。错的归属也一并说清：test_v16 当时**只报了一条**红
+（断言停在第一个不合格的行），所以 "4" 既不是实测出来的，也不是守卫报出来的。更正记在这里，§15.40 的原文按 append-only 不改写。
+现在仓里还带着这个数的跟踪文件是 ["docs/CODEX-AUDIT-ENTRY.md"]——只有那一节；入口 PROJECT_CURRENT.md 的同一句话已随
+本批的落地段改写掉（新文本不再带这个数），migration/ 与 config/ 下的登记从未出现过它（现读为空）。
+两格的提交说明里也写着 4（代码格 `52439bd` 与 `5459ba4`），提交历史不改，以本节为准。
+
+**三、这一格还如实留下的一处不准。** `V1_ROUTES = ()`（声明）与装配后的表同名，导致登记对"路由表在
+哪"指到那条空声明。要让它变成唯一符号，得改 `backend/v1.py` 的前置声明或让 `find_binding` 在重名时
+取最后一条装配——后者会改变既有登记的指向，不属本轮擅动，已具名派工。
