@@ -100,6 +100,26 @@ def test_a_stale_figure_in_the_entry_is_caught(tmp_path):
         report["findings"])
 
 
+def test_a_stale_receipt_pointer_in_the_entry_is_caught(tmp_path):
+    """The commit SHA in the entry's prose pointer is a claim about the registers, and can be planted.
+
+    The marker block was re-derived and checked; the line above it -- "which tree the full-suite
+    receipt measured" -- was checked by nothing, so the entry could keep naming an older binding
+    while every derived figure had moved on.
+    """
+    text = ENTRY.read_text(encoding="utf-8")
+    line = next((row for row in text.splitlines() if row.lstrip().startswith("- 依托提交")), "")
+    assert line, "入口已经没有「- 依托提交」这一行，这个反例就没有可种的故障"
+    stated = re.search(r"`([0-9a-f]{7,40})`", line)
+    assert stated, "依托提交那行没有反引号里的提交 SHA，反例无从种起"
+    planted = "0" * 7 if stated.group(1) != "0" * 7 else "1" * 7
+    entry = _doctored(tmp_path, lambda body: body.replace(
+        line, line.replace("`%s`" % stated.group(1), "`%s`" % planted, 1), 1))
+    report = _report(_run("--check", "--entry", str(entry)))
+    assert any(row.startswith("RECEIPT_POINTER_STALE 文档=%s" % planted)
+               for row in report["findings"]), report["findings"]
+
+
 def test_a_missing_figures_block_is_refused(tmp_path):
     """Silence is not agreement: an entry without the auditable block cannot be trusted."""
     def strip(text: str) -> str:

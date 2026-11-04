@@ -52,6 +52,7 @@ STALE = ("两个独立项目", "两个产品分别", "各自独立的产品", "�
 NEGATION = ("不", "未", "历史", "旧", "取代", "已替代", "排除", "不再是")
 AUTHORITY_MARK = "唯一顶层入口"
 BLOCKING_QUEUE = "L10#0"
+AUDIT_STATE_RELATIVE = "docs/AUDIT-STATE.json"
 ARCHIVE_REGISTER = "migration/archive-object-reconciliation-20261101.csv"
 ARCHIVE_AREA = "docs/history/sources-20261101/MANIFEST.json"
 ARCHIVE_IMPORT = "docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv"
@@ -310,6 +311,34 @@ def tracked(path: str) -> bool:
                                encoding="utf-8", errors="replace").stdout.strip())
 
 
+def receipt_pointer_findings(entry_text: str, root=ROOT) -> list:
+    """The line naming which tree the full-suite receipt measured must name the audited commit.
+
+    Every figure inside the marker block is re-derived from the registers, but the SHA in the prose
+    above it -- the one number a reader takes as "this was measured on that tree" -- was hand-
+    maintained and checked by nothing, so it could keep naming an older binding after the registers
+    had moved on.
+    """
+    line = next((row for row in entry_text.splitlines()
+                 if row.lstrip().startswith("- 依托提交")), "")
+    if not line:
+        return ["RECEIPT_POINTER_MISSING 入口没有「- 依托提交：…」这一行，收据绑到哪棵树无从读起"]
+    stated = re.search(r"`([0-9a-f]{7,40})`", line)
+    if not stated:
+        return ["RECEIPT_POINTER_MISSING 依托提交那行没有用反引号写出提交 SHA"]
+    path = root / AUDIT_STATE_RELATIVE
+    if not path.is_file():
+        return ["RECEIPT_POINTER_UNVERIFIABLE " + AUDIT_STATE_RELATIVE]
+    try:
+        audited = json.loads(path.read_text(encoding="utf-8-sig"))["audited_head_sha"]
+    except (OSError, ValueError, KeyError) as exc:
+        return ["RECEIPT_POINTER_UNVERIFIABLE %s（%s）" % (AUDIT_STATE_RELATIVE, type(exc).__name__)]
+    value = stated.group(1)
+    if not (audited.startswith(value) or value.startswith(audited)):
+        return ["RECEIPT_POINTER_STALE 文档=%s 寄存器 audited_head_sha=%s" % (value, audited[:12])]
+    return []
+
+
 def check_entries(entry_path: Path) -> tuple[list, list]:
     """Returns (findings, machine_only_paths). Findings are strings that make the check red."""
     findings, machine_only = [], []
@@ -377,6 +406,7 @@ def check_entries(entry_path: Path) -> tuple[list, list]:
     malformed = spdx_claims()["sloppy"]
     if malformed:
         findings.append("SPDX_MALFORMED_LINES %d（声明读起来像 MIT，实际不合规）" % malformed)
+    findings += receipt_pointer_findings(entry_text)
     return findings, machine_only
 
 

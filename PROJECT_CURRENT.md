@@ -7,9 +7,13 @@
 登记表，不在这里复制维护；本文件的每个数字都由 `scripts/check_project_current.py` 与寄存器
 现值比对，对不上即为红。
 
-- 最近核验：2026-11-02（本地执行，并已推送到 origin；推送事实与公开克隆的独立复跑见 docs/CODEX-AUDIT-ENTRY.md §15.27）
-- 依托提交：全量收据所测的那棵树是 `5fafd91`（539 passed, 1 warning, 3 subtests passed in 944.11s (0:15:44)，摘要 `be4a7f8e37703111…`，候选 7308 文件）；当前分支的真实 SHA 一律用
-  当前 `main` 的真实 SHA 一律用 `git rev-parse main` 自读，不要抄本文件任何数字
+- 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）在本地测量，**未推送**——推送需要
+  owner 另行授权，不由历史推送记录推定。上一次"已推送到 origin 并被公开克隆独立复跑"的核验是 2026-11-02，
+  见 docs/CODEX-AUDIT-ENTRY.md §15.27；那句只描述那一次，不描述本批。
+- 依托提交：全量收据所测的那棵树是 `5fafd91`（539 passed, 1 warning, 3 subtests passed in 944.11s (0:15:44)，
+  该收据自己的候选摘要 `be4a7f8e37703111…`）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files`
+  与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
+  本分支与 `main` 的真实 SHA 一律用 `git rev-parse HEAD` / `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**唯一分支与默认分支都是 `main`**——那条融合批次分支已在
   2026-11-02 按 owner「没问题就把分支合并到主线啊」退掉（退掉前核过：两指针互无独有提交，三个标签指向的
   提交全部在 `main` 历史内，恢复点即 main 尖端）；标签 `closure-20261102`、`fusion-candidate-20261102`、
@@ -56,7 +60,7 @@ source_rows_work = 2734
 spdx_claimed_files = 226
 spdx_malformed_lines = 0
 suite_test_files = 35
-suite_test_nodes = 533
+suite_test_nodes = 544
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
