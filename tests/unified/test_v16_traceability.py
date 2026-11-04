@@ -117,6 +117,23 @@ def resolve_location_independently(spec: str, live: dict) -> tuple[bool, str]:
         if key not in live:
             return (False, "路由不在实测表中")
         return (True, "live:" + live[key])
+    symbol = re.match(r"^(?P<path>[^:]+)::(?P<name>[A-Za-z_]\w*)$", spec)
+    if symbol:
+        # a name anchor resolves against the file, not against an offset: it is there exactly once,
+        # as a def/class header or a module-level binding, and that is the whole claim
+        path = TARGET_ROOT / symbol.group("path")
+        if not path.is_file():
+            return (False, "文件不存在")
+        name = symbol.group("name")
+        header = re.compile(r"^(?:\s*(?:def|class)\s+%s\b|%s\s*[:=])"
+                            % (re.escape(name), re.escape(name)))
+        hits = [text for text in path.read_text(encoding="utf-8", errors="replace").splitlines()
+                if header.match(text)]
+        if not hits:
+            return (False, "文件里没有名为 %s 的定义或模块级绑定" % name)
+        if len(hits) > 1:
+            return (False, "%s 在该文件出现 %d 次，锚点说不出是哪一个" % (name, len(hits)))
+        return (True, "symbol:%s::%s" % (symbol.group("path"), name))
     parsed = LOCATION_RE.match(spec)
     if not parsed:
         return (False, "位置写法不可解析")
@@ -259,11 +276,26 @@ def test_no_api_row_claims_verified_without_a_live_route_and_a_test(live_routes)
         assert evidence_ok, (row["来源行标识"], evidence_note)
         handler_ok, _ = resolve_location_independently(row["handler位置"], live_routes)
         assert handler_ok, (row["来源行标识"], row["handler位置"])
-        # the cited line must really be that handler's definition, not any non-blank line
-        _file, _colon, number = row["handler位置"].rpartition(":")
-        text = (TARGET_ROOT / _file).read_text(encoding="utf-8", errors="replace").splitlines()
-        assert re.search(r"^\s*(def|class)\s+%s\b" % re.escape(row["handler"]),
-                         text[int(number) - 1]), row["来源行标识"]
+        # the cited construct must really be that handler's definition, not any non-blank line
+        named, why = cite_names_the_handler(row["handler位置"], row["handler"])
+        assert named, (row["来源行标识"], row["handler位置"], why)
+
+
+def cite_names_the_handler(spec: str, handler: str) -> tuple[bool, str]:
+    """The cite must point at *this* route's handler definition, in whichever anchor form it uses.
+
+    ``file::name`` says it by name, so the check is that the name is the handler's; ``file:line`` says
+    it by offset, so the check is that the line really is a ``def``/``class`` header for the handler.
+    Both branches are asserted because the register can emit either -- the number is what is left when
+    a name occurs twice in the file, and that fallback has to stay honest too.
+    """
+    if "::" in spec:
+        anchor = spec.split("::", 1)[1]
+        return (anchor == handler, "符号锚叫的是 %s，不是这一行的 handler %s" % (anchor, handler))
+    path, _colon, number = spec.rpartition(":")
+    text = (TARGET_ROOT / path).read_text(encoding="utf-8", errors="replace").splitlines()
+    hit = re.search(r"^\s*(def|class)\s+%s\b" % re.escape(handler), text[int(number) - 1])
+    return (bool(hit), "行号锚没有落在 %s 的 def/class 上" % handler)
 
 
 def test_verified_rows_never_cite_an_absent_location_or_no_evidence():
@@ -321,6 +353,20 @@ def test_anchors_on_rows_that_admit_being_unverified_still_have_to_point_somewhe
                     offenders.append((name, row["来源行标识"], status, location, note))
                     continue
                 if not re.match(r"^(%s) " % "|".join(METHODS), location):
+                    if "::" in location:
+                        # a name anchor is checked against the line it names: the resolver proved the
+                        # name exists once, this proves the thing it names has content -- a licence
+                        # header or a brace shell cannot be a def header or a module binding
+                        rel, anchor = location.split("::", 1)
+                        target = TARGET_ROOT / rel
+                        header = re.compile(r"^(?:\s*(?:def|class)\s+%s\b|%s\s*[:=])"
+                                            % (re.escape(anchor), re.escape(anchor)))
+                        hit = [text for text in target.read_text(encoding="utf-8", errors="replace")
+                               .splitlines() if header.match(text)]
+                        if not hit or not _carries_content(target, hit[0]):
+                            offenders.append((name, row["来源行标识"], status, location,
+                                              "符号锚解析不出有内容的定义行"))
+                        continue
                     file_part, _, number = location.rpartition(":")
                     target = TARGET_ROOT / file_part
                     lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -661,16 +707,19 @@ def test_fabricated_anchors_are_downgraded_by_the_builder(builder, tmp_path):
     assert deferred["状态"] == "GAP", deferred["依据说明"][-160:]
 
 
-def test_authored_python_locations_name_a_symbol_not_a_typed_line_number(builder):
+def test_authored_python_locations_name_a_symbol_not_a_typed_line_number(builder, tmp_path):
     """A typed `file:line` rots the moment anything above it is edited; a symbol reference cannot.
 
     This round proved the point twice over: adding lines to `model_catalog.py` slid the radar
     anchor onto a dict member, and adding one declaration to `migrate_sources.py` slid the cleanup
-    anchor off `def prune_report` -- both after the anchors had been re-pinned by hand. So the
-    authored location column now calls `find_definition` / `find_binding` and the number is derived
-    at build time. The shape assertion below is what stops a future edit from quietly going back to
-    a literal, and the two lookups show what happens when the named thing is gone: the anchor
-    resolves to nothing, the row downgrades, and no register line claims a location it cannot find.
+    anchor off `def prune_report` -- both after the anchors had been re-pinned by hand. Deriving the
+    number at build time stopped the *lies*; it did not stop the churn, and a later round of this
+    batch measured it (152 of 294 line cites in the coverage register no longer sat in the construct
+    that produced them, every one still resolving). So `find_definition` / `find_binding` now name the
+    construct -- `file::name` -- and the number is only what is left when a name occurs twice. The
+    shape assertions below are what stops a future edit from quietly going back to a literal, and the
+    two lookups show what happens when the named thing is gone: the anchor resolves to nothing, the
+    row downgrades, and no register line claims a location it cannot find.
     """
     source = BUILDER.read_text(encoding="utf-8")
     typed = re.findall(r'"location": "([\w./-]+\.py):(\d+)"', source)
@@ -680,12 +729,42 @@ def test_authored_python_locations_name_a_symbol_not_a_typed_line_number(builder
     for name, relative in (("prune_report", "scripts/migrate_sources.py"),
                            ("catalog", "domains/design/design_lab/model_catalog.py")):
         tree = _astmod.parse((TARGET_ROOT / relative).read_text(encoding="utf-8"))
-        header = min(node.lineno for node in _astmod.walk(tree)
-                     if isinstance(node, _astmod.FunctionDef) and node.name == name)
-        assert builder.find_definition(name, relative) == "%s:%d" % (relative, header), name
-    assert builder.find_binding("V1_ROUTES", "backend/v1.py").startswith("backend/v1.py:")
+        headers = [node.lineno for node in _astmod.walk(tree)
+                   if isinstance(node, _astmod.FunctionDef) and node.name == name]
+        # uniqueness is the anchor's whole promise: with two definitions of that name the register
+        # would be citing a word, not a place, so the emitter must fall back to the number instead
+        assert len(headers) == 1, (name, sorted(headers))
+        assert builder.find_definition(name, relative) == "%s::%s" % (relative, name), name
+    # `V1_ROUTES` is bound twice at module level -- a `()` declaration and the assembled table -- so
+    # the name is not a unique anchor here and the emitter has to say so by returning a number. The
+    # number it returns names the first binding, which is what this cite has pointed at all along;
+    # making it unique would be a change to backend/v1.py, not to the anchor rule, and is left alone.
+    binding = builder.find_binding("V1_ROUTES", "backend/v1.py")
+    assert re.match(r"^backend/v1\.py:\d+$", binding), binding
+    assert builder.check_location(binding)[0] is True, builder.check_location(binding)
+    # the fallback path is part of the contract, not a hypothetical: a name the file spells twice has
+    # to come back as a number, and the number it returns has to be a real definition line. The twin
+    # is written into the test's own sandbox and the builder's root is moved there, so nothing lands
+    # in the repository for another guard to trip over.
+    twin = tmp_path / "anchor-twin.py"
+    twin.write_text("def dup():\n    return 1\n\n\ndef dup():\n    return 2\n", encoding="utf-8")
+    original_root = builder.REPO_ROOT
+    builder.REPO_ROOT = tmp_path
+    try:
+        spec = builder.find_definition("dup", "anchor-twin.py")
+        assert spec == "anchor-twin.py:1", (
+            "一个在文件里出现两次的名字被当成锚点写进了登记：%s" % spec)
+        ok, note = builder.check_location(spec)
+        assert ok is True, note
+    finally:
+        builder.REPO_ROOT = original_root
     assert builder.find_definition("no_such_symbol_in_this_repo", "scripts/migrate_sources.py") is None
     assert builder.find_binding("NO_SUCH_BINDING", "backend/v1.py") is None
+    # and the resolver refuses an anchor whose name has been renamed away, or written badly -- a row
+    # cannot keep claiming a place that no longer exists
+    assert builder.check_location("scripts/migrate_sources.py::prune_report renamed")[0] is False
+    missing = builder.check_location("scripts/migrate_sources.py::prune_reportX")
+    assert missing[0] is False and "没有名为" in missing[1], missing
 
 
 #: `file.py#symbol`. A realm-prefixed key (`design:src/...py#L144`) is left out by the optional

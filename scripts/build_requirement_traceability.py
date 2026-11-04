@@ -191,6 +191,11 @@ PARTIAL_MARKER = "缺口："   # a PARTIAL row must name what is missing
 CONTRACTS_PUBLISHED_JSON = len(list((REPO_ROOT / "packages" / "contracts").rglob("*.json")))
 
 LOCATION_LINE_RE = re.compile(r"^(?P<path>.+):(?P<line>\d+)$")
+#: A ``file::name`` location is the same claim with the offset removed: the cited construct is the
+#: one called ``name``, and it resolves while the file grows above it. Uniqueness is the whole
+#: contract -- a name the file defines twice says nothing, and ``find_definition``/``find_binding``
+#: only emit this form when the name occurs once.
+LOCATION_SYMBOL_RE = re.compile(r"^(?P<path>[^:]+)::(?P<name>[A-Za-z_][A-Za-z0-9_]*)$")
 #: A ``file:line`` location must name a binding: a (possibly indented) ``def`` / ``class`` /
 #: decorator, or a module-level assignment or annotated name. Anchors that only have to be
 #: "non-empty" survive drift onto a dict entry, a closing brace or a comment, and the row
@@ -288,34 +293,43 @@ def domain_pack_readback() -> dict:
 
 
 def find_definition(name: str, relative: str) -> str | None:
-    """``relative`` -> ``file:line`` of the first ``def name``/``class name`` header."""
+    """Where ``name`` is defined in ``relative`` -- ``file::name`` when that names one place.
+
+    This used to answer ``file:line``, and the number was a claim about a file the project edits every
+    round: folding two lines of ``backend/v1.py`` into one moved four of these cites in a single run
+    (the register's own guard caught it and went red). A name is what the cite means -- *this route's
+    handler is that def* -- and it cannot slide when somebody writes above it. The number stays when
+    the name occurs more than once, because an anchor that could mean two places is worse than a
+    moving one. Same rule as the coverage register's ``authority`` column (§15.40).
+    """
     path = REPO_ROOT / relative
     if not path.is_file():
         return None
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     pattern = re.compile(r"^\s*(?:def|class)\s+%s\b" % re.escape(name))
-    for index, text in enumerate(lines, start=1):
-        if pattern.search(text):
-            return "%s:%d" % (relative, index)
-    return None
+    hits = [index for index, text in enumerate(lines, start=1) if pattern.search(text)]
+    if not hits:
+        return None
+    return "%s::%s" % (relative, name) if len(hits) == 1 else "%s:%d" % (relative, hits[0])
 
 
 def find_binding(name: str, relative: str) -> str | None:
-    """``relative`` -> ``file:line`` of the zero-indent ``name = ...`` / ``name: T = ...`` line.
+    """``relative`` -> the module-level ``name = ...`` / ``name: T = ...`` line, named where unique.
 
     ``find_definition`` only walks ``def``/``class`` headers. A table that lives at module level
     (the route list is one) has no definition to name, and typing its line number reproduces the
-    same drift this derives away for everything else.
+    same drift this derives away for everything else -- so the binding gets ``file::name`` too, on
+    the same uniqueness rule.
     """
     path = REPO_ROOT / relative
     if not path.is_file():
         return None
     pattern = re.compile(r"^%s\s*[:=]" % re.escape(name))
-    for index, text in enumerate(path.read_text(encoding="utf-8", errors="replace")
-                                 .splitlines(), start=1):
-        if pattern.match(text):
-            return "%s:%d" % (relative, index)
-    return None
+    hits = [index for index, text in enumerate(path.read_text(encoding="utf-8", errors="replace")
+                                               .splitlines(), start=1) if pattern.match(text)]
+    if not hits:
+        return None
+    return "%s::%s" % (relative, name) if len(hits) == 1 else "%s:%d" % (relative, hits[0])
 
 
 # --------------------------------------------------------------------------
@@ -334,9 +348,25 @@ def check_location(spec: str) -> tuple[bool, str]:
             return (False, "路由 %s %s 不在实测路由表（V1_ROUTES 与兼容表）中" % key)
         return (True, "路由 %s %s 存在于 %s，handler=%s"
                 % (key[0], key[1], entry["table"], entry["handler"]))
+    symbol = LOCATION_SYMBOL_RE.match(spec)
+    if symbol:
+        path = REPO_ROOT / symbol.group("path")
+        if not path.is_file():
+            return (False, "文件不存在：%s" % symbol.group("path"))
+        name = symbol.group("name")
+        header = re.compile(r"^(?:\s*(?:def|class)\s+%s\b|%s\s*[:=])"
+                            % (re.escape(name), re.escape(name)))
+        hits = [text.strip() for text in path.read_text(encoding="utf-8", errors="replace")
+                .splitlines() if header.match(text)]
+        if not hits:
+            return (False, "%s 里没有名为 %s 的定义或模块级绑定" % (symbol.group("path"), name))
+        if len(hits) > 1:
+            return (False, "%s 在 %s 出现 %d 次，锚点说不出是哪一个"
+                            % (name, symbol.group("path"), len(hits)))
+        return (True, "%s::%s 定义唯一：%s" % (symbol.group("path"), name, hits[0][:80]))
     match = LOCATION_LINE_RE.match(spec)
     if not match:
-        return (False, "位置写法既不是 file:line 也不是「METHOD /pattern」：%s" % spec)
+        return (False, "位置写法既不是 file::name、file:line，也不是「METHOD /pattern」：%s" % spec)
     path = REPO_ROOT / match.group("path")
     wanted = int(match.group("line"))
     if not path.is_file():
