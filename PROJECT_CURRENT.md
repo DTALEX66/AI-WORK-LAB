@@ -10,8 +10,7 @@
 - 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）在本地测量，**未推送**——推送需要
   owner 另行授权，不由历史推送记录推定。上一次"已推送到 origin 并被公开克隆独立复跑"的核验是 2026-11-02，
   见 docs/CODEX-AUDIT-ENTRY.md §15.27；那句只描述那一次，不描述本批。
-- 依托提交：全量收据所测的那棵树是 `5fafd91`（539 passed, 1 warning, 3 subtests passed in 944.11s (0:15:44)，
-  该收据自己的候选摘要 `be4a7f8e37703111…`）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files`
+- 依托提交：全量收据所测的那棵树是 `2a05140`（550 passed, 1 warning, 3 subtests passed in 1724.45s (0:28:44)，该收据自己的候选摘要 `dca84807b24510fd…`）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files`
   与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
   本分支与 `main` 的真实 SHA 一律用 `git rev-parse HEAD` / `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**唯一分支与默认分支都是 `main`**——那条融合批次分支已在
