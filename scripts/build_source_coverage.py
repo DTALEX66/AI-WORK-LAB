@@ -689,9 +689,18 @@ def _module_facts(repo: Path, rel: str) -> tuple[bool, list[str]]:
     another copy of a sentence that fits two hundred rows.
     """
     import ast
+    import warnings
 
     try:
-        tree = ast.parse((repo / rel).read_text(encoding="utf-8", errors="replace"))
+        with warnings.catch_warnings():
+            # The two source repositories are read-only, and their files are archived byte for byte
+            # under docs/history/, so a defect in one of them -- measured: an unescaped "\ " in the
+            # docstring at scripts/audit/ag19_source_presence_scan.py line 5 -- is not ours to
+            # rewrite, and it must not ride into this project's full-suite receipt as a warning.
+            # Only SyntaxWarning is silenced, and only for this parse: a real SyntaxError still
+            # falls into the branch below and reports "no facts".
+            warnings.simplefilter("ignore", SyntaxWarning)
+            tree = ast.parse((repo / rel).read_text(encoding="utf-8", errors="replace"))
     except (OSError, SyntaxError):
         return (False, [])
     has_main = any(isinstance(node, ast.If) and "__main__" in ast.dump(node.test)

@@ -1262,3 +1262,35 @@ def test_the_copy_index_resolves_one_destination_written_under_two_different_roo
     assert len(index["work:packages/a/b.py"]) == 1, index["work:packages/a/b.py"]
     assert unmapped == ["C:/other/tree/packages/a/b.py"], unmapped
 
+
+def test_a_foreign_source_defect_does_not_become_this_projects_warning(tmp_path):
+    """The register reads AST facts out of read-only foreign files; their Python-style noise stays there.
+
+    Measured in the 2026-11-04 full-suite receipt: exactly ``1 warning``,
+    ``<unknown>:5: SyntaxWarning: invalid escape sequence '\\ '` -- the coverage builder parsing a
+    WORK-LAB file whose docstring carries an unescaped Windows path. Two responses were wrong:
+    editing that file (the source repositories are read-only here, and its bytes are archived under
+    ``docs/history/``), or leaving the noise in every receipt so nobody can tell "0 warnings" from
+    "one warning nobody explained". So the suppression is scoped to the one parse, and SyntaxError
+    still has to mean "no facts".
+    """
+    import warnings
+
+    module = _coverage_module()
+    repo = tmp_path / "source"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "scripts" / "escaped.py").write_text(
+        '"""A docstring with a Windows path: C:\\ Program Files\\ x."""\n'
+        'if __name__ == "__main__":\n    print("hi")\n', encoding="utf-8")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", SyntaxWarning)
+        has_main, names = module._module_facts(repo, "scripts/escaped.py")
+    assert has_main is True, "the parse did not happen at all, so the suppression hides a real failure"
+    assert "print" not in names
+
+    (repo / "scripts" / "broken.py").write_text("def oops(:\n", encoding="utf-8")
+    assert module._module_facts(repo, "scripts/broken.py") == (False, []), (
+        "a file that cannot be parsed must still report no facts -- the widened filter may silence "
+        "noise, not swallow real errors")
+
+

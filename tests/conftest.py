@@ -92,6 +92,13 @@ SCRATCH_ROOTS = (".project-local/task-runtime", ".project-local/runs", ".project
 #: entries that appeared during this session.
 SWEEP_ROOT = ".project-local/task-runtime"
 SWEEP_SUMMARY = ".project-local/runs/sandbox-sweep-latest.json"
+#: pytest's own per-test directories under ``--basetemp`` are named ``test_<node>0``; nobody
+#: removed them, and one full-suite run left 1,649 of them behind (120.69 MiB, measured
+#: 2026-11-04). ``SWEEP_ROOT`` never saw them, so the leak survived the sweep that fixed the others.
+BASETEMP_NAME = re.compile(r"^test_.+\d+$")
+#: a ``--basetemp`` root is swept only inside this project's scratch, and never when it IS one of
+#: the shared evidence roots -- those hold named directories later rounds cite as evidence paths.
+NOT_A_SWEEP_ROOT = (".project-local/runs", ".project-local/build", ".project-local/audit")
 #: ``mkdtemp`` names are ``tmp`` plus eight characters from ``[a-z0-9_]``, so the underscore has to
 #: be allowed immediately after the prefix -- measured on 2026-11-03, a first sweep that let
 #: ``tmp_s1j7k3i`` through because the class started with alphanumerics.
@@ -112,6 +119,44 @@ def sandboxes_created(root: Path, before: set, started_at: float | None = None) 
     selected = []
     for path in sorted(root.iterdir()):
         if not path.is_dir() or not SANDBOX_NAME.match(path.name) or path.name in before:
+            continue
+        if started_at is not None and path.stat().st_mtime < started_at:
+            continue
+        selected.append(path)
+    return selected
+
+
+def basetemp_root(config) -> Path | None:
+    """The session's ``--basetemp`` directory, when it is this project's own scratch to clean.
+
+    ``None`` means "do not sweep": no root given, or a root outside ``.project-local`` (which may
+    belong to a person's temp dir or another checkout), or one of the shared roots that carry
+    named evidence directories.
+    """
+    raw = getattr(getattr(config, "option", None), "basetemp", None)
+    if not raw:
+        return None
+    path = Path(str(raw)).resolve()
+    if not path.is_relative_to((TARGET_ROOT / ".project-local").resolve()):
+        return None
+    if any(path == (TARGET_ROOT / relative).resolve() for relative in NOT_A_SWEEP_ROOT):
+        return None
+    return path
+
+
+def basetemp_leftovers(root: Path, before: set, started_at: float | None = None) -> list:
+    """The ``test_*<n>`` directories this session created under a ``--basetemp`` root.
+
+    Same four independent conditions as :func:`sandboxes_created` -- name shape, is a directory,
+    absent from the session-start snapshot, modified after it -- because the failure mode that
+    made those conditions necessary (a mutation that dropped the snapshot check deleted 1,041
+    directories in a live session) applies with equal force one level down.
+    """
+    if not root.is_dir():
+        return []
+    selected = []
+    for path in sorted(root.iterdir()):
+        if not path.is_dir() or not BASETEMP_NAME.match(path.name) or path.name in before:
             continue
         if started_at is not None and path.stat().st_mtime < started_at:
             continue
@@ -153,11 +198,14 @@ def ensure_scratch_roots():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def sweep_test_sandboxes():
+def sweep_test_sandboxes(pytestconfig):
     """No sandbox outlives the session that made it, and the count is published, not assumed."""
     root = TARGET_ROOT / SWEEP_ROOT
     started_at = time.time()
     before = {path.name for path in root.iterdir()} if root.is_dir() else set()
+    temp_root = basetemp_root(pytestconfig)
+    temp_before = ({path.name for path in temp_root.iterdir()}
+                   if temp_root is not None and temp_root.is_dir() else set())
     yield
     created = sandboxes_created(root, before, started_at)
     removed, failed = remove_sandboxes(created)
@@ -167,7 +215,21 @@ def sweep_test_sandboxes():
                "selection_rule": "name matches tmp<mkdtemp alphabet>, is a directory, absent from "
                                  "the snapshot taken at session start, and modified after it",
                "note": "created = leaked-and-not-cleaned by a test; named directories are never "
-                       "candidates because they are cited as evidence paths"}
+                       "candidates because they are cited as evidence paths",
+               "roots": [{"root": SWEEP_ROOT, "created": len(created), "removed": removed,
+                          "left_behind": failed}]}
+    if temp_root is not None:
+        made = basetemp_leftovers(temp_root, temp_before, started_at)
+        temp_removed, temp_failed = remove_sandboxes(made)
+        summary["basetemp"] = {"root": str(temp_root.relative_to(TARGET_ROOT)),
+                               "present_before_session": len(temp_before),
+                               "directories_created_this_session": len(made),
+                               "removed": temp_removed, "left_behind": temp_failed,
+                               "selection_rule": "name matches test_<node><digits>, is a directory, "
+                                                 "absent from the session-start snapshot, and "
+                                                 "modified after it"}
+        summary["roots"].append({"root": summary["basetemp"]["root"], "created": len(made),
+                                 "removed": temp_removed, "left_behind": temp_failed})
     destination = TARGET_ROOT / SWEEP_SUMMARY
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n",

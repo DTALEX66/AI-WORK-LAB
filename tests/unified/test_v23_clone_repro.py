@@ -396,3 +396,92 @@ def test_a_session_leaves_no_forgotten_mkdtemp_sandbox(tmp_path):
     assert all(conftest.SANDBOX_NAME.match(name) for name in actually_leaked), actually_leaked
     assert [name for name in cited_by_a_document
             if conftest.SANDBOX_NAME.match(name)] == [], cited_by_a_document
+
+
+def test_a_session_leaves_no_forgotten_basetemp_directory(tmp_path):
+    """The sweep now covers pytest's own ``--basetemp`` residue, which is where the real weight was.
+
+    Measured on 2026-11-04 while clearing scratch: one full-suite run left **1,649** directories and
+    **120.69 MiB** under ``.project-local/runs/closure-evidence-suite`` -- the receipt producer names
+    that root, and the 2026-11-03 sweep only looked at ``task-runtime`` and only at ``tmp*`` names,
+    so a root named per round (``final-32c3d22``, ``codex-regression``) was never reclaimed at all.
+    Same four independent conditions as the mkdtemp sweep, because the accident that made them
+    necessary was a dropped snapshot check deleting 1,041 directories in a live session.
+    """
+    conftest = _load_conftest()
+    root = tmp_path / "basetemp"
+    root.mkdir()
+    (root / "test_a_receipt_naming_a_diverg0").mkdir()    # pytest's own numbering
+    (root / "test_the_three_outside_roots_have_exactly_one_spelling12").mkdir()
+    (root / "test_present_before_session0").mkdir()       # in the session snapshot: not this run's
+    (root / "20261104-n17").mkdir()                       # a named evidence directory
+    (root / "f01-migration").mkdir()                      # cited by a tracked generator as its input
+    (root / "test_not_a_directory0").write_text("file\n", encoding="utf-8")
+
+    found = conftest.basetemp_leftovers(root, {"test_present_before_session0"})
+    assert {path.name for path in found} == {
+        "test_a_receipt_naming_a_diverg0",
+        "test_the_three_outside_roots_have_exactly_one_spelling12"}, (
+        "the basetemp sweep selected the wrong population: %s" % [p.name for p in found])
+    removed, failed = conftest.remove_sandboxes(found)
+    assert (removed, failed) == (2, []), (removed, failed)
+    assert (root / "20261104-n17").is_dir() and (root / "f01-migration").is_dir(), (
+        "the sweep deleted a named evidence directory it has no claim on")
+    assert (root / "test_present_before_session0").is_dir(), "a pre-session directory was removed"
+    assert (root / "test_not_a_directory0").is_file(), "a plain file entered a directory-only sweep"
+
+    backdated = time.time() - 86400
+    (root / "test_predates_the_session0").mkdir()
+    os.utime(root / "test_predates_the_session0", (backdated, backdated))
+    fresh = root / "test_fresh_one0"
+    fresh.mkdir()
+    floor = fresh.stat().st_mtime - 1.0
+    selected = {path.name for path in conftest.basetemp_leftovers(root, set(), floor)}
+    assert "test_fresh_one0" in selected, selected
+    assert "test_predates_the_session0" not in selected, (
+        "the age floor did not exclude a directory predating the session -- with one condition "
+        "dropped, the sweep eats the residue it was never meant to touch")
+
+    names_that_were_actually_left = ["test_a_clone_can_run_the_machi0",
+                                     "test_a_credential_quarantine_t0",
+                                     "test_a_receipt_naming_a_diverg0",
+                                     "test_the_three_outside_roots_have_exactly_one_spelling12"]
+    named_roots_left_alongside = ["closure-evidence-suite", "final-32c3d22", "codex-regression",
+                                  "full-surface", "f01-migration", "20261104-n17"]
+    assert all(conftest.BASETEMP_NAME.match(name) for name in names_that_were_actually_left), (
+        names_that_were_actually_left)
+    assert [name for name in named_roots_left_alongside
+            if conftest.BASETEMP_NAME.match(name)] == [], named_roots_left_alongside
+
+
+def test_the_basetemp_sweep_only_reaches_roots_this_project_owns(tmp_path, monkeypatch):
+    """``--basetemp`` is a caller-supplied path, so the sweep needs a boundary, not a good intention.
+
+    Three refusals are planted: a root outside this project's scratch (somebody's temp dir, or
+    another checkout), and a root that *is* one of the shared evidence roots (``runs``, ``build``,
+    ``audit``) where named directories are cited by tracked documents. Only a root inside
+    ``.project-local`` that is not one of those three gets swept.
+    """
+    import types
+
+    conftest = _load_conftest()
+    project = conftest.TARGET_ROOT
+
+    def config_for(value):
+        return types.SimpleNamespace(option=types.SimpleNamespace(basetemp=value))
+
+    inside = project / ".project-local" / "runs" / "basetemp-of-this-run"
+    assert conftest.basetemp_root(config_for(inside)) == inside.resolve(), (
+        "a basetemp root inside this project's scratch was refused, so the sweep stays a no-op")
+    for label, value in (
+            ("outside the project", tmp_path / "pytest-temp-of-somebody-else"),
+            ("another checkout", tmp_path / "clone" / ".project-local" / "runs" / "x"),
+            ("the shared runs root", project / ".project-local" / "runs"),
+            ("the shared build root", project / ".project-local" / "build"),
+            ("the shared audit root", project / ".project-local" / "audit")):
+        assert conftest.basetemp_root(config_for(value)) is None, (
+            "%s: the sweep would have claimed a root it does not own" % label)
+    assert conftest.basetemp_root(config_for(None)) is None, "no --basetemp must mean no sweeping"
+    assert conftest.basetemp_root(types.SimpleNamespace(option=None)) is None, (
+        "a session without an option namespace must not raise -- the sweep runs in every session")
+
