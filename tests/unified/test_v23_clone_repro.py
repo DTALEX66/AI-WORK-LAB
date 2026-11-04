@@ -461,6 +461,13 @@ def test_the_basetemp_sweep_only_reaches_roots_this_project_owns(tmp_path, monke
     another checkout), and a root that *is* one of the shared evidence roots (``runs``, ``build``,
     ``audit``) where named directories are cited by tracked documents. Only a root inside
     ``.project-local`` that is not one of those three gets swept.
+
+    This node was written wrong and a full suite run said so: the refusals were built from
+    ``tmp_path``, and the receipt invokes pytest with ``--basetemp`` inside ``.project-local/runs``,
+    so on that run ``tmp_path`` *is* inside the project scratch -- the "elsewhere" fixture was a
+    directory the rule is required to accept. It passed standalone because a default tmp root sits in
+    the system temp. The refusals are absolute synthetic roots now, and the containment side is
+    asserted against the node's own ``tmp_path`` whenever the runner placed it inside the project.
     """
     import types
 
@@ -473,9 +480,21 @@ def test_the_basetemp_sweep_only_reaches_roots_this_project_owns(tmp_path, monke
     inside = project / ".project-local" / "runs" / "basetemp-of-this-run"
     assert conftest.basetemp_root(config_for(inside)) == inside.resolve(), (
         "a basetemp root inside this project's scratch was refused, so the sweep stays a no-op")
+    # ``tmp_path`` is deliberately not used for the refusals below, and that is a lesson this file
+    # learned the hard way: the receipt runs the whole suite with ``--basetemp`` inside this
+    # project's own scratch, so a node's ``tmp_path`` is a path the boundary rule is supposed to
+    # accept. Building "somebody else's temp dir" from it produced a directory that was inside the
+    # very root under test -- the node passed standalone (system temp) and went red in a full run.
+    project_scratch = (project / ".project-local").resolve()
+    if project_scratch in tmp_path.resolve().parents:
+        # the receipt's own context, asserted as a positive control: containment is containment
+        assert conftest.basetemp_root(config_for(tmp_path / "nested")) == (
+            tmp_path / "nested").resolve(), (
+            "a root inside the project scratch is no longer accepted, so the sweep is a no-op "
+            "exactly when it is needed")
     for label, value in (
-            ("outside the project", tmp_path / "pytest-temp-of-somebody-else"),
-            ("another checkout", tmp_path / "clone" / ".project-local" / "runs" / "x"),
+            ("outside the project", Path("Q:/pytest-temp-of-somebody-else")),
+            ("another checkout", Path("Q:/other-checkout/.project-local/runs/x")),
             ("the shared runs root", project / ".project-local" / "runs"),
             ("the shared build root", project / ".project-local" / "build"),
             ("the shared audit root", project / ".project-local" / "audit")):
