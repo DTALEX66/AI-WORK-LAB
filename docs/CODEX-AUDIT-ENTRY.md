@@ -2618,3 +2618,141 @@ INSTRUMENT_ERROR 0）。**改绑提交之前它是 FAIL 1**，唯一那条说的
 列读成投影的合法归一化，本轮只收口了**请求体形状**的那两处；把"哪些是外部输入的静默"逐点判清需要
 单独一趟，顺手改会把 268 处判据未覆盖的地方变成"未验证地动了行为"。74 条来源仓数字引用不在判据
 范围内；N06/N07 与任务包第二批其余项未开始。**本批仍未推送**，推送需要 owner 另行授权。
+
+### 15.36 全量审计第二段：八处"请求可控的静默默认"改成具名拒绝；来源覆盖登记去掉机器绑定；一张被这次改动改挂的台账断言按它自己的药方补采
+
+范围与授权不变：本地分支 `audit/backend-closure-20261103`，起点是上一节的入册提交 `f65432e`；
+本批不推送、不开远程 CI、不动两个来源仓（只读其工作树取字节）。代码与登记分 5 次提交
+（58d1a1c / f0ccf7f / 6c6ce1d / 2a05140 / 31ddf18，按时间顺序），全量收据测的树是 `2a05140`（`550 passed, 1 warning, 3 subtests passed in 1724.45s (0:28:44)`，候选 7309 文件、摘要
+`dca84807b24510fd…`）。收据与改绑之后没有任何跟踪字节移动（`tracked_bytes_moved_during_run` 为空）。
+
+**一、八处静默默认，每处都先量出旧行为再说修法。** 判据来自本批自己的反证
+`.project-local/runs/20261104-n17/falsify.json`：10 支单变量退回旧代码，逐支要求
+"该红的节点恰好红"，0 支没红，且每支还原后逐字节相同。下面每条括号里的读数
+就是从那次反证的原样输出里摘的，不是事后追述：
+
+1. `backend/v1.py::_v1_declare_handoff` 的 `actor`：旧代码 `str(value.get("actor") or "user")`
+   把"没说谁"造成为一个活人标签，而它下面两行的 `HANDOFF_ACTOR_SYNTHETIC_ON_LIVE` 正是按
+   actor 的角色判的——所以最省事的绕过方式是什么都不写。反证读数：AssertionError: (200, {'attempt'。
+   现在 `actor` 是 `handler.body(fields=…)` 的必填键，且必须是非空字符串，否则
+   `400 HANDOFF_ACTOR_REQUIRED`；缺省与空/空白/`null`/数字/列表/布尔/对象七种形状逐条点名。
+2. 同一处理的 `expected_version`：旧代码 `int(value.get(...) or ...)`，实测
+   ('列表', [5], 500, {'error': 'INTERNAL'})——`[5]` 是一条未被捕获的 TypeError，由内核答 500；`"3"`、`3.5` 被 `int()`
+   造出一个 CAS 拿去比较的整数；`0` 落回默认。现在出现即必须是非 bool 的正整数，否则
+   `400 HANDOFF_EXPECTED_VERSION_INVALID`。缺键仍合法：读侧写的是本进程刚读到的版本，
+   而 `canonical_store.save_action_plan` 对已存在的行本来就要求一个版本。
+3. CAS 是否被吞：新节点没有停在"形状对了"，而是量出一个不合的整数确实进到台账并撞出
+   `ACTION_PLAN_VERSION_CONFLICT`、版本一格没动，随后按当前版本声明的写答 200 且恰好 +1。
+   这一条本来写成了"同一尝试再声明一次应该冲突"，实测被上游状态门先挡住
+   （`ATTEMPT_STATE`），于是改成能真正抵达版本比较的那条腿——判据必须是可达的，
+   红在别的原因上不算证明。
+4. `backend/v1.py::_v1_create_task` 的 `input_refs`：旧代码只在它本来就是列表时透传，
+   其余形状一律静默存 `[]`。反证读数：('字符串', 'abc', 201,——调用方写的引用消失了，读回与
+   "从未声明"逐字节相同，之后任务包抱怨的是"引用缺失"而不是形状。现在容器、条目、
+   条目里的 `kind` 三件事各自具名（`TASK_INPUT_REFS_NOT_ARRAY` / `TASK_INPUT_REF_NOT_OBJECT` /
+   `TASK_INPUT_REF_KIND_MISSING`），并钉住被拒的创建不新增任务行。
+5. `backend/v1.py::_work_observer_evidence_range`：`?expectedDigest=` 空值旧代码降级成
+   "没有摘要"，等于让唯一那句"请校验身份"的写法跳过校验。反证读数：'status': 'OK', 'reason_code': 'READ_OK'。
+   现在原值转发给 reader（与 `domains/work/control/sidecar.py` 的同一参数行为对齐），
+   空值由 reader 具名拒 `DIGEST_SHAPE`；`offset`/`limit` 出现即必须可解析，空串不再
+   落到默认值（`limit` 的默认是这次读取的最大值，往"读得更多"方向默认不能算安全）。
+   同一个节点还钉两条对照腿：不带摘要时 `digestSource=not-requested` 仍读得到，
+   带正确摘要时 `verified=true`——否则一次 blanket refusal 也能把拒绝组全骗绿。
+6. `backend/core/work_surfaces.py` 两处环回门（证据区间读取、控制面写入口）：旧代码
+   `hasattr(handler, "client_address")` 为假时直接答 `"127.0.0.1"`，也就是"没说来源的连接"
+   默认放行。反证读数最能说明代价：证据面 assert (200 == 403)，控制面 assert (409 == 403)——
+   旧代码让没有对端身份的请求走进了 plane。现在两条各答 `PEER_UNKNOWN`，并且新断言
+   `handler.reached_plane is False`（不是只看状态码，而是证明它没往下走）。
+7. `backend/core/binding.py`：`producedAt`/`produced_at` 两种拼写都被解析，非法检查却只看
+   camel 那一种。反证读数：('produced_at', [])——一份声明 `produced_at:"昨天下午"` 的设计结果
+   零问题通过，连带跳过了 `RESULT_STALE` 比较。现在两种拼写都拒，文案点名实际看到的那种。
+8. `domains/work/control/plan_candidate.py`：`changes`/`verification`/`unresolved` 用 `list()`
+   包一层，`assumptions`/`references`/`openQuestions` 走另一条宽容路径，同一类字段两套规则。
+   反证读数：changes 是字符串 被静默接受了 / unresolved 是字符串 被静默接受了 / taskRevision 是数字串 被静默接受了——`list("改一处文档")`
+   是逐字符列表（计划卡在字上），`list({...})` 是键集（把 dict 的键当成了变更范围），
+   `taskRevision:"3"`/`1.5` 被 `int()` 造数或截断。现在六个字段统一要求"列表且条目形状正确"，
+   按字段名拒绝；`candidate_content()` 的宽容读侧保留，因为摘要不能对已存的候选开始抛错。
+   这一处是控制面 `work-unit.materialize` 的请求内容，所以同一节点还从 plane 走了一遍，
+   要求答复是 `CANDIDATE_INVALID` 且 reason 里点着那个字段名。
+
+新增 9 个节点在 `tests/unified/test_v05_rejections.py`（8 条）与
+`tests/unified/test_v29_top_level_entry.py`（1 条），拒绝族归属文件的既有分工没改。
+
+**二、来源覆盖登记的身份从"原机绝对路径"改成"仓名 + 仓内相对路径"（#18）。**
+`copied_index()` 旧代码用 `Path(source).resolve()` 当键，并用两个绝对 target 的 `resolve()`
+相等判"同一条去向"——`migration/copies.json` 里 1382 条记录写的都是 `D:\All projects\...`，
+于是"一条复制记录的身份"其实是那台机器的盘符布局。换根时两侧都 miss：每个来源重新落成
+"未复制"，而行数照常打印。实测旧实现下同一文件的 `Q:\fused\AI-WORK-LAB\…` 与
+`F:/clone/AI-WORK-LAB/…` 是两个键、两条记录；现在是一键一条。身份词汇与本仓三张表
+（`mapping.csv`、去向台账、`registered_keys()`）本来用的 `work:/design: + 相对路径` 对齐了。
+认不出仓的 source 不再静默漏配：现算成 `copy_identity_unmapped`（本轮 0）并进
+`--check` 的拒绝条件。
+
+**三、这次改动牵出一张被我改挂的台账断言，按其自己的药方处理。**
+`plan_candidate.py` 是迁入件，改它字节后 `migrate_sources.py --plan` 报"无声明的返工"（rc 1），
+而 `docs/history/sources-20261101/MANIFEST.csv` 那一行原本写 `LINKED_IN_REPO`
+（"本仓已持有同字节"）——这条断言因我而假，`build_source_coverage.py` 于是按设计拒绝
+（`ALREADY_IN_REPO_LINKED_UNRESOLVED`）而不是发布它验证不了的去向。走 2026-11-02 那一轮对
+`repair_pack_projection.py` 用过的同一味药：从来源工作树按字节补采原件进历史区
+（落盘后现算摘要 `e786d500…` 与台账登记的摘要逐字节相等，14867 字节），那一行 `action` 改判
+`COPIED` 并写明原因，`class/sha256/bytes` 三个历史读数一格未动。改前工具先证明 CSV 往返
+逐字节相同，所以 MANIFEST 的 diff 是 1 行而不是 7210 行；`DECLARED_REWORK` 补一条
+（摘要 / 16617 字节 / 45 行差异 / 原因），`--plan` 回到 rc=0（19/19 全部有声明）。
+
+**四、登记重发布的真实代价，写下来而不是掩盖。** 一次重发布让 `source-coverage-work.csv`
+79 行、`source-coverage-design.csv` 74 行的 `authority` 列变了——变的不是判定，而是
+`scripts/build_source_coverage.py:651` 这种**自引用的行号**跟着本文件加的行数移动到
+`:706`。该列由现算得出，所以它没有说谎；代价是一次 tracked 字节抖动，而这正是 N14 已经
+给散文引用定性过的同一缺陷：数字锚每在上方加一行就烂一次。把它也改成符号写法是下一步，
+本轮不做半改（改法要同时动 `resolve_authority_cite` 的判据与它的反例，属另一个闭环）。
+
+**五、预跑抓到的是我自己。** 取收据前先跑复现族
+（`.project-local/runs/20261104-n17/precheck-repro.txt`：`3 failed, 64 passed, 1 warning in 616.98s (0:10:16)`），三条红全部来自本批
+新加的两条身份节点——它们在测试文本里拼了 `"All projects/WORK-LAB"` 与
+`"All projects/DESIGN-LAB"`，被 `test_v23` 的 PREREQ 分类与 `test_v31` 的拼写开关按
+"来源根只准一种拼写且必须由解析器给出"判红。机制里有一条值得记住：克隆看不到未提交的修复，
+所以 v31 的种植节点在克隆里看到的群体已经带违规，精确红集断言落不到它自己种的那一条——
+修 `tests/` 的法律违规必须提交之后才能复验。改成合成根（`Q:/src/…`、`E:/mirror/…`、
+`/srv/mirror/…`）后四条相关节点绿，那条 3 分半的克隆重跑
+`test_a_clone_can_run_the_machine_independent_part_of_the_suite` 也在提交后单跑通过。
+
+**六、本轮"现读但不动字节"的两项，按延后写而不是抹平。**
+- 领域包：`{"VALIDATES": 12, "INVALID": 1, "UNREADABLE": 0, "NOT_CHECKED": 0}`（读数
+  `.project-local/runs/20261104-n17/domain-packs.json`）。唯一的 `INVALID` 是 `minigame-design`，
+  11 条错误里 1 条是 schema 缺 `domain` 字段，10 条是 `files.*` 未声明。
+  对照同目录一个合格包后发现：其中 `scenario` / `profile` / `source_mapping` / `benchmark_cases` /
+  `evidence_cards` 这些键要指向的文件在包里根本不存在（`README/SOURCE_OF_TRUTH/qa/rules/handoff.md`
+  是另外的东西），填不上——那是在替小游戏领域**写设计内容**，按 owner 的法律（真人专业签字、
+  不替用户授权）属于延后项；剩下几条声明位即使补上也不会翻转判定。另一个理由是代价：这个包的
+  18 条跟踪复制记录，任何字节改动都要走第三段那套"声明返工 + 台账补采"，逐条一次。
+  包与它的检查都没删。
+- workbench 离线构建：`ABSENT MODULE_NOT_FOUND`（`node_modules` 实读 6 项，仍无 `picomatch`），
+  `vite build` 在本机跑不起来，两个读 bundle 的 JS 闸门仍校验旧字节。补它需要网络安装，未授权。
+
+**七、改绑、第一次红的两道、以及最终的终端读数。** 收据 → 五处改绑（closure 寄存器
+`MATCHES`、`docs/AUDIT-STATE.json --audited-commit 2a05140c48ee353cf07465bc87bc071024ba958b`（`binding_moved_this_run=true`、
+`head_is_ancestor=true`、候选 7309）、task-acceptance（48 行直方图不变）、
+blocker-register（blocking 1，仍 `L10#0`）、`PROJECT_CURRENT.md --write-block`）。
+改绑链自己先红了两处，两处都是有用的红：
+（i）`check_project_current --check` 报 `RECEIPT_POINTER_STALE 文档=5fafd91
+寄存器 audited_head_sha=2a05140c48ee`——本批新加的那条判据第一次运行就用在了它被造出来的那件事上：
+入口「依托提交」还指着上一轮的树；修法是让工具从收据本身重写那句（SHA、pytest 摘要行、收据自己的
+候选摘要），不是把判据放宽。
+（ii）终端审计的「全量收据描述当前提交且没有失败」在改绑**未提交**时判红（`uncommitted_tracked_files`
+精确点名那四个文件）——顺序错了：改绑要先提交，审计才谈得上"当前"。按这个顺序复跑后：
+`{"verdict": "CLOSED", "head": "31ddf18", "counts": {"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}}`，危害扫描 `{"findings": 17, "by_status": {"unadjudicated": 0, "adjudication-stale": 0, "adjudicated": 6, "example-literal": 11}}`（scanned 7309 件，
+`unadjudicated 0 / adjudication-stale 0 / blocking 0`）。节点普查 544 个声明节点，
+`build_test_census.py --check` 与 `check_project_current.py --check` 均 0 findings。
+
+**八、照实留下的口子（现读，勿当已完成）。**
+N05 仍是 PARTIAL——本机无 Linux 解释器，Linux 原生复跑 NOT_RUN，远程 CI 需 owner 另行授权。
+本批新发现两处**没有修**的同类缺口，写在这里而不是等下一轮重新发现：
+（a）`producedAt`/`produced_at` 两种拼写都"缺席即不检查"，于是省略生产时刻可以绕过
+`RESULT_STALE`——设计面与 WORK 面（`repair_verification.validate_external_result`）同形；把它
+改成必填是对**外部工具交付合同**加严，需要 owner 定，不由执行器代答。
+（b）`_query_params()` 仍用 `dict(parse_qsl(...))` 塌缩重复 GET 参数，N02 为任务面修的同一件事
+在 observer/search 面上还在；人群是这些只读路由，改法与 `TASK_FILTER_PROJECT_ID_DUPLICATE` 同源。
+其余未结：237 未决 + 32 个人决定项、L10#0 验收门仍 REFUSED（本批不改它的条件）、L20#0 真实宿主、
+真人专业签字、模型推理、真实私有数据迁移、L00#2 出网隔离、推送与远程 CI、两个来源仓的删除与
+告警、GitHub 临时密钥告警、机器路径守卫的人群（322 个含账号名的跟踪件未分类，扩人群会先把
+来源记录当成违规）、以及第四段点名的 authority 自引用数字锚。

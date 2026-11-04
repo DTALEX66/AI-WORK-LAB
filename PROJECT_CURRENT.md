@@ -221,15 +221,27 @@ unsettled_files = 237
    摘要留档、有反向守卫），凭据扫描族清单已补全并提升为跟踪脚本 `scripts/check_public_hazards.py`，
    豁免只能来自 `config/secret-scan-adjudications.json` 里绑定文件摘要的逐条裁决。
    已推送这一事实无法用删文件撤销——见 docs/CODEX-AUDIT-ENTRY.md §15.28。
-8. **云端审计第一批（N01–N05）之后仍然开着的口子**（现读，勿当已完成）：
+8. **云端审计第二批（N17 静默默认族 + 来源覆盖身份）之后仍然开着的口子**（现读，勿当已完成）：
    N05 仍是 PARTIAL——Linux 原生复跑 `NOT_RUN`（本机无 Linux 解释器，远程 CI 需 owner 另行授权）。
-   §15.34 点名的两条本仓自己的口子已在 §15.35 收口：`backend/v1.py` 的 9 条注释行号引用改成符号并由
-   `test_v16` 两条新判据守着（现扫现判 + 三种假引用精确点名），`acceptance` 非 dict 与
-   `data_origin` 非词不再静默落库或崩成 500，各回具名 400。**新查清但没收口的**：`or {}` / `or []`
-   形状的站点在 `backend/` + `domains/work/` 现读 268 处，绝大多数是把可空列读成投影的合法归一化，
-   本轮只收了请求体那两处——把"哪些是外部输入的静默"逐点判清是单独一趟，顺手改等于把 268 处
-   判据未覆盖的地方改成未验证地动行为；另有 74 条 `*.py:NNN` 引用指向来源仓路径（本仓无从解析，
-   不在新判据范围内）。任务包 N06/N07 与第二批（克隆重跑与隔离安装证据、`copied_index()` 的原机
-   绝对路径身份、`237` 未决 + `32` 个人决定项、小游戏领域包 INVALID、workbench 离线构建缺口）未开始。
-   **本批全程未推送**（`audit/backend-closure-20261103`，最新收据 `5fafd91` / `539 passed`）。
-   读数与反证件：docs/CODEX-AUDIT-ENTRY.md §15.34、§15.35。
+   §15.35 点名的两条本仓自己的口子（`backend/v1.py` 行号注释、`acceptance`/`data_origin` 静默）已收口；
+   本批把请求体与查询面上其余 8 处静默默认改成具名 400（actor / expected_version / input_refs /
+   expectedDigest / offset·limit / 两处环回门 / `produced_at` 拼写 / `plan_candidate` 六个列表字段），
+   10 支反证逐支点名红、还原逐字节相同。**本批新查清但没收口的三处**：
+   (a) `producedAt` 与 `produced_at` 都是"缺席即不检查"，省略生产时刻可绕过 `RESULT_STALE`，
+   设计面与 WORK 面（`repair_verification.validate_external_result`）同形——改成必填是对**外部工具
+   交付合同**加严，需 owner 定，不由执行器代答；(b) `_query_params()` 仍用 `dict(parse_qsl(...))`
+   塌缩重复 GET 参数，N02 在任务面修掉的同一件事在 observer/search 面上还在；(c) 全量收据里那
+   1 条 `SyntaxWarning`（`<unknown>:5: invalid escape sequence '\ '`）来自覆盖登记器 `ast.parse`
+   的一份源文本，改它要动 `tests/`，而收据后的允许改动名单不含 `tests/`，故留给下一批
+   （定位法：`python -W error::SyntaxWarning`）。登记抖动也记着：`source-coverage-*.csv` 的
+   `authority` 列里有 153 行（work 79 + design 74）是 `scripts/build_source_coverage.py:NNN` 这种
+   自引用行号，本次 builder 加行就让它们集体位移（值由现算，不是说谎），改成符号写法要与
+   `resolve_authority_cite` 的判据同批改。两项**按延后写而不是抹平**：小游戏领域包（13 包里唯一
+   `INVALID`，11 条错误中 5 条要真人写设计内容，且该包 18 条跟踪复制件任何改动都要走声明返工 +
+   台账补采）与 workbench 离线构建（`picomatch` 现读仍 `MODULE_NOT_FOUND`，补依赖需网络安装，
+   未授权）——包与检查都没删。真人/owner 项未动：`237` 未决 + `32` 个人决定项、L10#0 验收门仍
+   `REFUSED`、L20#0 真实宿主、真人专业签字、模型推理、真实私有数据迁移、L00#2 出网隔离、推送与
+   远程 CI、来源仓删除与告警、GitHub 四条 key 告警、机器路径守卫的人群（322 个含账号名的跟踪件
+   未分类，扩人群会先把来源记录当成违规）。**本批全程未推送**（`audit/backend-closure-20261103`，
+   最新收据 `2a05140` / `550 passed`，候选摘要 `dca84807b24510fd…`；终端闭环审计
+   `CLOSED`，14 条 PASS 14 / FAIL 0）。读数与反证件：docs/CODEX-AUDIT-ENTRY.md §15.34–§15.36。
