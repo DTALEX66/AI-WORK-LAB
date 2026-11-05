@@ -16,7 +16,7 @@
   pre-push 守卫逐条核（blob 上限、危害扫描现跑），不用 `--no-verify`。合并前专门为"要被并入的那一格"
   跑了一次终端闭环审计（CLOSED 14/14 @ `f77ceac`），落地过程见 docs/CODEX-AUDIT-ENTRY.md §15.39。
   上一次"已推送到 origin 并被公开克隆独立复跑"的核验仍是 2026-11-02，见 §15.27——那条不描述本批。
-- 依托提交：全量收据所测的那棵树是 `1cb4582`（569 passed, 3 subtests passed in 1384.02s (0:23:04)，该收据自己的候选摘要 `96280ada868c30b2…`、7311 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
+- 依托提交：全量收据所测的那棵树是 `da3993a`（572 passed, 3 subtests passed in 1445.82s (0:24:05)，该收据自己的候选摘要 `5fc9263dde54c6b6…`、7311 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
   本分支与 `main` 的真实 SHA 一律用 `git rev-parse HEAD` / `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**默认分支是 `main`**；2026-11-04 起远端多一条
   `audit/backend-closure-20261103`（`git branch -r` 现读两条：`origin/main` 与它，`origin/HEAD` 仍指 main）。
@@ -276,7 +276,10 @@ unsettled_files = 237
    `migration/api-contract-check.json` 的 `handler位置` 与 `migration/requirement-traceability.csv`
    的 python 位置列都是 `file::name`；仓库自身状态改由 `repo:branch` 向 git 现问，登记不再把
    `.git/` 里的字节当实现位置（分离检出时那种引用会绿着说假话）。
-   下一格起手项：本仓可自修的后端项已经全部收到"每个数都能现查"这一状态，剩下的都带外部条件——
+   下一格起手项：本仓可自修的后端项还剩两格没做，写在这里而不是抹平——`#36` 把 append-only 审计史里的
+   `.py` 行号引用也纳入现算面（那种坏引用只能按冻结件的规矩具名声明，不许回头改写已提交的历史读数），
+   `#37` 让 `scripts/measure_citation_population.py` 的两个现查模式在发现损坏时返回非 0（现在恒 rc=0，
+   "跑过了"会被读成"没问题"，改绑链的日志因此记的是数字本身）。除此之外剩下的都带外部条件——
    小游戏领域包要真人写 5 条设计内容、workbench 离线构建的 `picomatch` 要网络安装（未授权）、
    `producedAt` 改成必填要 owner 定外部工具合同、Linux 复跑（N05 因此 PARTIAL）、以及上面逐条点名的
    真人/owner 项。引用这一族的教训留在闸门里而不是只留在话里：人群从 `git ls-files` 现取
