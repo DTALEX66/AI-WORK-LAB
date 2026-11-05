@@ -224,6 +224,16 @@ SYNTHETIC_LOCATIONS = {
         "留着是说明改正过程，不是让读者去那里找实现",
 }
 
+#: Custody classes whose bytes this repo may not rewrite: owner-delivered inputs, byte-for-byte migrated
+#: copies claimed by ``migration/copies.json`` by digest, and the append-only audit history. A dead cite
+#: found inside them is a declaration problem (DECLARED_REWORK + ledger re-capture), never an excuse to
+#: edit the copy -- which is exactly the mistake this batch had to revert.
+UNEDITABLE_CUSTODY = frozenset({"frozen_source_input", "migrated_copy", "append_only_history"})
+#: dead cites that currently live in those frozen bytes, named so nothing edits them. Empty by measurement:
+#: the only frozen-copy cite in the tree points at a script that is not tracked here at all, so the
+#: liveness rule never evaluates it.
+FROZEN_DEAD_CITES: set[tuple[str, str]] = set()
+
 CITE_IN_TEXT = re.compile(r"(?P<cite>[\w./-]+\.py(?:::[A-Za-z_]\w*|:\d+(?:-\d+)?|#[^\s,;)\]\"`]+))")
 #: identity keys of the migration map name a file in the SOURCE repository's layout. They are a row's id,
 #: not a claim about where our implementation lives, so the liveness rule must not be pointed at them.
@@ -315,7 +325,7 @@ def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
     for rel in module.tracked_files():
         by_name.setdefault(pathlib.PurePosixPath(rel).name, []).append(rel)
 
-    seen, broken, exempt_hits = set(), [], set()
+    seen, broken, exempt_hits, frozen = set(), [], set(), []
     for rel in files:
         try:
             text = (TARGET_ROOT / rel).read_text(encoding="utf-8", errors="replace")
@@ -340,7 +350,22 @@ def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
                     # a row's id, not a claim about where our code lives
                     if "source_key" in line and cite.startswith(FOREIGN_SOURCE_PREFIXES):
                         continue
-                    broken.append("%s:%d %s -> 候选文件里已经没有这个位置" % (rel, number, cite))
+                    where = "%s:%d %s -> 候选文件里已经没有这个位置" % (rel, number, cite)
+                    if module.owner_of(rel, module.ledger_targets()) in UNEDITABLE_CUSTODY:
+                        frozen.append((rel, cite, where))
+                    else:
+                        broken.append(where)
+
+    # a dead cite inside bytes we may not rewrite is not a task to rewrite them: that is how a green
+    # test ends up buying itself a DECLARED_REWORK violation. It is named here instead, and the list is
+    # empty because the one such cite in the tree points outside the tracked tree and is never checked.
+    unexpected_frozen = [row for row in frozen if (row[0], row[1]) not in FROZEN_DEAD_CITES]
+    assert not unexpected_frozen, (
+        "冻结字节里出现新的坏引用，只能走具名返工声明 + 台账补采，不能改写复制件：%s"
+        % [row[2] for row in unexpected_frozen[:6]])
+    dead_frozen = sorted(key for key in FROZEN_DEAD_CITES
+                         if key not in {(row[0], row[1]) for row in frozen})
+    assert not dead_frozen, "冻结件的坏引用登记已不再成立：%s" % dead_frozen
 
     dead = sorted(key for key in SYNTHETIC_LOCATIONS if key not in exempt_hits)
     assert not dead, "具名豁免已不再被引用，留着会掩护下一个真损坏：%s" % dead
