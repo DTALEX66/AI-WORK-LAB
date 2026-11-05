@@ -62,6 +62,11 @@ ABS_POSIX = r"(?:/home|/(?:[a-z]/)?users)/"
 #: Insisting that ``users``/``home`` sit directly behind the drive prefix is what keeps ``https:`` from
 #: being read as a drive letter here.
 ABS_HOME_DIR = r"[A-Za-z]:[\\/](?:users|home)[\\/]"
+#: a home path written as a fragment -- ``（Users/<account>/AppData/Temp/…）`` -- with no drive in front of it
+#: and nothing before the word but a non-path character. Requiring a separator *after* the name keeps
+#: ``GitHub users/name`` style prose out, and measured over this tree the branch adds exactly one file,
+#: which is the fragment it was written for.
+ABS_HOME_SEGMENT = r"(?<![A-Za-z0-9_./\\-])(?:users|home)[\\/]"
 
 
 def _account_token(account: str, inside_path: bool) -> str:
@@ -83,9 +88,12 @@ def machine_path_rule(account: str) -> re.Pattern:
     and a case-sensitive rule let the lowercase spellings -- which is what Git-Bash and most JSON dumps
     write -- out of the population entirely.
 
-    Three shapes, not one. The drive branch needs the account to sit *inside* a path (a separator after
+    Four shapes, not one. The drive branch needs the account to sit *inside* a path (a separator after
     it); the third branch is the path that stops at the account directory itself -- drive, ``\\Users\\``,
-    the name, nothing after it -- which the first branch cannot see and which five frozen inputs do write.
+    the name, nothing after it -- which the first branch cannot see and which five frozen inputs do write;
+    the fourth is the home fragment inside a table cell (``（Users/<account>/AppData/…）``), with no drive
+    and no leading slash in front of it, which one more frozen input writes and which no counter saw at
+    all -- the cost of admitting it, measured here, is one file for one file.
     Both bounds on that first branch are load-bearing, and the cost of loosening each one is measured, not
     assumed: letting the span cross whitespace adds three files that are not paths at all
     (``https://app.notion.com/…-DT alex/tag`` and two archive objects), and dropping the trailing
@@ -94,8 +102,9 @@ def machine_path_rule(account: str) -> re.Pattern:
     mistake that turned 218 into 322.
     """
     token = _account_token(account, inside_path=True)
-    return re.compile(r"(?:%s%s[\\/]|%s%s|%s%s)"
-                      % (ABS_WIN, token, ABS_POSIX, token, ABS_HOME_DIR, token), re.IGNORECASE)
+    return re.compile(r"(?:%s%s[\\/]|%s%s|%s%s|%s%s[\\/])"
+                      % (ABS_WIN, token, ABS_POSIX, token, ABS_HOME_DIR, token,
+                         ABS_HOME_SEGMENT, token), re.IGNORECASE)
 
 
 def account_name() -> str:

@@ -113,11 +113,16 @@ def test_a_home_path_may_end_at_the_account_directory_but_a_url_may_not_start_on
     counts three files that are not paths (``https://app.notion.com/…-DT alex/tag`` and two archive
     objects), and dropping the trailing separator as well takes it to fourteen -- ``s:`` from ``https:``
     is a perfectly plausible drive letter. Over-counting a leak is recoverable; counting other people's
-    names as this machine is the mistake that turned 218 into 322.
+    names as this machine is the mistake that turned 218 into 322. The last of the four shapes is the home
+    fragment a table cell writes -- ``（Users/<account>/AppData/…）``, no drive, no leading slash -- and
+    admitting it costs one file for one file on this tree, so the population no longer has a machine-path
+    spelling it cannot see at all.
     """
     (tmp_path / "ends-here.md").write_text("home = C:\\Users\\zzq\n", encoding="utf-8")
     (tmp_path / "url.md").write_text("read s://app.notion.com-DT zzq/tag, and OpenZZQ too\n",
                                      encoding="utf-8")
+    (tmp_path / "fragment.md").write_text("| 镜像 | （Users/zzq/AppData/Temp/a0） |\n", encoding="utf-8")
+    (tmp_path / "prose.md").write_text("GitHub users/zzq 这种写法不是目录\n", encoding="utf-8")
 
     def totals(*names):
         document = module.measure(root=tmp_path, account="zzq", claimed=set(), files=list(names))
@@ -134,8 +139,17 @@ def test_a_home_path_may_end_at_the_account_directory_but_a_url_may_not_start_on
         % url)
     assert url["account_mentions"] == 1, (
         "独立 token 的口径变了，账号名人群就不是原来那一个：%s" % url)
-    both = totals("ends-here.md", "url.md")
-    assert both["files_with_absolute_paths"] == 1 and both["files_with_account_mentions"] == 2, both
+    fragment = totals("fragment.md")
+    assert fragment["absolute_machine_paths"] == 1, (
+        "没有盘符、前面只有一个全角括号的 home 片段没被计入——那是现数里最后一个漏计的形状：%s" % fragment)
+    assert fragment["account_mentions"] == 0, (
+        "片段里账号名前是斜杠，不该同时算成独立 token，人群会重复计数：%s" % fragment)
+    prose = totals("prose.md")
+    assert prose["absolute_machine_paths"] == 0, (
+        "`users/zzq` 后面没有分隔符就不是目录，散文里的仓库路径不该进机器路径人群：%s" % prose)
+    all_four = totals("ends-here.md", "url.md", "fragment.md", "prose.md")
+    assert (all_four["files_with_absolute_paths"], all_four["files_with_account_mentions"]) == (2, 2), (
+        "四个形状的文件级计数不是一路径、一提及各两个：%s" % all_four)
 
 
 def test_a_missing_ledger_aborts_instead_of_narrowing_the_scan(module, tmp_path, monkeypatch):
