@@ -16,7 +16,7 @@
   pre-push 守卫逐条核（blob 上限、危害扫描现跑），不用 `--no-verify`。合并前专门为"要被并入的那一格"
   跑了一次终端闭环审计（CLOSED 14/14 @ `f77ceac`），落地过程见 docs/CODEX-AUDIT-ENTRY.md §15.39。
   上一次"已推送到 origin 并被公开克隆独立复跑"的核验仍是 2026-11-02，见 §15.27——那条不描述本批。
-- 依托提交：全量收据所测的那棵树是 `5459ba4`（556 passed, 3 subtests passed in 1667.62s (0:27:47)，该收据自己的候选摘要 `96f9162dd0a85509…`、7309 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
+- 依托提交：全量收据所测的那棵树是 `866d46b`（557 passed, 3 subtests passed in 1679.19s (0:27:59)，该收据自己的候选摘要 `6d6fc9e04f41a4ea…`、7309 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
   本分支与 `main` 的真实 SHA 一律用 `git rev-parse HEAD` / `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**默认分支是 `main`**；2026-11-04 起远端多一条
   `audit/backend-closure-20261103`（`git branch -r` 现读两条：`origin/main` 与它，`origin/HEAD` 仍指 main）。
@@ -254,17 +254,18 @@ unsettled_files = 237
    发布 Release、改可见性或分支保护、删分支
    都不在那两句授权里，未动。
 
-   **第三批与第四批（#25–#30）落地状态**：已按 owner 2026-11-05「推送并并入 main + 打标签」与
-   「全部上传」推上远端。现读终态（用 §开头那条 `git ls-remote` 命令自读，不抄本文件）：`main` 与
-   `audit/backend-closure-20261103` 同为同一个头，注释标签 `closure-20261105` 指在它下面一格
-   （被审、被并入、被标注的格子），标签不重打。逐轮实测与落地过程见
-   docs/CODEX-AUDIT-ENTRY.md §15.40–§15.43。
-   锚点这一族已经收口的：`migration/source-coverage-*.csv` 的 `authority` 列与
-   `migration/api-contract-check.json` / `requirement-traceability.csv` 的 python 位置列现在都是
-   `file::name`；改代码不再挪动登记的指向。仍然在账上的下一项：`backend/v1.py` 里 `V1_ROUTES`
-   被绑两次（`()` 声明与装配后的表），名字不唯一，这一条只能留在行号形态且留的是第一条——要说准
-   "路由表在哪"得先动 backend 的声明，不在本轮擅动。
-   清扫面已补齐：收据自己的 `--basetemp` 根会被扫（上一格一次全量在那里留 1,649 个沙箱 /
-   120.69 MiB）。其余人群不变：真人/owner 项、`237` 未决 + `32` 个人决定项、L10#0 验收门 `REFUSED`、
+   **#25–#33 的逐轮实测从 docs/CODEX-AUDIT-ENTRY.md §15.40 起逐节追加**（append-only，
+   不回头改已提交的读数）。
+   上传状态不写在本文件里——分支头的现值每推一次就变一次，要用 `git ls-remote origin refs/heads/main
+   refs/heads/audit/backend-closure-20261103 refs/tags/closure-20261105^{}` 现读（§15.44 定的规矩）。
+   锚点这一族到此收口：`migration/source-coverage-*.csv` 的 `authority` 列、
+   `migration/api-contract-check.json` 的 `handler位置` 与 `migration/requirement-traceability.csv`
+   的 python 位置列都是 `file::name`；仓库自身状态改由 `repo:branch` 向 git 现问，登记不再把
+   `.git/` 里的字节当实现位置（分离检出时那种引用会绿着说假话）。
+   下一格起手项：追踪件散文里 621 处 `.py:行号` 式引用要先按"冻结来源/逐字节复制件/本仓自有"三类
+   拆开才能动（分布现数写在本轮追加的那一节里；直接扩人群会把 owner 投递的任务包与来源记录判成违规）；
+   `#16` 的账号名人群同理，且实测区分"我的 Windows 账号名"与公开仓库主名 `DTALEX66`——后者把
+   此前那个 322 撑大了。清扫面已补齐：收据自己的 `--basetemp` 根会被扫。
+   其余人群不变：真人/owner 项、`237` 未决 + `32` 个人决定项、L10#0 验收门 `REFUSED`、
    L20#0 真实宿主、模型推理、真实私有数据迁移、L00#2 出网隔离、来源仓删除与告警、GitHub 四条 key
-   告警、322 个含机器名的跟踪件未分类、Linux 复跑（N05 因此 PARTIAL）。
+   告警、Linux 复跑（N05 因此 PARTIAL）。
