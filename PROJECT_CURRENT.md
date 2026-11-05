@@ -16,7 +16,7 @@
   pre-push 守卫逐条核（blob 上限、危害扫描现跑），不用 `--no-verify`。合并前专门为"要被并入的那一格"
   跑了一次终端闭环审计（CLOSED 14/14 @ `f77ceac`），落地过程见 docs/CODEX-AUDIT-ENTRY.md §15.39。
   上一次"已推送到 origin 并被公开克隆独立复跑"的核验仍是 2026-11-02，见 §15.27——那条不描述本批。
-- 依托提交：全量收据所测的那棵树是 `866d46b`（557 passed, 3 subtests passed in 1679.19s (0:27:59)，该收据自己的候选摘要 `6d6fc9e04f41a4ea…`、7309 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
+- 依托提交：全量收据所测的那棵树是 `2ee2777`（561 passed, 3 subtests passed in 1220.53s (0:20:20)，该收据自己的候选摘要 `2b34a6dff600078d…`、7311 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
   本分支与 `main` 的真实 SHA 一律用 `git rev-parse HEAD` / `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**默认分支是 `main`**；2026-11-04 起远端多一条
   `audit/backend-closure-20261103`（`git branch -r` 现读两条：`origin/main` 与它，`origin/HEAD` 仍指 main）。
