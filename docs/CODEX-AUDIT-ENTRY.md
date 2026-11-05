@@ -3292,3 +3292,47 @@ AssertionError 原文**，不再是"N failed in Xs"。
 坏引用只能按冻结件的规矩具名声明，不许改写历史读数；`#37`——两个 `--check` 模式即使摘要里
 `broken>0` 也返回 rc=0，"跑过了"不等于"没问题"，本批改绑链的日志因此记的是数字本身而不是退出码。
 推送、合并、打标签不在本目标内，逐次要 owner。
+
+### 15.48 第十一格：豁免从三份代码常量变成一个数据件，判据第一次能够失败
+
+代码格 `78b3866`，收据测的是 `78b3866`：`574 passed, 3 subtests passed in 1463.94s (0:24:23)`（574 passed，
+failed 0，errors 0），候选 7312 个文件 / 摘要
+`8842d46c24e660bc…`，跟踪字节移动 `[]`，来源仓未变。上一格代码格 `481debd`。
+终端闭环审计 `{"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}` @ `99ff345`；改绑链 18 步里红的是 ["terminal closure audit"]；
+危险扫描 7312 个跟踪件全读过（files_read 7312），blocking 0。
+
+**一、`#36`：审计史进了现算面，坏掉的两条按冻结件的规矩声明，不改写。**
+`docs/` 第一层是我们自己写的散文，之前不在引用检查面上，那里 `.py` 行号只会随被引文件增长静默漂。
+进面之后现算：审计史 73 条引用里损坏 2 条，两处是同一根锚点
+（`tests/conftest.py::build_server`），而那句话是在**叙述"当初写错的出处"**——真正的定义在
+`backend/app.py` 的 build_server。append-only 的已提交读数不回改，所以它落进声明清单而不是 diff。
+面停在这一层也是有数的：`docs/history/` 有 1170 条引用、23 条不成立、130 条指向本仓根本没有的文件，
+因为那些记录说的是**来源仓的树**；拿我们的行号去判它，只会得到一个两头都不真的结论。
+
+**二、`#37`：判据得能说"不"。** 两个 `--check` 模式过去打印一份文档然后恒返回 0，
+"我跑过了"于是容易被读成"没问题"。现在退出码就是结论，三条都会非 0：可改写面上的坏引用不在清单里、
+冻结字节里的坏引用没被声明、清单里有一条不再被任何引用命中的**过期豁免**。第三条不是卫生问题而是掩护问题。
+清单文件缺失也是拒绝（`MEASUREMENT_LEDGER_ABSENT`）而不是"空清单"——空清单等于允许一切损坏。
+
+**三、豁免从三份代码常量变成一个数据件。** 三张表原先都长在守卫文件里：own_prose 5 条、
+register_anchors 1 条、frozen_dead_cites 1 条。
+数据只留一份（`config/citation-exemptions.json`，每条必须带 why，无原因的条目直接判失败），
+判断仍写两遍（工具与守卫各自实现），这才是一处维护的真正含义：抄一份清单等于造出第二份清单。
+
+**四、一格之内自己踩到的一次回归，被门禁当场抓住。** 清单文件 `git add` 之前，登记扫描面里根本没有它，
+所以 CLI 与节点都绿；一 staged，它就被 `git ls-files migration config` 枚举进登记面，在里面扫到自己声明的
+那根死锚点，于是 `test_published_register_anchors_point_at_content_that_is_still_there` 报"登记里发布了
+不再成立的锚点"。这不是缺陷复现，是我引入的回归，而且是**跟踪状态本身改变了判据作用面**这一类。
+处理不是把它豁免掉，而是把清单从登记扫描面里排除并写明理由：豁免清单是关于引用的数据，
+把它当登记表扫，它会为"那条声明"再要一条声明，没有底。这条排除由节点钉住，并配一支反例。
+
+**五、反例：本格七支，另加上批九支在新代码下复跑。**
+本格七支逐支红在自己那句断言上：`exemption_ledger_scanned_as_a_register`、`docs_history_left_the_cite_face`、`frozen_dead_cite_declaration_removed`、`check_mode_exit_code_hardcoded_to_zero`、`absent_ledger_becomes_an_empty_allowance`、`stale_allowances_never_reported`、`register_verdict_declares_itself_clean`；上一批九支在改动之后重跑仍逐支红：`home-dir-ending-path-not-counted`、`home-fragment-path-not-counted`、`drive-span-allows-whitespace`、`intersection-counter-never-written`、`intersection-as-either-shape`、`root-files-dropped-from-cite-face`、`shape-split-never-incremented`、`per-file-listing-partial`、`path-only-machine-leak-in-own-prose`。
+判定器只看 pytest 的异常块，`--selftest` 再证它敢说"不"（拿一条只存在于节点源码里的说明去问，判成
+DID_NOT_GUARD）。还原全部按字节做，跑完工作树与跑前逐字节相同。
+本文件声明节点 {'tests': 16, 'bytes': 43005, 'sha256': 'bd100b034db42ea21be9a6f73c86306289c9f1e763eb3ac07ddbc88d1068e139'} 个，全仓 568 个；自有散文现算 151 个文件 504 条引用、
+损坏 7 条，登记锚点 870 条里除那条具名历史记述外全部成立，含整值机器路径的文件 394 个。
+
+**六、还挂着的照旧具名**：真人/owner 项、`producedAt` 必填、真实宿主与模型推理、来源仓删除与告警、
+Linux 复跑与两条前端排除项，清单看 `config/blocker-register.json` 与入口 §五。
+推送、合并、打标签不在本目标内，逐次要 owner。
