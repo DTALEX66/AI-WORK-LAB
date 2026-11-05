@@ -1446,7 +1446,10 @@ def test_a_tracked_byte_the_hazard_gate_cannot_open_blocks_instead_of_passing(tm
 
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
     (tmp_path / "clean.md").write_text("no secrets here\n", encoding="utf-8")
-    (tmp_path / "hidden.md").write_text("AKIAABCDEFGHIJKLMNOP\n", encoding="utf-8")
+    # assembled, never written whole: the repo's own bytes must not carry a full key shape, which is
+    # why the AWS-prefix node above keeps prefix and body in separate literals
+    key_shape = "AKIA" + "ABCDEFGHIJKLMNOP"
+    (tmp_path / "hidden.md").write_text(key_shape + "\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True, capture_output=True)
     (tmp_path / "hidden.md").unlink()
     monkeypatch.setattr(haz, "ROOT", tmp_path)
@@ -1461,7 +1464,7 @@ def test_a_tracked_byte_the_hazard_gate_cannot_open_blocks_instead_of_passing(tm
     assert rc == 1, "a scan that did not cover the tree may not exit 0"
 
     # positive control: the same tree, same bytes, readable again -- the refusal came from the hole
-    (tmp_path / "hidden.md").write_text("AKIAABCDEFGHIJKLMNOP\n", encoding="utf-8")
+    (tmp_path / "hidden.md").write_text(key_shape + "\n", encoding="utf-8")
     rc = haz.main([])
     document = json.loads(capsys.readouterr().out.splitlines()[0])
     assert rc == 0 and document["files_read"] == 2 and document["files_unreadable"] == 0, document
