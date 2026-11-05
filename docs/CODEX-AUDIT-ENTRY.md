@@ -3016,3 +3016,46 @@ owner 2026-11-05 那句「全部上传」之前，先把"还有什么没上去"�
 
 本节的 delta 仍只有文档（`docs/CODEX-AUDIT-ENTRY.md` 与必要的入口改写），标签不重打；
 `refs/heads/main` 与审计分支推完后同一个头，用什么命令读、读到什么值，以命令为准。
+
+### 15.45 第五批：登记不许再指着 `.git/` 和死声明说话，以及"322 个含账号名的文件"这个前提被现数改了
+
+代码格 `866d46b`，收据 `557 passed, 3 subtests passed in 1679.19s (0:27:59)`，候选 `7309` 个文件 / 摘要 `6d6fc9e04f41a4ea…`，
+跟踪字节移动 `[]`。终端闭环审计 `{"PASS": 14, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}` @ `0a889e0`；
+改绑链 14 步里 ["check entry", "terminal closure audit"] 两步红，都是已知的形状（改写前的入口指针、以及链末那一步
+身后还留着未提交的改绑件——那张收据替不了它们）；危害扫描现跑 7309 个文件 / 发现 17 处 / unadjudicated 0 / blocking 0。
+
+**一、#33：一个"绿着说假话"的位置引用。** `migration/requirement-traceability.csv` 的 U11
+（"建立新分支执行融合与修复"）把 `当前实现位置` 写成 `.git/HEAD:1`。那不是一个可复核的位置：
+`.git/` 的字节不在 `git ls-files` 人群里、克隆之间没法 diff，而本仓的克隆复跑是按 SHA
+**分离检出**的——那时 `.git/HEAD` 里是一枚裸 SHA 而不是 `ref: refs/heads/…`，行号仍然"存在且非空"，
+于是守卫恰好在它声称的事不成立时判过。现在 `check_location` 对 `.git/` 路径具名拒绝，新增
+`repo:branch` 形态由 `git symbolic-ref --short HEAD` 现答，分离头返回 False、按 reconcile 既有规则
+自动降级；检查侧 `resolve_location_independently` 独立实现同一条，不共用生产函数。
+新节点不是描述而是构造：现场 `git init` 一个仓、打一个空提交、`checkout --detach`，并断言那时
+`.git/HEAD` 不以 `ref:` 开头，再要求 `repo:branch` 必须 False。反例 5 个全部
+"红且红在该管的那条断言上"（falsifier 比对失败行文本，不只看退出码），文件逐字节 sha 相等复原。
+
+**二、#32：一条死掉的重复声明逼着锚点退回行号。** `backend/v1.py` 里 `V1_ROUTES` 在 149 行被绑成
+`()`、195 行被绑成装配后的表；AST 现读确认这个名字两次都只是 Store、两次之间没有任何读取，
+importer 也都是模块执行完之后才读——那条前置声明是死字节，却使名字不唯一，`find_binding` 只能
+按 #28 定的规则退回行号，而退到的是第一条：登记里"路由表在哪"指着那个空元组。删掉之后
+`backend/v1.py::V1_ROUTES` 成为唯一锚。顺带把 test_v16 里四处硬编码的 `backend/v1.py:130/146/195`
+改成按 AST 现取——那几条断言本来只是"恰好文件长这样"才成立，本批删掉一行就先把它打红了一次。
+两侧合起来的现数：登记里的引用形态从 {"symbol-form": 569, "number-form": 39} 变成 {"symbol-form": 570, "number-form": 37}，
+其中 `.py:` 形态已归零，剩下的 37 条是 `.ts` / `.json` / `.md` 等数据行的行号，另议。
+
+**三、一个前提被现数改掉：不是 322，是 218。** `#16` 挂着"扩机器路径守卫前先分类"，凭的是早先
+一个宽匹配数出来的 322 个跟踪件。按人群重测（区分"独立的账号名 token"与公开的仓库主名 `DTALEX66`，
+后者含同样的字母）：含本机账号名的跟踪件是 **218 个**，其中 214 个属 owner 投递的
+任务包与权威快照（冻结来源记录，按 AGENTS.md 不改写，里面有 1047 处绝对机器路径）、
+1 个是来源仓逐字节复制件（改它要走 DECLARED_REWORK + 台账补采）、3 个是本仓自有
+（`config/adapter-registry.json` 那 4 处绝对路径正是现有守卫盯的对象）。整值含绝对机器路径的文件
+168 个。所以"直接扩人群"会把 214 条来源记录判成违规——这句在本批之前是推断，
+现在是有名单的实测：分类清单落在 `.project-local/runs/20261105-batch5/machine-name-population.csv`
+（未跟踪，逐件带 owner 类别、提及数与绝对路径数）。分类工具本身也错过一次：`endswith` 把
+`AGENTS.md` 判成"逐字节复制件"、`copies.json` 的键读错导致 claimed 集合为 0，两处都修成
+前缀边界精确匹配 + 真读台账形状之后，才有了上面的数。
+
+**四、清扫在真收据里的样子。** 收据自己的 `--basetemp` 根跑完只剩 1 个条目
+（["coverage0"]）——`test_*<n>` 形态的沙箱 0 个，那是 #25 的意义；`basetemp_leftovers` 的四条
+独立条件（名字形态、是目录、不在会话开始快照、mtime 晚于会话开始）一条都没少。
