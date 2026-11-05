@@ -57,7 +57,7 @@ crlf_tracked_files = 121
 distinct_paths_design = 4055
 distinct_paths_union = 6774
 distinct_paths_work = 2734
-lf_tracked_files = 725
+lf_tracked_files = 726
 route_endpoints = 164
 source_rows_design = 4476
 source_rows_total = 7210
@@ -65,7 +65,7 @@ source_rows_work = 2734
 spdx_claimed_files = 226
 spdx_malformed_lines = 0
 suite_test_files = 36
-suite_test_nodes = 566
+suite_test_nodes = 568
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -256,6 +256,10 @@ unsettled_files = 237
    重算过那几条。人群面按形态分列文件数（`files_with_account_mentions`、`files_with_absolute_paths`、
    `files_with_account_mention_and_path`、`files_with_line_cites`）："含账号名的文件"与"含机器绝对路径的
    文件"是两个不同人群，前者才是 218 那一格，两者的交集才是 168 那一格；拿一个数去核另一句话必然对不上。
+   自有散文那一面还含 `docs/` 第一层（我们自己的审计史），它里面两条不再成立的锚点是**具名声明**下来的，
+   不是改写的：已提交的历史读数不回改。声明与许可豁免都在 `config/citation-exemptions.json` 一处，
+   工具与守卫共读同一份数据，判据仍各写一遍；清单文件缺失是**拒绝判定**，不是"允许一切"。
+   两个 `--check` 模式现在返回判据（有未声明的损坏、或清单里有过期豁免即非 0），"我跑过了"不再等于"没问题"。
    真人/owner 项未动：未决与个人决定项按上面派生数读（正文不抄数，抄一次就要重新发现一次）、L10#0 验收门仍
    `REFUSED`、L20#0 真实宿主、真人专业签字、模型推理、真实私有数据迁移、L00#2 出网隔离、推送与
    远程 CI、来源仓删除与告警、GitHub 四条 key 告警、机器路径守卫的人群。最后一项现在是有闸门的分类而不是
@@ -276,10 +280,8 @@ unsettled_files = 237
    `migration/api-contract-check.json` 的 `handler位置` 与 `migration/requirement-traceability.csv`
    的 python 位置列都是 `file::name`；仓库自身状态改由 `repo:branch` 向 git 现问，登记不再把
    `.git/` 里的字节当实现位置（分离检出时那种引用会绿着说假话）。
-   下一格起手项：本仓可自修的后端项还剩两格没做，写在这里而不是抹平——`#36` 把 append-only 审计史里的
-   `.py` 行号引用也纳入现算面（那种坏引用只能按冻结件的规矩具名声明，不许回头改写已提交的历史读数），
-   `#37` 让 `scripts/measure_citation_population.py` 的两个现查模式在发现损坏时返回非 0（现在恒 rc=0，
-   "跑过了"会被读成"没问题"，改绑链的日志因此记的是数字本身）。除此之外剩下的都带外部条件——
+   下一格起手项：`#36` 与 `#37` 已在本格收掉，本仓可自修的后端项到此是"每个数能现查、每个判据能失败"
+   这一状态，剩下的都带外部条件——
    小游戏领域包要真人写 5 条设计内容、workbench 离线构建的 `picomatch` 要网络安装（未授权）、
    `producedAt` 改成必填要 owner 定外部工具合同、Linux 复跑（N05 因此 PARTIAL）、以及上面逐条点名的
    真人/owner 项。引用这一族的教训留在闸门里而不是只留在话里：人群从 `git ls-files` 现取

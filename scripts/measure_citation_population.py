@@ -47,6 +47,7 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 COPIES = REPO_ROOT / "migration" / "copies.json"
 MANIFEST = REPO_ROOT / "docs" / "history" / "sources-20261101" / "MANIFEST.csv"
+EXEMPTIONS = REPO_ROOT / "config" / "citation-exemptions.json"
 # owner-delivered task pack and the October authority snapshots: records, not our prose
 FROZEN_INPUTS = ("docs/audits-20261103-cloud-audit/", "docs/authority-202610/", "docs/history/")
 APPEND_ONLY = ("docs/CODEX-AUDIT-ENTRY.md",)
@@ -209,6 +210,49 @@ def owner_of(relative: str, claimed: set[str]) -> str:
 
 OWNERSHIPS = ("append_only_history", "frozen_source_input", "migrated_copy", "generated_register",
               "own_code_and_checks", "own_other")
+#: bytes this repo may not rewrite: owner-delivered inputs, byte-for-byte copies claimed by the ledger,
+#: and the append-only audit history. A dead cite inside them is a declaration, never an edit -- which is
+#: why the verdict has to know the difference instead of ordering a change the boundary forbids.
+UNEDITABLE_CUSTODY = ("append_only_history", "frozen_source_input", "migrated_copy")
+
+
+def cite_key(citing: str, cite: str):
+    """The ledger's key for one cite: (where it is written, the path as written, the tail).
+
+    Keyed by the cite *as written*, the same way the guard keys it -- if the instrument resolved the path
+    first, an exemption could be satisfied by a different file than the sentence actually points at.
+    """
+    head, kind, tail = _cite_parts(cite)
+    if kind == "line":
+        start, end = tail
+        return (citing, head, "%d-%d" % (start, end) if start != end else str(start))
+    return (citing, head, str(tail))
+
+
+def load_exemptions(path: pathlib.Path | None = None) -> dict:
+    """Read the one ledger the verdicts are measured against -- an absent file is a refusal, not a zero.
+
+    Both consumers -- ``--check-own-cites``/``--check-register-cites`` here and the guard node -- read this
+    file, so the *data* has a single home while the *judgement* stays implemented twice on purpose. An
+    empty default would be the worst possible failure mode: every broken cite would suddenly be allowed.
+    """
+    path = pathlib.Path(EXEMPTIONS if path is None else path)
+    if not path.is_file():
+        raise SystemExit("MEASUREMENT_LEDGER_ABSENT: %s 不在，无法判定哪条损坏是具名豁免" % path)
+    document = json.loads(path.read_text(encoding="utf-8-sig"))
+    if document.get("schema") != "ai-work-lab/citation-exemptions/v1":
+        raise SystemExit("MEASUREMENT_LEDGER_SHAPE: %s 的 schema 不是预期那一份" % path)
+    for section in ("own_prose", "register_anchors", "frozen_dead_cites"):
+        if not isinstance(document.get(section), list):
+            raise SystemExit("MEASUREMENT_LEDGER_SHAPE: %s 缺少 %s 列表" % (path, section))
+    return {
+        "own_prose": {tuple(row[key] for key in ("citing", "target", "tail")): row["why"]
+                      for row in document["own_prose"]},
+        "register_anchors": {tuple(row[key] for key in ("register", "target", "tail")): row["why"]
+                             for row in document["register_anchors"]},
+        "frozen_dead_cites": {(row["citing"], row["cite"]): row["why"]
+                              for row in document["frozen_dead_cites"]},
+    }
 
 
 def measure(root: pathlib.Path = REPO_ROOT, account: str | None = None,
@@ -287,9 +331,17 @@ ROOT_TEXT_SUFFIXES = (".md", ".toml")
 
 
 def in_own_face(relative: str) -> bool:
-    """Is this tracked byte our own prose -- code, checks, or a root-level document?"""
-    return relative.startswith(OWN_CODE_PREFIXES) or (
-        "/" not in relative and relative.endswith(ROOT_TEXT_SUFFIXES))
+    """Is this tracked byte our own prose -- code, checks, or a document we authored?
+
+    ``docs/`` counts only at its first level, and that boundary is measured rather than assumed: the four
+    files there are our own writing (the audit entry: 73 cites, 71 still alive, 2 dead and both named
+    below), while ``docs/history/`` (5965 files, 1170 cites, 23 dead) and the owner-delivered pack
+    (407 cites, 63 unresolvable) cite *another repository's* tree. Judging those numbers against our files
+    would print a verdict that is true of neither tree, so they stay outside the face on purpose.
+    """
+    return (relative.startswith(OWN_CODE_PREFIXES)
+            or ("/" not in relative and relative.endswith(ROOT_TEXT_SUFFIXES))
+            or (relative.startswith("docs/") and "/" not in relative[len("docs/"):]))
 #: the three shapes a citation to a Python file can take in prose or in a message string
 CITE_SHAPE = re.compile(r"(?P<cite>[\w./-]+\.py(?:::[A-Za-z_]\w*|:\d+(?:-\d+)?|#[^\s,;)\]\"`]+))")
 #: migration-map identity keys name a file in the SOURCE repository's layout: a row's id, not a location
@@ -325,7 +377,8 @@ def _cite_parts(cite: str):
     return head, "anchor", anchor
 
 
-def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = None) -> dict:
+def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = None,
+                      claimed: set[str] | None = None) -> dict:
     """Do the line numbers written into our own prose still point at content that exists?
 
     A ``file.py:1234`` sentence reads the same whether line 1234 is the guard it describes or a blank line
@@ -334,8 +387,10 @@ def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = 
     never judged: they are docstring examples, sandbox fixtures, and ``.project-local`` receipt paths --
     there is no tracked byte for them to have drifted away from.
 
-    The exemption ledger lives with the guard (``tests/unified/test_v32_population_measurements.py``), not
-    here, so a broken cite cannot be made to disappear by editing the instrument that finds it.
+    The exemption ledger is data, not code: ``config/citation-exemptions.json``, read here and by the guard.
+    What stays implemented twice is the *judgement*, so a broken cite cannot be made to disappear by
+    editing the instrument that finds it -- and the ledger file itself is never defaulted to empty, because
+    an empty allowance list would let every broken cite through.
     """
     root = pathlib.Path(root)
     if files is None:
@@ -343,6 +398,7 @@ def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = 
                                 check=True).stdout
         files = [row.decode("utf-8", "replace") for row in listed.split(b"\0") if row]
     own = sorted(rel for rel in files if in_own_face(rel))
+    claimed = ledger_targets() if claimed is None else claimed
     by_name: dict[str, list[str]] = {}
     for rel in sorted(files):
         by_name.setdefault(pathlib.PurePosixPath(rel).name, []).append(rel)
@@ -387,7 +443,8 @@ def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = 
                         break
                 if not live:
                     row["broken"] += 1
-                    broken.append({"citing": rel, "line": number, "cite": cite, "kind": kind})
+                    broken.append({"citing": rel, "line": number, "cite": cite, "kind": kind,
+                                   "custody": owner_of(rel, claimed)})
     counts["files"] = len(own)
     counts["broken"] = len(broken)
     counts["files_with_cites"] = len(per_file)
@@ -396,6 +453,49 @@ def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = 
             "by_file": [{"file": rel, "cites": row["cites"], "broken": row["broken"]}
                         for rel, row in sorted(per_file.items())],
             "broken": broken}
+
+
+def own_cite_verdict(report: dict, ledger: dict) -> dict:
+    """Say which broken cites are allowed by name, which are violations, and which allowances have gone stale.
+
+    A broken cite in bytes we own is a violation. A broken cite in frozen or append-only bytes is not an
+    edit task -- it is a declaration -- but an *undeclared* one is still a violation, otherwise the face
+    can only grow quieter as it ages. An exemption that no longer matches anything is a violation too: a
+    stale allowance is exactly the cover the next real breakage would slide under.
+    """
+    seen, frozen_seen, violations = set(), set(), []
+    for row in report["broken"]:
+        key = cite_key(row["citing"], row["cite"])
+        if key in ledger["own_prose"]:
+            seen.add(key)
+        elif row["custody"] in UNEDITABLE_CUSTODY:
+            declared = (row["citing"], row["cite"])
+            if declared in ledger["frozen_dead_cites"]:
+                frozen_seen.add(declared)
+            else:
+                violations.append(dict(row, why="冻结/append-only 字节里未声明的坏引用（只能具名，不许改写）"))
+        else:
+            violations.append(dict(row, why="本仓可改写面上的坏引用"))
+    # a declaration that no longer matches anything is as dangerous as a missing one: it silently allows
+    # the next broken cite in the same frozen file
+    stale = [list(key) for key in sorted(set(ledger["own_prose"]) - seen)]
+    stale += [list(key) for key in sorted(set(ledger["frozen_dead_cites"]) - frozen_seen)]
+    return {"allowed": len(seen) + len(frozen_seen), "violations": violations,
+            "stale_exemptions": stale, "clean": not violations and not stale}
+
+
+def register_cite_verdict(report: dict, ledger: dict) -> dict:
+    """The same two-way rule for anchors published in registers."""
+    seen, violations = set(), []
+    for row in report["failures"]:
+        key = cite_key(row["cell"].split(":", 1)[0], row["anchor"])
+        if key in ledger["register_anchors"]:
+            seen.add(key)
+        else:
+            violations.append(dict(row, key=list(key)))
+    stale = [list(key) for key in sorted(set(ledger["register_anchors"]) - seen)]
+    return {"allowed": len(seen), "violations": violations, "stale_exemptions": stale,
+            "clean": not violations and not stale}
 
 
 REGISTER_DIRS = ("migration", "config")
@@ -425,12 +525,18 @@ def register_cells(root: pathlib.Path = REPO_ROOT, files: list[str] | None = Non
     Enumerated from ``git ls-files migration config`` rather than a list of filenames: the first pass over
     this population used a hand-written set of registers and therefore missed
     ``migration/requirement-traceability.csv``, which is the file holding the ``repo:branch`` claims.
+
+    The exemption ledger is skipped, and not because it would fail: it is *about* cites, so scanning it
+    finds the dead anchor it declares and demands a second declaration for the first one's own text, with
+    no bottom. Its columns are names of other files' history, not claims about where our code lives.
     """
     root = pathlib.Path(root)
+    ledger = (pathlib.Path(EXEMPTIONS).relative_to(REPO_ROOT)).as_posix()
     if files is None:
         listed = subprocess.run(["git", "ls-files", "-z", *REGISTER_DIRS], cwd=str(root),
                                 capture_output=True, check=True).stdout
         files = [row.decode("utf-8", "replace") for row in listed.split(b"\0") if row]
+    files = [rel for rel in files if rel != ledger]
     for rel in sorted(files):
         text = read_tracked_text(root / rel)
         if text is None:
@@ -537,22 +643,36 @@ def register_cite_liveness(root: pathlib.Path = REPO_ROOT) -> dict:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--json-out", type=pathlib.Path)
+    parser.add_argument("--exemptions", type=pathlib.Path,
+                        help="具名豁免清单（默认 config/citation-exemptions.json，缺文件即拒绝判定）")
     parser.add_argument("--check-own-cites", action="store_true",
                         help="walk our own prose citations instead of measuring the populations")
     parser.add_argument("--check-register-cites", action="store_true",
                         help="verify every file:line anchor published inside a register cell")
     args = parser.parse_args(argv)
+    rc = 0
     if args.check_own_cites:
         document = own_cite_liveness()
+        verdict = own_cite_verdict(document, load_exemptions(args.exemptions))
     elif args.check_register_cites:
         document = register_cite_liveness()
+        verdict = register_cite_verdict(document, load_exemptions(args.exemptions))
     else:
-        document = measure()
+        document, verdict = measure(), None
+    if verdict is not None:
+        # rc is the verdict: a mode that always exits 0 turns "I ran the check" into a false green, which
+        # is how one reader mistakes a printed document for an opinion.
+        document["verdict"] = {"clean": verdict["clean"], "allowed": verdict["allowed"],
+                               "violations": len(verdict["violations"]),
+                               "stale_exemptions": len(verdict["stale_exemptions"])}
+        document["violation_rows"] = verdict["violations"]
+        document["stale_exemption_keys"] = verdict["stale_exemptions"]
+        rc = 0 if verdict["clean"] else 1
     payload = json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True)
     if args.json_out:
         args.json_out.write_text(payload + "\n", encoding="utf-8", newline="\n")
     print(payload)
-    return 0
+    return rc
 
 
 if __name__ == "__main__":

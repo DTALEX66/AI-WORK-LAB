@@ -320,42 +320,44 @@ def test_the_root_build_config_is_inside_the_checked_cite_face(module, tmp_path)
 
 
 #: Cites that resolve to a tracked file but name a location inside it that is deliberately false: the
-#: node asserts the *refusal*, so that pointer must stay broken. Keyed by (citing file, target file,
-#: tail) instead of by the whole cite, because writing the whole cite here would put a fresh
-#: file-number pointer into the very population this node scans -- the guard would fail on its own
-#: exemption list. Each entry carries its reason, and a dead entry fails: an exemption nobody needs
-#: would cover the next real breakage.
+#: node asserts the *refusal*, so that pointer must stay broken. The list lives in one tracked data file
+#: read by both the instrument and this guard -- a second copy of an allowance list is a second list;
+#: what stays implemented twice on purpose is the judgement, not the data.
 #:
-#: Cites whose path is not in the tracked tree at all are NOT listed here. Those are syntax examples and
+#: Cites whose path is not in the tracked tree at all are NOT listed there. Those are syntax examples and
 #: sandbox fixtures (a generic ``test_method`` in a docstring, a builder file the test creates inside a
 #: tmp_path, a receipt path under ``.project-local``); there is no byte of ours for them to have drifted
 #: away from, and forcing a per-row exemption for each would turn the guard into a list someone deletes
 #: to get green -- the exact failure this project has already had once.
-SYNTHETIC_LOCATIONS = {
-    ("tests/unified/test_v16_traceability.py", "backend/v1.py", "999999"):
-        "故意越界的行号，节点断言的正是它被拒",
-    ("tests/unified/test_v16_traceability.py", "tests/unified/test_v02_surface.py",
-     "test_no_such_test_anywhere"):
-        "伪造的测试名，验证证据读回会拒绝它",
-    ("tests/unified/test_v16_traceability.py", "scripts/migrate_sources.py", "prune_reportX"):
-        "沙箱里另造的符号名，用来断言同名歧义时不认锚点",
-    ("tests/unified/test_v25_audit_item_closure.py", "tests/unified/test_v25_audit_item_closure.py",
-     "test_this_name_does_not_exist"):
-        "自闭环审计的伪造节点名，断言的是它读不回来",
-    ("scripts/build_task_acceptance_register.py", "tests/conftest.py", "build_server"):
-        "登记注里明说这是当初写错的出处（真正的定义在 backend/app.py 的 build_server），"
-        "留着是说明改正过程，不是让读者去那里找实现",
-}
+LEDGER_PATH = TARGET_ROOT / "config" / "citation-exemptions.json"
+
+
+def _ledger(section, *keys):
+    """One section of the shared ledger, keyed the way this guard keys it, reasons mandatory."""
+    document = json.loads(LEDGER_PATH.read_text(encoding="utf-8-sig"))
+    if document.get("schema") != "ai-work-lab/citation-exemptions/v1":
+        raise AssertionError("豁免清单 %s 的 schema 不是预期那一份：%r"
+                             % (LEDGER_PATH.name, document.get("schema")))
+    rows = document[section]
+    out = {}
+    for row in rows:
+        if not str(row.get("why", "")).strip():
+            raise AssertionError("%s 里有条目没有理由：%r —— 无原因的豁免等于可以随便加" % (section, row))
+        out[tuple(row[key] for key in keys)] = row["why"]
+    return out
+
+
+SYNTHETIC_LOCATIONS = _ledger("own_prose", "citing", "target", "tail")
 
 #: Custody classes whose bytes this repo may not rewrite: owner-delivered inputs, byte-for-byte migrated
 #: copies claimed by ``migration/copies.json`` by digest, and the append-only audit history. A dead cite
 #: found inside them is a declaration problem (DECLARED_REWORK + ledger re-capture), never an excuse to
 #: edit the copy -- which is exactly the mistake this batch had to revert.
 UNEDITABLE_CUSTODY = frozenset({"frozen_source_input", "migrated_copy", "append_only_history"})
-#: dead cites that currently live in those frozen bytes, named so nothing edits them. Empty by measurement:
-#: the only frozen-copy cite in the tree points at a script that is not tracked here at all, so the
-#: liveness rule never evaluates it.
-FROZEN_DEAD_CITES: set[tuple[str, str]] = set()
+#: dead cites that live in those bytes, named so nothing edits them. They are declarations of history, so
+#: the guard still insists each one remains dead: a stale declaration is the cover the next real breakage
+#: would slide under.
+FROZEN_DEAD_CITES = set(_ledger("frozen_dead_cites", "citing", "cite"))
 
 CITE_IN_TEXT = re.compile(r"(?P<cite>[\w./-]+\.py(?:::[A-Za-z_]\w*|:\d+(?:-\d+)?|#[^\s,;)\]\"`]+))")
 #: identity keys of the migration map name a file in the SOURCE repository's layout. They are a row's id,
@@ -443,7 +445,8 @@ def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
     """
     files = [row for row in module.tracked_files()
              if row.startswith(("scripts/", "tests/", "backend/", "domains/work/"))
-             or ("/" not in row and row.endswith((".md", ".toml")))]
+             or ("/" not in row and row.endswith((".md", ".toml")))
+             or (row.startswith("docs/") and "/" not in row[len("docs/"):])]
     assert len(files) > 100, "the own-code population collapsed: %d files" % len(files)
 
     by_name: dict[str, list[str]] = {}
@@ -497,14 +500,10 @@ def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
     assert not broken, "本仓散文里的引用不再指向存在的内容：\n" + "\n".join(broken[:12])
 
 
-#: Register cells whose published anchor is deliberately not a live location. Keyed the same way as
-#: SYNTHETIC_LOCATIONS -- (register, target file, tail) -- so naming the exception here does not add a
+#: Register cells whose published anchor is deliberately not a live location. Same data file, keyed the
+#: same way as the prose section -- (register, target file, tail) -- so naming an exception never adds a
 #: fresh cite to the very population the prose guard scans.
-REGISTER_ANCHOR_EXEMPTIONS = {
-    ("migration/task-acceptance.csv", "tests/conftest.py", "build_server"):
-        "这一格引用的是登记当初写错的出处（真正的定义在 backend/app.py 的 build_server），"
-        "注里已明说它是调用点引用而非实现位置；改掉字节等于抹掉改正记录",
-}
+REGISTER_ANCHOR_EXEMPTIONS = _ledger("register_anchors", "register", "target", "tail")
 
 
 def test_published_register_anchors_point_at_content_that_is_still_there(module):
@@ -512,13 +511,19 @@ def test_published_register_anchors_point_at_content_that_is_still_there(module)
 
     The location and evidence columns carry anchors for non-Python targets too --
     ``apps/workbench/shell.ts:346``, a handoff ``12_来源基线.json:6``, ``.ui-reference/.../routes.ts:13`` --
-    and the register's Python-only anchor grammar never resolved any of them. Measured now: 870 anchors in
-    141,587 register cells, 869 alive, and the one exception is the cell below. A cite that has scrolled
-    past the end of its file, or that names two tracked files, prints exactly like a trustworthy one, which
-    is why this is a gate rather than a report.
+    and the register's Python-only anchor grammar never resolved any of them. A cite that has scrolled past
+    the end of its file, or that names two tracked files, prints exactly like a trustworthy one, which is
+    why this is a gate rather than a report. The counts are not restated here on purpose -- they move with
+    every register publish, and a number copied into a docstring is a number nobody re-derives.
     """
     report = module.register_cite_liveness()
     summary = report["summary"]
+    # the exemption ledger is data about cites, not a register publishing an implementation location:
+    # scanning it finds the dead anchor it declares and asks for a declaration of that declaration
+    ledger_rel = pathlib.Path(module.EXEMPTIONS).relative_to(module.REPO_ROOT).as_posix()
+    assert ledger_rel not in {rel for rel, _column, _number, _value in module.register_cells()}, (
+        "豁免清单被当成登记表扫了：%s 里那条具名死锚点会在自己的文本里再要一条声明，"
+        "这种回归不是发现缺陷，是制造无穷" % ledger_rel)
     # the enumerated face must be the whole register set, not a list of files someone remembered
     assert summary["cells"] > 100000, summary
     assert summary["anchors"] > 500, summary
@@ -589,6 +594,77 @@ def test_the_account_name_survives_only_where_it_is_accounted_for(module):
             "那格注册表带的账号名数量变了，相邻性规则覆盖的就不再是同一批字节：%s" % found)
 
 
+def test_our_own_audit_history_is_now_inside_the_face_but_the_source_records_are_not(module):
+    """#36: widening has to be a measured boundary, not a slide into other people's trees.
+
+    ``docs/`` at its first level is our own writing, so its cites are claims about *this* repository and
+    they get recomputed now -- 73 of them in the audit entry, and the two that no longer resolve are the
+    history quoting the anchor it was correcting, declared rather than edited. ``docs/history/`` stays out:
+    measured there are 1170 cites with 23 that do not resolve and 130 that name no tracked file at all,
+    because those records describe *another repository's* tree. Judging them against our line numbers would
+    print a verdict true of neither, so the boundary is drawn where the measurement says it is.
+    """
+    report = module.own_cite_liveness()
+    rows = {row["file"]: row for row in report["by_file"]}
+    assert "docs/CODEX-AUDIT-ENTRY.md" in rows, "审计史又回到没人重算的状态：%s" % sorted(rows)[:6]
+    assert rows["docs/CODEX-AUDIT-ENTRY.md"]["cites"] >= 70, rows["docs/CODEX-AUDIT-ENTRY.md"]
+    history = [row for row in report["broken"] if row["citing"] == "docs/CODEX-AUDIT-ENTRY.md"]
+    assert history, "审计史里没有一条坏引用了，那条具名声明就成了掩护下一次损坏的空位"
+    for row in history:
+        assert row["custody"] in UNEDITABLE_CUSTODY, row
+        assert (row["citing"], row["cite"]) in FROZEN_DEAD_CITES, (
+            "冻结/append-only 字节里出现了未声明的坏引用，只能具名，不许改写：%s" % row)
+    assert not any(rel.startswith("docs/history/") for rel in rows), (
+        "面滑进了来源记录：那里的引用说的是来源仓的行号，判ours的字节只会得到一个两头都不真的结论")
+
+    verdict = module.own_cite_verdict(report, module.load_exemptions())
+    assert verdict["clean"], "现算判据不再干净：%s" % verdict["violations"][:3]
+    assert verdict["allowed"] == len(SYNTHETIC_LOCATIONS) + len(FROZEN_DEAD_CITES), verdict
+
+
+def test_a_check_mode_must_be_able_to_fail(module, tmp_path, capsys):
+    """#37: a mode that prints a document and always exits 0 turns "I ran it" into a false green.
+
+    The verdict is now the exit code: violations (a broken cite outside the ledger, or a frozen one that
+    was never declared) and stale allowances both make it non-zero, a missing ledger is a refusal rather
+    than an empty list, and a passing run stays zero. Each of those is a separate way the old version
+    could have looked like a gate while deciding nothing.
+    """
+    real = json.loads(LEDGER_PATH.read_text(encoding="utf-8-sig"))
+
+    def write(document, name):
+        path = tmp_path / name
+        path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8", newline="\n")
+        return str(path)
+
+    assert module.main(["--check-own-cites", "--exemptions", write(real, "ok.json")]) == 0, \
+        capsys.readouterr().out[-200:]
+
+    missing_one = json.loads(json.dumps(real))
+    missing_one["own_prose"] = missing_one["own_prose"][1:]
+    assert module.main(["--check-own-cites", "--exemptions", write(missing_one, "short.json")]) == 1, (
+        "有一条真损坏不在清单里，判据必须非 0")
+
+    stale = json.loads(json.dumps(real))
+    stale["own_prose"].append({"citing": "scripts/nonexistent_witness.py", "target": "backend/v1.py",
+                               "tail": "1", "why": "这条永远不会被命中，留着就是掩护下一次损坏"})
+    assert module.main(["--check-own-cites", "--exemptions", write(stale, "stale.json")]) == 1, (
+        "清单里有一条不再成立的豁免却仍然算干净，它会在下一次真损坏时顶上去")
+
+    with pytest.raises(SystemExit) as abort:
+        module.load_exemptions(tmp_path / "absent.json")
+    assert "MEASUREMENT_LEDGER_ABSENT" in str(abort.value), (
+        "清单缺失时返回空集合等于允许一切损坏；这里必须是具名拒绝")
+
+    register_stale = json.loads(json.dumps(real))
+    register_stale["register_anchors"].append({"register": "migration/nowhere.csv",
+                                               "target": "backend/v1.py", "tail": "1",
+                                               "why": "登记侧同样的空位测试"})
+    assert module.main(["--check-register-cites",
+                        "--exemptions", write(register_stale, "reg.json")]) == 1, (
+        "登记模式的清单里有过期豁免也算干净，它同样是装饰而不是判据")
+
+
 def test_the_producer_and_this_guard_reach_the_same_verdict_on_the_same_cites(module):
     """Two implementations of one rule, or the agreement is worthless.
 
@@ -596,19 +672,22 @@ def test_the_producer_and_this_guard_reach_the_same_verdict_on_the_same_cites(mo
     neither one is the only witness. If they disagree -- over the enumerated face, over what counts as
     outside the tracked tree, or over which cites are broken -- then at least one is wrong, and the number
     the audit entry quotes would be a claim about one piece of code rather than a fact about the
-    repository. The ledger is asserted to be exactly the broken set, so a new broken cite can only be
-    silenced by naming it above with a reason.
+    repository. The shared ledger is asserted to be exactly the broken set (our own edits *and* the
+    declared dead cites in frozen bytes), so a new broken cite can only be silenced by naming it there
+    with a reason.
     """
     report = module.own_cite_liveness()
     tool_broken = {_ledger_key(row["citing"], row["cite"]) for row in report["broken"]}
-    assert tool_broken == set(SYNTHETIC_LOCATIONS), (
+    allowed = set(SYNTHETIC_LOCATIONS) | {_ledger_key(citing, cite)
+                                          for citing, cite in FROZEN_DEAD_CITES}
+    assert tool_broken == allowed, (
         "工具与守卫认定的损坏集合不一致，工具多出：%s；守卫多出：%s"
-        % (sorted(tool_broken - set(SYNTHETIC_LOCATIONS)),
-           sorted(set(SYNTHETIC_LOCATIONS) - tool_broken)))
+        % (sorted(tool_broken - allowed), sorted(allowed - tool_broken)))
 
     own_files = [row for row in module.tracked_files()
                  if row.startswith(("scripts/", "tests/", "backend/", "domains/work/"))
-                 or ("/" not in row and row.endswith((".md", ".toml")))]
+                 or ("/" not in row and row.endswith((".md", ".toml")))
+                 or (row.startswith("docs/") and "/" not in row[len("docs/"):])]
     assert report["summary"]["files"] == len(own_files), (
         "两侧的枚举面不同：工具 %s vs git ls-files %s"
         % (report["summary"]["files"], len(own_files)))
