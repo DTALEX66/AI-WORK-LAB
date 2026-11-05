@@ -146,7 +146,6 @@ def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-V1_ROUTES = ()
 PROJECT_ID_PATTERN = r"([0-9a-f]{32})"
 TASK_ID_PATTERN = r"([0-9a-f]{32})"
 ATTEMPT_ID_PATTERN = r"([0-9a-f]{32})"

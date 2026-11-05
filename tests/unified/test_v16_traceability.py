@@ -117,6 +117,18 @@ def resolve_location_independently(spec: str, live: dict) -> tuple[bool, str]:
         if key not in live:
             return (False, "路由不在实测表中")
         return (True, "live:" + live[key])
+    repo_state = re.match(r"^repo:(?P<what>[\w-]+)$", spec)
+    if repo_state:
+        # a repository-state claim is answered by git, independently of the generator's own helper:
+        # only `repo:branch` exists, and it is true exactly where a branch is checked out
+        if repo_state.group("what") != "branch":
+            return (False, "未知的 repo: 形态 repo:%s" % repo_state.group("what"))
+        out = subprocess.run(["git", "symbolic-ref", "--short", "HEAD"], cwd=str(TARGET_ROOT),
+                             capture_output=True, text=True, encoding="utf-8", errors="replace")
+        name = (out.stdout or "").strip()
+        if out.returncode != 0 or not name:
+            return (False, "HEAD 是分离的，没有检出的分支")
+        return (True, "branch:" + name)
     symbol = re.match(r"^(?P<path>[^:]+)::(?P<name>[A-Za-z_]\w*)$", spec)
     if symbol:
         # a name anchor resolves against the file, not against an offset: it is there exactly once,
@@ -298,6 +310,75 @@ def cite_names_the_handler(spec: str, handler: str) -> tuple[bool, str]:
     return (bool(hit), "行号锚没有落在 %s 的 def/class 上" % handler)
 
 
+def test_a_repository_state_claim_is_answered_by_git_and_no_location_lives_inside_git(builder,
+                                                                                     tmp_path):
+    """U11 used to cite ``.git/HEAD:1`` as its implementation location; that address is not auditable.
+
+    Bytes under ``.git/`` are outside ``git ls-files``, cannot be diffed between clones, and change
+    meaning with the checkout: this project's clone-repro harness checks commits out *detached*, and a
+    detached ``.git/HEAD`` holds a bare SHA where a branch ref used to be -- the line was still there
+    and still non-empty, so a guard that only asks "does this line exist" stayed green at exactly the
+    moment the claim ("this work happens on a checked-out local branch") stopped being true. Two rules
+    close it, and both are planted here: ``.git/`` paths are refused as locations, and ``repo:branch``
+    is answered by git, refusing when the checkout is detached. The duplicate module-level binding that
+    forced U10 back to a line number is pinned in the same pass, because that is how #32 was found.
+    """
+    refused = builder.check_location(".git/HEAD:1")
+    assert refused[0] is False and ".git/" in refused[1], refused
+
+    on_branch = builder.check_location("repo:branch")
+    assert on_branch[0] is True and "symbolic-ref" in on_branch[1], on_branch
+    assert builder.check_location("repo:whatever")[0] is False, "未知 repo: 形态被当成可解析"
+
+    # the detached case, built rather than described: a throwaway repo whose HEAD is a bare SHA
+    sandbox = tmp_path / "detached"
+    sandbox.mkdir()
+    env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@invalid",
+               GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@invalid")
+    for args in (["init", "-q", "--initial-branch=main"], ["commit", "-q", "--allow-empty",
+                                                           "-m", "one"]):
+        assert subprocess.run(["git", *args], cwd=str(sandbox), env=env, capture_output=True,
+                              text=True, encoding="utf-8", errors="replace").returncode == 0, args
+    assert subprocess.run(["git", "checkout", "-q", "--detach"], cwd=str(sandbox), env=env,
+                          capture_output=True, text=True,
+                          encoding="utf-8", errors="replace").returncode == 0
+    head_bytes = (sandbox / ".git" / "HEAD").read_text(encoding="utf-8").strip()
+    assert not head_bytes.startswith("ref:"), head_bytes
+    original = builder.REPO_ROOT
+    builder.REPO_ROOT = sandbox
+    try:
+        detached = builder.check_location("repo:branch")
+        assert detached[0] is False and "分离" in detached[1], detached
+        # and this is where the old shape lied: the line exists and is non-empty inside .git/,
+        # so a content-blind guard would still have called U11 verified -- now it is refused by rule
+        assert (sandbox / ".git" / "HEAD").is_file()
+        assert builder.check_location(".git/HEAD:1")[0] is False
+    finally:
+        builder.REPO_ROOT = original
+
+    # no published register may carry a .git/ path *as a location* -- the 依据说明 column is allowed to
+    # name the old shape, because that is how the追正 says what was replaced
+    offenders = []
+    for name, path in sorted(list(REGISTERS.items()) + [("api-contract", API_REGISTER)]):
+        rows = (read_register(path) if path.suffix == ".csv" else
+                json.loads(path.read_text(encoding="utf-8-sig")).get("checks", []))
+        for row in rows:
+            for column, value in row.items():
+                if not isinstance(value, str) or "说明" in column or "原因" in column:
+                    continue
+                if value.replace("\\", "/").lstrip("\"").startswith(".git/") or "/.git/" in value:
+                    offenders.append((name, column, value[:40]))
+    assert offenders == [], "登记里又出现了 .git/ 内部路径作为位置：%s" % offenders[:4]
+
+    # the root cause of the U10 fallback: one module-level binding, not two
+    tree = _ast.parse((TARGET_ROOT / "backend" / "v1.py").read_text(encoding="utf-8-sig"))
+    bindings = [node.lineno for node in tree.body if isinstance(node, _ast.Assign)
+                and any(isinstance(t, _ast.Name) and t.id == "V1_ROUTES" for t in node.targets)]
+    assert len(bindings) == 1, ("V1_ROUTES 又被绑了多次，登记只能退回行号：%s" % bindings)
+    assert builder.find_binding("V1_ROUTES", "backend/v1.py") == "backend/v1.py::V1_ROUTES"
+    assert builder.check_location("backend/v1.py::V1_ROUTES")[0] is True
+
+
 def test_verified_rows_never_cite_an_absent_location_or_no_evidence():
     for path in list(REGISTERS.values()) + [API_REGISTER]:
         rows = (read_register(path) if path.suffix == ".csv"
@@ -353,6 +434,9 @@ def test_anchors_on_rows_that_admit_being_unverified_still_have_to_point_somewhe
                     offenders.append((name, row["来源行标识"], status, location, note))
                     continue
                 if not re.match(r"^(%s) " % "|".join(METHODS), location):
+                    if location.startswith("repo:"):
+                        # a repository-state claim was answered by git above; there is no line to read
+                        continue
                     if "::" in location:
                         # a name anchor is checked against the line it names: the resolver proved the
                         # name exists once, this proves the thing it names has content -- a licence
@@ -662,7 +746,20 @@ def test_fabricated_anchors_are_downgraded_by_the_builder(builder, tmp_path):
     downgraded = builder.reconcile("scratch", "T#L1|x", "要求", "", fake_location)
     assert downgraded["状态"] == "GAP", downgraded["依据说明"][-160:]
 
-    fake_blank_line = {"location": "backend/v1.py:130", "evidence": "NONE",
+    # the three planted locations are positions in a file this test does not own, so they are derived
+    # from the current tree rather than hard-coded: a literal `backend/v1.py:195` broke the day a line
+    # was deleted 46 lines above it, and a guard that only fires on an accident is not a guard
+    v1_lines = (TARGET_ROOT / "backend" / "v1.py").read_text(encoding="utf-8-sig").splitlines()
+    v1_tree = _ast.parse("\n".join(v1_lines))
+    blank_at = next(number for number, text in enumerate(v1_lines, 1) if not text.strip())
+    inside_at = next(number for node in _ast.walk(v1_tree) if isinstance(node, _ast.FunctionDef)
+                     for number in range(node.lineno + 1, node.end_lineno or node.lineno + 1)
+                     if v1_lines[number - 1].strip()
+                     and not builder.ANCHOR_FORM_RE.match(v1_lines[number - 1]))
+    definition_at = next(node.lineno for node in _ast.walk(v1_tree)
+                         if isinstance(node, _ast.FunctionDef))
+
+    fake_blank_line = {"location": "backend/v1.py:%d" % blank_at, "evidence": "NONE",
                        "status": "PARTIAL", "basis": "该行是空行，不能当位置"}
     blank = builder.reconcile("scratch", "T#L1|y", "要求", "", fake_blank_line)
     assert blank["状态"] in ("GAP",), blank["依据说明"][-160:]
@@ -670,14 +767,14 @@ def test_fabricated_anchors_are_downgraded_by_the_builder(builder, tmp_path):
     # a line inside a function body is not "the implementation": the row reads as resolved
     # while pointing at a statement that names nothing. This is how an anchor drifts once
     # anything above it grows, so the builder refuses it even though the line exists.
-    drifted_anchor = {"location": "backend/v1.py:146",
+    drifted_anchor = {"location": "backend/v1.py:%d" % inside_at,
                       "evidence": "tests/unified/test_v02_surface.py::test_health_is_real_service_metadata",
                       "status": "IMPLEMENTED_VERIFIED", "basis": "锚点落在函数体的一行"}
     slid = builder.reconcile("scratch", "T#L1|s", "要求", "", drifted_anchor)
     assert slid["状态"] == "GAP", slid["依据说明"][-200:]
     assert "不是定义行" in slid["依据说明"], slid["依据说明"][-200:]
 
-    fake_test = {"location": "backend/v1.py:195",
+    fake_test = {"location": "backend/v1.py:%d" % definition_at,
                  "evidence": "tests/unified/test_v02_surface.py::test_no_such_test_anywhere",
                  "status": "IMPLEMENTED_VERIFIED", "basis": "伪造测试名"}
     unver = builder.reconcile("scratch", "T#L1|z", "要求", "", fake_test)
@@ -689,7 +786,7 @@ def test_fabricated_anchors_are_downgraded_by_the_builder(builder, tmp_path):
     gone = builder.reconcile("scratch", "T#L1|w", "要求", "", fake_route)
     assert gone["状态"] == "GAP", gone["依据说明"][-160:]
 
-    fake_evidence_file = {"location": "backend/v1.py:195",
+    fake_evidence_file = {"location": "backend/v1.py:%d" % definition_at,
                           "evidence": "evidence:a01-a10-results.json#results.NO_SUCH_KEY",
                           "status": "IMPLEMENTED_VERIFIED", "basis": "伪造证据键"}
     ev_gone = builder.reconcile("scratch", "T#L1|v", "要求", "", fake_evidence_file)
@@ -735,13 +832,11 @@ def test_authored_python_locations_name_a_symbol_not_a_typed_line_number(builder
         # would be citing a word, not a place, so the emitter must fall back to the number instead
         assert len(headers) == 1, (name, sorted(headers))
         assert builder.find_definition(name, relative) == "%s::%s" % (relative, name), name
-    # `V1_ROUTES` is bound twice at module level -- a `()` declaration and the assembled table -- so
-    # the name is not a unique anchor here and the emitter has to say so by returning a number. The
-    # number it returns names the first binding, which is what this cite has pointed at all along;
-    # making it unique would be a change to backend/v1.py, not to the anchor rule, and is left alone.
-    binding = builder.find_binding("V1_ROUTES", "backend/v1.py")
-    assert re.match(r"^backend/v1\.py:\d+$", binding), binding
-    assert builder.check_location(binding)[0] is True, builder.check_location(binding)
+    # `V1_ROUTES` used to be bound twice at module level (a `()` declaration and the assembled table),
+    # which forced this cite back to the number form and pointed it at the dead first binding. That
+    # declaration was removed in this round, so the name is unique and the cite is a symbol again; the
+    # duplicate case is still proven, just on a sandbox file whose name really is defined twice.
+    assert builder.find_binding("V1_ROUTES", "backend/v1.py") == "backend/v1.py::V1_ROUTES"
     # the fallback path is part of the contract, not a hypothetical: a name the file spells twice has
     # to come back as a number, and the number it returns has to be a real definition line. The twin
     # is written into the test's own sandbox and the builder's root is moved there, so nothing lands

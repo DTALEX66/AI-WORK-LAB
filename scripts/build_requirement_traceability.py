@@ -52,6 +52,7 @@ import argparse
 import csv
 import json
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -336,10 +337,34 @@ def find_binding(name: str, relative: str) -> str | None:
 # verification primitives
 # --------------------------------------------------------------------------
 
+def check_repo_state(what: str) -> tuple[bool, str]:
+    """Resolve a claim about this repository's own checkout state -- by asking git, not by reading bytes.
+
+    ``repo:branch`` exists because U11 used to cite ``.git/HEAD:1`` as its 当前实现位置. That address is
+    not auditable repository content (no clone can diff it, it is outside ``git ls-files``), and a
+    detached checkout -- which is exactly how this project's clone-repro harness checks a commit out --
+    stores a bare SHA there instead of ``ref: refs/heads/...``. The line still existed and was still
+    non-empty, so the guard stayed green at the one moment the claim stopped being true. Asking git
+    makes a detached HEAD a named refusal instead.
+    """
+    if what != "branch":
+        return (False, "未知的 repo: 形态 repo:%s（本登记只认识 repo:branch）" % what)
+    result = subprocess.run(["git", "symbolic-ref", "--short", "HEAD"], cwd=str(REPO_ROOT),
+                            capture_output=True, text=True, encoding="utf-8", errors="replace")
+    name = (result.stdout or "").strip()
+    if result.returncode != 0 or not name:
+        return (False, "HEAD 是分离的（detached），没有检出的分支，而本行声称的正是"
+                       "「在检出的本地工作分支上执行」")
+    return (True, "机验：`git symbolic-ref --short HEAD` 现读为 %s" % name)
+
+
 def check_location(spec: str) -> tuple[bool, str]:
     """Resolve one 当前实现位置 claim. Never trusts the author."""
     if spec == ABSENT:
         return (False, "无实现位置（按声明）")
+    repo_state = re.match(r"^repo:(?P<what>[\w-]+)$", spec)
+    if repo_state:
+        return check_repo_state(repo_state.group("what"))
     route = re.match(r"^(GET|POST|PUT|PATCH|DELETE) (/.*)$", spec)
     if route:
         key = (route.group(1), route.group(2))
@@ -366,7 +391,16 @@ def check_location(spec: str) -> tuple[bool, str]:
         return (True, "%s::%s 定义唯一：%s" % (symbol.group("path"), name, hits[0][:80]))
     match = LOCATION_LINE_RE.match(spec)
     if not match:
-        return (False, "位置写法既不是 file::name、file:line，也不是「METHOD /pattern」：%s" % spec)
+        return (False, "位置写法既不是 file::name、file:line，也不是「METHOD /pattern」，"
+                       "也不是 repo:<形态>：%s" % spec)
+    git_internal = match.group("path").replace("\\", "/")
+    if git_internal.startswith(".git/") or "/.git/" in git_internal:
+        # .git/ bytes are not auditable repository content: no clone can diff them, they are outside
+        # `git ls-files`, and a detached checkout puts a bare SHA where a branch ref used to be -- so
+        # the line keeps existing while the claim about it stops holding. Repository state is asked
+        # of git itself, through repo:branch above.
+        return (False, "实现位置不能指向 .git/ 内部的字节（%s）：那不是仓库内容，分离检出时"
+                       "内容还会完全换一个意思；仓库自身状态请用 repo:branch" % match.group("path"))
     path = REPO_ROOT / match.group("path")
     wanted = int(match.group("line"))
     if not path.is_file():
@@ -1178,10 +1212,15 @@ def requirement_claims() -> dict[str, dict]:
                         "V1_ROUTES %d 条、兼容表 %d 条，本行不复述手抄数字；"
                         "真实 loopback HTTP + 持久化 + 重启读回由具名测试断言。"
                         % route_counts()},
-        "U11": {"location": ".git/HEAD:1", "evidence": "evidence:delivery-summary.json#git", "status": "IMPLEMENTED_VERIFIED",
+        "U11": {"location": "repo:branch", "evidence": "evidence:delivery-summary.json#git",
+                "status": "IMPLEMENTED_VERIFIED",
                 "basis": "本仓在检出的本地工作分支上执行，分支名由 `git symbolic-ref --short HEAD` 现读"
                         "（现为 %s；2026-11-02 仓库规范化时主线定为 main，那条融合批次分支已退掉，"
-                        "恢复点就是 main 的尖端）——写死分支名会让登记在改名后变成假话。增量保全由 "
+                        "恢复点就是 main 的尖端）——写死分支名会让登记在改名后变成假话。位置以前写的是 "
+                        "`.git/HEAD:1`，那不是一个可复核的实现位置：`.git/` 里的字节不在 `git ls-files` 人群里、"
+                        "克隆之间没法 diff，而本仓的克隆复跑是按 SHA 分离检出的，那时该文件存的是一枚裸 SHA，"
+                        "行号仍「存在且非空」，于是这一行恰好在声称的事不成立时还亮着绿。现在改为 `repo:branch`，"
+                        "由 git 现答，分离头具名拒绝并按既有规则降级。增量保全由 "
                         "delivery-summary.json#git 与 snapshot-before/after 逐文件摘要证明；"
                         "该行记录的是 2026-10-29 交接当时的保全证据，那时 HEAD 尚未产生任何提交，"
                         "现在已有提交，本行不据此声称内容已同步到远端。"
