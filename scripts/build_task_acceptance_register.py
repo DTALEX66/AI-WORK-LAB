@@ -127,7 +127,7 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
                      note="真实 python -m backend 子进程 + 真 HTTP 客户端打 127.0.0.1:随机端口并断言 "
                           "host==127.0.0.1，令牌走 stdin；统一面/兼容面测试共用 backend/app.py::build_server "
                           "这条链。原证据目标写成 tests/conftest.py::build_server 是对一个*调用点*的引用"
-                          "（定义在 backend/app.py:69），收紧解析器只认定义点后这条被改正——结论不变，出处变严"),
+                          "（定义在 backend/app.py::build_server），收紧解析器只认定义点后这条被改正——结论不变，出处变严"),
     ("L11", 1): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v15_route_surface.py::test_kernel_guard_holds_on_every_compat_route",
                      note="兼容面 49 条 GET 逐条实测无令牌 401、错 Host 403（147 次真实请求），"

@@ -16,6 +16,15 @@ Populations:
                         whole absolute machine paths, and the repo-owner token that must not be
                         confused with either.
 
+The two machine-name counters are deliberately not symmetric. ``account_mentions`` is case-SENSITIVE:
+the account's own spelling is what appears in a leaked path or a quoted user name, and a case-insensitive
+token sweeps in *other people* -- the tracked tree holds archive objects naming "Alex Atallah" and "Alex
+Garcia" and an avatar labelled ``Alex``, none of which is this machine's account. Counting them would
+repeat the mistake that inflated 218 into 322, in the opposite direction. Lowercase spellings of a real
+path are not lost: ``absolute_machine_paths`` is case-insensitive because it keys on the drive or
+``/home``-``/Users`` shape, which a person's name cannot produce. The split is pinned by
+``tests/unified/test_v32_population_measurements.py``.
+
 Ownership comes from the ledgers (``migration/copies.json`` and the history MANIFEST), matched at
 prefix boundaries: an earlier version used ``endswith`` and claimed ``AGENTS.md`` was a byte-for-byte
 copy of a source-repo file, which is how a probe manufactures a wrong bucket.
