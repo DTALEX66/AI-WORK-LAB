@@ -261,8 +261,7 @@ def parse_register(text: str, *, authority_root: Path = _MODULE_REPO_ROOT) -> tu
         reason = "文件中没有竖线表格"
         return [unreadable_marker(reason)], STATE_UNREADABLE, reason
     if scanned_rows == 0:
-        # Same stance as the source repo's verify_register_table_shape (its tracked copy is under
-        # docs/history/sources-20261101/work/scripts/ci/): a header with no rows is not a register.
+        # Same refusal as `verify_register_table_shape.py:74-77`: a header with no rows is not a register.
         reason = "表格没有数据行（tables 有表头、rows=0）"
         return [unreadable_marker(reason)], STATE_UNREADABLE, reason
 
