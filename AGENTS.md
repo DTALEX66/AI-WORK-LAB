@@ -1,7 +1,7 @@
 # AGENTS.md — AIWORKLAB / AI-WORK-LAB 项目级执行规则
 
 本文件只管**融合后的这一个项目**。它不覆盖用户级通用核心
-（`C:\Users\ALEX\.qoder-cn\agents.md` 里的 UNIVERSAL_AGENT_CORE），也不覆盖
+（Qoder 用户配置目录里那份 `agents.md` 的 UNIVERSAL_AGENT_CORE），也不覆盖
 [INTEGRATION_POLICY.md](INTEGRATION_POLICY.md) 里的执行边界；它负责的是：先读什么、
 在哪更新、什么已经不再是现行规则。
 

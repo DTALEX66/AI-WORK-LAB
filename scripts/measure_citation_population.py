@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import json
 import os
 import pathlib
@@ -62,7 +63,8 @@ def _account_token(account: str, inside_path: bool) -> str:
     """The account name with the boundaries that stop a *person* being read as this machine.
 
     ``DTALEX66`` holds the account letters, which is what inflated 218 into 322 once. Outside a path the
-    token must not touch a separator either, so ``/ALEX`` in a URL is not a standalone account mention.
+    token must not touch a separator either, so a URL segment naming the account is not a standalone
+    account mention.
     """
     before = r"(?<![A-Za-z0-9_.\-])" if inside_path else r"(?<![A-Za-z0-9_.\-/])"
     return before + re.escape(account) + r"(?![A-Za-z0-9_.\-])"
@@ -71,7 +73,8 @@ def _account_token(account: str, inside_path: bool) -> str:
 def machine_path_rule(account: str) -> re.Pattern:
     """A whole absolute path that contains this machine's account, in any spelling of the case.
 
-    Case-insensitive on purpose: ``C:/users/alex/...`` leaks exactly what ``C:\\Users\\ALEX\\...`` does,
+    Case-insensitive on purpose: the forward-slash, lowercase spelling of a home path leaks exactly what
+    the backslashed, upper-case one does,
     and a case-sensitive rule let the lowercase spellings -- which is what Git-Bash and most JSON dumps
     write -- out of the population entirely.
     """
@@ -332,13 +335,156 @@ def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = 
     return {"summary": dict(sorted(counts.items())), "broken": broken}
 
 
+REGISTER_DIRS = ("migration", "config")
+#: a published anchor may name any tracked text file, not only Python -- ``apps/workbench/shell.ts:346``
+#: and ``AI-WORK-LAB_HANDOFF_20261029/12_来源基线.json:6`` are 当前实现位置 values in real registers, and
+#: the Python-only anchor grammar never looked at them
+ANY_ANCHOR = re.compile(r"(?P<path>[\w./一-鿿-]+\.(?:py|toml|json|md|csv|html|ts|tsx|js|mjs|yaml|yml))"
+                        r":(?P<line>\d+)(?:-(?P<end>\d+))?")
+#: the durable shape a register may use for Python targets; it is verified here too, because an anchor
+#: that names a symbol nobody defines is the same lie as a line number that has scrolled off the end
+SYMBOL_ANCHOR = re.compile(r"(?P<path>[\w./一-鿿-]+\.\w+)::(?P<name>[A-Za-z_]\w*)")
+
+
+def anchor_candidates(cited, root, all_files, by_name):
+    """Which tracked file does a published cite mean? Exact path, unique suffix, then unique basename."""
+    if (root / cited).is_file():
+        return [cited]
+    suffixes = [rel for rel in all_files if rel.endswith(cited)]
+    if suffixes:
+        return suffixes
+    return by_name.get(pathlib.PurePosixPath(cited).name, [])
+
+
+def register_cells(root: pathlib.Path = REPO_ROOT, files: list[str] | None = None):
+    """Every string cell of every tracked register, with the column it came from.
+
+    Enumerated from ``git ls-files migration config`` rather than a list of filenames: the first pass over
+    this population used a hand-written set of registers and therefore missed
+    ``migration/requirement-traceability.csv``, which is the file holding the ``repo:branch`` claims.
+    """
+    root = pathlib.Path(root)
+    if files is None:
+        listed = subprocess.run(["git", "ls-files", "-z", *REGISTER_DIRS], cwd=str(root),
+                                capture_output=True, check=True).stdout
+        files = [row.decode("utf-8", "replace") for row in listed.split(b"\0") if row]
+    for rel in sorted(files):
+        text = read_tracked_text(root / rel)
+        if text is None:
+            continue
+        if rel.endswith(".csv"):
+            rows = list(csv.reader(io.StringIO(text)))
+            header = rows[0] if rows else []
+            for number, row in enumerate(rows[1:], 2):
+                for index, value in enumerate(row):
+                    yield rel, (header[index] if index < len(header) else "#%d" % index), number, \
+                        value or ""
+        elif rel.endswith(".json"):
+            document = json.loads(text)
+
+            def walk(node, breadcrumb):
+                if isinstance(node, str):
+                    yield breadcrumb, node
+                elif isinstance(node, dict):
+                    for key, value in node.items():
+                        yield from walk(value, "%s/%s" % (breadcrumb, key))
+                elif isinstance(node, list):
+                    for index, value in enumerate(node):
+                        yield from walk(value, "%s[%d]" % (breadcrumb, index))
+
+            for breadcrumb, value in walk(document, "(json)"):
+                yield rel, breadcrumb, 1, value
+
+
+def register_cite_liveness(root: pathlib.Path = REPO_ROOT) -> dict:
+    """Is every ``file:line`` anchor published in a register still pointing inside its file?
+
+    The registers carry anchors for non-Python targets that no check has ever resolved. A line anchor that
+    has scrolled past the end of its file prints exactly like a live one, so this verifies each against the
+    tree: the named file must be tracked, the target must be unambiguous, and the line (or both ends of a
+    range) must still be within it.
+    """
+    root = pathlib.Path(root)
+    tracked = subprocess.run(["git", "ls-files", "-z"], cwd=str(root), capture_output=True,
+                             check=True).stdout
+    all_files = [row.decode("utf-8", "replace") for row in tracked.split(b"\0") if row]
+    by_name: dict[str, list[str]] = {}
+    for rel in sorted(all_files):
+        by_name.setdefault(pathlib.PurePosixPath(rel).name, []).append(rel)
+
+    counts = {"anchors": 0, "alive": 0, "line_out_of_range": 0, "target_not_tracked": 0,
+              "target_ambiguous": 0, "symbol_not_defined": 0, "cells": 0}
+    failures = []
+    lengths: dict[str, int] = {}
+
+    def check(rel, column, number, cited, path_part, verdict):
+        """Resolve one published cite and report the first reason it is not trustworthy."""
+        counts["anchors"] += 1
+        where = {"cell": "%s:%s:%d" % (rel, column, number), "anchor": cited}
+        candidates = anchor_candidates(path_part, root, all_files, by_name)
+        if not candidates:
+            counts["target_not_tracked"] += 1
+            failures.append(dict(where, why="target is not a tracked file"))
+            return
+        if len(candidates) > 1:
+            counts["target_ambiguous"] += 1
+            failures.append(dict(where, why="%d tracked files share this name" % len(candidates),
+                                 candidates=candidates[:3]))
+            return
+        target = candidates[0]
+        if target not in lengths:
+            body = read_tracked_text(root / target)
+            lengths[target] = 0 if body is None else len(body.splitlines())
+        ok, why = verdict(target, lengths[target])
+        if ok:
+            counts["alive"] += 1
+        else:
+            counts[why[0]] += 1
+            failures.append(dict(where, cell_target=target, why=why[1]))
+
+    def symbol_verdict(name, target, _count):
+        """A ``file.py::symbol`` cite is alive when that name is defined exactly once in it."""
+        if (root / target).suffix != ".py":
+            return True, ""
+        if name in _symbols_defined_once(root / target):
+            return True, ""
+        return False, ("symbol_not_defined",
+                      "no single definition of %s in %s" % (name, target))
+
+    def line_verdict(target, count, start, end):
+        if 0 < start <= count and end <= count:
+            return True, ""
+        return False, ("line_out_of_range",
+                      "line %d-%d is past the end of %s (%d lines)" % (start, end, target, count))
+
+    for rel, column, number, value in register_cells(root):
+        counts["cells"] += 1
+        for match in SYMBOL_ANCHOR.finditer(value):
+            name = match.group("name")
+            check(rel, column, number, match.group(0), match.group("path"),
+                  lambda target, count, _name=name: symbol_verdict(_name, target, count))
+        for match in ANY_ANCHOR.finditer(value):
+            start = int(match.group("line"))
+            end = int(match.group("end") or match.group("line"))
+            check(rel, column, number, match.group(0), match.group("path"),
+                  lambda target, count, _s=start, _e=end: line_verdict(target, count, _s, _e))
+    return {"summary": counts, "failures": failures}
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--json-out", type=pathlib.Path)
     parser.add_argument("--check-own-cites", action="store_true",
                         help="walk our own prose citations instead of measuring the populations")
+    parser.add_argument("--check-register-cites", action="store_true",
+                        help="verify every file:line anchor published inside a register cell")
     args = parser.parse_args(argv)
-    document = own_cite_liveness() if args.check_own_cites else measure()
+    if args.check_own_cites:
+        document = own_cite_liveness()
+    elif args.check_register_cites:
+        document = register_cite_liveness()
+    else:
+        document = measure()
     payload = json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True)
     if args.json_out:
         args.json_out.write_text(payload + "\n", encoding="utf-8", newline="\n")

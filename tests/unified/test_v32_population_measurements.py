@@ -77,13 +77,13 @@ def test_a_different_person_named_alex_is_not_this_machines_account(module, tmp_
     ``absolute_machine_paths`` keys on the drive shape case-insensitively -- a person's name cannot
     produce ``C:/users/...``.
     """
-    (tmp_path / "person.md").write_text("Alex Atallah and Alex Garcia were both quoted\n",
+    (tmp_path / "person.md").write_text("Zzq Atallah and Zzq Garcia were both quoted\n",
                                         encoding="utf-8")
-    (tmp_path / "path.md").write_text("cache = C:/users/alex/models/snap.safetensors\n",
+    (tmp_path / "path.md").write_text("cache = D:/work/zzq/models/snap.safetensors\n",
                                       encoding="utf-8")
     (tmp_path / "url.md").write_text("remote https://github.com/DTALEX66/AI-WORK-LAB.git\n",
                                      encoding="utf-8")
-    document = module.measure(root=tmp_path, account="ALEX", claimed=set(),
+    document = module.measure(root=tmp_path, account="ZZQ", claimed=set(),
                               files=["person.md", "path.md", "url.md"])
     buckets = document["by_ownership"]
     total = {field: sum(buckets[key][field] for key in buckets)
@@ -345,6 +345,87 @@ def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
     dead = sorted(key for key in SYNTHETIC_LOCATIONS if key not in exempt_hits)
     assert not dead, "具名豁免已不再被引用，留着会掩护下一个真损坏：%s" % dead
     assert not broken, "本仓散文里的引用不再指向存在的内容：\n" + "\n".join(broken[:12])
+
+
+#: Register cells whose published anchor is deliberately not a live location. Keyed the same way as
+#: SYNTHETIC_LOCATIONS -- (register, target file, tail) -- so naming the exception here does not add a
+#: fresh cite to the very population the prose guard scans.
+REGISTER_ANCHOR_EXEMPTIONS = {
+    ("migration/task-acceptance.csv", "tests/conftest.py", "build_server"):
+        "这一格引用的是登记当初写错的出处（真正的定义在 backend/app.py 的 build_server），"
+        "注里已明说它是调用点引用而非实现位置；改掉字节等于抹掉改正记录",
+}
+
+
+def test_published_register_anchors_point_at_content_that_is_still_there(module):
+    """Every cite a register *publishes* is checked against the tree, not just the ones in our prose.
+
+    The location and evidence columns carry anchors for non-Python targets too --
+    ``apps/workbench/shell.ts:346``, a handoff ``12_来源基线.json:6``, ``.ui-reference/.../routes.ts:13`` --
+    and the register's Python-only anchor grammar never resolved any of them. Measured now: 870 anchors in
+    141,587 register cells, 869 alive, and the one exception is the cell below. A cite that has scrolled
+    past the end of its file, or that names two tracked files, prints exactly like a trustworthy one, which
+    is why this is a gate rather than a report.
+    """
+    report = module.register_cite_liveness()
+    summary = report["summary"]
+    # the enumerated face must be the whole register set, not a list of files someone remembered
+    assert summary["cells"] > 100000, summary
+    assert summary["anchors"] > 500, summary
+    seen = set()
+    unexpected = []
+    for failure in report["failures"]:
+        register = failure["cell"].split(":", 1)[0]
+        key = _ledger_key(register, failure["anchor"])
+        seen.add(key)
+        if key not in REGISTER_ANCHOR_EXEMPTIONS:
+            unexpected.append("%s %s -> %s" % (failure["cell"], failure["anchor"], failure["why"]))
+    assert not unexpected, "登记里发布了不再成立的锚点：\n" + "\n".join(unexpected[:8])
+    dead = sorted(key for key in REGISTER_ANCHOR_EXEMPTIONS if key not in seen)
+    assert not dead, "登记锚点豁免已不再被引用，留着会掩护下一个真损坏：%s" % dead
+    # both shapes must be inside the face, or a whole class of cites is checked by name only
+    shapes = {"symbol": 0, "line": 0}
+    for rel, column, number, value in module.register_cells():
+        shapes["symbol"] += len(module.SYMBOL_ANCHOR.findall(value))
+        shapes["line"] += len(module.ANY_ANCHOR.findall(value))
+    assert shapes["symbol"] > 100 and shapes["line"] > 100, (
+        "登记锚点的一种形态没有真正进入检查面：%s" % shapes)
+
+
+def test_the_account_name_survives_only_where_it_is_accounted_for(module):
+    """#16's end state, as a gate: outside the byte-frozen inputs, one file may carry the account name.
+
+    The delivered task packs and the migrated copies hold the account name by nature (they are records of
+    another machine's run), and rewriting them would be editing source evidence. Everything else is ours,
+    and after this round it is exactly one register -- ``config/adapter-registry.json``, four probed
+    absolute paths, guarded elsewhere by the rule that a machine path must still sit next to
+    未探测/未合格. A new file that spells the account name here is a leak, not a stylistic choice, so the
+    permitted set is a named subset rather than a size threshold. On another machine -- same repo,
+    different username -- the set is legitimately empty, which is why the claim is "no new files" plus a
+    count check on the one file that is allowed, not an equality against this box's account name.
+    """
+    account = module.account_name()
+    claimed = module.ledger_targets()
+    token = re.compile(r"(?<![A-Za-z0-9_.\-/])" + re.escape(account) + r"(?![A-Za-z0-9_.\-/])")
+    frozen_custody = {"frozen_source_input", "migrated_copy", "append_only_history"}
+    found = {}
+    for rel in module.tracked_files():
+        if module.owner_of(rel, claimed) in frozen_custody:
+            continue
+        text = module.read_tracked_text(TARGET_ROOT / rel)
+        if text is None:
+            continue
+        hits = len(token.findall(text))
+        if hits:
+            found[rel] = hits
+    assert set(found) <= {"config/adapter-registry.json"}, (
+        "本仓可自修部分里出现了带本机账号名的新文件：%s" % sorted(found.items()))
+    # the one permitted file is permitted only while it still carries what the other guard recognises:
+    # probed absolute paths sitting next to 未探测/未合格. Two accounts, one box -- on another machine the
+    # set is legitimately empty, so this is a subset claim, not an equality against this box's username.
+    if "config/adapter-registry.json" in found:
+        assert found["config/adapter-registry.json"] == 4, (
+            "那格注册表带的账号名数量变了，相邻性规则覆盖的就不再是同一批字节：%s" % found)
 
 
 def test_the_producer_and_this_guard_reach_the_same_verdict_on_the_same_cites(module):
