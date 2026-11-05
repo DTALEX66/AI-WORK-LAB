@@ -202,7 +202,10 @@ def measure(root: pathlib.Path = REPO_ROOT, account: str | None = None,
                                 check=True).stdout
         files = [row.decode("utf-8", "replace") for row in listed.split(b"\0") if row]
     buckets = {kind: {"files": 0, "line_cites": 0, "account_mentions": 0,
-                      "absolute_machine_paths": 0, "paths": []} for kind in OWNERSHIPS}
+                      "absolute_machine_paths": 0,
+                      "files_with_line_cites": 0, "files_with_account_mentions": 0,
+                      "files_with_absolute_paths": 0, "files_with_account_mention_and_path": 0,
+                      "paths": []} for kind in OWNERSHIPS}
     unreadable: list[str] = []
     scanned = 0
     for relative in sorted(files):
@@ -219,6 +222,18 @@ def measure(root: pathlib.Path = REPO_ROOT, account: str | None = None,
         bucket["line_cites"] += cites
         bucket["account_mentions"] += mentions
         bucket["absolute_machine_paths"] += absolute
+        if cites:
+            bucket["files_with_line_cites"] += 1
+        if mentions:
+            bucket["files_with_account_mentions"] += 1
+        if absolute:
+            bucket["files_with_absolute_paths"] += 1
+        if mentions and absolute:
+            # §15.45 published "218 files carry the account name, 168 of them also a whole machine path".
+            # The second number is an intersection inside the first population, not "files with a path"
+            # over the whole tree (that is a different, larger set), so it needs its own counter or the
+            # next reader recomputes it with a scratch script and gets a third answer.
+            bucket["files_with_account_mention_and_path"] += 1
         if cites or mentions or absolute:
             bucket["files"] += 1
             if len(bucket["paths"]) < 12:
@@ -230,7 +245,9 @@ def measure(root: pathlib.Path = REPO_ROOT, account: str | None = None,
             "ledger_claimed_targets": len(claimed),
             "totals": {key: sum(bucket[key] for bucket in buckets.values())
                        for key in ("files", "line_cites", "account_mentions",
-                                   "absolute_machine_paths")},
+                                   "absolute_machine_paths", "files_with_line_cites",
+                                   "files_with_account_mentions", "files_with_absolute_paths",
+                                   "files_with_account_mention_and_path")},
             "by_ownership": {key: {field: value for field, value in bucket.items()
                                    if field != "paths"}
                              for key, bucket in buckets.items()},
@@ -238,6 +255,16 @@ def measure(root: pathlib.Path = REPO_ROOT, account: str | None = None,
 
 
 OWN_CODE_PREFIXES = ("scripts/", "tests/", "backend/", "domains/work/")
+#: root-level documents and build config are ours to edit and they cite code: ``pyproject.toml`` explains
+#: the install-tree layout with seven ``file.py:line`` references, and those were outside the checked face
+#: until now -- a cite nobody recomputes is a cite that silently rots when the file it names grows.
+ROOT_TEXT_SUFFIXES = (".md", ".toml")
+
+
+def in_own_face(relative: str) -> bool:
+    """Is this tracked byte our own prose -- code, checks, or a root-level document?"""
+    return relative.startswith(OWN_CODE_PREFIXES) or (
+        "/" not in relative and relative.endswith(ROOT_TEXT_SUFFIXES))
 #: the three shapes a citation to a Python file can take in prose or in a message string
 CITE_SHAPE = re.compile(r"(?P<cite>[\w./-]+\.py(?:::[A-Za-z_]\w*|:\d+(?:-\d+)?|#[^\s,;)\]\"`]+))")
 #: migration-map identity keys name a file in the SOURCE repository's layout: a row's id, not a location
@@ -290,13 +317,15 @@ def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = 
         listed = subprocess.run(["git", "ls-files", "-z"], cwd=str(root), capture_output=True,
                                 check=True).stdout
         files = [row.decode("utf-8", "replace") for row in listed.split(b"\0") if row]
-    own = sorted(rel for rel in files if rel.startswith(OWN_CODE_PREFIXES))
+    own = sorted(rel for rel in files if in_own_face(rel))
     by_name: dict[str, list[str]] = {}
     for rel in sorted(files):
         by_name.setdefault(pathlib.PurePosixPath(rel).name, []).append(rel)
 
     counts: dict[str, int] = {"cites": 0, "outside_tracked_tree": 0, "foreign_identity_keys": 0}
+    shapes: dict[str, int] = {"symbol": 0, "line": 0, "anchor": 0}
     broken: list[dict] = []
+    per_file: dict[str, dict[str, int]] = {}
     lengths: dict[str, int] = {}
     for rel in own:
         text = read_tracked_text(root / rel)
@@ -306,6 +335,9 @@ def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = 
             for cite in CITE_SHAPE.findall(line):
                 counts["cites"] += 1
                 head, kind, tail = _cite_parts(cite)
+                shapes[kind] += 1
+                row = per_file.setdefault(rel, {"cites": 0, "broken": 0})
+                row["cites"] += 1
                 if (root / head).is_file():
                     candidates = [head]
                 else:
@@ -329,10 +361,16 @@ def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = 
                     if live:
                         break
                 if not live:
+                    row["broken"] += 1
                     broken.append({"citing": rel, "line": number, "cite": cite, "kind": kind})
     counts["files"] = len(own)
     counts["broken"] = len(broken)
-    return {"summary": dict(sorted(counts.items())), "broken": broken}
+    counts["files_with_cites"] = len(per_file)
+    return {"summary": dict(sorted(counts.items())),
+            "by_shape": dict(sorted(shapes.items())),
+            "by_file": [{"file": rel, "cites": row["cites"], "broken": row["broken"]}
+                        for rel, row in sorted(per_file.items())],
+            "broken": broken}
 
 
 REGISTER_DIRS = ("migration", "config")

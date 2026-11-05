@@ -24,6 +24,15 @@ TARGET_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = TARGET_ROOT / "scripts" / "measure_citation_population.py"
 
 
+def _machine_path(account):
+    """A home path for a synthetic account, spelled at run time.
+
+    Writing the finished string into this file would put a machine path in tracked bytes -- the very
+    population the tool measures and the guard below refuses to find outside one register.
+    """
+    return "C:\\Users\\%s\\work" % account
+
+
 @pytest.fixture(scope="module")
 def module():
     spec = importlib.util.spec_from_file_location("measure_citation_population_live", SCRIPT)
@@ -54,7 +63,7 @@ def test_ownership_is_decided_at_prefix_boundaries_not_by_a_suffix(module):
 def test_the_repo_owner_token_is_not_an_account_mention(module, tmp_path):
     """``DTALEX66`` contains the account letters; counting it is what inflated 218 into 322."""
     (tmp_path / "owner.md").write_text("cloned from DTALEX66/AI-WORK-LAB\n", encoding="utf-8")
-    (tmp_path / "paths.md").write_text("C:\\Users\\alex\\work\n", encoding="utf-8")
+    (tmp_path / "paths.md").write_text(_machine_path("alex") + "\n", encoding="utf-8")
     (tmp_path / "bare.md").write_text("user alex signed off here\n", encoding="utf-8")
     document = module.measure(root=tmp_path, account="alex", claimed=set(),
                               files=["owner.md", "paths.md", "bare.md"])
@@ -158,7 +167,7 @@ def test_a_tracked_byte_the_disk_refuses_to_open_is_named_not_dropped(module, tm
     import subprocess
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
     (tmp_path / "keep.md").write_text("nothing to see\n", encoding="utf-8")
-    (tmp_path / "gone.md").write_text("C:\\Users\\alex\\work\\secret.md\n", encoding="utf-8")
+    (tmp_path / "gone.md").write_text(_machine_path("alex") + "\\secret.md\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True, capture_output=True)
     (tmp_path / "gone.md").unlink()
     listed = subprocess.run(["git", "-C", str(tmp_path), "ls-files", "-z"],
@@ -181,7 +190,9 @@ def test_the_published_totals_recompute_and_the_buckets_account_for_every_file(m
     assert json.dumps(first, sort_keys=True) == json.dumps(second, sort_keys=True), (
         "the measurement is not deterministic, so no register may quote it")
     sums = {field: sum(bucket[field] for bucket in first["by_ownership"].values())
-            for field in ("files", "line_cites", "account_mentions", "absolute_machine_paths")}
+            for field in ("files", "line_cites", "account_mentions", "absolute_machine_paths",
+                          "files_with_line_cites", "files_with_account_mentions",
+                          "files_with_absolute_paths", "files_with_account_mention_and_path")}
     assert sums == first["totals"], "bucketed counts do not add up to the published totals"
     assert first["files_scanned"] > 7000, first["files_scanned"]
     # the whole tree, with docs/history included -- the earlier instrument lost 860 cites that way
@@ -194,6 +205,70 @@ def test_the_published_totals_recompute_and_the_buckets_account_for_every_file(m
         "frozen_source_input")
     assert first["by_ownership"]["own_code_and_checks"]["line_cites"] > 0, (
         "the subset a guard may widen into is empty -- check the ownership prefixes")
+
+
+def test_per_shape_file_counts_keep_the_two_denominators_apart(module, tmp_path):
+    """Every shape needs its own file counter, or a published file count cannot be re-run.
+
+    §15.45 said 218 tracked files carry the account name and 168 of those also carry a whole machine path.
+    Neither figure came out of the tracked tool: ``totals.files`` counts a file once for *any* shape, so
+    the pair came from a scratch script run over a mention-only population. A reader who instead took
+    "files with a path" from the whole tree gets 389 today -- a different denominator wearing the same
+    sentence. Both figures are now produced by this tool, intersection included.
+    """
+    (tmp_path / "mention.md").write_text("user zzq signed off, see scripts/x.py:12\n",
+                                         encoding="utf-8")
+    (tmp_path / "path.md").write_text("cache = /home/zzq/models/snap.safetensors\n", encoding="utf-8")
+    (tmp_path / "both.md").write_text(_machine_path("zzq") + "\n", encoding="utf-8")
+    (tmp_path / "quiet.md").write_text("nothing here\n", encoding="utf-8")
+    document = module.measure(root=tmp_path, account="zzq", claimed=set(),
+                              files=["mention.md", "path.md", "both.md", "quiet.md"])
+    totals = document["totals"]
+    assert totals["files_with_account_mentions"] == 2, totals
+    assert totals["files_with_absolute_paths"] == 2, totals
+    assert totals["files_with_account_mention_and_path"] == 1, (
+        "交集就是 168 那一格的定义，写成\"任一形态\"会把冻结来源的故事用一个更大的数重讲一遍：%s"
+        % totals)
+    assert totals["files_with_line_cites"] == 1, totals
+    assert totals["files"] == 3, "一个没有任何命中的文件进了人群：%s" % totals
+
+    real = module.measure()
+    fields = ("files_with_line_cites", "files_with_account_mentions",
+              "files_with_absolute_paths", "files_with_account_mention_and_path")
+    assert {field: sum(bucket[field] for bucket in real["by_ownership"].values())
+            for field in fields} == {field: real["totals"][field] for field in fields}, (
+        "逐形态文件数与桶不自洽")
+    assert real["totals"]["files_with_account_mentions"] > 100, real["totals"]
+    assert real["totals"]["files_with_account_mention_and_path"] > 100, (
+        "交集计数根本没被加上，面一收窄这条必须红：%s" % real["totals"])
+    assert real["totals"]["files_with_account_mention_and_path"] <= min(
+        real["totals"]["files_with_account_mentions"],
+        real["totals"]["files_with_absolute_paths"]), "交集大于它的任一侧，计数写错了"
+
+
+def test_the_root_build_config_is_inside_the_checked_cite_face(module, tmp_path):
+    """A cite written outside the four source prefixes used to age in silence; pyproject has seven.
+
+    ``pyproject.toml`` explains why the install tree mirrors the repository root and names seven
+    locations to do it. The checked face was ``scripts/ tests/ backend/ domains/work/``, so those seven
+    were verified by hand once and by nothing since. Root-level markdown is in the same face now.
+    """
+    (tmp_path / "tiny.py").write_text("def a():\n    return 1\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text("# the reason lives in tiny.py:99\n", encoding="utf-8")
+    report = module.own_cite_liveness(root=tmp_path, files=["tiny.py", "pyproject.toml"])
+    assert [row["cite"] for row in report["broken"]] == ["tiny.py:99"], (
+        "根级构建配置里的引用没进检查面：面一旦收窄，这条必须红，而不是安静地少测一条：%s"
+        % report["broken"])
+    assert report["summary"]["cites"] == 1, report["summary"]
+    assert report["by_shape"] == {"anchor": 0, "line": 1, "symbol": 0}, report["by_shape"]
+
+    real = module.own_cite_liveness()
+    rows = {row["file"]: row for row in real["by_file"]}
+    assert "pyproject.toml" in rows, "本仓的构建配置不在逐件清单里：%s" % sorted(rows)[:8]
+    assert rows["pyproject.toml"]["broken"] == 0, rows["pyproject.toml"]
+    assert sum(real["by_shape"].values()) == real["summary"]["cites"], (
+        "形态分列与总条数不一致，说明有一类引用没被分类：%s vs %s"
+        % (real["by_shape"], real["summary"]["cites"]))
 
 
 #: Cites that resolve to a tracked file but name a location inside it that is deliberately false: the
@@ -308,7 +383,8 @@ def _ledger_key(rel, cite):
 def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
     """Every number written into our own prose has to still exist in the file it names.
 
-    The ``own_code_and_checks`` population (146 cites) is dense evidence commentary: a cite spanning
+    The own-prose population -- our code, our checks, and the root-level documents -- is dense evidence
+    commentary: a cite spanning
     dozens of lines in ``canonical_store`` names a *region*, so swapping each cite for the enclosing
     symbol would lose which part of the function the sentence is about. What cannot be allowed is
     silence -- a cite whose line has scrolled past the end of its file reads exactly like a live one.
@@ -318,7 +394,8 @@ def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
     whole population instead of the rot.
     """
     files = [row for row in module.tracked_files()
-             if row.startswith(("scripts/", "tests/", "backend/", "domains/work/"))]
+             if row.startswith(("scripts/", "tests/", "backend/", "domains/work/"))
+             or ("/" not in row and row.endswith((".md", ".toml")))]
     assert len(files) > 100, "the own-code population collapsed: %d files" % len(files)
 
     by_name: dict[str, list[str]] = {}
@@ -428,12 +505,17 @@ def test_the_account_name_survives_only_where_it_is_accounted_for(module):
     permitted set is a named subset rather than a size threshold. On another machine -- same repo,
     different username -- the set is legitimately empty, which is why the claim is "no new files" plus a
     count check on the one file that is allowed, not an equality against this box's account name.
+    Both shapes are swept now -- the standalone token *and* the whole machine path, because the path rule
+    is case-insensitive and a lowercase spelling inside our own test fixtures stayed invisible to the
+    token-only version of this guard.
     """
     account = module.account_name()
     claimed = module.ledger_targets()
     token = re.compile(r"(?<![A-Za-z0-9_.\-/])" + re.escape(account) + r"(?![A-Za-z0-9_.\-/])")
+    path_rule = module.machine_path_rule(account)
     frozen_custody = {"frozen_source_input", "migrated_copy", "append_only_history"}
     found = {}
+    found_paths = {}
     for rel in module.tracked_files():
         if module.owner_of(rel, claimed) in frozen_custody:
             continue
@@ -441,10 +523,16 @@ def test_the_account_name_survives_only_where_it_is_accounted_for(module):
         if text is None:
             continue
         hits = len(token.findall(text))
+        paths = len(path_rule.findall(text))
         if hits:
             found[rel] = hits
+        if paths:
+            found_paths[rel] = paths
     assert set(found) <= {"config/adapter-registry.json"}, (
         "本仓可自修部分里出现了带本机账号名的新文件：%s" % sorted(found.items()))
+    assert set(found_paths) <= {"config/adapter-registry.json"}, (
+        "本仓可自修部分里出现了带本机绝对路径的新文件（小写拼法也算，路径形态本来就是大小写无关的）："
+        "%s" % sorted(found_paths.items()))
     # the one permitted file is permitted only while it still carries what the other guard recognises:
     # probed absolute paths sitting next to 未探测/未合格. Two accounts, one box -- on another machine the
     # set is legitimately empty, so this is a subset claim, not an equality against this box's username.
@@ -471,13 +559,29 @@ def test_the_producer_and_this_guard_reach_the_same_verdict_on_the_same_cites(mo
            sorted(set(SYNTHETIC_LOCATIONS) - tool_broken)))
 
     own_files = [row for row in module.tracked_files()
-                 if row.startswith(("scripts/", "tests/", "backend/", "domains/work/"))]
+                 if row.startswith(("scripts/", "tests/", "backend/", "domains/work/"))
+                 or ("/" not in row and row.endswith((".md", ".toml")))]
     assert report["summary"]["files"] == len(own_files), (
         "两侧的枚举面不同：工具 %s vs git ls-files %s"
         % (report["summary"]["files"], len(own_files)))
-    assert report["summary"]["cites"] == sum(
-        len(CITE_IN_TEXT.findall((TARGET_ROOT / rel).read_text(encoding="utf-8", errors="replace")))
-        for rel in own_files), "两侧识别出的引用条数不一致，正则已经分叉"
+    independent = {rel: CITE_IN_TEXT.findall(
+        (TARGET_ROOT / rel).read_text(encoding="utf-8", errors="replace")) for rel in own_files}
+    assert report["summary"]["cites"] == sum(len(v) for v in independent.values()), (
+        "两侧识别出的引用条数不一致，正则已经分叉")
+    # the same rule written twice has to agree file by file, not merely in total: a face that lost one
+    # file and gained another would still add up
+    assert [row["file"] for row in report["by_file"]] == sorted(k for k, v in independent.items() if v), (
+        "逐件清单与本守卫独立数出的文件集不同")
+    assert report["summary"]["files_with_cites"] == len([v for v in independent.values() if v]), (
+        "带引用的文件数与独立枚举不符：%s vs %s"
+        % (report["summary"]["files_with_cites"], len([v for v in independent.values() if v])))
+    shapes = {"symbol": 0, "line": 0, "anchor": 0}
+    for cites in independent.values():
+        for cite in cites:
+            shapes[_split_cite(cite)[1]] += 1
+    assert report["by_shape"] == shapes, (
+        "形态分列与本守卫独立分类的结果不同，两侧对同一句话的判读已经分叉：%s vs %s"
+        % (report["by_shape"], shapes))
     assert report["summary"]["broken"] == len(report["broken"]), "摘要与明细自相矛盾"
     assert report["summary"]["outside_tracked_tree"] > 0, (
         "示例与沙箱件这一类本来就该存在，为 0 说明枚举面收窄了")
