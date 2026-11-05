@@ -16,7 +16,7 @@
   pre-push 守卫逐条核（blob 上限、危害扫描现跑），不用 `--no-verify`。合并前专门为"要被并入的那一格"
   跑了一次终端闭环审计（CLOSED 14/14 @ `f77ceac`），落地过程见 docs/CODEX-AUDIT-ENTRY.md §15.39。
   上一次"已推送到 origin 并被公开克隆独立复跑"的核验仍是 2026-11-02，见 §15.27——那条不描述本批。
-- 依托提交：全量收据所测的那棵树是 `2ee2777`（561 passed, 3 subtests passed in 1220.53s (0:20:20)，该收据自己的候选摘要 `2b34a6dff600078d…`、7311 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
+- 依托提交：全量收据所测的那棵树是 `1cb4582`（569 passed, 3 subtests passed in 1384.02s (0:23:04)，该收据自己的候选摘要 `96280ada868c30b2…`、7311 个文件；两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 `audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——两个数不可互换。
   本分支与 `main` 的真实 SHA 一律用 `git rev-parse HEAD` / `git rev-parse main` 自读，不要抄本文件任何数字
 - 远程：`DTALEX66/AI-WORK-LAB`（public），**默认分支是 `main`**；2026-11-04 起远端多一条
   `audit/backend-closure-20261103`（`git branch -r` 现读两条：`origin/main` 与它，`origin/HEAD` 仍指 main）。
@@ -245,10 +245,19 @@ unsettled_files = 237
    `resolve_authority_cite` 的判据同批改。两项**按延后写而不是抹平**：小游戏领域包（13 包里唯一
    `INVALID`，11 条错误中 5 条要真人写设计内容，且该包 18 条跟踪复制件任何改动都要走声明返工 +
    台账补采）与 workbench 离线构建（`picomatch` 现读仍 `MODULE_NOT_FOUND`，补依赖需网络安装，
-   未授权）——包与检查都没删。真人/owner 项未动：`237` 未决 + `32` 个人决定项、L10#0 验收门仍
+   未授权）——包与检查都没删。后续批次里已经收口的三件不再列为待办：重复 GET 参数现在被
+   `_query_params()` 具名拒绝（五个 GET 面共用同一判据，N02 在任务面修掉的同一件事不再只在任务面成立）、
+   覆盖登记器 `ast.parse` 的那条 `SyntaxWarning` 已消、`source-coverage-*.csv` 的 `authority` 列改成
+   `file::name` 后由 `resolve_authority_cite` 与 v14 节点双向守着。
+   引用这一族到此为止的可查面：散文与登记里剩下的行号由
+   `scripts/measure_citation_population.py` 的两个模式现查（自有散文 `--check-own-cites`、
+   登记发布锚点 `--check-register-cites`），不再靠"谁记得去看"。
+   真人/owner 项未动：未决与个人决定项按上面派生数读（正文不抄数，抄一次就要重新发现一次）、L10#0 验收门仍
    `REFUSED`、L20#0 真实宿主、真人专业签字、模型推理、真实私有数据迁移、L00#2 出网隔离、推送与
-   远程 CI、来源仓删除与告警、GitHub 四条 key 告警、机器路径守卫的人群（322 个含账号名的跟踪件
-   未分类，扩人群会先把来源记录当成违规）。**本批推送状态**：已按 owner「推送吧」+「合并并打标签」推到
+   远程 CI、来源仓删除与告警、GitHub 四条 key 告警、机器路径守卫的人群。最后一项现在是有闸门的分类而不是
+   一句"未分类"：非冻结面上只剩 `config/adapter-registry.json` 的 4 处探测绝对路径（由"路径旁边必须仍是
+   未探测/未合格"的相邻性规则管），其余落在冻结来源输入与逐字节复制件里——动它们等于改写来源记录，
+   要 owner 决定；把账号名写进本仓自有文件会被节点当场判成泄漏。**本批推送状态**：已按 owner「推送吧」+「合并并打标签」推到
    `origin/audit/backend-closure-20261103`、`--ff-only` 并入 `main`、打注释标签 `closure-20261104`，
    PR #1 自动标为 MERGED（远端头用 §开头那条命令现读；授权记录按 `head_commit` 绑定被推的头）。
    发布 Release、改可见性或分支保护、删分支
@@ -262,14 +271,14 @@ unsettled_files = 237
    `migration/api-contract-check.json` 的 `handler位置` 与 `migration/requirement-traceability.csv`
    的 python 位置列都是 `file::name`；仓库自身状态改由 `repo:branch` 向 git 现问，登记不再把
    `.git/` 里的字节当实现位置（分离检出时那种引用会绿着说假话）。
-   下一格起手项：追踪件散文里的 `.py:行号` 式引用（守卫不解析这一类，所以它们会随编辑静默漂移）
-   必须先按"谁拥有这些字节"分类再动；分类与计数由跟踪工具
-   `scripts/measure_citation_population.py` 现算（确定性输出，无时间戳），本轮读数与四类归属
-   记在 docs/CODEX-AUDIT-ENTRY.md 当日追加的那一节。要点写死在这里，免得下一轮重走弯路：
-   只有"本仓自有的代码与检查"（改符号锚）与"生成器产物"（改生成器，不改 CSV）可动；
-   冻结的任务包与权威快照、`docs/history/` 的来源记录、append-only 的审计史都不许回改。
-   还有两个数错过一次，也记在那一节：账号名人群不得把公开仓库主名 `DTALEX66` 当成"含本机账号名"，
-   行号人群不得默默漏掉 `docs/history/`。清扫面已补齐：收据自己的 `--basetemp` 根会被扫。
+   下一格起手项：本仓可自修的后端项已经全部收到"每个数都能现查"这一状态，剩下的都带外部条件——
+   小游戏领域包要真人写 5 条设计内容、workbench 离线构建的 `picomatch` 要网络安装（未授权）、
+   `producedAt` 改成必填要 owner 定外部工具合同、Linux 复跑（N05 因此 PARTIAL）、以及上面逐条点名的
+   真人/owner 项。引用这一族的教训留在闸门里而不是只留在话里：人群从 `git ls-files` 现取
+   （手工清单曾漏掉 `requirement-traceability.csv`，也漏过 `docs/history/`），读不到的跟踪件必须点名
+   （深路径上的一个冻结件曾被普通读当成不存在，于是分母少一格），账号名人群不得把公开仓库主名
+   `DTALEX66` 算进来，别人的名字（大小写不同的 `Alex …`）也不得算成本机账号。
+   清扫面已补齐：收据自己的 `--basetemp` 根会被扫。
    其余人群不变：真人/owner 项、`237` 未决 + `32` 个人决定项、L10#0 验收门 `REFUSED`、
    L20#0 真实宿主、模型推理、真实私有数据迁移、L00#2 出网隔离、来源仓删除与告警、GitHub 四条 key
    告警、Linux 复跑（N05 因此 PARTIAL）。
