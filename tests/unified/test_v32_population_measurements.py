@@ -104,19 +104,18 @@ def test_a_different_person_named_alex_is_not_this_machines_account(module, tmp_
 
 
 def test_a_home_path_may_end_at_the_account_directory_but_a_url_may_not_start_one(module, tmp_path):
-    """Two boundaries of one rule, each crossed in a different direction before it was pinned.
+    """Three bounds of one rule, each found by measuring the population rather than guessing at it.
 
     ``C:\\Users\\alex`` -- a home path that stops at the account directory -- was invisible: the drive
-    branch demanded a separator *after* the name. Five frozen inputs write exactly that shape and one of
-    them carries no standalone account token either, so it sat outside both counters. The other bound is
-    the no-whitespace span: measured over this tree, letting the rule cross whitespace to reach the name
-    counts three files that are not paths (``https://app.notion.com/…-DT alex/tag`` and two archive
-    objects), and dropping the trailing separator as well takes it to fourteen -- ``s:`` from ``https:``
-    is a perfectly plausible drive letter. Over-counting a leak is recoverable; counting other people's
-    names as this machine is the mistake that turned 218 into 322. The last of the four shapes is the home
-    fragment a table cell writes -- ``（Users/<account>/AppData/…）``, no drive, no leading slash -- and
-    admitting it costs one file for one file on this tree, so the population no longer has a machine-path
-    spelling it cannot see at all.
+    branch demanded a separator *after* the name. Five frozen inputs write that shape. A sixth writes the
+    home fragment a table cell uses -- ``（Users/<account>/AppData/…）``, no drive in front, no leading
+    slash -- and carries no standalone account token either, so that one sat outside **both** counters at
+    once; admitting it costs one file for one file on this tree, which is why it was measured first.
+    The other bound is the no-whitespace span: measured over this tree, letting the rule cross whitespace
+    to reach the name counts three files that are not paths (``https://app.notion.com/…-DT alex/tag`` and
+    two archive objects), and dropping the trailing separator as well takes it to fourteen -- ``s:`` from
+    ``https:`` is a perfectly plausible drive letter. Over-counting a leak is recoverable; counting other
+    people's names as this machine is the mistake that turned 218 into 322.
     """
     (tmp_path / "ends-here.md").write_text("home = C:\\Users\\zzq\n", encoding="utf-8")
     (tmp_path / "url.md").write_text("read s://app.notion.com-DT zzq/tag, and OpenZZQ too\n",
