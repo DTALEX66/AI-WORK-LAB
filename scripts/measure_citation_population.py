@@ -57,6 +57,11 @@ LINE_CITE = re.compile(r"[\w./-]+\.py:\d+(?:-\d+)?")
 ABS_WIN = r"[A-Za-z]:[\\/][^\s\"'`<|]*"
 #: Git-Bash rewrites ``D:\x`` as ``/d/x``, so the home-shaped prefixes include that spelling
 ABS_POSIX = r"(?:/home|/(?:[a-z]/)?users)/"
+#: a Windows home path that stops at the account directory: ``C:\\Users\\<account>`` with nothing after
+#: it (the placeholder is deliberate -- spelling this box's name here is the leak the guard looks for).
+#: Insisting that ``users``/``home`` sit directly behind the drive prefix is what keeps ``https:`` from
+#: being read as a drive letter here.
+ABS_HOME_DIR = r"[A-Za-z]:[\\/](?:users|home)[\\/]"
 
 
 def _account_token(account: str, inside_path: bool) -> str:
@@ -77,9 +82,20 @@ def machine_path_rule(account: str) -> re.Pattern:
     the backslashed, upper-case one does,
     and a case-sensitive rule let the lowercase spellings -- which is what Git-Bash and most JSON dumps
     write -- out of the population entirely.
+
+    Three shapes, not one. The drive branch needs the account to sit *inside* a path (a separator after
+    it); the third branch is the path that stops at the account directory itself -- drive, ``\\Users\\``,
+    the name, nothing after it -- which the first branch cannot see and which five frozen inputs do write.
+    Both bounds on that first branch are load-bearing, and the cost of loosening each one is measured, not
+    assumed: letting the span cross whitespace adds three files that are not paths at all
+    (``https://app.notion.com/…-DT alex/tag`` and two archive objects), and dropping the trailing
+    separator as well takes it to fourteen, because ``s:`` from ``https:`` is a perfectly plausible drive
+    letter. Over-counting a leak is recoverable; counting other people's names as this machine is the
+    mistake that turned 218 into 322.
     """
     token = _account_token(account, inside_path=True)
-    return re.compile(r"(?:%s%s[\\/]|%s%s)" % (ABS_WIN, token, ABS_POSIX, token), re.IGNORECASE)
+    return re.compile(r"(?:%s%s[\\/]|%s%s|%s%s)"
+                      % (ABS_WIN, token, ABS_POSIX, token, ABS_HOME_DIR, token), re.IGNORECASE)
 
 
 def account_name() -> str:

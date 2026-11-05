@@ -103,6 +103,41 @@ def test_a_different_person_named_alex_is_not_this_machines_account(module, tmp_
         "小写拼法的真实路径漏掉了，或公开仓库主名的 URL 被当成机器路径：%s" % buckets)
 
 
+def test_a_home_path_may_end_at_the_account_directory_but_a_url_may_not_start_one(module, tmp_path):
+    """Two boundaries of one rule, each crossed in a different direction before it was pinned.
+
+    ``C:\\Users\\alex`` -- a home path that stops at the account directory -- was invisible: the drive
+    branch demanded a separator *after* the name. Five frozen inputs write exactly that shape and one of
+    them carries no standalone account token either, so it sat outside both counters. The other bound is
+    the no-whitespace span: measured over this tree, letting the rule cross whitespace to reach the name
+    counts three files that are not paths (``https://app.notion.com/…-DT alex/tag`` and two archive
+    objects), and dropping the trailing separator as well takes it to fourteen -- ``s:`` from ``https:``
+    is a perfectly plausible drive letter. Over-counting a leak is recoverable; counting other people's
+    names as this machine is the mistake that turned 218 into 322.
+    """
+    (tmp_path / "ends-here.md").write_text("home = C:\\Users\\zzq\n", encoding="utf-8")
+    (tmp_path / "url.md").write_text("read s://app.notion.com-DT zzq/tag, and OpenZZQ too\n",
+                                     encoding="utf-8")
+
+    def totals(*names):
+        document = module.measure(root=tmp_path, account="zzq", claimed=set(), files=list(names))
+        return document["totals"]
+
+    ends = totals("ends-here.md")
+    assert ends["absolute_machine_paths"] == 1, (
+        "以账号目录收尾的主目录没算进机器路径——盘符分支要求名字后面还有一个分隔符，那一格于是整体漏计：%s"
+        % ends)
+    assert ends["account_mentions"] == 1, ends
+    url = totals("url.md")
+    assert url["absolute_machine_paths"] == 0, (
+        "URL 里的 s: 被当成盘符：含空白的那段文本不是路径，盘符前缀后面必须紧跟 users/home 才算目录：%s"
+        % url)
+    assert url["account_mentions"] == 1, (
+        "独立 token 的口径变了，账号名人群就不是原来那一个：%s" % url)
+    both = totals("ends-here.md", "url.md")
+    assert both["files_with_absolute_paths"] == 1 and both["files_with_account_mentions"] == 2, both
+
+
 def test_a_missing_ledger_aborts_instead_of_narrowing_the_scan(module, tmp_path, monkeypatch):
     """Zero looks like a clean bill of health; here an unreadable ledger must be a refusal."""
     with pytest.raises(SystemExit) as abort:
