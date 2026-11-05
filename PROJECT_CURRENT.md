@@ -64,8 +64,8 @@ source_rows_total = 7210
 source_rows_work = 2734
 spdx_claimed_files = 226
 spdx_malformed_lines = 0
-suite_test_files = 35
-suite_test_nodes = 551
+suite_test_files = 36
+suite_test_nodes = 555
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -262,10 +262,14 @@ unsettled_files = 237
    `migration/api-contract-check.json` 的 `handler位置` 与 `migration/requirement-traceability.csv`
    的 python 位置列都是 `file::name`；仓库自身状态改由 `repo:branch` 向 git 现问，登记不再把
    `.git/` 里的字节当实现位置（分离检出时那种引用会绿着说假话）。
-   下一格起手项：追踪件散文里 621 处 `.py:行号` 式引用要先按"冻结来源/逐字节复制件/本仓自有"三类
-   拆开才能动（分布现数写在本轮追加的那一节里；直接扩人群会把 owner 投递的任务包与来源记录判成违规）；
-   `#16` 的账号名人群同理，且实测区分"我的 Windows 账号名"与公开仓库主名 `DTALEX66`——后者把
-   此前那个 322 撑大了。清扫面已补齐：收据自己的 `--basetemp` 根会被扫。
+   下一格起手项：追踪件散文里的 `.py:行号` 式引用（守卫不解析这一类，所以它们会随编辑静默漂移）
+   必须先按"谁拥有这些字节"分类再动；分类与计数由跟踪工具
+   `scripts/measure_citation_population.py` 现算（确定性输出，无时间戳），本轮读数与四类归属
+   记在 docs/CODEX-AUDIT-ENTRY.md 当日追加的那一节。要点写死在这里，免得下一轮重走弯路：
+   只有"本仓自有的代码与检查"（改符号锚）与"生成器产物"（改生成器，不改 CSV）可动；
+   冻结的任务包与权威快照、`docs/history/` 的来源记录、append-only 的审计史都不许回改。
+   还有两个数错过一次，也记在那一节：账号名人群不得把公开仓库主名 `DTALEX66` 当成"含本机账号名"，
+   行号人群不得默默漏掉 `docs/history/`。清扫面已补齐：收据自己的 `--basetemp` 根会被扫。
    其余人群不变：真人/owner 项、`237` 未决 + `32` 个人决定项、L10#0 验收门 `REFUSED`、
    L20#0 真实宿主、模型推理、真实私有数据迁移、L00#2 出网隔离、来源仓删除与告警、GitHub 四条 key
    告警、Linux 复跑（N05 因此 PARTIAL）。
