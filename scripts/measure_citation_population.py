@@ -54,7 +54,29 @@ OUR_OWN_CODE = ("scripts/", "tests/", "backend/", "domains/work/")
 
 LINE_CITE = re.compile(r"[\w./-]+\.py:\d+(?:-\d+)?")
 ABS_WIN = r"[A-Za-z]:[\\/][^\s\"'`<|]*"
-ABS_POSIX = r"(?:/home|/Users)/"
+#: Git-Bash rewrites ``D:\x`` as ``/d/x``, so the home-shaped prefixes include that spelling
+ABS_POSIX = r"(?:/home|/(?:[a-z]/)?users)/"
+
+
+def _account_token(account: str, inside_path: bool) -> str:
+    """The account name with the boundaries that stop a *person* being read as this machine.
+
+    ``DTALEX66`` holds the account letters, which is what inflated 218 into 322 once. Outside a path the
+    token must not touch a separator either, so ``/ALEX`` in a URL is not a standalone account mention.
+    """
+    before = r"(?<![A-Za-z0-9_.\-])" if inside_path else r"(?<![A-Za-z0-9_.\-/])"
+    return before + re.escape(account) + r"(?![A-Za-z0-9_.\-])"
+
+
+def machine_path_rule(account: str) -> re.Pattern:
+    """A whole absolute path that contains this machine's account, in any spelling of the case.
+
+    Case-insensitive on purpose: ``C:/users/alex/...`` leaks exactly what ``C:\\Users\\ALEX\\...`` does,
+    and a case-sensitive rule let the lowercase spellings -- which is what Git-Bash and most JSON dumps
+    write -- out of the population entirely.
+    """
+    token = _account_token(account, inside_path=True)
+    return re.compile(r"(?:%s%s[\\/]|%s%s)" % (ABS_WIN, token, ABS_POSIX, token), re.IGNORECASE)
 
 
 def account_name() -> str:
@@ -170,10 +192,8 @@ def measure(root: pathlib.Path = REPO_ROOT, account: str | None = None,
         raise SystemExit("MEASUREMENT_PREREQ_MISSING: 这台机器的账号名无法确定，"
                          "账号名人群不做（返回 0 会被读成「没有泄漏」）")
     claimed = ledger_targets() if claimed is None else claimed
-    bare = re.compile(r"(?<![A-Za-z0-9_.\-/])" + re.escape(account) + r"(?![A-Za-z0-9_.\-/])")
-    owner_token = re.compile(r"\bDTALEX66\b")
-    abs_path = re.compile(r"(?:%s%s[\\/]|%s%s/)" % (ABS_WIN, re.escape(account), ABS_POSIX,
-                                                    re.escape(account)))
+    bare = re.compile(_account_token(account, inside_path=False))
+    abs_path = machine_path_rule(account)
     if files is None:
         listed = subprocess.run(["git", "ls-files", "-z"], cwd=str(root), capture_output=True,
                                 check=True).stdout
@@ -214,11 +234,111 @@ def measure(root: pathlib.Path = REPO_ROOT, account: str | None = None,
             "samples": {key: bucket["paths"] for key, bucket in buckets.items() if bucket["paths"]}}
 
 
+OWN_CODE_PREFIXES = ("scripts/", "tests/", "backend/", "domains/work/")
+#: the three shapes a citation to a Python file can take in prose or in a message string
+CITE_SHAPE = re.compile(r"(?P<cite>[\w./-]+\.py(?:::[A-Za-z_]\w*|:\d+(?:-\d+)?|#[^\s,;)\]\"`]+))")
+#: migration-map identity keys name a file in the SOURCE repository's layout: a row's id, not a location
+FOREIGN_SOURCE_PREFIXES = ("src/design_lab/", "src/work/", "design-lab/", "work-lab/")
+DEF_OR_BIND = re.compile(r"^\s*(?:def|class)\s+(?P<name>[A-Za-z_]\w*)|^\s*(?P<bound>[A-Za-z_]\w*)\s*[:=]")
+
+
+def _symbols_defined_once(path: pathlib.Path) -> set[str]:
+    """Names a file defines exactly once, as a def/class header or a name binding."""
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return set()
+    counts: dict[str, int] = {}
+    for text in lines:
+        match = DEF_OR_BIND.match(text)
+        if not match:
+            continue
+        name = match.group("name") or match.group("bound")
+        counts[name] = counts.get(name, 0) + 1
+    return {name for name, hits in counts.items() if hits == 1}
+
+
+def _cite_parts(cite: str):
+    if "::" in cite:
+        head, _sep, name = cite.partition("::")
+        return head, "symbol", name
+    shaped = re.match(r"^(?P<path>[\w./-]+\.py):(?P<start>\d+)(?:-(?P<end>\d+))?$", cite)
+    if shaped:
+        start = int(shaped.group("start"))
+        return shaped.group("path"), "line", (start, int(shaped.group("end") or shaped.group("start")))
+    head, _sep, anchor = cite.partition("#")
+    return head, "anchor", anchor
+
+
+def own_cite_liveness(root: pathlib.Path = REPO_ROOT, files: list[str] | None = None) -> dict:
+    """Do the line numbers written into our own prose still point at content that exists?
+
+    A ``file.py:1234`` sentence reads the same whether line 1234 is the guard it describes or a blank line
+    fifty rows below it, and this repo has already published one of each. The registers refuse line
+    numbers; this walks the prose. Cites whose path is not in the tracked tree are counted separately and
+    never judged: they are docstring examples, sandbox fixtures, and ``.project-local`` receipt paths --
+    there is no tracked byte for them to have drifted away from.
+
+    The exemption ledger lives with the guard (``tests/unified/test_v32_population_measurements.py``), not
+    here, so a broken cite cannot be made to disappear by editing the instrument that finds it.
+    """
+    root = pathlib.Path(root)
+    if files is None:
+        listed = subprocess.run(["git", "ls-files", "-z"], cwd=str(root), capture_output=True,
+                                check=True).stdout
+        files = [row.decode("utf-8", "replace") for row in listed.split(b"\0") if row]
+    own = sorted(rel for rel in files if rel.startswith(OWN_CODE_PREFIXES))
+    by_name: dict[str, list[str]] = {}
+    for rel in sorted(files):
+        by_name.setdefault(pathlib.PurePosixPath(rel).name, []).append(rel)
+
+    counts: dict[str, int] = {"cites": 0, "outside_tracked_tree": 0, "foreign_identity_keys": 0}
+    broken: list[dict] = []
+    lengths: dict[str, int] = {}
+    for rel in own:
+        text = read_tracked_text(root / rel)
+        if text is None:
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            for cite in CITE_SHAPE.findall(line):
+                counts["cites"] += 1
+                head, kind, tail = _cite_parts(cite)
+                if (root / head).is_file():
+                    candidates = [head]
+                else:
+                    candidates = by_name.get(pathlib.PurePosixPath(head).name, [])
+                if not candidates:
+                    counts["outside_tracked_tree"] += 1
+                    continue
+                if "source_key" in line and cite.startswith(FOREIGN_SOURCE_PREFIXES):
+                    counts["foreign_identity_keys"] += 1
+                    continue
+                live = False
+                for cand in candidates:
+                    if cand not in lengths:
+                        body = read_tracked_text(root / cand)
+                        lengths[cand] = 0 if body is None else len(body.splitlines())
+                    if kind == "symbol" or (kind == "anchor" and not str(tail).isdigit()):
+                        live = tail in _symbols_defined_once(root / cand)
+                    else:
+                        start, end = tail if kind == "line" else (int(tail), int(tail))
+                        live = 0 < start <= lengths[cand] and end <= lengths[cand]
+                    if live:
+                        break
+                if not live:
+                    broken.append({"citing": rel, "line": number, "cite": cite, "kind": kind})
+    counts["files"] = len(own)
+    counts["broken"] = len(broken)
+    return {"summary": dict(sorted(counts.items())), "broken": broken}
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--json-out", type=pathlib.Path)
+    parser.add_argument("--check-own-cites", action="store_true",
+                        help="walk our own prose citations instead of measuring the populations")
     args = parser.parse_args(argv)
-    document = measure()
+    document = own_cite_liveness() if args.check_own_cites else measure()
     payload = json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True)
     if args.json_out:
         args.json_out.write_text(payload + "\n", encoding="utf-8", newline="\n")

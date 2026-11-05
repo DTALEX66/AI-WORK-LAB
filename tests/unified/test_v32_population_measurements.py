@@ -81,15 +81,17 @@ def test_a_different_person_named_alex_is_not_this_machines_account(module, tmp_
                                         encoding="utf-8")
     (tmp_path / "path.md").write_text("cache = C:/users/alex/models/snap.safetensors\n",
                                       encoding="utf-8")
+    (tmp_path / "url.md").write_text("remote https://github.com/DTALEX66/AI-WORK-LAB.git\n",
+                                     encoding="utf-8")
     document = module.measure(root=tmp_path, account="ALEX", claimed=set(),
-                              files=["person.md", "path.md"])
+                              files=["person.md", "path.md", "url.md"])
     buckets = document["by_ownership"]
     total = {field: sum(buckets[key][field] for key in buckets)
              for field in ("account_mentions", "absolute_machine_paths")}
     assert total["account_mentions"] == 0, (
         "另一个人的名字被算成本机账号名，人群又会虚涨：%s" % buckets)
     assert total["absolute_machine_paths"] == 1, (
-        "小写拼法的真实路径漏掉了：机器路径判据不能跟着大小写走 %s" % buckets)
+        "小写拼法的真实路径漏掉了，或公开仓库主名的 URL 被当成机器路径：%s" % buckets)
 
 
 def test_a_missing_ledger_aborts_instead_of_narrowing_the_scan(module, tmp_path, monkeypatch):
@@ -282,6 +284,17 @@ def _cite_is_live(root, cite, candidates):
     return any(_candidate_ok(root, cand, kind, tail) for cand in candidates)
 
 
+def _ledger_key(rel, cite):
+    """The shape the exemption ledger is keyed by: citing file, target file, tail -- never the whole
+    cite, because writing a whole cite inside this file would add it to the population under test."""
+    head, kind, tail = _split_cite(cite)
+    if kind == "line":
+        tail_key = "%d-%d" % tail if tail[0] != tail[1] else str(tail[0])
+    else:
+        tail_key = str(tail)
+    return (rel, head, tail_key)
+
+
 def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
     """Every number written into our own prose has to still exist in the file it names.
 
@@ -312,10 +325,8 @@ def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
             for cite in CITE_IN_TEXT.findall(line):
                 seen.add((rel, cite))
                 head, kind, tail = _split_cite(cite)
-                tail_key = ("%d-%d" % tail) if kind == "line" and tail[0] != tail[1] else str(
-                    tail[0]) if kind == "line" else tail
-                if (rel, head, tail_key) in SYNTHETIC_LOCATIONS:
-                    exempt_hits.add((rel, head, tail_key))
+                if _ledger_key(rel, cite) in SYNTHETIC_LOCATIONS:
+                    exempt_hits.add(_ledger_key(rel, cite))
                     continue
                 if (TARGET_ROOT / head).is_file():
                     candidates = [head]
@@ -334,3 +345,33 @@ def test_own_code_line_cites_point_at_bytes_that_are_still_there(module):
     dead = sorted(key for key in SYNTHETIC_LOCATIONS if key not in exempt_hits)
     assert not dead, "具名豁免已不再被引用，留着会掩护下一个真损坏：%s" % dead
     assert not broken, "本仓散文里的引用不再指向存在的内容：\n" + "\n".join(broken[:12])
+
+
+def test_the_producer_and_this_guard_reach_the_same_verdict_on_the_same_cites(module):
+    """Two implementations of one rule, or the agreement is worthless.
+
+    ``own_cite_liveness`` is the instrument a reader can re-run; the walk above is written separately so
+    neither one is the only witness. If they disagree -- over the enumerated face, over what counts as
+    outside the tracked tree, or over which cites are broken -- then at least one is wrong, and the number
+    the audit entry quotes would be a claim about one piece of code rather than a fact about the
+    repository. The ledger is asserted to be exactly the broken set, so a new broken cite can only be
+    silenced by naming it above with a reason.
+    """
+    report = module.own_cite_liveness()
+    tool_broken = {_ledger_key(row["citing"], row["cite"]) for row in report["broken"]}
+    assert tool_broken == set(SYNTHETIC_LOCATIONS), (
+        "工具与守卫认定的损坏集合不一致，工具多出：%s；守卫多出：%s"
+        % (sorted(tool_broken - set(SYNTHETIC_LOCATIONS)),
+           sorted(set(SYNTHETIC_LOCATIONS) - tool_broken)))
+
+    own_files = [row for row in module.tracked_files()
+                 if row.startswith(("scripts/", "tests/", "backend/", "domains/work/"))]
+    assert report["summary"]["files"] == len(own_files), (
+        "两侧的枚举面不同：工具 %s vs git ls-files %s"
+        % (report["summary"]["files"], len(own_files)))
+    assert report["summary"]["cites"] == sum(
+        len(CITE_IN_TEXT.findall((TARGET_ROOT / rel).read_text(encoding="utf-8", errors="replace")))
+        for rel in own_files), "两侧识别出的引用条数不一致，正则已经分叉"
+    assert report["summary"]["broken"] == len(report["broken"]), "摘要与明细自相矛盾"
+    assert report["summary"]["outside_tracked_tree"] > 0, (
+        "示例与沙箱件这一类本来就该存在，为 0 说明枚举面收窄了")
