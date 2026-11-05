@@ -1424,3 +1424,46 @@ def test_a_foreign_source_defect_does_not_become_this_projects_warning(tmp_path)
         "noise, not swallow real errors")
 
 
+def test_a_tracked_byte_the_hazard_gate_cannot_open_blocks_instead_of_passing(tmp_path, capsys,
+                                                                              monkeypatch):
+    """A printed denominator has to mean "I read this many", not "the index lists this many".
+
+    The scanner printed ``scanned_files = len(tracked_files())`` while an unreadable file fell through
+    ``except OSError: continue`` -- so a hazard sitting in a byte the gate could not open would have
+    been reported as covered, and the run would still look like ``7311 files, 0 blocking``. The same
+    shape was caught in the population tool from the other side: one frozen input lives at a
+    260-character path, so a plain read raised ``FileNotFoundError`` and the scan silently covered
+    7310 of 7311 files.
+    """
+    import importlib.util
+    import json
+    import subprocess
+
+    spec = importlib.util.spec_from_file_location(
+        "hazards_scan_coverage", TARGET_ROOT / "scripts" / "check_public_hazards.py")
+    haz = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(haz)
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    (tmp_path / "clean.md").write_text("no secrets here\n", encoding="utf-8")
+    (tmp_path / "hidden.md").write_text("AKIAABCDEFGHIJKLMNOP\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True, capture_output=True)
+    (tmp_path / "hidden.md").unlink()
+    monkeypatch.setattr(haz, "ROOT", tmp_path)
+    monkeypatch.setattr(haz, "LEDGER", tmp_path / "config" / "secret-scan-adjudications.json")
+
+    rc = haz.main([])
+    document = json.loads(capsys.readouterr().out.splitlines()[0])
+    assert document["scanned_files"] == 2 and document["files_read"] == 1, document
+    assert document["files_unreadable"] == 1 and document["unreadable_paths"] == ["hidden.md"], (
+        "an unopenable tracked byte was dropped from the scan while the printed count kept claiming "
+        "the whole index: %s" % document)
+    assert rc == 1, "a scan that did not cover the tree may not exit 0"
+
+    # positive control: the same tree, same bytes, readable again -- the refusal came from the hole
+    (tmp_path / "hidden.md").write_text("AKIAABCDEFGHIJKLMNOP\n", encoding="utf-8")
+    rc = haz.main([])
+    document = json.loads(capsys.readouterr().out.splitlines()[0])
+    assert rc == 0 and document["files_read"] == 2 and document["files_unreadable"] == 0, document
+
+

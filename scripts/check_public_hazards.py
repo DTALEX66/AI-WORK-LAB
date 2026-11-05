@@ -99,11 +99,17 @@ def main(argv=None) -> int:
     for entry in ledger.get("entries", []):
         waived_index[(entry["file"], entry["family"], entry["value_sha256"])] = entry
     findings = []
-    for rel in tracked_files():
+    unreadable: list[str] = []
+    files_read = 0
+    tracked = tracked_files()
+    for rel in tracked:
         try:
             text = open(LONG + str((ROOT / rel).resolve(strict=False)), "rb").read().decode(
                 "utf-8", errors="replace")
+            files_read += 1
         except OSError:
+            # a byte the gate cannot open is not a clean byte: it is named and it blocks
+            unreadable.append(rel)
             continue
         if "\x00" in text[:4096]:
             continue
@@ -137,7 +143,9 @@ def main(argv=None) -> int:
     if args.emit:
         args.emit.write_text(json.dumps(findings, ensure_ascii=False, indent=1) + "\n",
                              encoding="utf-8", newline="\n")
-    print(json.dumps({"scanned_files": len(tracked_files()), "findings": len(findings),
+    print(json.dumps({"scanned_files": len(tracked), "findings": len(findings),
+                      "files_read": files_read, "files_unreadable": len(unreadable),
+                      "unreadable_paths": unreadable[:12],
                       "by_status": {key: sum(1 for f in findings if f["status"] == key)
                                     for key in ("unadjudicated", "adjudication-stale", "adjudicated",
                                                 "example-literal")},
@@ -145,9 +153,12 @@ def main(argv=None) -> int:
     for item in blocking[:20]:
         print("  %-24s %-10s %s:%d" % (item["family"], item["status"], item["file"][-64:],
                                        item["line"]))
+    if unreadable:
+        # printed after the JSON line on purpose: the receipt stays one parseable document
+        print("  HAZARD_SCAN_INCOMPLETE: %d 个跟踪件读不到，扫描面小于登记面" % len(unreadable))
     if stale:
         print("  裁决因文件变更失效：" + "; ".join("%s %s" % (s[0][-40:], s[1]) for s in stale[:6]))
-    return 1 if blocking else 0
+    return 1 if (blocking or unreadable) else 0
 
 
 if __name__ == "__main__":

@@ -98,7 +98,47 @@ def test_a_missing_ledger_aborts_instead_of_narrowing_the_scan(module, tmp_path,
     assert "MEASUREMENT_LEDGER_SHAPE" in str(abort.value)
 
 
+def test_the_tool_scans_every_tracked_byte_or_names_the_ones_it_missed(module):
+    """A denominator that counts files the reader never opened would shrink the population quietly.
+
+    One frozen input sits at a 260-character path (``docs/history/sources-20261101/design/docs/audits/
+    DESIGN-LAB-UIKIT-CONFORMANCE-2026-09-28/session/hermes-legacy/runtime/reconstruction/
+    c4-4768-.../source-swap.svg``); a plain Windows read reports that as ``FileNotFoundError``, so the
+    first version of this tool scanned 7310 of 7311 tracked files and said nothing about it. The
+    hazard gate already reads through the long-form prefix; the measurement has to cover the same tree.
+    """
+    tracked = module.tracked_files()
+    document = module.measure()
+    assert document["files_tracked"] == len(tracked), (
+        "the scan list and the index disagree: %s vs %s"
+        % (document["files_tracked"], len(tracked)))
+    assert document["files_unreadable"] == 0, (
+        "tracked bytes the reader could not open are outside both populations: %s"
+        % document["unreadable_paths"])
+    assert document["files_scanned"] == len(tracked), (
+        "files_scanned dropped below the index while the published totals kept quoting the whole tree")
+
+
+def test_a_tracked_byte_missing_from_the_worktree_is_reported_not_dropped(module, tmp_path):
+    """The refusal to pretend: an unreadable file is named, and the scan count shows the hole."""
+    import subprocess
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    (tmp_path / "keep.md").write_text("nothing to see\n", encoding="utf-8")
+    (tmp_path / "gone.md").write_text("still in the index\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True, capture_output=True)
+    (tmp_path / "gone.md").unlink()
+    listed = subprocess.run(["git", "-C", str(tmp_path), "ls-files", "-z"],
+                            capture_output=True, check=True).stdout
+    files = [row.decode("utf-8", "replace") for row in listed.split(b"\0") if row]
+    document = module.measure(root=tmp_path, account="alex", claimed=set(), files=files)
+    assert document["files_tracked"] == 2 and document["files_scanned"] == 1, document
+    assert document["files_unreadable"] == 1, (
+        "a tracked byte the disk refuses must never leave the count silently: %s" % document)
+    assert document["unreadable_paths"] == ["gone.md"], document["unreadable_paths"]
+
+
 def test_the_published_totals_recompute_and_the_buckets_account_for_every_file(module):
+
     """The number quoted in the entry must be reproducible from the tool, and internally closed."""
     first = module.measure()
     second = module.measure()
