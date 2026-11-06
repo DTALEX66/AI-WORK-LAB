@@ -208,13 +208,33 @@ def source_identity(absolute: object, roots: dict[str, Path]) -> str | None:
 
 
 def target_identity(absolute: object) -> str:
-    """The path inside this repository -- the destination half of the same host-independent identity."""
+    """The path inside this repository -- the destination half of the same host-independent identity.
+
+    Two rules, in this order, and both are needed:
+
+    1. a destination under the checkout that is running is simply its tail -- that is what makes a
+       clone answer correctly for a copy it declared itself;
+    2. otherwise cut at the **last** segment naming this repository, which is how a path written on
+       another machine (``F:/clone/AI-WORK-LAB/…``, ``/home/you/…``) still resolves.
+
+    Rule 2 alone broke the first verification clone: the copy list is regenerated with
+    ``REPO_ROOT``-based destinations, so a nested clone's own path contained the repository name
+    once, at the outside, and the cut left ``.project-local/clonerepro-…/c/domains/x.py`` -- a
+    destination that named neither the repository nor the machine, flipping ``COPIED_VERIFIED`` into
+    ``COPIED_MISSING_IN_TARGET`` for 31 work rows.
+    """
     text = _forward(absolute)
+    root = _forward(REPO_ROOT)
+    if text.casefold().startswith(root.casefold() + "/"):
+        return text[len(root) + 1:]
     parts = text.split("/")
-    for position, segment in enumerate(parts):
-        if segment.casefold() == TARGET_REPO_NAME.casefold() and position + 1 < len(parts):
-            return "/".join(parts[position + 1:])
-    return text
+    position = None
+    for index, segment in enumerate(parts):
+        if segment.casefold() == TARGET_REPO_NAME.casefold() and index + 1 < len(parts):
+            position = index
+    if position is None:
+        return text
+    return "/".join(parts[position + 1:])
 
 
 def published_target(value: object) -> str:
@@ -225,13 +245,14 @@ def published_target(value: object) -> str:
     generator, so a clone of the same commit published ``D:\\All projects\\AI-WORK-LAB\\domains/x.py``
     where the tracked register said ``domains/x.py``, and -- worse -- opened the **main** checkout's
     bytes while computing the digest. Measured this batch: 188 work rows and 2,144 design rows
-    differed for that reason alone. The portable anchor is this repository's own name inside the
-    path, which is what the source half of the identity already uses; a destination that carries no
-    such anchor is refused by name instead of being published as a machine path.
+    differed for that reason alone. One anchor rule lives in :func:`target_identity` -- cut at the
+    last segment naming this repository -- so the published cell and the index key can never
+    disagree about which destination a record names; a destination with no such anchor is refused
+    by name instead of being published as a machine path.
     """
     relative = target_identity(value)
-    if ABSOLUTE_SHAPE.search(relative) or relative in ("", "."):
-        raise SystemExit("DESTINATION_NOT_INSIDE_ANY_CHECKOUT " + str(value))
+    if ABSOLUTE_SHAPE.search(relative) or not relative:
+        raise SystemExit("DESTINATION_NOT_INSIDE_ANY_CHECKOUT " + _forward(value))
     return relative
 
 

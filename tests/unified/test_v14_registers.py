@@ -1535,3 +1535,34 @@ def test_a_destination_is_published_inside_the_repository_not_on_a_machine():
     dirty["work"]["rows"][0]["target"] = "D:/All projects/AI-WORK-LAB/domains/work/x.py"
     findings = coverage.machine_path_findings(dirty)
     assert len(findings) == 1 and "|a:target=" in findings[0], findings
+
+
+def test_a_destination_under_the_running_checkout_is_measured_from_that_checkout(tmp_path, monkeypatch):
+    """The first verification clone of the portable-anchor fix was itself mis-anchored.
+
+    ``declared_file_copies()`` builds destinations as ``REPO_ROOT / dst_rel``, so in a clone the
+    value already is a path inside *that* checkout. Cutting only at the repository-name segment --
+    which appears once there, at the outside -- left the run directory inside the cell:
+    ``.project-local/clonerepro-…/c/domains/x.py``, and 31 work rows changed class because the
+    register no longer believed its own destination existed. Measured from the row samples, not
+    inferred: this is what the clone's ``--check`` printed before the rule was fixed.
+    """
+    import build_source_coverage as coverage
+
+    nested = tmp_path / ".project-local" / "clonerepro-1" / "c"
+    nested.mkdir(parents=True)
+    monkeypatch.setattr(coverage, "REPO_ROOT", nested.resolve())
+    assert coverage.published_target(str(nested / "domains" / "work" / "x.py")) \
+        == "domains/work/x.py"
+    # the identity key must agree with the published cell or the index misses its own rows
+    assert coverage.target_identity(str(nested / "domains" / "work" / "x.py")) == "domains/work/x.py"
+
+    # and rule two still carries a path written on a machine nobody is sitting at
+    assert coverage.published_target("F:/clone/AI-WORK-LAB/domains/work/x.py") == "domains/work/x.py"
+    for unrelated in ("D:/All projects/WORK-LAB/x.py", "C:/somewhere/else/x.py"):
+        try:
+            coverage.published_target(unrelated)
+        except SystemExit as refusal:
+            assert "DESTINATION_NOT_INSIDE_ANY_CHECKOUT" in str(refusal), refusal
+        else:
+            raise AssertionError("机器上别处的绝对路径被当成仓内去向发布了：%s" % unrelated)

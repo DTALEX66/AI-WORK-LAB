@@ -3483,3 +3483,101 @@ owner 原话只有两个字：「推送」。这一格记的是这句话**覆盖
 本节之后仍欠的（不改色）：复审的运行时腿要在**能建临时目录**的沙箱里重跑（`workspace-write` 指向一份克隆，
 被审 SHA 不变），A00#1 在此之前保持 `PARTIAL` 并写明原因；20 个 closure 格的 独立复审 保持 `NOT_RUN`；
 `L10#0` 的 32 行仍等 owner 具名判决；克隆重跑那一个去节点在改绑后的提交上复跑，读数进下一节。
+### 15.52 两处"绿在一条没人查过的通路上"：散文抄件的锚，与登记表里的机器路径
+
+**一、L10#0 的出处用行号锚，行号会自己走路**
+
+`config/unregistered-adjudications.json` 的 32 格里 27 格的出处写成 `path:NNN`，检查只做三件事：路径被跟踪、
+行号在范围内、那一行非空白。本轮我改了入口 §五 两句话，于是：
+
+- 两格 `PROJECT_CURRENT.md:212` 的 `line_text` 当场变成别的句子（"摘要为准，这正是该裁定选择的取舍…"），
+  检查仍报 `line_in_range: true`、`unresolved_count: 0`；
+- 顺着这条把 32 格的锚逐格现读一遍，另有 **6 格指进 `migration/source-coverage-*.csv` 的邻行**——
+  即"这个文件的待判定行"登记到了别人那一行上。这不是我改坏的：覆盖登记表每轮重发布，行号就动，
+  而行号锚看不见这件事。
+
+修法不是把行号改对，而是让锚自己说出它指的内容：
+
+- `build_unregistered_adjudications.py::check_cite` 增加第三种形态 `path::#片段`——必须**唯一**命中一行；
+  命中 0 行 = 断，命中多行也 = 断（否则"任意一行都算证据"）。代码仍用 `path::符号`。
+- 32 格重发为 **24 条片段锚 + 8 条符号锚**，`unresolved: 0`；其中 `design-lab/scripts/resolve_open_design_locator.py`
+  那格自动从错行回到自己的行。
+- 同一次踩到的第二个缺陷：这支脚本**没有** `--check`，我打了 `--check` 它照写盘并回 rc=0。
+  现在有真的 `--check`（只比字节不写），未知参数一律 `UNKNOWN_ARGUMENT` rc=2——"不存在的模式被当成没看见"
+  正是那条假绿的入口，所以这条也配了反例。
+- 这道闸门进了终端闭环审计（`待判定行每一格的出处锚仍能现查到唯一一行`），以后改被引文件会在闭环审计上红。
+- `tests/unified/test_v35_owner_decision_channel.py`：原来的"出处可解析"节点接受 `path:NNN`（弱保证），
+  重写为要求内容锚并与生成器同判；另加两个真能红的节点——`::#不存在` 与 `::#命中多行` 各判一条，
+  以及 `--check` 不改字节 / 漂移回 1 / 未知旗标回 2 且不写盘。
+- 顺带修正一个上游误报：`measure_citation_population.py` 把登记表里 `cite_check.line_text`
+  （**从目标文件抄出来的内容**）也当成登记表发出的引用，于是抄到一句含引用的代码就判违规。
+  现在 `authority` 是声明、`cite_check` 是回声，回声不再进引用人群；回声键失效不再算发现。
+
+**二、覆盖登记表把主检出的绝对路径发布出去，还去主检出读字节**
+
+§15.32 留下的"克隆里人群比 published 多"这一格，本轮第一次给出根因，而且是实测出来的：同一提交、
+同一来源根，主检出 `--check` 回 `rc=0 / rows_changed 0,0`，克隆回 `rc=1 / work 1579, design 3856`。
+让克隆把登记表重算一份再 `git diff`，差异点名到列：
+
+- `target`、`archive_target` 在克隆里写成 `D:\All projects\AI-WORK-LAB\…`，跟踪表里是仓内相对路径；
+- 键面上还剩行序平移（work 真实差异 188 行、design 2144 行，其余是错位读出来的"每行都不同"）。
+
+根因在生成器两处旧 fallback：它们拿**正在运行的那份检出**当剥前缀的锚——迁移那台机器上前缀对得上，
+克隆里对不上，于是 `str(target)` 原样把机器路径写进公开登记；更要紧的是 `_copied_row` 拿着这条绝对路径
+`is_file()` / `sha()`，于是**克隆算摘要时打开的是主检出的文件**。登记表因此不只是不好看，它回答的
+"这个来源文件去了哪里"在另一份检出上是假的。
+
+修法与防复发：
+
+- `published_target()` 与 `target_identity()` 共用一条两步规则：**先看这条绝对路径是否在被运行的那份检出之下**（是就取它的尾部），否则按**最后一段**仓名切；两条都不成立就具名拒绝 `DESTINATION_NOT_INSIDE_ANY_CHECKOUT`，不再"原样发布机器路径"；
+- `_copied_row` 先取相对值，再用 `REPO_ROOT / relative` 打开——克隆读克隆自己的字节；
+- 发布前守卫 `machine_path_findings()`：`target` / `archive_target` / `disposition_target` 里出现
+  盘符或 UNC 形状即 `ABSOLUTE_TARGET_PUBLISHED`，并点名 `label|path:column=value`；
+- 先数过再改：`migration/copies.json` 带 `target` 的记录 **1382 条，其中 1382 条本来就是绝对形式，
+  新拒绝分支命中 0 条**——所以修法没有改变主检出的任何事实（重发布 `rc=0` 且**未改动登记表一个字节**），
+  只去掉了"换一份检出就写不同值"的那条 fallback；
+- `--check` 的报告补 `drift_sample`（构造抽成 `check_report()` 以便无重建地测）：以前它只说
+  `rows_changed: {"work": 1579}`，"有多少"而没有"是什么"，本轮我三次猜错都是被它坑的。
+
+**二之二、这条修法自己的第一版也是错的，被同一份行集差抓出来**
+
+修完之后第一次克隆复现回 `rc=1`，`drift_sample` 给出的是这种形状：
+
+```
+work | packages/client-neutral-core/scripts/adapter_conformance.py | columns=['class', 'target', 'reason']
+    target published='domains/work/workflow_core/adapter_conformance.py'
+           rebuilt='.project-local/clonerepro-1793963530/c/domains/work/workflow_core/adapter_conformance.py'
+```
+
+根因不在登记表，在我的验证装置与新规则：克隆被我放在主检出的 `.project-local/` 里面，而
+`declared_file_copies()` 的目标是 `REPO_ROOT / dst_rel` 现算的——在克隆进程里那已经是克隆自己的路径，
+只含一段仓名且在它**外面**，于是"按仓名切"把运行目录留在了值里，31 行 work 的 `class` 因此从
+`COPIED_VERIFIED` 翻成 `COPIED_MISSING_IN_TARGET`。这条错是我这一轮引入的，前一次读数里它被上一处
+更大的错掩盖着。修法是把"在被运行的检出之下"作为第一步、仓名切作为第二步，两条规则都进
+`target_identity()`，键与发布值因此不可能各说各话；
+`tests/unified/test_v14_registers.py::test_a_destination_under_the_running_checkout_is_measured_from_that_checkout`
+用 `tmp_path` 造出一份嵌套检出直接钉住这条规则（含"别机器的绝对路径仍按仓名切"与"无关机器路径具名拒绝"两面）。
+
+**三、追正 §15.51 的一处读数**
+
+§15.51 写"降到 2 位再多出 8 个，6 个是真抄件"。同一份人群重数一遍是 **8 处里 7 处真抄件、1 处巧合**
+（`96`/`23` 个 ref 那一处），我用 6 条形如 `` `93` 个容器包 `` 的形状绑住那 7 处。数字本身小，
+但它属于本目标点名的那一类：话是我自己写的现值。
+
+**四、本轮到此的实测状态**
+
+`scripts/check_project_current.py --check`、`scripts/build_test_census.py --check`、
+`scripts/build_unregistered_adjudications.py --check`（待判定行每一格的出处锚仍能现查到唯一一行）、`scripts/build_audit_item_closure.py --check`、
+`scripts/build_audit_state.py --check`、`scripts/build_task_acceptance_register.py --check`、
+`scripts/build_blocker_register.py --check`、`scripts/measure_citation_population.py --check-own-cites` /
+`--check-register-cites`、`scripts/check_public_hazards.py`、`scripts/check_workbench_bundle_drift.py` 均 rc=0；
+`scripts/build_source_coverage.py` 主检出重发布 rc=0 且登记表字节未变。终端闭环审计的门集合从 10 道加到
+12 道（出处锚、workbench 产物字节两道），加上 4 个探针共 16 条判据。
+声明节点数 594 → 597 → 600（克隆重建覆盖复现 +1、出处锚 +2 到 597；报告构造 +1、目的地规则 +1、
+嵌套检出 +1 到 600），
+`--allow` 之前先证明人群只动该动的文件：`files_that_lost_tests` 为空、`added_files` / `deleted_files` 为空。
+
+仍欠且不改色：A00#1 的运行时腿要在能建临时目录的沙箱里重跑（第 3 轮脚本与提示词已备，
+指向一份可写克隆）；20 个 closure 格的 独立复审 仍全 `NOT_RUN`；`L10#0` 的 32 行仍等 owner 具名判决；
+克隆侧 `build_source_coverage.py --check` 的读数、全量收据、五处改绑与终端闭环审计 CLOSED 记在下一节——
+收据必须测最终代码态，先取收据再改代码只会再多一张作废取证。
