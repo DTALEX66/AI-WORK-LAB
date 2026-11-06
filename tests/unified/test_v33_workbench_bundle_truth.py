@@ -13,14 +13,18 @@ So the face of this guard is the Git-visibility answers that must not collapse i
 the artifact invisible to Git (a defect), visible but never added (a defect), added but not in HEAD
 (nothing committed to verify), committed but no longer on disk (nothing to read), and the build
 environment missing (``*_ABSENT``, exit 3 -- a named conclusion, never a green).
-The stale-bytes plant itself is not here: it would have to rewrite a tracked artifact, and the
-repo's falsifier script is where byte plants belong. Neither is a build that runs and fails: that
-needs an interpreter, so it lives with the other build-running claim in ``test_v36``.
+The stale-bytes plant itself is not here: it would have to rewrite a tracked artifact, which is what
+``scripts/falsify_workbench_bundle_gate.py`` does -- tracked rather than left in a batch's scratch
+directory, because that script's ``VERDICT_CASES`` is what the last two nodes below compare against,
+and a coverage claim nobody can re-run from a clone is not coverage. Neither is a build that runs and
+fails: that needs an interpreter, so it lives with the other build-running claim in ``test_v36``.
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -153,6 +157,59 @@ def test_a_staged_but_never_committed_artifact_has_nothing_to_verify(tmp_path):
     assert receipt["verdict"] == "COMMIT_BLOB_ABSENT", receipt
     assert receipt["tracked"] is True and receipt["bundle_exists"] is True, receipt
     assert "committed_digest" not in receipt and "rebuilt_digest" not in receipt, receipt
+
+
+#: Every verdict the tool assigns, and every case the tracked falsifier declares, as two sets that
+#: must be equal. The point is not the count: it is that a name added to one side without the other
+#: stops being a sentence nobody can check.
+VERDICT_ASSIGN = re.compile(r'document\["verdict"\] = "([A-Z_]+)"')
+FALSFIER = TARGET_ROOT / "scripts" / "falsify_workbench_bundle_gate.py"
+
+
+def _tool_verdict_names(tool_text: str) -> set:
+    return set(VERDICT_ASSIGN.findall(tool_text))
+
+
+def _declared_cases(falsifier_text: str) -> set:
+    """``VERDICT_CASES`` read structurally, so the suite never imports a script that plants bytes."""
+    tree = ast.parse(falsifier_text)
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "VERDICT_CASES" for t in node.targets):
+            return {key.value for key in node.value.keys}
+    raise AssertionError("scripts/falsify_workbench_bundle_gate.py 里没有 VERDICT_CASES 这个字典")
+
+
+def test_every_verdict_the_tool_can_assign_is_put_in_front_of_the_gate():
+    """Ten names, ten cases -- the shape that let stale bytes pass as verified is a name nobody ran.
+
+    Measured in this batch: the tool had grown ten outcomes and three had ever been observed. The
+    equality is in both directions on purpose. A missing case is an unexercised branch; an extra one
+    is a claim about a verdict the tool cannot emit, which is how a coverage list quietly becomes
+    fiction of its own.
+    """
+    named = _tool_verdict_names(TOOL.read_text(encoding="utf-8"))
+    declared = _declared_cases(FALSFIER.read_text(encoding="utf-8"))
+    assert named, "no verdict literals found in the tool -- the pattern is dead, not the tool"
+    assert sorted(named - declared) == [], ("这些判定从没被任何地方放到工具面前", sorted(named - declared))
+    assert sorted(declared - named) == [], ("反例脚本声明了工具发不出的判定", sorted(declared - named))
+
+
+def test_a_verdict_name_added_without_a_case_is_reported_as_uncovered():
+    """The guard above must be able to fail, or it guards nothing.
+
+    Two plants over synthetic text, both in-memory: an eleventh name assigned by the tool and never
+    declared, and a declared name the tool never assigns. Each has to move the corresponding set
+    difference -- that is the whole claim the other node makes about the real files.
+    """
+    real = TOOL.read_text(encoding="utf-8")
+    planted_source = real + '\ndef _unreachable():\n    document["verdict"] = "ELEVENTH_NAME"\n'
+    named = _tool_verdict_names(planted_source)
+    declared = _declared_cases(FALSFIER.read_text(encoding="utf-8"))
+    assert "ELEVENTH_NAME" in named - declared, "一个新判定没被声明也能通过这一格"
+
+    narrowed = declared - {"MATCH"}
+    assert "MATCH" in named - narrowed, "少了一格声明却读不出缺口"
 
 
 DESIGN_COVERAGE = TARGET_ROOT / "migration/source-coverage-design.csv"

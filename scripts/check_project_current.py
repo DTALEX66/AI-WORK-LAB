@@ -704,8 +704,10 @@ PROSE_FIGURE_SHAPES: tuple[tuple[str, str], ...] = (
     ("unsettled_files", r"`([\d,]+)` 条待裁决来源"),
     ("unsettled_files", r"`([\d,]+)` 未决"),
     ("route_endpoints", r"([\d,]+) 端点逐路由实测"),
-    ("source_rows_work", r"vs ([\d,]+)、design"),
-    ("source_rows_design", r"vs ([\d,]+)）"),
+    # The two shapes that used to bind ``work NNNN vs NNNN、design`` are gone on purpose: the sentence
+    # they tracked described a cross-checkout difference that no longer exists, and rewriting that
+    # sentence is exactly what made them report SHAPE_DEAD. See PROSE_FIGURE_COINCIDENTAL for how the
+    # superseded pair is now declared.
     ("archive_recorded_not_copied", r"`([\d,]+)` 个容器包"),
     ("archive_recorded_not_copied", r"那 ([\d,]+) 个包"),
     ("archive_registered_not_migrated", r"`([\d,]+)` 个已登记但未迁入"),
@@ -720,6 +722,13 @@ PROSE_FIGURE_SHAPES: tuple[tuple[str, str], ...] = (
 PROSE_FIGURE_COINCIDENTAL: tuple[tuple[str, tuple[str, ...], str], ...] = (
     (r"`96`/`[\d,]+` 个 ref", ("authority_index_entries",),
      "git 的 ref 条数，和 authority_index_entries 现值同为两位数，不是同一个量"),
+    # Superseded measurements must not be deleted (the reading is the record) and must not be bound
+    # as a live figure either: the published half of that old pair happens to equal today's row count
+    # only because the register has not moved since. Binding it would make the entry assert that a
+    # historical reading tracks the present.
+    (r"当时读数 work", ("source_rows_work", "source_rows_design", "distinct_paths_work"),
+     "被取代的克隆差额读数；published 那一半今天仍等于派生值（它同时同形于两个键），"
+     "但这句话讲的是当时，不是现在"),
 )
 
 NUMBER_TOKEN = re.compile(r"(?<![\w.:-])(\d[\d,]*)(?![\w.:/-])")

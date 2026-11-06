@@ -68,7 +68,7 @@ source_rows_work = 2734
 spdx_claimed_files = 229
 spdx_malformed_lines = 0
 suite_test_files = 39
-suite_test_nodes = 603
+suite_test_nodes = 605
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -151,10 +151,10 @@ unsettled_files = 237
 | 界面（STITCH 前端） | 未做：本批只做本地后端 | `migration/ui-entry-disposition.csv` |
 | 真实宿主写入 / 模型推理 / 真实私有数据迁移 / 真人专业验收 | `NOT_RUN`，按边界如实记录 | `docs/CODEX-AUDIT-ENTRY.md` §5、`migration/deferral-register.json` |
 | 系统级出站隔离 | 未证明（无防火墙/沙箱配置；云端会话模型上下文可离开本机这一限制仍成立） | `INTEGRATION_POLICY.md` §2 |
-| workbench bundle | 离线可重建，产物已重新被 Git 跟踪；`scripts/check_workbench_bundle_drift.py` 现判 MATCH / DRIFT / IGNORED_ARTIFACT / BUNDLE_UNTRACKED / `*_ABSENT` | `tests/unified/test_v33_workbench_bundle_truth.py` |
+| workbench bundle | 离线可重建，产物已重新被 Git 跟踪；`scripts/check_workbench_bundle_drift.py` 能报十个具名判定（`MATCH` / `DRIFT` / `UNCOMMITTED_BYTES` / `IGNORED_ARTIFACT` / `BUNDLE_UNTRACKED` / `BUNDLE_ABSENT` / `COMMIT_BLOB_ABSENT` / `NODE_ABSENT` / `VITE_ABSENT` / `BUILD_FAILED`），十个各有 case 且这套对应关系本身有守卫：`scripts/falsify_workbench_bundle_gate.py` 声明覆盖集，`test_v33` 把它与工具里真正能赋的判定字面量双向比对，多一个名字或少一个 case 都红 | `tests/unified/test_v33_workbench_bundle_truth.py`、`tests/unified/test_v36_workbench_bundle_rebuild.py`、`scripts/falsify_workbench_bundle_gate.py` |
 | 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。收据已在这两个修复之后重取，它测的是哪棵树、读数多少，一律看本文开头「- 依托提交：」那一行与 `migration/audit-item-closure.csv` 的 运行收据 / 受测候选摘要 两列，本行不抄第三份（抄过的地方在下一次改绑后就变成了假陈述，§15.51 记了这一次） | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
 | 归档原件的唯一副本 | `1131` 个对象（约 `1.06 GB`）目前只在统一归档里有；归档自己的 `完整性校验报告.json` 仍写 `source_file_set_unchanged: true`，而它点名的 `2031` 条来源路径现在**一个都不存在**（`D:\All projects\Record` 已消失，`xiangmuguidang` 是空目录）——那句话对今天的磁盘已不成立，归档不可再被当作可清理的副本 | `migration/archive-object-reconciliation-20261101.csv`、`_归档管理\完整性校验报告.json` |
-| 删掉两个来源仓之后本仓还能不能独立跑 | **切割机制成立且有守卫**：三根收进 `scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 指向不存在的路径即全仓进入切割态，**一个字节都不改**；闸门在两态下各自给出可区间的具名结论（`SOURCE_REPO_ABSENT`/rc=3、无收据与无安装报告的具名拒绝、真漂移 rc=1 三类互不塌陷），由 `tests/unified/test_v31_independence_cut.py` 与 `tests/unified/test_v23_clone_repro.py`（克隆里真跑 clone-safe 集）守着。**这一格现在有了自己的节点**：`tests/unified/test_v23_clone_repro.py::test_a_fresh_clone_rebuilds_the_published_coverage_populations`在一份 detached 克隆里跑两趟 `build_source_coverage.py --check`——不设开关时来源根解析到克隆的兄弟目录，必须回 `rc=3 / NOT_RECOMPUTABLE_HERE`（错的根要是具名缺席，不能变成一份更小的人群），设了 `AWL_SOURCE_ROOT_*` 指向本机真实只读仓时必须回 rc=0。§15.52 把这条判据从 rc=1 追到两处根因（目的地的机器路径 + 我这版锚规则自己的嵌套错），克隆侧的最终读数记在 §15.53；在那之前这一格仍不能说"已解决" | `tests/unified/test_v23_clone_repro.py`、`tests/unified/test_v31_independence_cut.py`、docs/CODEX-AUDIT-ENTRY.md §15.32 |
+| 删掉两个来源仓之后本仓还能不能独立跑 | **切割机制成立且有守卫**：三根收进 `scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 指向不存在的路径即全仓进入切割态，**一个字节都不改**；闸门在两态下各自给出可区间的具名结论（`SOURCE_REPO_ABSENT`/rc=3、无收据与无安装报告的具名拒绝、真漂移 rc=1 三类互不塌陷），由 `tests/unified/test_v31_independence_cut.py` 与 `tests/unified/test_v23_clone_repro.py`（克隆里真跑 clone-safe 集）守着。**这一格现在有了自己的节点**：`tests/unified/test_v23_clone_repro.py::test_a_fresh_clone_rebuilds_the_published_coverage_populations`在一份 detached 克隆里跑两趟 `build_source_coverage.py --check`——不设开关时来源根解析到克隆的兄弟目录，必须回 `rc=3 / NOT_RECOMPUTABLE_HERE`（错的根要是具名缺席，不能变成一份更小的人群），设了 `AWL_SOURCE_ROOT_*` 指向本机真实只读仓时必须回 rc=0。§15.52 把这条判据从 rc=1 追到两处根因（目的地的机器路径 + 我这版锚规则自己的嵌套错），克隆侧的最终读数在 §15.53：主检出与两份临时根独立克隆的 `--check` 全部 `rc=0`、`drifted=[]`、`rows_changed` 两侧为 0，跑完克隆自身 `git status` 为空——这一格的"跨检出能不能重算"到此是测过的，不是推定的 | `tests/unified/test_v23_clone_repro.py`、`tests/unified/test_v31_independence_cut.py`、docs/CODEX-AUDIT-ENTRY.md §15.32 |
 
 ## 三、证据分级（不拼接旧成绩）
 
@@ -162,7 +162,7 @@ unsettled_files = 237
 |---|---|
 | 文档 / 登记 | 已核：登记互相勾稽，7 台生成器 `--check` 全 rc=0 |
 | 代码 | 已核：静态与反例断言在套件内 |
-| 构建 | 部分：Python 侧可导入安装（离线隔离安装 PASS，见 `config/isolated-install-verdict.json`）；`apps/workbench` bundle 不可重建 |
+| 构建 | 已核：Python 侧可导入安装（离线隔离安装 PASS，见 `config/isolated-install-verdict.json`）；`apps/workbench` bundle 离线可重建，且"committed 字节 == 现构建字节"由 `scripts/check_workbench_bundle_drift.py` 现算、`tests/unified/test_v36_workbench_bundle_rebuild.py` 断言（该行曾写"不可重建"，是 §15.50 之后没跟着改的旧状态，见 §五 1 ②） |
 | 运行 | 已核：164 端点逐路由实测（`migration/route-surface.csv`），loopback HTTP |
 | 外部 Agent / 宿主真实往返 | 未做：`NOT_RUN`，不拿合成回执冒充 |
 | 迁移恢复 | 已核（合成夹具与副本）：崩溃注入下旧字节不被半写；真实私有数据迁移仍 `NOT_RUN` |
@@ -190,7 +190,7 @@ unsettled_files = 237
 
 1. ~~重取全量收据并改绑登记表~~ 每一轮收紧都要再来一遍，因为收紧本身就是活代码。收据所测的那棵树只写在两处：本文开头「- 依托提交：」那一行（由 `scripts/check_project_current.py::receipt_line` 从收据现算）和 `migration/audit-item-closure.csv` 的 运行收据 / 受测候选摘要 / 测量时刻UTC 三列。本节从前抄过第三份，抄的那份在两次改绑之后就成了假陈述——外部复审在 `f616fb5` 抓到的是同类（散文抄件 与派生块 不符），这一格是它没看到但同一形状的另一处，见 §15.51。
    判据口径沿用上一轮定下的那条并且仍然成立：收据不要求点名 HEAD，只要求「收据的提交是 HEAD 的祖先，且其间每个动过的跟踪文件都是文档或生成登记表，逐个点名」；代码或测试出现在那个区间就是 `FAIL`。
-   本轮同时记下两个真实缺口，不用「闭环」二字把它们盖掉：① `migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 大（work 2764 vs 2734、design 4488 vs 4476）——`copied_index()` 的绝对路径身份判等已在 §15.33+ 改掉并由 `test_v14_registers.py` 守着，本轮把剩下的半条也挖出来了：登记表把**目的地**也按「正在运行的检出」来剥前缀，剥不出就把主检出的绝对路径原样发布，还用它去读主检出的字节算摘要，根因、修法与两道新闸门见 §15.52；② `apps/workbench` 的 bundle 仍无法离线重建，两个读 bundle 的JS 闸门仍在校验旧字节（②已在 §15.50 收口：根因是通用 `build/` 忽略规则把该产物吞成看不见，重建本身一直可行）。两条都在 docs/CODEX-AUDIT-ENTRY.md 有对应小节。
+   本轮记下两件事，一件结清、一件换了形状：① `migration/source-coverage-*.csv` 的**跨检出重建已实测结清**——最后一次改到生成器的提交上，同一份 `build_source_coverage.py --check` 在主检出与两份放在系统临时根的独立克隆里都是 `rc=0`、`drifted=[]`、`rows_changed {work:0, design:0}`，跑完克隆自身 `git status` 为空；曾被发布的差额（当时读数 work `2764` vs `2734`、design `4488` vs `4476`）有两个根因，`copied_index()` 的绝对路径身份判等已在 §15.33+ 改掉并由 `test_v14_registers.py` 守着，剩下的半条在 §15.52 挖出并修掉（目的地按「正在运行的检出」剥前缀，再按仓名切）。这句话现在不靠散文钉在某个 SHA 上：`tests/unified/test_v23_clone_repro.py::test_a_fresh_clone_rebuilds_the_published_coverage_populations` 每次都从当前树克隆一份到临时根，先要求无来源根时具名拒绝（`rc=3 NOT_RECOMPUTABLE_HERE`）、再要求带来源根时回 `rc=0`，它在收据人群里，所以每个被认证的提交都重测一遍；② `apps/workbench` 的 bundle 重建与产物字节已被 `scripts/check_workbench_bundle_drift.py` 现算核住（`MATCH`，`committed_digest == rebuilt_digest`），根因是通用 `build/` 忽略规则把该产物吞成看不见（§15.50）。本轮在这格上的缺口换了形状：那个工具能报十个具名判定，先前只有三个真被 anything 观察到过——`COMMIT_BLOB_ABSENT`、`BUNDLE_ABSENT`、`BUILD_FAILED` 只出现在它自己的 docstring 里。现在三个各有节点，十个各有 case：`scripts/falsify_workbench_bundle_gate.py` 把十个态逐个摆到工具面前（四个 Git 可见性态用一次性仓库、两个工具链态、`BUILD_FAILED` 用一个退出非零的桩 vite、`DRIFT` 与 `UNCOMMITTED_BYTES` 用本检出的真字节并按摘要恢复），并声明它自己覆盖了哪十个名字；`tests/unified/test_v33_workbench_bundle_truth.py::test_every_verdict_the_tool_can_assign_is_put_in_front_of_the_gate` 把这份声明和工具里真正能赋的判定字面量做**双向**比对，第十一名没被摆出来就红，声明里留着工具发不出的名字也红。两条都在本轮按下过真实的反例（合成文本一条、真文件加一个 `ELEVENTH_NAME` 一条）。
 2. owner 对 `237` 条待裁决来源做批量判定（含 32 条阻断 `L10#0` 的）。
 3. ~~统一归档 `1212` 个对象与融合仓的逐摘要对账~~ 已建成 `1212` 行逐条登记；
    ~~那 `1131` 个只在归档里的对象要不要按摘要迁入本仓~~ owner 已定（「确保内容全部归档到仓库」）：
