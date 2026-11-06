@@ -60,14 +60,14 @@ crlf_tracked_files = 121
 distinct_paths_design = 4055
 distinct_paths_union = 6774
 distinct_paths_work = 2734
-lf_tracked_files = 729
+lf_tracked_files = 736
 route_endpoints = 164
 source_rows_design = 4476
 source_rows_total = 7210
 source_rows_work = 2734
-spdx_claimed_files = 227
+spdx_claimed_files = 228
 spdx_malformed_lines = 0
-suite_test_files = 38
+suite_test_files = 39
 suite_test_nodes = 584
 task_acceptance_clauses = 48
 unsettled_files = 237
@@ -154,7 +154,7 @@ unsettled_files = 237
 | workbench bundle | 离线可重建，产物已重新被 Git 跟踪；`scripts/check_workbench_bundle_drift.py` 现判 MATCH / DRIFT / IGNORED_ARTIFACT / BUNDLE_UNTRACKED / `*_ABSENT` | `tests/unified/test_v33_workbench_bundle_truth.py` |
 | 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。收据已在这两个修复之后重取：现记 `499 passed / 0 failed / 0 errors`，绑在 `94dd47c`（摘要 `1467eeaea846ac08…`），改绑之后只有 `docs/` 与 `migration/` 的字节的动过 | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
 | 归档原件的唯一副本 | `1131` 个对象（约 `1.06 GB`）目前只在统一归档里有；归档自己的 `完整性校验报告.json` 仍写 `source_file_set_unchanged: true`，而它点名的 `2031` 条来源路径现在**一个都不存在**（`D:\All projects\Record` 已消失，`xiangmuguidang` 是空目录）——那句话对今天的磁盘已不成立，归档不可再被当作可清理的副本 | `migration/archive-object-reconciliation-20261101.csv`、`_归档管理\完整性校验报告.json` |
-| 删掉两个来源仓之后本仓还能不能独立跑 | **切割本身在最终代码态重测成立**（克隆 HEAD `6b0cfbf`，§15.32；收据测的也是这一头 `6b0cfbf`）：三根收进 `scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 三个环境变量指向不存在的路径即全仓进入切割态，**一个字节都不改**（克隆的 `git status` 前后各读一次均为空：`no_bytes_rewritten_verified=True`，克隆里没有 `.project-local`=False）；**10 道闸门两态全部具名、无 traceback**（`SOURCE_REPO_ABSENT`/rc=3、无收据与无安装报告的具名拒绝、真漂移 rc=1 三类互不塌陷）；克隆可跑集 25 文件，对照 `363 passed, 1 warning, 3 subtests passed in 470.33s (0:07:50)`（失败 0），处理 `361 passed, 2 skipped, 3 subtests passed in 160.37s (0:02:40)`（失败 0），因开关而红的节点 **0** 个、只在没开关时红 **0** 个，两个 skip 逐条点名（§15.32）。克隆内复跑终局审计 `NOT CLOSED`：{"PASS": 8, "FAIL": 0, "PENDING": 6, "INSTRUMENT_ERROR": 0}，未具名 0 条——它说的是这台机器观测不到，不是通过。**新查出的缺口换了位置**：`migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 多（本机 work 2734 / design 4476 vs 克隆 2764 / 4488），根因定位在 `copied_index()` 以两个绝对路径相等判「同一条去向」——换台机器就不等，于是同一来源文件被记两行；本机 `--check` 仍 rc=0，跨机复现要到克隆里才暴露，本轮试过一处修法并实测两处都不对，已整体回退，未进仓库 | `.project-local/runs/independence-cut-20261103-final.json`、`.project-local/runs/ag-skip-names-20261103.txt`、docs/CODEX-AUDIT-ENTRY.md §15.32 |
+| 删掉两个来源仓之后本仓还能不能独立跑 | **切割机制成立且有守卫**：三根收进 `scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 指向不存在的路径即全仓进入切割态，**一个字节都不改**；闸门在两态下各自给出可区间的具名结论（`SOURCE_REPO_ABSENT`/rc=3、无收据与无安装报告的具名拒绝、真漂移 rc=1 三类互不塌陷），由 `tests/unified/test_v31_independence_cut.py` 与 `tests/unified/test_v23_clone_repro.py`（克隆里真跑 clone-safe 集）守着。**本轮没有重测的一件事**：§15.32 那次在克隆里读到覆盖登记的行人群比 published 多两行（根因指向 `copied_index()` 的绝对路径身份判等，后来按 §15.33+ 修）——本机 `build_source_coverage.py --check` 现读 rc=0，但**克隆内的人群 equality 没有任何测试覆盖**，所以这一格只能说"本轮未重测"，不能说"已解决"；要跨机复现必须到克隆里跑那条 `--check`，本机观测不到 | `tests/unified/test_v23_clone_repro.py`、`tests/unified/test_v31_independence_cut.py`、docs/CODEX-AUDIT-ENTRY.md §15.32 |
 
 ## 三、证据分级（不拼接旧成绩）
 

@@ -48,7 +48,8 @@ TARGET_ROOT = Path(__file__).resolve().parents[2]
 PREREQ = re.compile(r"\.venv|All projects[\\/](WORK-LAB|DESIGN-LAB)|"
                     r"WORK_SOURCE_ROOT|DESIGN_SOURCE_ROOT|LIVE_STORES|"
                     r"[.]git[\"'\s\\/]+hooks|"
-                    r"[.]project-local[\"'\s\\/]+build")
+                    r"[.]project-local[\"'\s\\/]+build|"
+                    r"apps/workbench/node_modules")
 
 #: The two spellings that used to mean "the read-only source root" outside
 #: ``scripts/source_roots.py``. Either one defeats the environment switch, because a

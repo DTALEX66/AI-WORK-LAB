@@ -113,9 +113,29 @@ def source_repo_record(name: str, path: pathlib.Path) -> dict:
     return record
 
 
+def audited_commit_state(audited: str) -> dict:
+    """The population of the audited commit itself, read from its tree.
+
+    This used to be ``candidate_state()`` of the working tree written into a field named
+    ``audited_candidate_*``: when the binding stayed on an older commit -- which is what
+    re-pinning refuses to do without the flag -- the count described this checkout while the
+    name described the audited one, and the record quietly mixed two trees. ``git ls-tree`` of
+    the audited commit is the only reading that means what the field says.
+    """
+    listing = git(["ls-tree", "-r", audited])
+    state = {}
+    for line in listing.splitlines():
+        meta, _, path = line.partition("\t")
+        fields = meta.split()
+        if len(fields) == 3 and path:
+            state[path] = fields[2]
+    return state
+
+
 def live_fields(audited_commit: str | None) -> dict:
     audited = git(["rev-parse", audited_commit or "HEAD"])
     state = candidate_snapshot.candidate_state()
+    audited_state = audited_commit_state(audited)
     branch = git(["rev-parse", "--abbrev-ref", "HEAD"])
     remote_ref = ""
     try:
@@ -127,8 +147,13 @@ def live_fields(audited_commit: str | None) -> dict:
         "observed_from": "git and the filesystem, read by scripts/build_audit_state.py",
         "audited_head_sha": audited,
         "audited_head_tree": git(["rev-parse", audited + "^{tree}"]),
-        "audited_candidate_files": len(state),
-        "audited_candidate_digest": candidate_snapshot.digest_of(state),
+        "audited_candidate_files": len(audited_state),
+        "audited_candidate_digest": candidate_snapshot.digest_of(audited_state),
+        "audited_candidate_digest_口径": ("git ls-tree -r of the audited commit, "
+                                          "path -> full object id; deliberately not the content "
+                                          "digest of this checkout"),
+        "working_tree_candidate_files_observed": len(state),
+        "working_tree_candidate_digest_observed": candidate_snapshot.digest_of(state),
         "branch": branch,
         "commit_count_observed": int(git(["rev-list", "--count", "HEAD"]) or 0),
         "head_sha_now": git(["rev-parse", "HEAD"]),
@@ -209,6 +234,8 @@ def merge(existing: dict, updates: dict) -> dict:
 #: changes, even while the binding stays put.
 ROTATING_FIELDS = ("generated_at", "head_sha_now",
                    "audited_candidate_digest", "audited_candidate_files",
+                   "working_tree_candidate_digest_observed",
+                   "working_tree_candidate_files_observed",
                    "commit_count_observed")
 ROTATING_NESTED = ("remote_ref_observed",)
 
