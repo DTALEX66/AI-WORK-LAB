@@ -4383,3 +4383,32 @@ B 组（第 3 轮那 7 条未核实）全部跑到出读数，其中三条值得
 不能记录"包含这段文字的那一格会测到什么"。本批把这圈话说明白的地方是 §15.52、§15.53 第十八部分
 和这一节；如果下一批还犯"在条目里写一个本节发布之后才成立的结论"，那要修的是判据的表述，
 不是再加一节。
+### 15.55 目标要"每项配可红的反例"：第 2 项那一格我先前只是说它能红，这次真的按下了一次
+
+§15.53 与 §15.54 把五处收口和两道读数边界说完之后，发布前按目标逐条重数了一遍"每项有没有可红的反例"，
+第 2 项（minigame-design 领域包里机器可修的错误）在这一问下露出了一个我没做到的部分：
+`tests/unified/test_v24_capability_evidence.py::test_the_deferred_domain_pack_names_the_elements_this_tree_actually_lacks`
+的 docstring 里写着"加一个那些文件进去，这条就会带着新的名单变红"，但**本批没有任何一次真的加过**——
+我手里只有构造上的可红性，没有按下过的读数。可红性不是证据，按下才是；这一节就是补那一次。
+
+做法与读数（脚本 `.project-local/edits-20261106a/falsify_minigame_deferral.py`，全部现读）：
+
+- 对照面：元素名到文件名的映射取自**另一个合规包** `uiux-design/manifest.json` 的 `files`，
+  缺席集合按磁盘现数，本批实测为
+  `['benchmark_cases', 'evidence_cards', 'handoff_contract', 'profile', 'scenario', 'source_mapping']`
+  ——六个，与 `migration/deferral-register.json` 里 `design.minigame_domain_pack` 的枚举逐个对上。
+- 控制：改磁盘之前那条节点 `1 passed in 0.09s`。
+- 处理：往 `minigame-design` 里写入被选中的那一个（`benchmark_cases`，它映射到 `benchmarks/`），
+  同一节点 `1 failed in 0.05s`，失败原文并列两份名单——登记里带着 `benchmark_cases` 的那一份
+  与磁盘现数里少了它的那一份，正是这条断言要比的东西。
+- 恢复：删除该文件后 `absent` 与开始时逐项相同（脚本自己比 `same as before: True`），
+  节点回到 `1 passed in 0.09s`，`git status --porcelain=v1` 在整件事结束后为 0 字节。
+  种进去的是这个脚本自己造的一次性文件，不是设计内容，也不来自任何来源仓。
+
+为什么这一处值得单开一节，而不是在 §15.53 里补一句：本目标把"每项配可红的反例"写成验收条件，
+而"我写了它能红"和"我按过一次并留下两份读数"在文本上几乎一样长，这正是假绿最喜欢的形状。
+第一批里 `NODE_ABSENT` 那条（本轮仍挂在 §15.53 第十部分与下一批）是同一个毛病的另一面：
+装置能跑不等于装置按下去过。两处从此按同一口径记账——**没有按下读数的，就写"构造上可红，未实按"**。
+
+本节提交之后 `scripts/audit_objective_closure.py` 与 `scripts/check_project_current.py --check`
+会各重跑一次，读数写在那条提交消息里；本节只写已经测到的东西。
