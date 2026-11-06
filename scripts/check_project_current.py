@@ -449,8 +449,9 @@ def check_entries(entry_path: Path) -> tuple[list, list]:
 def check_figures(entry_path: Path) -> list:
     if not entry_path.is_file():
         return ["ENTRY_MISSING " + str(entry_path)]
+    text = entry_path.read_text(encoding="utf-8")
     try:
-        stated = parse_figures(entry_path.read_text(encoding="utf-8"))
+        stated = parse_figures(text)
     except ValueError as exc:
         return [str(exc)]
     derived = derive_figures()
@@ -462,6 +463,7 @@ def check_figures(entry_path: Path) -> list:
             findings.append("FIGURE_NOT_DERIVABLE " + key)
         elif stated[key] != derived[key]:
             findings.append("FIGURE_STALE %s 文档=%d 寄存器=%d" % (key, stated[key], derived[key]))
+    findings += prose_figure_findings(text, derived)
     blockers = json.loads((ROOT / "config" / "blocker-register.json").read_text(encoding="utf-8"))
     ids = [item.get("id") for item in blockers["items"]]
     if BLOCKING_QUEUE not in ids:
@@ -649,6 +651,111 @@ def check_authority_index() -> list:
 
 
 RECEIPT_LINE_PREFIX = "- 依托提交："
+
+#: Where the entry repeats a number the derived block already owns, that copy is the thing that
+#: rots: `--check` compared only the managed block, so a hand-typed duplicate elsewhere could be
+#: off by any amount and the gate stayed green (found by the external review at
+#: `PROJECT_CURRENT.md` 的两处 `694` / `217,126,876`，派生值早就是 692 / 215,124,851).
+#: Each shape binds one prose occurrence to the figure key that owns it; a bound sentence that
+#: disagrees is a finding, a shape that matches nothing is a finding (a table entry kept after
+#: the sentence was rewritten would certify nothing), and a prose number that equals a derived
+#: value without being bound is named rather than assumed harmless.
+PROSE_FIGURE_SHAPES: tuple[tuple[str, str], ...] = (
+    ("archive_objects", r"`([\d,]+)` 个唯一对象"),
+    ("archive_objects", r"([\d,]+) 个对象的逐行真值"),
+    ("archive_objects", r"`([\d,]+)` 个对象与融合仓"),
+    ("archive_objects", r"`([\d,]+)` 行逐条登记"),
+    ("archive_in_repo_objects", r"`([\d,]+)` 个正文对象"),
+    ("archive_in_repo_bytes", r"（`([\d,]+)` 字节）逐字节进"),
+    ("archive_import_verified", r"`([\d,]+)` 个\*\*只在归档里"),
+    ("archive_import_verified", r"`([\d,]+)` 个对象（约"),
+    ("archive_import_verified", r"`([\d,]+)` 个只在归档里的对象"),
+    ("archive_import_verified", r"`([\d,]+)` 个归档唯一副本"),
+    ("archive_excluded_raster_media", r"`([\d,]+)` 个位图"),
+    ("archived_excluded_cache_and_build", r"`([\d,]+)` 行由三部分构成"),
+    ("unsettled_files", r"`([\d,]+)` 个文件停在"),
+    ("unsettled_files", r"`([\d,]+)` 条待裁决来源"),
+    ("unsettled_files", r"`([\d,]+)` 未决"),
+    ("route_endpoints", r"([\d,]+) 端点逐路由实测"),
+    ("source_rows_work", r"vs ([\d,]+)、design"),
+    ("source_rows_design", r"vs ([\d,]+)）"),
+    ("archive_recorded_not_copied", r"`([\d,]+)` 个容器包"),
+    ("archive_recorded_not_copied", r"那 ([\d,]+) 个包"),
+    ("archive_registered_not_migrated", r"`([\d,]+)` 个已登记但未迁入"),
+    ("task_acceptance_clauses", r"（([\d,]+) 条验收子句）"),
+    ("capability_families", r"（([\d,]+) 个能力族）"),
+    ("authority_index_entries", r"收 `([\d,]+)` 条"),
+)
+
+#: Prose numbers that happen to read like a figure value but are a different quantity. Each one is
+#: a named pattern plus the keys it must not be confused with, so the exemption cannot silently
+#: grow into a blanket: a pattern that stops matching is itself a finding.
+PROSE_FIGURE_COINCIDENTAL: tuple[tuple[str, tuple[str, ...], str], ...] = (
+    (r"`96`/`[\d,]+` 个 ref", ("authority_index_entries",),
+     "git 的 ref 条数，和 authority_index_entries 现值同为两位数，不是同一个量"),
+)
+
+NUMBER_TOKEN = re.compile(r"(?<![\w.:-])(\d[\d,]*)(?![\w.:/-])")
+
+
+def prose_lines(text: str):
+    """The entry's own lines, with the generated figures block left out.
+
+    Numbers inside the markers are the derived values themselves; they are compared by
+    `check_figures` and must not be bound twice.
+    """
+    inside = False
+    for number, line in enumerate(text.splitlines(), start=1):
+        if FIGURES_START in line:
+            inside = True
+            continue
+        if FIGURES_END in line:
+            inside = False
+            continue
+        if not inside:
+            yield number, line
+
+
+def prose_figure_findings(text: str, derived: dict) -> list:
+    findings = []
+    bound: dict[int, list] = {}
+    for key, pattern in PROSE_FIGURE_SHAPES:
+        compiled = re.compile(pattern)
+        hits = 0
+        for number, line in prose_lines(text):
+            for match in compiled.finditer(line):
+                hits += 1
+                bound.setdefault(number, []).append(match.span(1))
+                stated = match.group(1).replace(",", "")
+                if key not in derived:
+                    findings.append("PROSE_FIGURE_KEY_UNDERIVED %s（形状 %s）" % (key, pattern))
+                elif int(stated) != int(derived[key]):
+                    findings.append("PROSE_FIGURE_STALE %s 文档=%s 派生=%d 行=%d"
+                                    % (key, stated, derived[key], number))
+        if not hits:
+            findings.append("PROSE_FIGURE_SHAPE_DEAD %s（入口散文里已找不到形状 %s）" % (key, pattern))
+    values = {str(value) for value in derived.values()}
+    for number, line in prose_lines(text):
+        for match in NUMBER_TOKEN.finditer(line):
+            token = match.group(1).replace(",", "")
+            # two digits is the floor on purpose: a single digit in this entry is as likely to be
+            # a date, a section number or "3 个 pack" as a figure copy, and binding those would
+            # make the finding list unreadable
+            if len(token) < 2 or token not in values:
+                continue
+            if any(start <= match.start(1) < stop for start, stop in bound.get(number, ())):
+                continue
+            keys = sorted(k for k, v in derived.items() if str(v) == token)
+            if any(re.compile(pattern).search(line) and set(keys) <= set(exempt)
+                   for pattern, exempt, _reason in PROSE_FIGURE_COINCIDENTAL):
+                continue
+            findings.append("PROSE_FIGURE_UNBOUND 行=%d 数字=%s 候选键=%s"
+                            % (number, token, ",".join(keys)))
+    for pattern, _exempt, _reason in PROSE_FIGURE_COINCIDENTAL:
+        compiled = re.compile(pattern)
+        if not any(compiled.search(line) for _number, line in prose_lines(text)):
+            findings.append("PROSE_FIGURE_EXEMPT_DEAD 形状=%s（入口散文里已找不到它，豁免该删）" % pattern)
+    return sorted(findings)
 
 
 def named_receipt(root: Path):

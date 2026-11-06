@@ -490,3 +490,66 @@ def test_the_deepest_tracked_files_are_actually_read():
     assert checker._read_tracked(deepest) is not None,         "最深的跟踪件仍然读不到：分母又会按检出位置变化（%s）" % deepest
     counts = checker.line_endings()
     assert counts["crlf"] + counts["lf"] > 0, counts
+
+
+def _checker(name: str):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, CHECKER)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_a_prose_copy_of_a_derived_figure_that_drifts_is_named():
+    """The managed block is derived; the same numbers repeated in prose were checked by nothing.
+
+    The independent review at `f616fb5` found ``694`` / ``217,126,876`` still standing in §二 and
+    §五 long after the register said 692 / 215,124,851 -- the 2026-11-02 credential withdrawal
+    moved the figure and only the managed block moved with it.
+    """
+    checker = _checker("checker_prose_figures")
+    derived = checker.derive_figures()
+    text = ENTRY.read_text(encoding="utf-8")
+    assert checker.prose_figure_findings(text, derived) == [], (
+        "入口散文里已经有一处抄件与派生值不符，这个反例就不是唯一变量："
+        + str(checker.prose_figure_findings(text, derived)))
+    planted = text.replace("`1212` 个唯一对象", "`1213` 个唯一对象", 1)
+    assert planted != text, "种故障用的那句话不在入口里，种下去的是空气"
+    findings = checker.prose_figure_findings(planted, derived)
+    assert any(item.startswith("PROSE_FIGURE_STALE archive_objects") for item in findings), findings
+
+
+def test_a_prose_duplicate_that_no_shape_binds_is_named():
+    """A number may repeat a figure value only under a bound sentence shape.
+
+    Without this half the table would just record the occurrences the author happened to notice:
+    the next hand-typed copy -- equal to today's value, so harmless today -- is the one that rots.
+    """
+    checker = _checker("checker_prose_unbound")
+    derived = checker.derive_figures()
+    text = ENTRY.read_text(encoding="utf-8") + "\n- 抽查一句：这里写 30 个不属于任何形状的量。\n"
+    findings = checker.prose_figure_findings(text, derived)
+    assert any(item.startswith("PROSE_FIGURE_UNBOUND") and "30" in item for item in findings), (
+        "一处与派生值同数的散文抄件被当成巧合放过了：" + str(findings))
+
+
+def test_a_shape_or_exemption_kept_past_the_sentence_it_guarded_is_named():
+    """Both tables must be able to rot loudly, not quietly become decoration."""
+    checker = _checker("checker_prose_dead")
+    derived = checker.derive_figures()
+    text = ENTRY.read_text(encoding="utf-8")
+    shapes = checker.PROSE_FIGURE_SHAPES
+    try:
+        checker.PROSE_FIGURE_SHAPES = (("archive_objects", r"入口里不存在这句话 ([\d,]+)"),)
+        findings = checker.prose_figure_findings(text, derived)
+        assert any("PROSE_FIGURE_SHAPE_DEAD" in item for item in findings), findings
+    finally:
+        checker.PROSE_FIGURE_SHAPES = shapes
+    exemptions = checker.PROSE_FIGURE_COINCIDENTAL
+    try:
+        checker.PROSE_FIGURE_COINCIDENTAL = (
+            (r"入口里不存在这句豁免", ("route_endpoints",), "只为反例存在"),)
+        findings = checker.prose_figure_findings(text, derived)
+        assert any("PROSE_FIGURE_EXEMPT_DEAD" in item for item in findings), findings
+    finally:
+        checker.PROSE_FIGURE_COINCIDENTAL = exemptions
