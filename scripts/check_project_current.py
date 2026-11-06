@@ -648,6 +648,49 @@ def check_authority_index() -> list:
     return findings
 
 
+RECEIPT_LINE_PREFIX = "- 依托提交："
+
+
+def named_receipt(root: Path):
+    """The archived receipt the closure register names, or None when it names nothing yet."""
+    register = root / "migration" / "audit-item-closure.csv"
+    archive_dir = root / ".project-local/audit/20261031-fullclosure"
+    if not (register.is_file() and archive_dir.is_dir()):
+        return None
+    import csv as _csv
+    with register.open(encoding="utf-8-sig", newline="") as handle:
+        names = {row["运行收据"] for row in _csv.DictReader(handle)}
+    names = [name for name in names if name and not name.startswith("UNMEASURED")]
+    if len(names) != 1:
+        return None
+    path = archive_dir / names[0]
+    if not path.is_file():
+        return None
+    return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def receipt_line(root: Path) -> str | None:
+    """Rebuild the entry's receipt anchor line from the registers it has to agree with.
+
+    That line carried a hand-typed SHA, a hand-typed suite tally and a hand-typed file count --
+    the three numbers a rebinding moves first, and the reason an entry can be honest about a tree
+    it no longer describes. Deriving it means the same rebinding that updates the registers updates
+    the sentence, and `RECEIPT_POINTER_STALE` stays a real check rather than a note to remember.
+    """
+    state_path = root / AUDIT_STATE_RELATIVE
+    receipt = named_receipt(root)
+    if not state_path.is_file() or receipt is None:
+        return None
+    audited = json.loads(state_path.read_text(encoding="utf-8-sig")).get("audited_head_sha", "")
+    if len(audited) < 12:
+        return None
+    return (RECEIPT_LINE_PREFIX + "全量收据所测的那棵树是 `%s`（%s，该收据自己的候选摘要 `%s…`、%d 个文件；"
+            "两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 "
+            "`audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——"
+            "两个数不可互换。" % (audited[:12], receipt["suite"]["line"],
+                                  receipt["candidate_digest"][:16], receipt["candidate_files"]))
+
+
 def figures_block() -> str:
     derived = derive_figures()
     return "\n".join("%s = %d" % (key, derived[key]) for key in sorted(derived))
@@ -671,6 +714,17 @@ def write_block(entry_path: Path) -> int:
     block = FIGURES_START + eol + figures_block().replace("\n", eol) + eol + FIGURES_END
     head, _marker, rest = text.partition(FIGURES_START)
     updated = head + block + rest.split(FIGURES_END, 1)[1]
+    anchor = receipt_line(ROOT)
+    if anchor is not None:
+        rows = updated.split("\n")
+        hits = [index for index, row in enumerate(rows) if row.startswith(RECEIPT_LINE_PREFIX)]
+        if len(hits) != 1:
+            print(json.dumps({"verdict": "REFUSED", "entry": str(entry_path),
+                              "error": "「%s」这一行必须恰好一行，实读 %d 行"
+                                       % (RECEIPT_LINE_PREFIX, len(hits))}, ensure_ascii=False))
+            return 3
+        rows[hits[0]] = anchor
+        updated = "\n".join(rows)
     if updated == text:
         print(json.dumps({"verdict": "UNCHANGED", "entry": str(entry_path),
                           "bytes": len(text.encode("utf-8"))}, ensure_ascii=False))

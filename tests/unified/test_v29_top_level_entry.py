@@ -339,6 +339,33 @@ def test_the_figure_writer_repairs_a_stale_copy_then_changes_nothing(tmp_path):
     assert copy.read_bytes() == after_repair, "第二次写把已经正确的文件又改了一次：生成器在重戳"
 
 
+def test_the_receipt_anchor_line_is_derived_and_a_second_one_is_refused(tmp_path):
+    """The line that names the measured tree is now derived, and duplicates are a refusal.
+
+    It used to hold three hand-typed values -- the commit, the suite tally and the file count --
+    which are the first things a rebinding moves. An entry can otherwise say "the receipt measured
+    `78b3866`" for months after the receipt changed, and the prose looks completely sane.
+    """
+    copy = tmp_path / "PROJECT_CURRENT.md"
+    original = ENTRY.read_text(encoding="utf-8")
+    stale = original.replace("全量收据所测的那棵树是 `", "全量收据所测的那棵树是 `000000000000` （手写占位 `")
+    copy.write_text(stale, encoding="utf-8")
+    first = _report(_run("--write-block", "--entry", str(copy)))
+    assert first["verdict"] == "WRITTEN", first
+    line = [row for row in copy.read_text(encoding="utf-8").splitlines()
+            if row.startswith("- 依托提交：")]
+    assert len(line) == 1, line
+    assert "000000000000` （手写占位" not in line[0], line[0]
+    check = _report(_run("--check", "--entry", str(copy)))
+    assert check["finding_count"] == 0, check["findings"]
+
+    duplicated = copy.read_text(encoding="utf-8").replace(
+        line[0], line[0] + chr(10) + line[0], 1)
+    copy.write_text(duplicated, encoding="utf-8")
+    refused = _report(_run("--write-block", "--entry", str(copy)))
+    assert refused["verdict"] == "REFUSED" and "恰好一行" in refused["error"], refused
+
+
 def test_the_figure_writer_refuses_a_document_missing_its_markers(tmp_path):
     """No markers means the block is hand-written prose, and prose is not this tool's to replace."""
     copy = tmp_path / "no-markers.md"
