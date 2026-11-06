@@ -686,9 +686,11 @@ def receipt_line(root: Path) -> str | None:
         return None
     return (RECEIPT_LINE_PREFIX + "全量收据所测的那棵树是 `%s`（%s，该收据自己的候选摘要 `%s…`、%d 个文件；"
             "两个来源仓在测量期间逐字节未变）。注意 `docs/AUDIT-STATE.json` 的 `audited_candidate_files` 与 "
-            "`audited_candidate_digest` 是**改绑之后那一次工作树读数**，与收据所测的树不是同一个摘要——"
-            "两个数不可互换。" % (audited[:12], receipt["suite"]["line"],
-                                  receipt["candidate_digest"][:16], receipt["candidate_files"]))
+            "`audited_candidate_digest` 读的是**被审提交自己的 git 对象**，与收据的内容摘要不是同一口径；"
+            "`working_tree_candidate_digest_observed` 才是同一口径、但读的是这次改绑之后的工作树——"
+            "三个数各说各的，不可互换。"
+            % (audited[:12], receipt["suite"]["line"],
+               receipt["candidate_digest"][:16], receipt["candidate_files"]))
 
 
 def figures_block() -> str:

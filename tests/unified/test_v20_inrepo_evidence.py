@@ -396,3 +396,105 @@ def test_the_audit_state_check_fails_on_a_stale_census(tmp_path):
     assert report["stale_sections"] == ["registers"], (
         "the check failed, but not for the census this test planted: %s" % report)
 
+
+def _audited_commit_objects(commit: str) -> dict[str, str]:
+    """Every path in that commit with the git object id it carries, read straight from git.
+
+    Deliberately not ``build_audit_state.audited_commit_state``: a guard that calls the
+    producer's own reader can only restate which tree that reader chose, and which tree the
+    record was read from is exactly what is being checked here.
+    """
+    listing = subprocess.run(["git", "ls-tree", "-r", "-z", commit],
+                             cwd=str(TARGET_ROOT), capture_output=True,
+                             text=True, encoding="utf-8", errors="replace").stdout
+    found: dict[str, str] = {}
+    for entry in listing.split("\x00"):
+        if not entry:
+            continue
+        meta, _, path = entry.partition("\t")
+        fields = meta.split()
+        if len(fields) == 3 and path:
+            found[path] = fields[2]
+    return found
+
+
+def _audited_pair_findings(state: dict, from_commit: dict[str, str]) -> list[str]:
+    """Re-derive the ``audited_candidate_*`` pair and report every field that disagrees.
+
+    Kept as a function rather than inline asserts so the planted record in
+    ``test_the_planted_working_tree_pair_is_rejected_by_the_same_comparison`` runs the
+    predicate a passing document is judged by, not a second copy of it.
+    """
+    cs = _module()
+    findings = []
+    if not from_commit:
+        findings.append("git ls-tree answered nothing for the audited commit")
+    if cs.digest_of(from_commit) != state["audited_candidate_digest"]:
+        findings.append("audited_candidate_digest is not what the audited commit's own tree says")
+    if len(from_commit) != state["audited_candidate_files"]:
+        findings.append("audited_candidate_files does not count the audited commit's blobs")
+    described = state["candidate_manifest"]["what_audited_candidate_names_read"]
+    if "ls-tree" not in described:
+        findings.append("the document does not say where audited_candidate_* is read from")
+    return findings
+
+
+def test_the_audited_candidate_pair_describes_the_audited_commit():
+    """``audited_candidate_*`` used to carry the working tree's digest under an audited name.
+
+    The two readings can never come out equal -- one is keyed by git object ids, the other by
+    the SHA-256 of the bytes on disk -- so re-deriving each from its own source is a comparison
+    that moves when the source is wrong, even on a checkout with nothing uncommitted.
+    """
+    cs = _module()
+    state = _json(AUDIT_STATE)
+    from_commit = _audited_commit_objects(state["audited_head_sha"])
+    from_disk = cs.candidate_state()
+    findings = _audited_pair_findings(state, from_commit)
+    assert findings == [], findings
+    # `working_tree_candidate_digest_observed` is deliberately NOT compared here: the record
+    # reads the disk before it writes itself, so that number is one write stale by
+    # construction and any equality would be a check that can only fail.
+    assert cs.digest_of(from_commit) != cs.digest_of(from_disk), (
+        "the two sources answered identically, so the comparisons above could not tell them "
+        "apart and this guard would be decorative")
+
+
+def test_the_planted_working_tree_pair_is_rejected_by_the_same_comparison():
+    """The defect this replaced is reproducible: put the disk reading into the audited fields.
+
+    Without this the passing node could be green because the two sources happen to agree on
+    the machine that wrote the record, which is exactly how the old mixed-tree record passed
+    every reading anyone made of it.
+    """
+    cs = _module()
+    state = _json(AUDIT_STATE)
+    planted = json.loads(AUDIT_STATE.read_text(encoding="utf-8"))
+    from_disk = cs.candidate_state()
+    planted["audited_candidate_digest"] = cs.digest_of(from_disk)
+    planted["audited_candidate_files"] = len(from_disk)
+    findings = _audited_pair_findings(planted, _audited_commit_objects(state["audited_head_sha"]))
+    assert any("audited_candidate_digest" in finding for finding in findings), (
+        "a record whose audited pair was taken from the working tree was not rejected: %s"
+        % findings)
+    # the file count is NOT what catches this swap: while only bytes differ the audited commit
+    # and this working copy hold the same paths, so a record that re-checked the count alone
+    # would have called the mixed-tree reading plausible
+
+
+def test_the_entry_receipt_line_names_the_reading_behind_each_number():
+    """The entry cites three candidate numbers; each has to say which tree it came from.
+
+    A sentence that called the audited pair "the working-tree reading after the rebind" stayed
+    green for every register run, because nothing compares prose to the generator that writes
+    it -- the fix is to name the fields, so the claim has a referential check to fail against.
+    """
+    text = (TARGET_ROOT / "PROJECT_CURRENT.md").read_text(encoding="utf-8")
+    line = next((row for row in text.splitlines() if row.lstrip().startswith("- 依托提交")), "")
+    assert line, "入口已经没有「- 依托提交：…」这一行，这句断言就没有可核的对象"
+    for named in ("audited_candidate_digest", "working_tree_candidate_digest_observed"):
+        assert named in line, "依托提交那行没有点名 %s，读者无从判断它是哪一棵树的读数" % named
+    assert "git 对象" in line, (
+        "依托提交那行没有说明 audited_candidate_digest 读的是被审提交的 git 对象，"
+        "于是它看起来仍像收据那个内容摘要的另一份读数：" + line)
+

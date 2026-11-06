@@ -3360,3 +3360,64 @@ owner 原话只有两个字：「推送」。这一格记的是这句话**覆盖
 （`git ls-remote origin refs/heads/main refs/heads/audit/backend-closure-20261103` 与
 `git rev-list --count origin/audit/backend-closure-20261103..HEAD`），本节不抄 SHA：抄一个就会在
 下一个被推送的提交里过期。
+
+### 15.50 干净收据落账之后回头读自己：三处"数对但说的不是那棵树"的陈述被一支新守卫抓住
+
+本节起点是 §15.49 之后重取的那一张收据。它自己记着 `tracked_tree_clean_at_start: true`、
+`tracked_bytes_moved_during_run: []`、`suite.failed: 0`、`suite.errors: 0`、`suite.deselected: 2`，
+两个去节点在收据里是具名的：`tests/unified/test_v26_local_run_receipts.py::test_the_measured_figures_are_the_ones_the_named_receipt_carries`
+与 `tests/unified/test_v23_clone_repro.py::test_a_clone_can_run_the_machine_independent_part_of_the_suite`。
+前者不是"跑不动"：它的判据是"被登记表命名的那一张收据必须自己写着 failed 0"，而测量进行中它读到的还是上一张，
+所以每一张新收据都只能在自己的去选名单里带着它——改绑落地后单独复跑，`1 passed`。
+后者是同一棵被克隆的树上跑 25 个文件的嵌套套件，去选它不等于不跑它，它在改绑后的提交上怎么复跑记在本节末尾。
+
+五处改绑按 §15.43 定的口径重发布：`migration/audit-item-closure.csv`（20 行的三个收据列由生成器现算，
+并把它命名的那张收据复制进 `receipt-archive/`）、`docs/AUDIT-STATE.json`（`--audited-commit` 指向收据所测那棵树；
+再跑一次不带旗标，`binding_moved_this_run` 报 `false`，这就是 §15.44 那条"改绑是显式动作"的反向证据）、
+`migration/task-acceptance.csv`、`config/blocker-register.json`、入口派生块。后两份本轮重算出来的字节和已提交的那份
+逐字节相同——"重发布了但没有变化"与"没重发布"是两件事，这里记的是前者。
+
+守卫第一次运行就红了，红的位置不在文档，在生成器：
+
+一、`docs/AUDIT-STATE.json::candidate_manifest.what_audited_candidate_names_read` 说 `audited_candidate_*`
+读的是"运行时刻的工作树"。那是 §15.48 修法**之前**的行为；修完之后同一份 JSON 里的
+`audited_candidate_digest_口径` 已经写明它读被审提交自己的 `git ls-tree`。两份说明在同一份文档里互相矛盾，
+而没有任何检查比较过它们，所以它带着"audited"这个名字继续被下游当成工作树读数引用。现在那句改成逐条点名
+各自来源，并指名 `working_tree_candidate_digest_observed` 才是磁盘那一头。
+
+二、入口「- 依托提交：」这一行由 `scripts/check_project_current.py::receipt_line` 现算，
+它的固定后半句仍写着"`audited_candidate_digest` 是**改绑之后那一次工作树读数**"。
+派生器每轮把一句已经不成立的话重打一遍，而 `RECEIPT_POINTER_STALE` 只要求正文等于这句话，
+从不要求这句话成立——这是"防漂移检查自己成了假绿的来源"这一类，和 §15.46 抓到的那两处同源。
+现在那半句分得开三件事：收据的摘要 = 逐文件内容摘要；`audited_candidate_digest` = 被审提交自己的 git 对象；
+`working_tree_candidate_digest_observed` = 同一口径但是这次改绑之后的磁盘读数。三者不可互换。
+
+三、为了让第二处变成会红的东西而新写的守卫，第一次跑就把生成器判红了。比对失败的原因不是记录写错，
+是 `scripts/build_audit_state.py::audited_commit_state` 用的是不带 `-z` 的 `git ls-tree -r`：git 会把非 ASCII
+路径 C 转义之后再吐出来，于是这份"按被审提交现算"的摘要里有 156 条键不是相对路径，而是 `"docs/\344\270\255…"`
+这种转义串（收据所在那一棵树上现数：`git ls-tree -r --name-only HEAD | grep -c '^"'`）。
+后果不是难看，是不可复现：`core.quotePath` 是**用户级**配置，换一台把它设成 `false` 的机器，同一个提交会算出
+另一个 `audited_candidate_digest`——而这条数唯一的用处就是回答"这份记录说的是哪一棵树"。
+注意文件条数不受影响（转义与原文都是 156 行），所以只看条数的检查永远不会发现它：
+这是 §15.47 那条教训的又一个形状——两份人群条数相同不代表是同一份人群。改成 `-z` 后重发布，守卫转绿。
+
+新增三个节点，全部在 `tests/unified/test_v20_inrepo_evidence.py`：
+
+- `::test_the_audited_candidate_pair_describes_the_audited_commit`——绕开生成器自己的读取函数，
+  直接从 `git ls-tree -r -z` 重建 path→object id 再算摘要比对。不共用生产函数是有意的：
+  要验的正是"它读的是哪棵树"，让生产函数自己回答就等于让它自证。
+- `::test_the_planted_working_tree_pair_is_rejected_by_the_same_comparison`——把磁盘读数种进
+  `audited_candidate_*` 两个字段，再用同一个谓词判它。被拒的是摘要那一条，**文件数那一条不响**
+  （这棵树上两份人群条数相同），所以"只有摘要能抓住混合树"这件事被写成断言旁边的注释，不靠读者记住。
+- `::test_the_entry_receipt_line_names_the_reading_behind_each_number`——入口那一行必须点名两个字段
+  并说清 git 对象口径，把上面第二处的假陈述钉成能红的检查。
+
+声明节点数由 587 到 590。`--allow` 之前先证明人群只差这一处：`files_that_gained_tests` 只有
+`[tests/unified/test_v20_inrepo_evidence.py, 10, 13]`，`files_that_lost_tests`、`added_files`、`deleted_files`
+均空。`scripts/check_project_current.py --check`、`scripts/build_audit_state.py --check`、
+`scripts/build_audit_item_closure.py --check`、`scripts/measure_citation_population.py --check-own-cites`
+与 `--check-register-cites`、`scripts/check_public_hazards.py` 本轮全部 rc=0。
+
+本轮仍欠的：A00#1 的独立复审第二轮还没跑（那一格照旧 `NOT_RUN`，不因本节写了三个节点而改色）；
+`test_a_clone_can_run_the_machine_independent_part_of_the_suite` 要在本节所在提交上重跑一次才算"改绑后的树上绿"，
+它的读数进下一节；Linux 面按 owner 本轮指示不动；推送、合并、打标签不在本目标内，仍逐次等 owner 明确授权。

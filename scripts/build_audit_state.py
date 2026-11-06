@@ -121,11 +121,17 @@ def audited_commit_state(audited: str) -> dict:
     re-pinning refuses to do without the flag -- the count described this checkout while the
     name described the audited one, and the record quietly mixed two trees. ``git ls-tree`` of
     the audited commit is the only reading that means what the field says.
+
+    ``-z`` is not cosmetic: without it git C-quotes every non-ASCII path, so the same tree
+    hashed differently under a different ``core.quotePath`` and the keys were not the relative
+    paths the rest of the candidate 口径 uses.
     """
-    listing = git(["ls-tree", "-r", audited])
+    listing = git(["ls-tree", "-r", "-z", audited])
     state = {}
-    for line in listing.splitlines():
-        meta, _, path = line.partition("\t")
+    for entry in listing.split("\x00"):
+        if not entry:
+            continue
+        meta, _, path = entry.partition("\t")
         fields = meta.split()
         if len(fields) == 3 and path:
             state[path] = fields[2]
@@ -149,7 +155,7 @@ def live_fields(audited_commit: str | None) -> dict:
         "audited_head_tree": git(["rev-parse", audited + "^{tree}"]),
         "audited_candidate_files": len(audited_state),
         "audited_candidate_digest": candidate_snapshot.digest_of(audited_state),
-        "audited_candidate_digest_口径": ("git ls-tree -r of the audited commit, "
+        "audited_candidate_digest_口径": ("git ls-tree -r -z of the audited commit, "
                                           "path -> full object id; deliberately not the content "
                                           "digest of this checkout"),
         "working_tree_candidate_files_observed": len(state),
@@ -210,9 +216,12 @@ def merge(existing: dict, updates: dict) -> dict:
                 manifest = dict(manifest)
                 manifest["口径_implementation"] = "scripts/candidate_snapshot.py"
                 manifest["what_audited_candidate_names_read"] = (
-                    "the working tree at run time (%s), not the tree of audited_head_sha; "
-                    "audited_head_tree is that commit's own tree and is compared in full"
-                    % manifest.get("口径", "git_cached_plus_non_ignored_untracked"))
+                    "git ls-tree -r of audited_head_sha (path -> that commit's git object id), "
+                    "so it describes the audited tree and not this checkout; the same-口径 "
+                    "reading of the disk is carried separately and named "
+                    "working_tree_candidate_*_observed, which is NOT the receipt's candidate "
+                    "digest either, because the receipt was taken before the rebind moved bytes. "
+                    "audited_head_tree is that commit's own tree and is compared in full")
                 merged["candidate_manifest"] = manifest
         else:
             merged[key] = value
