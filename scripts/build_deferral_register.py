@@ -49,16 +49,42 @@ CAPABILITY_SEAMS = {
 }
 
 
+#: Items whose remaining work is a human or a real run, not a code change: same seam rule,
+#: and the lift condition must name the elements this tree is actually missing -- measured
+#: by ``tests/unified/test_v21_task_acceptance.py`` against the domain-pack projection, so a
+#: deferral here cannot rot into "需要真人" without saying for what.
+HUMAN_GATE_SEAMS = {
+    "design.minigame_domain_pack": (
+        ["domains/design/design_lab/resources/repo/design-lab/domain-packs/minigame-design",
+         "domains/design/design_lab/resources/repo/design-lab/scripts/verify_domain_pack_v2.py",
+         "domains/design/design_lab/domain_packs.py"],
+        "13 个包里唯一被仓库自带校验脚本判为 INVALID 的那个。校验器的理由分两类：信封类"
+        "（v1 的 manifest 不声明 `domain`/`files` 等字段），补它只需要改 manifest.json——而那个"
+        "文件是与来源仓逐字节相同的迁移件，改它等于改写来源记录，要 owner 决定；元素类"
+        "（scenario、profile、handoff_contract、source_mapping、benchmark_cases、evidence_cards），"
+        "这些文件在本树里根本不存在，前五样是设计内容，evidence_cards 只能来自真实运行。"
+        "两类都不是本批能自修的，条数由 test_v24 现算，不写在这里。"),
+}
+
+
+def _require_seams(kind: str, identifier: str, seams: list[str]) -> None:
+    missing = [seam for seam in seams if not (TARGET_ROOT / seam).exists()]
+    if missing:
+        raise SystemExit("DEFERRAL_SEAM_ABSENT for %s %s: %s" % (kind, identifier, missing))
+
+
 def build() -> dict:
     pack = json.loads(PACK.read_text(encoding="utf-8-sig"))
     tasks = {task["id"]: task for task in pack["tasks"]}
     entries = []
     for capability, (seams, lift) in CAPABILITY_SEAMS.items():
-        missing = [seam for seam in seams if not (TARGET_ROOT / seam).exists()]
-        if missing:
-            raise SystemExit("DEFERRAL_SEAM_ABSENT " + capability + ": " + str(missing))
+        _require_seams("capability", capability, seams)
         entries.append(dict(kind="capability", id=capability, seams=seams,
                             lift_condition=lift))
+    for human_gate, (seams, lift) in HUMAN_GATE_SEAMS.items():
+        _require_seams("human_gate", human_gate, seams)
+        entries.append(dict(kind="human_gate", id=human_gate, seams=seams,
+                            lift_condition=lift, requires="真人或 owner 的决定，不是代码改动"))
 
     # every non-mandatory task in the pack gets its dependency and acceptance text
     for task_id, task in tasks.items():
@@ -73,6 +99,7 @@ def build() -> dict:
              "接缝缺失时本生成器直接失败，不输出「已保留接缝」的空话",
         pack=str(PACK), entries=entries,
         counts=dict(capabilities=sum(1 for e in entries if e["kind"] == "capability"),
+                    human_gates=sum(1 for e in entries if e["kind"] == "human_gate"),
                     tasks=sum(1 for e in entries if e["kind"] == "task")),
     )
 

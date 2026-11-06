@@ -788,6 +788,14 @@ PATCHED_TARGETS = frozenset(rel for rel, _old, _new, _reason in PATCHES)
 #: these files; the attestation only distinguishes *declared* rework from *unexplained*
 #: rework, which is the thing the plan used to lump together.
 DECLARED_REWORK = {
+    # 本仓自己的 Vite 产物。来源字节是来源仓那一份 TS 源的构建输出（b465af83…），而本仓的同名
+    # TS 源已按声明返工过（contracts.ts 等在同表记为 COPIED_TARGET_DIFFERS），继续留着旧产物
+    # 就是让三道读它的 JS 闸门校验陈旧字节。现构建由 vite 6.4.3 离线跑两次、摘要逐字节相同。
+    "apps/workbench/build/main.js": (
+        "1a2d735c338da30d40a95f9aef5b5760882f654d6abbd8305dba26fe00b7ac12", 632622, 7,
+        "D003 Build Output Truth 恢复：通用 build/ 忽略规则把该产物挡在 Git 视野外，"
+        "旧字节与本源不符；改为本仓 apps/workbench/*.ts 的现构建，判据见 "
+        "scripts/check_workbench_bundle_drift.py 与 tests/unified/test_v33_workbench_bundle_truth.py"),
     "packages/capabilities/reconstruction/contracts.py": (
         "fcf1fa721945cd80c2e159aacd3a8960ce89ad76a39e0270a2cab90376e6b0bb", 15746, 10,
         "路径政策的两处错位：project_root 传相对写法时 root 未 resolve，绝对候选永远不比它更内，于是任何合法 raster.path 都被判「reparse resolution escapes outside the project」；PurePosixPath 又把 '.' 与空段归一化吃掉，检查放过而消息声称禁止。现在根归一化一次、按传来的字面分段判。"),

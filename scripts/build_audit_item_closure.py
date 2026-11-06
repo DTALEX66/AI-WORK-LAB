@@ -65,6 +65,30 @@ ARCHIVE_DIR = (TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure"
 
 RESULTS = ("PASS", "FAIL", "BLOCKED", "NOT_RUN", "DEFERRED")
 INDEPENDENT_REVIEW = "NOT_RUN"
+
+#: Recorded independent reviews. A row may leave NOT_RUN only when a record names it -- and the
+#: cell then carries the SHA that was reviewed and the reviewer's own tool, because 「不继承上一轮
+#: 结论」 is worth nothing if the reading cannot be traced. Built by
+#: scripts/build_independent_review_record.py from the reviewer's own output, never typed.
+REVIEWS_JSON = Path(__file__).resolve().parents[1] / "config" / "independent-reviews.json"
+_REVIEWS: dict | None = None
+
+
+def independent_reviews() -> dict:
+    global _REVIEWS
+    if _REVIEWS is None:
+        _REVIEWS = (json.loads(REVIEWS_JSON.read_text(encoding="utf-8-sig"))
+                    if REVIEWS_JSON.is_file() else {"records": []})
+    return _REVIEWS
+
+
+def independent_review_for(identifier: str) -> str:
+    for record in reversed(independent_reviews().get("records", [])):
+        if identifier in record.get("verified_items", []):
+            return "%s @ %s（%s 现读 %s；逐项见 %s）" % (
+                record["verdict"], record["reviewed_sha"][:12], record["reviewer"],
+                record["reviewed_at"], record["artifact"])
+    return INDEPENDENT_REVIEW
 INTERPRETER = ".venv/Scripts/python.exe (CPython 3.13, 见 config/environment-baseline.json)"
 CWD = "<REPO>"
 UNMEASURED = "未在本机测量（收据 .project-local/audit/20261031-fullclosure/CLOSURE-STATE.json 不在 Git 内）"
@@ -418,7 +442,8 @@ def _row(identifier: str, claim: dict, definition: tuple[str, str, str],
         "Codex 审计返工项" if identifier[0] == "F" else "Codex 独立审计项",
         definition[0], definition[1], definition[2],
         authored["root"], authored["entry"], authored["result"], authored["kinds"],
-        authored["unverified"], INDEPENDENT_REVIEW, authored["cmd"], CWD, INTERPRETER,
+        authored["unverified"], independent_review_for(identifier),
+        authored["cmd"], CWD, INTERPRETER,
         exit_code, measured_at, candidate, archive, authored["log"], claim["target"],
         ("已解析：" if resolved else "未解析：") + detail,
         authored["limit"]]))
@@ -547,7 +572,10 @@ def main(argv: list[str]) -> int:
         frozen_acceptance_ids=sorted(frozen),
         v_ids_owned_by="tests/unified/test_v01_v10_register.py",
         results={result: sum(1 for r in rows if r["当前结果"] == result) for result in RESULTS},
-        independent_review=INDEPENDENT_REVIEW,
+        independent_review_cell=INDEPENDENT_REVIEW,
+        independent_review_records=len(independent_reviews().get("records", [])),
+        independent_review_items=sum(len(record.get("verified_items", []))
+                                     for record in independent_reviews().get("records", [])),
         pass_with_unresolved=downgraded,
         receipt_present=bool(receipt),
         receipt_columns_exempted=sorted(exempted),

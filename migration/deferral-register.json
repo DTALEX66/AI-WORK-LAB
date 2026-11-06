@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-30T20:59:53.442506+00:00",
+  "generated_at": "2026-11-06T04:12:02.387079+00:00",
   "rule": "延期项必须点名接缝（真实存在的文件或包）、依赖与验收条款；接缝缺失时本生成器直接失败，不输出「已保留接缝」的空话",
   "pack": "D:\\All projects\\AI-WORK-LAB\\AI-WORK-LAB_HANDOFF_20261029\\09_任务分期与验收.json",
   "entries": [
@@ -79,6 +79,17 @@
         "domains/design/design_lab/creative/session_link.py"
       ],
       "lift_condition": "P2：跨会话续接无接缝路由，接入点先记在能力目录，落地需新增 /api/v1/sessions 与验收用例"
+    },
+    {
+      "kind": "human_gate",
+      "id": "design.minigame_domain_pack",
+      "seams": [
+        "domains/design/design_lab/resources/repo/design-lab/domain-packs/minigame-design",
+        "domains/design/design_lab/resources/repo/design-lab/scripts/verify_domain_pack_v2.py",
+        "domains/design/design_lab/domain_packs.py"
+      ],
+      "lift_condition": "13 个包里唯一被仓库自带校验脚本判为 INVALID 的那个。校验器的理由分两类：信封类（v1 的 manifest 不声明 `domain`/`files` 等字段），补它只需要改 manifest.json——而那个文件是与来源仓逐字节相同的迁移件，改它等于改写来源记录，要 owner 决定；元素类（scenario、profile、handoff_contract、source_mapping、benchmark_cases、evidence_cards），这些文件在本树里根本不存在，前五样是设计内容，evidence_cards 只能来自真实运行。两类都不是本批能自修的，条数由 test_v24 现算，不写在这里。",
+      "requires": "真人或 owner 的决定，不是代码改动"
     },
     {
       "kind": "task",
@@ -166,6 +177,7 @@
   ],
   "counts": {
     "capabilities": 9,
+    "human_gates": 1,
     "tasks": 5
   }
 }

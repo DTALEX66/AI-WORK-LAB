@@ -262,6 +262,25 @@ def registered_keys() -> dict[str, dict]:
     return out
 
 
+#: Rebuilt artifacts, declared. A Vite bundle copied out of the source repository is bytes the
+#: source happened to produce; the moment this repository's own sources are the input, "target
+#: differs from the copy manifest" stops describing a defect and starts describing a rebuild --
+#: and the register must be able to tell those apart. The expectation is a digest someone attested,
+#: not a pass: bytes that miss it fall back to drift with the two digests printed.
+REBUILT_JSON = REPO_ROOT / "config" / "rebuilt-artifacts.json"
+_REBUILT: dict | None = None
+
+
+def rebuilt_ledger() -> dict:
+    global _REBUILT
+    if _REBUILT is None:
+        _REBUILT = {}
+        if REBUILT_JSON.is_file():
+            for entry in json.loads(REBUILT_JSON.read_text(encoding="utf-8-sig"))["artifacts"]:
+                _REBUILT[entry["target"]] = entry
+    return _REBUILT
+
+
 def patch_map() -> dict[str, list[tuple[str, str]]]:
     """Target-relative path -> declared patches, so a patched copy is recognised."""
     out: dict[str, list[tuple[str, str]]] = {}
@@ -830,16 +849,70 @@ def _module_facts(repo: Path, rel: str) -> tuple[bool, list[str]]:
     return (has_main, names)
 
 
+#: The three classes a row can be decided into. Owned here because this is the file that
+#: applies them; ``build_blocker_register.py`` imports the tuple so the queue's advertised
+#: options cannot drift from what the adjudicator will actually accept.
+DECISION_OPTIONS = ("UNREGISTERED_TARGET_PATH_PRESENT", "UNREGISTERED_EXCLUDED_CAPABILITY",
+                    "UNREGISTERED_DEV_TOOLING")
+
+#: The owner's decision channel. Rows live in a tracked data file so a decision survives a
+#: re-sweep: the class column used to be recomputed by the ladder below on every build, which
+#: meant the documented procedure ("write the authority into the CSV") was overwritten the next
+#: time anybody ran the generator, and the register's own text told the owner to do it anyway.
+#: A row counts as decided only with a named `decided_by` AND the same source bytes.
+ADJUDICATIONS = REPO_ROOT / "config" / "unregistered-adjudications.json"
+_DECISIONS: list[dict] | None = None
+
+
+def owner_decisions() -> list[dict]:
+    global _DECISIONS
+    if _DECISIONS is None:
+        if not ADJUDICATIONS.is_file():
+            _DECISIONS = []
+        else:
+            _DECISIONS = json.loads(ADJUDICATIONS.read_text(encoding="utf-8-sig"))["rows"]
+    return _DECISIONS
+
+
+def owner_decision(rel: str, digest: str) -> dict | None:
+    """The owner's ruling for this exact file at these exact bytes, or None.
+
+    Matching on the digest is what makes a decision safe: re-sweep the source and the same path
+    with different bytes falls back to the ladder rather than inheriting a ruling about content
+    that no longer exists.
+    """
+    for row in owner_decisions():
+        if row["path"] != rel or row["source_sha256"] != digest:
+            continue
+        if not str(row.get("decided_by") or "").strip():
+            return None
+        category = str(row.get("category") or "").strip()
+        if category not in DECISION_OPTIONS:
+            raise SystemExit("OWNER_DECISION_CATEGORY_UNKNOWN for " + rel + ": " + repr(category))
+        if not str(row.get("authority") or "").strip():
+            raise SystemExit("OWNER_DECISION_WITHOUT_AUTHORITY for " + rel)
+        return row
+    return None
+
+
 def adjudicate_unregistered(repo: Path, rel: str, index: dict[str, set[str]],
                             digest: str) -> tuple[str, str, str]:
     """(class, authority, reason) for an unregistered ``.py`` the shape rules missed.
 
-    Order matters: a fact about the target tree beats a fact about capability
-    class, which beats a fact about who imports it. What the ladder cannot decide
-    stays visibly undecided, carrying the evidence that makes *that row* a real
-    question — its own bytes, its own importers, its own top-level names — so no
+    Order matters: a named owner decision beats everything, then a fact about the target tree,
+    then a fact about capability class, then a fact about who imports it. What the ladder cannot
+    decide stays visibly undecided, carrying the evidence that makes *that row* a real
+    question -- its own bytes, its own importers, its own top-level names -- so no
     two pending rows can share one boilerplate reason.
     """
+    decided = owner_decision(rel, digest)
+    if decided is not None:
+        return (decided["category"],
+                "config/unregistered-adjudications.json -> " + decided["authority"],
+                "owner 具名判定（" + str(decided["decided_by"]) + "，"
+                + str(decided.get("decided_at") or "") + "）："
+                + str(decided.get("reason") or decided["category"]))
+
     stem = Path(rel).stem
     others = sorted(p for p in index.get(stem, set()) if p != rel)
     producers = [p for p in others if _is_production_importer(p)]
@@ -915,6 +988,21 @@ def _copied_row(repo_label: str, repo: Path, rel: str, key: str, record: dict,
             row["class"] = "COPIED_PATCHED"
             row["reason"] = "已迁入，目标字节等于“来源 + 声明补丁”"
             return row
+    declared = rebuilt_ledger().get(row["target"])
+    if declared is not None:
+        if actual == declared["expected_sha256"]:
+            row["class"] = "COPIED_REBUILT"
+            row["authority"] = declared["verified_by"]
+            row["reason"] = ("本仓重建产物，按声明登记：来源侧字节 "
+                              + str(record.get("sha256_source", ""))[:12]
+                              + "… 是被复制那一份的输出，本仓的输出由 " + declared["produced_by"]
+                              + " 生成（" + declared["determinism"] + "）")
+            return row
+        row["class"] = "COPIED_TARGET_DIFFERS"
+        row["reason"] = ("登记为重建产物，但磁盘字节不等于声明的期望摘要（期望 "
+                         + declared["expected_sha256"][:12] + "…，实读 " + actual[:12]
+                         + "…）：产物没按声明重建，或期望需要重新核")
+        return row
     row["class"] = "COPIED_TARGET_DIFFERS"
     row["reason"] = ("目标字节既不同于复制清单，也不同于“来源+声明补丁”：属返工修复或漂移，"
                      "逐条依据见 migration/work-gap-disposition.csv 与 F01/F09 记录")
@@ -1010,17 +1098,28 @@ def build(repo_label: str, repo: Path, copied: dict, registered: dict, patches: 
             "reconciles": sum(counts.values()) == len(rows)}
 
 
-def write_csv(rows: list[dict], path: Path) -> None:
+def published_columns(rows: list[dict]) -> list[str]:
+    """The header this writer would emit. One definition, so ``--check`` compares the same face.
+
+    The comparison used to take its column list from the published file's own header, which made
+    it blind to the one change that matters most: dropping a column (``class``, say) from the
+    register also removes it from what is being compared, and the check then reports no drift at
+    all about the verdicts it exists to guard.
+    """
     columns = ["repo", "path", "registered", "gap_id", "class", "disposition",
                "disposition_target", "target", "authority", "source_sha256", "reason",
                *ARCHIVE_COLUMNS]
-    present = [name for name in columns if any(name in row for row in rows)]
+    return [name for name in columns if any(name in row for row in rows)]
+
+
+def write_csv(rows: list[dict], path: Path) -> None:
+    columns = published_columns(rows)
     missing = {name for row in rows for name in row if name not in columns}
     if missing:
         raise SystemExit("CSV_COLUMN_NOT_DECLARED " + ", ".join(sorted(missing)))
     temporary = path.with_suffix(".csv.tmp")
     with temporary.open("w", encoding="utf-8-sig", newline="\n") as handle:
-        writer = csv.DictWriter(handle, fieldnames=present, extrasaction="ignore")
+        writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
     temporary.replace(path)
@@ -1037,14 +1136,18 @@ def _drift(path: Path, rows: list[dict]) -> list[str]:
     """
     if not path.is_file():
         return ["<missing register>"]
+    columns = published_columns(rows)
     with path.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
-        columns = list(reader.fieldnames or [])
-        tracked = [{key: row[key] for key in columns} for row in reader]
-    # compare only the published columns: the in-memory rows carry bookkeeping keys the
-    # writer deliberately drops, and counting those as drift reports every row as changed
+        header = list(reader.fieldnames or [])
+        tracked = [{key: (row.get(key) or "") for key in columns} for row in reader]
+    # compare the columns this writer would emit, not the ones the file happens to carry: an
+    # unpublished column is drift, not a narrower question
+    absent = [name for name in columns if name not in header]
     expected = [{key: str(row.get(key, "")) for key in columns} for row in rows]
     changed = []
+    if absent:
+        changed.append("<columns dropped from the published header: %s>" % ",".join(absent))
     for index, (before, after) in enumerate(zip(tracked, expected)):
         if before != after:
             keys = sorted(key for key in columns if before.get(key) != after.get(key))

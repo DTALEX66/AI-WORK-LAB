@@ -32,6 +32,35 @@ STATUSES = ("CONFIRMED", "PARTIAL", "GAP", "BLOCKED_BY_BOUNDARY", "DEFERRED_P2",
 KINDS = ("pytest", "route", "script", "register", "doc", "none")
 
 
+def _review_shape() -> str:
+    """What independent review exists right now, counted from the record file."""
+    path = TARGET_ROOT / "config/independent-reviews.json"
+    if not path.is_file():
+        return "当前没有任何复审记录（config/independent-reviews.json 不存在）"
+    records = json.loads(path.read_text(encoding="utf-8-sig")).get("records", [])
+    if not records:
+        return "当前没有任何复审记录（config/independent-reviews.json 里 records 为空）"
+    latest = records[-1]
+    return ("现有 %d 条记录，最近一条 %s @ %s（覆盖 %d 项）"
+            % (len(records), latest["verdict"], latest["reviewed_sha"][:12],
+               len(latest.get("verified_items", []))))
+
+
+def _deferral_shape() -> str:
+    """How many deferred items exist, counted from the register itself.
+
+    This note used to carry 「9 个延期能力 + 5 个 P2/P3 任务」 typed by hand; adding one entry
+    silently made it a false statement about the file it describes, which is the same failure
+    the deferral register itself was built to prevent.
+    """
+    path = TARGET_ROOT / "migration/deferral-register.json"
+    if not path.is_file():
+        return "延期项未独立成册（migration/deferral-register.json 缺失），条数无法现算"
+    counts = json.loads(path.read_text(encoding="utf-8-sig")).get("counts", {})
+    return ("%s 个延期能力 + %s 个真人/owner 门 + %s 个 P2/P3 任务"
+            % (counts.get("capabilities"), counts.get("human_gates"), counts.get("tasks")))
+
+
 def _coverage_shape() -> str:
     """State the shape of the two per-file coverage registers, read from disk.
 
@@ -103,8 +132,8 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
                           "SCRIPT_COVERED 而不是伪称 pytest 覆盖"),
     ("L03", 1): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v21_task_acceptance.py::test_deferral_register_names_a_real_seam_for_every_deferred_item",
-                     note="延期项现独立成册 migration/deferral-register.json：9 个延期能力 + 5 个 P2/P3 任务，"
-                          "每条带来源、依赖、接缝文件与逐字验收条款；生成器与测试都要求接缝真实存在，"
+                     note="延期项现独立成册 migration/deferral-register.json：" + _deferral_shape() +
+                          "，每条带来源、依赖、接缝文件与逐字验收条款；生成器与测试都要求接缝真实存在，"
                           "「保留接入位置」从一句承诺变成可检查的指针"),
     ("L10", 0): dict(status="PARTIAL", kind="pytest",
                      target="tests/unified/test_v14_registers.py::test_coverage_register_leaves_no_row_undecided",
@@ -274,9 +303,14 @@ ROWS: dict[tuple[str, int], dict[str, str]] = {
                      note="Codex 可原样复跑的 6 组命令写在 docs/CODEX-AUDIT-ENTRY.md §4；旧审计探针因其自身"
                           "破坏性前置被明确标为不可复跑留档，等价问题由本文件稳定复现"),
     ("A00", 1): dict(status="PARTIAL", kind="doc",
-                     target="docs/AUDIT-STATE.json",
-                     note="「不继承上一轮结论」此前只是文字。跟踪文件现读记录被审 SHA 与复审结论；"
-                          "独立复审 PASS 目前不存在，字段必须留 NOT_RUN 而不是空"),
+                    target="config/independent-reviews.json",
+                    note="「不继承上一轮结论」此前不只是文字，也无从落地：closure 册的 独立复审 "
+                         "列是常量，唯一可能的值是 NOT_RUN。现在该列由 "
+                         "build_audit_item_closure.independent_review_for 从复审记录派生，" + _review_shape() +
+                         "；守卫是 tests/unified/test_v25_audit_item_closure.py::"
+                         "test_the_independent_review_cell_is_derived_and_traceable（没有记录的行必须是 "
+                         "NOT_RUN，填了的行必须点名一个在本次检出历史里的 SHA）。仍不是 PASS 的原因：复审者"
+                         "自己的结论还没有覆盖全部 closure 项。"),
     ("A00", 2): dict(status="CONFIRMED", kind="pytest",
                      target="tests/unified/test_v14_registers.py::test_pre_push_guard_is_present_and_blocking",
                      note="策略默认禁止远程动作；2026-10-31 owner 定点放行「首次上传 + 更新描述」并登记在 "

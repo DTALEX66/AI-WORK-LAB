@@ -1,0 +1,17 @@
+{
+  "schema": "awl/rebuilt-artifacts/v1",
+  "rule": "复制清单里的来源产物，如果在本仓是由自己的源重新生成的，就在这里逐件声明期望摘要与生成方式；期望落空的行由 build_source_coverage 回落到 COPIED_TARGET_DIFFERS，不会因为出现在这张表里就被判成已核实。",
+  "artifacts": [
+    {
+      "target": "apps/workbench/build/main.js",
+      "source_repo": "design",
+      "source_path": "apps/workbench/build/main.js",
+      "source_sha256": "b465af8381568f2f83d5d83824b0b192e46d6c5ccd7750b6157f3c3637a9c937",
+      "expected_sha256": "1a2d735c338da30d40a95f9aef5b5760882f654d6abbd8305dba26fe00b7ac12",
+      "produced_by": "vite 6.4.3 build over apps/workbench/*.ts (minify off, single deterministic ES file)",
+      "determinism": "同一棵树两次独立构建，摘要逐字节相同",
+      "verified_by": "scripts/check_workbench_bundle_drift.py::main",
+      "why": "来源仓那一份是来源仓 TS 源的输出；本仓的同名 TS 源已按声明返工，继续保留旧产物就是让三道读它的 JS 闸门校验陈旧字节。产物必须被 Git 跟踪（.gitignore 的两行反选），否则没有任何 diff 能看见它变旧。"
+    }
+  ]
+}

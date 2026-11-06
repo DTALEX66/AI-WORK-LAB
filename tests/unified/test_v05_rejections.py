@@ -76,6 +76,25 @@ def test_stale_result_refused(server, work_project):
     assert body["error"] == "EXTERNAL_RESULT_STALE"
 
 
+def test_an_undated_work_result_is_refused_where_a_design_one_is_only_marked_unjudged(server, work_project):
+    """The asymmetry the entry now claims, pinned: this face requires the production instant.
+
+    The design face tolerates an absent ``producedAt`` (owner has not ruled on tightening that
+    contract) and reports the freshness comparison as not evaluated; the work face has always
+    listed the field as required, so an undated document here is a refusal, not a declined check.
+    Keeping the two behaviours apart in a test is what stops "we made them symmetric" from being
+    claimed by whoever touches either one next.
+    """
+    task, attempt, pack_response, handoff = _prepare_attempt(server, work_project,
+                                                             key="att-rej-undated")
+    undated = dict(_result(pack_response["pack"]["packId"], work_project["project_id"],
+                           "res-undated-work"), producedAt="")
+    status, body = server.client.post(f"/api/v1/attempts/{attempt['attempt_id']}/results",
+                                      {"result": undated, "data_origin": "test"})
+    assert status == 422, body
+    assert body["error"] == "EXTERNAL_RESULT_INCOMPLETE", body
+
+
 def test_duplicate_result_refused_on_second_attempt(server, work_project):
     task, attempt, pack_response, handoff = _prepare_attempt(server, work_project, key="att-rej-3")
     pack_id = pack_response["pack"]["packId"]

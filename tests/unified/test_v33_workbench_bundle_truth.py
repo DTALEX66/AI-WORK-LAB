@@ -17,6 +17,7 @@ repo's falsifier script is where byte plants belong.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -51,6 +52,9 @@ def _planted_repo(root: Path, *, gitignore: str | None, staged: bool) -> Path:
     subprocess.run(["git", "init", "-q"], cwd=str(root), capture_output=True, text=True)
     if staged:
         subprocess.run(["git", "add", RELPATH], cwd=str(root), capture_output=True, text=True)
+        subprocess.run(["git", "-c", "user.name=plant", "-c", "user.email=plant@example.invalid",
+                        "commit", "-q", "-m", "planted artifact"], cwd=str(root),
+                       capture_output=True, text=True)
     return root
 
 
@@ -62,11 +66,18 @@ VISIBLE_IGNORE = ("node_modules/\nbuild/\n!apps/workbench/build/\n!apps/workbenc
 
 
 def test_committed_bundle_equals_a_fresh_offline_build():
-    """The claim the two registers used to be unable to make: current sources, current bytes."""
+    """The claim the two registers used to be unable to make: current sources, current bytes.
+
+    ``working_tree_equals_commit`` is asserted too, because the gates read the file on disk: an
+    uncommitted edit to the artifact is a refusal even when HEAD's blob is perfectly rebuilt. The
+    digest named ``committed_digest`` comes from ``git show HEAD:...``, not from the working tree
+    -- the independent review caught this file hashing the tree and calling it the commit.
+    """
     rc, receipt = run()
     assert rc == 0, receipt
     assert receipt["verdict"] == "MATCH", receipt
     assert receipt["tracked"] is True and receipt["ignored_by_rule"] is False, receipt
+    assert receipt["working_tree_equals_commit"] is True, receipt
     assert receipt["committed_digest"] == receipt["rebuilt_digest"], receipt
     assert len(receipt["committed_digest"]) == 64, receipt
 
@@ -106,3 +117,65 @@ def test_a_missing_build_environment_is_measurable_as_absent_not_green(tmp_path)
     assert rc == 3, receipt
     assert receipt["verdict"].endswith("_ABSENT"), receipt
     assert receipt["verdict"] != "MATCH" and "rebuilt_digest" not in receipt, receipt
+
+
+DESIGN_COVERAGE = TARGET_ROOT / "migration/source-coverage-design.csv"
+BUNDLE_RELPATH = "apps/workbench/build/main.js"
+
+
+def _coverage_row(path_text: str) -> dict:
+    import csv
+    with (TARGET_ROOT / "migration/source-coverage-design.csv").open(
+            encoding="utf-8-sig", newline="") as handle:
+        for row in csv.DictReader(handle):
+            if row["path"] == path_text:
+                return row
+    raise AssertionError("覆盖登记里没有这一行：%s" % path_text)
+
+
+def test_the_register_calls_the_rebuilt_bundle_a_declared_rebuild_not_drift():
+    """The register must distinguish "this artifact was rebuilt here" from "nobody knows".
+
+    Both used to print the same sentence. The ledger's expectation is cross-checked against the
+    committed bytes here -- an entry that agreed with nothing on disk would otherwise be a second,
+    unfalsifiable truth.
+    """
+    import hashlib
+    import subprocess
+
+    row = _coverage_row(BUNDLE_RELPATH)
+    assert row["class"] == "COPIED_REBUILT", row
+    assert "check_workbench_bundle_drift" in row["authority"], row
+
+    ledger = json.loads((TARGET_ROOT / "config/rebuilt-artifacts.json")
+                        .read_text(encoding="utf-8-sig"))["artifacts"]
+    entry = [item for item in ledger if item["target"] == BUNDLE_RELPATH]
+    assert len(entry) == 1, entry
+    shown = subprocess.run(["git", "show", "HEAD:" + BUNDLE_RELPATH], cwd=str(TARGET_ROOT),
+                           capture_output=True)
+    assert shown.returncode == 0, shown.stderr[-200:]
+    committed = hashlib.sha256(shown.stdout).hexdigest()
+    assert entry[0]["expected_sha256"] == committed, (entry[0]["expected_sha256"][:12],
+                                                      committed[:12])
+    assert entry[0]["source_sha256"] != committed, \
+        "声明的期望与来源字节相同，那这一行根本不是重建，是照抄"
+
+
+def test_a_rebuilt_expectation_that_misses_the_bytes_is_drift(tmp_path, monkeypatch):
+    """Being listed in the ledger must not be enough: the bytes have to agree."""
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_source_coverage as coverage
+
+    bundle = TARGET_ROOT / BUNDLE_RELPATH
+    digest = hashlib.sha256(bundle.read_bytes()).hexdigest()
+    planted = dict(json.loads((TARGET_ROOT / "config/rebuilt-artifacts.json")
+                              .read_text(encoding="utf-8-sig"))["artifacts"][0])
+    planted["expected_sha256"] = "0" * 64
+    monkeypatch.setattr(coverage, "_REBUILT", {BUNDLE_RELPATH: planted})
+
+    row = coverage._copied_row("design", tmp_path, BUNDLE_RELPATH, "key",
+                               {"sha256_source": planted["source_sha256"],
+                                "sha256_target": planted["source_sha256"],
+                                "target": str(bundle)}, {}, {})
+    assert row["class"] == "COPIED_TARGET_DIFFERS", row
+    assert "0" * 12 in row["reason"] and digest[:12] in row["reason"], row["reason"]

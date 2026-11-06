@@ -526,3 +526,46 @@ def test_the_raster_path_reports_the_gates_a_real_document_actually_hits(tmp_pat
     assert _sample() == json.loads((TARGET_ROOT / RIR_SAMPLE).read_text(encoding="utf-8")), (
         "测试把迁入的样本改了")
 
+
+DOMAIN_PACKS_DIR = ("domains/design/design_lab/resources/repo/design-lab/domain-packs")
+
+
+def test_the_deferred_domain_pack_names_the_elements_this_tree_actually_lacks():
+    """「要真人写设计内容」has to say which elements, and stay in step with the disk.
+
+    The deferral used to exist only as a sentence in the entry, with a hand-typed count that was
+    wrong twice over: the pack's tracked copies are 9 records rather than 18 path strings, and the
+    elements missing from the directory are six, not five -- `handoff_contract` was left out, so
+    the human queue was shorter than reality. The checker's own verdict is the authority here, so
+    this node compares the register's enumeration against the files that are absent, using the
+    element-to-filename map a compliant pack publishes. Add one of those files and this goes red
+    with the new list: the deferral is a pointer at measured absence, not a permanent excuse.
+    """
+    entries = {e["id"]: e for e in json.loads(
+        (TARGET_ROOT / "migration/deferral-register.json").read_text(encoding="utf-8-sig"))["entries"]}
+    gate = entries["design.minigame_domain_pack"]
+
+    reference = json.loads((TARGET_ROOT / DOMAIN_PACKS_DIR / "uiux-design/manifest.json")
+                           .read_text(encoding="utf-8"))
+    elements = reference["files"]
+    pack_dir = TARGET_ROOT / DOMAIN_PACKS_DIR / "minigame-design"
+    absent = sorted(name for name, relative in elements.items() if not (pack_dir / relative).exists())
+    assert absent, ("参照包 uiux-design 的元素若也落在 minigame-design 里，下面的对照就没有意义")
+
+    enumerated = [group.split("、") for group in re.findall(r"（([^）]*)）", gate["lift_condition"])]
+    candidates = [group for group in enumerated if set(group) <= set(elements)]
+    assert len(candidates) == 1, ("延期条款里没有唯一可识别的元素枚举", candidates)
+    assert sorted(candidates[0]) == absent, (candidates[0], absent)
+
+    pack = {p["directory"]: p for p in dp.build()["packs"]}["minigame-design"]
+    assert pack["validation"] == dp.INVALID, pack
+    checker_missing = sorted(re.findall(r"manifest missing files\.([a-z_]+) declaration",
+                                         " ".join(pack["validationErrors"])))
+    assert len(checker_missing) == pack["validationErrorCount"] - 1, \
+        ("除信封那条以外，每条理由都应当是一个 files.* 声明", checker_missing,
+         pack["validationErrorCount"])
+    declared_only = sorted(set(checker_missing) - set(absent))
+    assert all((pack_dir / elements[name]).exists() for name in declared_only), \
+        ("这些元素在校验器里被点名，磁盘上却也不存在：那它们属于真人那一类，"
+         "延期条款的元素枚举该按现读改写", declared_only)
+

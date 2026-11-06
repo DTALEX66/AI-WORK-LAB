@@ -12,7 +12,9 @@ artifact Git does not see is an artifact no diff can staleness-check.
 So this tool checks the three things that were each silently untrue:
   * Git can see the file (``IGNORED_ARTIFACT`` / ``BUNDLE_UNTRACKED``);
   * the build runs offline at all (``NODE_ABSENT`` / ``VITE_ABSENT`` / ``BUILD_FAILED``);
-  * the committed bytes equal what the current sources produce (``DRIFT``).
+  * the bytes in HEAD equal what the current sources produce (``MATCH`` / ``DRIFT``, and
+    ``UNCOMMITTED_BYTES`` when they do but the file on disk -- the one the gates read -- was
+    hand-edited since; ``COMMIT_BLOB_ABSENT`` when HEAD has nothing to compare against).
 
 One JSON document on stdout. Exit codes: 0 ``MATCH``, 1 a real refusal, 2 usage, 3 the
 environment cannot measure it -- which is a named conclusion, never a silent pass.
@@ -76,9 +78,20 @@ def main() -> int:
 
     if not bundle.is_file():
         document["verdict"] = "BUNDLE_ABSENT"
-        document["why"] = "no committed bytes to compare against"
+        document["why"] = "no bytes on disk for the JS gates to read"
         return emit(document, 1)
-    document["committed_digest"] = digest(bundle)
+    document["working_tree_digest"] = digest(bundle)
+    # the audited claim is about the COMMITTED artifact, so read the committed blob itself:
+    # hashing the working-tree file under this name is what let a hand-edited bundle pass as
+    # "verified bytes" (found by the independent review, not by me)
+    shown = subprocess.run(["git", "show", "HEAD:" + RELPATH], cwd=str(repo), capture_output=True)
+    if shown.returncode != 0:
+        document["verdict"] = "COMMIT_BLOB_ABSENT"
+        document["why"] = "visible to Git, but HEAD carries no such blob: nothing committed to verify"
+        return emit(document, 3)
+    document["committed_digest"] = hashlib.sha256(shown.stdout).hexdigest()
+    document["working_tree_equals_commit"] = (document["working_tree_digest"]
+                                              == document["committed_digest"])
 
     node = shutil.which("node")
     vite = workbench / "node_modules/vite/bin/vite.js"
@@ -109,10 +122,16 @@ def main() -> int:
         document["stderr_tail"] = (build.stderr or "").strip().splitlines()[-3:]
         return emit(document, 1)
     document["rebuilt_digest"] = rebuilt_digest
-    document["verdict"] = "MATCH" if document["rebuilt_digest"] == document["committed_digest"] else "DRIFT"
-    if document["verdict"] == "DRIFT":
-        document["why"] = ("the sources changed without a rebuild, or the committed bytes were not "
-                           "produced by this build -- the gates would be validating old bytes")
+    if rebuilt_digest != document["committed_digest"]:
+        document["verdict"] = "DRIFT"
+        document["why"] = ("the committed artifact is not what these sources produce -- the gates "
+                           "would be validating old bytes")
+    elif not document["working_tree_equals_commit"]:
+        document["verdict"] = "UNCOMMITTED_BYTES"
+        document["why"] = ("HEAD's artifact does match the sources, but the bytes on disk -- the ones "
+                           "the JS gates read -- are somebody's uncommitted edit")
+    else:
+        document["verdict"] = "MATCH"
     document["elapsed_ms"] = int((time.time() - started) * 1000)
     return emit(document, 0 if document["verdict"] == "MATCH" else 1)
 

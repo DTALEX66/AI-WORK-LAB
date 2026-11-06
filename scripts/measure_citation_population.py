@@ -48,8 +48,12 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 COPIES = REPO_ROOT / "migration" / "copies.json"
 MANIFEST = REPO_ROOT / "docs" / "history" / "sources-20261101" / "MANIFEST.csv"
 EXEMPTIONS = REPO_ROOT / "config" / "citation-exemptions.json"
-# owner-delivered task pack and the October authority snapshots: records, not our prose
-FROZEN_INPUTS = ("docs/audits-20261103-cloud-audit/", "docs/authority-202610/", "docs/history/")
+# owner-delivered task pack, the October authority snapshots and the recorded independent
+# reviews: records, not our prose. A review is quoted verbatim precisely so it cannot be quietly
+# rewritten to match whatever the code says now -- including its own line-number cites, which
+# describe the tree at the SHA that was reviewed.
+FROZEN_INPUTS = ("docs/audits-20261103-cloud-audit/", "docs/authority-202610/", "docs/history/",
+                 "docs/audits-20261106-independent/")
 APPEND_ONLY = ("docs/CODEX-AUDIT-ENTRY.md",)
 GENERATED = ("migration/", "config/")
 OUR_OWN_CODE = ("scripts/", "tests/", "backend/", "domains/work/")

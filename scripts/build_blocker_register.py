@@ -39,16 +39,48 @@ OWNER_EXCLUDED = {
 }
 
 
-#: The three classes an owner decision can move a pending row into. Each requires a
-#: ``file:line`` authority in this tree; the queue below deliberately does not offer a
+#: The three classes an owner decision can move a pending row into. Owned by the adjudicator
+#: (``build_source_coverage.DECISION_OPTIONS``) and imported here, so the queue can never
+#: advertise an option the generator would refuse. Each requires a ``file:line`` authority; the
+#: queue below deliberately does not offer a
 #: fourth option that would let a row be "decided" by assertion.
-DECISION_OPTIONS = ("UNREGISTERED_TARGET_PATH_PRESENT", "UNREGISTERED_EXCLUDED_CAPABILITY",
-                    "UNREGISTERED_DEV_TOOLING")
+from build_source_coverage import DECISION_OPTIONS  # noqa: E402
 
 #: Where the rows still awaiting that decision live. Read, never transcribed: the population
 #: is the registers', not this script's.
 COVERAGE_REGISTERS = (("work", "migration/source-coverage-work.csv"),
                       ("design", "migration/source-coverage-design.csv"))
+
+
+ADJUDICATIONS = TARGET_ROOT / "config" / "unregistered-adjudications.json"
+
+
+def proposals() -> dict:
+    """The evidence channel for pending rows, keyed by repo + path + the bytes decided about."""
+    if not ADJUDICATIONS.is_file():
+        return {}
+    return {(row["repo"], row["path"], row["source_sha256"]): row
+            for row in json.loads(ADJUDICATIONS.read_text(encoding="utf-8-sig"))["rows"]}
+
+
+def decision_channel_shape(queue: list[dict]) -> dict:
+    """How well the channel covers the queue -- counted here, never typed.
+
+    A stale row (in the channel, no longer pending) is published rather than dropped: the same
+    reason ``#37`` refused to let an expired allowance sit silently in a list.
+    """
+    known = proposals()
+    keys = {(row["repo"], row["path"], row["source_sha256"]) for row in queue}
+    return dict(
+        path="config/unregistered-adjudications.json",
+        channel_present=ADJUDICATIONS.is_file(),
+        pending_rows=len(keys),
+        rows_with_proposal=len(keys & set(known)),
+        rows_without_proposal=sorted("%s|%s" % (r, p) for r, p, _ in keys - set(known)),
+        stale_rows=sorted("%s|%s" % (r, p) for r, p, _ in set(known) - keys),
+        decided=sum(1 for row in known.values() if str(row.get("decided_by") or "").strip()),
+        effect="decided_by 非空且字节相同 -> build_source_coverage.adjudicate_unregistered 采纳；"
+               "只有提议 -> 本行照旧 pending")
 
 
 def owner_queue() -> list[dict]:
@@ -69,8 +101,13 @@ def owner_queue() -> list[dict]:
             for row in csv.DictReader(handle):
                 if row["class"] != "OWNER_DECISION_PENDING":
                     continue
-                queue.append(dict(repo=repo, path=row["path"], target=row["target"],
-                                  source_sha256=row["source_sha256"], reason=row["reason"]))
+                entry = dict(repo=repo, path=row["path"], target=row["target"],
+                             source_sha256=row["source_sha256"], reason=row["reason"])
+                proposal = proposals().get((repo, row["path"], row["source_sha256"]))
+                if proposal is not None:
+                    entry["proposed_category"] = proposal["proposed_category"]
+                    entry["proposed_authority"] = proposal["authority"]
+                queue.append(entry)
     queue.sort(key=lambda item: (item["repo"], item["path"]))
     if len({(item["repo"], item["path"]) for item in queue}) != len(queue):
         raise SystemExit("owner queue has a duplicate row key")
@@ -108,12 +145,16 @@ def build() -> dict:
         )
         if item["id"] == "L10#0":
             item["decision_options"] = list(DECISION_OPTIONS)
-            item["decision_how"] = ("逐行从 decision_options 中任选一个类别，并在 "
-                                   "migration/source-coverage-<repo>.csv 的 authority 列补出处"
-                                   "（file:line）；改完重跑两个 build 脚本与 "
-                                   "tests/unified/test_v14_registers.py。不选 = 本条继续 PARTIAL，"
-                                   "本批继续 REFUSED。")
+            item["decision_how"] = ("逐行从 decision_options 中任选一个类别：在 "
+                                   "config/unregistered-adjudications.json 该行的 category 填类别、"
+                                   "decided_by 填具名真人、decided_at 填日期（authority 已有出处，"
+                                   "不够就改）；然后重跑 scripts/build_source_coverage.py --write、"
+                                   "本脚本与 tests/unified/test_v14_registers.py。"
+                                   "只改 migration/source-coverage-<repo>.csv 的 authority 列是无效的："
+                                   "那一列的 class 每次重建都由 adjudicate_unregistered() 现算覆盖。"
+                                   "不填 = 本条继续 PARTIAL，本批继续 REFUSED。")
             item["owner_queue"] = queue
+            item["decision_channel"] = decision_channel_shape(queue)
         items.append(item)
     return dict(
         generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),

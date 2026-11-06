@@ -21,6 +21,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -65,8 +66,71 @@ def test_result_and_evidence_kind_stay_in_separate_columns():
         assert row["证据种类"] and row["证据种类"] not in VOCABULARY, (
             row["ID"], "证据种类必须说明是什么种类的证据，不能重述结论——交接文档禁止把"
                        "测试/合成/真实来源混成一个完成率")
-        assert row["独立复审"] == "NOT_RUN", (
-            row["ID"], "本候选尚未被独立复审；只有真实发生的复审可以替换这个值")
+
+
+def test_the_independent_review_cell_is_derived_and_traceable():
+    """NOT_RUN is the default, and the only way out is a record that can be gone and read.
+
+    The column used to be a constant, so the register could never say anything else -- which made
+    「不继承上一轮结论」 uncheckable by construction: there was no cell that could hold a review,
+    and no rule about what a filled cell would have to prove. Now a row leaves NOT_RUN only when
+    `config/independent-reviews.json` names it, and the cell repeats that record's SHA, which must
+    be an ancestor of this checkout with the reviewer's artifact present at the recorded path.
+    """
+    path = TARGET_ROOT / "config" / "independent-reviews.json"
+    records = json.loads(path.read_text(encoding="utf-8-sig"))["records"] if path.is_file() else []
+    verified: dict[str, dict] = {}
+    for record in records:
+        assert re.fullmatch(r"[0-9a-f]{40}", record["reviewed_sha"]), record
+        assert record["reviewer"] and record["verdict"] in ("PASS", "PASS_WITH_FINDINGS", "FAIL"), \
+            record
+        assert (TARGET_ROOT / record["artifact"]).is_file(), record
+        for item in record["verified_items"]:
+            verified[item] = record
+
+    rows = _rows()
+    for row in rows:
+        cell = row["独立复审"]
+        if row["ID"] not in verified:
+            assert cell == "NOT_RUN", (row["ID"], "没有复审记录却填了别的东西", cell)
+            continue
+        record = verified[row["ID"]]
+        assert record["reviewed_sha"][:12] in cell, (row["ID"], cell)
+        assert record["verdict"] in cell, (row["ID"], cell)
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", record["reviewed_sha"], "HEAD"],
+            cwd=str(TARGET_ROOT), capture_output=True)
+        assert ancestor.returncode == 0, (row["ID"], "复审的提交不在当前检出的历史里",
+                                          record["reviewed_sha"])
+
+
+def test_a_recorded_review_reaches_the_cell_and_an_absent_one_does_not(tmp_path, monkeypatch):
+    """The filled branch must be exercised today, not on the day a reviewer first runs.
+
+    A code path that only executes once a human supplies input is a path that can be broken
+    unnoticed until the moment it is needed -- this repo has measured that more than once. So the
+    record is planted here in a temporary file, and the cell must carry the verdict, the reviewed
+    SHA and the artifact pointer, while everything the record did not name has to stay NOT_RUN.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_audit_item_closure as closure
+
+    artifact = tmp_path / "REVIEW.md"
+    artifact.write_text("# planted review\n", encoding="utf-8")
+    sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(TARGET_ROOT),
+                         capture_output=True, text=True).stdout.strip()
+    record = dict(verdict="PASS_WITH_FINDINGS", reviewed_sha=sha, reviewer="planted-cli 1.0",
+                  reviewed_at="2026-11-06T00:00:00+00:00", artifact=str(artifact),
+                  verified_items=["F01"])
+    path = tmp_path / "independent-reviews.json"
+    path.write_text(json.dumps({"records": [record]}, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(closure, "REVIEWS_JSON", path)
+    monkeypatch.setattr(closure, "_REVIEWS", None)
+
+    cell = closure.independent_review_for("F01")
+    assert cell.startswith("PASS_WITH_FINDINGS @ " + sha[:12]), cell
+    assert "planted-cli 1.0" in cell and "REVIEW.md" in cell, cell
+    assert closure.independent_review_for("A01") == "NOT_RUN", "记录没点名的项也被判成已复审"
 
 
 def test_the_requirement_text_belongs_to_the_file_and_digest_it_cites():

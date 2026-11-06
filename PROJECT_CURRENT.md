@@ -60,15 +60,15 @@ crlf_tracked_files = 121
 distinct_paths_design = 4055
 distinct_paths_union = 6774
 distinct_paths_work = 2734
-lf_tracked_files = 728
+lf_tracked_files = 729
 route_endpoints = 164
 source_rows_design = 4476
 source_rows_total = 7210
 source_rows_work = 2734
-spdx_claimed_files = 226
+spdx_claimed_files = 227
 spdx_malformed_lines = 0
-suite_test_files = 37
-suite_test_nodes = 572
+suite_test_files = 38
+suite_test_nodes = 584
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -151,7 +151,7 @@ unsettled_files = 237
 | 界面（STITCH 前端） | 未做：本批只做本地后端 | `migration/ui-entry-disposition.csv` |
 | 真实宿主写入 / 模型推理 / 真实私有数据迁移 / 真人专业验收 | `NOT_RUN`，按边界如实记录 | `docs/CODEX-AUDIT-ENTRY.md` §5、`migration/deferral-register.json` |
 | 系统级出站隔离 | 未证明（无防火墙/沙箱配置；云端会话模型上下文可离开本机这一限制仍成立） | `INTEGRATION_POLICY.md` §2 |
-| workbench bundle | 无法重建（缺 `picomatch`，需网络安装，未授权），两个读 bundle 的 JS 闸门仍校验旧字节 | `docs/CODEX-AUDIT-ENTRY.md` §15.22 |
+| workbench bundle | 离线可重建，产物已重新被 Git 跟踪；`scripts/check_workbench_bundle_drift.py` 现判 MATCH / DRIFT / IGNORED_ARTIFACT / BUNDLE_UNTRACKED / `*_ABSENT` | `tests/unified/test_v33_workbench_bundle_truth.py` |
 | 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。收据已在这两个修复之后重取：现记 `499 passed / 0 failed / 0 errors`，绑在 `94dd47c`（摘要 `1467eeaea846ac08…`），改绑之后只有 `docs/` 与 `migration/` 的字节的动过 | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
 | 归档原件的唯一副本 | `1131` 个对象（约 `1.06 GB`）目前只在统一归档里有；归档自己的 `完整性校验报告.json` 仍写 `source_file_set_unchanged: true`，而它点名的 `2031` 条来源路径现在**一个都不存在**（`D:\All projects\Record` 已消失，`xiangmuguidang` 是空目录）——那句话对今天的磁盘已不成立，归档不可再被当作可清理的副本 | `migration/archive-object-reconciliation-20261101.csv`、`_归档管理\完整性校验报告.json` |
 | 删掉两个来源仓之后本仓还能不能独立跑 | **切割本身在最终代码态重测成立**（克隆 HEAD `6b0cfbf`，§15.32；收据测的也是这一头 `6b0cfbf`）：三根收进 `scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 三个环境变量指向不存在的路径即全仓进入切割态，**一个字节都不改**（克隆的 `git status` 前后各读一次均为空：`no_bytes_rewritten_verified=True`，克隆里没有 `.project-local`=False）；**10 道闸门两态全部具名、无 traceback**（`SOURCE_REPO_ABSENT`/rc=3、无收据与无安装报告的具名拒绝、真漂移 rc=1 三类互不塌陷）；克隆可跑集 25 文件，对照 `363 passed, 1 warning, 3 subtests passed in 470.33s (0:07:50)`（失败 0），处理 `361 passed, 2 skipped, 3 subtests passed in 160.37s (0:02:40)`（失败 0），因开关而红的节点 **0** 个、只在没开关时红 **0** 个，两个 skip 逐条点名（§15.32）。克隆内复跑终局审计 `NOT CLOSED`：{"PASS": 8, "FAIL": 0, "PENDING": 6, "INSTRUMENT_ERROR": 0}，未具名 0 条——它说的是这台机器观测不到，不是通过。**新查出的缺口换了位置**：`migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 多（本机 work 2734 / design 4476 vs 克隆 2764 / 4488），根因定位在 `copied_index()` 以两个绝对路径相等判「同一条去向」——换台机器就不等，于是同一来源文件被记两行；本机 `--check` 仍 rc=0，跨机复现要到克隆里才暴露，本轮试过一处修法并实测两处都不对，已整体回退，未进仓库 | `.project-local/runs/independence-cut-20261103-final.json`、`.project-local/runs/ag-skip-names-20261103.txt`、docs/CODEX-AUDIT-ENTRY.md §15.32 |
@@ -190,7 +190,7 @@ unsettled_files = 237
 
 1. ~~重取全量收据并改绑登记表~~ 本轮又做了两遍，因为每次收紧都是活代码：收据现在测 `6b0cfbf`（`520 passed, 1 warning, 3 subtests passed in 1599.45s (0:26:39)`，摘要 `add908836cce1b3d…`，候选 7284 文件，`tracked_bytes_moved_during_run` 为空），`migration/audit-item-closure.csv` 的收据列、`docs/AUDIT-STATE.json`、`migration/task-acceptance.csv`、`config/blocker-register.json` 与入口数字段一起按这张收据重发布。
    判据口径沿用上一轮定下的那条并且仍然成立：收据不要求点名 HEAD，只要求「收据的提交是 HEAD 的祖先，且其间每个动过的跟踪文件都是文档或生成登记表，逐个点名」；代码或测试出现在那个区间就是 `FAIL`。
-   本轮同时记下两个真实缺口，不用「闭环」二字把它们盖掉：① `migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 大（work 2764 vs 2734、design 4488 vs 4476），根因指向 `copied_index()` 以绝对路径相等判「同一条去向」，换机器就不等；② `apps/workbench` 的 bundle 仍无法离线重建，两个读 bundle 的JS 闸门仍在校验旧字节。两条都在 docs/CODEX-AUDIT-ENTRY.md 有对应小节。
+   本轮同时记下两个真实缺口，不用「闭环」二字把它们盖掉：① `migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 大（work 2764 vs 2734、design 4488 vs 4476），根因指向 `copied_index()` 以绝对路径相等判「同一条去向」，换机器就不等；② `apps/workbench` 的 bundle 仍无法离线重建，两个读 bundle 的JS 闸门仍在校验旧字节（②已在 §15.50 收口：根因是通用 `build/` 忽略规则把该产物吞成看不见，重建本身一直可行）。两条都在 docs/CODEX-AUDIT-ENTRY.md 有对应小节。
 2. owner 对 `237` 条待裁决来源做批量判定（含 32 条阻断 `L10#0` 的）。
 3. ~~统一归档 `1212` 个对象与融合仓的逐摘要对账~~ 已建成 `1212` 行逐条登记；
    ~~那 `1131` 个只在归档里的对象要不要按摘要迁入本仓~~ owner 已定（「确保内容全部归档到仓库」）：
@@ -237,18 +237,25 @@ unsettled_files = 237
    expectedDigest / offset·limit / 两处环回门 / `produced_at` 拼写 / `plan_candidate` 六个列表字段），
    10 支反证逐支点名红、还原逐字节相同。**本批新查清但没收口的三处**：
    (a) `producedAt` 与 `produced_at` 都是"缺席即不检查"，省略生产时刻可绕过 `RESULT_STALE`，
-   设计面与 WORK 面（`repair_verification.validate_external_result`）同形——改成必填是对**外部工具
-   交付合同**加严，需 owner 定，不由执行器代答；(b) `_query_params()` 仍用 `dict(parse_qsl(...))`
+   设计面与 WORK 面（`repair_verification.validate_external_result`）当时并不同形——work 面把这一项
+   列为必填，缺了就 422；只有设计面是静默跳过。设计面现已收口：缺席不再是"没比较"，而是
+   `binding.staleness_assessment` 的具名状态，随 201 回执发布（CURRENT / STALE / 三类
+   NOT_EVALUATED_*）；把必填加到设计面是对**外部工具交付合同**加严，需 owner 定，不由执行器代答；(b) `_query_params()` 仍用 `dict(parse_qsl(...))`
    塌缩重复 GET 参数，N02 在任务面修掉的同一件事在 observer/search 面上还在；(c) 全量收据里那
    1 条 `SyntaxWarning`（`<unknown>:5: invalid escape sequence '\ '`）来自覆盖登记器 `ast.parse`
    的一份源文本，改它要动 `tests/`，而收据后的允许改动名单不含 `tests/`，故留给下一批
    （定位法：`python -W error::SyntaxWarning`）。登记抖动也记着：`source-coverage-*.csv` 的
-   `authority` 列里有 153 行（work 79 + design 74）是 `scripts/build_source_coverage.py:NNN` 这种
-   自引用行号，本次 builder 加行就让它们集体位移（值由现算，不是说谎），改成符号写法要与
-   `resolve_authority_cite` 的判据同批改。两项**按延后写而不是抹平**：小游戏领域包（13 包里唯一
-   `INVALID`，11 条错误中 5 条要真人写设计内容，且该包 18 条跟踪复制件任何改动都要走声明返工 +
-   台账补采）与 workbench 离线构建（`picomatch` 现读仍 `MODULE_NOT_FOUND`，补依赖需网络安装，
-   未授权）——包与检查都没删。后续批次里已经收口的三件不再列为待办：重复 GET 参数现在被
+   `authority` 列一度是 `scripts/build_source_coverage.py:NNN` 这种自引用行号，builder 每加一行就让它们
+   集体位移（值由现算，不是说谎）；已改成符号写法并与 `resolve_authority_cite` 的判据同批收紧，
+   行数不在这里抄——抄一次就要重新发现一次。两项**按延后写而不是抹平**：小游戏领域包（13 包里唯一
+   `INVALID`；校验器的理由分两类，一类是信封没声明 `files.*`（其中一部分元素其实在磁盘上，缺的只是声明），
+   另一类点名的元素在磁盘上根本不存在，只能由真人写或由真实运行产出——枚举与条数由
+   `test_v24` 现算，登记在 `migration/deferral-register.json` 的 `design.minigame_domain_pack`；
+   该包的迁移记录是 9 条逐字节相同的来源复制件，任何改动都要走声明返工 +
+   台账补采，那是 owner 的决定而不是执行器的）与 workbench 离线构建（曾记为 `picomatch`
+   `MODULE_NOT_FOUND`、需网络安装：实测依赖闭包在本机的 npm 存储里齐备，构建可离线跑且两次
+   摘要相同，真正的原因是该产物被通用 `build/` 忽略规则挡住了 Git 的视线，已按 §15.50 收口）
+   ——包与检查都没删。后续批次里已经收口的三件不再列为待办：重复 GET 参数现在被
    `_query_params()` 具名拒绝（五个 GET 面共用同一判据，N02 在任务面修掉的同一件事不再只在任务面成立）、
    覆盖登记器 `ast.parse` 的那条 `SyntaxWarning` 已消、`source-coverage-*.csv` 的 `authority` 列改成
    `file::name` 后由 `resolve_authority_cite` 与 v14 节点双向守着。
@@ -285,7 +292,9 @@ unsettled_files = 237
    `.git/` 里的字节当实现位置（分离检出时那种引用会绿着说假话）。
    下一格起手项：`#36` 与 `#37` 已在本格收掉，本仓可自修的后端项到此是"每个数能现查、每个判据能失败"
    这一状态，剩下的都带外部条件——
-   小游戏领域包要真人写 5 条设计内容、workbench 离线构建的 `picomatch` 要网络安装（未授权）、
+   小游戏领域包要真人写设计内容（元素枚举与条数由 `test_v24` 现算，登记在 deferral 册的
+   `design.minigame_domain_pack`）、workbench 离线重建的依赖闭包要在有本机 npm 存储的机器上才起得来
+   （构建本身实测可离线跑，产物与漂移判据已在本仓）、
    `producedAt` 改成必填要 owner 定外部工具合同、Linux 复跑（N05 因此 PARTIAL）、以及上面逐条点名的
    真人/owner 项。引用这一族的教训留在闸门里而不是只留在话里：人群从 `git ls-files` 现取
    （手工清单曾漏掉 `requirement-traceability.csv`，也漏过 `docs/history/`），读不到的跟踪件必须点名
