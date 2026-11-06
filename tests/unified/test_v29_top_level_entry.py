@@ -422,3 +422,44 @@ def test_a_register_that_nothing_reads_or_declares_is_refused():
         real, entry_full, checker.register_vocabulary()) == [], (
         "有登记既不接进任何生成器，也没在入口 §四 声明角色：%s"
         % checker.register_declaration_findings(real, entry_full, checker.register_vocabulary()))
+
+
+def test_a_tracked_file_this_run_cannot_read_refuses_instead_of_shrinking_the_count(tmp_path):
+    """The denominators may only change when a file really changes.
+
+    Measured this round: the entry said 736 LF-tracked files while the register computed 737, and
+    neither was wrong about its own run -- the difference was one archived file sitting past
+    Windows' 260-character limit, which ``path.is_file()`` reports as absent. A count that depends
+    on where the checkout happens to live is not a fact about the repository, and skipping the
+    unreadable file made the omission invisible.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "checker_refuse", TARGET_ROOT / "scripts" / "check_project_current.py")
+    checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checker)
+
+    try:
+        checker._refuse_unreadable("line_endings", ["docs/history/deep.md"])
+    except SystemExit as exit_error:
+        assert "TRACKED_FILE_UNREADABLE" in str(exit_error) and "docs/history/deep.md" in str(exit_error)
+    else:
+        raise AssertionError("读不到的跟踪件被静默跳过：分母少一格而无人说话")
+    checker._refuse_unreadable("line_endings", [])
+
+
+def test_the_deepest_tracked_files_are_actually_read():
+    """The extended-length fallback must work on the real tree, not only in the helper."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "checker_deep", TARGET_ROOT / "scripts" / "check_project_current.py")
+    checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checker)
+
+    deepest = max((rel for rel in checker._tracked_files()), key=lambda rel: len(str(checker.ROOT / rel)))
+    assert len(str(checker.ROOT / deepest)) > 250, (
+        "本仓不再有超过 MAX_PATH 的跟踪件了？那这条守卫要按现读改写：%s 个字符"
+        % len(str(checker.ROOT / deepest)))
+    assert checker._read_tracked(deepest) is not None,         "最深的跟踪件仍然读不到：分母又会按检出位置变化（%s）" % deepest
+    counts = checker.line_endings()
+    assert counts["crlf"] + counts["lf"] > 0, counts

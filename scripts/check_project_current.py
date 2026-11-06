@@ -148,6 +148,29 @@ def _tracked_files(*patterns: str) -> list:
     return [rel for rel in listing.split(chr(0)) if rel]
 
 
+def _read_tracked(rel: str):
+    """Bytes of a tracked file, or None -- and None is a finding, never a silent skip.
+
+    Windows refuses to stat anything past MAX_PATH, and this repository's archived source tree has
+    members at 232 characters, so a plain read fails on the deepest ones. Counting them as "not a
+    file" made the entry's own denominators depend on where the checkout happened to sit: the same
+    commit gave 736 here and 737 in a clone. The extended-length prefix is tried before giving up,
+    and a file that still cannot be read is reported by name.
+    """
+    path = ROOT / rel
+    for candidate in (path, Path("\\\\?\\" + str(path).replace("/", "\\"))):
+        try:
+            if candidate.is_file():
+                return candidate.read_bytes()
+        except OSError:
+            continue
+    return None
+
+
+def _unreadable(relatives) -> list[str]:
+    return [rel for rel in relatives if _read_tracked(rel) is None]
+
+
 def line_endings() -> dict:
     """Tracked files that are purely CRLF, and those that contain LF, outside the attested areas.
 
@@ -156,33 +179,45 @@ def line_endings() -> dict:
     `* -text` and the migration ledger are there to keep honest.
     """
     crlf = lf = 0
+    unreadable: list[str] = []
     for rel in _tracked_files():
         normalised = rel.replace(chr(92), "/")
         if any(normalised.startswith(area) for area in BLOB_AREAS):
             continue
-        path = ROOT / rel
-        if not path.is_file():
+        blob = _read_tracked(rel)
+        if blob is None:
+            unreadable.append(rel)
             continue
-        blob = path.read_bytes()
         pairs, ends = blob.count(b"\r\n"), blob.count(b"\n")
         if pairs and ends == pairs:
             crlf += 1
         elif ends:
             lf += 1
+    _refuse_unreadable("line_endings", unreadable)
     return {"crlf": crlf, "lf": lf}
+
+
+def _refuse_unreadable(face: str, unreadable: list[str]) -> None:
+    """A tracked file this run cannot read is a denominator that just shrank by one, silently."""
+    if unreadable:
+        raise SystemExit("TRACKED_FILE_UNREADABLE in %s: %s"
+                         % (face, "; ".join(sorted(unreadable)[:6])
+                            + (" …" if len(unreadable) > 6 else "")))
 
 
 def spdx_claims() -> dict:
     """Well-formed SPDX lines in tracked Python, and the near-misses that would read as MIT anyway."""
     good = sloppy = missing = 0
+    unreadable: list[str] = []
     for rel in _tracked_files("*.py"):
         normalised = rel.replace(chr(92), "/")
         if any(normalised.startswith(area) for area in BLOB_AREAS):
             continue
-        path = ROOT / rel
-        if not path.is_file():
+        raw = _read_tracked(rel)
+        if raw is None:
+            unreadable.append(rel)
             continue
-        head = path.read_bytes()[:400].decode("utf-8", errors="replace")
+        head = raw[:400].decode("utf-8", errors="replace")
         claim = next((line for line in head.splitlines() if "SPDX-License-Identifier:" in line), None)
         if claim is None:
             missing += 1
@@ -190,6 +225,7 @@ def spdx_claims() -> dict:
             good += 1
         else:
             sloppy += 1
+    _refuse_unreadable("spdx_claims", unreadable)
     return {"good": good, "sloppy": sloppy, "missing": missing}
 
 
