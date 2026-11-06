@@ -12,10 +12,12 @@ weaknesses made that queue cost more than it should and say less than it did:
   the whole list again (which is exactly why the count used to be a one-off script's output).
 
 ``config/unregistered-adjudications.json`` is the channel that fixes both: per row a proposed
-category, a cite this script verified only as "resolves to a non-blank line", and a
-``decided_by`` that is null until a person fills it. The nodes below pin the property that makes
-that safe -- an undecided row stays pending however the file is written -- and the byte-binding
-that stops a decision about one revision being reused for another.
+category, a cite whose anchor names the text it points at (``path::符号`` in code, ``path::#片段``
+in prose and in generated rows -- a bare line number was shown here to point at the wrong row and
+the wrong sentence while still "resolving"), and a ``decided_by`` that is null until a person
+fills it. The nodes below pin the property that makes that safe -- an undecided row stays pending
+however the file is written -- the byte-binding that stops a decision about one revision being
+reused for another, and the fact that an anchor can actually break.
 """
 from __future__ import annotations
 
@@ -61,46 +63,97 @@ def test_the_shipped_channel_proposes_every_pending_row_and_decides_none():
     assert document["counts"]["decided"] == 0, document["counts"]
 
 
-def test_every_cite_resolves_in_a_tracked_file():
-    """An authority that does not resolve is the thing this channel exists to prevent.
+def test_every_cite_is_a_content_anchor_that_resolves():
+    """Every row's authority must name the text it points at; a bare line number is not evidence.
 
-    Two forms are re-checked here, independently of the generator: ``path::name`` against the
-    file's own top-level definitions (the form a code target must use, because a line number
-    inside a script rots the next time anybody adds a function -- measured in this very batch),
-    and ``path:NNN`` as "in range and not blank". Only structure is checked, because whether a
-    cited line *means* the same thing as the source file is the owner's judgement, not a
-    script's; the claim in the register is therefore exactly as strong as this sentence.
+    The node that shipped first accepted ``path:NNN`` as "in range and not blank", and that is why
+    two rows went on citing ``PROJECT_CURRENT.md:212`` after a §五 edit moved that line onto an
+    unrelated sentence, and why six rows cited a *neighbouring* row of the very coverage register
+    they describe: a line number is a fact about the last build, not about the claim. Now a row
+    whose anchor matches no line, or matches more than one, is a failure of this file.
     """
     tracked = {p.decode("utf-8", "surrogateescape") for p in subprocess.run(
         ["git", "ls-files", "-z"], cwd=str(TARGET_ROOT), capture_output=True,
         timeout=300).stdout.split(b"\0") if p}
-    unresolved = []
+    module = importlib.import_module("build_unregistered_adjudications")
+    bare, unresolved = [], []
     for row in _channel()["rows"]:
         cite = row["authority"]
-        if "::" in cite:
-            path_text, _, name = cite.rpartition("::")
-            if path_text not in tracked:
-                unresolved.append((row["path"], cite, "not tracked"))
-                continue
-            tree = ast.parse((TARGET_ROOT / path_text).read_text(encoding="utf-8"))
-            defined = set()
-            for node in tree.body:
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                    defined.add(node.name)
-                elif isinstance(node, ast.Assign):
-                    defined.update(t.id for t in node.targets if isinstance(t, ast.Name))
-            if name not in defined:
-                unresolved.append((row["path"], cite, "symbol not defined"))
+        if "::" not in cite:
+            bare.append((row["path"], cite))
             continue
-        path_text, _, number = cite.rpartition(":")
-        target = TARGET_ROOT / path_text
-        if path_text not in tracked or not target.is_file():
-            unresolved.append((row["path"], cite, "not tracked or absent"))
+        path_text, _, anchor = cite.rpartition("::")
+        if path_text not in tracked:
+            unresolved.append((row["path"], cite, "target not tracked"))
             continue
-        lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
-        if not (1 <= int(number) <= len(lines)) or not lines[int(number) - 1].strip():
-            unresolved.append((row["path"], cite, "line does not resolve"))
+        if anchor.startswith("#"):
+            hits = [line for line in (TARGET_ROOT / path_text).read_text(
+                encoding="utf-8", errors="replace").splitlines() if anchor[1:] in line]
+            if len(hits) != 1:
+                unresolved.append((row["path"], cite, "%d lines carry the anchor" % len(hits)))
+            continue
+        tree = ast.parse((TARGET_ROOT / path_text).read_text(encoding="utf-8"))
+        defined = set()
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                defined.add(node.name)
+            elif isinstance(node, ast.Assign):
+                defined.update(t.id for t in node.targets if isinstance(t, ast.Name))
+        if anchor not in defined:
+            unresolved.append((row["path"], cite, "symbol not defined"))
+    assert bare == [], ("这些格的出处仍是行号，被引文件一改就悄悄指错：" + str(bare))
     assert unresolved == [], unresolved
+    # the generator must reach the same answer from its own side, or the two readings of
+    # "resolved" would drift apart and the register would keep printing 0 unresolved
+    stale = [row["authority"] for row in _channel()["rows"]
+             if not module.cite_resolves(module.check_cite(row["authority"]))]
+    assert stale == [], stale
+
+
+def test_an_anchor_that_matches_no_line_or_several_is_not_a_resolution():
+    """The anchors can fail: absent text refuses, and so does text that is not unique.
+
+    Without the ambiguous half, an anchor like ``#OWNER_DECISION_PENDING`` would "resolve" against
+    a register where every second row contains it, and the row would look evidenced while pointing
+    at nothing in particular.
+    """
+    module = importlib.import_module("build_unregistered_adjudications")
+    absent = module.check_cite("AGENTS.md::#这一句在本仓里不存在 xyzzy")
+    assert not module.cite_resolves(absent), absent
+    ambiguous = module.check_cite("migration/source-coverage-work.csv::#OWNER_DECISION_PENDING")
+    assert not module.cite_resolves(ambiguous), ambiguous
+    unique = module.check_cite("migration/source-coverage-work.csv::#work,apps/observer/scripts/"
+                               "u19_webview_e2e.py")
+    assert module.cite_resolves(unique), unique
+
+
+def test_the_channel_builder_checks_without_writing_and_refuses_an_unknown_flag():
+    """``--check`` used to be no flag at all: an unknown argument was ignored and the file was written.
+
+    Discovered by typing it: the register came back "verified" with ``written`` in the output while
+    nobody asked for a write. A mode that does not exist has to be an error, and a check must not
+    move a byte.
+    """
+    module = importlib.import_module("build_unregistered_adjudications")
+    shipped = CHANNEL.read_bytes()
+    assert module.main(["build_unregistered_adjudications.py", "--chek"]) == 2, (
+        "一个不存在的旗标被当成没看见，下一句就是写盘")
+    assert CHANNEL.read_bytes() == shipped, "未知旗标那一趟还是改了登记表字节"
+
+    control = CHANNEL
+    assert module.main(["build_unregistered_adjudications.py", "--check"]) == 0
+    assert CHANNEL.read_bytes() == shipped, "--check 写了字节：它必须只是读者"
+
+    other = CHANNEL.with_name("unregistered-adjudications.mutated.json")
+    other.write_bytes(b"{\n  \"rows\": []\n}\n")
+    original = module.OUT
+    try:
+        module.OUT = other
+        assert module.main(["build_unregistered_adjudications.py", "--check"]) == 1, (
+            "登记表与现算结果不一致时 --check 仍然报 0")
+    finally:
+        module.OUT = original
+        other.unlink()
 
 
 def test_a_proposal_without_a_decider_changes_no_class(tmp_path):

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import atexit
 import importlib.util
+import json
 import os
 import re
 import shutil
@@ -504,4 +505,61 @@ def test_the_basetemp_sweep_only_reaches_roots_this_project_owns(tmp_path, monke
     assert conftest.basetemp_root(config_for(None)) is None, "no --basetemp must mean no sweeping"
     assert conftest.basetemp_root(types.SimpleNamespace(option=None)) is None, (
         "a session without an option namespace must not raise -- the sweep runs in every session")
+
+
+def _source_root_values():
+    """The three outside roots as this machine resolves them, through the one resolver."""
+    spec = importlib.util.spec_from_file_location(
+        "source_roots_for_clone", TARGET_ROOT / "scripts" / "source_roots.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return {module.ENVIRONMENT[key]: str(value)
+            for key, value in (("work", module.work_root()), ("design", module.design_root()),
+                               ("archive", module.archive_root()))}
+
+
+def test_a_fresh_clone_rebuilds_the_published_coverage_populations(tmp_path):
+    """The one clone claim the entry could only write as "not re-measured" (§15.32, §五①).
+
+    ``copied_index()`` used to identify a copy record by the absolute path it was read from, so a
+    second checkout matched nothing and both registers grew rows the publishing machine could not
+    see. ``tests/unified/test_v14_registers.py`` proved the replacement identity against a foreign
+    mirror root; nothing proved the end-to-end claim ``migration/source-coverage-*.csv`` makes
+    about itself -- that a fresh clone rebuilds exactly the published rows.
+
+    Two runs, because one would say nothing on its own:
+
+    * left to the default spelling, a clone sitting in a temp directory has no siblings to read,
+      and the generator must refuse with ``NOT_RECOMPUTABLE_HERE`` (rc=3). A wrong root has to be
+      a named absence, not a quietly smaller population;
+    * with the designed environment override pointing at this machine's read-only roots,
+      ``--check`` must return rc=0 -- same rows, same classes, same counts as the tracked files.
+
+    The red side of the row comparison itself is ``_drift``'s own unit plants in
+    ``test_v14_registers.py``; what this node adds is that the comparison runs against a
+    *different checkout*, which no in-place test can reach.
+    """
+    clone = _clone("coverage")
+    command = [sys.executable, "-B", "-X", "utf8", "scripts/build_source_coverage.py", "--check"]
+    # the refusal half of this node is only meaningful if nothing is overriding the roots, so the
+    # ambient environment is stripped of them rather than trusted to be empty
+    bare = {key: value for key, value in os.environ.items()
+            if key not in _source_root_values()}
+
+    refused = subprocess.run(command, cwd=str(clone), capture_output=True, text=True,
+                             encoding="utf-8", errors="replace", timeout=1800, env=bare)
+    assert refused.returncode == 3, (
+        "a clone without sibling source roots must refuse by name, not answer with rows: "
+        "rc=%d %s" % (refused.returncode, refused.stdout[-500:]))
+    assert json.loads(refused.stdout.strip().splitlines()[-1])["verdict"] == "NOT_RECOMPUTABLE_HERE"
+
+    rebuilt = subprocess.run(command, cwd=str(clone), capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", timeout=3600,
+                            env={**os.environ, **_source_root_values()})
+    answer = json.loads(rebuilt.stdout.strip().splitlines()[-1]) if rebuilt.stdout.strip() else {}
+    assert rebuilt.returncode == 0, (
+        "克隆里重建的覆盖登记与 published 不一致（这就是 §15.32 那格说的跨机漂移）：",
+        rebuilt.returncode, answer.get("verdict"), answer.get("drift"),
+        rebuilt.stdout[-1500:], rebuilt.stderr[-500:])
+    print("clone coverage verdict:", answer.get("verdict"))
 

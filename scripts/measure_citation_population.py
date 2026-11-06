@@ -56,6 +56,10 @@ FROZEN_INPUTS = ("docs/audits-20261103-cloud-audit/", "docs/authority-202610/", 
                  "docs/audits-20261106-independent/")
 APPEND_ONLY = ("docs/CODEX-AUDIT-ENTRY.md",)
 GENERATED = ("migration/", "config/")
+
+#: Keys in a generated JSON register whose values are text read out of another file. They are
+#: evidence about a cite, not a cite the register itself makes.
+JSON_ECHO_KEYS = ("cite_check",)
 OUR_OWN_CODE = ("scripts/", "tests/", "backend/", "domains/work/")
 
 LINE_CITE = re.compile(r"[\w./-]+\.py:\d+(?:-\d+)?")
@@ -560,6 +564,13 @@ def register_cells(root: pathlib.Path = REPO_ROOT, files: list[str] | None = Non
                     yield breadcrumb, node
                 elif isinstance(node, dict):
                     for key, value in node.items():
+                        # `cite_check` is what the generator READ OUT of the cited file -- the
+                        # resolved line's own text. Quoting a source line that happens to contain
+                        # a cite is not the register making that cite, so scanning it would turn
+                        # every anchor into a self-reference: `authority` is the claim, `cite_check`
+                        # is the evidence about that claim.
+                        if key in JSON_ECHO_KEYS:
+                            continue
                         yield from walk(value, "%s/%s" % (breadcrumb, key))
                 elif isinstance(node, list):
                     for index, value in enumerate(node):

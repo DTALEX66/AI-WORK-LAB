@@ -42,6 +42,8 @@ GATES = (
     ("来源文件去向与登记枚举差集为 0", ("scripts/build_source_coverage.py", "--check")),
     ("验收子句登记与生成一致", ("scripts/build_task_acceptance_register.py", "--check")),
     ("阻断与延期登记与生成一致", ("scripts/build_blocker_register.py", "--check")),
+    ("待判定行每一格的出处锚仍能现查到唯一一行",
+     ("scripts/build_unregistered_adjudications.py", "--check")),
     ("延期登记与生成一致", ("scripts/build_deferral_register.py", "--check")),
     ("审计项闭环登记表绑在那张命名收据上", ("scripts/build_audit_item_closure.py", "--check")),
     ("离线安装回执与跟踪记录一致", ("scripts/build_isolated_install_verdict.py", "--check")),
