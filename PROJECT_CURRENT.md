@@ -9,11 +9,14 @@
 
 - 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）的本地读数以**逐条记录**为准，
   不在这里用"全绿"一句话盖过去：收据的 `passed/failed/deselected` 看下面「- 依托提交：」那一行（派生，
-  不手抄），16 条判据的 verdict 与逐条 rc 看 `docs/CODEX-AUDIT-ENTRY.md` 的本批小节，第 3 轮独立复审
-  判 `FAIL` 并给出两条阻断（`config/independent-reviews.json` 与
-  `docs/audits-20261106-independent/review-03.md` 存原文），两条都已修到根因并各配反证，但
-  复审者同时声明的未核实条目照旧写作未核实，20 格的「独立复审」列因 `verified_items` 为空仍是
-  `NOT_RUN`。**2026-11-06 按 owner 单句「推送」推的只有这一条分支**——`main` 的快进并入、注释标签、Release、
+  不手抄），16 条判据的 verdict 与逐条 rc 看 `docs/CODEX-AUDIT-ENTRY.md` 的本批小节。独立复审到第 4 轮：
+  第 3 轮判 `FAIL` 给出两条阻断（复审记录读侧不校验 `reviewed_sha`、清单按绝对路径把整份检出排除掉），
+  第 4 轮在可写克隆里各造一次反例确认两者已修好，判 `PASS_WITH_FINDINGS`、阻断 0、未核实 0，
+  并把第 3 轮没跑完的腿跑到出读数（原文逐字留在 `docs/audits-20261106-independent/review-03.md`、
+  `review-04.md`，结论由 `config/independent-reviews.json` 逐轮登记）。closure 册「独立复审」列只从那份
+  记录现数得出：被复审报告点名的格才带 verdict，其余一律 `NOT_RUN`，哪几格被点名、共几格都不抄在这里——
+  那个分布由 `scripts/build_audit_item_closure.py --check` 每次重算，写进散文就成了下一个要重新发现一遍的现值。
+  **2026-11-06 按 owner 单句「推送」推的只有这一条分支**——`main` 的快进并入、注释标签、Release、
   可见性与分支保护改动、删分支、远程 CI 都不在那句话里，需要 owner 另行明确授权（授权只按其
   `head_commit` 覆盖那一次推送，不依据仓库历史上传记录推定新的授权，见 §15.49）。
   上一次"已推并被并入"仍属 2026-11-04 那一批（owner「推送吧」+「合并并打标签」，PR #1 由快进自动标为
@@ -73,7 +76,7 @@ source_rows_work = 2734
 spdx_claimed_files = 230
 spdx_malformed_lines = 0
 suite_test_files = 40
-suite_test_nodes = 609
+suite_test_nodes = 610
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->

@@ -580,6 +580,17 @@ def main(argv: list[str]) -> int:
     rows = [_row(identifier, ROWS[identifier]["claim"], definitions[identifier], receipt,
                  archive)
             for identifier in sorted(ROWS)]
+    # A PASS that names nothing it left out is not a reading, it is a claim of total completion, and
+    # this register is the one every readiness sentence is quoted from. All twenty rows carry a named
+    # unverified half today, but that was authoring discipline, not a check: the audit entry counted
+    # "PASS 与待决并存" as three cells because nobody had ever asked the register how many there are.
+    unscoped = [row["ID"] for row in rows
+                if str(row["当前结果"]).startswith("PASS")
+                and not str(row["未验证子项"] or "").strip()]
+    if unscoped:
+        print(json.dumps(dict(error="PASS_WITHOUT_A_NAMED_UNVERIFIED_SUBITEM", ids=unscoped),
+                         ensure_ascii=False), file=sys.stderr)
+        return 2
     downgraded = [row["ID"] for row in rows
                   if row["当前结果"] == "PASS" and row["机验结果"].startswith("未解析")]
     rendered = _csv_text(rows)

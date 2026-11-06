@@ -227,6 +227,33 @@ def test_a_pass_row_must_name_the_part_that_is_still_unverified():
           "NOT_RUN/BLOCKED/NOT_PROBED，必须在行内可见，不能只写在文档散文里")
 
 
+def test_the_builder_refuses_to_publish_a_pass_that_names_nothing_unverified(monkeypatch, capsys):
+    """The same rule as the node above, one level earlier: at the builder, breaking it costs an rc.
+
+    Reading the published file catches a naked PASS, but the entry's readiness sentences are quoted
+    from that file, so "this register cannot even be produced with a naked PASS" is the stronger
+    statement. The plant is the real shape: `PASS` plus a blank boundary is what "the whole item is
+    done" looks like when nobody wrote it out loud.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_audit_item_closure as closure
+
+    planted = {key: dict(value) for key, value in closure.ROWS.items()}
+    victim = next(key for key, value in planted.items() if value["result"] == "PASS")
+    planted[victim]["unverified"] = "   "
+    monkeypatch.setattr(closure, "ROWS", planted)
+    rc = closure.main(["build_audit_item_closure.py", "--check"])
+    assert rc == 2, ("一行 PASS 没写任何未验证项，生成器还是把表出了", rc)
+    report = json.loads(capsys.readouterr().err)
+    assert report["error"] == "PASS_WITHOUT_A_NAMED_UNVERIFIED_SUBITEM", report
+    assert report["ids"] == [victim], report
+    # the refusal must be about that row, not about every row: the authored set still gets past it
+    monkeypatch.undo()
+    capsys.readouterr()
+    assert closure.main(["build_audit_item_closure.py", "--check"]) != 2, \
+        "现值这一趟也被同一条拒绝拦了：那条判断没有只看被种坏的那一行"
+
+
 def test_the_isolated_install_record_is_tracked_and_self_describing():
     assert VERDICT.is_file(), "F06/A08 的安装判定必须进仓"
     document = json.loads(VERDICT.read_text(encoding="utf-8-sig"))
