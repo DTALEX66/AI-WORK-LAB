@@ -8,8 +8,11 @@
 现值比对，对不上即为红。
 
 - 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）在本地测量并全绿，
-  **2026-11-04 已按 owner「推送吧」+「合并并打标签」推上去、`--ff-only` 并入 `main`、并打了注释标签
-  `closure-20261104`**；PR #1 由该快进自动标为 MERGED（没有合并提交）。远端到底在哪个头，用
+  **2026-11-06 按 owner 单句「推送」推的只有这一条分支**——`main` 的快进并入、注释标签、Release、
+  可见性与分支保护改动、删分支、远程 CI 都不在那句话里，需要 owner 另行明确授权（授权只按其
+  `head_commit` 覆盖那一次推送，不依据仓库历史上传记录推定新的授权，见 §15.49）。
+  上一次"已推并被并入"仍属 2026-11-04 那一批（owner「推送吧」+「合并并打标签」，PR #1 由快进自动标为
+  MERGED）。远端到底在哪个头，用
   `git ls-remote origin refs/heads/main refs/heads/audit/backend-closure-20261103 refs/tags/closure-20261104`
   现读，不在这里抄写——本行所在的提交本身就会被推上去，任何写死的 SHA 都会在下一秒落后一格。
   授权记录在 `.project-local/push-authorization-20261104*.json`，按 `head_commit` 绑定被推的那个头，
