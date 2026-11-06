@@ -133,6 +133,48 @@ def test_a_recorded_review_reaches_the_cell_and_an_absent_one_does_not(tmp_path,
     assert closure.independent_review_for("A01") == "NOT_RUN", "记录没点名的项也被判成已复审"
 
 
+def test_an_untraceable_review_record_certifies_nothing(tmp_path, monkeypatch):
+    """A record is somebody else's claim about a commit; the register must not take it on faith.
+
+    Independent review round 3 planted this and watched it work: a record whose ``reviewed_sha`` was
+    forty ``f`` characters produced the cell ``PASS @ ffffffffffff`` for F01. The recorder validates
+    the SHA when it writes, and nothing validated it when the value was *read* -- which is the side
+    that becomes a project-level statement, and the side a hand-edited or copied-in JSON reaches.
+
+    Three faces, because a guard that only ever refuses is worth the same as one that never does:
+    a SHA that is not a commit id at all, a well-formed SHA that is not in this checkout's history,
+    and a real commit, which must still inherit its verdict.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_audit_item_closure as closure
+
+    def cell_for(record):
+        path = tmp_path / ("reviews-%s.json" % abs(hash(str(record))))
+        path.write_text(json.dumps({"records": [record]}, ensure_ascii=False), encoding="utf-8")
+        monkeypatch.setattr(closure, "REVIEWS_JSON", path)
+        monkeypatch.setattr(closure, "_REVIEWS", None)
+        monkeypatch.setattr(closure, "_ANCESTRY", {})
+        return closure.independent_review_for("F01")
+
+    base = dict(reviewer="planted-cli 1.0", reviewed_at="2026-11-06T00:00:00+00:00",
+                artifact="REVIEW.md", verified_items=["F01"])
+
+    forged = cell_for(dict(base, verdict="PASS", reviewed_sha="f" * 40))
+    assert forged.startswith("RECORD_UNTRACEABLE"), forged
+    assert "不在本检出历史里" in forged, forged
+
+    short = cell_for(dict(base, verdict="PASS", reviewed_sha="abc123"))
+    assert short.startswith("RECORD_UNTRACEABLE") and "40 位提交号" in short, short
+
+    invented_verdict = cell_for(dict(base, verdict="LOOKS_FINE", reviewed_sha="a" * 40))
+    assert invented_verdict.startswith("RECORD_UNTRACEABLE"), invented_verdict
+
+    live = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(TARGET_ROOT),
+                          capture_output=True, text=True).stdout.strip()
+    real = cell_for(dict(base, verdict="PASS_WITH_FINDINGS", reviewed_sha=live))
+    assert real.startswith("PASS_WITH_FINDINGS @ " + live[:12]), real
+
+
 def test_the_requirement_text_belongs_to_the_file_and_digest_it_cites():
     problems = []
     for row in _rows():

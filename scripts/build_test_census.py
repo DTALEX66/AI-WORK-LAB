@@ -41,7 +41,12 @@ def census() -> dict:
     """
     state = {}
     for path in sorted((ROOT / "tests").rglob("test_*.py")):
-        if SKIP_DIRS & set(path.parts):
+        # Repo-RELATIVE parts. The absolute spelling of the checkout can itself pass through a
+        # directory named ``.project-local`` -- the independent review round 3 ran the census inside a
+        # clone parked under exactly that path, every test file was skipped, and the tool reported a
+        # census of 0 files / 0 tests. An exclusion list describes this repository's own tree, not
+        # whatever ancestor directories the machine happens to put it in.
+        if SKIP_DIRS & set(path.relative_to(ROOT).parts):
             continue
         relative = path.relative_to(ROOT).as_posix()
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -71,6 +76,17 @@ def main(argv=None) -> int:
                         help="accept a file that lost declared tests; without this the write refuses")
     args = parser.parse_args(argv)
     fresh = census()
+    if not fresh["nodes"]:
+        # An empty population compared against a published census will always disagree, so this is
+        # not a false green -- but "605 published / 0 now" is a mystery, and the mystery was a real
+        # defect (an exclusion rule reading the absolute path skipped everything in a nested clone).
+        # Name the emptiness where it happens, with a code that means "this instrument could not see
+        # its subject", not "the suite changed".
+        print(json.dumps({"error": "CENSUS_POPULATION_EMPTY", "scanned": str(ROOT / "tests"),
+                          "note": ("没有读到任何测试文件；空的清单不能和被发布的清单比出任何结论。"
+                                   "先确认这份检出的 tests/ 真的存在，也没有被排除规则当成产物目录")},
+                         ensure_ascii=False))
+        return 2
     if args.check:
         if not OUT.is_file():
             print(json.dumps({"matches": False, "error": "CENSUS_MISSING", "path": str(OUT)},

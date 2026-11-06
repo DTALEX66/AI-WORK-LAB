@@ -84,11 +84,46 @@ def independent_reviews() -> dict:
 
 def independent_review_for(identifier: str) -> str:
     for record in reversed(independent_reviews().get("records", [])):
-        if identifier in record.get("verified_items", []):
-            return "%s @ %s（%s 现读 %s；逐项见 %s）" % (
-                record["verdict"], record["reviewed_sha"][:12], record["reviewer"],
-                record["reviewed_at"], record["artifact"])
+        if identifier not in record.get("verified_items", []):
+            continue
+        problem = _review_record_is_traceable(record)
+        if problem:
+            # Named, and never a fallback to an older record's verdict: silently skipping an
+            # untraceable record would let a stale PASS certify the row again.
+            return "RECORD_UNTRACEABLE（%s）——这一格拿不到可核验的复审依据" % problem
+        return "%s @ %s（%s 现读 %s；逐项见 %s）" % (
+            record["verdict"], record["reviewed_sha"][:12], record["reviewer"],
+            record["reviewed_at"], record["artifact"])
     return INDEPENDENT_REVIEW
+
+
+#: The three answers an independent reviewer is allowed to give.
+REVIEW_VERDICTS = ("PASS", "PASS_WITH_FINDINGS", "FAIL")
+_ANCESTRY: dict[str, bool] = {}
+
+
+def _review_record_is_traceable(record: dict) -> str | None:
+    """Why this record may not certify a row, or ``None`` when it may.
+
+    A record is somebody else's claim about a commit, and every row that inherits its verdict turns
+    that claim into a project-level statement. So the two things that make it checkable are re-checked
+    here rather than trusted from the file: the SHA is a full 40-hex commit id that is an ancestor of
+    this checkout's HEAD, and the verdict is one of the three an actual reviewer may answer with.
+
+    Independent review round 3 named the absence of this check as a blocker with a concrete plant --
+    ``reviewed_sha`` of forty ``f`` characters came back as ``PASS @ ffffffffffff``. The recorder
+    validates at write time; nothing validated at read time, which is the side that publishes.
+    """
+    sha = str(record.get("reviewed_sha") or "")
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        return "reviewed_sha 不是 40 位提交号：%s" % (sha[:16] or "空")
+    if record.get("verdict") not in REVIEW_VERDICTS:
+        return "verdict 不是复审者可答的三种之一：%r" % (record.get("verdict"),)
+    if sha not in _ANCESTRY:
+        _ANCESTRY[sha] = subprocess_ancestor(sha)
+    if not _ANCESTRY[sha]:
+        return "reviewed_sha 不在本检出历史里（不是 HEAD 的祖先）：%s" % sha[:12]
+    return None
 INTERPRETER = ".venv/Scripts/python.exe (CPython 3.13, 见 config/environment-baseline.json)"
 CWD = "<REPO>"
 UNMEASURED = "未在本机测量（收据 .project-local/audit/20261031-fullclosure/CLOSURE-STATE.json 不在 Git 内）"

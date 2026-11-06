@@ -314,6 +314,53 @@ def test_the_declared_test_census_still_matches_this_checkout():
     assert report["tests_now"] > 400, "套件读数不可能这么小：扫描范围错了"
 
 
+def test_a_checkout_parked_under_a_product_directory_still_counts_its_own_tests(tmp_path,
+                                                                                monkeypatch):
+    """The census's exclusions describe this repository, not the path the machine put it in.
+
+    Found by independent review round 3, not by me: the census skipped a directory named
+    ``.project-local`` by looking at the whole absolute ``path.parts``, so a clone parked under
+    ``…/.project-local/review-03/run-…/clone`` had *every* test file skipped and reported a census of
+    0 files / 0 tests. The receipt's own clone lives in the system temp root, so the suite here never
+    hit it -- a guard whose blind spot is "only when the checkout is somewhere unusual" is a guard
+    that has not been tested.
+
+    Two faces in one node, because skipping the product directory is the correct half of the rule:
+    the suite under the nested checkout must be counted, and a ``test_*.py`` that really is inside
+    that checkout's own ``.project-local`` must not be.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_test_census as census_tool
+
+    nested = tmp_path / ".project-local" / "review-03" / "run-1" / "clone"
+    suite = nested / "tests" / "unified"
+    suite.mkdir(parents=True)
+    (suite / "test_demo.py").write_text(
+        "def test_one():\n    assert True\n\n"
+        "def test_two():\n    assert True\n\n"
+        "class Holder:\n    def test_three(self):\n        assert True\n", encoding="utf-8")
+    ghost = nested / ".project-local" / "scratch"
+    ghost.mkdir(parents=True)
+    (ghost / "test_not_the_suite.py").write_text("def test_ghost():\n    assert True\n",
+                                                 encoding="utf-8")
+
+    monkeypatch.setattr(census_tool, "ROOT", nested)
+    document = census_tool.census()
+    assert document["files"] == 1, document["files"]
+    assert document["tests"] == 3, document
+    assert list(document["nodes"]) == ["tests/unified/test_demo.py"], list(document["nodes"])
+
+    # and emptiness is its own named answer, never a comparison
+    empty_root = tmp_path / "no-suite"
+    (empty_root / "tests").mkdir(parents=True)
+    monkeypatch.setattr(census_tool, "ROOT", empty_root)
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        rc = census_tool.main(["--check"])
+    assert rc == 2, "一份空的清单不能和被发布的清单比出结论，也不能安静地算比过"
+    assert json.loads(buffer.getvalue())["error"] == "CENSUS_POPULATION_EMPTY"
+
+
 def test_the_figure_writer_repairs_a_stale_copy_then_changes_nothing(tmp_path):
     """`--write-block` must be able to do its job, and must not restamp a document that is already right.
 
