@@ -7,8 +7,13 @@
 登记表，不在这里复制维护；本文件的每个数字都由 `scripts/check_project_current.py` 与寄存器
 现值比对，对不上即为红。
 
-- 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）在本地测量并全绿，
-  **2026-11-06 按 owner 单句「推送」推的只有这一条分支**——`main` 的快进并入、注释标签、Release、
+- 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）的本地读数以**逐条记录**为准，
+  不在这里用"全绿"一句话盖过去：收据的 `passed/failed/deselected` 看下面「- 依托提交：」那一行（派生，
+  不手抄），16 条判据的 verdict 与逐条 rc 看 `docs/CODEX-AUDIT-ENTRY.md` 的本批小节，第 3 轮独立复审
+  判 `FAIL` 并给出两条阻断（`config/independent-reviews.json` 与
+  `docs/audits-20261106-independent/review-03.md` 存原文），两条都已修到根因并各配反证，但
+  复审者同时声明的未核实条目照旧写作未核实，20 格的「独立复审」列因 `verified_items` 为空仍是
+  `NOT_RUN`。**2026-11-06 按 owner 单句「推送」推的只有这一条分支**——`main` 的快进并入、注释标签、Release、
   可见性与分支保护改动、删分支、远程 CI 都不在那句话里，需要 owner 另行明确授权（授权只按其
   `head_commit` 覆盖那一次推送，不依据仓库历史上传记录推定新的授权，见 §15.49）。
   上一次"已推并被并入"仍属 2026-11-04 那一批（owner「推送吧」+「合并并打标签」，PR #1 由快进自动标为
