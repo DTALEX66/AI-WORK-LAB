@@ -3581,3 +3581,767 @@ work | packages/client-neutral-core/scripts/adapter_conformance.py | columns=['c
 指向一份可写克隆）；20 个 closure 格的 独立复审 仍全 `NOT_RUN`；`L10#0` 的 32 行仍等 owner 具名判决；
 克隆侧 `build_source_coverage.py --check` 的读数、全量收据、五处改绑与终端闭环审计 CLOSED 记在下一节——
 收据必须测最终代码态，先取收据再改代码只会再多一张作废取证。
+### 15.53 一个闸门的十个判定里只有三个被人按下过；补齐的那三个，先证明它们会红
+
+本节按小标题分节，每节只做一件事，编号就是它自己的清单（不写"本节记 N 件事"那种要跟着内容重数的话）：
+
+- 一：`scripts/check_workbench_bundle_drift.py` 剩下七个从没被走到的具名判定各自配上节点与红侧按下，
+  并把"哪个名字有没有证据"变成双向比对守卫。
+- 二：本轮挖出的两处**反例装置自己在骗人**（都是跑出来的，不是想出来的）。
+- 三：§15.32 与入口 §五① 那两条一直只能写"未跨检出实测"的覆盖重算读数，现在在独立临时克隆里现算。
+- 四：收据、五处改绑与终端闭环审计的逐块读数（占位符由 `collect_readings.py` 现填）。
+- 五、五之二：节点数与散文的一次自我更正；`passed` 与 `declared` 两个口径差在哪两个文件里逐文件算清
+  （那两个数是当时的读数，不是现行值）。
+- 六：第一张收据带回的 6 条红，三条根因全是我这两次提交埋的。
+- 七、七之二、七之三、七之四、七之五：修第三条时挖出的仓内脚手架破口；"可自跑的独立复审"这条腿在
+  正式跑之前被管道演习打回两次；第二张收据 8 条红其实来自一次未定位的主检出分离头；
+  第 3 轮真跑回来的 FAIL 与两条真阻断；以及我在测量期间动被跟踪文件导致一张收据作废的实操记录。
+- 八：先后七张全量取证逐张点名——哪一张是当前、其余当时测到了什么、为什么现在不能当现状。
+- 九：`PASS 与未验证并存` 这一查的实际分布，以及这一查里我自己写错的那个计数（更正就在同一节里）。
+- 十：仍欠且不改色的项，按名字留着。
+- 十一：第 3 轮那条"克隆内长路径"被量成实长，处置分两半（管道在我这边、仓库侧按名字留给下一批）。
+- 十二：L10#0 待判定表把锚的行号存进了字节，导致"表不可复现"与"0 条行号锚"两句散文同时失真；
+  修法、反例，以及由此作废的第 5 张收据。
+- 十三：第 4 轮独立复审的实际读数、`verified_items` 的机械推导，以及我事后删坏自己克隆 `.git` 的操作记录。
+- 十四：第 6 张收据五条红的两条根因（漏重发布一张表、加一个被跟踪文件没重算派生块）与开跑前的预飞闸门。
+- 十五：第 7 张那一条红的真正含义——验证闸门会替它声明的绑定作证，包括一次失败测量；
+  选择处的拒绝、`--check` 的同一道绿检查、以及预飞清单如何从"尾照灯"改成把绑定节点自己列进去。
+- 十六：第 8 张的红其实是我自己的测试装置（克隆模拟少了归档这一路），以及按"每个具名状态都得有人
+  走过"重查目标第 3 项之后补上的两个 staleness 状态与它们各自的红侧。
+- 十七：我自己弄坏的一条提交消息（数字被 shell 吃掉）与随之改掉的操作习惯，以及发布前两份自查各自是怎么把假问题当真问题、又怎么被现查纠回来的。
+- 十八：为什么这一节的 `CLOSURE` 块只能是 `NOT CLOSED`——对齐判据要求干净工作树，而本节的发布本身就是那处未提交改动；CLOSED 由本节提交之后的那次现读认证。
+
+**一、"工具能报十个名字"不等于"十个名字都被证明过"**
+
+`test_v33` 与 `test_v36` 原先只覆盖 `IGNORED_ARTIFACT`、`BUNDLE_UNTRACKED`、一个 `*_ABSENT`
+（还是"NODE 或 VITE 任一"的析取式，为克隆安全而放宽）、`MATCH` 与寄存器那一格。剩下的
+`COMMIT_BLOB_ABSENT`、`BUNDLE_ABSENT`、`BUILD_FAILED` 只出现在脚本自己的 docstring 里——
+一个从没被走到的分支，它返回什么、rc 是几、字段缺不缺，谁都没读过。本轮新增三个节点，各钉一个：
+
+- `tests/unified/test_v33_workbench_bundle_truth.py::test_a_committed_artifact_with_no_bytes_on_disk_is_named_not_guessed`
+- `tests/unified/test_v33_workbench_bundle_truth.py::test_a_staged_but_never_committed_artifact_has_nothing_to_verify`
+- `tests/unified/test_v36_workbench_bundle_rebuild.py::test_a_build_that_does_not_succeed_refuses_instead_of_comparing_stale_bytes`
+
+`_planted_repo` 的 `staged=True/False` 换成四个具名状态（`untracked` / `staged_uncommitted` /
+`committed` / `committed_then_deleted`），因为 `staged=True` 实际做的是"提交"，而 HEAD 里到底有没有
+这一格正是这两个判定分岔的地方；`staged_uncommitted` 必须先有一个不含产物的提交，否则
+`git show HEAD:` 是因为"根本没有提交"而失败，报的就不是它被命名的那个原因。
+
+节点写完不算完。`.project-local/edits-20261106a/falsify_new_bundle_nodes.py` 把每个节点对应的分支
+打掉（把 `COMMIT_BLOB_ABSENT` / `BUNDLE_ABSENT` 改名成 `DRIFT`，把
+`if build.returncode != 0 or rebuilt_digest is None:` 改成 `if False:`），要求节点真的变红，
+再把脚本按开始保存的字节恢复并逐字节比对：**3/3 敏感，恢复后重新跑绿**。
+第二个打法特意选了"让工具继续往下走"的那种，因为它演示的正是这个节点要防的谎——
+`rebuilt_digest` 为 `None` 时那句比较说的不是"字节旧了"。
+
+十个判定的证据到此齐了：合成仓库里 7/7（`.project-local/edits-20261106a/falsify_bundle_gate_branches.py`）、
+真字节上 2/2（`falsify_bundle_gate.py`，`DRIFT` 与 `UNCOMMITTED_BYTES`）、`MATCH` 由同一支的基线读数
+给（`committed=1a2d735c338d tree=1a2d735c338d`）。合成态里四个 `*_ABSENT` 断言的是"rc=3 且具名"，
+不是"本检出处于该状态"；`BUILD_FAILED` 用的桩 `vite.js` 只证明工具的失败通路可达并且拒绝，
+它不等于任何一次构建成功——真构建的断言在 `test_v36` 第一个节点上，用的是真工具链。
+
+**这两支的分工要写明白，别让下一轮把它们当同一件事**：能在克隆里重跑的红侧证据只有 `tests/` 里那些
+节点（含本轮新增的三个），它们进收据人群、每个被认证的提交都重跑；`falsify_bundle_gate_branches.py`
+与 `falsify_new_bundle_nodes.py` 留在 `.project-local/`（运行产物不入 Git），是**本轮的一次性读数**，
+新克隆里跑不出来。逐名核对：`IGNORED_ARTIFACT`、`BUNDLE_UNTRACKED`、`BUNDLE_ABSENT`、
+`COMMIT_BLOB_ABSENT`、`BUILD_FAILED`、`MATCH`、`DRIFT`、`UNCOMMITTED_BYTES` 八个名字各有按名断言的
+节点或按名打过的分支试验；`NODE_ABSENT` 与 `VITE_ABSENT` 在 `test_v33` 里合用一条**析取**节点
+（`endswith("_ABSENT")` + rc=3），因为到底是哪一个由跑的那台机器决定，本轮的逐名读数来自合成仓库
+那支脚本。这句写清之后，"十个判定都有证据"就不再是一句含糊的全通过。
+
+**二、两处反例装置自己在骗人，都是跑出来的不是想出来的**
+
+1. **`shutil.rmtree(..., ignore_errors=True)` 删不掉一个 Git 仓库**。第一次运行合成分支脚本时，
+   第一个 fixture 就活了下来：`objects/pack` 是只读的，`ignore_errors` 把它们跳过然后**返回成功**。
+   留下的不是一个目录，是每份 509 MB 的克隆级残留——下一轮"清扫了多少"的读数会把别人的 fixture
+   算进去。修法是清掉只读位再删，并且断言路径真的不在了；这条断言就是发现它的东西。
+2. **本机 PATH 上有两份 node 安装**（`C:\Users\ALEX\.local\node-v24.21.0-win-x64` 与
+   `D:\All projects\OS External Configuration\10-toolchains\node\node-v24.21.0-win-x64`）。
+   "node 缺席"的反例最初只删了 `shutil.which` 选中的那一个，第二个接管，于是工具报的是
+   `BUILD_FAILED` 而不是 `NODE_ABSENT`：那条读数测的是我改过的 PATH，不是缺席。现在删掉**所有**
+   提供 node 的条目，并在跑之前同时断言 node 不可达、git 仍可达——后者不是装饰：PATH 被削得太狠时
+   `git check-ignore` 与 `git ls-files` 双双失败，工具会回落到 `BUNDLE_UNTRACKED`，那又是一条关于
+   装置而非关于判定的读数。
+
+**三、克隆重算的两条读数：§15.32 与 §五① 到此不再是"没测过"**
+
+同一份 `scripts/build_source_coverage.py --check`，四台彼此独立的检出：
+
+| 检出 | 结果 |
+|---|---|
+| 主检出 `2221d81` | `rc=0`，302 s，`drifted=[]`，`rows_changed {work:0, design:0}`，`copy_identity_unmapped=0` |
+| 主检出重发布后 | `git status --porcelain=v1` 空——`--check` 不动字节 |
+| 临时克隆 A（`mktemp -d`，detached 在 `2221d81`） | `rc=0`，302 s，同上全空，跑完克隆自身 `git status` 空 |
+| 临时克隆 B（同一脚本第二次跑） | `rc=0`，303 s，同上全空 |
+
+两份克隆都放在系统临时根，不在主检出的 `.project-local/` 里面——§15.52 记录的那次自造回归，
+根因正是克隆嵌在主检出里让路径含了两段仓名。这次把装置放对之后，"目的地锚两步规则"在真实跨检出
+场景下的读数是 0 行漂移，而不只是 `tmp_path` 单元测试里的一条断言。
+
+**读数属于哪一棵树，这句必须写清**：上表四台都跑在 `2221d81`（最后一次改到生成器的提交）上；
+其后的改绑提交只动文档、测试与生成登记表，所以本表不是"最终态"的读数，最终态的那条证据不靠这张表
+——它靠 `tests/unified/test_v23_clone_repro.py::test_a_fresh_clone_rebuilds_the_published_coverage_populations`，
+那条节点每次运行都从**当前树**克隆一份到临时根、先要求无来源根时 `rc=3 NOT_RECOMPUTABLE_HERE`、
+再要求带来源根时 `--check` 回 `rc=0`。它进收据的人群，因此"跨检出可重算"这句话在每个被认证的提交上
+都会被重新测一遍，而不是被我在散文里钉在某个 SHA 上等着过期。
+
+**四、收据、五处改绑与终端闭环审计**
+
+全量套件收据（`.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`，本脚本现读）：
+
+- 收据在 `2026-11-06T20:30:27.494670+00:00` 上生成，`head_commit=1ada76c7325dc6112de6f558ae4d1fad4b1c06b8`，人群 `candidate_files=7328`，候选摘要 `017795b79a64…`
+- 套件：exit_code=0，`619 passed, 3 subtests passed in 2822.45s (0:47:02)`；passed=619 failed=0 errors=0 deselected=0
+- 失败/错误节点：none / none
+- `measurement_integrity.tracked_bytes_moved_during_run` = empty（非空则这张收据不描述任何提交）
+- 其余腿：boot_probe exit=0 / gate verdict=REFUSED ready=False / migrate unmanaged=0
+- 闭环登记表重发布（``）rc=0 {"generated_at": "2026-11-06T21:18:10.323266+00:00", "items": 20, "f_items": 10, "a_items": 10}
+- 审计状态改绑到被审提交（`--audited-commit 1ada76c7325dc6112de6f558ae4d1fad4b1c06b8`）rc=0 {"written": "D:\\All projects\\AI-WORK-LAB\\docs\\AUDIT-STATE.json", "audited_head_sha": "1ada76c7325dc6112de6f558ae4d1fad4b1c06b8", "candidate_files": 7328, "head_is_ancestor": true}
+- 验收子句登记重发布（``）rc=0 {"rows": 48, "mandatory_hard_gaps": 0, "listed_blockers": 0}
+- 阻断与延期登记重发布（``）rc=0 {"written": "D:\\All projects\\AI-WORK-LAB\\config\\blocker-register.json", "items": 7, "blocking": 1, "disclosed": 6}
+- 入口派生段现算写回（`--write-block`）rc=0 {"verdict": "WRITTEN", "entry": "D:\\All projects\\AI-WORK-LAB\\PROJECT_CURRENT.md", "bytes_before": 39419, "bytes_after": 39419}
+- 全部 13 道 rc=0
+- `check_project_current.py --check` rc=0
+- `build_test_census.py --check` rc=0
+- `build_audit_item_closure.py --check` rc=0
+- `build_audit_state.py --check` rc=0
+- `build_task_acceptance_register.py --check` rc=0
+- `build_blocker_register.py --check` rc=0
+- `build_deferral_register.py --check` rc=0
+- `build_unregistered_adjudications.py --check` rc=0
+- `build_source_coverage.py --check` rc=0
+- `measure_citation_population.py --check-own-cites` rc=0
+- `measure_citation_population.py --check-register-cites` rc=0
+- `check_workbench_bundle_drift.py ` rc=0
+- `check_public_hazards.py ` rc=0
+`scripts/audit_objective_closure.py` 现跑：verdict=`NOT CLOSED`，head=`1ada76c`，clauses=16，counts={"PASS": 15, "FAIL": 1, "PENDING": 0, "INSTRUMENT_ERROR": 0}，rc=1。非 PASS 的判据逐条列在下面（不改色）。
+
+- `全量收据描述当前提交且没有失败` → FAIL (rc=?) 本机还有未提交的跟踪改动，这张收据替不了它们
+独立复审第 3 轮（runner 现跑，报告逐字摘录进 `docs/audits-20261106-independent/review-03.md`，记录由 `scripts/build_independent_review_record.py` 从复审者自己的结论块生成）：
+
+- 复审者：codex-cli 0.167.0-alpha.3.2；运行沙箱与 exit code 见该文件自己的抬头
+- 结论 `FAIL`；`reviewed_sha=ccd07812268d`（本次 HEAD `7ef5730f6916`，它是本检出的祖先：是）
+- 复审者自己报的计数：blocking=2 non_blocking=0 checks_actually_run=10 unverified_claims=7
+- 它留下读数的 closure 格（`verified_items`）：（空——所以 20 格一律维持 NOT_RUN）
+- 备注：第 3 轮：在可写克隆里跑通了运行时腿，报出两条阻断（复审记录读侧不校验 reviewed_sha；清单按绝对路径排除）。两条都已修到根因并有反证；复审者同时声明 7 条未核实，故 verified_items 留空，20 格的独立复审列一律保持 NOT_RUN。
+- 登记落账时工作树状态：`CLEAN`；登记时刻：2026-11-06T16:01:45.657001+00:00
+- 落账之后 20 格里「独立复审」列不再是常量的有 0 格（其余仍 `NOT_RUN`，因为那一格没有读数）
+独立复审第 4 轮（runner 现跑，报告逐字摘录进 `docs/audits-20261106-independent/review-04.md`，记录由 `scripts/build_independent_review_record.py` 从复审者自己的结论块生成）：
+
+- 复审者：codex-cli 0.167.0-alpha.3.2；运行沙箱与 exit code 见该文件自己的抬头
+- 结论 `PASS_WITH_FINDINGS`；`reviewed_sha=10f01c2468ca`（本次 HEAD `7ef5730f6916`，它是本检出的祖先：是）
+- 复审者自己报的计数：blocking=0 non_blocking=1 checks_actually_run=22 unverified_claims=0
+- 它留下读数的 closure 格（`verified_items`）：A03, A04
+- 备注：第 4 轮：复审者在可写克隆里把第 3 轮两条阻断各造一次反例（四种非法记录一律 RECORD_UNTRACEABLE、真 HEAD 仍给 verdict；嵌套检出自 census 得 files=1/tests=1 且人群为空时 CENSUS_POPULATION_EMPTY rc=2），两条阻断成立地修复。它另跑完第 3 轮留下的未核实腿：v04/v05 单跑 14/39 passed 且本轮未复现 PROJECT_STORE_UNAVAILABLE，raster 节点深根 1 failed（路径现数 279 字符）浅根 .t/b0 同节点 1 passed，v24 8 passed 加 9 条复制记录逐摘要对账与 6 项缺失元素确认，bundle 判定名集合两侧相等且实删 MATCH 后节点变红，散文只改 23→24 就触发 PROSE_FIGURE_STALE rc=1，来源覆盖带三个来源根跑到 rc=0（drifted 空、rows_changed 0/0）。verified_items 只列 A03、A04，判据是机械的：这两格的证据目标节点所在文件被复审者整份跑过并留下逐文件读数（由 ROWS 的 claim target 与报告里的命令一对一现数得出），其余 18 格没有任何读数落在它们的证据目标上，一律维持 NOT_RUN。非阻断 1 条：克隆里的 .t 临时目录清理被沙箱自动审批策略拒绝，结束时克隆仍有 ?? .t/（复审者写明没有绕过拒绝）。
+- 登记落账时工作树状态：`DIRTY`；登记时刻：2026-11-06T17:01:45.975676+00:00
+- 落账之后 20 格里「独立复审」列不再是常量的有 2 格（其余仍 `NOT_RUN`，因为那一格没有读数）
+
+**五、节点数、散文，以及一处我自己写错的守卫说明**
+
+声明节点 603 → 605（`test_v33` 7→9：判定名集合 + 它的反例）。改完 `--check` 立刻回
+`FIGURE_STALE suite_test_nodes 文档=603 寄存器=605`——这条正是 §15.51 那道守卫该做的事，它抓到的
+是我自己刚造的那处失真；按 `--write-block` 现算写回，再 `--check` rc=0。
+
+接着我把 §五 1 ① 那句已经过时的"克隆里人群比 published 大（work 2764 vs 2734、design 4488 vs
+4476）"改成实测结清的写法，同一道门当场回四条：
+
+```
+PROSE_FIGURE_SHAPE_DEAD source_rows_design（入口散文里已找不到形状 vs ([\d,]+)））
+PROSE_FIGURE_SHAPE_DEAD source_rows_work（入口散文里已找不到形状 vs ([\d,]+)、design）
+PROSE_FIGURE_UNBOUND 行=193 数字=2734 候选键=distinct_paths_work,source_rows_work
+PROSE_FIGURE_UNBOUND 行=193 数字=4476 候选键=source_rows_design
+```
+
+本节要把这四条读成什么，写清楚，因为它推翻了我自己先写下的一句话。我原先在草稿里准备记
+"这几个数不是派生键，散文数字门看不见它们，所以这类数只能靠写的人自觉"——**这句是错的**，
+`2734` 与 `4476` 恰好同形于现算键 `source_rows_work` / `source_rows_design`（`2734` 还同时同形于
+`distinct_paths_work`，两个不同人群在同一个数上相遇，§15.47 的老形状），门不但看得见，还在我的改写
+落地的那一刻同时抓出两件事：旧形状随着那句话一起死了（不删就是装饰），和新句子里那两个数不再是
+"当前值"的绑定关系。处理方式不是把它们重新绑成现值——那会把一次历史读数伪装成在跑的数——而是删掉
+两条死形状，并把"当时读数"这一处**具名声明**进 `PROSE_FIGURE_COINCIDENTAL`，理由逐字写着它同形于
+两个键、而这句话讲的是当时。豁免表里每一条都要能被 `PROSE_FIGURE_EXEMPT_DEAD` 反向删除，所以这条
+声明本身也会在句子再次改写时红。
+
+顺带纠正草稿里另一句：`scripts/` 里带 `--check` 的脚本本轮逐台跑过，`build_*` 那批与
+`check_project_current`、`build_test_census`、`build_source_coverage`、`measure_citation_population`
+两种模式、`check_public_hazards`、`build_unregistered_adjudications`、`build_deferral_register`、
+`build_isolated_install_verdict`、`build_audit_*`、`build_task_acceptance_register`、
+`build_blocker_register` 全 rc=0；`audit_objective_closure.py --check` 回 rc=2（它不接这个旗标，
+用 `--list`），`build_independent_review_record.py --check` 必须配一份报告才动。台数不在入口里抄，
+抄一次就要重新发现一次。
+
+**五之二、611 与 605 不是两个口径没对上，是两个口径本来不同——差在哪两个文件里，逐file算出来了**
+
+收据的套件行是 `611 passed`，`tests/node-census.json` 声明的是 `605`。这两个数都会被下一轮读到，
+所以不能只说"含参数化"就算交代。`.project-local/edits-20261106a/reconcile_counts.py` 把两份人群
+按文件对齐后给出的是：
+
+```
+census split: unified=435 legacy=170 total=605
+collected items: 611  files: 40        declared functions: 605  census files: 40
+census files that pytest did not collect here: []      collected files absent from the census: []
+per-file differences: test_v16_traceability.py 26 -> 28 (+2)
+                      test_v20_inrepo_evidence.py 13 -> 17 (+4)
+sum of those differences: 6            functions expanded by parametrisation: 3
+```
+
+也就是说：**同一批 40 个文件**，两边互相没有缺项，差的 6 条全部来自两个文件里的 3 个参数化函数
+（`test_no_verified_row_survives_an_unresolvable_claim[3 个参数]`、
+`test_the_in_repo_evidence_records_are_valid_json_with_a_generation_stamp[2]`、
+`test_environment_baseline_source_anchors_are_the_live_git_heads[2]`：3 个声明展开成 7 个条目）。
+ census 数"声明的测试函数"，收据数"pytest 收集到的条目"，两句话都对，不可互换，也不许拿其中一个
+去"验证"另一个。这一处口径在 §15.47 已经有一次"两个形似的数原来是两个人群"的记录，本轮是同形状
+的新实例，只是这次先算清楚了再写。
+
+**六、第一张收据带回 6 条红，三条根因全是我这两次提交埋的**
+
+`92cde48` 上的第一张全量收据读数是 `6 failed, 605 passed, 3 subtests passed in 3042.24s`，
+`deselected=[]`（这次没有排除任何节点），`tracked_bytes_moved_during_run` 为空。六个节点分成三条根因，
+没有一条是环境噪声，也没有一条靠 deselect 消失：
+
+1. **来源根的第二种拼写藏在我自己新加的节点里**。`test_v14_registers.py` 两处把
+   `"D:/All projects/WORK-LAB/x.py"` 当"无关机器路径"的反例素材——它一点都不无关，它正是那个
+   只读来源根。`test_v23::test_the_three_outside_roots_have_exactly_one_spelling` 与
+   `test_v31::test_the_spelling_guard_refuses_a_planted_file` 因此同时红。修法不是把测试删掉也不是给
+   守卫开后门，而是让这个 case 仍然测它本意要测的东西、但**通过解析器取值**：
+   `str(source_roots.resolve("work"))` 之后拼 `/x.py`。两条守卫的红侧本来就是它们自己造的假文件，
+   所以这一改没有削弱任何断言。
+2. **入口的被跟踪文件数少算了一个**。`lf_tracked_files` 数的是 `git ls-files` 的结果，而我先跑
+   `--write-block` 再 `git add` 新脚本——那时它还没被跟踪，738 就写进了派生块，提交后真实值是 739。
+   于是 `test_v29` 的三格在收据里红（`FIGURE_STALE lf_tracked_files 文档=738 寄存器=739`）。
+   顺序教训记下来：**加被跟踪文件的提交里，`--write-block` 必须在 `git add` 之后跑**，否则这张收据
+   自己就把入口写歪；重算由脚本现算，不是我手改数字。
+3. **一条只有"收据在这台机器上"才成立的断言被放进了克隆安全集**。
+   `test_v29::test_the_receipt_anchor_line_is_derived_and_a_second_one_is_refused` 要在克隆里重写
+   「- 依托提交：」那一行，而克隆没有 `.project-local`（运行产物不入 Git），`receipt_line()` 只能回
+   `None`。它在主检出绿、在克隆红——**这条红是对的，是断言放错了地方**，不是仓库的破口。处理方式按
+   本仓既有的分法：把它整条搬进新的 `tests/unified/test_v37_receipt_anchor_derivation.py`，并在
+   `test_v23` 的 `PREREQ` 里加上 `.project-local/audit`（先量过影响面：加这条模式后
+   **0 个**当前克隆安全文件被重分类，v29 自己也不含该串），文件 docstring 里把先决条件写明，
+   节点开头再断一次前提——前提不成立时它说"先决条件不成立"，不会悄悄绿。
+   被拒绝的两种省事做法：把它留在 v29（克隆里永远红一条不是破口的红），或改成"要么重写要么没东西
+   可重写"的二选一（那正是 §15.52 之前批评过的把强断言稀释成 either/or）。
+
+**七、修到第三条时又挖出一处脚手架破口**
+
+搬完节点去重跑克隆验证，`test_a_clone_can_run_the_machine_independent_part_of_the_suite` 在 0.10 秒
+就红，报的是 `git clone` 拒绝：`destination path '…awlclone-24164-run\c' already exists and is not an
+empty directory`。根因是 `_clone()` 用 `shutil.rmtree(destination, ignore_errors=True)` 清场：
+Git 的 `objects/pack` 只读，`ignore_errors` 跨过它们**返回成功**，于是残骸留在临时根里；目录名按
+pid 拼，Windows 复用 pid 时下一次跑就撞上自己上一次的尸体。这与本节第二部分第 1 条是同一个缺陷，
+只是这次在**仓内脚手架**而不是我的临时脚本里——所以它值得单独改：
+
+- `_clone()` 改用清位重删的 `_remove_tree()`，并且**删完断言路径真的不在**；
+- 顺手量了残骸规模：临时根里 `awlclone-*` 共 `160` 个目录、`985.60 MB`，脚本清回 `808.78 MB`
+  （占测得总量 `82.1%`），剩 `146` 个目录 `176.83 MB` 用 `\\?\` 的 `cmd rmdir` 也没能清掉——
+  这一条不改色地留着：**残骸仍在，回收不是 100%，具体数目在上面**；它不影响正确性（新断言让碰撞
+  变响），只占磁盘。
+
+**七之二、"可自跑的独立复审"这条腿，先在演习里被打回两次**
+
+本目标要的是**可自跑**的复审，不是"我准备好脚本文档了"。所以第 3 轮真跑之前先做了一次管道演习
+（`.project-local/edits-20261106a/run_review_03_rehearsal.sh`，独立工作目录、提示词里逐字写着
+"这是演习、不是复审"）。两次结果都不好看，而且都不是复审者的错：
+
+1. **演习第一次在真沙箱里跑出了 `3 passed, 6 errors`**，错误是
+   `PermissionError: [WinError 5] 拒绝访问。: '…\AppData\Local\Temp\pytest-of-ALEX'`——
+   `workspace-write` 只允许写克隆目录，而 pytest 的 basetemp 默认根在系统临时目录里。这与第 2 轮
+   那个 "No usable temporary directory" 是同一堵墙：换成可写克隆并没有绕开它，只是把失败从
+   "没有可用临时目录"换成了"有目录但没权限"。
+2. **演习第二次测的是一份空壳克隆**，因为脚本自己 `rm -rf "$WORK"`：沙箱留下的 `.pytest_cache`
+   删不掉，`rm` 失败后 `git clone` 拒绝（`destination path … already exists`），脚本没有中止，
+   于是复审者在一个被掏空的目录里工作，老老实实报"脚本与测试文件未找到"并给了 `FAIL`。
+   这一条读数**不能**当成"这一轮没发现问题"，也不能当成仓库有问题——它说明我的 runner 不能靠
+   "先删干净"当前提。
+
+两处的修法都是把前提换成可依赖的东西：工作目录改成每次一个唯一路径（并在克隆前断言它确实为空，
+不空就 `REFUSE_CLONE_DIR_NOT_EMPTY` 退出），临时目录换成"设进克隆"。第三次演习给出了对照，
+这是本节能写下"修好了"的唯一依据：
+
+| 同一族命令 | 有没有设 `TMP/TEMP/TMPDIR` | 最后一行原文 |
+|---|---|---|
+| `pytest test_v33 + test_v36` | 设了，另加 `--basetemp .sandbox-tmp/pt` | `1 failed, 10 passed in 1.50s` |
+| `pytest test_v33` | 故意不设 | `3 passed, 6 errors in 0.48s`，形状与第 1 次一致 |
+
+`--basetemp` 单独不够：`test_v23_clone_repro.py` 的克隆辅助函数走 `tempfile.gettempdir()`，
+必须三个环境变量一起设。剩下那个 `1 failed` 不是新破口，是 `test_v36` 的真构建那条——克隆里没有
+`node_modules`（Git 不跟踪），机器绑定项在克隆里**本来就不成立**；第 3 轮提示词现在把这一条与
+第 0 步一起写死，就是为了复审者不要把它记成仓库缺陷，也不要在报告里把它和别的组混成一句。
+
+3. **第一次真跑第 3 轮时，脚本在复审者启动之前就死了，而且不留痕迹**。我传给 runner 的是短 SHA
+   `ccd0781`，runner 第 24 行拿克隆自己的 `git rev-parse HEAD`（40 位）与它比，`set -euo pipefail`
+   里的 `-e` 让脚本在这一步直接退出——日志空、工作目录里只有一个克隆、连 `clone-identity.txt` 都没写。
+   这不是"复审没发现问题"，是**复审根本没跑**，而从外面看两者一模一样。修法两层：入参先
+   `git rev-parse --verify "${SHA}^{commit}"` 归一化（不归一就 `REFUSE: not a commit`），身份比对失败
+   也打成 `REFUSE: clone HEAD is not $SHA` 而不是让 `set -e` 默默吃掉；再加一条
+   `trap … EXIT`，任何中断都要在日志里留下一行 `RUNNER ABORTED rc=… step=line…`——本注释块上面原本
+   就写着"不能让这次运行看起来像消失了"，但脚本自己在另一个地方正好犯了这件事。
+
+`.sandbox-tmp` 会让克隆的 `git status` 多一行未跟踪目录，所以 runner 现在**分别**记录
+"含 / 不含 `.sandbox-tmp`"两个 dirty 字节数：一个数字会把"复审者改了被审字节"和"沙箱需要一块
+可写临时地"这两件事说成同一件。
+
+**七之三、第二张收据的 8 条红没有一条来自代码：主检出被分离头了**
+
+`f2bce98` 上的第二张全量收据回 `8 failed, 603 passed in 2279.36s (0:37:59)`，
+`tracked_bytes_moved_during_run` 依然是空。八个节点分成三簇（`test_v16` 五格、`test_v20` 两格、
+`test_v23` 一格），断言原文指向同一件事：
+
+```
+E  AssertionError: assert 'audit/backen...sure-20261103' == 'HEAD'
+E  {'stale_sections': ['branch'], …}
+E  以下行自称已核实但锚点解析失败：[('11#L12|U11', 'HEAD 是否分离…', 'resolved')]
+```
+
+现场读 `git rev-parse --abbrev-ref HEAD` 的答案是 `HEAD`，`git status -sb` 第一行是
+`## HEAD (no branch)`：**主检出处于分离头**，而 `docs/AUDIT-STATE.json` 与被审登记表里记录的
+`branch` 是那条审计分支名。`repo:branch` 这类锚点和"仓库状态由 git 回答"那一族断言读的就是这个
+状态；分支指针与被分离的 HEAD 指向**同一个提交**，所以一个字节都没变、`git status` 干净、候选摘要
+也对——只有"当前在不在分支上"这一项不在任何文件里。
+
+不靠推断收口，做了对照：
+
+| 状态 | 同一批三条节点的读数 |
+|---|---|
+| 分离头（现场原状） | `3 failed in 0.80s` |
+| `git checkout audit/backend-closure-20261103` 之后 | `3 passed in 0.86s` |
+
+第八格是那条最贵的：`test_v23_clone_repro.py::test_a_clone_can_run_the_machine_independent_part_of_the_suite`
+在分支上单独重跑，`1 passed in 677.72s (0:11:17)`——克隆内的整套也没再红，说明它在那张收据里的失败
+同样是外层状态带进来的，不是克隆里新问题。
+
+恢复分支指针不丢东西（两端同一个 `f2bce98`）。**谁把主检出弄成分离的，没有定位到**：
+`git reflog` 只留下 `HEAD@{0}: checkout: moving from audit/… to f2bce98…` 一条，而本会话所有
+`checkout --detach` 都带 `-C <克隆目录>`，代码里唯一不带 `-C` 的 detach 在 `test_v16` 自己的沙箱
+目录里执行。所以这里写"原因未定位"，既不写成"是我某条命令"，也不写成"环境的锅"。
+
+真正修的是**取证器不再依赖一个文件里看不见的状态**：`run_closure_evidence.py` 现在在测字节之前先读
+`--abbrev-ref HEAD`，等于 `HEAD` 就以 `DETACHED_HEAD_AT_MEASUREMENT` rc=3 拒绝出证，理由写在输出里
+——一张说不出自己在哪条分支上测的收据，事后也没法改绑到那条分支。这条改动落在 `.project-local/`
+的取证器上，不进 Git，因此它对别人的克隆不成立；能进 Git 的那半（`branch` 锚点在分离头下给出具名
+失败而不是 `resolved`）本来就在红，这一轮的八条红正是它在工作。分离头期间已经生成的那张收据仍是
+无效取证，它只能被下一张取代，不能被解释成通过——本节按原文记下它的 `8 failed`。
+
+**七之四、第 3 轮真跑回来的是 FAIL，两条阻断都是真的，也都修到根因**
+
+复审者（`codex-cli 0.167.0-alpha.3.2`，版本由 runner 当次现读，不手抄）在 detached 克隆里给出的结论块是
+`INDEPENDENT_REVIEW_VERDICT: FAIL`、`blocking_findings: 2`、`checks_actually_run: 10`、
+`unverified_claims: 7`，`reviewed_sha` 是它自己 `git rev-parse HEAD` 现读的 `ccd0781…`。两条阻断都不是
+环境问题，都在本仓代码里，也都用它的反例复现了：
+
+1. **`build_audit_item_closure.independent_review_for` 在"读"这一侧不校验记录**。把
+   `reviewed_sha` 写成 40 个 `f`，格子照样输出 `PASS @ ffffffffffff`。写侧（
+   `build_independent_review_record.py`）本来有 `merge-base --is-ancestor` 校验——但写侧只防我自己乱填，
+   读侧才是把那句话变成项目级结论的地方；JSON 被手改、被从别处拷来，都从读侧进来。修法：派生时逐条
+   复核"40 位提交号 / 是本 HEAD 的祖先 / verdict 属于那三种答案"，不合格发布
+   `RECORD_UNTRACEABLE（原因）`，并且**不回落到旧记录的 PASS**——回落等于让一次失效的复审继续盖章。
+2. **`build_test_census` 按绝对路径排除产物目录**。`SKIP_DIRS & set(path.parts)` 里
+   `path.parts` 是整条绝对路径，于是当检出本身被放在 `.project-local` 下面（正是我的 review runner
+   放克隆的位置），整套 `tests/` 被当成产物跳过，`--check` 报出 `0 files / 0 tests`。它没有假装通过
+   （`tests_now=0` 对 `605` 自然 rc=1），但它报的是一个没人看得懂的原因。修法两条：改用
+   `path.relative_to(ROOT).parts`，并把"人群为空"本身做成具名 `CENSUS_POPULATION_EMPTY` + rc=2。
+
+两个新节点各自又被"打掉修复"验过一次（`.project-local/edits-20261106a/falsify_review_blocker_fixes.py`）：
+`as-is 绿 → 打掉修复红 → 恢复后绿`，**2/2**，脚本按摘要断言恢复。
+
+同一次复审里还有 7 条未核实，其中"五个 503（`PROJECT_STORE_UNAVAILABLE`）+ 一个 raster 长路径
+`FileNotFoundError`"我在仓外用复审者的条件复现过：同一份 detached 克隆、六个文件同一进程、
+`TMP/TEMP/TMPDIR` 设进克隆、`--basetemp` 用绝对路径，读数是 `1 failed, 82 passed`，那 1 条正是
+`test_v36` 在克隆里没有 `node_modules` 的具名缺席，**503 一次都没出现**；只跑 v04+v05 是 `53 passed`。
+所以这三条我按"未复现，且最可能是复审沙箱自己的写入限制"记下，不写成仓库缺陷，也不写成已核实。
+
+登记方式照第 2 轮的规矩：`verified_items` **留空**，因为复审者自己声明了未完成验证——所以 20 格的
+「独立复审」列一律仍是 `NOT_RUN`，`build_audit_item_closure.py --check` rc=0 也证实这句话没被偷偷改宽。
+FAIL 记录本身逐字入 `config/independent-reviews.json`（3 条记录），报告原文入
+`docs/audits-20261106-independent/review-03.md`（摘录 32 行，不改写）。
+
+**七之五、我自己犯了本节第二部分正在批评的那件事——在测量期间动了被跟踪文件**
+
+第 4 张收据跑到第 23 分钟时，我把入口开头那句"本批在本地测量并全绿"改掉并提交了。这句话本身是该改的
+（它用一句话盖住了收据、CLOSED、第 3 轮 FAIL 与未核实项，正是本目标点名要防的形状）；**改的时机是错的**：
+`run_closure_evidence.py` 在开始时对全树取一次摘要、结束时再取一次，中间任何被跟踪字节移动都会写进
+`tracked_bytes_moved_during_run`——那张收据因此不再描述任何提交，23 分钟的测量作废。
+
+这不是工具的毛病，是我明知规则还去碰：本节第二部分记的两处"反例装置骗人"是**装置设计**缺陷，这一条是
+**操作纪律**缺陷，性质不同，所以分开记。处置是把 #4 直接杀掉（`CLOSURE-STATE.json` 只在结束时写，
+没有留下半张被误当成品的产物），先把入口改动提交成 `e106a20`，再重跑第 5 张。往后这几张收据的共同
+前提写成一句话放在这儿：**测量期间不写被跟踪文件；要写就先杀测量，改完重跑**。
+
+**八、九张取证里哪一张是当前的**
+
+同一批代码先后出过九张全量取证，逐张点名，不用"最后一次跑过"含糊过去：
+
+| 序 | 被测提交 | 读数 | 能不能当现状 |
+|---|---|---|---|
+| 1 | `92cde48` | `6 failed, 605 passed in 3042.24s`，`deselected=0` | 不能——六条红全是我这两次提交埋的（第六部分），已修 |
+| 2 | `f2bce98` | `8 failed, 603 passed in 2279.36s`，`deselected=0` | 不能——八条红都来自一次未定位的主检出分离头（第七之三部分），与被测字节无关 |
+| 3 | `f2bce98`（回到分支后重跑） | `611 passed, 0 failed, deselected=0 in 2936.12s`，`tracked_bytes_moved_during_run` 为空 | 曾作为现状使用：五处改绑接到它、终端闭环审计在它之上给出 `CLOSED`（16 条判据全 PASS）。它绑定的提交后来被"复审两条阻断的修复"取代，因此现在不再是当前取证 |
+| 4 | `54e1b8f` | 跑到第 23 分钟被我杀掉，没有产物 | 不能——我在测量期间提交了入口的一处散文修正（第七之五部分），这正是 `tracked_bytes_moved_during_run` 要拦的形状 |
+| 5 | `e106a20` | 跑到第 13 分钟被我杀掉，没有产物 | 不能——不是测量出错，是它要认证的那道闸门当时是红的：`build_unregistered_adjudications.py --check` 因锚的行号被存进字节而回 rc=1（第十二部分）。修完之后的字节不在那棵树上 |
+| 6 | `2279394` | `5 failed, 611 passed, 3 subtests passed in 2887.35s (0:48:07)`，`deselected=0`，`tracked_bytes_moved_during_run` 为空 | 不能——五条红全来自我上一节提交造成的两处派生失鲜（第十四部分），与被测功能无关；`bytes_moved` 为空说明这次**不是**操作纪律问题，是编排问题 |
+| 7 | `3af1f7b` 之前的 `9092804` | `1 failed, 615 passed, 3 subtests passed in 2828.12s (0:47:08)`，`deselected=0`，`tracked_bytes_moved_during_run` 为空 | 不能——那一条红是登记表把自己绑在一张`5 failed` 的收据上，被命名收据必须全绿那道断言拒绝它（第十五部分）；这条红不是不稳定，是守卫第一次真的被踩到 |
+| 8 | `3af1f7b` | `1 failed, 617 passed, 3 subtests passed in 2827.29s (0:47:07)`，`deselected=0`，`tracked_bytes_moved_during_run` 为空 | 不能——红的那格是 v31 用来模拟克隆的装置被我自己的改动改得不完整了（第十六部分），不是判据判错了东西 |
+| 9 | 当前 `RECEIPT` 块 | 见第四节 | 只有这张参与本次改绑 |
+
+第 3 张不是"作废"：它当时支撑了一次真实的 `CLOSED` 读数，那次读数不会被后来发生的事情改写；
+"这张收据现在还能不能用"和"这张收据当时测到了什么"是两个问题，本节分开答。第四节
+（`RECEIPT` / `REBIND` / `GATES` / `CLOSURE` / `REVIEW03` / `REVIEW04` 六块读数）取的是第 9 张的产物，全部由
+`collect_readings.py` 从 `CLOSURE-STATE.json` 与各命令自己的退出码现读，没有一个数字是我手抄的。
+
+**九、把"PASS 与待决并存"这一查做完，第一处需要更正的就是我自己写下的那个数**
+
+本目标点名要防的是假绿，所以这一查针对的是最容易被忽略的形状：一格里写着 `PASS`，同一行别处又写着
+还有 owner / 真人的决定没做。待判定面的现值仍是 `32` 行、类别 `13/13/6` 三种（不是把 32 行塞进一个桶里
+冒充"逐行定类"）、锚形态 `24` 条片段锚 + `8` 条符号锚、`unresolved_cites=0`、`decided=0`
+（"0 条行号锚"这一句在 `authority` 的形态上一直成立，但第十二部分记了它曾在持久字节里被自己的行号推翻，
+现已由守卫钉住）。
+
+然后是一处**我自己的读数错误**，就在这里改口：本节第一稿写的是 closure 册 20 格里"`PASS` 与自己写下的
+待决并存"的有 `A02`、`F01`、`F08` **三格**。发布前把这条重新现查了一遍——按 `当前结果` 起于 `PASS` 且
+`未验证子项` 非空来数，答案是 **`20` 格，即每一格**，不是我举的三格。三个名字是我读过的三个样例，
+被我写成了总体。这正是本目标要防的那类话：一个没被任何判据问过的计数，被散文当作结论固定下来。
+
+所以这一查的实际结果分两句，各归各处：
+
+- 读数：`20/20` 格的 `PASS` 都带一条具名的未验证半句，例如 `F01` 的 `限制与下一步` 明写"只宣称 197 条差额
+  逐条有去向，**不宣称「无未解释缺口」**"、`A02` 明写"真实用户派发 `NOT_RUN`"、`F08` 明写"真人专业签字
+  `NOT_RUN`（本轮不存在任何真实专业 PASS）"——三格是样本，不是分布。
+- 机制：这个不变量此前只由 `test_a_pass_row_must_name_the_part_that_is_still_unverified` 在**已发布的表**上
+  守着；本轮把同一条判断也搬进生成器（`build_audit_item_closure.py` 在出表前逐行核，任一格 `PASS` 而
+  `未验证子项` 为空即回 `rc=2` 与具名错误 `PASS_WITHOUT_A_NAMED_UNVERIFIED_SUBITEM`，且不写盘），
+  并配一个新节点：把某一格的 `未验证子项` 抹成三个空格再跑 `--check`，要求 `rc=2` **且** stderr 里的
+  `ids` 恰好是被种坏的那一格；同一节点随后 `monkeypatch.undo()` 再跑一次，要求它**不**回 2——
+  否则"拦住"就可能是拦住了一切，而不是拦住那一行。现跑：该文件 `13 passed`，
+  `build_audit_item_closure.py --check` rc=0（登记表字节未因这道守卫改变）。
+  把"读过并且没问题"写成"有守卫拦住"是本目标禁止的那种话；反过来把旧样例数当成被守卫的数，
+  是同一种话的另一个方向，所以两处都在这里改口。
+
+**十、仍欠且不改色**
+
+以下各项按它们自己的名字留着，不因本节写了"收口"就改变状态：
+
+- `L10#0` 的 32 行待判定来源：逐行定类、出处锚可现查、每行 `decided_by=None`，判决仍是具名真人的事。
+  验收门对它给 `REFUSED`，这是设计好的；终端闭环审计的门集合不含 `scripts/acceptance_gate.py`，
+  所以 `CLOSED` 不等于这一格被批准——两句话分别成立，不许合成一句。
+- 真人专业签字、真实宿主写入往返、模型真实推理：`NOT_RUN` / `DEFERRED`，没有合成回执补绿。
+- Linux 原生复跑：本轮按 owner 指示不做（N05 保持 `PARTIAL`，缺的就是这条腿）。
+- 推送、合并、打标签、远程 CI：不在本目标内，逐次等 owner 明确授权；本轮产生的提交都留在本地。
+- 独立复审：第 3 轮在可写克隆里的读数记在下面 `REVIEW03` 处；在那之前 20 个 closure 格的
+  「独立复审」列保持 `NOT_RUN`，不因"跑了第 2 轮"而集体改判。
+- `scripts/falsify_workbench_bundle_gate.py` 的 `NODE_ABSENT` 一腿有一个**已知的空转形状**：它靠
+  "从 PATH 删掉所有提供 node 的目录"来造缺席，所以在一台本来就没有 node 的机器上 `_path_entries_providing`
+  返回空集、什么都不会删，而工具照样回 `NODE_ABSENT` —— 这一腿在那种机器上会**绿得没有内容**。
+  本机有两份 node 安装，所以本轮的读数是实打实删掉两条 PATH 条目之后拿到的；但"该脚本在没有 node
+  的机器上会拒绝而不是空转"这句没有依据，下一批要补的是断言 `len(dropped) >= 1`（一行），在那之前
+  这一腿的适用范围就是"这台有 node 的机器"。
+
+**十一、第 3 轮那条"克隆内长路径"，我从留存的 stdout 里把它量成了数——结论是它不指向被审字节**
+
+复审者的报告写的是"一个 raster 测试因克隆内长路径 `FileNotFoundError` 失败"，没有 node id、没有路径、
+没有长度。这条读数当时既不能算仓库缺陷，也不能算已排除，所以它一直挂在第 3 轮的 7 条未核实里。
+第 4 轮开跑之前，我先在**已保存的原始 stdout**（`.project-local/edits-20261106a/REVIEW-03-raw.txt`，
+98,562 字节，逐字留存）里把它捞了出来：只有一条 `FileNotFoundError` 提到 `texture-chip.png`，
+节点是
+`tests/unified/test_v24_capability_evidence.py::test_the_raster_path_reports_the_gates_a_real_document_actually_hits`
+（`tmp_path` 夹具），失败路径逐字长 **263** 字符——Windows 的 260 上限超出 3 格。同一节点在全量收据
+那条腿下的根是 `.project-local/runs/closure-evidence-suite`，同样算法量出来 **214** 字符（余量 +46），
+所以它在那张收据里是绿的。它 `tmp_path` 以下的固定尾部占 **112** 字符
+（`\project\.hermes\task-runtime\reconstruction\<40 位>\layers\texture-chip.png`），
+这一段才是"稍微换个深的根就红"的预算来源。这些数由
+`.project-local/edits-20261106a/measure_raster_path_room.py` 现算，脚本只数从 stdout 里抄出的那条原文。
+
+处置分两半，各归各处，不混着写：
+
+- **复审管道这一半是我的问题，改在我的 runner 里（未跟踪件，因此不动被审字节）**：克隆工作根从
+  `.project-local/review-03/run-<时间戳>-<pid>/` 缩到 `.project-local/r/<MMDDTHHMMSS>-<pid>/`（同样算法
+  下 248 字符，余量 +12），第 4 轮的提示词再要求沙箱临时根用 `.t` 并把 `--basetemp` 指到 `.t\b0`
+  （217 字符，余量 +43）。runner 同时改成按轮次取参数：被审 SHA 一律归一化到 40 位、提示词文件名由
+  轮次派生且**文件不存在就 REFUSE**（默认落到第 3 轮那份，就会跑一场"问旧问题"的第 4 轮，
+  记录却写成新跑——这正是本目标禁止的形状），产物名带轮次，避免下一轮把上一轮的 stdout 覆盖掉。
+- **仓库这一半不在本目标的五项里，按名字留给下一批**（任务 #50）：一个 112 字符的固定尾部意味着
+  检出位置比现在更深的用户会让这条节点以裸 `FileNotFoundError` 红，而不是一条具名结论。要修就得动
+  跟踪件（夹具路径预算，或在写盘前给出 MAX_PATH 的具名拒绝），那需要它自己的全量收据，
+  本轮不动判据、不软化断言、也不把它写成"已修"。
+
+这两半都不改变第 3 轮那条 FAIL 记录（逐字仍在 `config/independent-reviews.json` 第 3 条），
+也不把任何 closure 格从 `NOT_RUN` 挪开。第 4 轮的读数在下面 `REVIEW4` 处，它被要求在同一节点上
+各跑一个深根和一个浅根，把我上面这组数当作**待推翻的断言**去复核——两次都绿、或深根也绿，都直接
+否掉"深度是原因"这个解释，届时照实记录，不替我的解释保留面子。
+
+开跑之前，A 组那两个反例先在我自己这边过了一遍（`.project-local/edits-20261106a/precheck_round4_A.py`，
+只往临时目录写）：四种记录形状里三种给
+`RECORD_UNTRACEABLE（…）`、真 HEAD 那一种确实给出 verdict（证明不是一律拒绝）；把检出放在
+`…/.project-local/deep/clone` 下重数清单得 `files=2 tests=3`，而它自己 `.project-local` 里那份
+`test_should_not_count.py` 没有进人群。这是**对我自己装置的预检**，不是复审结论——第 3 轮那两条
+如果其实没修好，代价是一整轮复审白跑，所以这一步值得先花；预检不能替代独立复核，两个读数分开记。
+第 4 轮的逐字结论块在第四节 `REVIEW04` 处。
+
+**十二、"0 条行号锚"这句，被引文件上方加五行就自己推翻了自己——现在它说的是登记表里真没有行号**
+
+第 3 轮那两条阻断修完、入口开头那句话也换成逐条指读数之后，我在准备第 5 张收据的空档里把 §15.53
+要引用的数字又现查了一遍。第一条就红：`scripts/build_unregistered_adjudications.py --check` 回
+**rc=1**，verdict 是 `DRIFT`，可 `tracked_bytes` 与 `rebuilt_bytes` **都是 28845**——等长却不一致。
+把两侧逐行一比，差异只有两处、都是同一个数：`"line": 214` 对 `"line": 219`。
+
+原因不在登记表里，在我自己的上一个提交：`e106a20` 把入口开头那句改长了 5 行，而 `PROJECT_CURRENT.md`
+正是这个通道里两条待判定行的出处锚所在文件。`check_cite()` 读锚的时候把命中行号也一起写进了持久字段，
+于是**一张按内容锚立身、`rule` 里明写"不靠行号"的表，把位置当成了自己的一部分**。32 行里 24 条片段锚
+各带一个这样的数，任何人在被引文件上方编辑一次，这张表就再也复现不出来；更糟的是它把"锚还指着同一句话"
+这件仍然成立的事，和"这句话现在排在第几行"这件从来不是断言的事，用同一个 rc 报了出来。
+第九部分那句"0 条行号锚"讲的是 `authority` 的形态——它当时是真的，但读者在同一份 JSON 里能翻出
+`"line": 214`，这句话就成了我自己在条目里埋下的第二种假绿。
+
+修法是让持久字节只说断言说过的事，位置退回成一次现读：
+
+- `check_cite()` 的片段腿新增 `matches`（有几行带这个锚）。命中条数是内容事实，可持久；
+  行号只留在 live 读数里。
+- `cite_resolves()` 判"唯一"改看 `matches == 1`，不再看 `line is not None`——去掉那个数之后，
+  锚不再唯一仍然会被拒，语义没被削。
+- 新增 `for_persistence()` 与 `NOT_PERSISTED = ("line",)`，写盘前只删位置。
+- 两个新节点，红侧各自按过：把"上方加 5 行"这个**真实发生过的形状**当反例种进去，
+  去掉行号那一侧要求字节逐字节不变（`9 passed`），把行号留下那一侧（`NOT_PERSISTED = ()`）
+  必须让字节变——这一步是为了前一条断言不是空的；同一趟实测 `2 failed, 7 passed`。
+  另一个节点遍历持久文档断言没有任何 `line` 键，同时要求 `matches` 仍在，
+  免得"删位置"顺手删掉了唯一性证据。持久文档现读：`line` 键 `0` 处（此前 `24` 处）、
+  `matches` 直方图 `{1: 24}`、锚形态仍 `24` 片段 + `8` 符号、`counts` 是 `rows=32 unresolved_cites=0 decided=0`。
+- 登记表重发布为 28883 字节，`--check` 回 rc=0；声明节点 607 → **609**（只增不减，`--allow` 之前
+  先用 `--check` 的 `drift` 明细证过一次是 `test_v35` 增 2、没有文件减），派生块
+  `suite_test_nodes=609`，`check_project_current.py --check` rc=0、findings 0。
+
+第 5 张收据因此没有跑完：它测的是 `e106a20`，而那份树里有一道它自己要过的闸门（`audit_objective_closure.py`
+第 46 行那份门清单里就有这条 `--check`）是红的，`tests/unified/test_v35_owner_decision_channel.py`
+里那句 `assert module.main([..., "--check"]) == 0` 也会红。我在第 13 分钟把它杀掉
+（`CLOSURE-STATE.json` 只在结束时写，所以没有半张产物留下），杀掉之前先用那条命令本身取了证——
+`rc=1` 与 `DRIFT` 原文在 `.project-local/edits-20261106a/adjud-check.txt`。
+这张收据不是"跑失败了"，是**它要认证的东西还没修好**，两件事在条目里从来不写成一句。
+
+**十三、第 4 轮：复审者自己按了一次反例，也自己否掉了我给它的一个解释**
+
+结论块逐字在 `docs/audits-20261106-independent/review-04.md`（摘录 177 行，不改写），登记在
+`config/independent-reviews.json` 第 4 条：`PASS_WITH_FINDINGS` @ `10f01c2468ca`、
+blocking=`0`、non_blocking=`1`、checks_actually_run=`22`、unverified_claims=`0`。
+被审 SHA 是它在自己克隆里 `git rev-parse HEAD` 现读的，那个提交正是第十二部分那一格的修复提交；
+本轮记录落在 `2279394`，也就是下面 `RECEIPT` 块所测那一格的**前一格**。
+
+A 组（第 3 轮两条阻断的独立复现）两处都站住了：
+
+- 复审记录读侧：四种非法形状一律回 `RECORD_UNTRACEABLE（…）`——非祖先 40 位、短 SHA、非 16 进制，
+  外加它自己多加的一种（`verdict` 写成 `LOOKS_FINE`），而真 HEAD 那一形状确实给出 `PASS @ 10f01c2468ca`。
+  后者是关键：如果读侧变成"一律拒绝"，这道闸门也只是另一种形式的失效。它没有走我的样例，
+  自己补了第五种形状，这正是要外部上下文的原因。
+- 清单扫描：克隆里 `--check` 得 `609 / 40`（与主检出同一读数，说明扫描不依赖本机目录深度），
+  另造 `<tmp>/x/.project-local/y/clone/tests/unified/test_demo.py` 并把 `ROOT` 指过去，得 `files=1 tests=1`
+  ——那份检出自己的 `.project-local` 里的隐藏测试没有进人群；真正空的人群调 `main(["--check"])`
+  得具名 `CENSUS_POPULATION_EMPTY` 且 rc=`2`，不再是一次看不懂的"比对失败"。
+
+B 组（第 3 轮那 7 条未核实）全部跑到出读数，其中三条值得单独记：
+
+- `test_v04_design_loop.py` 单跑 `14 passed`、`test_v05_rejections.py` 单跑 `39 passed`。
+  **第 3 轮那五次 `PROJECT_STORE_UNAVAILABLE` 本轮没有复现**，复审者明确拒绝把它当作
+  "现在仍存在"的结论，也拒绝当作"已被排除"——它写下的是"本轮未触发，没有新的请求可报告"。
+  这个拒绝是对的：我上一轮交代的"浅根应当不再红"只验证了"深度能左右这一类失败"，
+  没有验证折叠发生在哪一层。任务 #51（长路径被折进 `PROJECT_STORE_UNAVAILABLE` 的误导诊断）
+  因此仍按原样挂着，等一次能说出 sqlite 具体异常与 `winerror` 的复现，不在这句话上盖结论。
+- raster 那条：深根 `.t/aaaa…/bbbb…/`（自己造的）下 `1 failed`，它独立数字符得路径 **279**
+  （父目录 272），浅根 `.t/b0` 下同节点 `1 passed`。它同时写明"没有复现作者所述的恰好 263 字符"——
+  263 是我从第 3 轮留存 stdout 里量的那一次的具体根，它的根是另一个。
+  两次合起来支持"深度是原因"，但没有任何一次替对方背书。
+- 来源覆盖跨检出这条腿，第 3 轮只启动了进程没拿到读数；本轮它等到结束：不设来源根时
+  `SOURCE_REPO_ABSENT` / `NOT_RECOMPUTABLE_HERE`（点名缺席的是克隆上级路径下的两个来源仓名），
+  设三个 `AWL_SOURCE_ROOT_*` 后 `rc=0`、`drifted` 为空、`rows_changed` work/design 均 `0`。
+
+`verified_items` 只填 `A03`、`A04`。这不是保守，是有一条可查的判据：closure 册每一格的证据目标都写在
+`build_audit_item_closure.py` 的 `ROWS[...]["claim"]["target"]` 里，把那份 target 与报告里实际跑过的命令
+一对一现数，落在被整份跑过并留下逐文件读数的文件里的，只有这两格。其余 18 格没有任何一条读数指向
+它们的证据目标，所以一律维持 `NOT_RUN`。这一列因此第一次不是常量：`18` 格 `NOT_RUN` 加 `2` 格
+`PASS_WITH_FINDINGS @ 10f01c2468ca`。同一条改动也逼我改了入口开头那段——那里原写"20 格因
+`verified_items` 为空仍是 `NOT_RUN`"，本轮之后就是假的现值，现在那段只描述推导来源，
+分布本身交给 `build_audit_item_closure.py --check` 每次重算。
+
+非阻断的那一条与它自己的沙箱有关：克隆里的 `.t` 清理被自动审批策略拒绝（原文 `blocked by policy`），
+结束时克隆仍有 `?? .t/`；它没有绕过拒绝，跟踪文件的临时修改则逐字节恢复了。摘录抬头因此现读了两件事：
+克隆 dirty `7` 字节（不算沙箱临时目录为 `0`）与主检出 `135` 字节，并把主检出那几个路径逐条列出来、
+写明那是作者同期未提交的改动，不是复审者的动作——不写清楚，读者只能猜，而这里两种猜法都错得起来。
+
+**同一份克隆的 `.git` 是我事后删空的，不是沙箱，也不是复审者**
+
+第 4 轮结束后约六分钟，我为了在收据测量期间回收磁盘，对
+`.project-local/r/1107T004913-1550/clone` 用了 `shutil.rmtree(..., onerror=chmod)`。它在
+`clone/.pytest_cache` 上撞上 `PermissionError [WinError 5]`（沙箱建的目录对本机拒绝枚举）就停了，
+而 rmtree 是自底向上删的：报错之前 `.git/` 里的对象与引用已经被删掉。现在那份工作树还有
+`7139` 个文件（rglob 现数）、`.git/` 是空的，所以 `git -C clone rev-parse HEAD` 会沿目录往上落到主检出——
+那个读数从此是假的，谁再拿它当"克隆 HEAD"就会读到一个不属于克隆的 SHA。
+
+第 4 轮的证据链不在这份检出里，这一点逐一核过：`clone-identity.txt`（启动时现读的 `clone_head` /
+`main_head` / 主检出字节数）、`REVIEW-04-raw.txt`、`REVIEW-04-last.txt`、`REVIEW-04-version.txt`
+都在 `clone/` 之外且逐字未动；仓内的 `review-04.md` 抬头引用的是那份 raw，不是这个 `.git`。
+主检出 `git status --porcelain=v1` 仍是 0 字节，被跟踪文件一个没少（`git ls-files` 现数 7328）。
+处置是不再补救（没有夺权改 ACL，因为收据正在同一台机器上测），把原因、时刻、影响与"这个读数别再用"
+写在 `CLONE-DAMAGE-NOTE.md`（与该克隆同目录）。
+
+这条与第十二部分那条不是同一类：那处是判据把位置当成了断言，是**设计**缺陷；这处是我把一个会半途失败
+的递归删除当成清理工具用，是**操作**判断缺陷——和第 4、5 张收据被杀那两次同源（明知规则还去碰边界）。
+可执行的教训只有一句：对沙箱产出的目录树，先证明我删得动（枚举它、读一个代表文件），
+删不动就换"原地保留 + 复制留证"，不要用递归删除赌它一路成功。
+
+**复审覆盖到哪一格，就只说到哪一格**
+
+第 4 轮读的是 `10f01c2468ca`（第十二部分那一格）。`2279394` 这一格新增的两样东西——closure 生成器那道
+`PASS 必须带具名未验证项` 的拒绝，以及第 4 轮自己的记录与派生表——**复审者没有读过**，因为它们在它跑完
+之后才存在。这不是可以靠"再跑一轮"消除的形状：记录本身落在非豁免路径（`config/independent-reviews.json`
+不在 `audit_objective_closure.py` 的 `REBIND_OK` 里），任何一轮复审的落账提交都必然比它被审的那一格晚。
+所以这里的说法只到能被支撑的范围：**代码面最后一格是 `2279394`，收据测的就是它**（下面 `RECEIPT` 块现读）；
+独立复审的最后一格是 `10f01c2468ca`，其后的新增由我自己的反例与全套件收据承担，
+不写成"最终提交已被外部独立复审"。
+
+**十四、第 6 张收据红了五条，两条原因、同一类错误：我改了被跟踪的状态，却没有把依赖它的读数一起重算**
+
+第 6 张在 `2279394` 上跑完，读数 `5 failed, 611 passed, deselected=0 in 2887.35s`，
+`tracked_bytes_moved_during_run` 为空——**这一次不是我在测量期间动手**（第 4、5 张那种毛病没有复发），
+是启动之前那棵树就已经不一致。五条红不是随机的，定位后是两支：
+
+1. `test_v21_task_acceptance.py::test_check_mode_reproduces_the_register_without_writing_it`：
+   `build_task_acceptance_register.py --check` 回 `register_drift: true`。这张表的复审派生列由
+   `_review_shape()` 现读 `config/independent-reviews.json`；我落地第 4 轮记录时只重发布了
+   `audit-item-closure.csv`，**漏了它**。同一份来源喂两张表，只重发布一张，就是让另一张替我撒谎——
+   而且撒谎的方向是"看起来还一致"。
+2. `test_v29_top_level_entry.py` 三格（反漂移、派生读数、失鲜读数必须被抓）：
+   `check_project_current.py --check` 报 `FIGURE_STALE lf_tracked_files 文档=741 寄存器=742`。
+   新的被跟踪件 `docs/audits-20261106-independent/review-04.md` 让跟踪文件数 +1，而派生块是更早那次
+   写回的。换句话说：**加一个被跟踪文件，就等于改了一个现值**。这条我上一节刚在 L10#0 的锚行号上
+   交过学费（第十二部分），换了个面又犯一遍——差别是那次是判据把位置当断言，这次是我没把"提交之后
+   依赖面要整套重算"当成步骤。
+3. `test_v23_clone_repro.py::test_a_clone_can_run_the_machine_independent_part_of_the_suite` 是 1、2 的镜像：
+   克隆重跑的正是这批机器无关节点，表不一致它必然跟着红（`4 failed, 409 passed, 2 skipped in 634.39s`）。
+
+处置与防复发：
+
+- 修复只有重发布，没有新判据、没有弱化任何断言：`build_audit_item_closure.py`、
+  `build_task_acceptance_register.py`、`build_blocker_register.py`、`check_project_current.py --write-block`
+  四步跑完提交为 `9092804`；那四格现在实测 `4 passed`，克隆那一格在 `9092804` 上复跑（第一次复跑无效，
+  因为它克隆的是 17:53 的 `HEAD=2279394`，比我提交重发布早 45 秒——那 11 分钟测的不是我要认证的那棵树，
+  所以又跑了一次，这本身就是"克隆测哪一格"必须现读的证据）。
+- 把"跑一张 49 分钟的收据之前，先花 10 分钟证明这棵树值得跑"做成脚本：
+  `.project-local/edits-20261106a/preflight_receipt.py`。它按依赖顺序重发布六步，要求
+  `git status --porcelain` 为 0 字节，再跑 13 道闸门与六个"会被新提交悄悄改陈旧"的关注节点
+  （v21 的表复现、v29 的三格、v25 的 PASS-边界拒绝、v35 的锚位置不入字节），任一红就 `NO-GO`。
+  选这六条不是随手点的：第 6 张红的五条里有四条落在这族里，第五条（克隆覆盖）由它自己那 11 分钟单独核。
+  脚本不"顺手开跑"收据——开跑是另一个动作，避免一个工具同时做判断和做重活。
+
+**十五、第 7 张那张红不是不稳定：一道验证闸门一直在替失败的测量作证**
+
+`1 failed, 615 passed`。红的那格是
+`tests/unified/test_v26_local_run_receipts.py::test_the_measured_figures_are_the_ones_the_named_receipt_carries`，
+它最后一句要的是：**登记表所命名的那张收据，必须自己记着一次全绿的套件**。第 6 张收据是
+`5 failed`，而我的表命名的正是它——因为第 6 张落盘几分钟后我重发布了一次登记表，而那时候
+`_receipt()` 的全部规则就是"哪个文件是活的就用哪个"。
+
+这条链真正值得记的地方不是"我绑错了"，而是**它一路通过了多少道检查**：
+
+- 十三道闸门全绿。其中 `build_audit_item_closure.py --check` 的职责是"复现登记表声明的那个绑定"，
+  于是它忠实地把红绑定又算了一遍：字节相等、rc=0。一道验证闸门在那个瞬间做的事情，
+  和它本该做的事情相反——它替一个失败的测量作了证。
+- 发现这件事的断言在套件里面。也就是说这个缺陷的**报告代价是一整张收据**（47 分钟），
+  而且报告的时候我已经把那张红收据当成"当前测量"用了一次。
+- 我的预飞脚本也拦不住：它的关注节点是照着"上一张红了哪几条"挑的——那正是尾照灯。
+  现在那两条收据绑定节点本身在清单里（`WATCH_NODES` 从 6 条到 10 条），
+  这一条缺陷的形状从此属于"开跑前几分钟"而不是"开跑后一小时"。
+
+修在选择处。`_receipt()` 现在返回三样东西（选中的文档、它的来源路径、被拒清单），
+候选是 live 文件加 `receipt-archive/` 里每一份，按 `generated_at` 从新到旧：非本分支祖先的跳过、
+`suite.failed`/`suite.errors` 非零的跳过，两者都**逐名报出来**；一张绿都没有就返回空，
+于是 20 行回落到 `未在本机测量`、主命令按既有约定回 rc=3，而不是绑一张不能作证的测量。
+`--check` 里"采用登记表命名的那份收据"那一步补上同一道绿检查——不加就是继续替红绑定复现 rc=0。
+归档那一步改成复制**被引用那一份**的字节：原先无条件复制 live 文件，一旦选择器回落到旧收据，
+就会在一个候选摘要旁边写下另一次运行的字节。
+
+顺手改了一处会替自己撒谎的报告字段：`summary` 里 `independent_review_cell` 一直是常量
+`NOT_RUN`，而登记表里已经有两格带着 verdict。它现在现数直方图
+（实测 `{'NOT_RUN': 18, 'PASS_WITH_FINDINGS': 2}`），并新增 `red_receipts_not_bound`。
+
+两侧证据都不是口头：
+
+- 新节点一造"红比绿新"的真实形状——选中的必须是绿的、来源路径必须指向绿文件、红的必须出现在被拒清单；
+  然后把绿的那份删掉，断言**什么都绑不上**（`document == {}` 且 `source is None`）。
+- 新节点二先故意用改前的选择逻辑（`suite_is_green` 暂时恒真）把一张"绑着红收据"的表发布到临时目录，
+  证明这份登记表确实能被复现成 rc=0；再把守卫恢复、live 换成绿的，`--check` 必须回非 0。
+  没有前一半，后一句"它拒绝了"可能只是因为什么都对不上。
+- 实测：`test_v25` 全文件 `14 passed`；重发布后 `--check` rc=0 且
+  `red_receipts_not_bound` 逐名报出两张（`9092804…` failed=1、`2279394…` failed=5），
+  登记表绑的是 `da38f3f7db231032… @ f2bce98`（那张 611 passed / 0 failed 的第 3 张）。
+  声明节点 610 → **612**（`--allow` 前先用 `--check` 的 `drift` 明细证过只有 `test_v25` 从 13 增到 15、
+  没有文件减），派生块同步，`check_project_current.py --check` rc=0，
+  预飞 `head=3af1f7b steps=20 red=0 → GO`。
+
+**十六、第 8 张的那一条红是我的测试装置；同时把目标第 3 项按"每个具名状态都有人走过"重查了一遍**
+
+第 8 张 `1 failed, 617 passed`。红的是
+`tests/unified/test_v31_independence_cut.py::test_a_tree_without_the_receipt_refuses_by_name_and_still_sees_drift`，
+它模拟"这是一份克隆，本机没有测量"，办法是把 live 收据路径指到不存在的文件、再把
+`archived_receipt_copy` 打成返回 None。我上一格刚把选择器改成还会扫 `receipt-archive/` 目录
+（`candidate_receipts()`），于是这份"克隆"在本机找到了归档里的全绿测量：`receipt_present` 变真、
+`rc` 从 3 变 0。**这条红是我为自己的改动该更新的测试没更新**，不是判据判错了东西；
+补齐第三个指向（`ARCHIVE_DIR`，外层与内层 `drift_with_no_receipt()` 各一处）之外，还加了两条控制，
+专门防这条断言以后退化成空：`candidate_receipts() == []` 必须在三重指向之后成立；
+把归档目录指回本机，同一个模块必须**找得到**候选并且选得出绿的那张——否则"扫不到"也可能只是
+"根本看不见东西"。
+
+同一次收尾前我用 `completion_audit.py` 把目标五项逐条对着文件问"这一格的证据是什么"，
+查出一处不该放过去的东西：`backend/core/binding.py:60` 的 `STALENESS_STATES` 有五个词，
+测试只走得到三个。先把我原本准备写的两句话现查掉，因为它们都不成立：
+
+- 写坏时间戳**不是**没名：`binding.py:263-265` 先以 `RESULT_PRODUCED_AT_INVALID` 拒（422），
+  `test_v05_rejections.py:1712` 对 `producedAt` 与 `produced_at` 两种拼法都断过；
+  缺的是 `staleness_assessment()` 自己那个返回词有人走过没有。
+- 交接侧没日期**不是** HTTP 可达但没测：`backend/v1.py:974` 建 handoff 时无条件
+  `declared_at: _now()`，客户端造不出这种请求。
+
+于是新节点读函数本身，按它 docstring 里命名的 fact 形状逐一带过去（`yesterday-ish`、`{}`、
+`{"handoff_declared_at": None}` 等），末尾一句
+`assert reachable == set(STALENESS_STATES)`——集合里长出一个谁也走不到的词，这句就红。
+这和第一部分那条"判定名集合双向比对"是同一个形状，不是新发明。
+红侧两向都按过（`.project-local/edits-20261106a/falsify_staleness_states.py`）：
+把 invalid 折回 absent → 节点红；把 `declared_at is None` 改成返回 `CURRENT` → 节点红；
+两次之后 `binding.py` 逐字节还原（17129 字节），恢复后 `1 passed`。
+**没有**为了让 HTTP 面可达而放松 `producedAt` 校验或让 handoff 可以不落日期——那是为了让测试好写
+而改契约，方向反了。
+
+代价说清楚：这是跟踪件改动（两个测试文件 + census + 派生块），所以第 8 张也不能当认证用，
+第 9 张是这一批真正要绑的那张。census 612 → **613**（`--allow` 前用 `--check` 的 `drift` 明细证过
+只有 `test_v04` 从 14 增到 15、没有文件减），登记表四步重发布后**字节没变**（live 是红的第 8 张，
+被逐名拒掉，仍然绑 `da38f3f7db231032… @ f2bce98` 那张 611/0 的），受影响三个文件 `42 passed`，
+`preflight_receipt.py` 在 `1ada76c` 上 `steps=20 red=0 → GO`。
+`completion_audit.py` 现在 `GAPS 0`：五项的逐条证据都在文件里，剩下两个汇总信号
+（live 收据、§15.53 未发布）由第 9 张之后那一步处理。
+
+**十七、发布前的两件事：一条我自己弄坏的消息，和一份逐条走一遍的验收单**
+
+- 提交 `7ef5730`（五处改绑那一条）的消息**把数字弄丢了**：我在双引号的 `-m` 里用了反引号包着的读数，
+  bash 把它们当命令替换执行，于是消息正文留下 `收据 #9 @ ：，` 这种残句。
+  内容（登记表字节）与提交本身没有问题，我不打算改写这条已经存在的历史；改的是方法——
+  **从现在起提交消息一律走 `git commit -F 文件`**，读数放在文件里就不可能被 shell 吃掉。
+  读数的权威位置本来就是本节第四节（由 `collect_readings.py` 从 `CLOSURE-STATE.json` 与各命令
+  自己的退出码现读），这条残句因此不改变任何可核验事实，只改掉我一条操作习惯。
+- 发布前跑了两份自查，都不作汇总信号用：
+  `.project-local/edits-20261106a/completion_audit.py` 把目标五项逐条对到文件与符号上
+  （它第一次跑就因为我**发明了** `MISSING_PRODUCED_AT` 这个不存在的名字，把一条已覆盖的项报成缺口；
+  改成 `binding.py` 里真正用的 `NOT_EVALUATED_PRODUCED_AT_*` 之后 `GAPS 0`——一份问错问题的验收单
+  比没有验收单更危险，这里两处都付过）；`check_draft_references.py` 把本节引用的
+  节点 id 与仓内路径逐个解析（`nodes resolved 7, paths resolved 20, BROKEN 0`），
+  因为审计史是 append-only 的：坏引用一旦进仓，就只能靠下一句话在旁边更正，改不掉。
+
+**十八、本节永远写不下"CLOSED"这四个字：对齐判据要的是干净工作树，而本节本身就是一处未提交改动**
+
+第四节 `CLOSURE` 块里的读数是 `verdict=NOT CLOSED`、counts `PASS 15 / FAIL 1`，唯一那条 FAIL 是
+`全量收据描述当前提交且没有失败 → 本机还有未提交的跟踪改动`。这一条不是缺陷，也不是可以
+"再跑一次就写上"的小事，它是这道判据的结构：
+
+- 判据先看收据，再看 `git diff --name-only HEAD` 里有没有被跟踪改动——**有任何未提交改动它就不放行**，
+  因为它不知道那些字节属于谁、会不会进下一个提交。
+- 而本节的发布动作本身就是被跟踪改动。于是在 `docs/CODEX-AUDIT-ENTRY.md` 被提交之前，
+  `CLOSED` 在这一份文件里是**不可写**的：任何把它写成 CLOSED 的做法，要么是预支一个还没测的结论，
+  要么是先把判据改软（后者正是本目标禁止的那类"软化断言换绿"）。
+
+所以这一批对 CLOSED 的认证落在**本节的提交之后**那一次现读上：提交消息（`git commit -F` 写好）
+带 `16/16 PASS` 与 head，`PROJECT_CURRENT.md` 的派生块与 §五 也只指向那一次的现读位置，
+不在散文里抄数。§15.52 那一次是同一个形状，当时没有把这条边界写下来，所以这里写下来：
+**审计小节能记录"到发布为止测到什么"，不能记录"发布之后会怎样"。**

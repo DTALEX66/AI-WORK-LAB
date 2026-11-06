@@ -9,7 +9,10 @@
 
 - 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）的本地读数以**逐条记录**为准，
   不在这里用"全绿"一句话盖过去：收据的 `passed/failed/deselected` 看下面「- 依托提交：」那一行（派生，
-  不手抄），16 条判据的 verdict 与逐条 rc 看 `docs/CODEX-AUDIT-ENTRY.md` 的本批小节。独立复审到第 4 轮：
+  不手抄），16 条判据的 verdict 与逐条 rc 看 `docs/CODEX-AUDIT-ENTRY.md` §15.53（本批小节，六块读数由
+  `collect_readings.py` 现填）。这一批跑了九张全量取证，当前认证的是第 9 张；第 6、7、8 张各带
+  一条到五条红，**红的原因逐张点名写在 §15.53 的第十四、十五、十六部分**（漏重发布依赖读数、
+  登记表绑了一张失败测量、克隆模拟装置缺一路），没有一张被写成"环境抖动"。独立复审到第 4 轮：
   第 3 轮判 `FAIL` 给出两条阻断（复审记录读侧不校验 `reviewed_sha`、清单按绝对路径把整份检出排除掉），
   第 4 轮在可写克隆里各造一次反例确认两者已修好，判 `PASS_WITH_FINDINGS`、阻断 0、未核实 0，
   并把第 3 轮没跑完的腿跑到出读数（原文逐字留在 `docs/audits-20261106-independent/review-03.md`、
@@ -199,6 +202,14 @@ unsettled_files = 237
 1. ~~重取全量收据并改绑登记表~~ 每一轮收紧都要再来一遍，因为收紧本身就是活代码。收据所测的那棵树只写在两处：本文开头「- 依托提交：」那一行（由 `scripts/check_project_current.py::receipt_line` 从收据现算）和 `migration/audit-item-closure.csv` 的 运行收据 / 受测候选摘要 / 测量时刻UTC 三列。本节从前抄过第三份，抄的那份在两次改绑之后就成了假陈述——外部复审在 `f616fb5` 抓到的是同类（散文抄件 与派生块 不符），这一格是它没看到但同一形状的另一处，见 §15.51。
    判据口径沿用上一轮定下的那条并且仍然成立：收据不要求点名 HEAD，只要求「收据的提交是 HEAD 的祖先，且其间每个动过的跟踪文件都是文档或生成登记表，逐个点名」；代码或测试出现在那个区间就是 `FAIL`。
    本轮记下两件事，一件结清、一件换了形状：① `migration/source-coverage-*.csv` 的**跨检出重建已实测结清**——最后一次改到生成器的提交上，同一份 `build_source_coverage.py --check` 在主检出与两份放在系统临时根的独立克隆里都是 `rc=0`、`drifted=[]`、`rows_changed {work:0, design:0}`，跑完克隆自身 `git status` 为空；曾被发布的差额（当时读数 work `2764` vs `2734`、design `4488` vs `4476`）有两个根因，`copied_index()` 的绝对路径身份判等已在 §15.33+ 改掉并由 `test_v14_registers.py` 守着，剩下的半条在 §15.52 挖出并修掉（目的地按「正在运行的检出」剥前缀，再按仓名切）。这句话现在不靠散文钉在某个 SHA 上：`tests/unified/test_v23_clone_repro.py::test_a_fresh_clone_rebuilds_the_published_coverage_populations` 每次都从当前树克隆一份到临时根，先要求无来源根时具名拒绝（`rc=3 NOT_RECOMPUTABLE_HERE`）、再要求带来源根时回 `rc=0`，它在收据人群里，所以每个被认证的提交都重测一遍；② `apps/workbench` 的 bundle 重建与产物字节已被 `scripts/check_workbench_bundle_drift.py` 现算核住（`MATCH`，`committed_digest == rebuilt_digest`），根因是通用 `build/` 忽略规则把该产物吞成看不见（§15.50）。本轮在这格上的缺口换了形状：那个工具能报十个具名判定，先前只有三个真被 anything 观察到过——`COMMIT_BLOB_ABSENT`、`BUNDLE_ABSENT`、`BUILD_FAILED` 只出现在它自己的 docstring 里。现在三个各有节点，十个各有 case：`scripts/falsify_workbench_bundle_gate.py` 把十个态逐个摆到工具面前（四个 Git 可见性态用一次性仓库、两个工具链态、`BUILD_FAILED` 用一个退出非零的桩 vite、`DRIFT` 与 `UNCOMMITTED_BYTES` 用本检出的真字节并按摘要恢复），并声明它自己覆盖了哪十个名字；`tests/unified/test_v33_workbench_bundle_truth.py::test_every_verdict_the_tool_can_assign_is_put_in_front_of_the_gate` 把这份声明和工具里真正能赋的判定字面量做**双向**比对，第十一名没被摆出来就红，声明里留着工具发不出的名字也红。两条都在本轮按下过真实的反例（合成文本一条、真文件加一个 `ELEVENTH_NAME` 一条）。
+   同一批里另外三处"具名集合里有成员没人走过"的形状也各自闭合了：staleness 的五个状态由
+   `tests/unified/test_v04_design_loop.py::test_the_five_staleness_states_are_all_reachable_and_two_are_not_the_absent_one`
+   逐个走到并要求集合与可达集相等（两个函数层状态的红侧见 `.project-local/edits-20261106a/falsify_staleness_states.py`）；
+   closure 生成器不再能把一次失败的测量绑进登记表（`_receipt()` 只接受全绿候选，被拒的逐名报在
+   `red_receipts_not_bound`，`--check` 那步同样拒），并有节点用"红比绿新"的真实形状与"只剩红的就什么都不绑"两侧按下；
+   `build_audit_item_closure.py` 出表前逐行核 `PASS` 必带具名未验证项，空边界即 `rc=2`。
+   开跑一张收据之前先跑 `.project-local/edits-20261106a/preflight_receipt.py`（重发布六步 + 干净树 +
+   13 道闸门 + 十个会被新提交悄悄改陈旧的关注节点），这是第 5、6、7、8 张各付过一次 47-50 分钟学费之后换来的顺序。
 2. owner 对 `237` 条待裁决来源做批量判定（含 32 条阻断 `L10#0` 的）。
 3. ~~统一归档 `1212` 个对象与融合仓的逐摘要对账~~ 已建成 `1212` 行逐条登记；
    ~~那 `1131` 个只在归档里的对象要不要按摘要迁入本仓~~ owner 已定（「确保内容全部归档到仓库」）：
