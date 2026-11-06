@@ -326,3 +326,27 @@ unsettled_files = 237
    其余人群不变：真人/owner 项、`237` 未决 + `32` 个人决定项、L10#0 验收门 `REFUSED`、
    L20#0 真实宿主、模型推理、真实私有数据迁移、L00#2 出网隔离、来源仓删除与告警、GitHub 四条 key
    告警、Linux 复跑（N05 因此 PARTIAL）。
+
+9. **本批查清但按名字交给下一批的四件事**（都还在仓库里，没有被删掉或改软；表述以文件与符号为准，
+   不在此抄条数）：
+   - `scripts/falsify_workbench_bundle_gate.py` 的 `NODE_ABSENT` 一腿靠"从 PATH 删掉所有提供 node 的
+     目录"造缺席，所以在本来就没有 node 的机器上会**绿得没有内容**；要补的是那句
+     `len(dropped) >= 1`（本机有两份 node 安装，本轮读数是实删两条之后拿到的）。
+   - `tests/unified/test_v24_capability_evidence.py::test_the_raster_path_reports_the_gates_a_real_document_actually_hits`
+     的夹具在 `tmp_path` 以下带一段固定长尾部；主检出与收据 `--basetemp` 两种根下各有余量，
+     而一次放在深层目录里的克隆实测越过 Windows 的 260（复审者现数一次 279、作者从留存 stdout
+     现数一次 263），于是它以裸 `FileNotFoundError` 红而不是具名结论。修法要么给路径预算，
+     要么在写盘前给具名拒绝——两者都动跟踪件，都需要各自的收据。
+   - `domains/design/design_lab/http_service.py` 对 `OSError` 已特判 `winerror 206` 回
+     `PROJECT_PATH_TOO_LONG`，但 `sqlite3.Error` 一律折进 `PROJECT_STORE_UNAVAILABLE`；
+     若长路径让 sqlite 打不开库文件，同一类原因会给出相反的诊断。第 3 轮在深根下见过五次 503，
+     第 4 轮在浅根下 v04/v05 单跑分别 `14 passed` 与 `39 passed` 未复现——这条因此仍挂着，
+     等一次能说出具体异常与 `winerror` 的复现，不在这里替它编原因。
+   - 沙箱产出的残骸目录清不动（`temp` 根下 `awlclone-*` 与本轮一次性克隆各自的数量以现数为准），
+     而本批为了回收磁盘把一个递归删除用在沙箱树上，半途失败时已经把那份克隆的 `.git` 删空
+     （经过与"这个读数别再用"写在 `.project-local/r/` 下的 `CLONE-DAMAGE-NOTE.md`；
+     第 4 轮复审的证据链不在那份检出里，未受影响）。下一批的清扫器必须先证明"删得动"
+     （能枚举 + 能读一个代表文件）再决定删除方式，并纳入 conftest 的沙箱清扫族。
+   操作顺序上留下一条硬规则：**开跑全量收据之前先跑 `preflight_receipt.py`**
+   （按依赖顺序重发布六步 → 要求干净工作树 → 13 道闸门 → 十个"会被新提交悄悄改陈旧"的关注节点）。
+   本批第 5、6、7、8 张收据各为一次编排错误付了 13 到 50 分钟，而那四处红在几分钟的检查里都看得见。
