@@ -1470,3 +1470,68 @@ def test_a_tracked_byte_the_hazard_gate_cannot_open_blocks_instead_of_passing(tm
     assert rc == 0 and document["files_read"] == 2 and document["files_unreadable"] == 0, document
 
 
+
+
+def test_the_coverage_check_report_names_the_rows_it_found_different():
+    """``rows_changed: {"work": 1579}`` refused without saying what differed -- so it now says.
+
+    Measured the hard way this batch: a clone of the same commit answered rc=1 with counts only,
+    and the next three questions were all guesses about which column carried the difference.
+    ``_drift`` already returns strings of the shape ``<path>: class,reason``, so publishing a
+    bounded sample is free and turns the refusal into something a reader can act on. The report is
+    built by a function rather than inline for the same reason: producing ``drift`` costs minutes
+    of source-tree hashing, and a guard for the answer should not have to pay that to exist.
+    """
+    import build_source_coverage as coverage
+
+    drifted = {"work": ["a.py: class,authority", "b.py: reason"], "design": []}
+    report = coverage.check_report(drifted, ["design"], ["c.py"])
+    assert report["drifted"] == ["work"], report
+    assert report["rows_changed"] == {"work": 2, "design": 0}, report
+    assert report["drift_sample"] == {"work": ["a.py: class,authority", "b.py: reason"]}, report
+    assert report["unreconciled"] == ["design"], report
+    assert report["copy_identity_unmapped"] == 1, report
+
+    clean = coverage.check_report({"work": [], "design": []}, [], [])
+    assert clean["drifted"] == [] and clean["drift_sample"] == {}, clean
+
+    # a sample longer than the bound is still a bounded sample: the report must not become a
+    # multi-megabyte stdout on the day a real drift spans thousands of rows
+    many = coverage.check_report({"work": ["row%d: class" % i for i in range(1579)]}, [], [])
+    assert len(many["drift_sample"]["work"]) == 5 and many["rows_changed"]["work"] == 1579, many
+
+
+def test_a_destination_is_published_inside_the_repository_not_on_a_machine():
+    r"""A clone of this commit used to publish ``D:\All projects\AI-WORK-LAB\…`` in ``target``.
+
+    The value came from ``migration/copies.json``, which records the absolute path the copy was
+    written to, and the generator cut the prefix off against *the checkout that was running*: in
+    the machine that ran the migration the prefix matched, in a clone it did not, and the fallback
+    published the whole machine path -- while the digest was computed by opening the main
+    checkout's file. Measured: 188 work rows and 2,144 design rows differed, plus the ordering
+    shift those absolute keys caused.
+    """
+    import build_source_coverage as coverage
+
+    # the same fact on any host: the anchor is the repository's own name inside the path
+    assert coverage.published_target(
+        "D:/All projects/AI-WORK-LAB/domains/work/x.py") == "domains/work/x.py"
+    assert coverage.published_target(
+        "E:/mirror/AI-WORK-LAB/domains/work/x.py") == "domains/work/x.py"
+    assert coverage.published_target("domains/work/x.py") == "domains/work/x.py"
+
+    for unrelated in ("C:/Users/other/elsewhere/x.py", "D:/All projects/WORK-LAB/x.py"):
+        try:
+            coverage.published_target(unrelated)
+        except SystemExit as refusal:
+            assert "DESTINATION_NOT_INSIDE_ANY_CHECKOUT" in str(refusal), refusal
+        else:
+            raise AssertionError("一个不属于任何本仓检出的目的地被静默发布了：%s" % unrelated)
+
+    clean = {"work": {"rows": [{"path": "a", "target": "domains/work/x.py",
+                                "archive_target": "domains/work/x.py"}]}}
+    assert coverage.machine_path_findings(clean) == [], coverage.machine_path_findings(clean)
+    dirty = json.loads(json.dumps(clean))
+    dirty["work"]["rows"][0]["target"] = "D:/All projects/AI-WORK-LAB/domains/work/x.py"
+    findings = coverage.machine_path_findings(dirty)
+    assert len(findings) == 1 and "|a:target=" in findings[0], findings

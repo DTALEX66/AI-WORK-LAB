@@ -178,6 +178,11 @@ def declared_file_copies() -> list[dict]:
 SOURCE_REPO_NAMES = (("WORK-LAB", "work"), ("DESIGN-LAB", "design"))
 TARGET_REPO_NAME = "AI-WORK-LAB"
 
+#: A value that still names a machine rather than a place inside the repository. No published cell
+#: in this register may match it: a drive letter in a tracked register is unreproducible by
+#: definition, and every round that ignored this spent its time re-deriving paths.
+ABSOLUTE_SHAPE = re.compile(r"^(?:[A-Za-z]:[\\/]|//|\\\\)")
+
 
 def _forward(text: object) -> str:
     return str(text).replace("\\", "/")
@@ -210,6 +215,42 @@ def target_identity(absolute: object) -> str:
         if segment.casefold() == TARGET_REPO_NAME.casefold() and position + 1 < len(parts):
             return "/".join(parts[position + 1:])
     return text
+
+
+def published_target(value: object) -> str:
+    """The destination as a path inside the repository, resolved against *this* checkout.
+
+    ``migration/copies.json`` records the absolute path each copy was written to. Two sites used to
+    turn that into a published cell by relativizing against the checkout that happened to run the
+    generator, so a clone of the same commit published ``D:\\All projects\\AI-WORK-LAB\\domains/x.py``
+    where the tracked register said ``domains/x.py``, and -- worse -- opened the **main** checkout's
+    bytes while computing the digest. Measured this batch: 188 work rows and 2,144 design rows
+    differed for that reason alone. The portable anchor is this repository's own name inside the
+    path, which is what the source half of the identity already uses; a destination that carries no
+    such anchor is refused by name instead of being published as a machine path.
+    """
+    relative = target_identity(value)
+    if ABSOLUTE_SHAPE.search(relative) or relative in ("", "."):
+        raise SystemExit("DESTINATION_NOT_INSIDE_ANY_CHECKOUT " + str(value))
+    return relative
+
+
+def machine_path_findings(documents: dict) -> list[str]:
+    """Rows that would publish a machine path instead of a place inside the repository.
+
+    The register is the permanent answer to "where did this source file go", and a drive letter in
+    it is answerable only on the machine that wrote it -- so this is checked before anything is
+    written or compared, and the refusal names the row rather than leaving the value to be
+    rediscovered by whoever clones next.
+    """
+    findings = []
+    for label, document in documents.items():
+        for row in document["rows"]:
+            for column in ("target", "archive_target", "disposition_target"):
+                value = str(row.get(column) or "")
+                if value and ABSOLUTE_SHAPE.search(value):
+                    findings.append("%s|%s:%s=%s" % (label, row.get("path", "?"), column, value))
+    return findings
 
 
 def copied_index(roots: dict[str, Path] | None = None) -> tuple[dict[str, list[dict]], list[str]]:
@@ -360,8 +401,7 @@ def digest_destination_index(copied: dict) -> dict[str, list[str]]:
             target = Path(record["target"])
             if not digest or not target.is_absolute():
                 continue
-            relative = (target.relative_to(REPO_ROOT).as_posix()
-                        if REPO_ROOT in target.parents else str(target))
+            relative = published_target(record["target"])
             out.setdefault(digest, [])
             if relative not in out[digest]:
                 out[digest].append(relative)
@@ -960,10 +1000,9 @@ def _copied_row(repo_label: str, repo: Path, rel: str, key: str, record: dict,
                 registered: dict, patches: dict) -> dict:
     row = {"repo": repo_label, "path": rel, "registered": "YES" if key in registered else "NO",
            "source_sha256": record.get("sha256_source", "")}
-    target = Path(record["target"])
-    row["target"] = (target.relative_to(REPO_ROOT).as_posix()
-                     if target.is_absolute() and REPO_ROOT in target.parents
-                     else str(target))
+    relative = published_target(record["target"])
+    row["target"] = relative
+    target = REPO_ROOT / relative
     if not target.is_file():
         row["class"] = "COPIED_MISSING_IN_TARGET"
         row["reason"] = "复制清单登记了该目标，但目标文件不存在"
@@ -1157,6 +1196,23 @@ def _drift(path: Path, rows: list[dict]) -> list[str]:
     return changed
 
 
+def check_report(drift: dict, unreconciled, unmapped) -> dict:
+    """What ``--check`` answers: the counts, and the rows that explain them.
+
+    Split out of ``main`` because the rebuild that produces ``drift`` costs minutes, and a guard
+    for this dictionary should not have to pay for a rebuild to exist. The counts alone sent three
+    rounds of this batch into guessing *which column* differed -- ``_drift`` already knows, row by
+    row, so a bounded sample of its own strings is published next to the numbers.
+    """
+    drifted = {label: sample for label, sample in drift.items() if sample}
+    return dict(check=True, drifted=sorted(drifted),
+                rows_changed={label: len(sample) for label, sample in drift.items()},
+                drift_sample={label: sample[:5] for label, sample in drifted.items()},
+                unreconciled=sorted(unreconciled),
+                copy_identity_unmapped=len(unmapped),
+                hint="rerun without --check to re-resolve the authority lines")
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--json-out", type=Path)
@@ -1199,6 +1255,11 @@ def main(argv=None) -> int:
     # owner 2026-11-01 规则的去向：两张表一起过守卫，因为词表要覆盖整个来源人群，
     # 一张表里空着、另一张表里补上一样是"每个来源文件都有去向"这条不变式破了。
     archive = attach_archive_dispositions(documents, copied)
+    machine_paths = machine_path_findings(documents)
+    if machine_paths:
+        raise SystemExit(json.dumps(dict(error="ABSOLUTE_TARGET_PUBLISHED",
+                                         findings=machine_paths[:10],
+                                         count=len(machine_paths)), ensure_ascii=False))
     drift: dict[str, list[str]] = {}
     for label, repo in (("work", WORK), ("design", DESIGN)):
         document = documents[label]
@@ -1263,15 +1324,12 @@ def main(argv=None) -> int:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(payload, encoding="utf-8")
     if args.check:
-        drifted = {label: sample for label, sample in drift.items() if sample}
-        unreconciled = sorted(label for label, doc in documents.items() if not doc["reconciles"])
-        print(json.dumps(dict(check=True, drifted=sorted(drifted),
-                              rows_changed={label: len(sample) for label, sample in drift.items()},
-                              unreconciled=unreconciled,
-                              copy_identity_unmapped=len(copy_identity_unmapped),
-                              hint="rerun without --check to re-resolve the authority lines"),
-                         ensure_ascii=True))
-        return 1 if (drifted or unreconciled or copy_identity_unmapped) else 0
+        report = check_report(drift,
+                              [label for label, doc in documents.items() if not doc["reconciles"]],
+                              copy_identity_unmapped)
+        print(json.dumps(report, ensure_ascii=True))
+        return 1 if (report["drifted"] or report["unreconciled"]
+                     or report["copy_identity_unmapped"]) else 0
     print(payload)
     return 0 if all(doc["reconciles"] for doc in documents.values()) else 1
 
