@@ -50,6 +50,10 @@ PREREQ = re.compile(r"\.venv|All projects[\\/](WORK-LAB|DESIGN-LAB)|"
                     r"WORK_SOURCE_ROOT|DESIGN_SOURCE_ROOT|LIVE_STORES|"
                     r"[.]git[\"'\s\\/]+hooks|"
                     r"[.]project-local[\"'\s\\/]+build|"
+                    # run receipts live under .project-local, which Git does not track: a claim that
+                    # re-derives a sentence from the archived receipt cannot be observed in a fresh
+                    # clone at all, so a file that makes that claim is machine-bound by definition
+                    r"[.]project-local[\"'\s\\/]+audit|"
                     r"apps/workbench/node_modules")
 
 #: The two spellings that used to mean "the read-only source root" outside
