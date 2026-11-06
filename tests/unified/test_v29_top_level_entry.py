@@ -533,6 +533,33 @@ def test_a_prose_duplicate_that_no_shape_binds_is_named():
         "一处与派生值同数的散文抄件被当成巧合放过了：" + str(findings))
 
 
+def test_a_present_tense_suite_reading_outside_the_derived_line_is_named():
+    """§五 used to say "收据现在测 `520 passed…`" -- true for one commit, a lie for every later one.
+
+    A suite line is not a figure key, so the number guard cannot re-derive it. What can be
+    checked is the *tense*: the derived 「- 依托提交：」 line is the only place allowed to state
+    a current receipt reading, and anything else has to name which section it came from.
+    """
+    checker = _checker("checker_receipt_claim")
+    text = ENTRY.read_text(encoding="utf-8")
+    receipt = checker.named_receipt(checker.ROOT)
+    if receipt is None:
+        # a fresh clone carries no archived receipt: the contract there is that this guard says
+        # nothing at all rather than inventing a comparison -- asserted, not skipped
+        assert checker.receipt_claim_findings(text, None) == []
+        return
+    assert checker.receipt_claim_findings(text, receipt) == [], (
+        "入口已经有第二处现在时的收据读数：" + str(checker.receipt_claim_findings(text, receipt)))
+    planted = text + "\n- 抽查：收据现在测 `1 passed / 0 failed`，它绑在某棵树上。\n"
+    findings = checker.receipt_claim_findings(planted, receipt)
+    assert any(item.startswith("RECEIPT_CLAIM_NOT_DERIVED") for item in findings), findings
+    # a dated reading that says where it came from must stay legal, or the guard would push the
+    # entry to delete history it is entitled to keep
+    dated = text + "\n- 抽查：§15.32 那次重测记 `363 passed, 1 warning`（当时的读数）。\n"
+    assert checker.receipt_claim_findings(dated, receipt) == [], (
+        "点名出处的历史读数被误判成现在时抄件")
+
+
 def test_a_shape_or_exemption_kept_past_the_sentence_it_guarded_is_named():
     """Both tables must be able to rot loudly, not quietly become decoration."""
     checker = _checker("checker_prose_dead")

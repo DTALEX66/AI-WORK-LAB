@@ -464,12 +464,35 @@ def check_figures(entry_path: Path) -> list:
         elif stated[key] != derived[key]:
             findings.append("FIGURE_STALE %s 文档=%d 寄存器=%d" % (key, stated[key], derived[key]))
     findings += prose_figure_findings(text, derived)
+    findings += receipt_claim_findings(text, named_receipt(ROOT))
     blockers = json.loads((ROOT / "config" / "blocker-register.json").read_text(encoding="utf-8"))
     ids = [item.get("id") for item in blockers["items"]]
     if BLOCKING_QUEUE not in ids:
         findings.append("BLOCKING_QUEUE_MISSING " + BLOCKING_QUEUE)
     elif BLOCKING_QUEUE not in entry_path.read_text(encoding="utf-8"):
         findings.append("BLOCKING_QUEUE_NOT_DISCLOSED " + BLOCKING_QUEUE)
+    return findings
+
+
+def receipt_claim_findings(text: str, receipt) -> list:
+    """A present-tense suite reading is allowed in exactly one place, and it is a derived line.
+
+    §五 and §二 each carried "收据现在测 `520 passed…`" style sentences for rounds. The numbers
+    were true when written and belong to no commit after the next rebind; the guard cannot check
+    them, because a suite line is not a figure key. What it can do is refuse a *present-tense*
+    copy outside the one line `receipt_line` regenerates -- dated readings that name the section
+    they came from stay legal.
+    """
+    if receipt is None:
+        return []
+    findings = []
+    for number, line in prose_lines(text):
+        if line.lstrip().startswith(RECEIPT_LINE_PREFIX):
+            continue
+        if SUITE_READING.search(line) and PRESENT_RECEIPT_CLAIM.search(line):
+            findings.append("RECEIPT_CLAIM_NOT_DERIVED 行=%d（只有「%s」那一行可以写收据读数，"
+                            "其余地方要么点名它来自哪一节，要么引用那一行）"
+                            % (number, RECEIPT_LINE_PREFIX))
     return findings
 
 
@@ -651,6 +674,10 @@ def check_authority_index() -> list:
 
 
 RECEIPT_LINE_PREFIX = "- 依托提交："
+
+#: A sentence that reads like a suite tally, and one that claims it is the current one.
+SUITE_READING = re.compile(r"\d+ passed")
+PRESENT_RECEIPT_CLAIM = re.compile(r"现记|现在测|当前收据|收据现在")
 
 #: Where the entry repeats a number the derived block already owns, that copy is the thing that
 #: rots: `--check` compared only the managed block, so a hand-typed duplicate elsewhere could be

@@ -3421,3 +3421,65 @@ owner 原话只有两个字：「推送」。这一格记的是这句话**覆盖
 本轮仍欠的：A00#1 的独立复审第二轮还没跑（那一格照旧 `NOT_RUN`，不因本节写了三个节点而改色）；
 `test_a_clone_can_run_the_machine_independent_part_of_the_suite` 要在本节所在提交上重跑一次才算"改绑后的树上绿"，
 它的读数进下一节；Linux 面按 owner 本轮指示不动；推送、合并、打标签不在本目标内，仍逐次等 owner 明确授权。
+
+### 15.51 独立复审第 2 轮：复审者抓住一条真阻断，根因是"派生块之外的抄件没人比"
+
+命令与身份：`codex.cmd exec -s read-only -C <本仓>`，prompt 逐字留在 `.project-local/edits-20261106a/`，
+完整 stdout 留在 `.project-local/audit/20261106-independent/REVIEW-02-raw.txt`（运行产物，不入 Git），
+复审者原文摘录为跟踪件 `docs/audits-20261106-independent/review-02.md`；工具自报
+`codex-cli 0.166.0-alpha.6`。它自己打印的结论块原样进记录：verdict `FAIL`、
+`reviewed_sha = f616fb533f06…`（由 git 现读，非手抄）、`blocking_findings = 1`、
+`non_blocking_findings = 0`、`checks_actually_run = 9`、`unverified_claims = 5`。
+记录里 `verified_items` 为空——**复审者自己声明五组未核实，就不给任何 closure 格填"已复审"**；
+`migration/audit-item-closure.csv` 的 独立复审 列本轮重发布后仍然是 20 行全 `NOT_RUN`（字节未变），
+而 `config/blocker-register.json` 与 `migration/task-acceptance.csv` 的 A00#1 那格现算出的
+"现有 2 条记录，最近一条 FAIL @ f616fb533f06（覆盖 0 项）"确实变了：这两处由生成器写，不靠我回忆。
+
+复审者的环境限制与仓的判据要分开记：它在只读沙箱里跑不动需要临时目录的腿
+（`FileNotFoundError: No usable temporary directory found`，候选包括用户 Temp 与本仓根），
+所以真实 HTTP 五态、临时仓库反例与 `test_v24` 那组都没跑成。**这条记成"未跑"，不记成"通过"，
+也不为它放宽任何断言**；它留下的那一条阻断发现和沙箱无关，是仓库自己的：
+
+`PROJECT_CURRENT.md` 两处（§二 表格里的一行与 §五 第 3 项）仍写 **694 个 / 217,126,876 字节**，
+而同文件派生块现算是 **692 / 215,124,851**。差额不是猜的：
+`migration/archive-object-reconciliation-20261101.csv` 在 `769173f` 与 `8f7a7db` 之间有两个对象
+（525,268 与 1,476,757 字节，合计 2,002,025）从 `ARCHIVED_IN_REPO` 改为 `QUARANTINED_CREDENTIALS`，
+即 2026-11-02 那次"撤下含第三方预签名凭据的两个归档原件"。派生块跟着动了，散文没动，
+而 `check_project_current.py --check` 只比标记块内的 `key = value`——**守卫完整地覆盖了一个人群，
+却没人说这个人群包括入口自己**。这与 §15.50 抓到的两处是同一类：话是新的，指的东西是旧的。
+
+修法不是把那两个数改对（改对也只是撑到下一次改绑），而是把散文抄件绑到派生键上，让它必须跟着寄存器动：
+
+- `scripts/check_project_current.py::PROSE_FIGURE_SHAPES` 把"哪句话在说哪个量"写成 24 条形如
+  `` `([\d,]+)` 个唯一对象 `` 的形状，逐个与 `derive_figures()` 的现值比；不符 → `PROSE_FIGURE_STALE`
+  并带行号；形状在入口里已经找不到 → `PROSE_FIGURE_SHAPE_DEAD`（表项跟着句子一起腐烂才算数）。
+- 反向还有一半步：散文里出现一个**恰好等于某个派生值**又没有绑到形状上的数 → `PROSE_FIGURE_UNBOUND`，
+  要么补形状要么写进 `PROSE_FIGURE_COINCIDENTAL` 具名豁免（连理由一起），豁免形状失效 → `PROSE_FIGURE_EXEMPT_DEAD`。
+  这一半拦的是"下一处即将腐烂的抄件"，今天看不出错的那种。
+- 人群是先数出来再设计的，不是设计完再找例子：3 位以上散文数字 58 个，其中 19 个等于某个派生值；
+  把地板降到 2 位再多出 8 个，6 个是真抄件（`93`、`80`、`48`、`30`、`23` 那几处），1 个是巧合
+  （`96`/`23` 个 ref——git 的 ref 条数和 `authority_index_entries` 现值同为 23），已具名豁免并写了理由。
+  **地板停在 2 位**：1 位数在这份入口里大量是日期、章节号和"3 个 pack"，绑上去得到的是一份读不下去的清单。
+
+同一条线索往下读，入口里还有两处是我自己发现的（复审者没看到，因为它读的是散文不是收据列）：
+§二 那一行写"现记 `499 passed / 0 failed / 0 errors`，绑在 `94dd47c`"、§五 第 1 项写"收据现在测 `6b0cfbf`
+（`520 passed…`）"——两句在写下当时都真，现在都不是现行收据。收据读数不是派生键，摘要比不了，
+所以这条按**时态**判：`receipt_claim_findings` 只允许「- 依托提交：」那一行（由 `receipt_line` 现算）说现在时，
+其余地方写出现时态的 `N passed` 即 `RECEIPT_CLAIM_NOT_DERIVED`；点名出处的历史读数（"§15.32 那次重测记 …"）
+继续合法——判据不许逼人删历史。两处散文已改为指向那一行与 运行收据 / 受测候选摘要 两列。
+
+新增四个节点，全在 `tests/unified/test_v29_top_level_entry.py`：
+`::test_a_prose_copy_of_a_derived_figure_that_drifts_is_named`（先把真入口判成 0 findings，再把
+`1212` 改成 `1213` 判出 `PROSE_FIGURE_STALE archive_objects`——没有前半句，后半句可能红在任何别的原因上）、
+`::test_a_prose_duplicate_that_no_shape_binds_is_named`、
+`::test_a_shape_or_exemption_kept_past_the_sentence_it_guarded_is_named`（形状表与豁免表各自被判死）、
+`::test_a_present_tense_suite_reading_outside_the_derived_line_is_named`（种一句"收据现在测 …"判红，
+再种一句点名 §15.32 的判绿；克隆里没有命名收据时走的是"这守卫什么都不说"那条断言，不是 skip）。
+声明节点数 590 → 594：本节 +4，§15.50 +3（`test_v20` 那三个）。`--allow` 之前先证明人群只在该动的文件上动。
+`scripts/check_project_current.py --check`、`scripts/build_test_census.py --check`、
+`scripts/measure_citation_population.py --check-own-cites` / `--check-register-cites`、
+`scripts/build_audit_state.py --check`、`scripts/check_public_hazards.py` 在落地前全部 rc=0。
+
+本节之后仍欠的（不改色）：复审的运行时腿要在**能建临时目录**的沙箱里重跑（`workspace-write` 指向一份克隆，
+被审 SHA 不变），A00#1 在此之前保持 `PARTIAL` 并写明原因；20 个 closure 格的 独立复审 保持 `NOT_RUN`；
+`L10#0` 的 32 行仍等 owner 具名判决；克隆重跑那一个去节点在改绑后的提交上复跑，读数进下一节。

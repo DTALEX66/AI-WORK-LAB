@@ -60,7 +60,7 @@ crlf_tracked_files = 121
 distinct_paths_design = 4055
 distinct_paths_union = 6774
 distinct_paths_work = 2734
-lf_tracked_files = 737
+lf_tracked_files = 738
 route_endpoints = 164
 source_rows_design = 4476
 source_rows_total = 7210
@@ -68,7 +68,7 @@ source_rows_work = 2734
 spdx_claimed_files = 229
 spdx_malformed_lines = 0
 suite_test_files = 39
-suite_test_nodes = 593
+suite_test_nodes = 594
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->
@@ -152,7 +152,7 @@ unsettled_files = 237
 | 真实宿主写入 / 模型推理 / 真实私有数据迁移 / 真人专业验收 | `NOT_RUN`，按边界如实记录 | `docs/CODEX-AUDIT-ENTRY.md` §5、`migration/deferral-register.json` |
 | 系统级出站隔离 | 未证明（无防火墙/沙箱配置；云端会话模型上下文可离开本机这一限制仍成立） | `INTEGRATION_POLICY.md` §2 |
 | workbench bundle | 离线可重建，产物已重新被 Git 跟踪；`scripts/check_workbench_bundle_drift.py` 现判 MATCH / DRIFT / IGNORED_ARTIFACT / BUNDLE_UNTRACKED / `*_ABSENT` | `tests/unified/test_v33_workbench_bundle_truth.py` |
-| 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。收据已在这两个修复之后重取：现记 `499 passed / 0 failed / 0 errors`，绑在 `94dd47c`（摘要 `1467eeaea846ac08…`），改绑之后只有 `docs/` 与 `migration/` 的字节的动过 | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
+| 顶层入口自身 | 本文件与 `README.md`、`AGENTS.md` 是本轮新建；`HEAD 2312963` 那 `2 failed` 已全部定位并各自修好（`test_v16…does_not_relamp_them`：寄存器里一个行号指针随 `migrate_sources.py` 漂移，重发布；`test_v23…machine_independent_part`：台账查键只按本机绝对根剥前缀，克隆里剥不出来，改为按路径结尾取且要求唯一）。收据已在这两个修复之后重取，它测的是哪棵树、读数多少，一律看本文开头「- 依托提交：」那一行与 `migration/audit-item-closure.csv` 的 运行收据 / 受测候选摘要 两列，本行不抄第三份（抄过的地方在下一次改绑后就变成了假陈述，§15.51 记了这一次） | `.project-local/audit/20261031-fullclosure/CLOSURE-STATE.json`、`docs/CODEX-AUDIT-ENTRY.md` §15.23 |
 | 归档原件的唯一副本 | `1131` 个对象（约 `1.06 GB`）目前只在统一归档里有；归档自己的 `完整性校验报告.json` 仍写 `source_file_set_unchanged: true`，而它点名的 `2031` 条来源路径现在**一个都不存在**（`D:\All projects\Record` 已消失，`xiangmuguidang` 是空目录）——那句话对今天的磁盘已不成立，归档不可再被当作可清理的副本 | `migration/archive-object-reconciliation-20261101.csv`、`_归档管理\完整性校验报告.json` |
 | 删掉两个来源仓之后本仓还能不能独立跑 | **切割机制成立且有守卫**：三根收进 `scripts/source_roots.py` 一处解析，设 `AWL_SOURCE_ROOT_WORK/DESIGN/ARCHIVE` 指向不存在的路径即全仓进入切割态，**一个字节都不改**；闸门在两态下各自给出可区间的具名结论（`SOURCE_REPO_ABSENT`/rc=3、无收据与无安装报告的具名拒绝、真漂移 rc=1 三类互不塌陷），由 `tests/unified/test_v31_independence_cut.py` 与 `tests/unified/test_v23_clone_repro.py`（克隆里真跑 clone-safe 集）守着。**本轮没有重测的一件事**：§15.32 那次在克隆里读到覆盖登记的行人群比 published 多两行（根因指向 `copied_index()` 的绝对路径身份判等，后来按 §15.33+ 修）——本机 `build_source_coverage.py --check` 现读 rc=0，但**克隆内的人群 equality 没有任何测试覆盖**，所以这一格只能说"本轮未重测"，不能说"已解决"；要跨机复现必须到克隆里跑那条 `--check`，本机观测不到 | `tests/unified/test_v23_clone_repro.py`、`tests/unified/test_v31_independence_cut.py`、docs/CODEX-AUDIT-ENTRY.md §15.32 |
 
@@ -188,7 +188,7 @@ unsettled_files = 237
 
 ## 五、下一步
 
-1. ~~重取全量收据并改绑登记表~~ 本轮又做了两遍，因为每次收紧都是活代码：收据现在测 `6b0cfbf`（`520 passed, 1 warning, 3 subtests passed in 1599.45s (0:26:39)`，摘要 `add908836cce1b3d…`，候选 7284 文件，`tracked_bytes_moved_during_run` 为空），`migration/audit-item-closure.csv` 的收据列、`docs/AUDIT-STATE.json`、`migration/task-acceptance.csv`、`config/blocker-register.json` 与入口数字段一起按这张收据重发布。
+1. ~~重取全量收据并改绑登记表~~ 每一轮收紧都要再来一遍，因为收紧本身就是活代码。收据所测的那棵树只写在两处：本文开头「- 依托提交：」那一行（由 `scripts/check_project_current.py::receipt_line` 从收据现算）和 `migration/audit-item-closure.csv` 的 运行收据 / 受测候选摘要 / 测量时刻UTC 三列。本节从前抄过第三份，抄的那份在两次改绑之后就成了假陈述——外部复审在 `f616fb5` 抓到的是同类（散文抄件 与派生块 不符），这一格是它没看到但同一形状的另一处，见 §15.51。
    判据口径沿用上一轮定下的那条并且仍然成立：收据不要求点名 HEAD，只要求「收据的提交是 HEAD 的祖先，且其间每个动过的跟踪文件都是文档或生成登记表，逐个点名」；代码或测试出现在那个区间就是 `FAIL`。
    本轮同时记下两个真实缺口，不用「闭环」二字把它们盖掉：① `migration/source-coverage-*.csv` 在克隆里重建出的行人群比 published 大（work 2764 vs 2734、design 4488 vs 4476），根因指向 `copied_index()` 以绝对路径相等判「同一条去向」，换机器就不等；② `apps/workbench` 的 bundle 仍无法离线重建，两个读 bundle 的JS 闸门仍在校验旧字节（②已在 §15.50 收口：根因是通用 `build/` 忽略规则把该产物吞成看不见，重建本身一直可行）。两条都在 docs/CODEX-AUDIT-ENTRY.md 有对应小节。
 2. owner 对 `237` 条待裁决来源做批量判定（含 32 条阻断 `L10#0` 的）。
