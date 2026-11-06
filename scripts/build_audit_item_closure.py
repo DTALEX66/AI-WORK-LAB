@@ -420,17 +420,71 @@ def _definitions() -> dict[str, tuple[str, str, str]]:
     return found
 
 
-def _receipt() -> dict:
-    if not RECEIPT.is_file():
-        return {}
-    document = json.loads(RECEIPT.read_text(encoding="utf-8-sig"))
-    head = document.get("head_commit", "")
-    if head:
-        proven = subprocess_ancestor(head)
-        if not proven:
-            raise SystemExit("receipt head %s is not an ancestor of this tree -- the receipt "
-                             "describes a different candidate; re-run it" % head[:12])
-    return document
+def suite_is_green(document: dict) -> bool:
+    """Did this measurement end with nothing failing? Absence of the field is not green either."""
+    suite = document.get("suite") or {}
+    return not suite.get("failed") and not suite.get("errors")
+
+
+def _label(document: dict) -> str:
+    suite = document.get("suite") or {}
+    return "%s… @ %s (failed=%s errors=%s)" % (
+        str(document.get("candidate_digest", ""))[:16], str(document.get("head_commit", ""))[:12],
+        suite.get("failed", "?"), suite.get("errors", "?"))
+
+
+def candidate_receipts() -> list[tuple[str, dict, Path]]:
+    """Every measurement this machine could bind the register to, newest first, live included.
+
+    The live ``CLOSURE-STATE.json`` is re-written by every run and the archive holds one copy per
+    candidate digest, so both are candidates; `generated_at` decides the order because mtime
+    follows copies. The path travels with the document, because archiving the chosen measurement
+    means copying *that* file -- copying whatever happens to be live would publish one run's digest
+    next to another run's bytes.
+    """
+    found: dict[str, tuple[str, dict, Path]] = {}
+    sources = [("live", RECEIPT)]
+    if ARCHIVE_DIR.is_dir():
+        sources += [("archive", path) for path in ARCHIVE_DIR.glob("CLOSURE-STATE-*.json")]
+    for origin, path in sources:
+        try:
+            document = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
+        digest = str(document.get("candidate_digest", "")) or str(path)
+        found.setdefault(digest, (origin, document, path))
+    return sorted(found.values(),
+                  key=lambda item: str(item[1].get("generated_at", "")), reverse=True)
+
+
+def _receipt() -> tuple[dict, Path | None, list[str]]:
+    """Choose which measurement the register may rest on: the newest one, and only a green one.
+
+    Until this function existed, the choice was simply "whichever file is live". That let a
+    re-publish bind every row to a run that ended in failures -- measured here, not argued: receipt
+    #6 finished `5 failed`, I re-published the registers minutes later, and every row then cited a
+    measurement that certified nothing. Thirteen gates stayed green through that, because
+    ``--check`` reproduced the same red binding it was asked to verify; the only thing that noticed
+    was a test inside the *next* full suite, 47 minutes into receipt #7. Refusing at write time
+    costs milliseconds, and it turns `build_audit_item_closure.py --check` into the gate that says
+    "this register is bound to a failed measurement" the second somebody tries to publish it.
+    """
+    skipped = []
+    for origin, document, path in candidate_receipts():
+        if not suite_is_green(document):
+            skipped.append(_label(document))
+            continue
+        head = document.get("head_commit", "")
+        if head and not subprocess_ancestor(head):
+            # a candidate from another line of development is not a fallback; it is a different
+            # subject, and reading it would describe bytes nobody measured together. Named in the
+            # report instead of raised, because a stray archive from an old branch is a fact about
+            # the archive directory, not a reason the builder may stop producing the register.
+            skipped.append(_label(document) + "（不在本分支上）")
+            continue
+        return document, path, skipped
+    return {}, None, skipped
+
 
 
 def subprocess_ancestor(sha: str) -> bool:
@@ -552,11 +606,11 @@ def main(argv: list[str]) -> int:
               file=sys.stderr)
         return 2
 
-    receipt = _receipt()
+    receipt, receipt_source, skipped_red = _receipt()
     if args.check and OUT_CSV.is_file():
-        # Verify the binding the register actually declares. Comparing against "whichever
-        # receipt happens to be newest" would make every later measurement run fail its own
-        # guard, because a refresh legitimately moves the live file.
+        # Verify the binding the register actually declares -- but only if that binding is one the
+        # builder is still allowed to make. Reproducing a red receipt because the published file
+        # names one is how `--check` stayed green while the suite said the register certified nothing.
         named = _published_rows()
         values = {row.get("运行收据", "") for row in named}
         if named and len(values) == 1:
@@ -566,8 +620,8 @@ def main(argv: list[str]) -> int:
                 if archived is not None:
                     document = json.loads(archived.read_text(encoding="utf-8-sig"))
                     head = document.get("head_commit", "")
-                    if not head or subprocess_ancestor(head):
-                        receipt = document
+                    if (not head or subprocess_ancestor(head)) and suite_is_green(document):
+                        receipt, receipt_source = document, archived
     archive = UNMEASURED
     if receipt:
         archive = "receipt-archive/CLOSURE-STATE-%s.json" % receipt["candidate_digest"][:16]
@@ -576,7 +630,11 @@ def main(argv: list[str]) -> int:
             # publishes the register, not to every verification of it
             ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
             destination = ARCHIVE_DIR / Path(archive).name
-            destination.write_bytes(RECEIPT.read_bytes())
+            if receipt_source is not None and (
+                    not destination.is_file()
+                    or destination.resolve() != receipt_source.resolve()):
+                # copy the bytes of the measurement being cited, not of whatever is live right now
+                destination.write_bytes(receipt_source.read_bytes())
     rows = [_row(identifier, ROWS[identifier]["claim"], definitions[identifier], receipt,
                  archive)
             for identifier in sorted(ROWS)]
@@ -618,12 +676,18 @@ def main(argv: list[str]) -> int:
         frozen_acceptance_ids=sorted(frozen),
         v_ids_owned_by="tests/unified/test_v01_v10_register.py",
         results={result: sum(1 for r in rows if r["当前结果"] == result) for result in RESULTS},
-        independent_review_cell=INDEPENDENT_REVIEW,
+        independent_review_cell={state: sum(1 for r in rows
+                                            if r["独立复审"].split(" @")[0] == state)
+                                 for state in sorted({r["独立复审"].split(" @")[0] for r in rows})},
         independent_review_records=len(independent_reviews().get("records", [])),
         independent_review_items=sum(len(record.get("verified_items", []))
                                      for record in independent_reviews().get("records", [])),
         pass_with_unresolved=downgraded,
         receipt_present=bool(receipt),
+        # Which measurements were looked at and refused. Without this the refusal is invisible: a
+        # reader of a register bound to an older run cannot tell whether the newer one was red
+        # (correct to skip) or simply never considered (a bug in the chooser).
+        red_receipts_not_bound=skipped_red,
         receipt_columns_exempted=sorted(exempted),
         register_drift=drift)
     summary["verdict"] = ("DRIFT" if drift else

@@ -254,6 +254,103 @@ def test_the_builder_refuses_to_publish_a_pass_that_names_nothing_unverified(mon
         "现值这一趟也被同一条拒绝拦了：那条判断没有只看被种坏的那一行"
 
 
+def _plant_receipt(path, digest, head, when, failed):
+    """A measurement document with every section a row may be asked to read out of it.
+
+    Shaped like the real one on purpose: `_row` pulls `suite` plus whichever step the row names
+    (`gate`, `boot_probe`, `migration`, ...), and a fixture that only carries the fields the first
+    row happens to use would make the chooser look broken for the wrong reason.
+    """
+    steps = {name: {"exit_code": 0} for name in
+             ("gate", "boot_probe", "migration", "registers", "source_repos")}
+    steps["suite"] = {"exit_code": 1 if failed else 0, "failed": failed, "errors": 0,
+                      "passed": 600, "line": "%d failed, 600 passed" % failed}
+    document = dict(candidate_digest=digest + "0" * (64 - len(digest)), head_commit=head,
+                    generated_at=when, candidate_files=7000, **steps)
+    path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def test_a_failed_measurement_is_refused_as_the_register_binding(tmp_path, monkeypatch):
+    """A run that ended in failures may not be what the register cites -- chosen at write time.
+
+    Measured, not hypothesised: receipt #6 finished `5 failed`, a re-publish minutes later bound
+    every row to it, all thirteen gates stayed green (``--check`` faithfully reproduced the red
+    binding it was handed), and the only thing that objected was a test inside the following full
+    suite -- 47 minutes and one wasted receipt later. So the chooser has to refuse, and this node
+    has to show the refusal is not decoration.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_audit_item_closure as closure
+
+    archive = tmp_path / "receipt-archive"
+    archive.mkdir()
+    green = _plant_receipt(archive / "CLOSURE-STATE-aabbccddeeff0011.json",
+                           "aabbccddeeff0011", "1" * 40, "2026-11-06T15:00:00+00:00", 0)
+    red_live = _plant_receipt(tmp_path / "CLOSURE-STATE.json",
+                              "eeff001122334455", "2" * 40, "2026-11-06T16:00:00+00:00", 5)
+    monkeypatch.setattr(closure, "RECEIPT", red_live)
+    monkeypatch.setattr(closure, "ARCHIVE_DIR", archive)
+    monkeypatch.setattr(closure, "subprocess_ancestor", lambda sha: True)
+
+    document, source, skipped = closure._receipt()
+    assert document["candidate_digest"].startswith("aabbccddeeff0011"), (
+        "绑到的不是那张全绿的测量：" + str(document.get("candidate_digest"))[:16])
+    assert source == green, ("带回了绿的文档却指向别的路径，归档就会复制错文件的字节" % str(source))
+    assert skipped and "failed=5" in skipped[0], skipped
+
+    # ... and when nothing is green, nothing is bound: an empty choice is the honest answer,
+    # because UNMEASURED rows say so while a stale binding would look like a certification.
+    green.unlink()
+    document, source, skipped = closure._receipt()
+    assert document == {} and source is None, ("只剩红收据却还是绑了一张：失败的测量被洗成了登记依据"
+                                              % str(document)[:80])
+    assert len(skipped) == 1, skipped
+
+
+def test_check_refuses_to_reproduce_a_binding_to_a_failed_run(tmp_path, monkeypatch):
+    """``--check`` may not launder a published-but-red binding back into a green verdict.
+
+    Reproducing what is on disk is the point of the mode, and that is exactly how the red binding
+    survived thirteen green gates: the register named the failed run, ``--check`` adopted the file it
+    named, the bytes matched, rc 0. So the override that honours the declared binding has to apply
+    the same green test as the chooser -- and this node proves the difference is the guard, not the
+    fixture, by turning the guard off and showing the same table then reproduces cleanly.
+    """
+    sys.path.insert(0, str(TARGET_ROOT / "scripts"))
+    import build_audit_item_closure as closure
+
+    archive = tmp_path / "receipt-archive"
+    archive.mkdir()
+    red = _plant_receipt(archive / "CLOSURE-STATE-8899aabbccddeeff.json", "8899aabbccddeeff",
+                         "2" * 40, "2026-11-06T16:00:00+00:00", 5)
+    green = _plant_receipt(tmp_path / "CLOSURE-STATE.json", "0011223344556677",
+                           "1" * 40, "2026-11-06T17:00:00+00:00", 0)
+    published = tmp_path / "audit-item-closure.csv"
+
+    monkeypatch.setattr(closure, "RECEIPT", red)           # publish while the failed run is live
+    monkeypatch.setattr(closure, "ARCHIVE_DIR", archive)
+    monkeypatch.setattr(closure, "OUT_CSV", published)
+    monkeypatch.setattr(closure, "subprocess_ancestor", lambda sha: True)
+    monkeypatch.setattr(closure, "suite_is_green", lambda document: True)   # the pre-fix chooser
+    assert closure.main(["build_audit_item_closure.py"]) == 0
+    assert "receipt-archive/CLOSURE-STATE-8899aabbccddeeff" in published.read_text(
+        encoding="utf-8-sig"), "这份表没有被绑到红收据上，后面两步就都在测别的东西"
+
+    # Same table, same machine, guard restored: the binding is refused, so the table no longer
+    # re-derives and the gate says so.
+    monkeypatch.undo()
+    monkeypatch.setattr(closure, "RECEIPT", green)
+    monkeypatch.setattr(closure, "ARCHIVE_DIR", archive)
+    monkeypatch.setattr(closure, "OUT_CSV", published)
+    monkeypatch.setattr(closure, "subprocess_ancestor", lambda sha: True)
+    monkeypatch.setattr(closure, "archived_receipt_copy", lambda named: red if named else None)
+    assert closure.main(["build_audit_item_closure.py", "--check"]) != 0, (
+        "登记表命名一张红收据，--check 却照样回 0：这道闸门还在替失败的测量作证")
+    assert published.read_text(encoding="utf-8-sig").count(
+        "CLOSURE-STATE-8899aabbccddeeff") == 20, "--check 把登记表写了"
+
+
 def test_the_isolated_install_record_is_tracked_and_self_describing():
     assert VERDICT.is_file(), "F06/A08 的安装判定必须进仓"
     document = json.loads(VERDICT.read_text(encoding="utf-8-sig"))
