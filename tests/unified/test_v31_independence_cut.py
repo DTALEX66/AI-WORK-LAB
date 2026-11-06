@@ -564,7 +564,13 @@ def test_a_tree_without_the_receipt_refuses_by_name_and_still_sees_drift(tmp_pat
 
     closure = _module("build_audit_item_closure")
     closure.RECEIPT = tmp_path / "absent-CLOSURE-STATE.json"       # a clone has no live receipt
-    closure.archived_receipt_copy = lambda named: None             # ... nor the archived copy
+    closure.ARCHIVE_DIR = tmp_path / "absent-receipt-archive"      # ... and no archive to fall back on
+    closure.archived_receipt_copy = lambda named: None             # ... nor the named archived copy
+    # The chooser now reads the archive directory, so "no receipt here" is three paths, not one.
+    # Asserting the scan itself is what keeps this from drifting back: if a future edit points one
+    # of these at the real tree, the candidate list stops being empty and says so right here.
+    assert closure.candidate_receipts() == [], (
+        "这一棵树被当成没有测量来看，可候选清单里却有东西：" + str(closure.candidate_receipts())[:200])
     buffer = io.StringIO()
     with contextlib.redirect_stdout(buffer):
         rc = closure.main([sys.argv[0], "--check"])
@@ -575,6 +581,16 @@ def test_a_tree_without_the_receipt_refuses_by_name_and_still_sees_drift(tmp_pat
     assert payload["register_drift"] is False, payload
     assert sorted(payload["receipt_columns_exempted"]) == sorted(closure.RECEIPT_COLUMNS), payload
 
+    # Non-vacuity control for the empty-candidate assert above: with the archive directory pointed
+    # back at this machine, the very same module must find measurements -- otherwise "the scan is
+    # empty" would also be satisfied by a scan that cannot see anything at all.
+    closure.ARCHIVE_DIR = (TARGET_ROOT / ".project-local" / "audit" / "20261031-fullclosure"
+                           / "receipt-archive")
+    found = closure.candidate_receipts()
+    assert found, "把归档目录指回本机也没有找到任何测量：那条空断言是空的"
+    assert closure._receipt()[0], ("本机的归档里没有一张全绿测量，"
+                                   "那条 rc=3 的断言因此可能被拒绝逻辑而不是缺席撑着")
+
     def drift_with_no_receipt():
         """Same machine state (no receipt), one published claim changed on the rebuild side.
 
@@ -584,6 +600,7 @@ def test_a_tree_without_the_receipt_refuses_by_name_and_still_sees_drift(tmp_pat
         """
         drifting = _module("build_audit_item_closure")
         drifting.RECEIPT = tmp_path / "absent-CLOSURE-STATE.json"
+        drifting.ARCHIVE_DIR = tmp_path / "absent-receipt-archive"
         drifting.archived_receipt_copy = lambda named: None
         identifier = sorted(drifting.ROWS)[0]
         drifted = dict(drifting.ROWS)

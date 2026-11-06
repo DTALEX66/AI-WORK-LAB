@@ -1913,6 +1913,45 @@ def _design_result_document(ctx: dict, result_id: str, **override) -> dict:
 _DROP = object()
 
 
+def test_the_five_staleness_states_are_all_reachable_and_two_are_not_the_absent_one():
+    """The ordering reports five words, and this file can now reach every one of them.
+
+    ``staleness_assessment`` documents why an unparseable instant gets its own state instead of
+    borrowing the absent one: ``parse_instant`` answers ``None`` to both, and those are two
+    different facts. Nothing walked those two branches -- the HTTP surface refuses a malformed
+    ``producedAt`` earlier (as ``RESULT_PRODUCED_AT_INVALID``, which test_v05 asserts) and the
+    server always stamps the handoff (``backend/v1.py`` writes ``declared_at: _now()``), so no
+    request can produce an undated handoff. Reading the function with the fact shapes it names is
+    therefore the only honest way to cover them, and the final assert is what keeps the state list
+    from growing a fifth word nobody can reach.
+    """
+    from backend.core import binding as rules
+
+    facts = {"handoff_declared_at": "2026-11-06T09:00:00+00:00"}
+    dated = {"producedAt": "2026-11-06T10:00:00+00:00"}
+    assert rules.staleness_assessment(dated, facts) == "CURRENT"
+    assert rules.staleness_assessment({"producedAt": "2026-11-06T08:00:00+00:00"},
+                                      facts) == "STALE"
+    assert rules.staleness_assessment({}, facts) == "NOT_EVALUATED_PRODUCED_AT_ABSENT"
+
+    # the two that no node reached before this one
+    assert rules.staleness_assessment({"producedAt": "yesterday-ish"}, facts) == \
+        "NOT_EVALUATED_PRODUCED_AT_INVALID", "写坏了的时间戳被说成没写：那是两个不同的事实"
+    assert rules.staleness_assessment(dated, {}) == "NOT_EVALUATED_HANDOFF_UNDATED", \
+        "交接侧没有日期被折算成结果新鲜或不新鲜：比较根本没发生"
+    assert rules.staleness_assessment(dated, {"handoff_declared_at": "not-a-time"}) == \
+        "NOT_EVALUATED_HANDOFF_UNDATED"
+
+    reachable = {rules.staleness_assessment(document, given)
+                 for document in (dated, {}, {"producedAt": "2026-11-06T08:00:00+00:00"},
+                                  {"producedAt": "yesterday-ish"}, {"producedAt": "   "})
+                 for given in (facts, {}, {"handoff_declared_at": None},
+                               {"handoff_declared_at": "not-a-time"})}
+    assert reachable == set(rules.STALENESS_STATES), (
+        "状态集合里出现了这个文件走不到的值（要么是实现死了，要么是多写了一个没人答的词）："
+        + str(sorted(set(rules.STALENESS_STATES) - reachable)))
+
+
 def test_the_import_receipt_says_whether_freshness_was_judged_at_all(server):
     """An undated design result is importable, and must not be able to look verified-current.
 
