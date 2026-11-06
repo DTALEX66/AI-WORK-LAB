@@ -1858,3 +1858,89 @@ def test_design_prompt_store_guard_answers_instead_of_a_quiet_201(server, monkey
     assert all(row["executed"] is False for row in listed["results"]), listed["results"]
     assert _material_ids_on_both_surfaces(server, project_id) == surfaces
 
+
+def _handed_off_attempt(server, tag: str) -> dict:
+    """project -> plan -> task -> attempt -> pack -> handoff: the design flavour's whole prefix."""
+    status, project = server.client.post("/api/v1/projects", {
+        "name": "设计样例 " + tag, "source": "design", "data_origin": "test"})
+    assert status == 201, project
+    design_project_id = project["root_path"]
+    created = _create_plan(server, design_project_id)
+    plan_id = created["plan"]["plan_id"]
+
+    status, task = server.client.post("/api/v1/tasks", {
+        "project_id": project["project_id"], "kind": "design",
+        "title": "设计样例：分镜方案修订执行 " + tag,
+        "input_refs": [{"kind": "design_plan_ref", "design_project_id": design_project_id,
+                        "plan_id": plan_id},
+                       {"kind": "target_profile_ref", "profile_key": PROFILE_KEY,
+                        "entry_mode": "MANUAL_COPY"}],
+        "acceptance": {"professional_required": True, "delivery": "分镜表一份",
+                       "data_origin": "test"}})
+    assert status == 201, task
+    status, attempt = server.client.post(f"/api/v1/tasks/{task['task_id']}/attempts",
+                                         {"idempotency_key": "att-" + tag})
+    assert status == 201, attempt
+    attempt_id = attempt["attempt_id"]
+    status, pack_response = server.client.post(f"/api/v1/attempts/{attempt_id}/pack", {})
+    assert status == 201, pack_response
+    pack_ref = pack_response["pack_ref"]
+    assert pack_ref["flavor"] == "design_task_pack"
+    #: The version the pack actually pinned: derived from the server's own answer, never
+    #: assumed to be one revision past whatever the create call returned.
+    pinned_revision = pack_ref["plan_revision"]
+    target_version = "plan-r" + str(pinned_revision)
+    status, handoff = server.client.post(f"/api/v1/attempts/{attempt_id}/handoff-declarations", {
+        "claim": "userDeclaredHandoff", "target_version": target_version,
+        "claimed_recipient": "外部设计工具（人工复制）", "actor": "user"})
+    assert status == 200, handoff
+    return {"attempt_id": attempt_id, "handoff": handoff, "plan_id": plan_id,
+            "revision": pinned_revision, "design_project_id": design_project_id,
+            "target_version": target_version}
+
+
+def _design_result_document(ctx: dict, result_id: str, **override) -> dict:
+    document = {"schemaVersion": "ai-work-lab/design-result/v1", "resultId": result_id,
+                "designProjectId": ctx["design_project_id"], "planId": ctx["plan_id"],
+                "planRevision": ctx["revision"], "targetVersion": ctx["target_version"],
+                "producedAt": produced_after(ctx["handoff"]),
+                "summary": "外部工具已按修订执行（测试夹具）",
+                "evidenceRefs": ["design-plan-readback:" + ctx["plan_id"]]}
+    document.update(override)
+    return {k: v for k, v in document.items() if v is not _DROP}
+
+
+_DROP = object()
+
+
+def test_the_import_receipt_says_whether_freshness_was_judged_at_all(server):
+    """An undated design result is importable, and must not be able to look verified-current.
+
+    Owner has not ruled on making ``producedAt`` mandatory -- that would tighten the contract
+    every external tool writes against -- so the field stays optional here. What changed is the
+    silence: the ordering check used to be skipped without saying so, which made "no problems"
+    readable as "answers this handoff, and is current". The 201 now carries the state of that
+    one comparison, and the three ways it can end (dated after, dated before, undated) get three
+    different words. The work flavour is not symmetrical and is not made so here: its validator
+    already refuses an undated document outright.
+    """
+    dated = _handed_off_attempt(server, "dated")
+    status, imported = server.client.post(f"/api/v1/attempts/{dated['attempt_id']}/results", {
+        "result": _design_result_document(dated, "res-dated"), "data_origin": "test"})
+    assert status == 201, imported
+    assert imported["staleness"] == "CURRENT", imported
+
+    undated = _handed_off_attempt(server, "undated")
+    status, silent = server.client.post(f"/api/v1/attempts/{undated['attempt_id']}/results", {
+        "result": _design_result_document(undated, "res-undated", producedAt=_DROP),
+        "data_origin": "test"})
+    assert status == 201, silent
+    assert silent["staleness"] == "NOT_EVALUATED_PRODUCED_AT_ABSENT", silent
+
+    stale = _handed_off_attempt(server, "stale")
+    status, refused = server.client.post(f"/api/v1/attempts/{stale['attempt_id']}/results", {
+        "result": _design_result_document(stale, "res-stale", producedAt="2000-01-01T00:00:00+00:00"),
+        "data_origin": "test"})
+    assert status == 422, refused
+    assert refused["error"] == "RESULT_STALE", refused
+

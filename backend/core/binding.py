@@ -52,6 +52,43 @@ REVISION_POLICIES = ("LATEST_AT_PACK", "IMMUTABLE_PIN")
 #: NOT_APPLICABLE — "not yet true" is not the same as "no longer true".
 CURRENT_VALIDITY = ("CURRENT", "SUPERSEDED", "STALE", "UNVERIFIABLE", "NOT_APPLICABLE")
 
+#: What the handoff-vs-result ordering was able to say about one document. The two
+#: ``NOT_EVALUATED_*`` states exist because an absent instant used to mean the comparison
+#: simply did not run, so "no problems" was read as "fresh". Owner has not ruled on making
+#: the field mandatory (that tightens the external delivery contract), so an undated result
+#: stays importable -- but it can no longer be reported as verified current.
+STALENESS_STATES = ("CURRENT", "STALE", "NOT_EVALUATED_PRODUCED_AT_ABSENT",
+                    "NOT_EVALUATED_PRODUCED_AT_INVALID", "NOT_EVALUATED_HANDOFF_UNDATED")
+
+
+def declared_instant(document, *names):
+    """The first of `names` the document actually carries, as text or None."""
+    for name in names:
+        if document.get(name) is not None:
+            return document.get(name)
+    return None
+
+
+def staleness_assessment(document, facts) -> str:
+    """What the handoff-vs-result ordering could say, one of `STALENESS_STATES`.
+
+    ``validate_design_result`` still owns the refusal; this exists so the ordering can be
+    reported as *not evaluated* instead of leaving an undated result indistinguishable from a
+    fresh one. An unparseable instant gets its own state rather than borrowing the absent one,
+    because ``parse_instant`` answers ``None`` to both and those are two different facts.
+    """
+    stated = declared_instant(document, "producedAt", "produced_at")
+    produced = parse_instant(stated)
+    if produced is None:
+        if not str(stated or "").strip():
+            return "NOT_EVALUATED_PRODUCED_AT_ABSENT"
+        return "NOT_EVALUATED_PRODUCED_AT_INVALID"
+    declared_at = parse_instant((facts or {}).get("handoff_declared_at"))
+    if declared_at is None:
+        return "NOT_EVALUATED_HANDOFF_UNDATED"
+    return "STALE" if produced < declared_at else "CURRENT"
+
+
 _ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -222,15 +259,15 @@ def validate_design_result(document, facts, *, allowed_roots) -> list[str]:
                                      "pinned plan revision nor the pinned binding document; a digest "
                                      "the server cannot re-derive is not evidence"))
 
-    declared_produced = document.get("producedAt", document.get("produced_at"))
-    produced = parse_instant(declared_produced)
-    if produced is None and str(declared_produced or "").strip():
+    declared_produced = declared_instant(document, "producedAt", "produced_at")
+    if parse_instant(declared_produced) is None and str(declared_produced or "").strip():
         spelling = "producedAt" if "producedAt" in document else "produced_at"
         problems.append(_problem("RESULT_PRODUCED_AT_INVALID", spelling + " is not an ISO instant"))
-    declared_at = parse_instant(facts.get("handoff_declared_at"))
-    if produced is not None and declared_at is not None and produced < declared_at:
-        problems.append(_problem("RESULT_STALE", "result was produced at " + produced.isoformat()
-                                 + " before the handoff was declared at " + declared_at.isoformat()
+    if staleness_assessment(document, facts) == "STALE":
+        problems.append(_problem("RESULT_STALE", "result was produced at "
+                                 + parse_instant(declared_produced).isoformat()
+                                 + " before the handoff was declared at "
+                                 + parse_instant(facts.get("handoff_declared_at")).isoformat()
                                  + "; it answers an earlier handoff"))
 
     target_version = document.get("targetVersion")

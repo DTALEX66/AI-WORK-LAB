@@ -1044,7 +1044,9 @@ class V1API:
             origin_chain=origin_chain, digest_vocabulary=DIGEST_V2)
         attempt = self.unified.update_attempt(attempt["attempt_id"],
                                               execution_state="RESULT_RECEIVED")
-        return handler.send_json(201, {"result": result, "attempt": attempt})
+        return handler.send_json(201, {"result": result, "attempt": attempt,
+                                       "staleness": binding_rules.staleness_assessment(
+                                           result_doc, facts)})
 
     def _result_problems(self, result_doc, task, attempt, facts):
         """The shared half plus each domain's own validator. Ordered, all collected."""
