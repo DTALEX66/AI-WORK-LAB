@@ -48,6 +48,12 @@ GATES = (
     ("审计项闭环登记表绑在那张命名收据上", ("scripts/build_audit_item_closure.py", "--check")),
     ("离线安装回执与跟踪记录一致", ("scripts/build_isolated_install_verdict.py", "--check")),
     ("审计状态记录不比当前树旧", ("scripts/build_audit_state.py", "--check")),
+    # 2026-11-06: the workbench bundle is a tracked artefact whose bytes nobody outside the suite
+    # compared against the commit's own blob, so "the JS gates are green" was not visible here.
+    # A clone answers by name (no node_modules / no vite), which this audit records as PENDING --
+    # an unmet prerequisite, never a pass.
+    ("workbench 产物字节等于被审提交里的 blob",
+     ("scripts/check_workbench_bundle_drift.py",)),
     ("迁移计划无未登记目标", ("scripts/migrate_sources.py", "--plan")),
 )
 
@@ -269,7 +275,7 @@ def main(argv=None) -> int:
                 "stderr_tail": completed.stderr.strip()[-300:],
                 "note": "a non-zero rc that names nothing is not a designed absence"}
 
-    clauses = [gate(name, (script, flag)) for name, (script, flag) in GATES]
+    clauses = [gate(name, list(argv)) for name, argv in GATES]
     clauses.append({"clause": "截图照片不在仓库里（owner 2026-11-01）",
                     **probe_raster_not_tracked(root)})
     clauses.append({"clause": "历史区每个字节都被某本台账点名（#58）",
