@@ -73,7 +73,7 @@ source_rows_work = 2734
 spdx_claimed_files = 230
 spdx_malformed_lines = 0
 suite_test_files = 40
-suite_test_nodes = 607
+suite_test_nodes = 609
 task_acceptance_clauses = 48
 unsettled_files = 237
 <!-- entry-figures:end -->

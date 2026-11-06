@@ -156,6 +156,81 @@ def test_the_channel_builder_checks_without_writing_and_refuses_an_unknown_flag(
         other.unlink()
 
 
+def test_a_moved_anchor_line_does_not_reach_the_persisted_bytes(tmp_path):
+    """A register whose bytes depend on where a line happens to sit is not re-derivable.
+
+    This is the shape that actually happened, not a hypothetical: editing one bullet near the top of
+    ``PROJECT_CURRENT.md`` moved two rows' anchors from line 214 to line 219, and because the
+    read-out stored that number, the whole channel came back ``DRIFT`` -- ``--check`` rc=1 with every
+    claim in the file still true. The plant here is the same shift; the guard is that a shift must
+    change the live read-out and must not change the written document.
+
+    The second half is what keeps this from being a vacuous pass: with the position left in
+    (the pre-fix shape), the same plant has to move the bytes. Without it, an assertion that "nothing
+    changed" would also pass on a builder that never reads the file at all.
+    """
+    module = importlib.import_module("build_unregistered_adjudications")
+    shipped = CHANNEL.read_bytes()
+    original_check = module.check_cite
+    original_out = module.OUT
+
+    def shifted(cite):
+        record = original_check(cite)
+        if record.get("line") is not None:
+            record["line"] += 5          # what the +5-line edit really did to these two rows
+        return record
+
+    module.check_cite = shifted
+    try:
+        moved = [module.check_cite(row["authority"]).get("line") for row in _channel()["rows"]
+                 if "::#" in row["authority"]]
+        assert any(value is not None for value in moved), moved
+        fixed = tmp_path / "position-dropped.json"
+        module.OUT = fixed
+        module.main([])
+        assert fixed.read_bytes() == shipped, (
+            "锚的**行号**进了登记表字节：被引文件上方一加行，这份表就再也复现不出来")
+
+        kept = tmp_path / "position-kept.json"
+        module.OUT = kept
+        module.NOT_PERSISTED = ()        # the pre-fix shape: the number is stored
+        module.main([])
+        assert kept.read_bytes() != shipped, (
+            "把行号留下也没让字节变——那上面那条断言什么都没证明，这个反例是空的")
+    finally:
+        module.check_cite = original_check
+        module.OUT = original_out
+        module.NOT_PERSISTED = ("line",)
+
+
+def test_the_persisted_channel_carries_no_line_number_at_all():
+    """The prose says these rows have no line-number anchors; the bytes on disk have to agree.
+
+    ``authority`` was already free of ``path:NNN`` (the node above proves each anchor resolves), but
+    the same document still stored a resolved line per row. A reader who was told "0 条行号锚" and
+    then found ``"line": 214`` inside it had been given a claim the file could not keep.
+    """
+    document = json.loads(CHANNEL.read_text(encoding="utf-8"))
+
+    def positions(node, trail="rows"):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "line":
+                    yield "%s.%s" % (trail, key)
+                else:
+                    yield from positions(value, "%s.%s" % (trail, key))
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                yield from positions(value, "%s[%d]" % (trail, index))
+
+    found = list(positions(document))
+    assert found == [], "这些位置存的是行号，登记表因此不可复现：%s" % found[:6]
+    # ... while the question the anchors do answer -- uniqueness of the match -- is still in there
+    assert all("matches" in row["cite_check"] for row in document["rows"]
+               if "fragment" in row["cite_check"]), \
+        "去掉行号时把命中条数也一起去掉了：那就没有东西能说明锚是唯一的"
+
+
 def test_a_proposal_without_a_decider_changes_no_class(tmp_path):
     """Pointing the adjudicator at proposed-only rows must fall through to the pending answer."""
     module = _reloaded_with_channel(tmp_path, decided=[])

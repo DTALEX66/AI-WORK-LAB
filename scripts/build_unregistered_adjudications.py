@@ -6,9 +6,12 @@ attached -- so the decision cost more than the research. This writes the *eviden
 job into a data file and leaves the *decision* half empty:
 
   * ``proposed_category`` is a claim gathered by an agent that read the in-repo files;
-  * ``cite_checked`` records what this script could actually verify: the path exists, the line
-    number is inside the file, and the line is not blank. Semantic equivalence -- "this in-repo
-    file really carries the same contract" -- is NOT verified here and is not claimed anywhere;
+  * ``cite_check`` records what this script could actually verify about the anchor: the path exists,
+    the anchor text is there, and it is there exactly once (``matches``), together with the line it
+    matched (``line_text``). Position is read out and then dropped -- the persisted document carries
+    no line number, because a number is a fact about the last build and would make these bytes
+    unreproducible after any edit above the anchor. Semantic equivalence -- "this in-repo file
+    really carries the same contract" -- is NOT verified here and is not claimed anywhere;
   * ``decided_by`` stays null. Until a named person fills it, the adjudication ladder keeps
     answering ``OWNER_DECISION_PENDING`` and the readiness gate keeps refusing.
 
@@ -118,10 +121,11 @@ def check_cite(cite: str) -> dict:
       Measured here the same day the register was first written -- editing one §五 bullet moved
       two ``PROJECT_CURRENT.md:212`` cites onto a different sentence, and the check still said ok.
     * ``path::name`` -- a top-level definition in a Python file; survives re-indentation.
-    * ``path::#fragment`` -- the line must CONTAIN this text, and the cite reports the line it
-      found. The anchor names its own content, so a moved line resolves to the same sentence and
-      a reworded one stops resolving. Use this for prose and for rows inside generated registers,
-      where a line number is a fact about the last build, not about the claim.
+    * ``path::#fragment`` -- the line must CONTAIN this text, and the read-out reports how many
+      lines carry it plus the text it matched. The anchor names its own content, so a moved line
+      resolves to the same sentence and a reworded one stops resolving. Use this for prose and for
+      rows inside generated registers, where a line number is a fact about the last build, not about
+      the claim.
     """
     if "::" in cite:
         path_text, _, anchor = cite.rpartition("::")
@@ -135,6 +139,13 @@ def check_cite(cite: str) -> dict:
                 lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
                 found = [index for index, text in enumerate(lines, start=1) if fragment in text]
                 record["anchor_found"] = bool(found)
+                # How many lines carry the anchor is a fact about the anchor and the text, so it is
+                # what gets persisted. Which line number it landed on is a fact about the last build:
+                # it moves the moment anyone edits the cited file above the anchor, and a register
+                # that stores it stops being re-derivable. Measured, not argued -- editing one bullet
+                # at the top of `PROJECT_CURRENT.md` shifted two rows from line 214 to line 219 and
+                # the whole document came back `DRIFT` while every claim in it stayed true.
+                record["matches"] = len(found)
                 if len(found) == 1:
                     record["line"] = found[0]
                     record["line_text"] = lines[found[0] - 1].strip()[:160]
@@ -175,10 +186,21 @@ def check_cite(cite: str) -> dict:
 
 def cite_resolves(record: dict) -> bool:
     if "fragment" in record:
-        return record["path_exists"] and record["anchor_found"] and record["line"] is not None
+        return record["path_exists"] and record["anchor_found"] and record["matches"] == 1
     if "symbol" in record:
         return record["path_exists"] and record["symbol_defined"]
     return record["path_exists"] and record["line_in_range"] and record["line_is_content"]
+
+
+# What `check_cite` read out of the file versus what the register is allowed to keep. A line number
+# answers "where was it when this was built", which no row of this register claims, so it is dropped
+# on the way to the bytes; `matches` and `line_text` answer the question the rows do ask.
+NOT_PERSISTED = ("line",)
+
+
+def for_persistence(record: dict) -> dict:
+    """Return the read-out with position-only fields removed, so the bytes re-derive."""
+    return {key: value for key, value in record.items() if key not in NOT_PERSISTED}
 
 
 
@@ -214,7 +236,7 @@ def main(argv: list[str] | None = None) -> int:
         assert category in CATEGORIES, category
         rows.append(dict(repo=repo, path=path, source_sha256=digest,
                          proposed_category=category, authority=cite,
-                         cite_check=check_cite(cite),
+                         cite_check=for_persistence(check_cite(cite)),
                          decided_by=None,
                          note="执行人提议 + 出处按锚现查（符号/片段锚，不靠行号）；"
                               "锚找到唯一一行不等于语义等价，那一步由具名真人判"))
