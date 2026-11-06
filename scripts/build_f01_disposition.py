@@ -76,6 +76,10 @@ sys.path.insert(0, str(REPO_ROOT / "scripts")); import source_roots  # noqa: E40
 WORK_ROOT, DESIGN_ROOT = source_roots.work_root(), source_roots.design_root()
 MAPPING = REPO_ROOT / "migration" / "mapping.csv"
 COPIES = REPO_ROOT / "migration" / "copies.json"
+#: Where ``migrate_work_modules.py`` puts its run record. Nothing here reads it: this register is
+#: derived from ``migration/mapping.csv`` and ``migration/copies.json`` plus the two source trees,
+#: so the file's absence does not change a single published cell. Named only so a reader looking
+#: for a machine-local input can rule it out instead of chasing it.
 REGISTER = REPO_ROOT / ".project-local/runs/f01-migration/F01-MIGRATION-REGISTER.json"
 OUT_CSV = REPO_ROOT / "migration/work-gap-disposition.csv"
 
