@@ -1520,7 +1520,13 @@ def test_a_destination_is_published_inside_the_repository_not_on_a_machine():
         "E:/mirror/AI-WORK-LAB/domains/work/x.py") == "domains/work/x.py"
     assert coverage.published_target("domains/work/x.py") == "domains/work/x.py"
 
-    for unrelated in ("C:/Users/other/elsewhere/x.py", "D:/All projects/WORK-LAB/x.py"):
+    # A destination inside the read-only source repo is not inside any checkout of *this* repo, so
+    # it must be refused by name -- and it is spelled through scripts/source_roots.py, because a
+    # second literal spelling of an outside root is precisely what test_v23's single-spelling guard
+    # exists to refuse. Hand-writing it here would have made this node the thing it tests against.
+    from source_roots import resolve as _resolve_root
+    source_repo_destination = str(_resolve_root("work")).replace("\\", "/") + "/x.py"
+    for unrelated in ("C:/Users/other/elsewhere/x.py", source_repo_destination):
         try:
             coverage.published_target(unrelated)
         except SystemExit as refusal:
@@ -1559,7 +1565,9 @@ def test_a_destination_under_the_running_checkout_is_measured_from_that_checkout
 
     # and rule two still carries a path written on a machine nobody is sitting at
     assert coverage.published_target("F:/clone/AI-WORK-LAB/domains/work/x.py") == "domains/work/x.py"
-    for unrelated in ("D:/All projects/WORK-LAB/x.py", "C:/somewhere/else/x.py"):
+    from source_roots import resolve as _resolve_root
+    source_repo_destination = str(_resolve_root("work")).replace("\\", "/") + "/x.py"
+    for unrelated in (source_repo_destination, "C:/somewhere/else/x.py"):
         try:
             coverage.published_target(unrelated)
         except SystemExit as refusal:
