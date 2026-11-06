@@ -9,11 +9,13 @@ could have caught it either, because the generic ``build/`` ignore rule copied i
 without the two negation lines that sat under it in the source repository demoted the audited
 artifact to a file Git does not see.
 
-So the face of this guard is three answers that must not collapse into each other:
-the artifact invisible to Git (a defect), the artifact not yet committed (a defect), and the
-build environment missing (``*_ABSENT``, exit 3 -- a named conclusion, never a green).
+So the face of this guard is the Git-visibility answers that must not collapse into each other:
+the artifact invisible to Git (a defect), visible but never added (a defect), added but not in HEAD
+(nothing committed to verify), committed but no longer on disk (nothing to read), and the build
+environment missing (``*_ABSENT``, exit 3 -- a named conclusion, never a green).
 The stale-bytes plant itself is not here: it would have to rewrite a tracked artifact, and the
-repo's falsifier script is where byte plants belong.
+repo's falsifier script is where byte plants belong. Neither is a build that runs and fails: that
+needs an interpreter, so it lives with the other build-running claim in ``test_v36``.
 """
 from __future__ import annotations
 
@@ -37,24 +39,45 @@ def run(repo: Path | None = None):
     return done.returncode, json.loads(done.stdout.strip().splitlines()[-1])
 
 
-def _planted_repo(root: Path, *, gitignore: str | None, staged: bool) -> Path:
+def _commit(root: Path, message: str):
+    subprocess.run(["git", "-c", "user.name=plant", "-c", "user.email=plant@example.invalid",
+                    "commit", "-q", "-m", message], cwd=str(root), capture_output=True,
+                   text=True, check=True)
+
+
+def _planted_repo(root: Path, *, gitignore: str | None, state: str) -> Path:
     """A repository whose only content is the artifact, so the Git-visibility classes are separable.
 
     ``VISIBLE_IGNORE`` carries both negation lines on purpose: a ``!`` over the file alone does
     nothing while its parent directory is still excluded, which is exactly the half-copy that made
     the artifact invisible in the first place.
+
+    ``state`` names where the artifact stands *relative to HEAD*, which is the distinction the tool
+    has to keep: an untracked file, a file added but not committed, and a committed file that has
+    left the disk are three different answers, and the third one cannot be judged stale by a build
+    that has nothing committed to compare against.
     """
     root.mkdir(parents=True, exist_ok=True)
     (root / "apps/workbench/build").mkdir(parents=True)
-    (root / "apps/workbench/build/main.js").write_bytes(b"// not a real bundle\n")
+    bundle = root / "apps/workbench/build/main.js"
+    bundle.write_bytes(b"// not a real bundle\n")
     if gitignore is not None:
         (root / ".gitignore").write_text(gitignore, encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=str(root), capture_output=True, text=True)
-    if staged:
+    if state in ("committed", "committed_then_deleted"):
         subprocess.run(["git", "add", RELPATH], cwd=str(root), capture_output=True, text=True)
-        subprocess.run(["git", "-c", "user.name=plant", "-c", "user.email=plant@example.invalid",
-                        "commit", "-q", "-m", "planted artifact"], cwd=str(root),
-                       capture_output=True, text=True)
+        _commit(root, "planted artifact")
+    elif state == "staged_uncommitted":
+        # HEAD must exist and must NOT carry the artifact: a repository with no commits fails the
+        # same ``git show`` for a different reason than the one being named here.
+        (root / "README.md").write_text("planted\n", encoding="utf-8")
+        subprocess.run(["git", "add", "README.md"], cwd=str(root), capture_output=True, text=True)
+        _commit(root, "planted: no artifact in HEAD")
+        subprocess.run(["git", "add", RELPATH], cwd=str(root), capture_output=True, text=True)
+    elif state != "untracked":
+        raise AssertionError("unknown planted state: " + state)
+    if state == "committed_then_deleted":
+        bundle.unlink()
     return root
 
 
@@ -73,7 +96,7 @@ def test_an_ignore_rule_over_the_artifact_refusal(tmp_path):
     negating only the file, while its parent directory stays excluded, re-includes nothing.
     """
     for name, gitignore in (("blanket", BLANKET), ("half-negation", HALF_IGNORE)):
-        repo = _planted_repo(tmp_path / name, gitignore=gitignore, staged=False)
+        repo = _planted_repo(tmp_path / name, gitignore=gitignore, state="untracked")
         rc, receipt = run(repo)
         assert rc == 1, (name, receipt)
         assert receipt["verdict"] == "IGNORED_ARTIFACT", (name, receipt)
@@ -82,7 +105,7 @@ def test_an_ignore_rule_over_the_artifact_refusal(tmp_path):
 
 def test_an_untracked_but_visible_artifact_refuses(tmp_path):
     """Visible to Git is not the same as committed: the negation alone does not restore the invariant."""
-    repo = _planted_repo(tmp_path, gitignore=VISIBLE_IGNORE, staged=False)
+    repo = _planted_repo(tmp_path, gitignore=VISIBLE_IGNORE, state="untracked")
     rc, receipt = run(repo)
     assert rc == 1, receipt
     assert receipt["verdict"] == "BUNDLE_UNTRACKED", receipt
@@ -95,11 +118,41 @@ def test_a_missing_build_environment_is_measurable_as_absent_not_green(tmp_path)
     Zero would be a fabricated pass and one would read as drift; only the third code can say
     "this machine cannot measure it" without pretending the artifact is fine.
     """
-    repo = _planted_repo(tmp_path, gitignore=VISIBLE_IGNORE, staged=True)
+    repo = _planted_repo(tmp_path, gitignore=VISIBLE_IGNORE, state="committed")
     rc, receipt = run(repo)
     assert rc == 3, receipt
     assert receipt["verdict"].endswith("_ABSENT"), receipt
     assert receipt["verdict"] != "MATCH" and "rebuilt_digest" not in receipt, receipt
+
+
+def test_a_committed_artifact_with_no_bytes_on_disk_is_named_not_guessed(tmp_path):
+    """Tracked, committed, and simply not there: the gates have nothing to read.
+
+    This is the class a ``DRIFT`` answer would lie about. Drift says "the build disagrees with what
+    is committed", which presupposes bytes to compare; here the artifact left the working tree, so
+    the only honest answer names its absence.
+    """
+    repo = _planted_repo(tmp_path, gitignore=VISIBLE_IGNORE, state="committed_then_deleted")
+    rc, receipt = run(repo)
+    assert rc == 1, receipt
+    assert receipt["verdict"] == "BUNDLE_ABSENT", receipt
+    assert receipt["tracked"] is True and receipt["bundle_exists"] is False, receipt
+    assert "working_tree_digest" not in receipt, receipt
+
+
+def test_a_staged_but_never_committed_artifact_has_nothing_to_verify(tmp_path):
+    """``git show HEAD:`` failing is not staleness -- there is no committed artifact to be stale.
+
+    The name matters because reading HEAD is what the independent review asked for: hashing the file
+    on disk under this path let a hand-edited bundle report "verified bytes". Reading HEAD honestly
+    costs exactly this verdict when HEAD carries nothing.
+    """
+    repo = _planted_repo(tmp_path, gitignore=VISIBLE_IGNORE, state="staged_uncommitted")
+    rc, receipt = run(repo)
+    assert rc == 3, receipt
+    assert receipt["verdict"] == "COMMIT_BLOB_ABSENT", receipt
+    assert receipt["tracked"] is True and receipt["bundle_exists"] is True, receipt
+    assert "committed_digest" not in receipt and "rebuilt_digest" not in receipt, receipt
 
 
 DESIGN_COVERAGE = TARGET_ROOT / "migration/source-coverage-design.csv"
