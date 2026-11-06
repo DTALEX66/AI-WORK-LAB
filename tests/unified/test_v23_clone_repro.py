@@ -33,6 +33,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import sysconfig
@@ -126,13 +127,30 @@ def _fixture_project_root(root: Path) -> Path:
                 {"TARGET_ROOT": root, "Path": Path})
 
 
+def _remove_tree(path: Path) -> None:
+    """Delete a tree Git wrote, including its read-only object pack.
+
+    ``shutil.rmtree(path, ignore_errors=True)`` returns success while leaving ``.git/objects/pack``
+    behind, because those files are read-only on Windows -- measured twice in this batch: once in a
+    scratch falsifier (half a gigabyte per surviving fixture) and once here, where the leftover made
+    the *next* run's ``git clone`` refuse with "destination path … already exists and is not an empty
+    directory". A removal that silently fails is worse than one that fails loudly, because the next
+    reading then describes somebody else's tree.
+    """
+    def clear(func, target, exc):
+        os.chmod(target, stat.S_IWRITE)
+        func(target)
+    if path.exists():
+        shutil.rmtree(path, onerror=clear)
+    assert not path.exists(), "removal failed, the read-only bit is not the whole story: " + str(path)
+
+
 def _clone(suffix: str) -> Path:
     """Clone into a deliberately short root: Windows MAX_PATH already bit a rehearsal that
     ran under pytest's nested basetemp, and the migrated resource tree has long paths."""
     destination = Path(tempfile.gettempdir()) / ("awlclone-%d-%s" % (os.getpid(), suffix))
-    if destination.exists():
-        shutil.rmtree(destination, ignore_errors=True)
-    destination.mkdir(parents=True, exist_ok=True)
+    _remove_tree(destination)
+    destination.mkdir(parents=True)
     clone = destination / "c"
     completed = subprocess.run(["git", "clone", "--quiet", "--no-hardlinks",
                                str(TARGET_ROOT), str(clone)],
