@@ -19,14 +19,17 @@
   `review-04.md`，结论由 `config/independent-reviews.json` 逐轮登记）。closure 册「独立复审」列只从那份
   记录现数得出：被复审报告点名的格才带 verdict，其余一律 `NOT_RUN`，哪几格被点名、共几格都不抄在这里——
   那个分布由 `scripts/build_audit_item_closure.py --check` 每次重算，写进散文就成了下一个要重新发现一遍的现值。
-  **2026-11-06 按 owner 单句「推送」推的只有这一条分支**——`main` 的快进并入、注释标签、Release、
-  可见性与分支保护改动、删分支、远程 CI 都不在那句话里，需要 owner 另行明确授权（授权只按其
-  `head_commit` 覆盖那一次推送，不依据仓库历史上传记录推定新的授权，见 §15.49）。
+  **2026-11-06 按 owner 单句「推送」、2026-11-07 按 owner 单句「全部上传」各推了一次，两次推的都只有
+  这一条分支**——`main` 的快进并入、注释标签、Release、可见性与分支保护改动、删分支、远程 CI 都不在
+  那两句话里，需要 owner 另行明确授权（授权只按其 `head_commit` 覆盖那一次推送，不依据仓库历史上传
+  记录推定新的授权，见 §15.49；「全部上传」那次可上传面是怎么被现读确定下来的见 §15.56——本仓
+  `main` 当时与远端同格、六个标签已全部在远端，所以"全部"落下来只剩这一条分支）。
   上一次"已推并被并入"仍属 2026-11-04 那一批（owner「推送吧」+「合并并打标签」，PR #1 由快进自动标为
   MERGED）。远端到底在哪个头，用
   `git ls-remote origin refs/heads/main refs/heads/audit/backend-closure-20261103 refs/tags/closure-20261104`
   现读，不在这里抄写——本行所在的提交本身就会被推上去，任何写死的 SHA 都会在下一秒落后一格。
-  授权记录在 `.project-local/push-authorization-20261104*.json`，按 `head_commit` 绑定被推的那个头，
+  授权记录在 `.project-local/push-authorization-<日期>.json`（每次一份，最新的是
+  `push-authorization-20261107.json`），按 `head_commit` 绑定被推的那个头，
   pre-push 守卫逐条核（blob 上限、危害扫描现跑），不用 `--no-verify`。合并前专门为"要被并入的那一格"
   跑了一次终端闭环审计（CLOSED 14/14 @ `f77ceac`），落地过程见 docs/CODEX-AUDIT-ENTRY.md §15.39。
   上一次"已推送到 origin 并被公开克隆独立复跑"的核验仍是 2026-11-02，见 §15.27——那条不描述本批。

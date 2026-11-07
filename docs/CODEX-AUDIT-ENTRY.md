@@ -4412,3 +4412,52 @@ B 组（第 3 轮那 7 条未核实）全部跑到出读数，其中三条值得
 
 本节提交之后 `scripts/audit_objective_closure.py` 与 `scripts/check_project_current.py --check`
 会各重跑一次，读数写在那条提交消息里；本节只写已经测到的东西。
+
+### 15.56 「全部上传」这句话能覆盖的只有一格：审计分支快进 35 个提交，主干、标签、可见性都不在里面
+
+owner 原话逐字：「全部上传」。这四个字比 2026-11-06 那句「推送」更容易被顺手做宽——
+"全部"听起来像包含一切远端动作，而本仓的远端动作至少有六种（推分支、并主干、打标签、发 Release、
+改可见性、删分支）。所以这一节先记**范围是怎么被现读确定下来的**，再记执行，最后记哪些没做。
+
+**一、可上传面是数出来的，不是印象**
+
+| 面 | 现读方式 | 读数 |
+|---|---|---|
+| 审计分支 | `git rev-list --count <远端头>..HEAD` | 记录里 35，本节重数 35；祖先关系：是，所以是纯快进 |
+| `main` | `git ls-remote origin refs/heads/main` 与 `git rev-parse main` | 两边同为 `d183db5`——**主干本来就没有欠上传的东西** |
+| 标签 | `git for-each-ref refs/tags` 对照 `git ls-remote refs/tags/…` | 本地 6 个，远端缺失：无 |
+| 两个只读来源仓 | `git log --branches --not --remotes --oneline` 的行数 | WORK-LAB 0, DESIGN-LAB 0——只读它们，不对它们做任何动作 |
+
+四条合起来，"全部"在本仓的落点就只剩一条分支。这一点值得写下来，因为**它是"不擅自动主干"
+最省事的证据**：不是我在授权边缘做了保守选择，而是保守与激进在这里指向同一件事。
+
+**二、守卫读的是一份现读生成的记录，不是我抄的一段话**
+
+`scripts/audit_objective_closure.py` 在 `9144f8c` 上是 `CLOSED`（counts {"PASS": 16, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}），
+危害扫描 `{"scanned_files": 7328, "files_read": 7328, "files_unreadable": 0, "blocking": 0}`，最大单文件 33082203 字节。这三组读数由
+`.project-local/edits-20261107a/build_push_authorization.py` 从审计文档、`CLOSURE-STATE.json`
+与 `git` 现读后写进 `.project-local/push-authorization-20261107.json`，`head_commit` 绑的正是
+将被推送的那一格；本节里所有 SHA 都来自同一份读数（`collect_push_readings.py` 的产物）。
+pre-push 守卫三条全跑过：授权头相等、blob 上限、危害扫描现跑——`--no-verify` 未使用。
+收据 `1ada76c`（619 passed, 3 subtests passed in 2822.45s (0:47:02)，failed 0）是被推头的祖先
+（是）：这一格没有因为"推送了"就重取收据，也没有把收据说成测的是新头。
+
+**三、结果**
+
+`git ls-remote origin refs/heads/audit/backend-closure-20261103` → `9144f8c97805eb70266818b5194f4db50bd08bbc`，
+与本地 `HEAD` 同一格；`refs/heads/main` 仍 `d183db5b8f162509da4061681c7f2a98117a20ac`，两个 closure 标签指针未动。
+工作树在推送前后都是 0 字节。远程 CI 那一栏不需要"我没做"的解释：
+无（`.github/workflows/` 不存在），所以这次推送不可能启动任何远程运行。
+
+**四、这句话里没有的，一个也没做**
+
+未并主干、未打或重打标签、未发 Release、未改可见性与分支保护、未删分支、未触发远程 CI。
+授权记录 `not_covered` 里逐条列着，`authorization_does_not_extend` 写着只绑这一次与这个头。
+
+**五、本节自己造成的两处现值，以及它们怎么处理**
+
+1. **§15.53 第十条那句"本轮产生的提交都留在本地"从本节起不再是现状。** 它是当时的真实读数，
+   按 append-only 的规则原文不改；现行真值只在本节和入口 §一 那一段，两处各自只说一次。
+2. **本节所在的这个提交不在刚被推送的那一串里。** 记录绑的是 `9144f8c`，而这一节在那之后
+   才产生，所以它必然还留在本地：`git status -sb` 在被推完成那一格读出不带 `ahead`，本节提交之后
+   会读出 `ahead 1`，那一格的下一次推送需要 owner 再明确授权。
