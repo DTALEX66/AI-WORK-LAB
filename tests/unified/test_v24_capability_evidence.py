@@ -385,7 +385,7 @@ def _staging_root(base: Path, raster_rel: str, budget: int = WINDOWS_PATH_BUDGET
         return base
     parent = fallback_parent if fallback_parent is not None else Path(tempfile.gettempdir())
     parent.mkdir(parents=True, exist_ok=True)
-    candidate = Path(tempfile.mkdtemp(prefix="awl-raster-", dir=str(parent)))
+    candidate = Path(tempfile.mkdtemp(prefix="awlraster-", dir=str(parent)))
     if cleanup is not None:
         cleanup(candidate)
     if not fits(candidate):
@@ -446,7 +446,7 @@ def test_the_raster_staging_root_names_the_prerequisite_instead_of_an_oserror(tm
         _staging_root(tmp_path, "layers/texture-chip.png", budget=1,
                       fallback_parent=short_root, cleanup=lambda path: None)
     assert "PATH_PREREQUISITE_UNMET" in str(refused.value), str(refused.value)
-    assert not list(short_root.glob("awl-raster-*")), "拒绝的时候把自己造的根留在了盘上"
+    assert not list(short_root.glob("awlraster-*")), "拒绝的时候把自己造的根留在了盘上"
 
 
 def _stage(tmp_path: Path, raster_rel: str) -> tuple[Path, Path]:

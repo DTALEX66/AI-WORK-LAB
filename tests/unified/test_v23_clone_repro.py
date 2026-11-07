@@ -412,6 +412,98 @@ def test_a_session_leaves_no_forgotten_mkdtemp_sandbox(tmp_path):
         "the age floor did not exclude a directory that predates the session -- the snapshot is "
         "the only thing limiting it, and one dropped condition is enough to eat the residue")
 
+
+def test_a_tree_that_cannot_be_proven_deletable_is_refused_before_anything_is_removed(tmp_path):
+    """清扫器不能删一半：先证明删得动，再决定删不删。
+
+    形状是本批真的付过的：一次递归删除在克隆的 ``.pytest_cache`` 上被拒，报错回来时那份克隆的
+    ``.git`` 已经被清空——``rmtree`` 自底向上，失败出现在最后，破坏却在最前。所以这里种的不是"删除
+    失败"（上一节点已经用 ``_RaisingShutil`` 种过），而是"根本没法证明删得动"。
+
+    三个读数：① 控制面——一棵带 ``.git`` 的完整树，没播种时确实被删掉，拒绝不是无条件挡路；
+    ② 遍历被拒——同一形状必须报 ``<name>:REFUSED(TRAVERSAL_REFUSED:...)``，而 ``.git/objects`` 里
+    的字节仍在原处；③ 代表文件读不出——必须报 ``SAMPLE_UNREADABLE`` 并且同样不动手。
+    """
+    conftest = _load_conftest()
+
+    def build(name: str) -> Path:
+        sandbox = tmp_path / name
+        (sandbox / ".git" / "objects" / "pack").mkdir(parents=True)
+        (sandbox / ".git" / "objects" / "pack" / "a.pack").write_bytes(b"pack-bytes")
+        (sandbox / ".pytest_cache").mkdir(parents=True, exist_ok=True)
+        (sandbox / ".pytest_cache" / "CACHEDIR.TAG").write_text("tag\n", encoding="utf-8")
+        return sandbox
+
+    control = build("tmpCleaned0001")
+    removed, failed = conftest.remove_sandboxes([control])
+    assert (removed, failed) == (1, []), (removed, failed)
+    assert not control.exists(), "控制面没删掉，后面两段的对照就没有基准"
+
+    planted = build("tmpRefused0002")
+    real_walk = conftest.os.walk
+    probe_target = str(conftest._win_long_safe(planted))
+
+    def refusing_walk(top, *args, **kwargs):
+        if str(top) == probe_target:
+            onerror = kwargs.get("onerror")
+            assert onerror is not None, "清扫器没再传 onerror——遍历错误又被吞回去了"
+            onerror(OSError(13, "planted: traversal denied", str(planted / ".pytest_cache")))
+            return iter(())
+        return real_walk(top, *args, **kwargs)
+
+    conftest.os.walk = refusing_walk
+    try:
+        removed, failed = conftest.remove_sandboxes([planted])
+    finally:
+        conftest.os.walk = real_walk
+    assert removed == 0, (removed, failed)
+    assert len(failed) == 1 and failed[0].startswith(
+        planted.name + ":REFUSED(TRAVERSAL_REFUSED:"), failed
+    assert (planted / ".git" / "objects" / "pack" / "a.pack").read_bytes() == b"pack-bytes", (
+        "拒绝来得太晚：那份树的 .git 已经被清空了")
+
+    real_path = conftest.Path
+
+    class _UnreadablePath(real_path):
+        def read_bytes(self):
+            raise OSError(13, "planted: handle held by another process")
+
+    conftest.Path = _UnreadablePath
+    try:
+        removed, failed = conftest.remove_sandboxes([planted])
+    finally:
+        conftest.Path = real_path
+    assert removed == 0 and failed and ":REFUSED(SAMPLE_UNREADABLE:" in failed[0], failed
+    assert (planted / ".git" / "objects" / "pack" / "a.pack").is_file(), (
+        "读不出代表文件却还是动手删了")
+
+
+def test_the_clone_scaffolding_pattern_sweeps_its_own_names_and_no_other(tmp_path):
+    """``awlclone-*`` / ``awlraster-*`` 以前根本不在这族里——那 146 个残骸就是这么攒起来的。
+
+    系统临时根下 ``tmp*`` 不属于本会话（别的程序也叫这个名字），所以那一族只认 ``CLONE_NAME``。
+    四个条件仍然逐个按下：名字形状、是目录、会话开始快照里没有、快照之后被改过。
+    """
+    conftest = _load_conftest()
+    root = tmp_path / "temp-root"
+    root.mkdir()
+    (root / "awlclone-Leak9000").mkdir()
+    (root / "awlraster-Leak9001").mkdir()
+    (root / "tmpBelongsToAnotherApp").mkdir()      # 不在本根里清：不属于这个会话的形状
+    (root / "awlclone-present0").mkdir()           # 会话开始快照里有
+    (root / "penpot-import").mkdir()               # 具名证据目录
+    (root / "awlclone-file0").write_text("f\n", encoding="utf-8")
+
+    found = conftest.sandboxes_created(root, {"awlclone-present0"}, pattern=conftest.CLONE_NAME)
+    assert {path.name for path in found} == {"awlclone-Leak9000", "awlraster-Leak9001"}, (
+        [path.name for path in found])
+    removed, failed = conftest.remove_sandboxes(found)
+    assert (removed, failed) == (2, []), (removed, failed)
+    assert (root / "tmpBelongsToAnotherApp").is_dir(), "在别人的临时根里删了 tmp* 形状"
+    assert (root / "awlclone-present0").is_dir() and (root / "penpot-import").is_dir(), (
+        "快照里的或具名的目录被删了")
+    assert (root / "awlclone-file0").is_file(), "一个普通文件进了只删目录的人群"
+
     # the pattern has to match the names this repository actually leaked (read off the disk on
     # 2026-11-03, kept here so the check stays meaningful after the residue is swept away)
     actually_leaked = ["tmpxquepdl8", "tmpfjrsydpt", "tmpzxhlp0z_", "tmpv5_6kp7r", "tmp_s1j7k3i"]

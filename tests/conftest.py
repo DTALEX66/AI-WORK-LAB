@@ -20,6 +20,7 @@ import secrets
 import shutil
 import stat
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -103,9 +104,32 @@ NOT_A_SWEEP_ROOT = (".project-local/runs", ".project-local/build", ".project-loc
 #: be allowed immediately after the prefix -- measured on 2026-11-03, a first sweep that let
 #: ``tmp_s1j7k3i`` through because the class started with alphanumerics.
 SANDBOX_NAME = re.compile(r"tmp[A-Za-z0-9_]{6,}$")
+#: The clone and re-root scaffolding this project names itself. The residue actually on disk is
+#: ``awlclone-<pid>-<purpose>`` -- three dash-separated parts -- plus ``awlraster-<mkdtemp alphabet>``.
+#: The first version of this pattern allowed only the mkdtemp alphabet after the prefix and so
+#: matched **none** of the directories it was written for: a sweeper that selects nothing is how
+#: debris outlives a round that reports it swept. These are swept from the system temp root too, and
+#: *only* under this pattern: ``tmp*`` there belongs to other programs, not to this session.
+CLONE_NAME = re.compile(r"awl(?:clone|raster)-[A-Za-z0-9_-]{4,}$")
 
 
-def sandboxes_created(root: Path, before: set, started_at: float | None = None) -> list:
+def _win_long_safe(path):
+    """Windows: an extended-length path, so a deep tree is reachable at all; elsewhere: unchanged.
+
+    The refusal this exists for was measured, not theorised: inside ``awlclone-41636-run`` the
+    traversal died on a reconstruction staging path well past 260 characters, which is also why an
+    ordinary ``rmtree`` half-succeeded there and emptied a clone's ``.git`` on the way. Prepending
+    unconditionally would break a POSIX runner (the prefix is not a path there), so this is nt-only
+    -- and the probe below uses the same shape the deletion uses.
+    """
+    text = str(path)
+    if os.name != "nt" or text.startswith("\\\\?\\"):
+        return Path(text)
+    return Path("\\\\?\\" + str(Path(text).resolve()))
+
+
+def sandboxes_created(root: Path, before: set, started_at: float | None = None,
+                      pattern: re.Pattern = SANDBOX_NAME) -> list:
     """The mkdtemp sandboxes that appeared in ``root`` after the snapshot ``before`` was taken.
 
     Two independent conditions rather than one, because the first one alone was demonstrably
@@ -118,7 +142,7 @@ def sandboxes_created(root: Path, before: set, started_at: float | None = None) 
         return []
     selected = []
     for path in sorted(root.iterdir()):
-        if not path.is_dir() or not SANDBOX_NAME.match(path.name) or path.name in before:
+        if not path.is_dir() or not pattern.match(path.name) or path.name in before:
             continue
         if started_at is not None and path.stat().st_mtime < started_at:
             continue
@@ -173,17 +197,57 @@ def _clear_read_only(func, path, exc_info):
         raise exc_info[1]
 
 
+def undeletable_reason(path: Path) -> str | None:
+    """Why this tree must not be handed to a recursive delete, or ``None`` when it may be.
+
+    ``shutil.rmtree`` walks bottom-up, so a failure partway through has already removed everything
+    it reached. Measured in this batch: an ACL refusal inside a throwaway clone's ``.pytest_cache``
+    came back *after* that clone's ``.git`` had been emptied -- the sweep destroyed the evidence
+    tree it was trying to reclaim. So the tree is proven first: every directory must be traversable
+    (``os.walk`` with an error sink, because ``Path.rglob`` skips unreadable directories and would
+    report this as clean) and one regular file must actually read. Either failure refuses the
+    deletion instead of starting it.
+    """
+    traversed = [0]
+    refused: list = []
+
+    def note_error(error: OSError) -> None:
+        refused.append(getattr(error, "filename", None) or str(error))
+
+    sample: Path | None = None
+    for dirpath, _dirnames, filenames in os.walk(_win_long_safe(path), onerror=note_error):
+        traversed[0] += 1
+        if sample is None and filenames:
+            sample = Path(dirpath) / filenames[0]
+    if refused:
+        return "TRAVERSAL_REFUSED:" + str(refused[0])
+    if sample is not None:
+        try:
+            sample.read_bytes()
+        except OSError as why:
+            return "SAMPLE_UNREADABLE:%s(%s)" % (
+                sample.name, getattr(why, "winerror", None) or why)
+    return None
+
+
 def remove_sandboxes(paths) -> tuple:
     """Delete sandboxes; report what survived instead of failing the session over it.
 
     A still-open handle or a read-only file inside a sandbox must not turn a green suite into a
     collection error at teardown. The leftovers are returned by name, so a leak that came back is
-    visible in the sweep summary rather than hidden by a swallowed exception.
+    visible in the sweep summary rather than hidden by a swallowed exception. A tree that fails
+    :func:`undeletable_reason` is never touched at all and is reported as
+    ``<name>:REFUSED(<reason>)`` -- leaving it on disk is the cheap outcome, emptying half of it is
+    not.
     """
     removed, failed = 0, []
     for path in paths:
+        reason = undeletable_reason(path)
+        if reason:
+            failed.append("%s:REFUSED(%s)" % (path.name, reason))
+            continue
         try:
-            shutil.rmtree(path, onerror=_clear_read_only)
+            shutil.rmtree(_win_long_safe(path), onerror=_clear_read_only)
             removed += 1
         except OSError:
             failed.append(path.name)
@@ -206,6 +270,8 @@ def sweep_test_sandboxes(pytestconfig):
     temp_root = basetemp_root(pytestconfig)
     temp_before = ({path.name for path in temp_root.iterdir()}
                    if temp_root is not None and temp_root.is_dir() else set())
+    scratch = Path(tempfile.gettempdir())
+    scratch_before = {path.name for path in scratch.iterdir()} if scratch.is_dir() else set()
     yield
     created = sandboxes_created(root, before, started_at)
     removed, failed = remove_sandboxes(created)
@@ -230,6 +296,21 @@ def sweep_test_sandboxes(pytestconfig):
                                                  "modified after it"}
         summary["roots"].append({"root": summary["basetemp"]["root"], "created": len(made),
                                  "removed": temp_removed, "left_behind": temp_failed})
+    made_clone = sandboxes_created(scratch, scratch_before, started_at, pattern=CLONE_NAME)
+    clone_removed, clone_failed = remove_sandboxes(made_clone)
+    summary["clone_scaffolding"] = {
+        "root": str(scratch), "present_before_session": len(scratch_before),
+        "directories_created_this_session": len(made_clone),
+        "removed": clone_removed, "left_behind": clone_failed,
+        "selection_rule": "name matches awlclone-* or awlraster-* (the two prefixes this project's own scaffolding mints) -- tmp* is NOT swept "
+                          "here because outside this project's own scratch that shape belongs to "
+                          "other programs -- is a directory, absent from the session-start "
+                          "snapshot, and modified after it",
+        "why": "these are the trees that grew to 146 directories / 176.83 MB, and one recursive "
+               "delete that emptied a clone's .git before failing elsewhere; each is proven "
+               "deletable by undeletable_reason before anything is removed"}
+    summary["roots"].append({"root": str(scratch), "created": len(made_clone),
+                             "removed": clone_removed, "left_behind": clone_failed})
     destination = TARGET_ROOT / SWEEP_SUMMARY
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
