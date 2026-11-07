@@ -7,12 +7,16 @@
 登记表，不在这里复制维护；本文件的每个数字都由 `scripts/check_project_current.py` 与寄存器
 现值比对，对不上即为红。
 
-- 最近核验：本批（云端审计后端批，分支 `audit/backend-closure-20261103`）的本地读数以**逐条记录**为准，
+- 最近核验：本批（云端审计后端批 + 第六批续，分支 `audit/backend-closure-20261103`）的本地读数以**逐条记录**为准，
   不在这里用"全绿"一句话盖过去：收据的 `passed/failed/deselected` 看下面「- 依托提交：」那一行（派生，
-  不手抄），16 条判据的 verdict 与逐条 rc 看 `docs/CODEX-AUDIT-ENTRY.md` §15.53（本批小节，六块读数由
-  `collect_readings.py` 现填）。这一批跑了九张全量取证，当前认证的是第 9 张；第 6、7、8 张各带
-  一条到五条红，**红的原因逐张点名写在 §15.53 的第十四、十五、十六部分**（漏重发布依赖读数、
-  登记表绑了一张失败测量、克隆模拟装置缺一路），没有一张被写成"环境抖动"。独立复审到第 4 轮：
+  不手抄），16 条判据的 verdict 与逐条 rc 看 `docs/CODEX-AUDIT-ENTRY.md` §15.53（六块读数由
+  `collect_readings.py` 现填）与 §15.57（第六批续的四件事，读数由 `collect_1557_readings.py` 从收据、
+  审计文档、运行日志、清单与一次现读的注册表现算）。这一批跑过多张全量取证，`receipt-archive/` 里
+  现存的全部文档在 §15.57 第五部分按摘要点名；**现行认证的那一张不在散文里编号**——Ordinal 是我会数错的
+  那种现值，而摘要、头与 `failed` 由 `check_project_current.py::receipt_line` 从收据自己派生。
+  失败的那几张各带一条到五条红，红的原因逐张点名写在 §15.53 的第十四、十五、十六部分与 §15.57 第五部分
+  （漏重发布依赖读数、登记表绑了一张失败测量、克隆模拟装置缺一路、清单 sha 停在改动之前），
+  没有一张被写成"环境抖动"。独立复审到第 4 轮：
   第 3 轮判 `FAIL` 给出两条阻断（复审记录读侧不校验 `reviewed_sha`、清单按绝对路径把整份检出排除掉），
   第 4 轮在可写克隆里各造一次反例确认两者已修好，判 `PASS_WITH_FINDINGS`、阻断 0、未核实 0，
   并把第 3 轮没跑完的腿跑到出读数（原文逐字留在 `docs/audits-20261106-independent/review-03.md`、
@@ -330,26 +334,30 @@ unsettled_files = 237
    L20#0 真实宿主、模型推理、真实私有数据迁移、L00#2 出网隔离、来源仓删除与告警、GitHub 四条 key
    告警、Linux 复跑（N05 因此 PARTIAL）。
 
-9. **本批查清但按名字交给下一批的四件事**（都还在仓库里，没有被删掉或改软；表述以文件与符号为准，
-   不在此抄条数）：
-   - `scripts/falsify_workbench_bundle_gate.py` 的 `NODE_ABSENT` 一腿靠"从 PATH 删掉所有提供 node 的
-     目录"造缺席，所以在本来就没有 node 的机器上会**绿得没有内容**；要补的是那句
-     `len(dropped) >= 1`（本机有两份 node 安装，本轮读数是实删两条之后拿到的）。
-   - `tests/unified/test_v24_capability_evidence.py::test_the_raster_path_reports_the_gates_a_real_document_actually_hits`
-     的夹具在 `tmp_path` 以下带一段固定长尾部；主检出与收据 `--basetemp` 两种根下各有余量，
-     而一次放在深层目录里的克隆实测越过 Windows 的 260（复审者现数一次 279、作者从留存 stdout
-     现数一次 263），于是它以裸 `FileNotFoundError` 红而不是具名结论。修法要么给路径预算，
-     要么在写盘前给具名拒绝——两者都动跟踪件，都需要各自的收据。
-   - `domains/design/design_lab/http_service.py` 对 `OSError` 已特判 `winerror 206` 回
-     `PROJECT_PATH_TOO_LONG`，但 `sqlite3.Error` 一律折进 `PROJECT_STORE_UNAVAILABLE`；
-     若长路径让 sqlite 打不开库文件，同一类原因会给出相反的诊断。第 3 轮在深根下见过五次 503，
-     第 4 轮在浅根下 v04/v05 单跑分别 `14 passed` 与 `39 passed` 未复现——这条因此仍挂着，
-     等一次能说出具体异常与 `winerror` 的复现，不在这里替它编原因。
-   - 沙箱产出的残骸目录清不动（`temp` 根下 `awlclone-*` 与本轮一次性克隆各自的数量以现数为准），
-     而本批为了回收磁盘把一个递归删除用在沙箱树上，半途失败时已经把那份克隆的 `.git` 删空
-     （经过与"这个读数别再用"写在 `.project-local/r/` 下的 `CLONE-DAMAGE-NOTE.md`；
-     第 4 轮复审的证据链不在那份检出里，未受影响）。下一批的清扫器必须先证明"删得动"
-     （能枚举 + 能读一个代表文件）再决定删除方式，并纳入 conftest 的沙箱清扫族。
-   操作顺序上留下一条硬规则：**开跑全量收据之前先跑 `preflight_receipt.py`**
+9. **上一批按名字交下来的四件事，现在的落点**（逐条以文件与符号为准，前因原文见 §15.56 与 §五 本项的
+   历史版本；闭合读数全部在 §15.57）：
+   - ✅ `scripts/falsify_workbench_bundle_gate.py::run_tool` 的 `NODE_ABSENT` 一腿：种植前先数提供者，本机实删 2 条；
+     没得可删时返回本脚本自己的具名拒绝 `NODE_PROVIDER_NOT_REACHABLE`（rc 10，不进 `VERDICT_CASES`，
+     因为那张表声明的是**工具**能发的判定），并在旧字节上按下过"照样报 OK"的那一侧。
+     守卫节点在 `tests/unified/test_v33_workbench_bundle_truth.py`。
+   - ✅ raster 夹具的 Windows 路径预算：`tests/unified/test_v24_capability_evidence.py::_staging_root`
+     自己花钱买预算——够短不动、超预算换到临时根之下、连最短根也放不下才 `PATH_PREREQUISITE_UNMET`
+     且不残留。同一台机器同一条深 `--basetemp` 的前后对照：旧字节 `1 failed`
+     （`WinError 3`，被拒的那条 307 字符），新字节 `1 passed`。本机 `LongPathsEnabled=0x0`（现读注册表）。
+   - ✅ 残骸树：两处被当成一件事的东西分开了。① `tests/conftest.py::CLONE_NAME` 第一版选不到任何
+     `awlclone-<pid>-<purpose>` 名字，所以"清扫"从未碰过它们；② "清不掉"不是权限而是路径形式——树里
+     有越过 260 的重建 staging 路径，普通 Win32 路径连遍历都失败，`_win_long_safe()`（仅 nt）走通后
+     证明给出 None。`remove_sandboxes` 现在**先证明删得动再动手**（`os.walk` 带 onerror 收集器 + 读一个
+     代表文件；不用 `Path.rglob`，它会静默跳过读不动的目录），证明不过报 `<name>:REFUSED(原因)` 且不开始删。
+     回收读数：190 个目录 1011.55 MiB → 剩余 0，拒绝 0、失败 0、回收 100.0%。
+   - ⏳ `domains/design/design_lab/http_service.py` 的长路径折叠：**原因已具名，修法未做**。
+     `probe_sqlite_long_path.py` 实测 `sqlite3.OperationalError('unable to open database file')`、
+     `winerror=None`、库路径 328 字符，被 `except (sqlite3.Error, AssetError)` 认领成
+     `PROJECT_STORE_UNAVAILABLE`。派发层那一行拿不到 store 路径，按长度猜等于把诊断写成相关性推断；
+     下一批要在**存储层**打开失败时抛具名类型（或在异常上带 resolved path），并配两侧反例
+     （深根 → `PROJECT_PATH_TOO_LONG`；短根但目录不可写 → 仍 `PROJECT_STORE_UNAVAILABLE`）。
+   操作顺序上的硬规则保留并且又救了一次：**开跑全量收据之前先跑 `preflight_receipt.py`**
    （按依赖顺序重发布六步 → 要求干净工作树 → 13 道闸门 → 十个"会被新提交悄悄改陈旧"的关注节点）。
-   本批第 5、6、7、8 张收据各为一次编排错误付了 13 到 50 分钟，而那四处红在几分钟的检查里都看得见。
+   第 10 张收据之前它 NO-GO 一次，拒的是"`cce0218` 之后又改了 v23 的拒绝面，而 `tests/node-census.json`
+   里的 sha 停在改动之前"——`build_test_census.py --check` 只查"少没少"，读不出这种差额，收据那侧会
+   把它算成 `register_drift`。此前第 5、6、7、8 张各为一次编排错误付了 13 到 50 分钟。

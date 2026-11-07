@@ -4461,3 +4461,78 @@ pre-push 守卫三条全跑过：授权头相等、blob 上限、危害扫描现
 2. **本节所在的这个提交不在刚被推送的那一串里。** 记录绑的是 `9144f8c`，而这一节在那之后
    才产生，所以它必然还留在本地：`git status -sb` 在被推完成那一格读出不带 `ahead`，本节提交之后
    会读出 `ahead 1`，那一格的下一次推送需要 owner 再明确授权。
+
+### 15.57 §五 第 9 项的四件事：三件闭合、一件复现到手；第 10 张收据 624 passed, 3 subtests passed in 2909.47s (0:48:29) 绑 11ed231
+
+§15.56 把"可上传面只剩一条分支"数清楚之后，这一格接着数上一批按名字交下来的四件事。
+四件全部用同一口径记账：**没有按下读数的，就写"构造上可红，未实按"**；按下过的，把前/后两份读数
+都留在本节里。工具在 `.project-local/edits-20261107a/`，读数由
+`collect_1557_readings.py` 从收据、审计文档、运行日志、清单和一次现读的注册表现算，本节不抄记忆。
+
+**一、#47 缺席反例：先证明这次真的把提供者删掉了**
+
+`scripts/falsify_workbench_bundle_gate.py` 的 `NODE_ABSENT` 一腿先前只断言"过滤后 PATH 里查不到 node"。
+这句话在一台本来就没有 node 的机器上会空过。旧字节上按下的读数：把 PATH 收窄到 git 自己那个目录，
+脚本照样打印 `NODE_ABSENT ... -> OK`——判定来自工具，缺席来自机器。现在种植先数再问工具：
+本机 `PATH 上提供 node 的目录 2 条，实删 2 条`；无可提供者时返回本脚本
+自己的具名拒绝 `NODE_PROVIDER_NOT_REACHABLE`（rc 10，`dropped=0`），主流程不给它盖章，
+整脚本 rc=1。这个名字刻意不进 `VERDICT_CASES`——那张表是"工具能发哪些判定"的声明，多一个工具发不出的
+名字会被 v33 的双向守卫判成假声明。顺带修掉一处宽匹配：提供者判据原为"以 node 开头且 .exe/.cmd/.bat"，
+`nodemon.cmd` 会被算成 node 的提供者并让删除数报出一个并不存在的种植；现在是精确文件名。
+
+**二、#50 raster 夹具：路径预算花在自己身上**
+
+同一台机器、同一条深 `--basetemp`（长度 167）的两份读数——旧字节
+`1 failed, 7 deselected in 0.33s`，`FileNotFoundError [WinError 3]`，被拒绝的是一条 307 字符的
+`project\.hermes\task-runtime\reconstruction\c5-9568-…`；新字节同一条命令 `1 passed, 9 deselected in 0.27s`
+（同机、同根、同夹具；两份原文留在 `.project-local/edits-20261107a/deep-basetemp-{old,new}.txt`）。`_staging_root()` 的三种结论各自按下过：够短就原样返回（不新建任何目录，
+`created == []`）、超预算就换到临时根之下并满足自己的后置条件、连最短根也放不下才报
+`PATH_PREREQUISITE_UNMET` 并且不把自己的目录留在盘上。这台机器 `LongPathsEnabled 0x0`，
+所以 260 这条线在这里是真的：本节的每个长度都是从磁盘上量出来的，不是引用外部那两次读数。
+
+**三、#48 残骸：两处被当成一件事的东西**
+
+第一处是**清扫族选不到东西**。`CLONE_NAME` 第一版只允许前缀后接 mkdtemp 字母表，而盘上的真名字是
+`awlclone-<pid>-<purpose>`（三段带横杠），一个都不匹配——上一轮写下"残骸仍在"之后，自动清扫从未碰过它们。
+第二处是**"清不掉"不是权限，是路径形式**：190 个目录第一次按下证明时全部报
+`TRAVERSAL_REFUSED:…\.c5-17144-c6-….staging-a5y8khc9\registries`，树里有一条越过 260 的重建 staging 路径，
+普通 Win32 路径连**遍历**都做不了；`\\?\` 形式走通之后 `undeletable_reason` 给出 None。
+回收读数（`sweep_residue.py --apply`，年龄门 6 小时）：190 个目录 1011.55 MiB，
+拒绝 0、`removed=190`、`failed=[]`、
+`survivors=0`、剩余 0.0 MiB，回收占测得总量 100.0%。
+机制上先堵死上次删坏克隆的那条路：`remove_sandboxes` 动手之前先跑 `undeletable_reason`
+（`os.walk` 带 onerror 收集器 + 读一个代表文件；不能用 `Path.rglob`，它静默跳过读不动的目录），
+证明不过就**不开始删**，报 `<name>:REFUSED(<原因>)`——`rmtree` 自底向上，失败出现在最后而破坏在最前。
+这些树全部是本项目的只读一次性克隆/探针根，可由 `origin` 重新 clone 得到；被跟踪文档里没有任何一处把
+这批临时路径当证据路径引用（按名字面扫过 `docs/`、`migration/`、`config/` 与两份根 md）。
+
+**四、#51 复现到手，但这次不动判据**
+
+`.project-local/edits-20261107a/probe_sqlite_long_path.py` 用 `\\?\` 建出 328 字符的库路径、
+再用普通形式让 sqlite 打开：实测 `sqlite3.OperationalError('unable to open database file')`，
+`winerror=None`、`errno=None`、
+`isinstance(exc, OSError) is False`——它落到 `domains/design/design_lab/http_service.py` 的
+`except (sqlite3.Error, AssetError)` 分支，答案因此是 `PROJECT_STORE_UNAVAILABLE`，而真因是路径超范围。
+这正是第 3 轮在深根下见到 503 的形状。**这一格因此只结到"原因具名"，不结到"修好"**：那一行拿不到
+store 路径，在派发网里按长度猜等于把诊断写成又一次相关性推断；正确的落点是存储层在打开失败时抛具名
+类型（或在异常上带上 resolved path），派发层按类型给 `PROJECT_PATH_TOO_LONG`。反例两侧都已设计好
+（深根 → TOO_LONG；短根但目录不可写 → 仍 UNAVAILABLE），留给下一批与它自己的收据。
+
+**五、第 10 张收据与五处改绑**
+
+GO: 干净树 11ed231，重发布、13 道闸门与 10 个关注节点全绿。可以开跑收据。——预飞第一次是 NO-GO 拒的，拒的是一条我自己的编排错误：`cce0218` 之后又改了 v23 的拒绝面，
+清单里的 sha 停在改动之前，`--check` 那一侧只查"少没少"读不出来，收据那侧会把它算成 `register_drift`。
+收据（现读 `CLOSURE-STATE.json`）：测 `11ed231`，`624 passed, 3 subtests passed in 2909.47s (0:48:29)`，failed 0、
+errors 0、deselected 0，候选 7328 个文件、摘要
+`d274050fec6769c9…`，测量期间被跟踪字节变动 []。五处改绑按
+§15.56 之后的顺序落，`build_audit_state.py --audited-commit` 取的是收据自己的 `head_commit` 字段。
+提交之后的干净树读数：`367e84e` → verdict **CLOSED**（rc 0，counts {"PASS": 16, "FAIL": 0, "PENDING": 0, "INSTRUMENT_ERROR": 0}），
+清单 40 文件 / 618 测试，九道 `--check` 与两个引用模式全 rc=0。
+
+**六、本节之后仍按名字挂着的**
+
+#51 的存储层修法（原因已具名）；`L10#0` 的 32 行逐行判决与验收门 `REFUSED`；真人专业签字、真实宿主
+写入往返、模型真实推理、真实私有数据迁移、`L00#2` 出网隔离；Linux 原生复跑（N05 因此 PARTIAL）；
+`237` 条待裁决来源与 `32` 条个人决定项；来源仓删除与告警、GitHub 四条 key 告警；以及**下一次远端动作**
+——本地领先 `origin/audit/backend-closure-20261103` 6 格，推送、并入 main、打标签各需
+owner 新的明确授权，不依据本仓历史上传记录推定。
