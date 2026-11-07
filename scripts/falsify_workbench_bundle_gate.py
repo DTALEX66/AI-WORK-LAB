@@ -22,6 +22,10 @@ What each case claims, in the tool's own words:
       the runtime or the bundler is not reachable. ``NODE_ABSENT`` drops every PATH entry that
       provides a node binary -- this machine has two node installs, and removing only the one
       ``shutil.which`` picks leaves a plant that tests the edit rather than the absence.
+      The plant is now counted before the tool is asked: on a PATH with nothing to drop the leg
+      refuses as ``NODE_PROVIDER_NOT_REACHABLE`` (rc ``NO_PROVIDER_RC``) instead of printing OK for
+      an absence the machine supplied. ``control_no_provider_means_no_plant`` presses exactly that
+      side, and the pre-fix script was measured printing ``NODE_ABSENT ... -> OK`` under it.
   BUILD_FAILED
       a stub ``vite.js`` that exits non-zero and prints a marker. It proves the gate's error path
       is reachable and refuses; it is never evidence that a build succeeded -- that claim is
@@ -75,6 +79,11 @@ VERDICT_CASES = {
     "UNCOMMITTED_BYTES": 1,
 }
 
+#: This script's own refusal, not a verdict the tool can assign: the absence to be planted was
+#: never available to plant. Kept out of VERDICT_CASES on purpose -- that table is read as the
+#: coverage claim, and a name the tool cannot emit would fail the in-suite bidirectional guard.
+NO_PROVIDER_RC = 10
+
 
 def git(cwd, *args):
     done = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True,
@@ -89,14 +98,28 @@ def sha(path):
 def run_tool(repo=None, drop_node=False):
     env = dict(os.environ)
     if drop_node:
-        gone = {p.casefold() for p in _path_entries_providing("node")}
-        env["PATH"] = os.pathsep.join(
-            p for p in os.environ.get("PATH", "").split(os.pathsep)
-            if p and p.casefold() not in gone)
+        providers = _path_entries_providing("node")
+        reachable = shutil.which("node") is not None
+        gone = {p.casefold() for p in providers}
+        entries = [p for p in os.environ.get("PATH", "").split(os.pathsep) if p]
+        kept = [p for p in entries if p.casefold() not in gone]
+        dropped = len(entries) - len(kept)
+        env["PATH"] = os.pathsep.join(kept)
+        # An absence this leg did not create proves nothing: on a machine that never had node on
+        # PATH the tool would report NODE_ABSENT and the falsifier would print OK. So the plant is
+        # checked before the tool is asked, and a plant that dropped nothing is its own verdict.
+        if not reachable or dropped < 1:
+            return NO_PROVIDER_RC, {"verdict": "NODE_PROVIDER_NOT_REACHABLE",
+                                    "node_reachable_before": reachable,
+                                    "provider_entries": len(providers),
+                                    "entries_dropped": dropped,
+                                    "reason": "这台机器上没有可删的 node 提供者，缺席不是这次造出来的"}
         # both halves have to hold at once, or the verdict printed is about neither: the runtime
         # gone, and the git the gate shells out to still reachable
         assert shutil.which("node", path=env["PATH"]) is None, "node survived the PATH filter"
         assert shutil.which("git", path=env["PATH"]), "the PATH filter also removed git"
+        print("%-20s PATH 上提供 node 的目录 %d 条，实删 %d 条（缺席是这一次造出来的）"
+              % ("NODE_ABSENT(plant)", len(providers), dropped))
     argv = [PYTHON, "-B", "-X", "utf8", str(TOOL)]
     if repo is not None:
         argv += ["--repo-root", str(repo)]
@@ -108,6 +131,13 @@ def run_tool(repo=None, drop_node=False):
 
 
 def _path_entries_providing(binary):
+    """PATH entries that hand out this exact executable -- `nodemon.cmd` is not a node provider.
+
+    The first version matched any name *starting with* the binary, so an entry holding only
+    `nodemon.cmd` counted as a provider and the drop count reported a plant that had not removed
+    `node` at all.
+    """
+    names = {(binary + ext).lower() for ext in (".exe", ".cmd", ".bat")}
     out = []
     for entry in os.environ.get("PATH", "").split(os.pathsep):
         if not entry:
@@ -117,8 +147,7 @@ def _path_entries_providing(binary):
             kids = [k.name for k in directory.iterdir()] if directory.is_dir() else []
         except OSError:
             continue
-        if any(k.lower().startswith(binary.lower())
-               and k.lower().endswith((".exe", ".cmd", ".bat")) for k in kids):
+        if any(k.lower() in names for k in kids):
             out.append(entry)
     return out
 
@@ -214,6 +243,30 @@ def _edit_nav_array(data: bytes) -> bytes:
     return data.replace(needle, b"'settings', 'awl-plant'];")
 
 
+def control_no_provider_means_no_plant():
+    """The red side of the plant guard: nothing to drop must not be reported as an absence planted.
+
+    Without this leg the falsifier could print OK for ``NODE_ABSENT`` on a machine that simply had
+    no node on PATH -- the verdict came from the tool, but the absence came from the machine, which
+    is the same shape as a coverage claim nobody ran. PATH is narrowed to git's own directory, so
+    the tool is never asked and the refusal has to come from the plant check itself.
+    """
+    git_path = shutil.which("git")
+    assert git_path, "本机 PATH 上没有 git，这个反例脚本本来就跑不起来"
+    saved = os.environ.get("PATH", "")
+    try:
+        os.environ["PATH"] = str(pathlib.Path(git_path).parent)
+        rc, document = run_tool(drop_node=True)
+    finally:
+        os.environ["PATH"] = saved
+    ok = rc == NO_PROVIDER_RC and document.get("verdict") == "NODE_PROVIDER_NOT_REACHABLE"
+    print("%-20s rc=%-3s verdict=%-28s dropped=%-3s reachable_before=%s -> %s"
+          % ("NODE_ABSENT(control)", rc, document.get("verdict"),
+             document.get("entries_dropped"), document.get("node_reachable_before"),
+             "OK" if ok else "WRONG"))
+    return ok
+
+
 def main() -> int:
     observed = {}
     rc, baseline = run_tool()
@@ -242,6 +295,8 @@ def main() -> int:
     finally:
         remove_repo(base)
 
+    plant_control = control_no_provider_means_no_plant()
+
     observed["DRIFT"] = byte_plant("DRIFT", SOURCE, _edit_nav_array, "DRIFT")
     observed["UNCOMMITTED_BYTES"] = byte_plant(
         "UNCOMMITTED_BYTES", BUNDLE, lambda data: data + b"\n// planted stale bytes\n",
@@ -254,9 +309,11 @@ def main() -> int:
     undeclared = sorted(set(VERDICT_CASES) - set(observed))
     print("observed %d/%d; declared but not run: %s"
           % (len(observed) - len(missing), len(observed), undeclared or "none"))
-    if missing or undeclared or not restored:
-        print("FAILED: " + ", ".join(missing + undeclared + (["not-restored"] if not restored
-                                                             else [])))
+    if missing or undeclared or not restored or not plant_control:
+        print("FAILED: " + ", ".join(missing + undeclared
+                                     + (["not-restored"] if not restored else [])
+                                     + (["node-absent-plant-control"] if not plant_control
+                                        else [])))
         return 1
     return 0
 

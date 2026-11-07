@@ -212,6 +212,28 @@ def test_a_verdict_name_added_without_a_case_is_reported_as_uncovered():
     assert "MATCH" in named - narrowed, "少了一格声明却读不出缺口"
 
 
+FALSFIER = TARGET_ROOT / "scripts" / "falsify_workbench_bundle_gate.py"
+
+
+def test_an_absence_the_falsifier_did_not_create_is_refused_by_name():
+    """``NODE_ABSENT`` may only be reported for a node the script itself took away.
+
+    Measured on the committed bytes before the guard existed: with ``PATH`` narrowed to git's own
+    directory the falsifier printed ``NODE_ABSENT ... -> OK`` -- the verdict came from the tool, but
+    the absence came from a machine that never had node on ``PATH``, which is a green whose cause is
+    nothing. The control leg is called here rather than the whole script because the rest of that
+    script rewrites tracked bytes; this node rebuilds nothing and writes nothing.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("falsify_bundle_gate", str(FALSFIER))
+    assert spec and spec.loader, "反例脚本读不进来"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.control_no_provider_means_no_plant() is True, (
+        "没有可删的 node 提供者时这一腿仍然给出了判定——缺席就又是机器给的，不是种下去的")
+
+
 DESIGN_COVERAGE = TARGET_ROOT / "migration/source-coverage-design.csv"
 BUNDLE_RELPATH = "apps/workbench/build/main.js"
 
