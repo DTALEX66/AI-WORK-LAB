@@ -19,9 +19,12 @@ checker's own. Both directions are therefore closed -- neither "nothing was chec
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path, PurePosixPath
 
 import pytest
@@ -355,6 +358,97 @@ def _sample() -> dict:
     return json.loads((TARGET_ROOT / RIR_SAMPLE).read_text(encoding="utf-8"))
 
 
+#: Windows' legacy per-path limit. Not a style preference: past it a plain ``mkdir`` answers
+#: WinError 3 (``PATH_BUDGET_EXCEEDED`` below is what the node reports instead), so the failure
+#: lands *before* the product gate this node claims to sweep.
+WINDOWS_PATH_BUDGET = 260
+
+
+def _staging_root(base: Path, raster_rel: str, budget: int = WINDOWS_PATH_BUDGET,
+                  fallback_parent: Path | None = None, cleanup=None) -> Path:
+    """A project root whose staged raster path still fits the platform's own path limit.
+
+    Two outside readings drove this: a deep checkout put the staged path at 279 characters and the
+    reviewer saw a bare ``FileNotFoundError``; the author's own stdout from the same shape read 263.
+    Neither named the cause, because the fixture -- not the product -- is what died. So the budget is
+    spent here rather than assumed: if ``base`` cannot carry it, the project is re-rooted under the
+    system temp root, and only when even that shortest root cannot fit it does the node state the
+    prerequisite it needs. This machine tolerates long paths, so the branches below are proven by
+    planting the budget, not by hoping for an OS that refuses.
+    """
+    tail = str(PurePosixPath(raster_rel))
+
+    def fits(candidate: Path) -> bool:
+        return len(str(candidate / "project" / tail)) <= budget
+
+    if fits(base):
+        return base
+    parent = fallback_parent if fallback_parent is not None else Path(tempfile.gettempdir())
+    parent.mkdir(parents=True, exist_ok=True)
+    candidate = Path(tempfile.mkdtemp(prefix="awl-raster-", dir=str(parent)))
+    if cleanup is not None:
+        cleanup(candidate)
+    if not fits(candidate):
+        shutil.rmtree(candidate, ignore_errors=False)
+        raise AssertionError(
+            "PATH_PREREQUISITE_UNMET: 连最短的临时根也放不下这条夹具路径（%d 字节 > %d），"
+            "本节点要求 %s 之下可达" % (len(str(candidate / "project" / tail)), budget, parent))
+    return candidate
+
+
+def _remove_created_root(path: Path) -> None:
+    """Delete a re-rooted staging directory and prove it went away.
+
+    ``ignore_errors`` sweeps leave debris for the next reading to count as somebody else's sandbox;
+    this batch already lost a clone that way, so the removal is asserted, not trusted.
+    """
+    if path.exists():
+        shutil.rmtree(path)
+    assert not path.exists(), "自己造的沙箱根没清掉：" + str(path)
+
+
+def test_the_raster_staging_root_moves_only_when_the_budget_is_over(tmp_path):
+    """换根这一支要能被按下，而且只在放不下时按——两个方向都要读数。
+
+    控制面有两层：真预算之下本机这条 `tmp_path` 本来就放得下（返回的就是传进来的根，一个目录也
+    不新建，`created` 为空）；把预算收到刚好被夹具尾巴越过，函数必须换到临时根之下重开，并满足它
+    自己的后置条件——新根加尾巴的长度确实在预算之内。不满足就不是解决，是第二次失败。
+    """
+    real_tail = [n for n in _nodes_of(_sample()) if n.get("type") == "raster"][0]["raster"]["path"]
+    created: list[Path] = []
+    keep = _staging_root(tmp_path, real_tail, cleanup=created.append)
+    assert keep == tmp_path, "预算内也要换根，这条腿就只是在制造残骸"
+    assert created == [], "没换根却造了目录"
+    assert len(str(tmp_path / "project" / PurePosixPath(real_tail))) <= WINDOWS_PATH_BUDGET, (
+        "本机读数已经不满足控制面前提，下面的种下去那一侧不再是对照")
+
+    plant = len(str(tmp_path))
+    moved = _staging_root(tmp_path, "layers/texture-chip.png", budget=plant,
+                          cleanup=created.append)
+    try:
+        assert moved != tmp_path, "把预算收成越界那么大，却什么都没换"
+        assert len(str(moved / "project" / "layers/texture-chip.png")) <= plant, (
+            "换了根仍然超预算，那这个根不是解决，是第二次失败")
+        assert created, "重开的根没被登记清理——残骸就是下一轮清扫族的活儿"
+    finally:
+        for path in created:
+            _remove_created_root(path)
+
+
+def test_the_raster_staging_root_names_the_prerequisite_instead_of_an_oserror(tmp_path):
+    """最短的根也放不下时，报的是前提，不是 `FileNotFoundError`，而且不把目录留下。
+
+    预算给到 1：任何真实路径都超过它。这一支测的是"具名结论"那一半——原委在这条腿上出现过两次
+    （外部 279、本地 263），两次都以裸 `FileNotFoundError` 收场，读数里连"是谁失败了"都没有。
+    """
+    short_root = tmp_path / "sr"
+    with pytest.raises(AssertionError) as refused:
+        _staging_root(tmp_path, "layers/texture-chip.png", budget=1,
+                      fallback_parent=short_root, cleanup=lambda path: None)
+    assert "PATH_PREREQUISITE_UNMET" in str(refused.value), str(refused.value)
+    assert not list(short_root.glob("awl-raster-*")), "拒绝的时候把自己造的根留在了盘上"
+
+
 def _stage(tmp_path: Path, raster_rel: str) -> tuple[Path, Path]:
     """A project root with the marker the path policy insists on, and a run root inside it."""
     project = tmp_path / "project"
@@ -462,7 +556,7 @@ def test_relative_and_absolute_project_roots_reach_the_same_raster_verdict(tmp_p
     assert outside is False, ("逃逸判定恒真或恒假，那句 escapes 就成了装饰", outside)
 
 
-def test_the_raster_path_reports_the_gates_a_real_document_actually_hits(tmp_path):
+def test_the_raster_path_reports_the_gates_a_real_document_actually_hits(tmp_path, request):
     """栅格节点在合法文档里走产品自己的函数，撞上的门按各自的名字报出来。
 
     三段都是现测的结论，不是挑了好听的那一段：
@@ -493,7 +587,10 @@ def test_the_raster_path_reports_the_gates_a_real_document_actually_hits(tmp_pat
             adobe_job.build_photoshop_job(document, run_dir, text_styles={}, project_root=project)
         assert str(refused.value) == message, str(refused.value)
 
-    project, run_dir = _stage(tmp_path, declared)
+    root = _staging_root(tmp_path, declared,
+                         cleanup=lambda path: request.node.addfinalizer(
+                             lambda: _remove_created_root(path)))
+    project, run_dir = _stage(root, declared)
     expect_refusal(copy.deepcopy(sample), project, run_dir, RECT_GATE)
 
     solo = copy.deepcopy(sample)
