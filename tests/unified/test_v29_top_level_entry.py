@@ -23,6 +23,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 TARGET_ROOT = Path(__file__).resolve().parents[2]
@@ -600,3 +601,107 @@ def test_a_shape_or_exemption_kept_past_the_sentence_it_guarded_is_named():
         assert any("PROSE_FIGURE_EXEMPT_DEAD" in item for item in findings), findings
     finally:
         checker.PROSE_FIGURE_COINCIDENTAL = exemptions
+
+
+def test_history_summary_counts_the_live_manifest_rows():
+    """A historical JSON snapshot cannot certify today's archive dispositions."""
+    checker = _checker("checker_live_history")
+    ledger = checker.rows("docs/history/sources-20261101/MANIFEST.csv")
+    counts = Counter(row["action"] for row in ledger)
+    observed = checker.archive_summary()
+    assert observed["rows_total"] == len(ledger)
+    assert observed["actions"] == {name: counts[name] for name in observed["actions"]}
+
+
+def test_the_workbench_verdict_set_is_derived_and_the_entry_lists_every_name():
+    """The entry must not be trusted to count its own verdicts: derive all three sets from code.
+
+    This is the guard for a real drift: the tool grew ``SANDBOX_CLEANUP_REFUSED`` while both entry
+    sentences still said "ten" and ``--check`` stayed green. No literal count here either -- the
+    next verdict added to the tool would make this node (and the gate) name the missing name.
+    """
+    checker = _checker("checker_workbench_positive")
+    text = ENTRY.read_text(encoding="utf-8")
+    sets = checker.workbench_verdict_sets()
+    listed = checker.parse_workbench_verdict_list(text)
+    assert sets["assigned"], "工具里一个判定字面量都读不到，守卫空转"
+    assert sets["assigned"] == sets["declared"] == set(listed), (
+        sorted(sets["assigned"] - set(listed)), sorted(set(listed) - sets["assigned"]))
+    assert len(listed) == len(set(listed)), "入口名单里有重复名字"
+    assert checker.workbench_verdict_findings(text, sets) == []
+    assert {"MATCH", "SANDBOX_CLEANUP_REFUSED", "BUILD_FAILED"} <= sets["assigned"]
+    derived = checker.derive_figures()
+    assert derived["workbench_verdict_count"] == len(sets["assigned"])
+    assert derived["workbench_verdict_cases"] == len(sets["declared"])
+    assert _figures(text)["workbench_verdict_count"] == len(sets["assigned"])
+
+
+def _workbench_red(tmp_path, label: str, mutate, needle: str) -> None:
+    """One doctored copy through the real CLI: the specific finding must appear, with rc=1."""
+    entry = _doctored(tmp_path, mutate)
+    report = _report(_run("--check", "--entry", str(entry)))
+    assert report["verdict"] == "FAIL", (label, report)
+    assert any(needle in finding for finding in report["findings"]), (label, report["findings"])
+    assert _run("--check", "--entry", str(entry)).returncode == 1, label
+
+
+def test_a_verdict_the_entry_does_not_name_is_reported(tmp_path):
+    """Drop one name from the fenced list: the tool can still assign it, so the check must red."""
+    _workbench_red(
+        tmp_path, "drop",
+        lambda t: t.replace(" / `SANDBOX_CLEANUP_REFUSED` / `BUILD_FAILED`",
+                            " / `BUILD_FAILED`", 1),
+        "WORKBENCH_VERDICT_UNDISCLOSED SANDBOX_CLEANUP_REFUSED")
+
+
+def test_a_verdict_the_tool_cannot_assign_is_reported(tmp_path):
+    """A name present only in prose is a claim the tool cannot back, and must red."""
+    _workbench_red(
+        tmp_path, "phantom",
+        lambda t: t.replace("<!-- workbench-verdicts:start -->\n",
+                            "<!-- workbench-verdicts:start -->\n`PHANTOM_PLANT` / ", 1),
+        "WORKBENCH_VERDICT_NOT_ASSIGNABLE PHANTOM_PLANT")
+
+
+def test_a_handwritten_verdict_count_in_the_entry_is_reported(tmp_path):
+    """Re-typing 「十个具名判定」 into the entry is exactly the defect this guard was written for."""
+    _workbench_red(
+        tmp_path, "count",
+        lambda t: t.replace("§二 那张表里 workbench 的具名判定逐名如下",
+                            "§二 那张表里 workbench 的十个具名判定逐名如下", 1),
+        "WORKBENCH_VERDICT_COUNT_HANDWRITTEN")
+
+
+def test_a_missing_verdict_list_cannot_pass_as_an_unchanged_entry(tmp_path):
+    """Deleting the fenced list must not be read as 'no claim to check'."""
+    _workbench_red(
+        tmp_path, "missing-list",
+        lambda t: t.replace("<!-- workbench-verdicts:start -->", "<!-- removed -->", 1)
+                   .replace("<!-- workbench-verdicts:end -->", "<!-- removed-end -->", 1),
+        "WORKBENCH_VERDICT_LIST_MISSING")
+
+
+def test_a_verdict_added_only_to_the_tool_is_reported(tmp_path):
+    """The tool-side half: a new assignable name with no entry row and no case both go red.
+
+    Driven at the pure predicate with a real copy of the tool that carries one extra verdict
+    literal, so the set under test is read by the same structural reader production uses.
+    """
+    checker = _checker("checker_workbench_tool_growth")
+    tool = TARGET_ROOT / "scripts" / "check_workbench_bundle_drift.py"
+    planted_tool = tmp_path / "tool-with-extra-verdict.py"
+    planted_tool.write_bytes(
+        (tool.read_text(encoding="utf-8")
+         + '\ndef _planted_unreachable():\n    document["verdict"] = "TWELFTH_PLANT"\n').encode("utf-8"))
+    saved = checker.WORKBENCH_TOOL
+    try:
+        checker.WORKBENCH_TOOL = planted_tool
+        sets = checker.workbench_verdict_sets()
+        findings = checker.workbench_verdict_findings(
+            ENTRY.read_text(encoding="utf-8"), sets)
+    finally:
+        checker.WORKBENCH_TOOL = saved
+    assert any("WORKBENCH_VERDICT_UNDISCLOSED TWELFTH_PLANT" in f for f in findings), findings
+    assert any("WORKBENCH_VERDICT_CASE_MISSING TWELFTH_PLANT" in f for f in findings), findings
+    assert checker.workbench_verdict_findings(
+        ENTRY.read_text(encoding="utf-8")) == [], "还原工具路径后真实入口必须回绿"

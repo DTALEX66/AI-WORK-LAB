@@ -50,6 +50,13 @@ def test_committed_bundle_equals_a_fresh_offline_build():
     assert len(receipt["committed_digest"]) == 64, receipt
 
 
+def test_a_refused_build_sandbox_cleanup_is_reported_and_preserved():
+    """A controlled refusal follows a real build and must leave its output intact."""
+    from scripts import falsify_workbench_bundle_gate as falsifier
+
+    assert falsifier.cleanup_refusal_plant()
+
+
 #: Prints a marker and exits non-zero, so the failure the gate reports is provably the failure
 #: planted here rather than something that happened to be broken on the machine.
 FAILING_VITE = ('process.stderr.write("PLANTED-BUILD-FAILURE\\n");\n'

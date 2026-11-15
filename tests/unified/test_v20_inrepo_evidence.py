@@ -498,3 +498,140 @@ def test_the_entry_receipt_line_names_the_reading_behind_each_number():
         "依托提交那行没有说明 audited_candidate_digest 读的是被审提交的 git 对象，"
         "于是它看起来仍像收据那个内容摘要的另一份读数：" + line)
 
+
+def _state_check(module, path: Path) -> tuple[int, dict]:
+    saved = module.OUT
+    module.OUT = path
+    try:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            rc = module.main([sys.argv[0], "--check"])
+        return rc, json.loads(buffer.getvalue().strip())
+    finally:
+        module.OUT = saved
+
+
+def _rebuilt_state(module) -> dict:
+    tracked = _json(AUDIT_STATE)
+    return module.merge(tracked, module.live_fields(None))
+
+
+def test_default_branch_is_observed_from_the_remote_symref_not_the_checkout():
+    """The 2026-11-14 defect: ``symbolic-ref --short HEAD`` was written as the remote default.
+
+    Here the current checkout and the remote default really are different branches, so this is
+    not a hypothetical: the two commands must answer differently, and the record must carry the
+    remote one, name it as a possibly-stale offline reading, and disclaim a live observation.
+    """
+    module = _audit_state_builder()
+    checkout = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                              cwd=str(TARGET_ROOT), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace").stdout.strip()
+    observed = module.observe_default_branch()
+    assert observed["default_branch"] != checkout, (
+        "本轮反例的前提不成立：检出分支与远端默认分支相同，冒充就无法被发现；"
+        "换一台能区分两者的检出再跑，不要把这个断言改软")
+    assert observed["default_branch_basis"].startswith("local_remote_tracking_symref:")
+    assert "stale" in observed["default_branch_observation"]
+    assert observed["default_branch_live_observation"] == module.DEFAULT_BRANCH_LIVE_NOTE
+    rebuilt = _rebuilt_state(module)
+    assert rebuilt["upload_facts"]["default_branch"] == observed["default_branch"]
+    assert rebuilt["branch"] == checkout
+    assert "default_branch" not in module.MACHINE_LOCAL_FACTS, (
+        "把 default_branch 放回机器局部豁免，错误绑定又会被当成先决条件放过")
+    assert "default_branch" not in module.ROTATING_FIELDS
+    assert "default_branch" not in module.ROTATING_NESTED
+
+
+def test_the_published_default_branch_binding_is_re_observed_and_not_a_live_claim(tmp_path):
+    """The tracked record itself must carry the corrected fields, not just a rebuilt copy."""
+    module = _audit_state_builder()
+    published = _json(AUDIT_STATE)["upload_facts"]
+    observed = module.observe_default_branch()
+    assert published["default_branch"] == observed["default_branch"]
+    for key in ("default_branch_basis", "default_branch_observation",
+                "default_branch_live_observation"):
+        assert published[key] == observed[key], key
+    assert "HISTORICAL" in published["pushed_branch_note"], (
+        "旧备注把一次历史上传写成当前事实，重发布后必须明确标成历史记录")
+    assert "today's remote branch set" in published["pushed_branch_note"]
+    fresh = tmp_path / "AUDIT-STATE-fresh.json"
+    fresh.write_text(json.dumps(_rebuilt_state(module), ensure_ascii=False, indent=2) + "\n",
+                     encoding="utf-8", newline="\n")
+    rc, report = _state_check(module, fresh)
+    assert rc == 0 and report["verdict"] == "MATCHES", report
+    assert report["default_branch_binding_findings"] == [], report
+
+
+def test_a_wrong_default_branch_binding_is_named_not_excused(tmp_path):
+    """Plant the exact old defect: publish the checked-out branch as the remote default."""
+    module = _audit_state_builder()
+    rebuilt = _rebuilt_state(module)
+    checkout = rebuilt["branch"]
+    planted = json.loads(json.dumps(rebuilt))
+    planted["upload_facts"]["default_branch"] = checkout
+    path = tmp_path / "AUDIT-STATE-local-checkout.json"
+    path.write_text(json.dumps(planted, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8", newline="\n")
+    rc, report = _state_check(module, path)
+    assert rc == 1 and report["verdict"] == "DRIFT", report
+    assert any("DEFAULT_BRANCH_IS_LOCAL_CHECKOUT" in f
+               for f in report["default_branch_binding_findings"]), report
+
+
+def test_a_checkout_equal_to_the_remote_default_is_lawful():
+    """The guard must not reject the legitimate case: checkout == remote default."""
+    module = _audit_state_builder()
+    rebuilt = _rebuilt_state(module)
+    default = rebuilt["upload_facts"]["default_branch"]
+    rebuilt["branch"] = default
+    assert not any("DEFAULT_BRANCH_IS_LOCAL_CHECKOUT" in f
+                   for f in module.default_branch_binding_findings(rebuilt, rebuilt))
+
+
+def test_an_offline_checkout_without_the_symref_is_a_prerequisite_not_drift(tmp_path, monkeypatch):
+    """A clone with no remote-tracking HEAD symref cannot repeat the observation.
+
+    The published record names a default branch from a checkout that could observe it; the
+    rebuilt one says it cannot. That is a named prerequisite (rc=3), never drift (rc=1) and
+    never MATCHES (rc=0) -- both of the latter would claim something this machine cannot know.
+    """
+    module = _audit_state_builder()
+    rebuilt = _rebuilt_state(module)
+    path = tmp_path / "AUDIT-STATE-observable.json"
+    path.write_text(json.dumps(rebuilt, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8", newline="\n")
+    saved = module.git
+
+    def no_symref(args, cwd=None):
+        if args[:2] == ["symbolic-ref", "-q"]:
+            return ""
+        return saved(args, cwd)
+
+    monkeypatch.setattr(module, "git", no_symref)
+    rc, report = _state_check(module, path)
+    assert rc == 3 and report["verdict"] == "NOT_OBSERVABLE_HERE", report
+    assert report["stale"] is False, report
+    assert "upload_facts" in report["prereq_sections"], report
+
+
+def test_old_record_shape_and_a_live_observation_claim_are_refused(tmp_path):
+    """Two ways merge could have laundered a wrong binding into MATCHES."""
+    module = _audit_state_builder()
+    for label, mutate, needle in (
+            ("old-shape", lambda facts: [facts.pop(key, None) for key in (
+                "default_branch_basis", "default_branch_observation",
+                "default_branch_live_observation")], "DEFAULT_BRANCH_BASIS_MISSING"),
+            ("live-claim", lambda facts: facts.update(
+                default_branch_live_observation="observed live via ls-remote"),
+             "DEFAULT_BRANCH_LIVE_CLAIM")):
+        planted = json.loads(json.dumps(_rebuilt_state(module)))
+        mutate(planted["upload_facts"])
+        path = tmp_path / ("AUDIT-STATE-" + label + ".json")
+        path.write_text(json.dumps(planted, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8", newline="\n")
+        rc, report = _state_check(module, path)
+        assert rc == 1 and report["verdict"] == "DRIFT", (label, report)
+        assert any(needle in f for f in report["default_branch_binding_findings"]), (
+            label, report)
+

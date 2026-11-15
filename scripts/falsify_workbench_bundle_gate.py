@@ -8,7 +8,7 @@ reading once; it cannot prove the *set* stays covered, because nobody can run it
 
 So this script is the reproducible form, and it publishes its own coverage in ``VERDICT_CASES``:
 ``test_v33_workbench_bundle_truth.py`` compares that set against the verdict literals the tool can
-actually assign, so adding an eleventh name without putting it in front of the gate turns that node
+actually assign, so adding a name without putting it in front of the gate turns that node
 red. The in-suite nodes cover what a repository state alone can reach; the two classes that need a
 byte plant in *this* checkout (``DRIFT``, ``UNCOMMITTED_BYTES``) are applied here to tracked files
 and restored from the bytes saved at the start, verified by digest -- which is why they are a script
@@ -30,6 +30,9 @@ What each case claims, in the tool's own words:
       a stub ``vite.js`` that exits non-zero and prints a marker. It proves the gate's error path
       is reachable and refuses; it is never evidence that a build succeeded -- that claim is
       ``test_v36``'s real offline build.
+  SANDBOX_CLEANUP_REFUSED
+      a real build plus a controlled refusal injected into the cleanup check; its output must still
+      exist when the refusal is observed, then is removed only after a fresh check succeeds.
   DRIFT / UNCOMMITTED_BYTES
       real bytes in this checkout, edited and restored.
   MATCH
@@ -43,14 +46,20 @@ Run:  .venv/Scripts/python.exe -B -X utf8 scripts/falsify_workbench_bundle_gate.
 from __future__ import annotations
 
 import hashlib
+import contextlib
+import io
 import json
 import os
 import pathlib
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
+
+try:
+    from scripts import sandbox_cleanup
+except ModuleNotFoundError:
+    import sandbox_cleanup
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TOOL = ROOT / "scripts/check_workbench_bundle_drift.py"
@@ -75,6 +84,7 @@ VERDICT_CASES = {
     "NODE_ABSENT": 3,
     "VITE_ABSENT": 3,
     "BUILD_FAILED": 1,
+    "SANDBOX_CLEANUP_REFUSED": 3,
     "DRIFT": 1,
     "UNCOMMITTED_BYTES": 1,
 }
@@ -160,10 +170,48 @@ def remove_repo(path):
     survivor was half a gigabyte. A leftover ``bb-*`` repo is how a later clean-up reading counts
     somebody else's fixture, so the read-only bit is cleared and the caller asserts the path is gone.
     """
-    def clear(func, target, exc):
-        os.chmod(target, stat.S_IWRITE)
-        func(target)
-    shutil.rmtree(path, onerror=clear)
+    reason = sandbox_cleanup.undeletable_reason(path)
+    if reason:
+        raise OSError("SANDBOX_CLEANUP_REFUSED:" + reason)
+    shutil.rmtree(sandbox_cleanup.win_long_safe(path), onerror=sandbox_cleanup.clear_read_only)
+
+
+def cleanup_refusal_plant():
+    """Run a real build with a controlled cleanup refusal; preserve its output until checked."""
+    try:
+        from scripts import check_workbench_bundle_drift as gate
+    except ModuleNotFoundError:
+        import check_workbench_bundle_drift as gate
+
+    saved_argv = sys.argv
+    original = gate.sandbox_cleanup.undeletable_reason
+    planted = []
+
+    def refuse(path):
+        planted.append(pathlib.Path(path))
+        return "DELETE_ACCESS_REFUSED:controlled-plant"
+
+    captured = io.StringIO()
+    try:
+        sys.argv = [str(TOOL)]
+        gate.sandbox_cleanup.undeletable_reason = refuse
+        with contextlib.redirect_stdout(captured):
+            rc = gate.main()
+        document = json.loads(captured.getvalue().strip().splitlines()[-1])
+        ok = (rc == VERDICT_CASES["SANDBOX_CLEANUP_REFUSED"]
+              and document.get("verdict") == "SANDBOX_CLEANUP_REFUSED"
+              and len(planted) == 1 and (planted[0] / "main.js").is_file())
+        print("%-24s rc=%-3s output_preserved=%s -> %s"
+              % ("SANDBOX_CLEANUP_REFUSED", rc,
+                 bool(planted and (planted[0] / "main.js").is_file()), "OK" if ok else "WRONG"))
+        return ok
+    finally:
+        sys.argv = saved_argv
+        gate.sandbox_cleanup.undeletable_reason = original
+        for path in planted:
+            assert path.parent == ROOT / ".project-local/runs" and path.name.startswith("workbench-drift-")
+            if path.exists():
+                remove_repo(path)
 
 
 def _planted(tmp, *, state, gitignore=None, vite=None):
@@ -275,7 +323,9 @@ def main() -> int:
                                                  == "MATCH" else "WRONG"))
     observed["MATCH"] = rc == 0 and baseline.get("verdict") == "MATCH"
 
-    base = pathlib.Path(tempfile.mkdtemp(prefix="awl-bundle-falsify-"))
+    scratch = ROOT / ".project-local/t"
+    scratch.mkdir(parents=True, exist_ok=True)
+    base = pathlib.Path(tempfile.mkdtemp(prefix="awl-bundle-falsify-", dir=scratch))
     try:
         for name, (want, kwargs, hide_node) in REPO_CASES.items():
             tmp = pathlib.Path(tempfile.mkdtemp(prefix="bb-", dir=str(base)))
@@ -296,6 +346,7 @@ def main() -> int:
         remove_repo(base)
 
     plant_control = control_no_provider_means_no_plant()
+    observed["SANDBOX_CLEANUP_REFUSED"] = cleanup_refusal_plant()
 
     observed["DRIFT"] = byte_plant("DRIFT", SOURCE, _edit_nav_array, "DRIFT")
     observed["UNCOMMITTED_BYTES"] = byte_plant(

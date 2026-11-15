@@ -63,6 +63,7 @@ from __future__ import annotations
 import ast
 import csv
 import hashlib
+import io
 import importlib.util
 import json
 import re
@@ -73,6 +74,7 @@ from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts")); import source_roots  # noqa: E402,E702
+from atomic_register import publish_bytes  # noqa: E402
 WORK_ROOT, DESIGN_ROOT = source_roots.work_root(), source_roots.design_root()
 MAPPING = REPO_ROOT / "migration" / "mapping.csv"
 COPIES = REPO_ROOT / "migration" / "copies.json"
@@ -514,12 +516,18 @@ def main(argv: list[str]) -> int:
             "消费者数": str(len(consumers.split(";")) if consumers else 0),
             "判定依据": reason,
         })
-    temporary = OUT_CSV.with_suffix(".csv.tmp")
-    with temporary.open("w", encoding="utf-8-sig", newline="\n") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
-        writer.writeheader()
-        writer.writerows(rows)
-    temporary.replace(OUT_CSV)
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+    writer.writeheader()
+    writer.writerows(rows)
+    payload = handle.getvalue().encode("utf-8-sig")
+    check = "--check" in argv
+    try:
+        matches = OUT_CSV.read_bytes() == payload
+    except FileNotFoundError:
+        matches = False
+    if not check:
+        publish_bytes(OUT_CSV, payload)
     summary = {"generated_at": _now(), "registered_work_python_paths": len(registered),
                "copied_work_python_paths": len(copied & set(registered)),
                "gap_paths": len(gaps), "categories": counts,
@@ -530,13 +538,15 @@ def main(argv: list[str]) -> int:
                "note": "类别由本文件顶部的规则现算，逐行带来源 sha256 与依据；"
                        "MIGRATED_WIRED 只由 AST 导入图证明的 consumer 决定，"
                        "没有 consumer 的迁入文件记为 MIGRATED_PRESENT_UNWIRED，不接线也不谎称。"}
+    if check:
+        summary["comparison"] = "MATCH" if matches else "DRIFT"
     document = {"summary": summary, "rows": rows}
     if report_path is not None:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(document, ensure_ascii=False, indent=2),
                                encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False))
-    return 0 if summary["gap_paths"] else 1
+    return 0 if summary["gap_paths"] and (not check or matches) else 1
 
 
 if __name__ == "__main__":

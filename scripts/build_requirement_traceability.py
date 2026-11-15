@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import json
 import re
 import subprocess
@@ -59,6 +60,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from published_stamp import keeping_the_recorded_stamp  # noqa: E402
+from atomic_register import publish_bytes  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HANDOFF = REPO_ROOT / "AI-WORK-LAB_HANDOFF_20261029"
@@ -1473,13 +1475,12 @@ CSV_COLUMNS = ["来源行标识", "要求原文", "当前实现位置", "验证�
 def write_csv(rows: list[dict], path: Path, extra_columns: list[str]) -> None:
     fieldnames = ["来源行标识"] + extra_columns + ["要求原文", "当前实现位置", "验证证据",
                                                    "状态", "依据说明"]
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    with temporary.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore",
-                                lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
-    temporary.replace(path)
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore",
+                            lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    publish_bytes(path, handle.getvalue().encode("utf-8-sig"))
 
 
 def histogram(rows: list[dict]) -> dict[str, int]:

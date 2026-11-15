@@ -47,6 +47,15 @@ SOURCES = [source_roots.work_root(), source_roots.design_root()]
 SKIP_PARTS = {".mimosa", "__pycache__", ".pytest_cache"}
 
 
+def _discard_sandbox(root):
+    """Refuse unsafe teardown and make leftovers a test error."""
+    from tests.conftest import remove_sandboxes
+
+    removed, failed = remove_sandboxes([root])
+    if removed != 1 or failed:
+        raise OSError("MIGRATION_SANDBOX_CLEANUP_REFUSED: " + ", ".join(failed))
+
+
 @pytest.fixture(scope="module")
 def rehearsal(tmp_path_factory):
     """One isolated destination, populated once and shared by the apply tests.
@@ -60,17 +69,42 @@ def rehearsal(tmp_path_factory):
     # domain-pack benchmark path is ~250 on its own), and the apply then fails for
     # the length, not for the code. The rehearsal only has to be outside the
     # candidate, so it goes somewhere short and is removed afterwards.
-    root = Path(tempfile.gettempdir()) / ("awl-v07-%d" % os.getpid())
-    if root.exists():
-        shutil.rmtree(root)
-    root.mkdir(parents=True)
-    _run(["--apply", "--confirm", "REBUILD-MIGRATION", "--target-root", str(root)])
+    root = Path(tempfile.mkdtemp(prefix="v-", dir=tempfile.gettempdir()))
     try:
+        _run(["--apply", "--confirm", "REBUILD-MIGRATION", "--target-root", str(root)])
         yield root
     finally:
-        # this tool's own rehearsal litter: ~1.4k files per run outside the
-        # candidate, and no auditor asked to hash a temp tree
-        shutil.rmtree(root, ignore_errors=True)
+        _discard_sandbox(root)
+
+
+
+def test_rehearsal_preserves_a_preexisting_same_pid_directory(tmp_path, monkeypatch):
+    """A recycled PID must not select earlier evidence for removal."""
+    old = tmp_path / ("awl-v07-%d" % os.getpid())
+    old.mkdir()
+    sentinel = old / "keep"
+    sentinel.write_text("old evidence", encoding="utf-8")
+    attempted = []
+    original_remove = shutil.rmtree
+
+    def trap(path, *args, **kwargs):
+        if Path(path).resolve() == old.resolve():
+            attempted.append(path)
+            raise OSError("deletion of pre-existing sandbox intercepted")
+        return original_remove(path, *args, **kwargs)
+
+    def stop(*_args, **_kwargs):
+        raise RuntimeError("stop before migration")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
+        patch.setattr(shutil, "rmtree", trap)
+        patch.setattr(sys.modules[__name__], "_run", stop)
+        generator = rehearsal.__wrapped__(None)
+        with pytest.raises(RuntimeError, match="stop before migration"):
+            next(generator)
+        assert attempted == [], attempted
+        assert sentinel.read_text(encoding="utf-8") == "old evidence"
 
 
 def _run(args, *, expect=0, cwd=TARGET_ROOT):
@@ -402,6 +436,29 @@ def test_migrated_file_digests_match_their_sources():
                                        "every declared rework must still be a copied target")
 
 
+def test_local_addition_requires_its_declared_bytes_and_exact_path(tmp_path):
+    migrator = _live_migration_module()
+    relative = "domains/design/design_lab/runtime/sqlite_open.py"
+    original = TARGET_ROOT / relative
+    assert migrator.attested_local_addition(relative, original)
+    changed = tmp_path / "changed.py"
+    changed.write_bytes(original.read_bytes() + b"\n")
+    assert not migrator.attested_local_addition(relative, changed)
+    assert not migrator.attested_local_addition(relative + ".other", original)
+    assert not migrator.attested_local_addition(relative, tmp_path / "missing.py")
+
+
+def test_plan_refuses_a_missing_local_addition(tmp_path):
+    """An empty unmanaged list is not proof that a required local file exists."""
+    report_path = tmp_path / "plan.json"
+    completed = _run(["--plan", "--target-root", str(tmp_path),
+                      "--json-out", str(report_path)], expect=None)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert "domains/design/design_lab/runtime/sqlite_open.py" in report["missing_local_additions"]
+    assert completed.returncode == 1
+    assert json.loads(completed.stdout.strip().splitlines()[-1])["missing_local_additions"]
+
+
 def test_mapping_rerun_is_idempotent():
     """The mapping artifacts must not drift. Two of them carry their own run
     timestamp, so those are compared with the timestamp field removed — asserting
@@ -476,9 +533,7 @@ def test_a_killed_migration_lands_the_same_bytes_as_a_clean_one():
     260-character limit, and the tool then refuses with TARGET_WRITE_FAILED — a real
     behaviour of the tool, but not what this test is about.
     """
-    base = Path(tempfile.gettempdir()) / ("awl-crash-%d" % os.getpid())
-    if base.exists():
-        shutil.rmtree(base)
+    base = Path(tempfile.mkdtemp(prefix="k-", dir=tempfile.gettempdir()))
     crashed_root = base / "crashed"
     clean_root = base / "clean"
     crashed_root.mkdir(parents=True)
@@ -528,7 +583,7 @@ def test_a_killed_migration_lands_the_same_bytes_as_a_clean_one():
         assert (sum(entry["files"] for entry in resumed_manifest["copies"])
                 == sum(entry["files"] for entry in clean_manifest["copies"]))
     finally:
-        shutil.rmtree(base, ignore_errors=True)
+        _discard_sandbox(base)
 
 
 def test_apply_leaves_attested_rework_bytes_untouched(tmp_path):
@@ -664,3 +719,53 @@ def test_apply_still_refuses_a_modified_file_with_no_attestation(tmp_path):
                                               sorted(set(before) ^ set(_tree_state(candidate))))
     assert not would_write_target.is_file(), ("the would_write row landed despite the refusal",
                                               str(would_write_target))
+
+
+def test_an_ignored_mount_point_is_skipped_without_a_stat(monkeypatch):
+    """The real 2026-11-14 defect: `is_dir()` was called before the pure string skip test.
+
+    ``DESIGN-LAB/apps/workbench/node_modules/playwright`` is an untrusted mount point whose
+    ``stat`` raises ``WinError 448`` on this machine. Ordering ``is_dir()`` first made
+    ``migrate_sources.py --plan`` die with a traceback even though ``node_modules`` is a
+    declared ignored name that must never be copied. The plant below makes ``is_dir()`` raise
+    for every path, so the assertion can only hold if the skip test needs no filesystem call.
+    """
+    live = _live_migration_module()
+    ignored = Path("D:/src/node_modules/playwright")
+
+    def refuse_stat(self, *args, **kwargs):
+        raise OSError("WinError 448: untrusted mount point (planted)")
+
+    monkeypatch.setattr(Path, "is_dir", refuse_stat)
+    assert live._walk_file(ignored, ignored.relative_to("D:/src").parts) is False
+    # and the old order really did crash on the same plant
+    with pytest.raises(OSError):
+        _ = ignored.is_dir() or live._skipped(ignored.relative_to("D:/src").parts)
+
+
+def test_an_unstatable_path_that_is_not_ignored_is_refused_not_dropped(monkeypatch):
+    """A silently skipped non-ignored path would shrink the population into a false green."""
+    live = _live_migration_module()
+    ordinary = Path("D:/src/ordinary/file.txt")
+
+    def refuse_stat(self, *args, **kwargs):
+        raise OSError("WinError 448: untrusted mount point (planted)")
+
+    monkeypatch.setattr(Path, "is_dir", refuse_stat)
+    with pytest.raises(live.MigrationRefused) as caught:
+        live._walk_file(ordinary, ordinary.relative_to("D:/src").parts)
+    assert "SOURCE_PATH_UNTRAVERSABLE" in str(caught.value)
+
+
+def test_the_real_plan_has_no_traceback_and_no_unmanaged_files():
+    """The real gate, on the real read-only sources: named answer, not a crash."""
+    completed = subprocess.run(
+        [VENV_PYTHON, "-B", "-X", "utf8", str(SCRIPT), "--plan"],
+        cwd=str(TARGET_ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=900)
+    assert completed.returncode == 0, (completed.returncode, completed.stdout[-800:],
+                                       completed.stderr[-800:])
+    assert not completed.stderr.strip(), completed.stderr[-800:]
+    payload = json.loads(completed.stdout.strip().splitlines()[-1])
+    assert payload["unmanaged_count"] == 0, payload
+    assert "error" not in payload, payload

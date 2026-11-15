@@ -28,9 +28,14 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
-import uuid
 from pathlib import Path
+
+try:
+    from scripts import sandbox_cleanup
+except ModuleNotFoundError:
+    import sandbox_cleanup
 
 ROOT = Path(__file__).resolve().parents[1]
 RELPATH = "apps/workbench/build/main.js"
@@ -107,19 +112,39 @@ def main() -> int:
     package = json.loads((workbench / "node_modules/vite/package.json").read_text(encoding="utf-8"))
     document["vite_version"] = package.get("version")
 
-    out_dir = repo / (".project-local/runs/workbench-drift-%s" % uuid.uuid4().hex[:8])
+    scratch = repo / ".project-local/runs"
+    scratch.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(tempfile.mkdtemp(prefix="workbench-drift-", dir=scratch))
+    cleanup_failure = None
+    build = None
+    rebuilt_digest = None
+    build_failure = None
     try:
         build = subprocess.run([node, str(vite), "build", "--outDir", str(out_dir), "--emptyOutDir"],
                                cwd=str(workbench), capture_output=True, text=True,
                                encoding="utf-8", errors="replace")
         rebuilt = out_dir / "main.js"
         rebuilt_digest = digest(rebuilt) if rebuilt.is_file() else None
+    except OSError as error:
+        build_failure = "%s: %s" % (type(error).__name__, error)
     finally:
-        shutil.rmtree(out_dir, ignore_errors=True)
-    if build.returncode != 0 or rebuilt_digest is None:
+        cleanup_failure = sandbox_cleanup.undeletable_reason(out_dir)
+        if not cleanup_failure:
+            try:
+                shutil.rmtree(sandbox_cleanup.win_long_safe(out_dir),
+                              onerror=sandbox_cleanup.clear_read_only)
+            except OSError as error:
+                cleanup_failure = "DELETE_FAILED:%s" % error
+    if cleanup_failure:
+        document["verdict"] = "SANDBOX_CLEANUP_REFUSED"
+        document["why"] = cleanup_failure
+        document["sandbox"] = str(out_dir)
+        return emit(document, 3)
+    if build is None or build.returncode != 0 or rebuilt_digest is None:
         document["verdict"] = "BUILD_FAILED"
-        document["build_rc"] = build.returncode
-        document["stderr_tail"] = (build.stderr or "").strip().splitlines()[-3:]
+        document["build_rc"] = build.returncode if build is not None else None
+        document["stderr_tail"] = ((build.stderr or "").strip().splitlines()[-3:]
+                                   if build is not None else [build_failure])
         return emit(document, 1)
     document["rebuilt_digest"] = rebuilt_digest
     if rebuilt_digest != document["committed_digest"]:

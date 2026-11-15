@@ -608,3 +608,29 @@ def test_boot_probe_executes_the_compat_guard_it_documents():
     if "compat surface" in documented:
         assert any(path.startswith("/api/") and not path.startswith("/api/v1")
                    for _n, _m, path, auth in checks if auth is False), documented
+
+
+def test_fresh_surface_probe_refuses_an_unsafe_cleanup(tmp_path, monkeypatch):
+    """The fresh probe preserves a workspace when its cleanup check refuses."""
+    import shutil
+    from types import SimpleNamespace
+    from scripts import probe_full_surface as surface
+
+    workspace = tmp_path / ".project-local/runs/full-surface/run1"
+    workspace.mkdir(parents=True)
+    sentinel = workspace / "keep"
+    sentinel.write_text("preserve", encoding="utf-8")
+    attempted = []
+
+    def trap(path, *_args, **_kwargs):
+        attempted.append(path)
+        raise SystemExit("unverified deletion intercepted")
+
+    monkeypatch.setattr(surface, "REPO", tmp_path)
+    monkeypatch.setattr(surface, "sandbox_cleanup", SimpleNamespace(
+        undeletable_reason=lambda _path: "DELETE_ACCESS_REFUSED:plant"))
+    monkeypatch.setattr(shutil, "rmtree", trap)
+    with pytest.raises(SystemExit, match="SANDBOX_CLEANUP_REFUSED"):
+        surface.main(["--fresh"])
+    assert attempted == []
+    assert sentinel.read_text(encoding="utf-8") == "preserve"

@@ -761,6 +761,14 @@ INIT_FILES = [
     "domains/work/control/__init__.py",
 ]
 
+#: 本仓新增、不是来源树复制件的文件。迁移器不写它；只有实际字节与声明匹配时才认领，
+#: 否则仍列入 unmanaged，不能用路径白名单掩盖后续漂移。
+LOCAL_ADDITIONS = {
+    "domains/design/design_lab/runtime/sqlite_open.py": (
+        "1f761daa72a0cdf1e917c76ca7c09fb60b60918ccdbb60cfbc021a4e22570c41", 4661,
+        "本仓的 SQLite 路径诊断；不是来源文件，迁移器不能重建或覆盖"),
+}
+
 
 
 
@@ -788,6 +796,27 @@ PATCHED_TARGETS = frozenset(rel for rel, _old, _new, _reason in PATCHES)
 #: these files; the attestation only distinguishes *declared* rework from *unexplained*
 #: rework, which is the thing the plan used to lump together.
 DECLARED_REWORK = {
+    "domains/design/design_lab/runtime/audit_trail.py": (
+        "e45a738740caa33c7e7a5af5e6ca043aea8612aa1ef34257ee13ac3d6c56a944", 4633, 7,
+        "审计日志读面使用共享 SQLite 路径判据，不把不可达的已有数据库当成缺席；来源原件保留在历史区，反例见 tests/unified/test_v38_project_store_paths.py。"),
+    "domains/design/design_lab/creative/store.py": (
+        "742a51fa04eead8a1b7637b6b3ae15037ac6d15d9f2bc173714784e1bce8215c", 11123, 5,
+        "SQLite 长路径错误在存储层按系统访问和权限证据具名；真实 HTTP 与拒写反例见 tests/unified/test_v38_project_store_paths.py；来源原件在历史区按登记摘要保留。"),
+    "domains/design/design_lab/runtime/asset_store.py": (
+        "e085aa6b10125c3c2efb1edd452ae62dd17594e97790eb54baef7ce62f3cc5f8", 20308, 5,
+        "SQLite 长路径错误在存储层按系统访问和权限证据具名；真实 HTTP 与拒写反例见 tests/unified/test_v38_project_store_paths.py；来源原件在历史区按登记摘要保留。"),
+    "domains/design/design_lab/runtime/job_store.py": (
+        "1b0fc407a643061dec3aebaec80bfe29c4c0177c1422fa82543f15e3d6b9ffc6", 17800, 5,
+        "SQLite 长路径错误在存储层按系统访问和权限证据具名；真实 HTTP 与拒写反例见 tests/unified/test_v38_project_store_paths.py；来源原件在历史区按登记摘要保留。"),
+    "domains/design/design_lab/runtime/state_store.py": (
+        "22111c076278edc6619e178e284f5c1a8a2762cbdd8703f150a4cc4e65d2b28e", 889, 3,
+        "SQLite 长路径错误在存储层按系统访问和权限证据具名；真实 HTTP 与拒写反例见 tests/unified/test_v38_project_store_paths.py；来源原件在历史区按登记摘要保留。"),
+    "domains/design/design_lab/service.py": (
+        "af54b2d2237df22b4c033759b8930bfac25a926e4c38a3407100d3baf2e33677", 5255, 14,
+        "SQLite 长路径错误在存储层按系统访问和权限证据具名；真实 HTTP 与拒写反例见 tests/unified/test_v38_project_store_paths.py；来源原件在历史区按登记摘要保留。"),
+    "domains/design/design_lab/http_service.py": (
+        "6f010c3bf0f931ef239f2905604ec043daac0775534c0d4426418cf004fd153e", 90101, 68,
+        "SQLite 长路径错误在存储层按系统访问和权限证据具名；真实 HTTP 与拒写反例见 tests/unified/test_v38_project_store_paths.py；来源原件在历史区按登记摘要保留。"),
     # 本仓自己的 Vite 产物。来源字节是来源仓那一份 TS 源的构建输出（b465af83…），而本仓的同名
     # TS 源已按声明返工过（contracts.ts 等在同表记为 COPIED_TARGET_DIFFERS），继续留着旧产物
     # 就是让三道读它的 JS 闸门校验陈旧字节。现构建由 vite 6.4.3 离线跑两次、摘要逐字节相同。
@@ -887,6 +916,30 @@ def _skipped(rel_parts) -> bool:
                or part in SOURCE_IGNORED_NAMES for part in rel_parts)
 
 
+def _walk_file(path: Path, rel_parts) -> bool:
+    """Whether ``path`` is a file the plan must account for -- decided without a needless stat.
+
+    The ignored names are a *pure string test*, so they must be checked before ``is_dir()``.
+    Windows refuses to stat an untrusted mount point (``WinError 448``), and a declared-ignored
+    directory such as ``node_modules`` can contain one: found on 2026-11-14 with
+    ``DESIGN-LAB/apps/workbench/node_modules/playwright``, where ``build_plan`` died with a
+    traceback instead of producing a plan, even though that path is explicitly not copied.
+
+    A non-ignored path that still cannot be stat'ed is a named refusal, not a silent skip:
+    dropping it would shrink the population and let ``unmanaged == 0`` look green for the
+    wrong reason. ``copy_tree`` already applies the same order (skip test first, then the
+    directory test), so the write path never had this defect.
+    """
+    if _skipped(rel_parts):
+        return False
+    try:
+        return not path.is_dir()
+    except OSError as exc:
+        raise MigrationRefused(
+            "SOURCE_PATH_UNTRAVERSABLE " + str(path) + ": " + type(exc).__name__
+            + " " + str(exc)) from exc
+
+
 def expected_bytes(source: Path, target_rel: str) -> bytes:
     """The exact bytes this tool intends to leave at ``target_rel``.
 
@@ -965,7 +1018,7 @@ def intended_set(target_root: Path = None) -> set:
             continue
         if source.is_dir():
             for path in source.rglob("*"):
-                if path.is_dir() or _skipped(path.relative_to(source).parts):
+                if not _walk_file(path, path.relative_to(source).parts):
                     continue
                 relative = PurePosixPath(dst_rel) / path.relative_to(source).as_posix()
                 intended.add(relative.as_posix())
@@ -975,6 +1028,19 @@ def intended_set(target_root: Path = None) -> set:
         intended.add(rel)
     intended.add(OUT_MANIFEST.as_posix())
     return intended
+
+
+def attested_local_addition(relative: str, path: Path) -> bool:
+    """A local addition is recognized only by its own declared bytes."""
+    record = LOCAL_ADDITIONS.get(relative)
+    if record is None:
+        return False
+    try:
+        payload = path.read_bytes()
+    except OSError:
+        return False
+    digest, size, _reason = record
+    return len(payload) == size and sha256_bytes(payload) == digest
 
 
 def _entry(path: Path, target: Path, target_rel: str) -> dict:
@@ -1043,7 +1109,7 @@ def build_plan(target_root: Path = TARGET_ROOT) -> dict:
             continue
         if source.is_dir():
             for path in sorted(source.rglob("*")):
-                if path.is_dir() or _skipped(path.relative_to(source).parts):
+                if not _walk_file(path, path.relative_to(source).parts):
                     continue
                 target_rel = (PurePosixPath(dst_rel) / path.relative_to(source).as_posix()).as_posix()
                 entries.append(_entry(path, target_root / target_rel, target_rel))
@@ -1054,17 +1120,22 @@ def build_plan(target_root: Path = TARGET_ROOT) -> dict:
         summary[row["state"]] = summary.get(row["state"], 0) + 1
     owned = intended_set(target_root)
     unmanaged = []
+    local_additions = []
     for _kind, _source, destination, dst_rel in destinations(target_root):
         if not destination.is_dir():
             continue
         for path in sorted(destination.rglob("*")):
-            if path.is_dir() or _skipped(path.relative_to(destination).parts):
+            if not _walk_file(path, path.relative_to(destination).parts):
                 continue
             relative = (PurePosixPath(dst_rel) / path.relative_to(destination).as_posix()).as_posix()
             if relative not in owned:
-                unmanaged.append(relative)
+                if attested_local_addition(relative, path):
+                    local_additions.append(relative)
+                else:
+                    unmanaged.append(relative)
     return {"target_root": str(target_root), "entries": entries, "summary": summary,
-            "unmanaged": sorted(set(unmanaged))}
+            "unmanaged": sorted(set(unmanaged)), "local_additions": sorted(set(local_additions)),
+            "missing_local_additions": sorted(set(LOCAL_ADDITIONS) - set(local_additions))}
 
 
 def apply_plan(plan: dict, *, allow_modified: bool = False,
@@ -1192,10 +1263,19 @@ def main(argv=None) -> int:
             print("TARGET_ROOT_MISSING " + str(candidate), file=sys.stderr)
             return 2
         TARGET_ROOT = candidate
-    plan = build_plan(TARGET_ROOT)
+    try:
+        plan = build_plan(TARGET_ROOT)
+    except MigrationRefused as exc:
+        # a source path that is not declared ignored but cannot be inspected: name the refusal
+        # with a non-zero code instead of a traceback, and never report an empty plan as green.
+        print(json.dumps({"error": "SOURCE_PATH_UNTRAVERSABLE", "verdict": "REFUSED",
+                          "detail": str(exc)}, ensure_ascii=False))
+        return 1
     summary = plan["summary"]
     report = {"target_root": str(TARGET_ROOT), "summary": summary,
               "unmanaged": plan["unmanaged"],
+              "local_additions": plan["local_additions"],
+              "missing_local_additions": plan["missing_local_additions"],
               # MODIFIED used to be one undifferentiated thing. Declared rework whose bytes
               # still match its attestation is reported apart from rework nobody can explain;
               # the apply step refuses BOTH, because it only ever writes bytes it can
@@ -1243,7 +1323,9 @@ def main(argv=None) -> int:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     payload = {"target_root": str(TARGET_ROOT), "summary": summary,
-               "unmanaged_count": len(plan["unmanaged"])}
+               "unmanaged_count": len(plan["unmanaged"]),
+               "local_additions_count": len(plan["local_additions"]),
+               "missing_local_additions": plan["missing_local_additions"]}
     # Both of the plan's claims are enumerations of the source trees: which bytes belong where,
     # and which file inside a declared destination this tool does not intend. With a source root
     # missing, `unmanaged` counts destinations it could not enumerate -- 1,092 of them on the
@@ -1265,7 +1347,8 @@ def main(argv=None) -> int:
     if payload.get("error") == "SOURCE_REPO_ABSENT":
         return 3
     unattested = report["rework"]["unattested"]
-    return 1 if (summary.get("PATCH_ANCHOR_ABSENT") or unattested) else 0
+    return 1 if (summary.get("PATCH_ANCHOR_ABSENT") or unattested
+                 or plan["missing_local_additions"]) else 0
 
 
 if __name__ == "__main__":

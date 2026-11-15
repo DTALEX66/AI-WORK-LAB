@@ -4536,3 +4536,315 @@ errors 0、deselected 0，候选 7328 个文件、摘要
 `237` 条待裁决来源与 `32` 条个人决定项；来源仓删除与告警、GitHub 四条 key 告警；以及**下一次远端动作**
 ——本地领先 `origin/audit/backend-closure-20261103` 6 格，推送、并入 main、打标签各需
 owner 新的明确授权，不依据本仓历史上传记录推定。
+
+### 15.58 SQLite 路径诊断与来源历史账的现值修正（局部验证）
+
+**一、真实 HTTP 的长路径、拒写与已有数据库**
+
+旧实现在受控深根下先让目录以普通路径可访问，再让数据库文件名越过系统路径限制；原生 SQLite 返回
+`SQLITE_CANTOPEN`、没有可供上层使用的 Windows 长路径错误码。旧实现真实 HTTP 的反例读数为
+`1 failed, 2 passed in 1.94s`：预期 `PROJECT_PATH_TOO_LONG`，实际却是 `PROJECT_STORE_UNAVAILABLE`。
+这种布置刻意保证失败发生在 SQLite 打开，而非更早的目录创建。默认文件名在另一些深度会先遇到
+`winerror 206`，旧的 OSError 分支已能识别它，不能把该路径当成本次 SQLite 反例。
+
+存储层 `domains/design/design_lab/runtime/sqlite_open.py` 只在 SQLite 的打开失败、普通路径与同一
+扩展路径的系统结果不同且所需访问权限可用时，抛出具名异常；派发层只按异常类型返回
+`PROJECT_PATH_TOO_LONG`。资产、作业、状态及创意存储共用该打开路径，项目读取的存在性判断也避免把
+已有但不可达的数据库误报为空列表；审计日志读取也共用该判断。短路径真实目录拒写仍返回 `PROJECT_STORE_UNAVAILABLE`；
+长路径同时拒写也不被断言成单一的路径问题。修复后的首轮 Windows 真实文件系统与 HTTP 测试为
+`8 passed in 2.46s`。两种路径均未用 mock 替代文件系统或 HTTP。
+
+反证实际按下，并在每次运行后按字节恢复：去掉专门映射得 `1 failed in 0.58s`；把所有 SQLite
+打开失败都错判成长路径得 `2 failed in 0.12s`；恢复旧的存在性判断得 `1 failed in 0.60s`。
+读数和恢复校验留在 `.project-local/edits-20261109-store-path/`，测试入口为
+`tests/unified/test_v38_project_store_paths.py`。
+审计日志的同类误报与迁移计划漏报本仓文件缺失两项先合计 `2 failed in 0.38s`，
+修复后与 shell 校验一并为 `4 passed in 1.26s`。
+
+**二、保留来源原件，修正归档现值的来源**
+
+本批修改的部分迁入代码先前同时充当来源原件。按现行来源台账的摘要逐一核对：历史区补采
+`6` 份原件，其他 `7204` 行内容不变；返工目标逐字节摘要、大小与相对来源的
+行差由 `scripts/migrate_sources.py` 的声明认领。来源仓只读，原件和返工目标不混成同一份字节。
+新加的存储辅助模块不是来源复制件；迁移计划把它列为本仓新增并校验声明的摘要和大小，
+未认领项由修复前 `1` 变为 `0`。实际把该模块加一个换行后重跑计划，
+它重新成为未认领项，配套测试 `1 failed in 0.09s`；之后字节已恢复。
+来源覆盖表过去用泛称解释这些实际已具名的返工，真实断言先为 `1 failed in 0.16s`；
+生成器现读取声明的原因并重新核摘要和大小，重发布后的同一断言为 `1 passed in 0.12s`。
+
+补采前还发现入口检查器把归档运行时的 `MANIFEST.json` 数量当作现行处置，而唯一逐行台账
+`docs/history/sources-20261101/MANIFEST.csv` 已在前一轮变化。实际对比测试先为
+`1 failed in 0.11s`，修正后为 `1 passed in 0.09s`：入口数字现在直接从 CSV 现算；JSON 留作历史快照，
+自身标明这一角色。旧审计节的时点读数不回改。
+
+**三、验证边界**
+
+受影响后端与设计域的一轮回归为 `200 passed in 250.12s (0:04:10)`；实际启动探针 `OK / 8 项检查`，工作区按本批边界放在
+`.project-local/`。这里的数字来自本批保留的测试和探针输出，代表局部验证。
+迁移与追溯回归中，PATH 上失效的 `sh` shim 使 pre-push 守卫测试没有真正启动，读数为
+`1 failed, 112 passed in 291.78s (0:04:51)`；选择器改为先实际执行 shell 命令、优先使用 Git 自带 shell，并在本地调用原守卫
+核对未授权时的拒绝；故意让选择器接受未验证的候选后得到 `1 failed in 0.22s`，还原逐字节相同。
+不得把 shim 的失败当成守卫自己的拒绝。
+本节落账时本批尚无新的全量收据，也未改绑到本批提交，更没有本批干净树上的终端闭环结论；
+既有收据仍只证明它自己测量过的树。Linux 原生复跑仍未做，N05 保持 PARTIAL。
+
+### 15.59 本轮相关回归与收据预飞的实际边界
+
+§15.58 的修复和后续来源登记重发布之后，受影响的后端、设计域、迁移、追溯和入口回归为
+`309 passed in 542.09s (0:09:02)`。随后修正 README 对归档数量和来源仓去留的过期表述，并把本批收据仍待重取写明在
+顶层入口；入口测试另跑 `27 passed in 10.20s`。这些是局部回归，不是全量收据。
+
+来源覆盖 `--check` 无漂移，迁移计划的未管理文件、缺失本仓新增文件及未认证返工均为空；
+公开面扫描无阻断、无读取失败。预飞先完成重发布，随后因工作区有未提交改动返回 **NO-GO**，
+因此没有启动本批全量收据。上一张收据仍只说明它自己测过的提交，不能替代本批；干净树终端闭环审计
+及本批收据的登记改绑仍待完成。提交与任何远程动作均须按本仓现行授权边界分别处理。
+
+### 15.60 全量审计前复核：启动诊断与克隆退出清理的绕行
+
+**一、后端启动阶段也必须给出具名拒绝。** 在本仓 `.project-local/` 内创建真实工作区与 SQLite 库，
+普通路径不可达而扩展路径可达时，旧启动器抛出 traceback，反例 `1 failed in 0.27s`；短路径实际拒写时，
+旧启动器同样抛出 traceback，反例 `1 failed in 0.28s`。现在工作区组合层把存储的具名异常和真实存储错误
+转换为启动拒绝：长路径是 `PROJECT_PATH_TOO_LONG`，短路径拒写是 `PROJECT_STORE_UNAVAILABLE`，
+两个真实进程对照 `2 passed in 0.45s`，相关启动与接口回归 `36 passed in 29.63s`。探针只修改隔离夹具的权限，
+结束时恢复；这不证明 Linux 原生复跑。
+
+**二、退出清理存在一条绕开拒绝门的路径。** 上一节所述的会话清扫已有删除前检查，但
+`tests/unified/test_v23_clone_repro.py` 的退出回调仍直接持有 `shutil.rmtree`；对遍历拒绝做受控注入、
+拦住实际删除后，旧回调仍试图删除，反例 `1 failed in 0.08s`。另一个受控反例在旧的固定名称旁放入既有沙箱，
+拦住实际删除后旧创建流程仍先尝试清理它，读数 `1 failed in 0.09s`。两者都没有删除夹具中的旧文件。
+
+现在克隆使用唯一的新目录，退出回调也走 `remove_sandboxes` 的拒绝门；两个控制测试 `2 passed in 0.05s`。
+再用真实本地 Git 克隆复核 `3 passed in 4.48s`，当次会话清扫报告新建 `1`、
+移除 `1`、残留 `0`。受控拒绝不是系统级权限隔离证明。
+
+这些是本批的局部审计与修复；正式全量收据、登记改绑及干净树终端闭环仍未完成，不复用旧收据冒充。
+
+### 15.61 删除前检查的真实权限反证与其他清理出口
+
+**一、遍历和读取样本不等于有删除权限。** 在本仓隔离夹具上设置真实 Windows ACL，文件的 DELETE 与
+父目录的 DELETE_CHILD 两种访问都返回 `winerror 5`；旧检查却返回可删除。真实 ACL 的测试先为
+`1 failed in 0.22s`。修复将每个条目的删除权限、遍历、链接与样本读取纳入检查；拒绝时不进入递归删除。
+真实 ACL 恢复之后再核对保留内容并清理，相关对照包含在 `4 passed in 1.24s`；只读文件和常规迁移的回归
+包含在 `53 passed in 34.08s`。真实本地 Git 克隆使用本次工作区中的检查，检查与清理均成功，检查耗时
+`0.81s`。这是一时点检查：并发的权限或目录变动仍可能让后续删除失败；Windows 对仅靠父目录
+DELETE_CHILD 即可删除的条目可能保守拒绝，不能把检查说成无条件保证。
+
+**二、绕过检查与旧目录碰撞。** 迁移和数据迁移清理的受控拦截先得 `2 failed in 0.20s`，工作台真实构建后的
+受控拒绝先得 `1 failed in 1.09s`；修复后相关四条对照 `4 passed in 1.24s`。栅格夹具的两个清理出口受控拦截先为
+`2 failed in 0.21s`，接入检查后的对照及既有预算行为为 `4 passed in 0.07s`。这些注入是为了拦住调用并验证拒绝，
+不是模拟一张运行收据；系统权限本身以上面的真实 ACL 另证。
+
+同一会话期间，独立进程新建同形目录会被旧清扫器误选：不允许实际删除的拦截反例 `1 failed in 0.23s`。
+现要求目录是本进程 `mkdtemp` 的产物且设备与文件身份未改变；独立进程新建目录及同路径替换两面
+`1 passed in 0.08s`，故意去掉身份比较后 `1 failed in 0.12s`，原文件已逐字节恢复。NTFS 创建时间
+曾比进程时钟略早导致新建目录漏回收，故时间筛选留出一秒容差，归属仍由创建记录与身份共同约束。
+旧设计域测试实际回归 `79 passed in 31.68s`，当次会话对本进程登记的新目录记录
+`80`、移除 `80`、残留 `0`。
+
+离线构建运行名越界、覆盖旧运行以及安装验证暂存目录的旧树删除，受控夹具先为 `3 failed in 0.10s`，
+修复后 `3 passed in 0.05s`；现在拒绝越界或重复的运行名，暂存也不清掉旧树。全路由探针 `--fresh` 遇到
+受控清理拒绝时先为 `1 failed in 0.20s`，修复后 `1 passed in 0.17s`。工作台、路由探针、迁移和测试清扫
+共享同一删除前检查；被拒绝的构建输出保留并返回具名拒绝。更多相关文件回归 `91 passed in 271.51s (0:04:31)`。
+
+**三、全量验证仍待完成。** 曾启动工作树预审，在发现旧清理门禁不足后主动停止，进度输出最高到
+`44%`；它没有汇总行，不能算全量通过。运行前后候选快照相同只说明这两个时点的
+比较结果，不能替代全量收据的测量完整性判据。收据预飞仍因工作树未提交而 NO-GO；新的全量收据、
+五处改绑和干净树终端闭环均未完成。Linux 原生复跑未做，N05 仍为 PARTIAL。
+
+### 15.62 统一与 WORK 存储启动拒绝，以及本机 ACL 夹具残留
+
+**一、启动器的另外两处存储错误。** 真实 Windows 文件权限拒绝分别作用于统一库和 WORK 库；旧启动器
+均抛 traceback，窄权限且可恢复的重测为 `2 failed, 1 passed in 3.76s`。现在二者返回 `PROJECT_STORE_UNAVAILABLE`，
+并在 detail 区分统一库与 WORK 库；前者已打开、后者失败时会关闭前者。同一组真实对照 `3 passed in 3.72s`，
+去掉关闭动作的反例 `1 failed in 4.73s`，随后源码逐字节恢复。相关后端启动与路径回归 `38 passed in 33.61s`，
+启动探针 `OK / 8 项检查`。深路径启动对照实际走到的是更早的目录路径拒绝，
+不能把它说成已经独立验证了统一库 SQLite 的长路径分支。
+
+**二、执行造成的本机残留，不隐藏。** 更早一次 WORK 库 ACL 反例把通用读写拒绝加得过宽，导致普通
+`icacls /remove:d` 返回权限拒绝，删除前检查也拒绝清理。仅受影响的是本轮创建的合成空库，目录为
+`.project-local/t/work-short-rungl076`，不是用户数据库；留在原地，不提权、不接管所有权、不绕过拒绝。
+本机说明和原始失败输出保留在 `.project-local/edits-20261109-store-path/`。之后先单独证明窄权限拒绝
+可恢复、SQLite 确实被拒且沙箱可清理，才继续上面的真实测试。
+
+该事件以 `LOCAL_ACL_TEST_RESIDUE_20261109` 记入 `config/operational-blockers.json`，由发布器并入
+`config/blocker-register.json`，实际验收门将其列为阻断；恢复和处置需 owner 或获授权真人处理。
+登记前缺项反例 `1 failed in 0.05s`，发布与验收门对照 `5 passed in 0.20s`。同时发现发布器的 `--check`
+只比条目、不比阻断总数与来源：植入错误现值 `1 failed in 0.08s`，修正后 `1 passed in 0.09s`；
+当前相关登记与启动测试 `55 passed in 17.60s`。不能因为测试变绿而抹掉这个未处置残留。
+
+**三、验证边界。** §15.61 的那组更大范围回归发生在会话归属检查进一步修改之前；之后的归属反例及旧测试
+回归见该节的单独读数。另一轮全量工作树预审因新发现的启动问题主动停止，最高进度输出
+`22%`，没有汇总行，不能计为全量通过。正式收据仍未取得，也未完成五处改绑或干净树终端闭环；
+Linux 原生复跑未做，N05 仍为 PARTIAL。
+
+### 15.63 未解决事件缺席即拒绝与审计状态现值
+
+§15.62 的本机 ACL 残留已经是验收阻断，但复核时把操作阻断源改成空列表，发布器仍接受：实际反例
+`1 failed in 0.05s`。发布器现在要求未解决事件的具名标识仍存在，缺失即拒绝；修复后的对照 `2 passed in 0.09s`。
+owner 确认并记录处置之前不能通过删除行把它变成无阻断。已发布的阻断表仍保留来源队列原有断言，
+并单列这次执行造成的本机残留。
+
+新增阻断之后，`docs/AUDIT-STATE.json` 的登记汇总检查实际报告 `registers` 漂移；重发布只刷新现行登记
+观测，脚本逐项断言旧的受审提交、树和候选摘要不变。随后检查 `MATCHES`；这不等于新收据，也不是改绑。
+本批正式全量收据、五处改绑与干净树终端闭环仍待完成，N05 的 Linux 原生复跑仍未做。
+
+### 15.64 登记写入的临时文件与参数化节点收集
+
+**一、登记的无变化重发布。** 来源覆盖、需求追溯和 F01 处置三个 CSV 写入路径，
+即使新旧字节相同也会先在目标旁创建临时文件再替换；隔离夹具的实际反例 `3 failed in 0.07s`。
+现在相同字节直接不动，变化时先在 `.project-local/runs/register-write/` 暂存再替换；
+同一组夹具 `3 passed in 0.06s`，含文件身份和实际暂存位置的跟踪测试 `4 passed in 0.14s`。
+F01 增加只读 `--check`，旧测试改为在独立临时目录写报告；故意让它忽略比较标志的反例
+`1 failed in 0.18s`，源码随后逐字节恢复。真实来源的 F01 测试 `1 passed in 126.19s (0:02:06)`；来源覆盖 `--check`
+返回零漂移、无未调和项。夹具不代表真实来源，真实来源读数单独列出。
+
+**二、收集检查不该把参数化节点当成缺席。** 包含真实 F01 与追溯测试的回归先为
+`1 failed, 32 passed in 131.46s (0:02:11)`，失败是参数化节点被 pytest 收到、检查器却拿裸函数名与带参数的名字直接比。
+修复后追溯及写入回归 `33 passed in 8.82s`；裸名称可对应其参数化实例，指定参数仍要求精确命中。
+故意让缺失的指定参数也通过，反例 `1 failed in 0.10s`，测试文件随后逐字节恢复。
+
+**三、验证边界。** 在发现目标旁临时文件问题时主动停止另一轮全量工作树预审，最高进度输出
+`21%`；没有汇总行和有效计数，不算全量通过。正式收据、改绑与干净树终端闭环仍未完成；
+§15.62 的本机 ACL 事件仍由验收门阻断，N05 的 Linux 原生复跑仍未做。
+
+### 15.65 完整工作树预审与隔离临时根的预算前提
+
+对当时未提交的工作树实际跑完 `tests/unified tests/legacy`，输出 `1 failed, 661 passed, 3 subtests passed in 1585.63s (0:26:25)`；
+错误、筛除和跳过均为零。失败节点是 `tests/unified/test_v24_capability_evidence.py::
+test_the_raster_staging_root_moves_only_when_the_budget_is_over`。这是预审而不是收据：
+克隆测试仍克隆旧 HEAD，运行前后候选快照一致只说明两次快照一致，不能证明提交态或替代完整性收据。
+
+失败日志显示，隔离的临时根加测试路径为 `110` 字符，旧测试预算是 `103` 字符，
+所以实际触发了 `PATH_PREREQUISITE_UNMET`；这不是产品的栅格合同失败。原测试把预算直接取成主测试目录长度，
+隐含临时根一定更短。修正测试先实际创建并检查一个临时根，按其可行长度设置预算，并继续断言原根超预算、
+换根后不超预算；原有“预算内不换”和“连临时根也放不下则具名拒绝”两面保留。
+在与失败轮临时根和 basetemp 路径长度相同的隔离环境中，三项控制测试 `3 passed in 0.05s`。
+
+修复之后仍需重跑全量；本节不是零失败收据。§15.62 的本机 ACL 残留仍是具名阻断，
+正式收据、改绑和干净树终端闭环仍未完成，N05 的 Linux 原生复跑未做。
+
+### 15.66 修复后的完整工作树预审
+
+§15.65 的预算测试修复后，重新实际运行 `tests/unified tests/legacy`，汇总 `662 passed, 3 subtests passed in 1590.72s (0:26:30)`；
+失败 `0`、错误 `0`、
+筛除 `0`、跳过 `0`。测前、测后的候选快照
+各有 `7339` 个文件，新增、缺失和字节不同的路径列表均为空。这是两个时点的快照比较，
+不冒充正式收据里的 `tracked_bytes_moved_during_run`。
+
+当次会话登记并回收的本进程临时根 `80` 个、测试基目录
+`278` 个、克隆或栅格根
+`3` 个均已回收，三个列表没有报告残留。
+这不包含 §15.62 在更早测试中产生且主动保留的 ACL 残留。
+
+这张是**未提交工作树的预审，不是正式全量收据**：其中克隆节点克隆的是本轮现有 HEAD，
+并不覆盖未提交字节。`LOCAL_ACL_TEST_RESIDUE_20261109` 仍在验收门内阻断；
+正式预飞、干净提交态全量收据、五处改绑及终端闭环尚未完成。Linux 原生复跑未做，N05 仍为 PARTIAL。
+### 15.67 本轮交接续作：入口 verdict 集合、审计状态远端默认分支与两处 Windows 装入点缺陷
+
+**起点（现读，不是旧提示词的数）。** HEAD `8092e88bdcbfa101a10aaf058bb28c74416e0961`，分支 `audit/backend-closure-20261103`；53 个文件已暂存
+（`3263+/301-`）、无未暂存跟踪差异、无未跟踪行，`.git` 在本沙箱下由平台标为只读（`Get-Item`
+报项不存在，`git rev-parse --git-dir` 仍答 `.git`）。`check_project_current.py --check` 起点 rc=0、
+`build_test_census.py --check` 起点 41 文件 / 651 节点、`build_blocker_register.py --check` 8 项 / 2 blocking、
+两个引用检查 rc=0（`violations 0 / stale_exemptions 0`，但报告里仍有 8 个被解释或豁免的历史/反例
+broken 引用与 1 个允许失败项，不能写成"没有 broken 引用"）。本轮全部证据落
+`.project-local/edits-20261114-backend-closure/`，每份是 `run_probe.py` 保存的原始 `returncode` / stdout / stderr。
+
+**一、入口把 workbench 判定数量写旧了。** 根因不是数字错抄，而是 `--check` 只比派生数字块，
+散文里的"十个具名判定 / 十个各有 case"、以及逐名名单都不与代码比对；工具新增
+`SANDBOX_CLEANUP_REFUSED` 后仍能 PASS。`scripts/check_project_current.py` 现在从
+`scripts/check_workbench_bundle_drift.py` 的判定字面量与
+`scripts/falsify_workbench_bundle_gate.py::VERDICT_CASES` 结构化现算两个集合，与入口 §二 的
+fenced 名单三方双向比对，并拒绝散文中再手抄数量；派生块新增
+`workbench_verdict_count` / `workbench_verdict_cases` 由 `--write-block` 现算（`43` 个派生数字）。
+入口两处现行表述改为引用现算，不重抄一个会过期的数字；已提交审计史里的历史数量一字未改。
+
+反例**实际按下**：`falsifier-01-workbench-entry-stale-before-fix.json` rc=1
+（`WORKBENCH_VERDICT_LIST_MISSING` + 两个新 figure 未声明）；随后
+`falsifier-workbench-guard-all-v2.json` rc=0，5 个红侧逐一命中
+（漏 `SANDBOX_CLEANUP_REFUSED` → `WORKBENCH_VERDICT_UNDISCLOSED`、植入 `PHANTOM_PLANT` →
+`WORKBENCH_VERDICT_NOT_ASSIGNABLE`、写回"十个具名判定" → `WORKBENCH_VERDICT_COUNT_HANDWRITTEN`、
+删名单 → `WORKBENCH_VERDICT_LIST_MISSING`、工具多一个 `TWELFTH_PLANT` → 同时报
+`WORKBENCH_VERDICT_UNDISCLOSED` 与 `WORKBENCH_VERDICT_CASE_MISSING`），绿侧 rc=0 PASS，
+跟踪入口字节逐字节未变。第一版反例脚本自身只取 `indent=2` JSON 的最后一行 `}` 而误报 5 个
+WRONG（原始读数 `falsifier-workbench-guard-all.json` 保留），修正整体解析后重按才通过 —— 这是
+反例装置的缺陷，不是守卫放过。`test_v29` 新增 6 个节点把绿侧与红侧钉入收据人群；`v29/v33/v36`
+合跑 `46 passed`。关于受控注入的边界已复核：`falsify_workbench_bundle_gate.py::cleanup_refusal_plant`
+与 §15.61/§15.62 都明写"受控注入 / 受控拒绝，不是模拟一张运行收据"，入口新表述也写明
+`SANDBOX_CLEANUP_REFUSED` 只证明拒绝分支可达与输出被保留，不冒充真实系统故障发生、也不冒充
+真实构建验收（`test_v36` 的真构建）。
+
+**二、审计状态把当前检出分支当成远端默认分支。** 根因是
+`scripts/build_audit_state.py::live_fields()` 用 `git symbolic-ref --short HEAD`（本地检出分支）
+填 `upload_facts.default_branch`，而 `refs/remotes/origin/HEAD -> origin/main`、只读 `git ls-remote --symref origin HEAD`
+都报 `refs/heads/main`；两边同用错的表达式，所以 `--check` 起点对错误值仍答 **MATCHES**。
+`default_branch` 还列在 `MACHINE_LOCAL_FACTS` 里，差异会被当成机器先决条件而不是漂移。
+现在 `observe_default_branch()` 只读本地远端跟踪符号引用（离线、明确标注"可能过期、非实时观测"），
+该引用缺席时给 `NOT_OBSERVABLE_OFFLINE` 而不猜 `main`、也不回落到当前分支；新增
+`default_branch_basis` / `default_branch_observation` / `default_branch_live_observation`
+三个字段说明口径与"本生成器从未做过实时远端观测"，`default_branch` 移出机器局部豁免，
+`_section_classes` 区分"可观测的错误绑定 = DRIFT"与"本机不可观测 = prereq"。
+`pushed_branch_note` 改成明确的 **HISTORICAL (2026-11-02 upload)** 记录，不再把一次历史上传
+写成当前事实。`docs/AUDIT-STATE.json` 重发布后 `default_branch=main`、来源
+`local_remote_tracking_symref:refs/remotes/origin/HEAD`，受审提交 `11ed231390de` 未移动
+（`binding_moved_this_run: false`），`--check` 答 MATCHES。
+
+反例**实际按下**：`falsifier-08-default-branch-wrong-binding.json` rc=1，具名报
+`DEFAULT_BRANCH_IS_LOCAL_CHECKOUT`（发布值 `audit/backend-closure-20261103`、现算值 `main`）；
+`falsifier-default-branch-all-v2.json` rc=0，6 侧全中（错误绑定被发现、重建记录
+MATCHES、检出分支等于默认分支是合法情形不被误判、离线无符号引用归 rc=3 `NOT_OBSERVABLE_HERE`、
+旧记录形状缺 basis 字段被拒、声称做过实时观测被拒），跟踪状态文件逐字节未变。第一版装置有
+两处自身错误（`branch` 是 live 字段、发布侧与现算侧同时不可观测会诚实一致），原始读数
+`falsifier-default-branch-all.json` 保留，修正装置后重按。`test_v20` 新增 6 个节点；
+`v20/v31/v37` 合跑 `36 passed`。
+
+**三、全量复跑时新发现的两处 Windows 不可信装入点缺陷（同一根因的两面）。**
+`migrate_sources.py --plan` 起点直接 traceback（`WinError 448`，
+`DESIGN-LAB/apps/workbench/node_modules/playwright`），因为 `build_plan` / `intended_set` 把
+`path.is_dir()` 写在纯字符串判断 `_skipped()` 之前；`node_modules` 本是声明忽略项、
+`copy_tree` 的写路径已是正确顺序。现在统一 `_walk_file()`：忽略项先判定、无需 stat；
+**非忽略**路径 stat 失败则 `MigrationRefused("SOURCE_PATH_UNTRAVERSABLE")` 具名拒绝，
+不静默跳过（跳过会让 `unmanaged == 0` 假绿），`main` 接住后输出具名 JSON 且非零退出。
+`falsifier-migrate-walk-all.json` rc=0，4 侧全中，真实 `--plan` 由 traceback
+转 rc=0 / `unmanaged 0` / 无 stderr；`test_v07` 新增 3 个节点，单独 `3 passed`。
+第二处在 `migrate_business_data.py::checked_path`：`os.path.realpath()` 对 fixture 的 junction
+抛同一 `WinError 448` 且未捕获，CLI rc=1、无 `refusal` 报告（`v12` 的 reparse 节点因此红）。
+现在把它转成既有的具名 `PATH_TRAVERSES_LINK` 拒绝；`diag-06-v12-reparse-cli.json` 是修复前的
+真实 traceback，`diag-07-v12-after-fix.json` 是 rc=2 / 无 stderr / 有报告，
+`falsifier-realpath-mount-point-v2.json` 按下红侧，`test_v12` 新增 1 个节点，
+`v29` 与两个 `v12` 节点合跑 `35 passed`。两处都是受本机文件系统状态触发的真实工程缺陷，
+不是受控注入冒充的系统故障；来源仓与归档一律只读，未清理或改写其任何字节。
+
+**四、全量审计、真实阻断与未授权动作。** 按当前代码跑
+`tests/unified tests/legacy`（不传 deselect）得到 `60 failed, 617 passed, 2 errors, 3 subtests passed in 1741.70s (0:29:01)`，
+**这是脏树预审，不是正式全量收据**：62 个失败节点里 29 个失败块的堆栈终点是平台
+`CODEBUDDY_SAFE_DELETE_*` 批量删除守卫（`SAFE_DELETE_BULK_CONFIRM_REQUIRED`，本轮累计
+超阈值 `500`，`scope: turn`，由 IDE 的 `sitecustomize.py` 在
+`shutil.rmtree` 处抛 `SystemExit: 1`），其余是它的连锁。分组单独复跑：
+`tests/legacy/work/test_repair_state.py` + `test_repair_verification.py` `54 passed`，
+路径/清理八组合跑 `92 passed`（2 项仍被同一平台守卫打断），`v29` + 两个 `v12` 节点
+`35 passed`，`v20/v31/v37` `36 passed`，`v07` 新节点 `3 passed`，
+`v36` 的离线构建单独 `1 passed`。这不构成 "0 failed / 0 errors" 的正式收据，
+也不得用于改绑。`boot_probe` 两次均 `OK / 8 项检查`；全部 11 台登记生成器
+`--check` rc=0；入口防漂移 `--check` rc=0、两个引用检查 rc=0 且
+`violations 0 / stale_exemptions 0`（broken 项与开工基线逐条一致）；节点清单
+`41 files / 667 nodes`、`build_test_census.py --check` rc=0。
+
+终端闭环审计 `scripts/audit_objective_closure.py` 原始退出码 1、完整 verdict
+`NOT CLOSED`（`PASS 15 / FAIL 1 / PENDING 0 / INSTRUMENT_ERROR 0`，16 条）；15 道本地闸门全 PASS
+（含本轮修好的"迁移计划无未登记目标"），唯一 FAIL 是"全量收据描述当前提交且没有失败"，
+原因逐字为"本机还有未提交的跟踪改动，这张收据替不了它们" —— **脏树 FAIL 是设计行为，
+判据未改、断言未软化、阻断未抹去**。
+
+**本轮明确未完成、不得假称验收**：覆盖本轮代码态的新正式全量收据（需干净提交态）、
+五处改绑（`migration/audit-item-closure.csv`、`docs/AUDIT-STATE.json --audited-commit`、
+`migration/task-acceptance.csv`、`config/blocker-register.json`、`PROJECT_CURRENT.md` 依托提交行）、
+干净树上的终端 `CLOSED`。原因是本交接未提供一次本地提交授权（此前询问过一次，owner 尚未给予，
+不得据此提交）、工作树不干净且平台把 `.git` 标为只读（暂存与提交都要写 `.git`）。
+后两本登记按当前输入重发布后字节未变（已实际检查），但**没有**用旧收据或日期串改绑。
+提交、推送、合并、打标签、Release、远程 CI、上传数据本轮一律未做；只读
+`git ls-remote --symref origin HEAD` 只用于核实远端默认分支，不构成写远端。
+`LOCAL_ACL_TEST_RESIDUE_20261109` 等具名阻断（`8 items / 2 blocking`）仍由验收门如实挡住：
+不提权、不接管所有权、不绕过拒绝、不删登记行换绿。N05 保持 PARTIAL，
+缺的是 **Linux 原生复跑**（本轮不做），不是本地 Windows 侧的替代证明；
+真实宿主、真人签字、真实模型推理、真实私有数据迁移、系统级出网隔离、L10#0 owner 判定、
+`producedAt` 合同决定等均未按工程闭环冒充已验收。

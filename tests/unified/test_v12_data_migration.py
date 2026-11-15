@@ -22,12 +22,11 @@ import hashlib
 import json
 import gc
 import os
-import shutil
 import sqlite3
 import stat
 import subprocess
 import sys
-import uuid
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -50,18 +49,13 @@ LIVE_STORES = TARGET_ROOT / "workspace" / ".project-local" / "ai-work-lab"
 SCRATCH = TARGET_ROOT / ".project-local" / "runs" / "v12-data-migration"
 
 
-def _clear_for_removal(func, target, exc_info):
-    """Windows teardown handler: a read-only file in the tree is the normal case, not the exotic one."""
-    try:
-        os.chmod(target, stat.S_IWRITE)
-        func(target)
-    except OSError:
-        raise exc_info[1]
-
-
 def _remove_tree(path: Path) -> None:
     """One removal attempt. The node swaps this out to drive the retry and failure paths."""
-    shutil.rmtree(path, onerror=_clear_for_removal)
+    from tests.conftest import remove_sandboxes
+
+    removed, failed = remove_sandboxes([path])
+    if removed != 1 or failed:
+        raise OSError("MIGRATION_SANDBOX_CLEANUP_REFUSED: " + ", ".join(failed))
 
 
 def reclaim(paths) -> list[str]:
@@ -88,6 +82,27 @@ def reclaim(paths) -> list[str]:
                 gc.collect()
     leftovers = [path.name for path in survivors]
     return leftovers
+
+
+def test_reclaim_preserves_a_sandbox_when_cleanup_is_refused(tmp_path, monkeypatch):
+    """A refusal must be reported without reaching recursive deletion."""
+    from tests import conftest as fixtures
+
+    sandbox = tmp_path / "refused-migration-sandbox"
+    sandbox.mkdir()
+    sentinel = sandbox / "keep"
+    sentinel.write_text("preserve", encoding="utf-8")
+    attempted = []
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(fixtures, "undeletable_reason", lambda _path: "DELETE_ACCESS_REFUSED:plant")
+            patch.setattr(fixtures.shutil, "rmtree", lambda path, *_a, **_k: attempted.append(path))
+            assert reclaim([sandbox]) == [sandbox.name]
+            assert attempted == []
+            assert sentinel.read_text(encoding="utf-8") == "preserve"
+    finally:
+        assert fixtures.remove_sandboxes([sandbox]) == (1, [])
+
 
 # The DESIGN plan contract pins project_id to ^[0-9a-f]{32}$, so the shared identity has
 # to be a valid one on the design side; the WORK store accepts any text. Using the SAME
@@ -348,8 +363,8 @@ def make_roots(request):
     created: list[Path] = []
 
     def _make(name: str) -> Roots:
-        base = SCRATCH / f"{name}-{uuid.uuid4().hex[:8]}"
-        base.mkdir(parents=True, exist_ok=True)
+        SCRATCH.mkdir(parents=True, exist_ok=True)
+        base = Path(tempfile.mkdtemp(prefix=f"{name}-", dir=SCRATCH))
         created.append(base)
         return build_sources(Roots(base))
 
@@ -1038,6 +1053,30 @@ def test_reparse_point_in_the_target_path_is_refused(roots: Roots):
             real.rmdir()
         except OSError:
             pass
+
+
+def test_an_untrusted_mount_point_is_a_named_refusal_not_a_traceback(monkeypatch):
+    """``realpath`` on a Windows junction can raise WinError 448 before no_link_escape runs.
+
+    Measured 2026-11-14: the raw OSError escaped ``checked_path``, so the CLI printed a
+    traceback, returned 1 and wrote no refusal report -- a broken-tool shape instead of the
+    preflight refusal the caller's contract promises. The plant makes realpath raise that
+    exact error; the assertion requires the named code the CLI's existing refusal exit uses.
+    """
+    from scripts import migrate_business_data as migration
+
+    base = Path("D:/awl-mount-point-fixture")
+    candidate = base / "v12-link" / "work.db"
+
+    def explode(_text, *args, **kwargs):
+        raise OSError("[WinError 448] 无法遍历该路径，因为它包含不受信任的装入点。(planted)")
+
+    monkeypatch.setattr(migration.os.path, "realpath", explode)
+    with pytest.raises(migration.Refused) as caught:
+        migration.checked_path(str(candidate), allowed_roots=[base], label="--target-work")
+    assert caught.value.code == "PATH_TRAVERSES_LINK", caught.value
+    assert "WinError 448" in caught.value.detail, caught.value.detail
+    assert caught.value.exit_code == 2, caught.value.exit_code
 
 
 def test_sources_are_never_written_by_a_migration(roots: Roots):

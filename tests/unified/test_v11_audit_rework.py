@@ -771,7 +771,7 @@ def _f01_module():
     return module
 
 
-def test_f01_registered_gap_paths_all_have_a_real_disposition():
+def test_f01_registered_gap_paths_all_have_a_real_disposition(tmp_path):
     """Every registered-but-never-copied WORK path is adjudicated, one row each.
 
     The audit's point was that a mapping row reading ``MAPPED_P0`` with a planning
@@ -786,10 +786,10 @@ def test_f01_registered_gap_paths_all_have_a_real_disposition():
     rebuilt in this process, and it fails when the register claims a consumer the
     graph does not have.
     """
+    report_path = tmp_path / "f01-disposition-selfcheck.json"
     completed = subprocess.run([VENV_PYTHON, "-B", "-X", "utf8",
                                 str(TARGET_ROOT / "scripts" / "build_f01_disposition.py"),
-                                "--json-out", str(TARGET_ROOT / ".project-local" / "runs"
-                                                  / "f01-disposition-selfcheck.json")],
+                                "--check", "--json-out", str(report_path)],
                                capture_output=True, text=True, cwd=str(TARGET_ROOT), timeout=900,
                                encoding="utf-8", errors="replace")
     assert completed.returncode == 0, completed.stderr[-1500:]
@@ -810,8 +810,7 @@ def test_f01_registered_gap_paths_all_have_a_real_disposition():
                                          "RUNTIME_DEPENDENCY_ADJUDICATED"}, report
     # the capability classes the audit named as determined gaps are each accounted for
     rows = {row["原路径"].rsplit("/", 1)[-1]: row
-            for row in json.loads((TARGET_ROOT / ".project-local" / "runs" /
-                                   "f01-disposition-selfcheck.json").read_text(encoding="utf-8"))["rows"]}
+            for row in json.loads(report_path.read_text(encoding="utf-8"))["rows"]}
     for name in ("collectors.py", "git_collector.py", "platform_collector.py",
                  "platform_discovery.py", "software_installation_identity.py",
                  "process_collector.py", "token_monitor.py"):

@@ -208,8 +208,55 @@ def test_the_blocking_clause_hands_the_owner_every_pending_row():
 
     mandatory_blocking = [entry["id"] for entry in document["items"]
                           if entry["mandatory"] and not entry["scope_excluded_by_owner"]]
-    assert mandatory_blocking == ["L10#0"], mandatory_blocking
-    assert document["counts"]["blocking"] == 1, document["counts"]
+    operational = json.loads((TARGET_ROOT / "config/operational-blockers.json")
+                             .read_text(encoding="utf-8"))["items"]
+    operational_ids = {entry["id"] for entry in operational
+                       if entry["mandatory"] and not entry["scope_excluded_by_owner"]}
+    assert [identifier for identifier in mandatory_blocking
+            if identifier not in operational_ids] == ["L10#0"], mandatory_blocking
+    assert set(mandatory_blocking) == {"L10#0"} | operational_ids
+    assert document["counts"]["blocking"] == len(mandatory_blocking), document["counts"]
+
+
+def test_the_local_acl_incident_is_a_named_acceptance_blocker():
+    """The failed restoration is disclosed to the gate, not only in a local note."""
+    from scripts.acceptance_gate import blocker_register
+
+    identifier = "LOCAL_ACL_TEST_RESIDUE_20261109"
+    source = json.loads((TARGET_ROOT / "config/operational-blockers.json")
+                        .read_text(encoding="utf-8"))["items"]
+    item = [entry for entry in source if entry["id"] == identifier]
+    assert len(item) == 1 and item[0]["status"] == "BLOCKED"
+    assert identifier in [row["id"] for row in blocker_register(BLOCKERS_OUT)["blocking"]]
+
+
+def test_operational_blockers_refuse_missing_or_nonblocking_inputs(tmp_path, monkeypatch):
+    """An absent declaration or a status that would make the gate ignore it is not a pass."""
+    source = tmp_path / "operational-blockers.json"
+    monkeypatch.setattr(BLOCKERS, "OPERATIONAL_BLOCKERS", source)
+    with pytest.raises(SystemExit, match="OPERATIONAL_BLOCKERS_MISSING"):
+        BLOCKERS.operational_blockers()
+    source.write_text('{"items":[{"id":"plant","status":"CONFIRMED"}]}', encoding="utf-8")
+    with pytest.raises(SystemExit, match="OPERATIONAL_BLOCKERS_INVALID_ITEM"):
+        BLOCKERS.operational_blockers()
+    source.write_text('{"items":[]}', encoding="utf-8")
+    with pytest.raises(SystemExit, match="OPERATIONAL_BLOCKER_MISSING"):
+        BLOCKERS.operational_blockers()
+
+
+def test_blocker_check_rejects_false_counts_and_source(tmp_path, monkeypatch):
+    """A matching item array cannot conceal wrong totals or source attribution."""
+    original = json.loads(BLOCKERS_OUT.read_text(encoding="utf-8"))
+    target = tmp_path / "blockers.json"
+    monkeypatch.setattr(BLOCKERS, "OUT", target)
+    for field in ("count", "source"):
+        document = json.loads(json.dumps(original))
+        if field == "count":
+            document["counts"]["blocking"] = 0
+        else:
+            document["operational_source"] = "wrong-source.json"
+        target.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+        assert BLOCKERS.main(["build_blocker_register.py", "--check"]) == 1, field
 
 
 def test_the_owner_queue_offers_only_classes_the_ladder_can_emit():

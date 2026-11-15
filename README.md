@@ -25,7 +25,7 @@ python scripts/boot_probe.py
 # 4) 顶层入口防漂移：根入口引用的路径与数字，逐条与寄存器现值比对
 python scripts/check_project_current.py --check
 
-# 5) 全量回归（本机约 14 分钟）
+# 5) 全量回归（耗时以本机实际运行为准）
 python -m pytest tests/unified tests/legacy -q
 ```
 
@@ -55,8 +55,8 @@ Windows 上本仓自带解释器在 `.venv\Scripts\python.exe`；把它替换掉
 |---|---|---|
 | 正文与寄存器里的仓内路径（`backend/`、`docs/`、`scripts/`、`tests/` 等开头） | 本仓根 | 在；`scripts/check_project_current.py --check` 逐条要求存在，缺一条就红 |
 | 能力族登记的「拟模块边界」列 | **不是磁盘路径** | 那是来源任务表逐字带来的计划边界；找实现看「当前实现位置」与「验证证据」两列 |
-| 来源覆盖登记与权威索引里的来源侧路径列 | 来源仓根（WORK-LAB / DESIGN-LAB） | 只作血统。原件字节在本仓 `docs/history/` 的历史区内（按 `<来源仓>/…` 分层），权威原件在 `docs/authority-202610/`，摘要逐条登记；两个来源仓按计划会被删除 |
-| 归档对账登记的 `archive_path` 列 | 统一归档根（本机另一处，本轮只读） | 不复制第二份；其中 694 个正文对象已按摘要进 `docs/history/` 的对象库区 |
+| 来源覆盖登记与权威索引里的来源侧路径列 | 来源仓根（WORK-LAB / DESIGN-LAB） | 只作血统；原件去向逐条见来源覆盖登记，历史区按 `<来源仓>/…` 分层。两个来源仓是否删除由 owner 决定 |
+| 归档对账登记的 `archive_path` 列 | 统一归档根（本机另一处，本轮只读） | 原件留在统一归档，已纳入本仓的正文对象及数量以 `PROJECT_CURRENT.md` 的派生块和逐条对账登记为准 |
 | `.project-local/` 开头的产物路径 | 本机，Git 不跟踪 | 克隆里没有。被寄存器点名的那份必须留下——清理判据不是大小而是"有没有被点名"，见 `docs/CODEX-AUDIT-ENTRY.md` §15.24 第十一段 |
 
 ## 仓库布局（顶层每个目录都在这张表里，检查器会守住这条）

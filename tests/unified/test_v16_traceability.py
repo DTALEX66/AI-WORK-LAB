@@ -500,6 +500,23 @@ def _def_line_count(text: str) -> int:
     return len([line for line in text.splitlines() if line.strip().startswith("def test_")])
 
 
+def _collected_node_matches(name: str, collected: set[str]) -> bool:
+    """A bare reference accepts its parametrized cases; a named case must exist exactly."""
+    if "[" in name:
+        return name in collected
+    return name in {node.split("[", 1)[0] for node in collected}
+
+
+def test_collected_node_matching_keeps_parameter_and_missing_node_refusals():
+    observed = {"test_run[first]", "test_run[second]", "test_other"}
+    assert _collected_node_matches("test_run", observed)
+    assert _collected_node_matches("test_run[first]", observed)
+    assert _collected_node_matches("test_other", observed)
+    assert not _collected_node_matches("test_run[missing]", observed)
+    assert not _collected_node_matches("test_ru", observed)
+    assert not _collected_node_matches("test_missing", observed)
+
+
 def test_every_cited_test_node_is_collected_by_pytest_and_every_file_collects_what_it_declares():
     """The registers cite nodes; this checks pytest can actually see them.
 
@@ -535,25 +552,26 @@ def test_every_cited_test_node_is_collected_by_pytest_and_every_file_collects_wh
             seen.setdefault(file_part.strip(), set()).add(name.strip())
 
     missing = [(file_part, name) for file_part, names in sorted(cited.items())
-               for name in sorted(names) if name not in seen.get(file_part, set())]
+               for name in sorted(names)
+               if not _collected_node_matches(name, seen.get(file_part, set()))]
     assert missing == [], "登记表引用的节点 pytest 收不到：%s" % missing[:10]
 
     drift = []
     for file_part in files:
         text = (TARGET_ROOT / file_part).read_text(encoding="utf-8", errors="replace")
         declared, collected_names = _declared_test_names(text), seen.get(file_part, set())
+        collected_base_names = {name.split("[", 1)[0] for name in collected_names}
         # A parametrised node collects as test_x[case]; the register cites the bare name, and a
         # file may declare one function that pytest hands back as several ids.
         if len(declared) != len(set(declared)):
             drift.append((file_part, "duplicate declarations",
                           sorted([n for n in declared if declared.count(n) > 1])))
-        if not set(declared) <= collected_names:
+        if not set(declared) <= collected_base_names:
             drift.append((file_part, "declared but not collected",
-                          sorted(set(declared) - collected_names)[:5]))
-        if {name.split("[")[0] for name in collected_names} != set(declared):
+                          sorted(set(declared) - collected_base_names)[:5]))
+        if collected_base_names != set(declared):
             drift.append((file_part, "collected but not declared",
-                          sorted({name.split("[")[0] for name in collected_names}
-                                 - set(declared))[:5]))
+                          sorted(collected_base_names - set(declared))[:5]))
         if _def_line_count(text) != len(declared):
             drift.append((file_part, "def-lines", _def_line_count(text),
                           "declared", len(declared)))

@@ -34,6 +34,7 @@ for entry in (str(TARGET_ROOT), str(TARGET_ROOT / "domains" / "design")):
         sys.path.insert(0, entry)
 
 from backend.app import build_server  # noqa: E402
+from scripts import sandbox_cleanup  # noqa: E402
 
 #: F07's rule is "a project bound to a directory that really exists is live" -- the rule is about
 #: existence, not about which repository happens to sit on this machine. `work_project` therefore
@@ -114,29 +115,19 @@ CLONE_NAME = re.compile(r"awl(?:clone|raster)-[A-Za-z0-9_-]{4,}$")
 
 
 def _win_long_safe(path):
-    """Windows: an extended-length path, so a deep tree is reachable at all; elsewhere: unchanged.
-
-    The refusal this exists for was measured, not theorised: inside ``awlclone-41636-run`` the
-    traversal died on a reconstruction staging path well past 260 characters, which is also why an
-    ordinary ``rmtree`` half-succeeded there and emptied a clone's ``.git`` on the way. Prepending
-    unconditionally would break a POSIX runner (the prefix is not a path there), so this is nt-only
-    -- and the probe below uses the same shape the deletion uses.
-    """
-    text = str(path)
-    if os.name != "nt" or text.startswith("\\\\?\\"):
-        return Path(text)
-    return Path("\\\\?\\" + str(Path(text).resolve()))
+    """Use the same long-path form for the preflight and for the removal itself."""
+    return sandbox_cleanup.win_long_safe(path)
 
 
 def sandboxes_created(root: Path, before: set, started_at: float | None = None,
                       pattern: re.Pattern = SANDBOX_NAME) -> list:
-    """The mkdtemp sandboxes that appeared in ``root`` after the snapshot ``before`` was taken.
+    """Find candidates that appeared after the snapshot; this does not establish ownership.
 
     Two independent conditions rather than one, because the first one alone was demonstrably
     dangerous: while falsifying this fixture on 2026-11-03 a mutation that dropped the snapshot
     check ran in a live pytest session and deleted 1,041 accumulated sandboxes. The age floor is
-    the backstop -- a directory that predates the session is not this session's to remove, even if
-    every other condition matches.
+    a backstop for older paths, but a concurrent process can create a new matching name. Callers
+    must also verify that the current session created the same filesystem object.
     """
     if not root.is_dir():
         return []
@@ -198,36 +189,11 @@ def _clear_read_only(func, path, exc_info):
 
 
 def undeletable_reason(path: Path) -> str | None:
-    """Why this tree must not be handed to a recursive delete, or ``None`` when it may be.
+    """Refuse traversal, metadata, link, read or per-entry deletion-access failures.
 
-    ``shutil.rmtree`` walks bottom-up, so a failure partway through has already removed everything
-    it reached. Measured in this batch: an ACL refusal inside a throwaway clone's ``.pytest_cache``
-    came back *after* that clone's ``.git`` had been emptied -- the sweep destroyed the evidence
-    tree it was trying to reclaim. So the tree is proven first: every directory must be traversable
-    (``os.walk`` with an error sink, because ``Path.rglob`` skips unreadable directories and would
-    report this as clean) and one regular file must actually read. Either failure refuses the
-    deletion instead of starting it.
+    This checks the current tree, not a guarantee against later filesystem changes.
     """
-    traversed = [0]
-    refused: list = []
-
-    def note_error(error: OSError) -> None:
-        refused.append(getattr(error, "filename", None) or str(error))
-
-    sample: Path | None = None
-    for dirpath, _dirnames, filenames in os.walk(_win_long_safe(path), onerror=note_error):
-        traversed[0] += 1
-        if sample is None and filenames:
-            sample = Path(dirpath) / filenames[0]
-    if refused:
-        return "TRAVERSAL_REFUSED:" + str(refused[0])
-    if sample is not None:
-        try:
-            sample.read_bytes()
-        except OSError as why:
-            return "SAMPLE_UNREADABLE:%s(%s)" % (
-                sample.name, getattr(why, "winerror", None) or why)
-    return None
+    return sandbox_cleanup.undeletable_reason(path, path_factory=Path, long_safe=_win_long_safe)
 
 
 def remove_sandboxes(paths) -> tuple:
@@ -263,29 +229,64 @@ def ensure_scratch_roots():
 
 @pytest.fixture(scope="session", autouse=True)
 def sweep_test_sandboxes(pytestconfig):
-    """No sandbox outlives the session that made it, and the count is published, not assumed."""
+    """Reclaim only sandboxes this process created, and report any refusals."""
     root = TARGET_ROOT / SWEEP_ROOT
     started_at = time.time()
+    # NTFS creation timestamps can precede time.time() by fractions of a millisecond.
+    # The creation record and filesystem identity below still provide the ownership proof.
+    mtime_floor = started_at - 1.0
     before = {path.name for path in root.iterdir()} if root.is_dir() else set()
     temp_root = basetemp_root(pytestconfig)
     temp_before = ({path.name for path in temp_root.iterdir()}
                    if temp_root is not None and temp_root.is_dir() else set())
     scratch = Path(tempfile.gettempdir())
     scratch_before = {path.name for path in scratch.iterdir()} if scratch.is_dir() else set()
-    yield
-    created = sandboxes_created(root, before, started_at)
+    original_mkdtemp = tempfile.mkdtemp
+    owned = {}
+
+    def key(path):
+        return os.path.normcase(os.path.abspath(os.fsdecode(path)))
+
+    def record_mkdtemp(*args, **kwargs):
+        path = original_mkdtemp(*args, **kwargs)
+        try:
+            metadata = Path(path).lstat()
+            if stat.S_ISDIR(metadata.st_mode) and metadata.st_ino:
+                owned[key(path)] = (metadata.st_dev, metadata.st_ino)
+        except OSError:
+            pass  # If identity cannot be established, this session must not delete it.
+        return path
+
+    def this_process_owns(path):
+        identity = owned.get(key(path))
+        if identity is None:
+            return False
+        try:
+            metadata = path.lstat()
+        except OSError:
+            return False
+        return (metadata.st_dev, metadata.st_ino) == identity
+
+    tempfile.mkdtemp = record_mkdtemp
+    try:
+        yield
+    finally:
+        tempfile.mkdtemp = original_mkdtemp
+    candidates = sandboxes_created(root, before, mtime_floor)
+    created = [path for path in candidates if this_process_owns(path)]
     removed, failed = remove_sandboxes(created)
     summary = {"root": SWEEP_ROOT, "present_before_session": len(before),
                "sandboxes_created_this_session": len(created),
                "removed": removed, "left_behind": failed,
-               "selection_rule": "name matches tmp<mkdtemp alphabet>, is a directory, absent from "
-                                 "the snapshot taken at session start, and modified after it",
+               "unowned_matching_ignored": len(candidates) - len(created),
+               "selection_rule": "name, snapshot and age match; this process created it with "
+                                 "mkdtemp and its filesystem identity still matches",
                "note": "created = leaked-and-not-cleaned by a test; named directories are never "
                        "candidates because they are cited as evidence paths",
                "roots": [{"root": SWEEP_ROOT, "created": len(created), "removed": removed,
                           "left_behind": failed}]}
     if temp_root is not None:
-        made = basetemp_leftovers(temp_root, temp_before, started_at)
+        made = basetemp_leftovers(temp_root, temp_before, mtime_floor)
         temp_removed, temp_failed = remove_sandboxes(made)
         summary["basetemp"] = {"root": str(temp_root.relative_to(TARGET_ROOT)),
                                "present_before_session": len(temp_before),
@@ -296,19 +297,19 @@ def sweep_test_sandboxes(pytestconfig):
                                                  "modified after it"}
         summary["roots"].append({"root": summary["basetemp"]["root"], "created": len(made),
                                  "removed": temp_removed, "left_behind": temp_failed})
-    made_clone = sandboxes_created(scratch, scratch_before, started_at, pattern=CLONE_NAME)
+    clone_candidates = sandboxes_created(scratch, scratch_before, mtime_floor, pattern=CLONE_NAME)
+    made_clone = [path for path in clone_candidates if this_process_owns(path)]
     clone_removed, clone_failed = remove_sandboxes(made_clone)
     summary["clone_scaffolding"] = {
         "root": str(scratch), "present_before_session": len(scratch_before),
         "directories_created_this_session": len(made_clone),
         "removed": clone_removed, "left_behind": clone_failed,
-        "selection_rule": "name matches awlclone-* or awlraster-* (the two prefixes this project's own scaffolding mints) -- tmp* is NOT swept "
-                          "here because outside this project's own scratch that shape belongs to "
-                          "other programs -- is a directory, absent from the session-start "
-                          "snapshot, and modified after it",
+        "unowned_matching_ignored": len(clone_candidates) - len(made_clone),
+        "selection_rule": "matching clone/raster name, snapshot and age, plus this process's "
+                          "mkdtemp record and unchanged filesystem identity",
         "why": "these are the trees that grew to 146 directories / 176.83 MB, and one recursive "
-               "delete that emptied a clone's .git before failing elsewhere; each is proven "
-               "deletable by undeletable_reason before anything is removed"}
+               "delete that emptied a clone's .git before failing elsewhere; each is checked "
+               "by undeletable_reason before anything is removed"}
     summary["roots"].append({"root": str(scratch), "created": len(made_clone),
                              "removed": clone_removed, "left_behind": clone_failed})
     destination = TARGET_ROOT / SWEEP_SUMMARY

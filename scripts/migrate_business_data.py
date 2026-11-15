@@ -288,7 +288,17 @@ def checked_path(raw, *, allowed_roots: list[Path], label: str) -> Path:
     reason = protected_reason(candidate)
     if reason:
         raise Refused("PATH_PROTECTED", f"{label} {candidate} is a protected path: {reason}")
-    resolved = Path(os.path.realpath(str(candidate)))
+    try:
+        resolved = Path(os.path.realpath(str(candidate)))
+    except OSError as exc:
+        # Windows refuses to resolve a path through an untrusted mount point (WinError 448).
+        # ``no_link_escape`` exists to name exactly this condition, but it runs *after* realpath;
+        # letting the raw OSError escape produced a traceback, rc=1 and no refusal report, so a
+        # caller could not tell a refused reparse point from a broken tool. Turn it into the same
+        # named preflight refusal the plain-directory chain would have produced.
+        raise Refused("PATH_TRAVERSES_LINK",
+                      f"{label} {candidate} cannot be resolved through a reparse point: "
+                      f"{type(exc).__name__} {exc}") from exc
     reason = protected_reason(resolved)
     if reason:
         raise Refused("PATH_PROTECTED",

@@ -842,6 +842,56 @@ def _push_authorization_head(path: Path) -> str:
         return ""
 
 
+def _first_usable_posix_shell(candidates):
+    """A PATH shim is not a shell until it actually executes a shell command."""
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            probe = subprocess.run([str(candidate), "-c", "printf awl_shell_ok"],
+                                   capture_output=True, text=True, encoding="utf-8",
+                                   errors="replace", timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if probe.returncode == 0 and probe.stdout == "awl_shell_ok":
+            return str(candidate)
+    return None
+
+
+def _git_or_path_shell():
+    import shutil
+
+    candidates = []
+    if os.name == "nt":
+        git = subprocess.run(["git", "--exec-path"], cwd=str(TARGET_ROOT),
+                             capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if git.returncode == 0 and git.stdout.strip():
+            git_root = Path(git.stdout.strip()).parents[2]
+            candidates.append(git_root / "usr" / "bin" / "sh.exe")
+    candidates.extend((shutil.which("sh"), shutil.which("bash")))
+    return _first_usable_posix_shell(candidates)
+
+
+def test_shell_selection_rejects_a_non_shell_before_using_a_real_shell():
+    shell = _git_or_path_shell()
+    assert shell, "no executable POSIX shell available for the hook probe"
+    assert _first_usable_posix_shell([sys.executable, shell]) == shell
+    assert _first_usable_posix_shell([sys.executable]) is None
+
+
+def test_coverage_explains_the_attested_design_rework():
+    import migrate_sources
+
+    target = "domains/design/design_lab/runtime/asset_store.py"
+    ledger = TARGET_ROOT / "migration/source-coverage-design.csv"
+    with ledger.open(encoding="utf-8-sig", newline="") as stream:
+        rows = [row for row in csv.DictReader(stream) if row["target"] == target]
+    assert len(rows) == 1
+    expected_hash, _size, _delta, reason = migrate_sources.DECLARED_REWORK[target]
+    assert hashlib.sha256((TARGET_ROOT / target).read_bytes()).hexdigest() == expected_hash
+    assert reason in rows[0]["reason"], rows[0]
+
+
 def test_pre_push_guard_is_present_and_blocking(tmp_path):
     """A00「不推送不发布」has to be an assertion that can fail, not a sentence in a doc.
 
@@ -864,7 +914,7 @@ def test_pre_push_guard_is_present_and_blocking(tmp_path):
     assert moved.stdout.strip() == "", ("core.hooksPath points away from .git/hooks: "
                                         + moved.stdout)
 
-    shell = shutil.which("sh") or shutil.which("bash")
+    shell = _git_or_path_shell()
     assert shell, "no POSIX shell available to invoke the hook locally"
 
     # The refusal is proven in a scratch repository, not here. Invoked against this checkout the
@@ -1574,3 +1624,123 @@ def test_a_destination_under_the_running_checkout_is_measured_from_that_checkout
             assert "DESTINATION_NOT_INSIDE_ANY_CHECKOUT" in str(refusal), refusal
         else:
             raise AssertionError("机器上别处的绝对路径被当成仓内去向发布了：%s" % unrelated)
+
+
+def test_offline_build_refuses_reused_or_escaping_run_ids(tmp_path, monkeypatch):
+    """A run name cannot overwrite old evidence or escape the build directory."""
+    from scripts import build_offline_install as build
+
+    build_root = tmp_path / "build"
+    build_root.mkdir()
+    saved = build_root / "saved"
+    saved.mkdir()
+    (saved / "keep").write_text("preserve", encoding="utf-8")
+    monkeypatch.setattr(build, "BUILD_ROOT", build_root)
+    monkeypatch.setattr(build, "interpreter_version", lambda _python: "controlled-test")
+    missing_python = tmp_path / "missing-python"
+    assert build.main(["--run-id", "saved", "--python", str(missing_python)]) == 2
+    assert build.main(["--run-id", "../escape", "--python", str(missing_python)]) == 2
+    assert sorted(path.name for path in saved.iterdir()) == ["keep"]
+    assert not (tmp_path / "escape").exists()
+
+
+def test_offline_build_staging_never_removes_a_previous_tree(tmp_path, monkeypatch):
+    from scripts import build_offline_install as build
+
+    src = tmp_path / "src"
+    src.mkdir()
+    sentinel = src / "keep"
+    sentinel.write_text("preserve", encoding="utf-8")
+    attempted = []
+    monkeypatch.setattr(build.shutil, "rmtree", lambda path, *_a, **_k: attempted.append(path))
+    with pytest.raises(OSError):
+        build.stage_source(tmp_path)
+    assert attempted == []
+    assert sentinel.read_text(encoding="utf-8") == "preserve"
+
+
+def test_install_verification_staging_never_removes_a_previous_tree(tmp_path, monkeypatch):
+    from scripts import verify_isolated_install as verify
+
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    sentinel = staging / "keep"
+    sentinel.write_text("preserve", encoding="utf-8")
+    attempted = []
+    monkeypatch.setattr(verify.shutil, "rmtree", lambda path, *_a, **_k: attempted.append(path))
+    with pytest.raises(OSError):
+        verify.run_regression(Path(sys.executable), staging, {}, [], [])
+    assert attempted == []
+    assert sentinel.read_text(encoding="utf-8") == "preserve"
+
+
+@pytest.mark.parametrize("kind", ["coverage", "traceability", "f01"])
+def test_register_noop_leaves_identical_bytes_and_file_identity(tmp_path, monkeypatch, kind):
+    """A rebuild of identical rows must not replace its target or make a sibling temp."""
+    from scripts import build_f01_disposition as f01
+    from scripts import build_requirement_traceability as trace
+    from scripts import build_source_coverage as coverage
+
+    target = tmp_path / (kind + ".csv")
+    if kind == "coverage":
+        rows = [{"repo": "work", "path": "fixture.py", "class": "COPIED", "reason": "fixture"}]
+        run = lambda: coverage.write_csv(rows, target)
+    elif kind == "traceability":
+        rows = [{"来源行标识": "fixture", "要求原文": "fixture", "当前实现位置": "",
+                 "验证证据": "", "状态": "PARTIAL", "依据说明": "fixture"}]
+        run = lambda: trace.write_csv(rows, target, [])
+    else:
+        source = tmp_path / "source"
+        source.mkdir()
+        (source / "fixture.py").write_text("fixture\n", encoding="utf-8")
+        monkeypatch.setattr(f01, "OUT_CSV", target)
+        monkeypatch.setattr(f01, "WORK_ROOT", source)
+        monkeypatch.setattr(f01, "registered_work_paths", lambda: {"fixture.py": {"来源键": "fixture"}})
+        monkeypatch.setattr(f01, "copied_source_paths", lambda: set())
+        monkeypatch.setattr(f01, "build_runtime_import_graph", lambda: {
+            "entries": [], "reachable": set(), "universe": 1})
+        monkeypatch.setattr(f01, "classify", lambda *_args: ("TOOL_NOT_RUNTIME", "", "fixture", ""))
+        run = lambda: f01.main([])
+    run()
+    before = target.read_bytes()
+    metadata = target.stat()
+    attempted = []
+    original = os.replace
+
+    def trap(path, destination):
+        if Path(destination) == target:
+            attempted.append(Path(path))
+        return original(path, destination)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "replace", trap)
+        run()
+    after = target.stat()
+    assert target.read_bytes() == before and attempted == []
+    assert (after.st_dev, after.st_ino, after.st_mtime_ns) == (
+        metadata.st_dev, metadata.st_ino, metadata.st_mtime_ns)
+    if kind == "f01":
+        assert f01.main(["--check"]) == 0
+        drifted = before + b"drift\n"
+        target.write_bytes(drifted)
+        assert f01.main(["--check"]) == 1
+        assert target.read_bytes() == drifted, "check mode rewrote the drift it was asked to report"
+
+
+def test_changed_register_is_staged_inside_project_local(tmp_path, monkeypatch):
+    from scripts import atomic_register
+
+    target = tmp_path / "changed.csv"
+    target.write_bytes(b"before\n")
+    replaced = []
+    original = os.replace
+
+    def capture(source, destination):
+        replaced.append((Path(source), Path(destination)))
+        return original(source, destination)
+
+    monkeypatch.setattr(os, "replace", capture)
+    assert atomic_register.publish_bytes(target, b"after\n") is True
+    assert target.read_bytes() == b"after\n"
+    assert len(replaced) == 1 and replaced[0][1] == target
+    assert replaced[0][0].parent == TARGET_ROOT / ".project-local/runs/register-write"

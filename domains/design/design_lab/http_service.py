@@ -9,6 +9,7 @@ from urllib.parse import parse_qsl, urlsplit
 
 from . import __version__
 from .runtime.asset_store import AssetError
+from .runtime.sqlite_open import ProjectStorePathTooLong
 from .runtime.paths import PathPolicyError
 from .asset_analysis import AssetAnalysis, AssetAnalysisError
 from .prompt_intelligence import PromptIntelligence, PromptIntelligenceError
@@ -727,6 +728,8 @@ def make_server(service, token, port=0, *, local_session=False, extra_routes=(),
                 self.send_json(503, {'error': 'IMAGE_DEPENDENCY_UNAVAILABLE'})
             except (ValueError, PathPolicyError):
                 self.send_json(400, {'error': 'INVALID_REQUEST'})
+            except ProjectStorePathTooLong:
+                self.send_json(503, {'error': 'PROJECT_PATH_TOO_LONG'})
             except OSError as exc:
                 # winerror 206 is ERROR_FILENAME_EXCED_RANGE: the project lives
                 # under a path Windows cannot address. Folding that into "store

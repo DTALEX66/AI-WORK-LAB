@@ -5,7 +5,8 @@
 file must be *derived*: a hand-maintained blocker list drifts the moment a clause is
 closed, and the round then either over-reports readiness or keeps a stale blocker. Each
 non-CONFIRMED clause of ``migration/task-acceptance.csv`` becomes one item, carrying its
-phase and, for owner-boundary refusals, the authority that put it out of scope.
+phase and, for owner-boundary refusals, the authority that put it out of scope. Named
+operational blockers are read separately from ``config/operational-blockers.json``.
 """
 from __future__ import annotations
 
@@ -22,6 +23,9 @@ TARGET_ROOT = Path(__file__).resolve().parents[1]
 CLAUSES = TARGET_ROOT / "migration" / "task-acceptance.csv"
 PACK = TARGET_ROOT / "AI-WORK-LAB_HANDOFF_20261029" / "09_任务分期与验收.json"
 OUT = TARGET_ROOT / "config" / "blocker-register.json"
+OPERATIONAL_BLOCKERS = TARGET_ROOT / "config" / "operational-blockers.json"
+#: This observed incident remains required until the owner confirms and records its resolution.
+REQUIRED_OPERATIONAL_BLOCKERS = frozenset({"LOCAL_ACL_TEST_RESIDUE_20261109"})
 
 # clause verdict -> register status. PARTIAL and GAP are blocking for a mandatory phase:
 # the pack's own completion_rule is 「P0/P1全部通过且无阻断才可交审」, and a partially
@@ -117,6 +121,32 @@ def owner_queue() -> list[dict]:
     return queue
 
 
+def operational_blockers() -> list[dict]:
+    """Refuse absent or malformed operational incidents rather than silently dropping them."""
+    if not OPERATIONAL_BLOCKERS.is_file():
+        raise SystemExit("OPERATIONAL_BLOCKERS_MISSING")
+    document = json.loads(OPERATIONAL_BLOCKERS.read_text(encoding="utf-8-sig"))
+    rows = document.get("items") if isinstance(document, dict) else None
+    if not isinstance(rows, list):
+        raise SystemExit("OPERATIONAL_BLOCKERS_INVALID")
+    required = ("id", "task", "clause", "status", "phase", "authority", "detail")
+    identifiers = set()
+    for item in rows:
+        if (not isinstance(item, dict) or any(not isinstance(item.get(key), str)
+                                               or not item[key].strip() for key in required)
+                or item["status"] != "BLOCKED" or item["phase"] not in ("P0", "P1", "P2", "P3")
+                or type(item.get("mandatory")) is not bool
+                or type(item.get("scope_excluded_by_owner")) is not bool
+                or item["mandatory"] != (item["phase"] in ("P0", "P1"))
+                or item["id"] in identifiers):
+            raise SystemExit("OPERATIONAL_BLOCKERS_INVALID_ITEM")
+        identifiers.add(item["id"])
+    missing = REQUIRED_OPERATIONAL_BLOCKERS - identifiers
+    if missing:
+        raise SystemExit("OPERATIONAL_BLOCKER_MISSING: " + ", ".join(sorted(missing)))
+    return rows
+
+
 def build() -> dict:
     pack = json.loads(PACK.read_text(encoding="utf-8-sig"))
     phase_by_task = {task["id"]: task["phase"] for task in pack["tasks"]}
@@ -156,9 +186,14 @@ def build() -> dict:
             item["owner_queue"] = queue
             item["decision_channel"] = decision_channel_shape(queue)
         items.append(item)
+    incidents = operational_blockers()
+    if {item["id"] for item in incidents} & {item["id"] for item in items}:
+        raise SystemExit("OPERATIONAL_BLOCKER_ID_CONFLICT")
+    items.extend(incidents)
     return dict(
         generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
         source="migration/task-acceptance.csv",
+        operational_source="config/operational-blockers.json",
         rule="必做阶段(P0/P1)的非通过条款一律阻断本批就绪；owner 明确移出义务的条款"
              "登记为 disclosed 并带出处",
         clauses=len(clauses),
@@ -184,8 +219,15 @@ def main(argv: list[str]) -> int:
     document = keeping_the_recorded_stamp(OUT, document)
     text = json.dumps(document, ensure_ascii=False, indent=2) + "\n"
     if args.check:
-        current = OUT.read_text(encoding="utf-8") if OUT.is_file() else ""
-        same = json.loads(current)["items"] == document["items"]
+        try:
+            current = json.loads(OUT.read_text(encoding="utf-8"))
+            if not isinstance(current, dict) or not isinstance(current.get("generated_at"), str):
+                raise ValueError("missing publication timestamp")
+            current = {key: value for key, value in current.items() if key != "generated_at"}
+            expected = {key: value for key, value in document.items() if key != "generated_at"}
+            same = current == expected
+        except (OSError, ValueError):
+            same = False
         print(json.dumps(dict(matches=same, items=len(document["items"]),
                               blocking=document["counts"]["blocking"]), ensure_ascii=True))
         return 0 if same else 1

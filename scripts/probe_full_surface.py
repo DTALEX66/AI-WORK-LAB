@@ -65,6 +65,7 @@ from design_lab import plan_feedback as pf  # noqa: E402
 from design_lab import prompt_intelligence as pint  # noqa: E402
 from design_lab import rights_review, research_review  # noqa: E402
 from design_lab import target_profile as tprof  # noqa: E402
+from scripts import sandbox_cleanup  # noqa: E402
 
 TABLE_V1 = "backend.v1.V1_ROUTES"
 TABLE_WORK = "backend.core.work_surfaces.WORK_SURFACE_ROUTES (经 backend.v1.V1_ROUTES 装载)"
@@ -1201,15 +1202,23 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     workspace = (REPO / args.workspace).resolve()
-    if str(workspace) != str(REPO) and not str(workspace).startswith(str(REPO) + "\\"):
+    if not workspace.is_relative_to(REPO.resolve()):
         raise SystemExit("REFUSED: workspace must stay inside the repository")
     if args.fresh:
-        allowed_root = str(REPO / ".project-local" / "runs" / "full-surface") + "\\"
-        if not str(workspace).startswith(allowed_root):
+        allowed_root = (REPO / ".project-local" / "runs" / "full-surface").resolve()
+        if workspace == allowed_root or not workspace.is_relative_to(allowed_root):
             raise SystemExit("REFUSED: --fresh only wipes .project-local/runs/full-surface/*")
         if workspace.exists():
             import shutil
-            shutil.rmtree(workspace)
+
+            reason = sandbox_cleanup.undeletable_reason(workspace)
+            if reason:
+                raise SystemExit("SANDBOX_CLEANUP_REFUSED: " + reason)
+            try:
+                shutil.rmtree(sandbox_cleanup.win_long_safe(workspace),
+                              onerror=sandbox_cleanup.clear_read_only)
+            except OSError as error:
+                raise SystemExit("SANDBOX_CLEANUP_FAILED: " + str(error)) from error
     workspace.mkdir(parents=True, exist_ok=True)
     (workspace / "AGENTS.md").write_text("# surface probe scratch workspace\n", encoding="utf-8")
     token = secrets.token_hex(32)

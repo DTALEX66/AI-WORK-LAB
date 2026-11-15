@@ -12,6 +12,7 @@ URLs), the same protocol the DESIGN-LAB launcher uses.
 """
 from __future__ import annotations
 
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from design_lab.http_service import make_server  # noqa: E402
 from design_lab.knowledge_library import KnowledgeLibrary  # noqa: E402
 from design_lab.assistance_plan import AssistancePlans  # noqa: E402
 from design_lab.runtime.paths import PathPolicyError  # noqa: E402
+from design_lab.runtime.sqlite_open import ProjectStorePathTooLong  # noqa: E402
 from design_lab.service import ProjectService  # noqa: E402
 from design_lab.target_profile import TargetProfiles  # noqa: E402
 
@@ -38,6 +40,18 @@ from backend.v1 import V1API, V1_ROUTES  # noqa: E402
 from backend.workspace import WorkspaceRefused, guard as workspace_guard  # noqa: E402
 
 
+def _backend_store_refusal(workspace_root: Path, label: str, exc: Exception, *,
+                           close_failed: bool = False) -> WorkspaceRefused:
+    """Name failures opening the stores that are separate from the design store."""
+    reason = ("PROJECT_PATH_TOO_LONG" if isinstance(exc, ProjectStorePathTooLong)
+              or getattr(exc, "winerror", None) == 206 else "PROJECT_STORE_UNAVAILABLE")
+    detail = "%s store is unavailable" % label
+    if close_failed:
+        detail += "; the already-open unified store also failed to close"
+    return WorkspaceRefused(reason, workspace_root, detail,
+                            next_action="check the workspace path and access permissions, then retry")
+
+
 def build_workspace(workspace_root: Path) -> dict:
     workspace_root = Path(workspace_root)
     # Guarded before anything is created: the old order made the runtime root first and let the
@@ -46,8 +60,8 @@ def build_workspace(workspace_root: Path) -> dict:
     if verdict is not None:
         raise WorkspaceRefused(verdict["reason"], verdict["workspace"], verdict["detail"])
     local_root = workspace_root / ".project-local" / "ai-work-lab"
-    local_root.mkdir(parents=True, exist_ok=True)
     try:
+        local_root.mkdir(parents=True, exist_ok=True)
         service = ProjectService(str(workspace_root))
         reconciled = service.reconcile_interrupted_attempts()
     except PathPolicyError as exc:
@@ -56,9 +70,30 @@ def build_workspace(workspace_root: Path) -> dict:
         raise WorkspaceRefused("WORKSPACE_PATH_REFUSED", workspace_root, str(exc),
                                next_action="unset PROJECT_LOCAL_ROOT, or pass --workspace under a "
                                            "directory you own, then re-run") from None
-    unified = UnifiedStore(local_root / "unified.sqlite3")
-    work = WorkPacks(local_root / "work-store.sqlite3",
-                     grants_path=local_root / "trusted-grants.json")
+    except ProjectStorePathTooLong:
+        raise WorkspaceRefused("PROJECT_PATH_TOO_LONG", workspace_root,
+                               "the project state database is inaccessible through this path",
+                               next_action="use a shorter workspace path and reopen the state") from None
+    except (sqlite3.Error, OSError) as exc:
+        reason = ("PROJECT_PATH_TOO_LONG" if getattr(exc, "winerror", None) == 206
+                  else "PROJECT_STORE_UNAVAILABLE")
+        raise WorkspaceRefused(reason, workspace_root,
+                               "the project state database or its runtime directory is unavailable",
+                               next_action="check the workspace path and access permissions, then retry") from None
+    try:
+        unified = UnifiedStore(local_root / "unified.sqlite3")
+    except (sqlite3.Error, OSError) as exc:
+        raise _backend_store_refusal(workspace_root, "unified", exc) from None
+    try:
+        work = WorkPacks(local_root / "work-store.sqlite3",
+                         grants_path=local_root / "trusted-grants.json")
+    except (sqlite3.Error, OSError) as exc:
+        close_failed = False
+        try:
+            unified.close()
+        except (sqlite3.Error, OSError):
+            close_failed = True
+        raise _backend_store_refusal(workspace_root, "WORK", exc, close_failed=close_failed) from None
     api = V1API(
         design_service=service,
         unified=unified,

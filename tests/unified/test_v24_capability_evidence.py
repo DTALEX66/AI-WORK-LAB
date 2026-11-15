@@ -389,7 +389,7 @@ def _staging_root(base: Path, raster_rel: str, budget: int = WINDOWS_PATH_BUDGET
     if cleanup is not None:
         cleanup(candidate)
     if not fits(candidate):
-        shutil.rmtree(candidate, ignore_errors=False)
+        _remove_created_root(candidate)
         raise AssertionError(
             "PATH_PREREQUISITE_UNMET: 连最短的临时根也放不下这条夹具路径（%d 字节 > %d），"
             "本节点要求 %s 之下可达" % (len(str(candidate / "project" / tail)), budget, parent))
@@ -403,8 +403,40 @@ def _remove_created_root(path: Path) -> None:
     this batch already lost a clone that way, so the removal is asserted, not trusted.
     """
     if path.exists():
-        shutil.rmtree(path)
+        from tests.conftest import remove_sandboxes
+
+        removed, failed = remove_sandboxes([path])
+        if removed != 1 or failed:
+            raise OSError("RASTER_SANDBOX_CLEANUP_REFUSED: " + ", ".join(failed))
     assert not path.exists(), "自己造的沙箱根没清掉：" + str(path)
+
+
+def test_raster_cleanup_refusal_preserves_both_staging_paths(tmp_path, monkeypatch):
+    """Neither routine teardown nor the path-budget refusal may bypass the guard."""
+    from tests import conftest as fixtures
+
+    sandbox = tmp_path / "raster"
+    sandbox.mkdir()
+    sentinel = sandbox / "keep"
+    sentinel.write_text("preserve", encoding="utf-8")
+    attempted = []
+    made = []
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(fixtures, "undeletable_reason", lambda _path: "DELETE_ACCESS_REFUSED:plant")
+            patch.setattr(fixtures.shutil, "rmtree", lambda path, *_a, **_k: attempted.append(path))
+            with pytest.raises(OSError, match="RASTER_SANDBOX_CLEANUP_REFUSED"):
+                _remove_created_root(sandbox)
+            with pytest.raises(OSError, match="RASTER_SANDBOX_CLEANUP_REFUSED"):
+                _staging_root(tmp_path, "a.png", budget=1, fallback_parent=tmp_path,
+                              cleanup=made.append)
+            assert attempted == []
+            assert sentinel.read_text(encoding="utf-8") == "preserve"
+            assert made and made[0].is_dir()
+    finally:
+        for path in [sandbox, *made]:
+            if path.exists():
+                assert fixtures.remove_sandboxes([path]) == (1, [])
 
 
 def test_the_raster_staging_root_moves_only_when_the_budget_is_over(tmp_path):
@@ -422,8 +454,16 @@ def test_the_raster_staging_root_moves_only_when_the_budget_is_over(tmp_path):
     assert len(str(tmp_path / "project" / PurePosixPath(real_tail))) <= WINDOWS_PATH_BUDGET, (
         "本机读数已经不满足控制面前提，下面的种下去那一侧不再是对照")
 
-    plant = len(str(tmp_path))
-    moved = _staging_root(tmp_path, "layers/texture-chip.png", budget=plant,
+    simple_tail = PurePosixPath("layers/texture-chip.png")
+    probe = Path(tempfile.mkdtemp(prefix="awlraster-", dir=tempfile.gettempdir()))
+    try:
+        fallback_budget = len(str(probe / "project" / simple_tail))
+    finally:
+        _remove_created_root(probe)
+    plant = max(len(str(tmp_path)), fallback_budget)
+    assert len(str(tmp_path / "project" / simple_tail)) > plant, (
+        "the isolated fallback is not shorter than this test base; the move control cannot be exercised")
+    moved = _staging_root(tmp_path, str(simple_tail), budget=plant,
                           cleanup=created.append)
     try:
         assert moved != tmp_path, "把预算收成越界那么大，却什么都没换"

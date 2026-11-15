@@ -628,8 +628,6 @@ def run_regression(python: Path, staging: Path, env: dict, cmd_tail: list[str],
     `tests/legacy`): the legacy-regression row judges `tests/legacy/**` with an
     absolute criterion, so it needs a scoped run rather than a slice of a bigger one.
     """
-    if staging.exists():
-        shutil.rmtree(staging)
     staging.mkdir(parents=True)
     for name in ("tests", "migration", "packages", "scripts"):
         shutil.copytree(SOURCE_ROOT / name, staging / name,

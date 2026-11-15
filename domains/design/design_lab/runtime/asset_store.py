@@ -20,6 +20,7 @@ from pathlib import Path
 
 from .attempt_contract import canonical_hash
 from .paths import PathPolicyError, resolve_paths
+from . import sqlite_open
 from .state_resources import state_schema
 
 _SCHEMA = state_schema("design-lab-state-assets-v1.sql")
@@ -58,7 +59,7 @@ def connect(db_path, *, project_root=None):
     except PathPolicyError as exc:
         raise AssetError(str(exc)) from exc
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path), timeout=15)
+    conn = sqlite_open.connect(db_path, timeout=15)
     try:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.executescript(_BASE_SCHEMA.read_text(encoding="utf-8"))
@@ -68,7 +69,7 @@ def connect(db_path, *, project_root=None):
         if not conn.execute("SELECT 1 FROM runtime_migration WHERE name='assets-v2'").fetchone():
             if conn.execute("SELECT 1 FROM asset_version LIMIT 1").fetchone():
                 backup_path = db_path.with_name(f"{db_path.name}.pre-assets-v2-{uuid.uuid4().hex}.bak")
-                backup = sqlite3.connect(str(backup_path))
+                backup = sqlite_open.connect(backup_path)
                 try:
                     conn.backup(backup)
                 finally:

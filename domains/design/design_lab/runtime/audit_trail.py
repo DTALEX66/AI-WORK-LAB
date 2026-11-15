@@ -19,7 +19,8 @@ this project is built to refuse.
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
+
+from . import sqlite_open
 
 WRITTEN_ACTIONS = ('asset_version_created', 'writer_takeover')
 
@@ -27,9 +28,9 @@ WRITTEN_ACTIONS = ('asset_version_created', 'writer_takeover')
 def connect(service):
     """A read-only connection to the project's state database, through its own path policy."""
     path = service.paths.database_path(service.database)
-    if not Path(path).exists():
+    if not sqlite_open.exists(path):
         return None
-    return sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)
+    return sqlite_open.connect(path, read_only=True)
 
 
 def _rows(conn, limit, after_at, after_id):

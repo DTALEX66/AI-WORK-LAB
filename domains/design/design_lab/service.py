@@ -4,7 +4,7 @@ from contextlib import closing
 import sqlite3
 import uuid
 
-from .runtime import asset_store
+from .runtime import asset_store, sqlite_open
 from .runtime.paths import resolve_paths
 
 
@@ -23,7 +23,7 @@ class ProjectService:
         is left alone: the non-blocking OS lock is what proves the difference, and
         relabelling live work is the one thing recovery may not do.
         """
-        if not self.database.exists():
+        if not sqlite_open.exists(self.database):
             return []
         from .runtime import job_store
         from .runtime.native_recovery_lock import RecoveryBusy, recovery_lock
@@ -47,7 +47,7 @@ class ProjectService:
         scoped human authorization that a start-up process may not supply for
         itself -- see decide_native_recovery.
         """
-        if not self.database.exists():
+        if not sqlite_open.exists(self.database):
             return []
         from .native_tasks import NativeTasks
         return NativeTasks(self).recovery_decisions()
@@ -78,10 +78,10 @@ class ProjectService:
         return NativeTasks(self).decide_recovery(attempt_id, authorization=authorization)
 
     def list_projects(self):
-        if not self.database.exists():
+        if not sqlite_open.exists(self.database):
             return []
         self.paths.database_path(self.database)
-        with closing(sqlite3.connect(self.database.as_uri() + '?mode=ro', uri=True)) as conn:
+        with closing(sqlite_open.connect(self.database, read_only=True)) as conn:
             return [dict(zip(('id', 'name', 'created_at'), row)) for row in conn.execute(
                 'SELECT project_id, display_name, created_at FROM project ORDER BY created_at, project_id')]
 
@@ -98,10 +98,10 @@ class ProjectService:
             return dict(zip(('id', 'name', 'created_at'), row))
 
     def get_project(self, project_id):
-        if not self.database.exists():
+        if not sqlite_open.exists(self.database):
             return None
         self.paths.database_path(self.database)
-        with closing(sqlite3.connect(self.database.as_uri() + '?mode=ro', uri=True)) as conn:
+        with closing(sqlite_open.connect(self.database, read_only=True)) as conn:
             row = conn.execute('SELECT project_id, display_name, created_at FROM project WHERE project_id=?',
                                (project_id,)).fetchone()
             return dict(zip(('id', 'name', 'created_at'), row)) if row else None

@@ -18,6 +18,7 @@ Modes (exit codes are part of the contract, consumers depend on them):
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 import hashlib
 import io
@@ -54,7 +55,7 @@ AUTHORITY_MARK = "唯一顶层入口"
 BLOCKING_QUEUE = "L10#0"
 AUDIT_STATE_RELATIVE = "docs/AUDIT-STATE.json"
 ARCHIVE_REGISTER = "migration/archive-object-reconciliation-20261101.csv"
-ARCHIVE_AREA = "docs/history/sources-20261101/MANIFEST.json"
+ARCHIVE_AREA = "docs/history/sources-20261101/MANIFEST.csv"
 ARCHIVE_IMPORT = "docs/history/archive-objects-20261101/ARCHIVE-OBJECTS-MANIFEST.csv"
 TEST_CENSUS = "tests/node-census.json"
 #: every disposition the reconciliation register is allowed to carry -- "we have not
@@ -91,6 +92,100 @@ HISTORY_SELF_CLAIM = (
 #: role it plays. A register that is neither is a second truth nobody maintains -- that is exactly
 #: how the two source repositories ended up with frozen ledgers nobody could retire.
 REGISTER_AREAS = ("migration", "config")
+
+#: The workbench gate's named verdicts are a claim the entry makes in prose. ``check`` used to
+#: compare only the numeric block, so the entry could keep saying "ten" after the tool grew an
+#: eleventh (SANDBOX_CLEANUP_REFUSED) and still be green. Both the count and the coverage relation
+#: are now derived from the tracked tool and the tracked falsifier instead of typed into prose.
+WORKBENCH_TOOL = ROOT / "scripts" / "check_workbench_bundle_drift.py"
+WORKBENCH_FALSIFIER = ROOT / "scripts" / "falsify_workbench_bundle_gate.py"
+#: the entry line that enumerates the verdicts; it is a table row in §二
+WORKBENCH_VERDICT_ROW = re.compile(r"^\| workbench bundle \|", re.M)
+#: verdict literals the tool can assign, read structurally (same shape as test_v33's guard)
+WORKBENCH_VERDICT_ASSIGN = re.compile(r'document\["verdict"\] = "([A-Z_]+)"')
+#: a hand-typed count or list in prose. Chinese numerals are matched because the stale entry said
+#: 「十个」; digits because they are just as copyable and just as perishable.
+WORKBENCH_STALE_COUNT = re.compile(
+    r"[一二三四五六七八九十百两]+个(?:具名判定|判定|case|态)"
+    r"|[一二三四五六七八九十百两]+个各有\s*case"
+    r"|\b\d+\s*个(?:具名判定|判定|case|态)"
+    r"|\b\d+\s*个各有\s*case")
+#: the named-verdict list in the entry is fenced so a machine can parse it without guessing which
+#: backticked tokens are verdicts and which are file paths.
+WORKBENCH_VERDICT_LIST_START = "<!-- workbench-verdicts:start -->"
+WORKBENCH_VERDICT_LIST_END = "<!-- workbench-verdicts:end -->"
+
+
+def workbench_verdict_sets() -> dict:
+    """Read the tool's assignable verdicts and the falsifier's declared coverage, structurally.
+
+    ``VERDICT_ASSIGN`` is deliberately the same pattern the in-suite guard uses, and the falsifier's
+    ``VERDICT_CASES`` is read with ``ast`` rather than imported (it plants real bytes on import
+    only inside ``main``, but a checker has no business executing a falsifier). A third source --
+    the entry's fenced list -- is parsed separately so the three can be compared against each other
+    instead of one of them being trusted as the definition.
+    """
+    tool_text = WORKBENCH_TOOL.read_text(encoding="utf-8")
+    falsifier_text = WORKBENCH_FALSIFIER.read_text(encoding="utf-8")
+    assigned = set(WORKBENCH_VERDICT_ASSIGN.findall(tool_text))
+    declared = set()
+    for node in ast.parse(falsifier_text).body:
+        if isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id == "VERDICT_CASES"
+                for target in node.targets):
+            declared = {key.value for key in node.value.keys}
+            break
+    return {"assigned": assigned, "declared": declared}
+
+
+def parse_workbench_verdict_list(text: str) -> list[str]:
+    """The verdict names the entry's fenced list actually states, in order."""
+    if WORKBENCH_VERDICT_LIST_START not in text or WORKBENCH_VERDICT_LIST_END not in text:
+        raise ValueError("MISSING_WORKBENCH_VERDICT_LIST")
+    body = text.split(WORKBENCH_VERDICT_LIST_START, 1)[1].split(WORKBENCH_VERDICT_LIST_END, 1)[0]
+    return re.findall(r"`([A-Z][A-Z_]+)`", body)
+
+
+def workbench_verdict_findings(text: str, sets: dict | None = None) -> list[str]:
+    """The three-way invariant, plus a refusal to hand-type the count back into prose.
+
+    Split out as a pure function so a doctored copy of the entry can be driven at it: an
+    anti-drift gate that has never rejected the very defect it was written for is decoration.
+    """
+    sets = sets if sets is not None else workbench_verdict_sets()
+    assigned, declared = sets["assigned"], sets["declared"]
+    findings: list[str] = []
+    if not assigned:
+        findings.append("WORKBENCH_VERDICT_SET_EMPTY 工具里读不到任何判定字面量，这个门禁已空转")
+    if not declared:
+        findings.append("WORKBENCH_VERDICT_CASES_EMPTY 反例脚本没有可读的覆盖声明")
+    try:
+        listed = parse_workbench_verdict_list(text)
+    except ValueError as exc:
+        # do not return early: the hand-written count and the missing table row are independent
+        # defects, and an early return here would leave the other two checks unreachable.
+        findings.append("WORKBENCH_VERDICT_LIST_MISSING %s" % exc)
+        listed = []
+    if not WORKBENCH_VERDICT_ROW.search(text):
+        findings.append("WORKBENCH_VERDICT_ROW_MISSING 入口 §二 的 workbench bundle 表格行不见了")
+    if not listed:
+        findings.append("WORKBENCH_VERDICT_LIST_EMPTY 入口的判定名单一个名字都没有")
+    listed_set = set(listed)
+    if len(listed_set) != len(listed):
+        findings.append("WORKBENCH_VERDICT_LIST_DUPLICATED 入口名单里有重复名字")
+    for name in sorted(assigned - listed_set):
+        findings.append("WORKBENCH_VERDICT_UNDISCLOSED %s（工具能赋，入口名单没有）" % name)
+    for name in sorted(listed_set - assigned):
+        findings.append("WORKBENCH_VERDICT_NOT_ASSIGNABLE %s（入口名单有，工具发不出）" % name)
+    for name in sorted(assigned - declared):
+        findings.append("WORKBENCH_VERDICT_CASE_MISSING %s（工具能赋，反例脚本没有 case）" % name)
+    for name in sorted(declared - assigned):
+        findings.append("WORKBENCH_VERDICT_CASE_ORPHAN %s（反例脚本声明了工具发不出的 case）" % name)
+    for number, line in prose_lines(text):
+        if WORKBENCH_STALE_COUNT.search(line):
+            findings.append("WORKBENCH_VERDICT_COUNT_HANDWRITTEN 行=%d（数量/覆盖关系必须由本检查器"
+                            "从工具与反例脚本现算，散文里再抄一个会过期的数）" % number)
+    return findings
 
 
 def registers_on_disk(root=ROOT) -> list[str]:
@@ -230,13 +325,15 @@ def spdx_claims() -> dict:
 
 
 def archive_summary() -> dict:
-    """The history-area manifest as written by the copy run -- counts are read, never retyped."""
-    document = json.loads((ROOT / ARCHIVE_AREA).read_text(encoding="utf-8"))
-    actions = document["actions"]
-    return dict(rows_total=document["rows_total"],
-                actions={key: int(actions.get(key, 0)) for key in
-                         ("COPIED", "DUPLICATED", "LINKED_IN_REPO", "LINKED_ARCHIVE",
-                          "EXCLUDED_BY_OWNER_RULE", "FAILED")})
+    """Count the current row ledger, not the copy run's historical JSON snapshot."""
+    ledger = rows(ARCHIVE_AREA)
+    names = ("COPIED", "DUPLICATED", "LINKED_IN_REPO", "LINKED_ARCHIVE",
+             "EXCLUDED_BY_OWNER_RULE", "FAILED")
+    actions = Counter(row["action"] for row in ledger)
+    unknown = set(actions) - set(names)
+    if unknown:
+        raise ValueError("UNKNOWN_ARCHIVE_ACTION " + ", ".join(sorted(unknown)))
+    return dict(rows_total=len(ledger), actions={key: actions[key] for key in names})
 
 
 def derive_figures() -> dict:
@@ -258,6 +355,7 @@ def derive_figures() -> dict:
     ARCHIVE_SUMMARY = archive_summary()
     disposition = Counter(row["disposition"] for row in archive)
     hints = {row["source_hint"] for row in archive if row["source_hint"]}
+    workbench = workbench_verdict_sets()
     return {
         "archive_objects": len(archive),
         "archive_in_repo_objects": disposition["ARCHIVED_IN_REPO"],
@@ -301,6 +399,8 @@ def derive_figures() -> dict:
         "archived_linked_in_archive": ARCHIVE_SUMMARY["actions"]["LINKED_ARCHIVE"],
         "archived_excluded_cache_and_build": ARCHIVE_SUMMARY["actions"]["EXCLUDED_BY_OWNER_RULE"],
         "blocker_items": len(blockers["items"]),
+        "workbench_verdict_count": len(workbench["assigned"]),
+        "workbench_verdict_cases": len(workbench["declared"]),
     }
 
 
@@ -443,6 +543,7 @@ def check_entries(entry_path: Path) -> tuple[list, list]:
     if malformed:
         findings.append("SPDX_MALFORMED_LINES %d（声明读起来像 MIT，实际不合规）" % malformed)
     findings += receipt_pointer_findings(entry_text)
+    findings += workbench_verdict_findings(entry_text)
     return findings, machine_only
 
 

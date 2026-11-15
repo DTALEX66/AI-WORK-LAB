@@ -181,7 +181,7 @@ def _declared_cases(falsifier_text: str) -> set:
 
 
 def test_every_verdict_the_tool_can_assign_is_put_in_front_of_the_gate():
-    """Ten names, ten cases -- the shape that let stale bytes pass as verified is a name nobody ran.
+    """Every name needs a case -- an uncovered outcome can hide a stale-byte verdict.
 
     Measured in this batch: the tool had grown ten outcomes and three had ever been observed. The
     equality is in both directions on purpose. A missing case is an unexercised branch; an extra one
@@ -198,15 +198,15 @@ def test_every_verdict_the_tool_can_assign_is_put_in_front_of_the_gate():
 def test_a_verdict_name_added_without_a_case_is_reported_as_uncovered():
     """The guard above must be able to fail, or it guards nothing.
 
-    Two plants over synthetic text, both in-memory: an eleventh name assigned by the tool and never
+    Two plants over synthetic text, both in-memory: a name assigned by the tool and never
     declared, and a declared name the tool never assigns. Each has to move the corresponding set
     difference -- that is the whole claim the other node makes about the real files.
     """
     real = TOOL.read_text(encoding="utf-8")
-    planted_source = real + '\ndef _unreachable():\n    document["verdict"] = "ELEVENTH_NAME"\n'
+    planted_source = real + '\ndef _unreachable():\n    document["verdict"] = "UNDECLARED_PLANT"\n'
     named = _tool_verdict_names(planted_source)
     declared = _declared_cases(FALSFIER.read_text(encoding="utf-8"))
-    assert "ELEVENTH_NAME" in named - declared, "一个新判定没被声明也能通过这一格"
+    assert "UNDECLARED_PLANT" in named - declared, "一个新判定没被声明也能通过这一格"
 
     narrowed = declared - {"MATCH"}
     assert "MATCH" in named - narrowed, "少了一格声明却读不出缺口"

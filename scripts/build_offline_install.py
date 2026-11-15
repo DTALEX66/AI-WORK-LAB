@@ -131,8 +131,6 @@ def run(cmd: list[str], cwd: Path, env: dict[str, str], *, label: str,
 def stage_source(run_dir: Path) -> tuple[Path, list[str]]:
     """Copy only what the wheel needs, so a build cannot write into the checkout."""
     src = run_dir / "src"
-    if src.exists():
-        shutil.rmtree(src)
     src.mkdir(parents=True)
     for name in STAGE_FILES:
         origin = SOURCE_ROOT / name
@@ -240,7 +238,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     python = Path(args.python).resolve()
+    if (not args.run_id or args.run_id in (".", "..")
+            or any(char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+                   for char in args.run_id)):
+        print("REFUSED: run-id must be a single local name", file=sys.stderr)
+        return 2
+    BUILD_ROOT.mkdir(parents=True, exist_ok=True)
     run_dir = BUILD_ROOT / args.run_id
+    try:
+        run_dir.mkdir()
+    except FileExistsError:
+        print("REFUSED: build run already exists: %s" % args.run_id, file=sys.stderr)
+        return 2
     dist = run_dir / "dist"
     isolated = run_dir / "isolated"
     for path in (dist, isolated):

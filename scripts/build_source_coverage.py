@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import os
 import re
@@ -54,6 +55,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import build_f01_disposition as f01, source_roots  # noqa: E402
+from atomic_register import publish_bytes  # noqa: E402
 
 WORK = f01.WORK_ROOT
 DESIGN = f01.DESIGN_ROOT
@@ -1064,6 +1066,14 @@ def _copied_row(repo_label: str, repo: Path, rel: str, key: str, record: dict,
                          + "…）：产物没按声明重建，或期望需要重新核")
         return row
     row["class"] = "COPIED_TARGET_DIFFERS"
+    rework = migrate_module().DECLARED_REWORK.get(row["target"])
+    if rework is not None:
+        digest, size, _delta, reason = rework
+        if actual == digest and target.stat().st_size == size:
+            row["reason"] = "目标已声明返工，摘要与大小实测匹配；依据 scripts/migrate_sources.py：" + reason
+        else:
+            row["reason"] = "目标已声明返工，但当前字节不匹配声明；须重新核验，见 scripts/migrate_sources.py"
+        return row
     row["reason"] = ("目标字节既不同于复制清单，也不同于“来源+声明补丁”：属返工修复或漂移，"
                      "逐条依据见 migration/work-gap-disposition.csv 与 F01/F09 记录")
     return row
@@ -1177,12 +1187,11 @@ def write_csv(rows: list[dict], path: Path) -> None:
     missing = {name for row in rows for name in row if name not in columns}
     if missing:
         raise SystemExit("CSV_COLUMN_NOT_DECLARED " + ", ".join(sorted(missing)))
-    temporary = path.with_suffix(".csv.tmp")
-    with temporary.open("w", encoding="utf-8-sig", newline="\n") as handle:
-        writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
-    temporary.replace(path)
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(rows)
+    publish_bytes(path, handle.getvalue().encode("utf-8-sig"))
 
 
 def _drift(path: Path, rows: list[dict]) -> list[str]:

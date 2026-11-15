@@ -53,6 +53,57 @@ SOURCE_ROOT_ABSENT = source_roots.SOURCE_ROOT_ABSENT
 #: sources rebuilds the record byte-for-byte and ``--check`` still answers 0 there.
 SOURCE_NOT_OBSERVED_KEY = "not_observed"
 
+#: A remote's default branch is a fact about the *remote*, not about whichever branch this
+#: checkout happens to have checked out. ``git symbolic-ref --short HEAD`` answers the second
+#: question and used to be written into ``upload_facts.default_branch``, so a record produced on
+#: ``audit/backend-closure-20261103`` claimed that was the remote default while a read-only
+#: ``git ls-remote --symref origin HEAD`` said ``refs/heads/main`` -- and ``--check`` still
+#: answered MATCHES, because both sides of the comparison came from the same wrong expression.
+#:
+#: Offline this record can only observe the *local remote-tracking symref*
+#: ``refs/remotes/origin/HEAD``. That is a cached answer: it may be stale, and saying otherwise
+#: would turn an offline reading into a fake live observation. A live answer needs read-only
+#: ``git ls-remote --symref origin HEAD`` (network, owner-allowed), which this generator does
+#: not perform and never claims to have performed.
+REMOTE_DEFAULT_REF = "refs/remotes/origin/HEAD"
+DEFAULT_BRANCH_NOT_OBSERVABLE = "NOT_OBSERVABLE_OFFLINE"
+DEFAULT_BRANCH_LIVE_NOTE = (
+    "not observed by this generator; a live answer needs read-only "
+    "git ls-remote --symref origin HEAD with owner-allowed network access")
+#: keys of ``upload_facts`` that describe this checkout's ability to observe the remote, rather
+#: than a claim about the project. Kept narrow on purpose: ``pushed_branch`` is not here.
+DEFAULT_BRANCH_KEYS = frozenset({"default_branch", "default_branch_basis",
+                                 "default_branch_observation",
+                                 "default_branch_live_observation"})
+
+
+def observe_default_branch() -> dict:
+    """Observe the remote default branch offline, or name the inability to observe it.
+
+    Never falls back to the checked-out branch and never guesses ``main``. ``symbolic-ref -q``
+    prints nothing when the symref is absent (a clone made without it), which is a named
+    unobservable state rather than an empty value that could be read as "no default branch".
+    """
+    symref = git(["symbolic-ref", "-q", "--short", REMOTE_DEFAULT_REF])
+    if not symref or "/" not in symref:
+        return {
+            "default_branch": DEFAULT_BRANCH_NOT_OBSERVABLE,
+            "default_branch_basis": "not_observable_offline",
+            "default_branch_observation": (
+                "this checkout has no %s symref, so the remote default branch could not be "
+                "observed here; the checked-out branch was deliberately not used as a substitute"
+                % REMOTE_DEFAULT_REF),
+            "default_branch_live_observation": DEFAULT_BRANCH_LIVE_NOTE,
+        }
+    return {
+        "default_branch": symref.rsplit("/", 1)[1],
+        "default_branch_basis": "local_remote_tracking_symref:" + REMOTE_DEFAULT_REF,
+        "default_branch_observation": (
+            "offline reading of the local remote-tracking symref %s -> %s; this is a cached "
+            "answer that may be stale, NOT a live remote observation" % (REMOTE_DEFAULT_REF, symref)),
+        "default_branch_live_observation": DEFAULT_BRANCH_LIVE_NOTE,
+    }
+
 
 def git(args: list[str], cwd: pathlib.Path | None = None) -> str:
     where = cwd or ROOT
@@ -148,6 +199,7 @@ def live_fields(audited_commit: str | None) -> dict:
         remote_ref = git(["ls-remote", "--heads", "origin", branch]).split("\t")[0]
     except OSError:
         remote_ref = ""
+    default_branch = observe_default_branch()
     return {
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "observed_from": "git and the filesystem, read by scripts/build_audit_state.py",
@@ -167,13 +219,26 @@ def live_fields(audited_commit: str | None) -> dict:
             "remote_name": "origin",
             "remote_url": git(["remote", "get-url", "origin"]),
             "remote_ref_observed": remote_ref,
-            "default_branch": git(["symbolic-ref", "--short", "HEAD"]),
+            # ``default_branch`` is a fact about the remote, not about this checkout's HEAD.
+            # observe_default_branch() reads the local remote-tracking symref (offline, possibly
+            # stale) or names the inability to observe it; it never uses ``symbolic-ref HEAD``.
+            **default_branch,
             # Read from local remote-tracking refs, not `ls-remote`: a register that needs the network to
             # reproduce itself would stop being checkable on the very machine that deleted the sources.
             "remote_branches_observed": sorted(
                 line.strip() for line in
                 git(["branch", "-r", "--format=%(refname:short)"]).splitlines()
                 if "/" in line.strip()),
+            # Historical upload facts are *not* current-state claims. This used to be a single
+            # sentence asserting "since 2026-11-02 the only branch and the remote default are
+            # both main", which stopped being true once a second remote branch existed. It is now
+            # separately named as a historical note, and the live-observation gap is stated.
+            "pushed_branch_note": (
+                "HISTORICAL (2026-11-02 upload): the then-current branch and the then-default "
+                "remote branch were both main. This is a record of that upload, not a statement "
+                "about today's remote branch set; current offline observations are "
+                "remote_branches_observed and default_branch (+ its basis/observation). A live "
+                "remote default is not observed by this generator."),
             "prepush_hook": hook_facts(),
             "core_hooks_path": git(["config", "--get", "core.hooksPath"]) or None,
         },
@@ -290,8 +355,13 @@ ABSENCE_FIELDS = frozenset({"root", "head_observed", SOURCE_NOT_OBSERVED_KEY})
 #: cloned from. ``pushed_branch`` and the bypass facts are deliberately absent from this list --
 #: they are claims about the project, so writing them as a false value is drift, not a missing
 #: prerequisite.
+#:
+#: ``default_branch`` is deliberately absent too, and this is the point of the 2026-11-14 fix:
+#: it used to sit here, so a record whose value was simply copied from ``symbolic-ref HEAD``
+#: could disagree with the observed remote default and still be excused as "machine local".
+#: It is a claim about the remote, observed offline from a named symref; a wrong value is drift.
 MACHINE_LOCAL_FACTS = frozenset({"remote_name", "remote_url", "remote_ref_observed",
-                                 "default_branch", "remote_branches_observed", "prepush_hook",
+                                 "remote_branches_observed", "prepush_hook",
                                  "core_hooks_path"})
 
 
@@ -346,8 +416,21 @@ def _section_classes(tracked: dict, rebuilt: dict) -> tuple[list[str], list[str]
              else drift).append(key)
         elif key == "upload_facts":
             fields = _changed_fields(before.get(key), after.get(key))
-            (prereq if fields is not None and fields <= MACHINE_LOCAL_FACTS
-             else drift).append(key)
+            after_facts = after.get(key) or {}
+            if fields is not None and fields <= MACHINE_LOCAL_FACTS:
+                prereq.append(key)
+            elif (fields is not None and fields <= DEFAULT_BRANCH_KEYS
+                  and after_facts.get("default_branch") == DEFAULT_BRANCH_NOT_OBSERVABLE):
+                # This machine has no remote-tracking HEAD symref. A published record that
+                # names a default branch from a machine that did have one is not a false
+                # claim -- it is an observation this checkout cannot repeat. Named as a
+                # prerequisite rather than excused as drift.
+                prereq.append(key)
+            else:
+                # This includes a wrong `default_branch`, a missing basis field, and the
+                # stale historical note: none of them may be laundered through the
+                # machine-local exemption into `MATCHES`.
+                drift.append(key)
         else:
             drift.append(key)
     return sorted(drift), sorted(unobservable), sorted(prereq)
@@ -357,6 +440,51 @@ def _absent_source_roots(document: dict) -> list[dict]:
     """The source roots this machine could not read, as the record states them."""
     return [entry["not_observed"] for entry in (document.get("source_repos") or {}).values()
             if isinstance(entry, dict) and entry.get(SOURCE_NOT_OBSERVED_KEY)]
+
+
+def default_branch_binding_findings(tracked: dict, rebuilt: dict) -> list[str]:
+    """Name a wrong `default_branch` in the *published* record, independently of section classes.
+
+    Three ways a false binding used to survive a green `--check`:
+
+    * both sides were computed from the same wrong expression (`symbolic-ref HEAD`), so the
+      comparison agreed and printed MATCHES;
+    * the field sat in `MACHINE_LOCAL_FACTS`, so a disagreement was excused as a prerequisite;
+    * `merge` keeps keys the generator no longer writes, so an old record shape kept a value
+      nobody had re-observed.
+
+    The first is now impossible because the rebuilt side comes from `observe_default_branch()`;
+    this function names the other two, plus the specific historical defect (published value ==
+    the checked-out branch while the observed remote default is a different branch). A checkout
+    that cannot observe the symref is *not* judged here: `_section_classes` names that as a
+    prerequisite, which is the honest answer for an offline clone.
+    """
+    facts = tracked.get("upload_facts") or {}
+    now = rebuilt.get("upload_facts") or {}
+    published = facts.get("default_branch")
+    observed = now.get("default_branch")
+    checkout = rebuilt.get("branch")
+    findings: list[str] = []
+    if published is None:
+        return ["DEFAULT_BRANCH_MISSING 发布记录里没有 default_branch，无法判断它绑的是哪个远端"]
+    for key in ("default_branch_basis", "default_branch_observation",
+                "default_branch_live_observation"):
+        if facts.get(key) is None:
+            findings.append("DEFAULT_BRANCH_BASIS_MISSING %s（旧记录没有说明这个值从哪里来、"
+                            "是不是实时观测）" % key)
+    live_claim = facts.get("default_branch_live_observation")
+    if live_claim is not None and live_claim != DEFAULT_BRANCH_LIVE_NOTE:
+        findings.append("DEFAULT_BRANCH_LIVE_CLAIM 记录声称做过实时远端观测，本生成器离线、"
+                        "从未做过")
+    if observed == DEFAULT_BRANCH_NOT_OBSERVABLE:
+        return findings
+    if checkout and published == checkout and checkout != observed:
+        findings.append("DEFAULT_BRANCH_IS_LOCAL_CHECKOUT 发布值=%s 就是本机检出分支，"
+                        "而离线可观测的远端默认分支=%s；前者不能冒充后者"
+                        % (published, observed))
+    if published != observed and published != DEFAULT_BRANCH_NOT_OBSERVABLE:
+        findings.append("DEFAULT_BRANCH_STALE 发布值=%s 现算值=%s" % (published, observed))
+    return findings
 
 
 def binding_commit(existing: dict, requested: str | None) -> str:
@@ -403,7 +531,11 @@ def main(argv: list[str]) -> int:
         tracked = json.loads(OUT.read_text(encoding="utf-8")) if OUT.is_file() else {}
         drift, unobservable, prereq = _section_classes(tracked, document)
         sections = _stale_sections(tracked, document)
-        stale = bool(drift)
+        binding_findings = default_branch_binding_findings(tracked, document)
+        if binding_findings and "upload_facts" not in drift:
+            drift = sorted(drift + ["upload_facts"])
+            sections = sorted(set(sections) | {"upload_facts"})
+        stale = bool(drift) or bool(binding_findings)
         absent = _absent_source_roots(document)
         # the ancestry claim worth checking is the one already published, not the rebuilt
         # document's own HEAD (that one is true by construction)
@@ -422,6 +554,13 @@ def main(argv: list[str]) -> int:
                               audited=document["audited_head_sha"][:12],
                               head_is_ancestor=ancestry.returncode == 0,
                               source_roots_absent_on_this_machine=absent,
+                              default_branch_binding_findings=binding_findings,
+                              default_branch_published=(tracked.get("upload_facts") or {})
+                              .get("default_branch"),
+                              default_branch_observed=(document.get("upload_facts") or {})
+                              .get("default_branch"),
+                              default_branch_basis=(document.get("upload_facts") or {})
+                              .get("default_branch_basis"),
                               folded_rotating=sorted(ROTATING_FIELDS)
                               + ["upload_facts/" + key for key in ROTATING_NESTED]),
                          ensure_ascii=True))

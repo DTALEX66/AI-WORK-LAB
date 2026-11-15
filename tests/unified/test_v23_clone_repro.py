@@ -41,6 +41,8 @@ import tempfile
 import time
 from pathlib import Path
 
+import pytest
+
 TARGET_ROOT = Path(__file__).resolve().parents[2]
 #: ``.venv``, the two read-only source repositories, the live dev workspace and the
 #: isolated-install receipts under ``.project-local/build`` are all prerequisites of this
@@ -127,38 +129,240 @@ def _fixture_project_root(root: Path) -> Path:
                 {"TARGET_ROOT": root, "Path": Path})
 
 
-def _remove_tree(path: Path) -> None:
-    """Delete a tree Git wrote, including its read-only object pack.
+def _remove_tree(path: Path) -> bool:
+    """At exit, use the same refusal-before-removal gate as the session sweeper."""
+    from tests.conftest import remove_sandboxes
 
-    ``shutil.rmtree(path, ignore_errors=True)`` returns success while leaving ``.git/objects/pack``
-    behind, because those files are read-only on Windows -- measured twice in this batch: once in a
-    scratch falsifier (half a gigabyte per surviving fixture) and once here, where the leftover made
-    the *next* run's ``git clone`` refuse with "destination path … already exists and is not an empty
-    directory". A removal that silently fails is worse than one that fails loudly, because the next
-    reading then describes somebody else's tree.
-    """
-    def clear(func, target, exc):
-        os.chmod(target, stat.S_IWRITE)
-        func(target)
-    if path.exists():
-        shutil.rmtree(path, onerror=clear)
-    assert not path.exists(), "removal failed, the read-only bit is not the whole story: " + str(path)
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return True
+    except OSError as exc:
+        print("CLONE_CLEANUP_REFUSED: " + type(exc).__name__, file=sys.stderr)
+        return False
+    if (not stat.S_ISDIR(metadata.st_mode)
+            or getattr(metadata, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 1024)):
+        print("CLONE_CLEANUP_REFUSED: not an ordinary directory", file=sys.stderr)
+        return False
+    removed, failed = remove_sandboxes([path])
+    if failed or removed != 1:
+        print("CLONE_CLEANUP_REFUSED: " + ", ".join(failed), file=sys.stderr)
+        return False
+    return True
 
 
 def _clone(suffix: str) -> Path:
     """Clone into a deliberately short root: Windows MAX_PATH already bit a rehearsal that
     ran under pytest's nested basetemp, and the migrated resource tree has long paths."""
-    destination = Path(tempfile.gettempdir()) / ("awlclone-%d-%s" % (os.getpid(), suffix))
-    _remove_tree(destination)
-    destination.mkdir(parents=True)
+    destination = Path(tempfile.mkdtemp(prefix="awlclone-%d-%s-" % (os.getpid(), suffix),
+                                        dir=tempfile.gettempdir()))
+    atexit.register(_remove_tree, destination)
     clone = destination / "c"
     completed = subprocess.run(["git", "clone", "--quiet", "--no-hardlinks",
                                str(TARGET_ROOT), str(clone)],
                               capture_output=True, text=True, encoding="utf-8",
                               errors="replace", timeout=900)
     assert completed.returncode == 0, completed.stderr[-800:]
-    atexit.register(shutil.rmtree, destination, True)
     return clone
+
+
+def test_clone_exit_cleanup_obeys_the_deletion_refusal(tmp_path, monkeypatch):
+    """A refused traversal must not fall through to an unchecked atexit removal."""
+    from tests import conftest as fixtures
+
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    callbacks = []
+    attempted_removals = []
+    destination = None
+
+    def clone_fixture(argv, **_kwargs):
+        clone = Path(argv[-1])
+        (clone / ".git").mkdir(parents=True)
+        (clone / ".git" / "sentinel").write_text("preserve", encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    def capture(callback, *args, **kwargs):
+        callbacks.append((callback, args, kwargs))
+        return callback
+
+    def trap_remove(path, *_args, **_kwargs):
+        attempted_removals.append(str(path))
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(tempfile, "gettempdir", lambda: str(scratch))
+            patch.setattr(subprocess, "run", clone_fixture)
+            patch.setattr(atexit, "register", capture)
+            patch.setattr(shutil, "rmtree", trap_remove)
+            patch.setattr(fixtures, "undeletable_reason", lambda _path: "TRAVERSAL_REFUSED:fixture")
+            clone = _clone("exit-refusal")
+            destination = clone.parent
+            assert len(callbacks) == 1
+            callback, args, kwargs = callbacks[0]
+            outcome = callback(*args, **kwargs)
+            assert outcome is False
+            assert attempted_removals == [], attempted_removals
+            assert (clone / ".git" / "sentinel").read_text(encoding="utf-8") == "preserve"
+    finally:
+        if destination is not None and destination.exists():
+            removed, failed = fixtures.remove_sandboxes([destination])
+            assert (removed, failed) == (1, [])
+
+
+def test_clone_creation_preserves_a_preexisting_sandbox(tmp_path, monkeypatch):
+    """A reused PID must not turn an earlier clone into a cleanup target."""
+    from tests import conftest as fixtures
+
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    previous = scratch / ("awlclone-%d-collision" % os.getpid())
+    previous.mkdir()
+    sentinel = previous / "keep"
+    sentinel.write_text("old evidence", encoding="utf-8")
+    attempted_removals = []
+    created = None
+
+    def clone_fixture(argv, **_kwargs):
+        Path(argv[-1]).mkdir()
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(tempfile, "gettempdir", lambda: str(scratch))
+            patch.setattr(subprocess, "run", clone_fixture)
+            patch.setattr(atexit, "register", lambda callback, *args: callback)
+            patch.setattr(shutil, "rmtree", lambda path, *_a, **_k: attempted_removals.append(path))
+            clone = _clone("collision")
+            created = clone.parent
+            assert created != previous
+            assert attempted_removals == []
+            assert sentinel.read_text(encoding="utf-8") == "old evidence"
+    finally:
+        if created is not None and created.exists():
+            removed, failed = fixtures.remove_sandboxes([created])
+            assert (removed, failed) == (1, [])
+
+
+def test_real_delete_access_or_link_refuses_before_removal(tmp_path):
+    """Windows exercises actual ACL denial; POSIX exercises the link refusal."""
+    from tests import conftest as fixtures
+
+    sandbox = tmp_path / "delete-check"
+    sandbox.mkdir()
+    (sandbox / "a-visible.txt").write_text("sample", encoding="utf-8")
+    locked = sandbox / "z-locked.txt"
+    locked.write_text("preserve", encoding="utf-8")
+    if os.name != "nt":
+        link = sandbox / "link"
+        try:
+            link.symlink_to(locked)
+            removed, failed = fixtures.remove_sandboxes([sandbox])
+            assert removed == 0 and "REPARSE_POINT_REFUSED" in failed[0], failed
+            assert locked.read_text(encoding="utf-8") == "preserve"
+        finally:
+            link.unlink(missing_ok=True)
+            assert fixtures.remove_sandboxes([sandbox]) == (1, [])
+        return
+
+    import csv
+    import ctypes
+    from ctypes import wintypes
+    import io
+
+    who = subprocess.run(["whoami", "/user", "/fo", "csv", "/nh"],
+                         capture_output=True, text=True, check=True)
+    sid = next(csv.reader(io.StringIO(who.stdout)))[1]
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateFileW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                   ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+
+    def acl(path, verb, rights=""):
+        result = subprocess.run(["icacls", str(path), verb,
+                                 "*" + sid + (":" + rights if rights else "")],
+                                capture_output=True)
+        assert result.returncode == 0, verb
+
+    def allowed(path, rights, directory=False):
+        handle = kernel.CreateFileW(str(path), rights, 7, None, 3,
+                                    0x02000000 if directory else 0, None)
+        if handle == ctypes.c_void_p(-1).value:
+            return False
+        kernel.CloseHandle(handle)
+        return True
+
+    denied_file = denied_parent = False
+    try:
+        acl(locked, "/deny", "(D)")
+        denied_file = True
+        acl(sandbox, "/deny", "(DC)")
+        denied_parent = True
+        assert not allowed(locked, 0x10000)
+        assert not allowed(sandbox, 0x40, directory=True)
+        removed, failed = fixtures.remove_sandboxes([sandbox])
+        assert removed == 0 and "DELETE_ACCESS_REFUSED" in failed[0], failed
+        assert locked.exists()
+    finally:
+        if denied_file:
+            acl(locked, "/remove:d")
+        if denied_parent:
+            acl(sandbox, "/remove:d")
+        assert allowed(locked, 0x10000) and allowed(sandbox, 0x40, directory=True)
+        assert locked.read_text(encoding="utf-8") == "preserve"
+        assert fixtures.remove_sandboxes([sandbox]) == (1, [])
+
+
+def test_session_cleanup_preserves_another_process_and_a_replaced_directory(tmp_path, monkeypatch):
+    """New names are not ownership; replacing a recorded directory changes its identity."""
+    from types import SimpleNamespace
+    from tests import conftest as fixtures
+
+    shared = tmp_path / ".project-local/task-runtime"
+    scratch = tmp_path / ".project-local/t"
+    shared.mkdir(parents=True)
+    scratch.mkdir(parents=True)
+    external = shared / "tmpOtherProcess0123"
+    protected_names = {external.name}
+    attempted = []
+    original = fixtures.shutil.rmtree
+
+    def trap(path, *args, **kwargs):
+        if Path(path).name in protected_names:
+            attempted.append(path)
+            raise OSError("unrelated deletion intercepted")
+        return original(path, *args, **kwargs)
+
+    config = SimpleNamespace(option=SimpleNamespace(basetemp=None))
+    with monkeypatch.context() as patch:
+        patch.setattr(fixtures, "TARGET_ROOT", tmp_path)
+        patch.setattr(tempfile, "gettempdir", lambda: str(scratch))
+        patch.setattr(fixtures.shutil, "rmtree", trap)
+        session = fixtures.sweep_test_sandboxes.__wrapped__(config)
+        next(session)
+        try:
+            owned = Path(tempfile.mkdtemp(dir=shared))
+            replaced = Path(tempfile.mkdtemp(dir=shared))
+            protected_names.add(replaced.name)
+            held = shared / ("held-" + replaced.name)
+            assert held.parent.resolve() == replaced.parent.resolve() == shared.resolve()
+            replaced.rename(held)
+            subprocess.run([sys.executable, "-B", "-c",
+                            "from pathlib import Path; import sys; "
+                            "[Path(p).mkdir() for p in sys.argv[1:]]",
+                            str(external), str(replaced)], check=True)
+            (external / "keep").write_text("unrelated", encoding="utf-8")
+            (replaced / "keep").write_text("replacement", encoding="utf-8")
+            with pytest.raises(StopIteration):
+                next(session)
+            assert attempted == [], attempted
+            assert (external / "keep").read_text(encoding="utf-8") == "unrelated"
+            assert (replaced / "keep").read_text(encoding="utf-8") == "replacement"
+            assert held.is_dir()
+            assert not owned.exists(), "the current process sandbox was not reclaimed"
+        finally:
+            session.close()
 
 
 def test_a_clone_can_run_the_machine_independent_part_of_the_suite(tmp_path):
